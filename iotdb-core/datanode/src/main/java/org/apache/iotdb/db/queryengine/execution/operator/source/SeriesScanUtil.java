@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -31,23 +32,26 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemPageRea
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.DescPriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.IMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockUtil;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
-import org.apache.iotdb.tsfile.read.reader.series.PaginationController;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IMetadata;
+import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.TsBlockUtil;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.reader.IPageReader;
+import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.read.reader.page.AlignedPageReader;
+import org.apache.tsfile.read.reader.series.PaginationController;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -63,7 +67,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_MERGE_READER_ALIGNED;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_MERGE_READER_NONALIGNED;
 
-public class SeriesScanUtil {
+public class SeriesScanUtil implements Accountable {
 
   protected final QueryContext context;
 
@@ -109,6 +113,13 @@ public class SeriesScanUtil {
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SeriesScanUtil.class)
+          + RamUsageEstimator.shallowSizeOfInstance(IDeviceID.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TimeOrderUtils.class)
+          + RamUsageEstimator.shallowSizeOfInstance(PaginationController.class)
+          + RamUsageEstimator.shallowSizeOfInstance(SeriesScanOptions.class);
 
   public SeriesScanUtil(
       PartialPath seriesPath,
@@ -1528,5 +1539,12 @@ public class SeriesScanUtil {
     public void setCurSeqFileIndex(QueryDataSource dataSource) {
       curSeqFileIndex = 0;
     }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + deviceID.ramBytesUsed()
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(seriesPath);
   }
 }

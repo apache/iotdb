@@ -26,8 +26,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 
 import java.io.DataOutputStream;
@@ -262,6 +262,9 @@ public class AuthorPlan extends ConfigPhysicalPlan {
         break;
       case ListRoleUsers:
         type = ConfigPhysicalPlanType.ListRoleUsers.getPlanType();
+        break;
+      case CreateUserWithRawPassword:
+        type = ConfigPhysicalPlanType.CreateUserWithRawPassword.getPlanType();
         break;
       default:
         throw new IllegalArgumentException("Unknown operator: " + configPhysicalPlanType);

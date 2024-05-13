@@ -89,8 +89,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -137,6 +137,7 @@ public class PartitionManager {
   /** Region cleaner. */
   // Monitor for leadership change
   private final Object scheduleMonitor = new Object();
+
   // Try to delete Regions in every 10s
   private static final int REGION_MAINTAINER_WORK_INTERVAL = 10;
   private final ScheduledExecutorService regionMaintainer;
@@ -389,7 +390,7 @@ public class PartitionManager {
       try {
         assignedDataPartition =
             getLoadManager().allocateDataPartition(unassignedDataPartitionSlotsMap);
-      } catch (NoAvailableRegionGroupException e) {
+      } catch (DatabaseNotExistsException | NoAvailableRegionGroupException e) {
         status = getConsensusManager().confirmLeader();
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           // The allocation might fail due to leadership change
@@ -398,9 +399,15 @@ public class PartitionManager {
         }
 
         LOGGER.error("Create DataPartition failed because: ", e);
-        resp.setStatus(
-            new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
-                .setMessage(e.getMessage()));
+        if (e instanceof DatabaseNotExistsException) {
+          resp.setStatus(
+              new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                  .setMessage(e.getMessage()));
+        } else {
+          resp.setStatus(
+              new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
+                  .setMessage(e.getMessage()));
+        }
         return resp;
       }
 

@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-
 import org.apache.thrift.EncodingUtils;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.read.common.RowRecord;
 
 import java.math.BigInteger;
 import java.security.MessageDigest;

@@ -83,9 +83,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -367,6 +367,16 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
+   * Create a new ConfigNodeHeartbeatCache
+   *
+   * @param nodeId the index of the new ConfigNode
+   */
+  public void createConfigNodeHeartbeatCache(int nodeId) {
+    getLoadManager().getLoadCache().createNodeHeartbeatCache(NodeType.ConfigNode, nodeId);
+    // TODO: invoke a force heartbeat to update new ConfigNode's status immediately
+  }
+
+  /**
    * Mark the given datanode as removing status to avoid read or write request routing to this node.
    *
    * @param dataNodeLocation the datanode to be marked as removing status
@@ -554,13 +564,33 @@ public class ConfigNodeProcedureEnv {
    * Force activating RegionGroup by setting status to Running, therefore the ConfigNode-leader can
    * select leader for it and use it to allocate new Partitions
    *
-   * @param activateRegionGroupMap Map<RegionGroupId, Map<DataNodeId, activate heartbeat sample>>
+   * @param activateRegionGroupMap Map<Database, Map<RegionGroupId, Map<DataNodeId, activate
+   *     heartbeat sample>>>
    */
   public void activateRegionGroup(
-      Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> activateRegionGroupMap) {
-    getLoadManager().forceUpdateRegionGroupCache(activateRegionGroupMap);
+      Map<String, Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>>>
+          activateRegionGroupMap) {
+    // Create RegionGroup heartbeat Caches
+    activateRegionGroupMap.forEach(
+        (database, regionGroupSampleMap) ->
+            regionGroupSampleMap.forEach(
+                (regionGroupId, regionSampleMap) ->
+                    getLoadManager()
+                        .getLoadCache()
+                        .createRegionGroupHeartbeatCache(
+                            database, regionGroupId, regionSampleMap.keySet())));
+    // Force update first heartbeat samples
+    getLoadManager()
+        .forceUpdateRegionGroupCache(
+            activateRegionGroupMap.values().stream()
+                .flatMap(innerMap -> innerMap.entrySet().stream())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> b)));
     // Wait for leader and priority redistribution
-    getLoadManager().waitForRegionGroupReady(new ArrayList<>(activateRegionGroupMap.keySet()));
+    getLoadManager()
+        .waitForRegionGroupReady(
+            activateRegionGroupMap.values().stream()
+                .flatMap(innterMap -> innterMap.keySet().stream())
+                .collect(Collectors.toList()));
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {

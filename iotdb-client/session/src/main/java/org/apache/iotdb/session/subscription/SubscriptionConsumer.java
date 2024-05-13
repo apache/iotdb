@@ -24,6 +24,7 @@ import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
 import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.thrift.TException;
@@ -34,6 +35,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +44,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -61,8 +64,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private final String username;
   private final String password;
 
-  private final String consumerId;
-  private final String consumerGroupId;
+  private String consumerId;
+  private String consumerGroupId;
 
   private final long heartbeatIntervalMs;
   private final long endpointsSyncIntervalMs;
@@ -73,6 +76,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private ScheduledExecutorService heartbeatWorkerExecutor;
   private ScheduledExecutorService endpointsSyncerExecutor;
+
+  private ExecutorService asyncCommitExecutor;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
@@ -173,8 +178,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       // shutdown endpoints syncer
       shutdownEndpointsSyncer();
 
-      // shutdown heartbeat worker
-      shutdownHeartbeatWorker();
+      // shutdown workers
+      shutdownWorkers();
 
       // close subscription providers
       acquireWriteLock();
@@ -274,9 +279,18 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         new ConsumerHeartbeatWorker(this), 0, heartbeatIntervalMs, TimeUnit.MILLISECONDS);
   }
 
-  private void shutdownHeartbeatWorker() {
+  /**
+   * Shut down workers upon close. There are currently two workers: heartbeat worker and async
+   * commit executor.
+   */
+  private void shutdownWorkers() {
     heartbeatWorkerExecutor.shutdown();
     heartbeatWorkerExecutor = null;
+
+    if (asyncCommitExecutor != null) {
+      asyncCommitExecutor.shutdown();
+      asyncCommitExecutor = null;
+    }
   }
 
   /////////////////////////////// endpoints syncer ///////////////////////////////
@@ -308,9 +322,22 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// subscription provider ///////////////////////////////
 
-  SubscriptionProvider constructProvider(final TEndPoint endPoint) {
-    return new SubscriptionProvider(
-        endPoint, this.username, this.password, this.consumerId, this.consumerGroupId);
+  SubscriptionProvider constructProviderAndHandshake(final TEndPoint endPoint)
+      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+    final SubscriptionProvider provider =
+        new SubscriptionProvider(
+            endPoint, this.username, this.password, this.consumerId, this.consumerGroupId);
+    provider.handshake();
+
+    // update consumer id and consumer group id if not exist
+    if (Objects.isNull(this.consumerId)) {
+      this.consumerId = provider.getConsumerId();
+    }
+    if (Objects.isNull(this.consumerGroupId)) {
+      this.consumerGroupId = provider.getConsumerGroupId();
+    }
+
+    return provider;
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
@@ -323,12 +350,12 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       final int defaultDataNodeId;
 
       try {
-        defaultProvider = constructProvider(endPoint);
-        defaultDataNodeId = defaultProvider.handshake();
+        defaultProvider = constructProviderAndHandshake(endPoint);
       } catch (final Exception e) {
         LOGGER.warn("Failed to create connection with {}, exception: {}", endPoint, e.getMessage());
         continue; // try next endpoint
       }
+      defaultDataNodeId = defaultProvider.getDataNodeId();
       addProvider(defaultDataNodeId, defaultProvider);
 
       final Map<Integer, TEndPoint> allEndPoints;
@@ -349,8 +376,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
         final SubscriptionProvider provider;
         try {
-          provider = constructProvider(entry.getValue());
-          provider.handshake();
+          provider = constructProviderAndHandshake(entry.getValue());
         } catch (final Exception e) {
           LOGGER.warn(
               "Failed to create connection with {}, exception: {}, will retry later...",
@@ -366,6 +392,98 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
     if (hasNoProviders()) {
       throw NO_PROVIDERS_EXCEPTION;
+    }
+  }
+
+  /////////////////////////////// poll & commit ///////////////////////////////
+
+  protected List<SubscriptionMessage> poll(Set<String> topicNames, long timeoutMs)
+      throws TException, IOException, StatementExecutionException {
+    List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
+
+    acquireReadLock();
+    try {
+      for (final SubscriptionProvider provider : getAllAvailableProviders()) {
+        // TODO: network timeout
+        enrichedTabletsList.addAll(provider.getSessionConnection().poll(topicNames, timeoutMs));
+      }
+    } finally {
+      releaseReadLock();
+    }
+
+    return enrichedTabletsList.stream().map(SubscriptionMessage::new).collect(Collectors.toList());
+  }
+
+  protected void commitSync(Iterable<SubscriptionMessage> messages)
+      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+    Map<Integer, Map<String, List<String>>> dataNodeIdToTopicNameToSubscriptionCommitIds =
+        new HashMap<>();
+    for (SubscriptionMessage message : messages) {
+      dataNodeIdToTopicNameToSubscriptionCommitIds
+          .computeIfAbsent(
+              message.parseDataNodeIdFromSubscriptionCommitId(), (id) -> new HashMap<>())
+          .computeIfAbsent(message.getTopicName(), (topicName) -> new ArrayList<>())
+          .add(message.getSubscriptionCommitId());
+    }
+    for (Map.Entry<Integer, Map<String, List<String>>> entry :
+        dataNodeIdToTopicNameToSubscriptionCommitIds.entrySet()) {
+      commitSyncInternal(entry.getKey(), entry.getValue());
+    }
+  }
+
+  protected void commitAsync(Iterable<SubscriptionMessage> messages) {
+    commitAsync(messages, new AsyncCommitCallback() {});
+  }
+
+  protected void commitAsync(Iterable<SubscriptionMessage> messages, AsyncCommitCallback callback) {
+
+    // Initiate executor if needed
+    if (asyncCommitExecutor == null) {
+      synchronized (this) {
+        if (asyncCommitExecutor != null) {
+          return;
+        }
+
+        asyncCommitExecutor =
+            Executors.newSingleThreadExecutor(
+                r -> {
+                  Thread t =
+                      new Thread(
+                          Thread.currentThread().getThreadGroup(),
+                          r,
+                          "SubscriptionConsumerAsyncCommitWorker",
+                          0);
+                  if (!t.isDaemon()) {
+                    t.setDaemon(true);
+                  }
+                  if (t.getPriority() != Thread.NORM_PRIORITY) {
+                    t.setPriority(Thread.NORM_PRIORITY);
+                  }
+                  return t;
+                });
+      }
+    }
+
+    asyncCommitExecutor.submit(new AsyncCommitWorker(messages, callback));
+  }
+
+  /////////////////////////////// utility ///////////////////////////////
+
+  private void commitSyncInternal(
+      int dataNodeId, Map<String, List<String>> topicNameToSubscriptionCommitIds)
+      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+    acquireReadLock();
+    try {
+      final SubscriptionProvider provider = getProvider(dataNodeId);
+      if (Objects.isNull(provider) || !provider.isAvailable()) {
+        throw new IoTDBConnectionException(
+            String.format(
+                "something unexpected happened when commit messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                dataNodeId));
+      }
+      provider.getSessionConnection().commitSync(topicNameToSubscriptionCommitIds);
+    } finally {
+      releaseReadLock();
     }
   }
 
@@ -552,5 +670,29 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     public abstract SubscriptionPullConsumer buildPullConsumer();
 
     public abstract SubscriptionPushConsumer buildPushConsumer();
+  }
+
+  class AsyncCommitWorker implements Runnable {
+    private final Iterable<SubscriptionMessage> messages;
+    private final AsyncCommitCallback callback;
+
+    public AsyncCommitWorker(Iterable<SubscriptionMessage> messages, AsyncCommitCallback callback) {
+      this.messages = messages;
+      this.callback = callback;
+    }
+
+    @Override
+    public void run() {
+      if (isClosed()) {
+        return;
+      }
+
+      try {
+        commitSync(messages);
+        callback.onComplete();
+      } catch (Exception e) {
+        callback.onFailure(e);
+      }
+    }
   }
 }

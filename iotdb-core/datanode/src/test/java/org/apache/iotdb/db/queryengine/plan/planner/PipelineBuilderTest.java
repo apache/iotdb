@@ -34,11 +34,15 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SingleDeviceViewOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.ConsumeAllChildrenPipelineMemoryEstimator;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.ConsumeChildrenOneByOnePipelineMemoryEstimator;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
@@ -48,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDevi
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftOuterTimeJoinNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
@@ -58,8 +63,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -72,6 +77,7 @@ import java.util.concurrent.ExecutorService;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey.DEVICE;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class PipelineBuilderTest {
 
@@ -108,6 +114,18 @@ public class PipelineBuilderTest {
 
     // Validate the number exchange operator
     assertEquals(0, context.getExchangeSumNum());
+
+    // Validate PipelineMemoryEstimator
+    try (Operator root = fullOuterTimeJoinNode.accept(operatorTreeGenerator, context)) {
+      PipelineMemoryEstimator pipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(root, null, fullOuterTimeJoinNode, -1);
+      assertEquals(
+          root.calculateMaxPeekMemoryWithCounter() + root.ramBytesUsed(),
+          pipelineMemoryEstimator.getEstimatedMemoryUsageInBytes());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   /**
@@ -160,6 +178,38 @@ public class PipelineBuilderTest {
 
     // Validate the number exchange operator
     assertEquals(1, context.getExchangeSumNum());
+
+    // Validate PipelineMemoryEstimator
+    try (Operator root =
+        fullOuterTimeJoinNode.accept(
+            operatorTreeGenerator, createLocalExecutionPlanContext(typeProvider))) {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(root, null, fullOuterTimeJoinNode, -1);
+      assertEquals(
+          ConsumeAllChildrenPipelineMemoryEstimator.class, rootPipelineMemoryEstimator.getClass());
+      // test calculateEstimatedMemory
+      assertEquals(
+          root.calculateMaxPeekMemoryWithCounter()
+              + rootPipelineMemoryEstimator.getChildren().stream()
+                  .map(PipelineMemoryEstimator::calculateEstimatedRunningMemorySize)
+                  .reduce(0L, Long::sum),
+          rootPipelineMemoryEstimator.calculateEstimatedRunningMemorySize());
+
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(1, childrenPipelineMemoryEstimators.size());
+      for (int i = 0; i < 1; i++) {
+        assertEquals(
+            ConsumeAllChildrenPipelineMemoryEstimator.class,
+            childrenPipelineMemoryEstimators.get(i).getClass());
+        assertEquals(
+            FullOuterTimeJoinOperator.class,
+            childrenPipelineMemoryEstimators.get(i).getRoot().getClass());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   /**
@@ -218,6 +268,36 @@ public class PipelineBuilderTest {
 
     // Validate the number exchange operator
     assertEquals(2, context.getExchangeSumNum());
+
+    // Validate PipelineMemoryEstimator
+    try (Operator root =
+        fullOuterTimeJoinNode.accept(
+            operatorTreeGenerator, createLocalExecutionPlanContext(typeProvider))) {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(root, null, fullOuterTimeJoinNode, -1);
+      assertEquals(
+          ConsumeAllChildrenPipelineMemoryEstimator.class, rootPipelineMemoryEstimator.getClass());
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(2, childrenPipelineMemoryEstimators.size());
+      for (int i = 0; i < 2; i++) {
+        assertEquals(
+            ConsumeAllChildrenPipelineMemoryEstimator.class,
+            childrenPipelineMemoryEstimators.get(i).getClass());
+        if (i == 0) {
+          assertEquals(
+              SeriesScanOperator.class,
+              childrenPipelineMemoryEstimators.get(i).getRoot().getClass());
+        } else {
+          assertEquals(
+              FullOuterTimeJoinOperator.class,
+              childrenPipelineMemoryEstimators.get(i).getRoot().getClass());
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   /**
@@ -275,6 +355,29 @@ public class PipelineBuilderTest {
 
     // Validate the number exchange operator
     assertEquals(3, context.getExchangeSumNum());
+
+    // Validate PipelineMemoryEstimator
+    try (Operator root =
+        fullOuterTimeJoinNode.accept(
+            operatorTreeGenerator, createLocalExecutionPlanContext(typeProvider))) {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(root, null, fullOuterTimeJoinNode, -1);
+      assertEquals(
+          ConsumeAllChildrenPipelineMemoryEstimator.class, rootPipelineMemoryEstimator.getClass());
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(3, childrenPipelineMemoryEstimators.size());
+      for (int i = 0; i < 3; i++) {
+        assertEquals(
+            ConsumeAllChildrenPipelineMemoryEstimator.class,
+            childrenPipelineMemoryEstimators.get(i).getClass());
+        assertEquals(
+            SeriesScanOperator.class, childrenPipelineMemoryEstimators.get(i).getRoot().getClass());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   /**
@@ -337,6 +440,29 @@ public class PipelineBuilderTest {
 
     // Validate the number exchange operator
     assertEquals(4, context.getExchangeSumNum());
+
+    // Validate PipelineMemoryEstimator
+    try (Operator root =
+        fullOuterTimeJoinNode.accept(
+            operatorTreeGenerator, createLocalExecutionPlanContext(typeProvider))) {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(root, null, fullOuterTimeJoinNode, -1);
+      assertEquals(
+          ConsumeAllChildrenPipelineMemoryEstimator.class, rootPipelineMemoryEstimator.getClass());
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(4, childrenPipelineMemoryEstimators.size());
+      for (int i = 0; i < 4; i++) {
+        assertEquals(
+            ConsumeAllChildrenPipelineMemoryEstimator.class,
+            childrenPipelineMemoryEstimators.get(i).getClass());
+        assertEquals(
+            SeriesScanOperator.class, childrenPipelineMemoryEstimators.get(i).getRoot().getClass());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   /**
@@ -399,6 +525,29 @@ public class PipelineBuilderTest {
 
     // Validate the number exchange operator
     assertEquals(4, context.getExchangeSumNum());
+
+    // Validate PipelineMemoryEstimator
+    try (Operator root =
+        fullOuterTimeJoinNode.accept(
+            operatorTreeGenerator, createLocalExecutionPlanContext(typeProvider))) {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(root, null, fullOuterTimeJoinNode, -1);
+      assertEquals(
+          ConsumeAllChildrenPipelineMemoryEstimator.class, rootPipelineMemoryEstimator.getClass());
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(4, childrenPipelineMemoryEstimators.size());
+      for (int i = 0; i < 4; i++) {
+        assertEquals(
+            ConsumeAllChildrenPipelineMemoryEstimator.class,
+            childrenPipelineMemoryEstimators.get(i).getClass());
+        assertEquals(
+            SeriesScanOperator.class, childrenPipelineMemoryEstimators.get(i).getRoot().getClass());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   /**
@@ -479,6 +628,21 @@ public class PipelineBuilderTest {
 
     // Validate the number exchange operator
     assertEquals(0, context.getExchangeSumNum());
+
+    // Validate PipelineMemoryEstimator
+    try {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(null, null, deviceViewNode, -1);
+      assertEquals(
+          ConsumeChildrenOneByOnePipelineMemoryEstimator.class,
+          rootPipelineMemoryEstimator.getClass());
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(0, childrenPipelineMemoryEstimators.size());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   /**
@@ -535,6 +699,29 @@ public class PipelineBuilderTest {
 
     // Validate the number exchange operator
     assertEquals(1, context.getExchangeSumNum());
+
+    // Validate PipelineMemoryEstimator
+    try {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(null, null, deviceViewNode, -1);
+      assertEquals(
+          ConsumeChildrenOneByOnePipelineMemoryEstimator.class,
+          rootPipelineMemoryEstimator.getClass());
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(4, childrenPipelineMemoryEstimators.size());
+      for (int i = 0; i < 4; i++) {
+        assertEquals(
+            ConsumeAllChildrenPipelineMemoryEstimator.class,
+            childrenPipelineMemoryEstimators.get(i).getClass());
+        assertEquals(
+            AlignedSeriesScanOperator.class,
+            childrenPipelineMemoryEstimators.get(i).getRoot().getClass());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   /**
@@ -591,6 +778,29 @@ public class PipelineBuilderTest {
 
     // Validate the number exchange operator
     assertEquals(2, context.getExchangeSumNum());
+
+    // Validate PipelineMemoryEstimator
+    try {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(null, null, deviceViewNode, -1);
+      assertEquals(
+          ConsumeChildrenOneByOnePipelineMemoryEstimator.class,
+          rootPipelineMemoryEstimator.getClass());
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(4, childrenPipelineMemoryEstimators.size());
+      for (int i = 0; i < 4; i++) {
+        assertEquals(
+            ConsumeAllChildrenPipelineMemoryEstimator.class,
+            childrenPipelineMemoryEstimators.get(i).getClass());
+        assertEquals(
+            AlignedSeriesScanOperator.class,
+            childrenPipelineMemoryEstimators.get(i).getRoot().getClass());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   /**
@@ -647,6 +857,30 @@ public class PipelineBuilderTest {
 
     // Validate the number exchange operator
     assertEquals(3, context.getExchangeSumNum());
+
+    // Validate PipelineMemoryEstimator
+    try {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(null, null, deviceViewNode, -1);
+      assertEquals(
+          ConsumeChildrenOneByOnePipelineMemoryEstimator.class,
+          rootPipelineMemoryEstimator.getClass());
+
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(4, childrenPipelineMemoryEstimators.size());
+      for (int i = 0; i < 4; i++) {
+        assertEquals(
+            ConsumeAllChildrenPipelineMemoryEstimator.class,
+            childrenPipelineMemoryEstimators.get(i).getClass());
+        assertEquals(
+            AlignedSeriesScanOperator.class,
+            childrenPipelineMemoryEstimators.get(i).getRoot().getClass());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   /**
@@ -703,6 +937,30 @@ public class PipelineBuilderTest {
 
     // Validate the number exchange operator
     assertEquals(4, context.getExchangeSumNum());
+
+    // Validate PipelineMemoryEstimator
+    try {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(null, null, deviceViewNode, -1);
+      assertEquals(
+          ConsumeChildrenOneByOnePipelineMemoryEstimator.class,
+          rootPipelineMemoryEstimator.getClass());
+
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(4, childrenPipelineMemoryEstimators.size());
+      for (int i = 0; i < 4; i++) {
+        assertEquals(
+            ConsumeAllChildrenPipelineMemoryEstimator.class,
+            childrenPipelineMemoryEstimators.get(i).getClass());
+        assertEquals(
+            AlignedSeriesScanOperator.class,
+            childrenPipelineMemoryEstimators.get(i).getRoot().getClass());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   /**
@@ -759,6 +1017,30 @@ public class PipelineBuilderTest {
 
     // Validate the number exchange operator
     assertEquals(4, context.getExchangeSumNum());
+
+    // Validate PipelineMemoryEstimator
+    try {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(null, null, deviceViewNode, -1);
+      assertEquals(
+          ConsumeChildrenOneByOnePipelineMemoryEstimator.class,
+          rootPipelineMemoryEstimator.getClass());
+
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(4, childrenPipelineMemoryEstimators.size());
+      for (int i = 0; i < 4; i++) {
+        assertEquals(
+            ConsumeAllChildrenPipelineMemoryEstimator.class,
+            childrenPipelineMemoryEstimators.get(i).getClass());
+        assertEquals(
+            AlignedSeriesScanOperator.class,
+            childrenPipelineMemoryEstimators.get(i).getRoot().getClass());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   /**
@@ -1038,11 +1320,285 @@ public class PipelineBuilderTest {
     assertEquals(3, context.getExchangeSumNum());
   }
 
+  @Test
+  public void testIdentitySinkNodeMemoryEstimatorWithDop1() throws IllegalPathException {
+    TypeProvider typeProvider = new TypeProvider();
+    IdentitySinkNode identitySinkNode = initIdentitySinkNode(typeProvider);
+    LocalExecutionPlanContext context = createLocalExecutionPlanContext(typeProvider);
+    context.setDegreeOfParallelism(1);
+
+    // Validate PipelineMemoryEstimator
+    try (Operator root = identitySinkNode.accept(operatorTreeGenerator, context)) {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(root, null, identitySinkNode, -1);
+      assertEquals(
+          ConsumeChildrenOneByOnePipelineMemoryEstimator.class,
+          rootPipelineMemoryEstimator.getClass());
+      assertEquals(
+          root.calculateMaxPeekMemoryWithCounter(),
+          rootPipelineMemoryEstimator.calculateEstimatedRunningMemorySize());
+
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(0, childrenPipelineMemoryEstimators.size());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  /**
+   * The operator structure is:
+   *
+   * <p>IdentitySinkOperator - [ExchangeOperator1, ExchangeOperator2, ExchangeOperator3]
+   *
+   * <p>This test will test dop = 2. Expected result is four pipelines with dependency:
+   *
+   * <p>The pipeline0 is: ExchangeOperator1 - FullOuterTimeJoinOperator1.
+   *
+   * <p>The pipeline1 is: ExchangeOperator2 - FullOuterTimeJoinOperator2, which has dependency 0.
+   *
+   * <p>The pipeline2 is: ExchangeOperator2 - FullOuterTimeJoinOperator2, which has dependency 1.
+   *
+   * <p>The pipeline3 is: IdentitySinkOperator - [ExchangeOperator1, ExchangeOperator2,
+   * ExchangeOperator3]
+   */
+  @Test
+  public void testIdentitySinkNodeMemoryEstimatorWithDop2() throws IllegalPathException {
+    TypeProvider typeProvider = new TypeProvider();
+    IdentitySinkNode identitySinkNode = initIdentitySinkNode(typeProvider);
+    LocalExecutionPlanContext context =
+        createLocalExecutionPlanContextWithQueryId(typeProvider, new QueryId("test_dop2"));
+    context.setDegreeOfParallelism(2);
+
+    // Validate PipelineMemoryEstimator
+    try (Operator root = identitySinkNode.accept(operatorTreeGenerator, context)) {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(root, null, identitySinkNode, -1);
+      assertEquals(
+          ConsumeChildrenOneByOnePipelineMemoryEstimator.class,
+          rootPipelineMemoryEstimator.getClass());
+      assertEquals(
+          root.calculateMaxPeekMemoryWithCounter()
+              + rootPipelineMemoryEstimator.getChildren().stream()
+                      .map(PipelineMemoryEstimator::calculateEstimatedRunningMemorySize)
+                      .reduce(0L, Long::sum)
+                  / 3,
+          rootPipelineMemoryEstimator.calculateEstimatedRunningMemorySize());
+
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(3, childrenPipelineMemoryEstimators.size());
+      for (int i = 0; i < 3; i++) {
+        assertEquals(
+            ConsumeAllChildrenPipelineMemoryEstimator.class,
+            childrenPipelineMemoryEstimators.get(i).getClass());
+        assertEquals(
+            FullOuterTimeJoinOperator.class,
+            childrenPipelineMemoryEstimators.get(i).getRoot().getClass());
+        assertEquals(0, childrenPipelineMemoryEstimators.get(i).getChildren().size());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  /**
+   * The operator structure is:
+   *
+   * <p>IdentitySinkOperator - [ExchangeOperator - FullOuterTimeJoinOperator1 -
+   * [SeriesScanOperator1, ExchangeOperator, ExchangeOperator], ExchangeOperator -
+   * FullOuterTimeJoinOperator2 - [SeriesScanOperator4, ExchangeOperator, ExchangeOperator],
+   * ExchangeOperator - FullOuterTimeJoinOperator3 - [SeriesScanOperator7, ExchangeOperator,
+   * ExchangeOperator]]
+   *
+   * <p>This test will test dop = 4. Expected result is ten pipelines with dependency:
+   *
+   * <p>The pipeline0 is: ExchangeOperator - SeriesOperator2.
+   *
+   * <p>The pipeline1 is: ExchangeOperator - SeriesOperator3.
+   *
+   * <p>The pipeline2 is: ExchangeOperator - FullOuterTimeJoinOperator1 - [SeriesScanOperator1,
+   * ExchangeOperator, ExchangeOperator]
+   *
+   * <p>The pipeline3 is: ExchangeOperator - SeriesOperator5, which has dependency 2.
+   *
+   * <p>The pipeline4 is: ExchangeOperator - SeriesOperator6, which has dependency 2.
+   *
+   * <p>The pipeline5 is: ExchangeOperator - FullOuterTimeJoinOperator2 - [SeriesScanOperator4,
+   * ExchangeOperator, ExchangeOperator], which has dependency 2.
+   *
+   * <p>The pipeline7 is: ExchangeOperator - SeriesOperator5, which has dependency 5.
+   *
+   * <p>The pipeline8 is: ExchangeOperator - SeriesOperator6, which has dependency 5.
+   *
+   * <p>The pipeline9 is: ExchangeOperator - FullOuterTimeJoinOperator2 - [SeriesScanOperator4,
+   * ExchangeOperator, ExchangeOperator], which has dependency 5.
+   *
+   * <p>The pipeline10 is: IdentitySinkOperator - [ExchangeOperator1, ExchangeOperator2,
+   * ExchangeOperator3]
+   */
+  @Test
+  public void testIdentitySinkNodeMemoryEstimatorWithDop4() throws IllegalPathException {
+    TypeProvider typeProvider = new TypeProvider();
+    IdentitySinkNode identitySinkNode = initIdentitySinkNode(typeProvider);
+    LocalExecutionPlanContext context =
+        createLocalExecutionPlanContextWithQueryId(typeProvider, new QueryId("test_dop4"));
+    context.setDegreeOfParallelism(4);
+
+    // Validate PipelineMemoryEstimator
+    try (Operator root = identitySinkNode.accept(operatorTreeGenerator, context)) {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(root, null, identitySinkNode, -1);
+      assertEquals(
+          ConsumeChildrenOneByOnePipelineMemoryEstimator.class,
+          rootPipelineMemoryEstimator.getClass());
+      assertEquals(
+          1,
+          ((ConsumeChildrenOneByOnePipelineMemoryEstimator) rootPipelineMemoryEstimator)
+              .getConcurrentRunningChildrenNumForTest());
+
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(3, childrenPipelineMemoryEstimators.size());
+      for (int i = 0; i < 3; i++) {
+        assertEquals(
+            ConsumeAllChildrenPipelineMemoryEstimator.class,
+            childrenPipelineMemoryEstimators.get(i).getClass());
+        assertEquals(
+            FullOuterTimeJoinOperator.class,
+            childrenPipelineMemoryEstimators.get(i).getRoot().getClass());
+        assertEquals(2, childrenPipelineMemoryEstimators.get(i).getChildren().size());
+        for (int j = 0; j < 2; j++) {
+          assertEquals(
+              ConsumeAllChildrenPipelineMemoryEstimator.class,
+              childrenPipelineMemoryEstimators.get(i).getChildren().get(j).getClass());
+          assertEquals(
+              SeriesScanOperator.class,
+              childrenPipelineMemoryEstimators.get(i).getChildren().get(j).getRoot().getClass());
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testIdentitySinkNodeMemoryEstimatorWithDop8() throws IllegalPathException {
+    TypeProvider typeProvider = new TypeProvider();
+    IdentitySinkNode identitySinkNode = initIdentitySinkNode(typeProvider);
+    LocalExecutionPlanContext context =
+        createLocalExecutionPlanContextWithQueryId(typeProvider, new QueryId("test_dop16"));
+    context.setDegreeOfParallelism(8);
+
+    // Validate PipelineMemoryEstimator
+    try (Operator root = identitySinkNode.accept(operatorTreeGenerator, context)) {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(root, null, identitySinkNode, -1);
+      assertEquals(
+          ConsumeChildrenOneByOnePipelineMemoryEstimator.class,
+          rootPipelineMemoryEstimator.getClass());
+      assertEquals(
+          1,
+          ((ConsumeChildrenOneByOnePipelineMemoryEstimator) rootPipelineMemoryEstimator)
+              .getConcurrentRunningChildrenNumForTest());
+
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(3, childrenPipelineMemoryEstimators.size());
+      for (int i = 0; i < 3; i++) {
+        assertEquals(
+            ConsumeAllChildrenPipelineMemoryEstimator.class,
+            childrenPipelineMemoryEstimators.get(i).getClass());
+        assertEquals(
+            FullOuterTimeJoinOperator.class,
+            childrenPipelineMemoryEstimators.get(i).getRoot().getClass());
+        for (int j = 0; j < 3; j++) {
+          assertEquals(
+              ConsumeAllChildrenPipelineMemoryEstimator.class,
+              childrenPipelineMemoryEstimators.get(i).getChildren().get(j).getClass());
+          assertEquals(
+              SeriesScanOperator.class,
+              childrenPipelineMemoryEstimators.get(i).getChildren().get(j).getRoot().getClass());
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testIdentitySinkNodeMemoryEstimatorWithDop16() throws IllegalPathException {
+    TypeProvider typeProvider = new TypeProvider();
+    IdentitySinkNode identitySinkNode = initIdentitySinkNode(typeProvider);
+    LocalExecutionPlanContext context =
+        createLocalExecutionPlanContextWithQueryId(typeProvider, new QueryId("test_dop8"));
+    context.setDegreeOfParallelism(16);
+
+    // Validate PipelineMemoryEstimator
+    try (Operator root = identitySinkNode.accept(operatorTreeGenerator, context)) {
+      PipelineMemoryEstimator rootPipelineMemoryEstimator =
+          context.constructPipelineMemoryEstimator(root, null, identitySinkNode, -1);
+      assertEquals(
+          ConsumeChildrenOneByOnePipelineMemoryEstimator.class,
+          rootPipelineMemoryEstimator.getClass());
+      // all the pipeline under this node will be executed concurrently
+      assertEquals(
+          3,
+          ((ConsumeChildrenOneByOnePipelineMemoryEstimator) rootPipelineMemoryEstimator)
+              .getConcurrentRunningChildrenNumForTest());
+
+      List<PipelineMemoryEstimator> childrenPipelineMemoryEstimators =
+          rootPipelineMemoryEstimator.getChildren();
+      assertEquals(3, childrenPipelineMemoryEstimators.size());
+      for (int i = 0; i < 3; i++) {
+        assertEquals(
+            ConsumeAllChildrenPipelineMemoryEstimator.class,
+            childrenPipelineMemoryEstimators.get(i).getClass());
+        assertEquals(
+            FullOuterTimeJoinOperator.class,
+            childrenPipelineMemoryEstimators.get(i).getRoot().getClass());
+        for (int j = 0; j < 3; j++) {
+          assertEquals(
+              ConsumeAllChildrenPipelineMemoryEstimator.class,
+              childrenPipelineMemoryEstimators.get(i).getChildren().get(j).getClass());
+          assertEquals(
+              SeriesScanOperator.class,
+              childrenPipelineMemoryEstimators.get(i).getChildren().get(j).getRoot().getClass());
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
   private LocalExecutionPlanContext createLocalExecutionPlanContext(TypeProvider typeProvider) {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
 
     QueryId queryId = new QueryId("stub_query");
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+    DataRegion dataRegion = Mockito.mock(DataRegion.class);
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(instanceId, stateMachine);
+    fragmentInstanceContext.setDataRegion(dataRegion);
+
+    return new LocalExecutionPlanContext(
+        typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
+  }
+
+  private LocalExecutionPlanContext createLocalExecutionPlanContextWithQueryId(
+      TypeProvider typeProvider, QueryId queryId) {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
     FragmentInstanceStateMachine stateMachine =
@@ -1167,5 +1723,21 @@ public class PipelineBuilderTest {
       topKNode.addChild(singleDeviceViewNode);
     }
     return topKNode;
+  }
+
+  private IdentitySinkNode initIdentitySinkNode(TypeProvider typeProvider)
+      throws IllegalPathException {
+    FullOuterTimeJoinNode fullOuterTimeJoinNode1 = initFullOuterTimeJoinNode(typeProvider, 3);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode2 = initFullOuterTimeJoinNode(typeProvider, 3);
+    FullOuterTimeJoinNode fullOuterTimeJoinNode3 = initFullOuterTimeJoinNode(typeProvider, 3);
+    fullOuterTimeJoinNode1.setPlanNodeId(new PlanNodeId("FullOuterTimeJoinNode1"));
+    fullOuterTimeJoinNode2.setPlanNodeId(new PlanNodeId("FullOuterTimeJoinNode2"));
+    fullOuterTimeJoinNode3.setPlanNodeId(new PlanNodeId("FullOuterTimeJoinNode3"));
+
+    IdentitySinkNode identitySinkNode = new IdentitySinkNode(new PlanNodeId("IdentitySinkNode"));
+    identitySinkNode.addChild(fullOuterTimeJoinNode1);
+    identitySinkNode.addChild(fullOuterTimeJoinNode2);
+    identitySinkNode.addChild(fullOuterTimeJoinNode3);
+    return identitySinkNode;
   }
 }

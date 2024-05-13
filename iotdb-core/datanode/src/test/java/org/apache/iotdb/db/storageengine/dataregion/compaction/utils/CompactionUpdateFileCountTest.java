@@ -27,8 +27,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
+import org.apache.tsfile.exception.write.WriteProcessException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

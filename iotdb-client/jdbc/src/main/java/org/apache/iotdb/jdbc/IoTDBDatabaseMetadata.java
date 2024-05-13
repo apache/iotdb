@@ -24,15 +24,15 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1487,6 +1487,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public int getMaxBinaryLiteralLength() {
     return Integer.MAX_VALUE;
   }
+
   /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxCatalogNameLength() {
@@ -1497,6 +1498,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public int getMaxCharLiteralLength() {
     return Integer.MAX_VALUE;
   }
+
   /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxColumnNameLength() {
@@ -1553,11 +1555,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public int getMaxProcedureNameLength() {
     return 0;
   }
+
   /** maxrowsize unlimited */
   @Override
   public int getMaxRowSize() {
     return 2147483639;
   }
+
   /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxSchemaNameLength() {
@@ -1578,16 +1582,19 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public int getMaxStatements() {
     return 0;
   }
+
   /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxTableNameLength() {
     return 1024;
   }
+
   /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxTablesInSelect() {
     return 1024;
   }
+
   /** Although there is no limit, it is not recommended */
   @Override
   public int getMaxUserNameLength() {
@@ -3371,7 +3378,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     return false;
   }
 
-  /** @deprecated recommend using getMetadataInJson() instead of toString() */
+  /**
+   * @deprecated recommend using getMetadataInJson() instead of toString()
+   */
   @SuppressWarnings("squid:S1133") // ignore Deprecated code should be removed
   @Deprecated
   @Override

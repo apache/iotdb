@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
@@ -68,10 +69,11 @@ public class PipeTransferTsFileInsertionEventHandler
 
   private final AtomicBoolean isSealSignalSent;
 
+  private IoTDBDataNodeAsyncClientManager clientManager;
   private AsyncPipeDataTransferServiceClient client;
 
   public PipeTransferTsFileInsertionEventHandler(
-      PipeTsFileInsertionEvent event, IoTDBDataRegionAsyncConnector connector)
+      final PipeTsFileInsertionEvent event, final IoTDBDataRegionAsyncConnector connector)
       throws FileNotFoundException {
     this.event = event;
     this.connector = connector;
@@ -93,9 +95,15 @@ public class PipeTransferTsFileInsertionEventHandler
     isSealSignalSent = new AtomicBoolean(false);
   }
 
-  public void transfer(AsyncPipeDataTransferServiceClient client) throws TException, IOException {
+  public void transfer(
+      IoTDBDataNodeAsyncClientManager clientManager,
+      final AsyncPipeDataTransferServiceClient client)
+      throws TException, IOException {
+    this.clientManager = clientManager;
     this.client = client;
+
     client.setShouldReturnSelf(false);
+    client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
     final int readLength = reader.read(readBuffer);
 
@@ -103,8 +111,13 @@ public class PipeTransferTsFileInsertionEventHandler
       if (currentFile == modFile) {
         currentFile = tsFile;
         position = 0;
+        try {
+          reader.close();
+        } catch (final IOException e) {
+          LOGGER.warn("Failed to close file reader when successfully transferred mod file.", e);
+        }
         reader = new RandomAccessFile(tsFile, "r");
-        transfer(client);
+        transfer(clientManager, client);
       } else if (currentFile == tsFile) {
         isSealSignalSent.set(true);
         client.pipeTransfer(
@@ -132,7 +145,7 @@ public class PipeTransferTsFileInsertionEventHandler
   }
 
   @Override
-  public void onComplete(TPipeTransferResp response) {
+  public void onComplete(final TPipeTransferResp response) {
     if (isSealSignalSent.get()) {
       try {
         final TSStatus status = response.getStatus();
@@ -147,7 +160,7 @@ public class PipeTransferTsFileInsertionEventHandler
                       "Seal file %s error, result status %s.", tsFile, response.getStatus()),
                   tsFile.getName());
         }
-      } catch (Exception e) {
+      } catch (final Exception e) {
         onError(e);
         return;
       }
@@ -156,7 +169,7 @@ public class PipeTransferTsFileInsertionEventHandler
         if (reader != null) {
           reader.close();
         }
-      } catch (IOException e) {
+      } catch (final IOException e) {
         LOGGER.warn("Failed to close file reader when successfully transferred file.", e);
       } finally {
         event.decreaseReferenceCount(PipeTransferTsFileInsertionEventHandler.class.getName(), true);
@@ -175,12 +188,12 @@ public class PipeTransferTsFileInsertionEventHandler
       return;
     }
 
-    // if the isSealSignalSent is false, then the response must be a PipeTransferFilePieceResp
+    // If the isSealSignalSent is false, then the response must be a PipeTransferFilePieceResp
     try {
       final PipeTransferFilePieceResp resp =
           PipeTransferFilePieceResp.fromTPipeTransferResp(response);
 
-      // this case only happens when the connection is broken, and the connector is reconnected
+      // This case only happens when the connection is broken, and the connector is reconnected
       // to the receiver, then the receiver will redirect the file position to the last position
       final long code = resp.getStatus().getCode();
 
@@ -199,14 +212,14 @@ public class PipeTransferTsFileInsertionEventHandler
         }
       }
 
-      transfer(client);
-    } catch (Exception e) {
+      transfer(clientManager, client);
+    } catch (final Exception e) {
       onError(e);
     }
   }
 
   @Override
-  public void onError(Exception exception) {
+  public void onError(final Exception exception) {
     LOGGER.warn(
         "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
         tsFile,
@@ -215,10 +228,18 @@ public class PipeTransferTsFileInsertionEventHandler
         exception);
 
     try {
+      if (Objects.nonNull(clientManager)) {
+        clientManager.adjustTimeoutIfNecessary(exception);
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Failed to adjust timeout when failed to transfer file.", e);
+    }
+
+    try {
       if (reader != null) {
         reader.close();
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.warn("Failed to close file reader when failed to transfer file.", e);
     } finally {
       connector.addFailureEventToRetryQueue(event);

@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.TsPrimitiveType;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -56,5 +58,10 @@ public class AlignedUpdateViewPathLastCacheOperator extends AlignedUpdateLastCac
       long lastTime, TsPrimitiveType lastValue, MeasurementPath measurementPath, String type) {
     LastQueryUtil.appendLastValue(
         tsBlockBuilder, lastTime, outputViewPath, lastValue.getStringValue(), type);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return super.ramBytesUsed() + RamUsageEstimator.sizeOf(outputViewPath);
   }
 }

@@ -67,8 +67,8 @@ import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -274,7 +274,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  /** @return The number of matched Databases by the specified Database pattern */
+  /**
+   * @return The number of matched Databases by the specified Database pattern
+   */
   public CountDatabaseResp countMatchedDatabases(CountDatabasePlan plan) {
     CountDatabaseResp result = new CountDatabaseResp();
     databaseReadWriteLock.readLock().lock();
@@ -293,7 +295,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** @return All DatabaseSchemas that matches to the specified Database pattern */
+  /**
+   * @return All DatabaseSchemas that matches to the specified Database pattern
+   */
   public DatabaseSchemaResp getMatchedDatabaseSchemas(GetDatabasePlan plan) {
     DatabaseSchemaResp result = new DatabaseSchemaResp();
     databaseReadWriteLock.readLock().lock();

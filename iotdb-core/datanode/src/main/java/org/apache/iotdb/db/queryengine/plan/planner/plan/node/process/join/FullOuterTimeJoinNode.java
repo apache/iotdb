@@ -24,7 +24,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -139,5 +140,10 @@ public class FullOuterTimeJoinNode extends MultiChildProcessNode {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), mergeOrder);
+  }
+
+  @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.FULL_OUTER_TIME_JOIN;
   }
 }

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.task.meta;
 
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
 import java.io.FileInputStream;

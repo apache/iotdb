@@ -39,10 +39,10 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +54,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 
@@ -104,6 +105,13 @@ public class LoadTsFileManager {
 
         final CleanupTask cleanupTask = cleanupTaskQueue.peek();
         if (cleanupTask.scheduledTime <= System.currentTimeMillis()) {
+          if (cleanupTask.isLoadTaskRunning) {
+            cleanupTaskQueue.poll();
+            cleanupTask.resetScheduledTime();
+            cleanupTaskQueue.add(cleanupTask);
+            continue;
+          }
+
           cleanupTask.run();
 
           uuid2CleanupTask.remove(cleanupTask.uuid);
@@ -157,17 +165,24 @@ public class LoadTsFileManager {
       }
     }
 
-    final TsFileWriterManager writerManager =
-        uuid2WriterManager.computeIfAbsent(
-            uuid, o -> new TsFileWriterManager(SystemFileFactory.INSTANCE.getFile(loadDir, uuid)));
-    for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
-      if (!tsFileData.isModification()) {
-        ChunkData chunkData = (ChunkData) tsFileData;
-        writerManager.write(
-            new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
-      } else {
-        writerManager.writeDeletion(dataRegion, (DeletionData) tsFileData);
+    final Optional<CleanupTask> cleanupTask = Optional.of(uuid2CleanupTask.get(uuid));
+    cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
+    try {
+      final TsFileWriterManager writerManager =
+          uuid2WriterManager.computeIfAbsent(
+              uuid,
+              o -> new TsFileWriterManager(SystemFileFactory.INSTANCE.getFile(loadDir, uuid)));
+      for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
+        if (!tsFileData.isModification()) {
+          ChunkData chunkData = (ChunkData) tsFileData;
+          writerManager.write(
+              new DataPartitionInfo(dataRegion, chunkData.getTimePartitionSlot()), chunkData);
+        } else {
+          writerManager.writeDeletion(dataRegion, (DeletionData) tsFileData);
+        }
       }
+    } finally {
+      cleanupTask.ifPresent(CleanupTask::markLoadTaskNotRunning);
     }
   }
 
@@ -176,7 +191,15 @@ public class LoadTsFileManager {
     if (!uuid2WriterManager.containsKey(uuid)) {
       return false;
     }
-    uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe, progressIndex);
+
+    final Optional<CleanupTask> cleanupTask = Optional.of(uuid2CleanupTask.get(uuid));
+    cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
+    try {
+      uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe, progressIndex);
+    } finally {
+      cleanupTask.ifPresent(CleanupTask::markLoadTaskNotRunning);
+    }
+
     clean(uuid);
     return true;
   }
@@ -201,8 +224,10 @@ public class LoadTsFileManager {
   }
 
   private void forceCloseWriterManager(String uuid) {
-    uuid2WriterManager.get(uuid).close();
-    uuid2WriterManager.remove(uuid);
+    final TsFileWriterManager writerManager = uuid2WriterManager.remove(uuid);
+    if (Objects.nonNull(writerManager)) {
+      writerManager.close();
+    }
 
     final Path loadDirPath = loadDir.toPath();
     if (!Files.exists(loadDirPath)) {
@@ -410,12 +435,30 @@ public class LoadTsFileManager {
   private class CleanupTask implements Runnable, Comparable<CleanupTask> {
 
     private final String uuid;
-    private final long scheduledTime;
 
+    private final long delayInMs;
+    private long scheduledTime;
+
+    private volatile boolean isLoadTaskRunning = false;
     private volatile boolean isCanceled = false;
 
     private CleanupTask(String uuid, long delayInMs) {
       this.uuid = uuid;
+      this.delayInMs = delayInMs;
+      resetScheduledTime();
+    }
+
+    public void markLoadTaskRunning() {
+      isLoadTaskRunning = true;
+      resetScheduledTime();
+    }
+
+    public void markLoadTaskNotRunning() {
+      isLoadTaskRunning = false;
+      resetScheduledTime();
+    }
+
+    public void resetScheduledTime() {
       scheduledTime = System.currentTimeMillis() + delayInMs;
     }
 

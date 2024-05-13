@@ -20,7 +20,8 @@
 package org.apache.iotdb.rpc.subscription.config;
 
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -56,5 +57,13 @@ public class ConsumerConfig extends PipeParameters {
 
   public String getConsumerGroupId() {
     return getString(ConsumerConstant.CONSUMER_GROUP_ID_KEY);
+  }
+
+  public void setConsumerId(final String consumerId) {
+    attributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
+  }
+
+  public void setConsumerGroupId(final String consumerGroupId) {
+    attributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
   }
 }

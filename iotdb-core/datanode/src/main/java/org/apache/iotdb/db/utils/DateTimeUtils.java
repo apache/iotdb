@@ -25,16 +25,15 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.queryengine.plan.parser.SqlParseError;
-import org.apache.iotdb.tsfile.utils.DateUtils;
-import org.apache.iotdb.tsfile.utils.TimeDuration;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.atn.PredictionMode;
+import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.utils.TimeDuration;
 
 import java.time.DateTimeException;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -713,32 +712,6 @@ public class DateTimeUtils {
     }
     return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault())
         .toString();
-  }
-
-  public static String convertMillisecondToDurationStr(long millisecond) {
-    Duration duration = Duration.ofMillis(millisecond);
-    long days = duration.toDays();
-    long years = days / 365;
-    days = days % 365;
-    long months = days / 30;
-    days %= 30;
-    long hours = duration.toHours() % 24;
-    long minutes = duration.toMinutes() % 60;
-    long seconds = duration.getSeconds() % 60;
-    StringBuilder result = new StringBuilder();
-    if (years > 0) {
-      result.append(years).append(" years ");
-    }
-    if (months > 0) {
-      result.append(months).append(" months ");
-    }
-    if (days > 0) {
-      result.append(days).append(" days ");
-    }
-    result.append(hours).append(" hours ");
-    result.append(minutes).append(" minutes ");
-    result.append(seconds).append(" seconds");
-    return result.toString();
   }
 
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {

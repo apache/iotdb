@@ -78,6 +78,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -105,7 +106,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -209,6 +211,8 @@ public enum PlanNodeType {
   EXPLAIN_ANALYZE((short) 90),
 
   PIPE_OPERATE_SCHEMA_QUEUE_REFERENCE((short) 91),
+
+  RAW_DATA_AGGREGATION((short) 92),
   ;
 
   public static final int BYTES = Short.BYTES;
@@ -238,6 +242,8 @@ public enum PlanNodeType {
         return InsertTabletNode.deserializeFromWAL(stream);
       case 14:
         return InsertRowNode.deserializeFromWAL(stream);
+      case 15:
+        return InsertRowsNode.deserializeFromWAL(stream);
       case 44:
         return DeleteDataNode.deserializeFromWAL(stream);
       default:
@@ -252,6 +258,8 @@ public enum PlanNodeType {
         return InsertTabletNode.deserializeFromWAL(buffer);
       case 14:
         return InsertRowNode.deserializeFromWAL(buffer);
+      case 15:
+        return InsertRowsNode.deserializeFromWAL(buffer);
       case 44:
         return DeleteDataNode.deserializeFromWAL(buffer);
       default:
@@ -440,6 +448,8 @@ public enum PlanNodeType {
         return ExplainAnalyzeNode.deserialize(buffer);
       case 91:
         return PipeOperateSchemaQueueNode.deserialize(buffer);
+      case 92:
+        return RawDataAggregationNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

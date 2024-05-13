@@ -25,9 +25,9 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
-import org.apache.iotdb.tsfile.utils.DateUtils;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

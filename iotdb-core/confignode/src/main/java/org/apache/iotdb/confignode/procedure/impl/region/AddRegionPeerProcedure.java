@@ -22,7 +22,9 @@ package org.apache.iotdb.confignode.procedure.impl.region;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
@@ -32,6 +34,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 
 import org.slf4j.Logger;
@@ -41,7 +44,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -84,14 +86,22 @@ public class AddRegionPeerProcedure
       outerSwitch:
       switch (state) {
         case CREATE_NEW_REGION_PEER:
+          LOGGER.info(
+              "[pid{}][AddRegion] started, region {} will be added to DataNode {}.",
+              getProcId(),
+              consensusGroupId.getId(),
+              destDataNode.getDataNodeId());
+          handler.addRegionLocation(consensusGroupId, destDataNode);
+          handler.forceUpdateRegionCache(consensusGroupId, destDataNode, RegionStatus.Adding);
           TSStatus status = handler.createNewRegionPeer(consensusGroupId, destDataNode);
           setKillPoint(state);
           if (status.getCode() != SUCCESS_STATUS.getStatusCode()) {
-            rollback(env, handler);
+            return warnAndRollBackAndNoMoreState(env, handler, "CREATE_NEW_REGION_PEER fail");
           }
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
+          handler.forceUpdateRegionCache(consensusGroupId, destDataNode, RegionStatus.Adding);
           // We don't want to re-submit AddRegionPeerTask when leader change or ConfigNode reboot
           if (!this.isStateDeserialized()) {
             TSStatus tsStatus =
@@ -99,7 +109,8 @@ public class AddRegionPeerProcedure
                     this.getProcId(), destDataNode, consensusGroupId, coordinator);
             setKillPoint(state);
             if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
-              throw new ProcedureException("ADD_REGION_PEER executed failed in DataNode");
+              return warnAndRollBackAndNoMoreState(
+                  env, handler, "submit DO_ADD_REGION_PEER task fail");
             }
           }
           TRegionMigrateResult result = handler.waitTaskFinish(this.getProcId(), coordinator);
@@ -108,52 +119,74 @@ public class AddRegionPeerProcedure
               // coordinator crashed and lost its task table
             case FAIL:
               // maybe some DataNode crash
-              LOGGER.warn(
-                  "{} result is {}, procedure failed. Will try to reset peer list automatically...",
-                  state,
-                  result.getTaskStatus());
-              rollback(env, handler);
-              return Flow.NO_MORE_STATE;
+              return warnAndRollBackAndNoMoreState(
+                  env, handler, String.format("%s result is %s", state, result.getTaskStatus()));
             case PROCESSING:
               // should never happen
-              LOGGER.error("should never happen");
-              throw new UnsupportedOperationException("should never happen");
+              return warnAndRollBackAndNoMoreState(env, handler, "should never return PROCESSING");
             case SUCCESS:
               setNextState(UPDATE_REGION_LOCATION_CACHE);
               break outerSwitch;
             default:
-              String msg = String.format("status %s is unsupported", result.getTaskStatus());
-              LOGGER.error(msg);
-              throw new UnsupportedOperationException(msg);
+              return warnAndRollBackAndNoMoreState(
+                  env, handler, String.format("status %s is unsupported", result.getTaskStatus()));
           }
         case UPDATE_REGION_LOCATION_CACHE:
-          handler.addRegionLocation(consensusGroupId, destDataNode);
+          handler.forceUpdateRegionCache(consensusGroupId, destDataNode, RegionStatus.Running);
           setKillPoint(state);
-          LOGGER.info("AddRegionPeer state {} complete", state);
+          LOGGER.info("[pid{}][AddRegion] state {} complete", getProcId(), state);
           LOGGER.info(
-              "AddRegionPeerProcedure success, region {} has been added to DataNode {}",
+              "[pid{}][AddRegion] success, region {} has been added to DataNode {}. Procedure took {} (start at {}).",
+              getProcId(),
               consensusGroupId.getId(),
-              destDataNode.getDataNodeId());
+              destDataNode.getDataNodeId(),
+              CommonDateTimeUtils.convertMillisecondToDurationStr(
+                  System.currentTimeMillis() - getSubmittedTime()),
+              DateTimeUtils.convertLongToDate(getSubmittedTime(), "ms"));
           return Flow.NO_MORE_STATE;
         default:
           throw new ProcedureException("Unsupported state: " + state.name());
       }
     } catch (Exception e) {
-      LOGGER.error("AddRegionPeer state {} failed", state, e);
+      LOGGER.error("[pid{}][AddRegion] state {} failed", getProcId(), state, e);
       return Flow.NO_MORE_STATE;
     }
-    LOGGER.info("AddRegionPeer state {} complete", state);
+    LOGGER.info("[pid{}][AddRegion] state {} complete", getProcId(), state);
     return Flow.HAS_MORE_STATE;
   }
 
-  private void rollback(ConfigNodeProcedureEnv env, RegionMaintainHandler handler) {
+  private Flow warnAndRollBackAndNoMoreState(
+      ConfigNodeProcedureEnv env, RegionMaintainHandler handler, String reason)
+      throws ProcedureException {
+    return warnAndRollBackAndNoMoreState(env, handler, reason, null);
+  }
+
+  private Flow warnAndRollBackAndNoMoreState(
+      ConfigNodeProcedureEnv env, RegionMaintainHandler handler, String reason, Exception e)
+      throws ProcedureException {
+    if (e != null) {
+      LOGGER.warn("[pid{}][AddRegion] Start to roll back, because: {}", getRootProcId(), reason, e);
+    } else {
+      LOGGER.warn("[pid{}][AddRegion] Start to roll back, because: {}", getRootProcId(), reason);
+    }
+    handler.removeRegionLocation(consensusGroupId, destDataNode);
+
     List<TDataNodeLocation> correctDataNodeLocations =
         env.getConfigManager().getPartitionManager().getAllReplicaSets().stream()
             .filter(tRegionReplicaSet -> tRegionReplicaSet.getRegionId().equals(consensusGroupId))
             .findAny()
-            .get()
+            .orElseThrow(
+                () ->
+                    new ProcedureException(
+                        "[pid{}][AddRegion] Cannot roll back, because cannot find the correct locations"))
             .getDataNodeLocations();
-
+    if (correctDataNodeLocations.remove(destDataNode)) {
+      LOGGER.warn(
+          "[pid{}][AddRegion] It appears that consensus write has not modified the local partition table. "
+              + "Please verify whether a leader change has occurred during this stage. "
+              + "If this log is triggered without a leader change, it indicates a potential bug in the partition table.",
+          getProcId());
+    }
     String correctStr =
         correctDataNodeLocations.stream()
             .map(TDataNodeLocation::getDataNodeId)
@@ -161,15 +194,19 @@ public class AddRegionPeerProcedure
             .toString();
     List<TDataNodeLocation> relatedDataNodeLocations = new ArrayList<>(correctDataNodeLocations);
     relatedDataNodeLocations.add(destDataNode);
-    Map<Integer, TDataNodeLocation> relatedDataNodeLocationMap = new HashMap<>();
-    relatedDataNodeLocations.forEach(
-        location -> relatedDataNodeLocationMap.put(location.dataNodeId, location));
-    LOGGER.info(
-        "Will reset peer list of consensus group {} on DataNode {}",
-        consensusGroupId,
+    Map<Integer, TDataNodeLocation> relatedDataNodeLocationMap =
         relatedDataNodeLocations.stream()
+            .collect(
+                Collectors.toMap(
+                    TDataNodeLocation::getDataNodeId, dataNodeLocation -> dataNodeLocation));
+    LOGGER.info(
+        "[pid{}][AddRegion] reset peer list: peer list of consensus group {} on DataNode {} will be reset to {}",
+        getProcId(),
+        consensusGroupId,
+        relatedDataNodeLocationMap.values().stream()
             .map(TDataNodeLocation::getDataNodeId)
-            .collect(Collectors.toList()));
+            .collect(Collectors.toList()),
+        correctStr);
 
     Map<Integer, TSStatus> resultMap =
         handler.resetPeerList(
@@ -179,19 +216,22 @@ public class AddRegionPeerProcedure
         (dataNodeId, resetResult) -> {
           if (resetResult.getCode() == SUCCESS_STATUS.getStatusCode()) {
             LOGGER.info(
-                "reset peer list: peer list of consensus group {} on DataNode {} has been successfully to {}",
+                "[pid{}][AddRegion] reset peer list: peer list of consensus group {} on DataNode {} has been successfully reset to {}",
+                getProcId(),
                 consensusGroupId,
                 dataNodeId,
                 correctStr);
           } else {
             // TODO: more precise
             LOGGER.warn(
-                "reset peer list: peer list of consensus group {} on DataNode {} failed to reset to {}, you may manually reset it",
+                "[pid{}][AddRegion] reset peer list: peer list of consensus group {} on DataNode {} failed to reset to {}, you may manually reset it",
+                getProcId(),
                 consensusGroupId,
                 dataNodeId,
                 correctStr);
           }
         });
+    return Flow.NO_MORE_STATE;
   }
 
   @Override

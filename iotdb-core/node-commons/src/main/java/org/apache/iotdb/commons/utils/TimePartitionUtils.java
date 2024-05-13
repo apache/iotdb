@@ -20,7 +20,8 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import org.apache.tsfile.read.filter.basic.Filter;
 
 public class TimePartitionUtils {
 

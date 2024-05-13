@@ -25,17 +25,15 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -196,19 +194,18 @@ public class SessionIT {
     }
   }
 
-
   @Test
   public void testInsertStrRecord() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<TSDataType> dataTypeList =
-              Arrays.asList(TSDataType.DATE, TSDataType.TIMESTAMP, TSDataType.BLOB, TSDataType.STRING);
+          Arrays.asList(TSDataType.DATE, TSDataType.TIMESTAMP, TSDataType.BLOB, TSDataType.STRING);
       List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4");
       String deviceId = "root.db.d1";
       for (int i = 0; i < dataTypeList.size(); i++) {
         String tsPath = deviceId + "." + measurements.get(i);
         if (!session.checkTimeseriesExists(tsPath)) {
           session.createTimeseries(
-                  tsPath, dataTypeList.get(i), TSEncoding.PLAIN, CompressionType.SNAPPY);
+              tsPath, dataTypeList.get(i), TSEncoding.PLAIN, CompressionType.SNAPPY);
         }
       }
       byte[] bytes = new byte[2];
@@ -266,10 +263,9 @@ public class SessionIT {
     }
   }
 
-
   @Test
   public void testInsertTablet() {
-    try(ISession session = EnvFactory.getEnv().getSessionConnection()) {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
       List<MeasurementSchema> schemaList = new ArrayList<>();
       String deviceId = "root.db.d1";
       schemaList.add(new MeasurementSchema("s1", TSDataType.DATE));
@@ -284,13 +280,11 @@ public class SessionIT {
       for (long time = 10; time < 15; time++) {
         int rowIndex = tablet.rowSize++;
         tablet.addTimestamp(rowIndex, time);
-        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, LocalDate.of(2024, 1, (int) time));
-        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, time);
         tablet.addValue(
-                schemaList.get(2).getMeasurementId(),
-                rowIndex,
-                new Binary(bytes));
-        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, ""+time);
+            schemaList.get(0).getMeasurementId(), rowIndex, LocalDate.of(2024, 1, (int) time));
+        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, time);
+        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, new Binary(bytes));
+        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, "" + time);
       }
       session.insertTablet(tablet);
       tablet.reset();
@@ -303,7 +297,7 @@ public class SessionIT {
         ((LocalDate[]) values[0])[rowIndex] = LocalDate.of(2024, 1, (int) time);
         ((long[]) values[1])[rowIndex] = time;
         ((Binary[]) values[2])[rowIndex] = new Binary(bytes);
-        ((Binary[]) values[3])[rowIndex] = new Binary(time+"", TSFileConfig.STRING_CHARSET);
+        ((Binary[]) values[3])[rowIndex] = new Binary(time + "", TSFileConfig.STRING_CHARSET);
       }
       session.insertTablet(tablet);
       tablet.reset();
@@ -311,7 +305,8 @@ public class SessionIT {
         HashSet<String> columnNames = new HashSet<>(dataSet.getColumnNames());
         Assert.assertEquals(5, columnNames.size());
         for (int i = 0; i < 4; i++) {
-          Assert.assertTrue(columnNames.contains(deviceId + "." + schemaList.get(i).getMeasurementId()));
+          Assert.assertTrue(
+              columnNames.contains(deviceId + "." + schemaList.get(i).getMeasurementId()));
         }
         dataSet.setFetchSize(1024); // default is 10000
         int row = 10;
@@ -343,7 +338,7 @@ public class SessionIT {
         }
         Assert.assertEquals(20, row);
       }
-    }catch (Exception e) {
+    } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

@@ -35,14 +35,15 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.NotImplementedException;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -490,12 +491,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   /** Serialized size for wal. */
   @Override
   public int serializedSize() {
-    return Short.BYTES + subSerializeSize();
+    return Short.BYTES + Long.BYTES + subSerializeSize();
   }
 
-  private int subSerializeSize() {
+  protected int subSerializeSize() {
     int size = 0;
-    size += Long.BYTES * 2;
+    size += Long.BYTES;
     size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
     return size + serializeMeasurementsAndValuesSize();
   }
@@ -553,11 +554,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
     buffer.putShort(PlanNodeType.INSERT_ROW.getNodeType());
+    buffer.putLong(searchIndex);
     subSerialize(buffer);
   }
 
-  private void subSerialize(IWALByteBufferView buffer) {
-    buffer.putLong(searchIndex);
+  protected void subSerialize(IWALByteBufferView buffer) {
     buffer.putLong(time);
     WALWriteUtils.write(devicePath.getFullPath(), buffer);
     serializeMeasurementsAndValues(buffer);
@@ -627,9 +628,15 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    * @throws IllegalArgumentException - If meets illegal argument.
    */
   public static InsertRowNode deserializeFromWAL(DataInputStream stream) throws IOException {
+    long searchIndex = stream.readLong();
+    InsertRowNode insertNode = subDeserializeFromWAL(stream);
+    insertNode.setSearchIndex(searchIndex);
+    return insertNode;
+  }
+
+  protected static InsertRowNode subDeserializeFromWAL(DataInputStream stream) throws IOException {
     // we do not store plan node id in wal entry
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
-    insertNode.setSearchIndex(stream.readLong());
     insertNode.setTime(stream.readLong());
     try {
       insertNode.setDevicePath(
@@ -639,7 +646,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }
     insertNode.deserializeMeasurementsAndValuesFromWAL(stream);
-
     return insertNode;
   }
 
@@ -704,9 +710,15 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    * @throws IllegalArgumentException - If meets illegal argument
    */
   public static InsertRowNode deserializeFromWAL(ByteBuffer buffer) {
+    long searchIndex = buffer.getLong();
+    InsertRowNode insertNode = subDeserializeFromWAL(buffer);
+    insertNode.setSearchIndex(searchIndex);
+    return insertNode;
+  }
+
+  protected static InsertRowNode subDeserializeFromWAL(ByteBuffer buffer) {
     // we do not store plan node id in wal entry
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
-    insertNode.setSearchIndex(buffer.getLong());
     insertNode.setTime(buffer.getLong());
     try {
       insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(buffer)));
@@ -769,6 +781,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       }
     }
   }
+
   // endregion
 
   @Override

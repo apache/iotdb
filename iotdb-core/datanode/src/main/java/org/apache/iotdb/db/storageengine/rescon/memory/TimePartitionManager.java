@@ -25,8 +25,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,6 +132,20 @@ public class TimePartitionManager {
         timePartitionInfoMap
             .get(timePartitionInfo.dataRegionId)
             .remove(timePartitionInfo.partitionId);
+      }
+    }
+  }
+
+  public void removeTimePartitionInfo(DataRegionId dataRegionId) {
+    synchronized (timePartitionInfoMap) {
+      Map<Long, TimePartitionInfo> timePartitionInfoMapForRegion =
+          timePartitionInfoMap.remove(dataRegionId);
+      if (timePartitionInfoMapForRegion != null) {
+        for (TimePartitionInfo timePartitionInfo : timePartitionInfoMapForRegion.values()) {
+          if (timePartitionInfo != null) {
+            memCost -= timePartitionInfo.memSize + Long.BYTES;
+          }
+        }
       }
     }
   }

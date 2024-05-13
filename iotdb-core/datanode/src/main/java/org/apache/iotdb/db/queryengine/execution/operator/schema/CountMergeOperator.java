@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,6 +39,8 @@ import java.util.NoSuchElementException;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class CountMergeOperator implements ProcessOperator {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CountMergeOperator.class);
   private final OperatorContext operatorContext;
 
   private final TsBlock[] childrenTsBlocks;
@@ -161,5 +166,12 @@ public class CountMergeOperator implements ProcessOperator {
     for (Operator child : children) {
       child.close();
     }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + children.stream().mapToLong(Accountable::ramBytesUsed).sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext);
   }
 }

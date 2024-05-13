@@ -36,10 +36,10 @@ import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchema
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,8 +80,6 @@ public class CNPhysicalPlanGenerator
 
   private static final String STRING_ENCODING = "utf-8";
 
-  // For default password
-  private static final String DEFAULT_PASSWORD = "password";
   private final ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
 
   private final HashMap<Integer, String> templateTable = new HashMap<>();
@@ -187,10 +185,11 @@ public class CNPhysicalPlanGenerator
       }
       String user = versionAndName.left;
       if (isUser) {
-        readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-        final AuthorPlan createUser = new AuthorPlan(ConfigPhysicalPlanType.CreateUser);
+        final String rawPassword = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+        final AuthorPlan createUser =
+            new AuthorPlan(ConfigPhysicalPlanType.CreateUserWithRawPassword);
         createUser.setUserName(user);
-        createUser.setPassword(DEFAULT_PASSWORD);
+        createUser.setPassword(rawPassword);
         createUser.setPermissions(new HashSet<>());
         createUser.setNodeNameList(new ArrayList<>());
         planDeque.add(createUser);

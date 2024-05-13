@@ -64,8 +64,10 @@ public class ThriftClientProperty {
 
     /** whether to use thrift compression. */
     private boolean rpcThriftCompressionEnabled = DefaultProperty.RPC_THRIFT_COMPRESSED_ENABLED;
+
     /** socket timeout for thrift client. */
     private int connectionTimeoutMs = DefaultProperty.CONNECTION_TIMEOUT_MS;
+
     /** number of selector threads for asynchronous thrift client in a clientManager. */
     private int selectorNumOfAsyncClientManager =
         DefaultProperty.SELECTOR_NUM_OF_ASYNC_CLIENT_MANAGER;

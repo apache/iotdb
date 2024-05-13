@@ -29,8 +29,8 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransf
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -142,7 +142,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       clientAndStatus.setLeft(
           new IoTDBSyncClient(
               new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
+                  .setConnectionTimeoutMs(PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
                   .setRpcThriftCompressionEnabled(
                       PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
                   .build(),
@@ -193,7 +193,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
             resp.getStatus());
       } else {
         clientAndStatus.setRight(true);
-        client.setTimeout((int) PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
+        client.setTimeout(CONNECTION_TIMEOUT_MS.get());
         LOGGER.info(
             "Handshake success. Target server ip: {}, port: {}",
             client.getIpAddress(),

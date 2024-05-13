@@ -23,8 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -34,11 +35,22 @@ import java.util.Objects;
 
 public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
 
-  // dataNodeId -> clientRpcEndPoint
   private transient int dataNodeId;
+
+  private transient String consumerId;
+
+  private transient String consumerGroupId;
 
   public int getDataNodeId() {
     return dataNodeId;
+  }
+
+  public String getConsumerId() {
+    return consumerId;
+  }
+
+  public String getConsumerGroupId() {
+    return consumerGroupId;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -47,10 +59,13 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
    * Serialize the incoming parameters into `PipeSubscribeHandshakeResp`, called by the subscription
    * server.
    */
-  public static PipeSubscribeHandshakeResp toTPipeSubscribeResp(TSStatus status, int dataNodeId) {
+  public static PipeSubscribeHandshakeResp toTPipeSubscribeResp(
+      TSStatus status, int dataNodeId, String consumerId, String consumerGroupId) {
     final PipeSubscribeHandshakeResp resp = new PipeSubscribeHandshakeResp();
 
     resp.dataNodeId = dataNodeId;
+    resp.consumerId = consumerId;
+    resp.consumerGroupId = consumerGroupId;
 
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
@@ -59,6 +74,8 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(dataNodeId, outputStream);
+      ReadWriteIOUtils.write(consumerId, outputStream);
+      ReadWriteIOUtils.write(consumerGroupId, outputStream);
       resp.body =
           Collections.singletonList(
               ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
@@ -70,10 +87,6 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
     return resp;
   }
 
-  public static PipeSubscribeHandshakeResp toTPipeSubscribeResp(TSStatus status) {
-    return toTPipeSubscribeResp(status, -1);
-  }
-
   /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
   public static PipeSubscribeHandshakeResp fromTPipeSubscribeResp(
       TPipeSubscribeResp handshakeResp) {
@@ -83,6 +96,8 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
       ByteBuffer byteBuffer = handshakeResp.body.get(0);
       if (byteBuffer.hasRemaining()) {
         resp.dataNodeId = ReadWriteIOUtils.readInt(byteBuffer);
+        resp.consumerId = ReadWriteIOUtils.readString(byteBuffer);
+        resp.consumerGroupId = ReadWriteIOUtils.readString(byteBuffer);
       }
     }
 

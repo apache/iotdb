@@ -180,7 +180,9 @@ public abstract class PageManager implements IPageManager {
     String alias;
     // TODO: reserve order of insert in container may be better
     for (Map.Entry<String, ICachedMNode> entry :
-        ICachedMNodeContainer.getCachedMNodeContainer(node).getNewChildFlushingBuffer().entrySet()
+        ICachedMNodeContainer.getCachedMNodeContainer(node)
+            .getNewChildFlushingBuffer()
+            .entrySet()
             .stream()
             .sorted(Map.Entry.comparingByKey())
             .collect(Collectors.toList())) {
@@ -488,6 +490,7 @@ public abstract class PageManager implements IPageManager {
 
     cxt.lastLeafPage = page.getAsSegmentedPage();
   }
+
   // endregion
 
   // region General Interfaces

@@ -28,8 +28,8 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 
+import org.apache.tsfile.utils.BytesUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -188,7 +188,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     } else {
       supportModsIfIsDataNodeReceiver = true;
     }
-    socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
+    socket.setSoTimeout(PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
     LOGGER.info("Handshake success. Socket: {}", socket);
   }
 

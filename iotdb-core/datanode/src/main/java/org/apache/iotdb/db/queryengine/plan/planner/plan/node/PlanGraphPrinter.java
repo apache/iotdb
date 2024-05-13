@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -65,9 +66,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.utils.Pair;
 import org.eclipse.jetty.util.StringUtil;
 
 import java.util.ArrayList;
@@ -166,6 +167,10 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
           String.format(
               "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
     }
+    Expression predicate = node.getPushDownPredicate();
+    if (predicate != null) {
+      boxValue.add(String.format("Predicate: %s", predicate));
+    }
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }
@@ -184,6 +189,10 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       boxValue.add(
           String.format(
               "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
+    }
+    Expression predicate = node.getPushDownPredicate();
+    if (predicate != null) {
+      boxValue.add(String.format("Predicate: %s", predicate));
     }
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
@@ -329,6 +338,19 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitAggregation(AggregationNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Aggregation-%s", node.getPlanNodeId().getId()));
+    for (int i = 0; i < node.getAggregationDescriptorList().size(); i++) {
+      AggregationDescriptor descriptor = node.getAggregationDescriptorList().get(i);
+      boxValue.add(
+          String.format(
+              "Aggregator-%d: %s, %s", i, descriptor.getAggregationType(), descriptor.getStep()));
+    }
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitRawDataAggregation(RawDataAggregationNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("RawDataAggregation-%s", node.getPlanNodeId().getId()));
     for (int i = 0; i < node.getAggregationDescriptorList().size(); i++) {
       AggregationDescriptor descriptor = node.getAggregationDescriptorList().get(i);
       boxValue.add(

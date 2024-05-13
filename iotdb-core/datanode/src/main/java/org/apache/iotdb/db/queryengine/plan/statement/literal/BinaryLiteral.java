@@ -1,10 +1,10 @@
 package org.apache.iotdb.db.queryengine.plan.statement.literal;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.base.CharMatcher;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.xml.bind.DatatypeConverter;
 

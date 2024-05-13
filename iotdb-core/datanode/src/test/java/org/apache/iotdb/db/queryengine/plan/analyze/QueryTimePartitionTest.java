@@ -20,12 +20,12 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.factory.FilterFactory;
+import org.apache.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.tsfile.utils.Pair;
 import org.junit.Test;
 
 import java.util.Arrays;

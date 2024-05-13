@@ -32,8 +32,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.util.InputRowUtils;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.LayerCacheUtils;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
@@ -41,6 +39,8 @@ import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrat
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.StateWindowAccessStrategy;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

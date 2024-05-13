@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.commons.path;
 
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -45,6 +45,7 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
   private final String name;
   private final Map<String, PathPatternNode<V, VSerializer>> children;
   private Set<V> valueSet;
+
   /**
    * Used only in PatternTreeMap to identify whether from root to the current node is a registered
    * path pattern. In PatternTreeMap, it can be replaced by the size of the valueSet
@@ -112,7 +113,9 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     return valueSet;
   }
 
-  /** @return true if from root to the current node is a registered path pattern. */
+  /**
+   * @return true if from root to the current node is a registered path pattern.
+   */
   public boolean isPathPattern() {
     return mark || isLeaf();
   }

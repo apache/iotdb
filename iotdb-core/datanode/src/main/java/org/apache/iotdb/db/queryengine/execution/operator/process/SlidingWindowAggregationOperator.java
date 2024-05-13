@@ -19,15 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.slidingwindow.SlidingWindowAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,6 +42,8 @@ import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil
 
 public class SlidingWindowAggregationOperator extends SingleInputAggregationOperator {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SlidingWindowAggregationOperator.class);
   private final ITimeRangeIterator timeRangeIterator;
   // Current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
@@ -161,5 +166,13 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
           curTimeRange.getMax());
     }
     curTimeRange = null;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + resultTsBlockBuilder.getRetainedSizeInBytes();
   }
 }

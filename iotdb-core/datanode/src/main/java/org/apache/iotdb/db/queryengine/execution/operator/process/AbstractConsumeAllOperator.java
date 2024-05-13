@@ -22,9 +22,9 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 import org.apache.iotdb.db.queryengine.execution.operator.AbstractOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +37,7 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
     implements ProcessOperator {
   protected final List<Operator> children;
   protected final int inputOperatorsCount;
+
   /** TsBlock from child operator. Only one cache now. */
   protected TsBlock[] inputTsBlocks;
 
@@ -155,7 +156,9 @@ public abstract class AbstractConsumeAllOperator extends AbstractOperator
     return !isEmpty(currentChildIndex) || children.get(currentChildIndex) == null;
   }
 
-  /** @param currentInputIndex index of the input TsBlock */
+  /**
+   * @param currentInputIndex index of the input TsBlock
+   */
   protected void processCurrentInputTsBlock(int currentInputIndex) {
     // do nothing here, the subclass have its own implementation
   }

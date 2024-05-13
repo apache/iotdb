@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
@@ -53,9 +54,9 @@ public class PipeConnectorSubtaskManager {
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
 
   public synchronized String register(
-      PipeConnectorSubtaskExecutor executor,
-      PipeParameters pipeConnectorParameters,
-      PipeTaskConnectorRuntimeEnvironment environment) {
+      final PipeConnectorSubtaskExecutor executor,
+      final PipeParameters pipeConnectorParameters,
+      final PipeTaskConnectorRuntimeEnvironment environment) {
     final String connectorKey =
         pipeConnectorParameters
             .getStringOrDefault(
@@ -77,7 +78,7 @@ public class PipeConnectorSubtaskManager {
             .contains(new DataRegionId(environment.getRegionId()));
 
     final int connectorNum;
-    String attributeSortedString = new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
+    String attributeSortedString = generateAttributeSortedString(pipeConnectorParameters);
     if (isDataRegionConnector) {
       connectorNum =
           pipeConnectorParameters.getIntOrDefault(
@@ -115,7 +116,7 @@ public class PipeConnectorSubtaskManager {
           pipeConnector.customize(
               pipeConnectorParameters, new PipeTaskRuntimeConfiguration(environment));
           pipeConnector.handshake();
-        } catch (Exception e) {
+        } catch (final Exception e) {
           throw new PipeException(
               "Failed to construct PipeConnector, because of " + e.getMessage(), e);
         }
@@ -149,7 +150,10 @@ public class PipeConnectorSubtaskManager {
   }
 
   public synchronized void deregister(
-      String pipeName, long creationTime, int dataRegionId, String attributeSortedString) {
+      final String pipeName,
+      final long creationTime,
+      final int dataRegionId,
+      final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
@@ -165,7 +169,7 @@ public class PipeConnectorSubtaskManager {
     PipeEventCommitManager.getInstance().deregister(pipeName, creationTime, dataRegionId);
   }
 
-  public synchronized void start(String attributeSortedString) {
+  public synchronized void start(final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
@@ -176,7 +180,7 @@ public class PipeConnectorSubtaskManager {
     }
   }
 
-  public synchronized void stop(String attributeSortedString) {
+  public synchronized void stop(final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
@@ -188,7 +192,7 @@ public class PipeConnectorSubtaskManager {
   }
 
   public BoundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue(
-      String attributeSortedString) {
+      final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(
           "Failed to get PendingQueue. No such subtask: " + attributeSortedString);
@@ -199,6 +203,13 @@ public class PipeConnectorSubtaskManager {
         .get(attributeSortedString)
         .get(0)
         .getPendingQueue();
+  }
+
+  private String generateAttributeSortedString(final PipeParameters pipeConnectorParameters) {
+    final TreeMap<String, String> sortedStringSourceMap =
+        new TreeMap<>(pipeConnectorParameters.getAttribute());
+    sortedStringSourceMap.remove(SystemConstant.RESTART_KEY);
+    return sortedStringSourceMap.toString();
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////

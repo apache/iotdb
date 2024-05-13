@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.BitMap;
 
 public class LastValueDescAccumulator extends LastValueAccumulator {
 

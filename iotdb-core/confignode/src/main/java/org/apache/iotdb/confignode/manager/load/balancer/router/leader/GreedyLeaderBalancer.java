@@ -20,11 +20,9 @@
 package org.apache.iotdb.confignode.manager.load.balancer.router.leader;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,63 +30,44 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** Leader distribution balancer that uses greedy algorithm */
-public class GreedyLeaderBalancer implements ILeaderBalancer {
-
-  private final Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap;
-  private final Map<TConsensusGroupId, Integer> regionLeaderMap;
-  private final Set<Integer> disabledDataNodeSet;
+public class GreedyLeaderBalancer extends AbstractLeaderBalancer {
 
   public GreedyLeaderBalancer() {
-    this.regionReplicaSetMap = new HashMap<>();
-    this.regionLeaderMap = new ConcurrentHashMap<>();
-    this.disabledDataNodeSet = new HashSet<>();
+    super();
   }
 
   @Override
   public Map<TConsensusGroupId, Integer> generateOptimalLeaderDistribution(
       Map<String, List<TConsensusGroupId>> databaseRegionGroupMap,
-      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap,
+      Map<TConsensusGroupId, Set<Integer>> regionLocationMap,
       Map<TConsensusGroupId, Integer> regionLeaderMap,
-      Set<Integer> disabledDataNodeSet) {
-    initialize(regionReplicaSetMap, regionLeaderMap, disabledDataNodeSet);
-
+      Map<Integer, NodeStatistics> dataNodeStatisticsMap,
+      Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap) {
+    initialize(
+        databaseRegionGroupMap,
+        regionLocationMap,
+        regionLeaderMap,
+        dataNodeStatisticsMap,
+        regionStatisticsMap);
     Map<TConsensusGroupId, Integer> result = constructGreedyDistribution();
-
     clear();
     return result;
   }
 
-  private void initialize(
-      Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap,
-      Map<TConsensusGroupId, Integer> regionLeaderMap,
-      Set<Integer> disabledDataNodeSet) {
-    this.regionReplicaSetMap.putAll(regionReplicaSetMap);
-    this.regionLeaderMap.putAll(regionLeaderMap);
-    this.disabledDataNodeSet.addAll(disabledDataNodeSet);
-  }
-
-  private void clear() {
-    this.regionReplicaSetMap.clear();
-    this.regionLeaderMap.clear();
-    this.disabledDataNodeSet.clear();
-  }
-
   private Map<TConsensusGroupId, Integer> constructGreedyDistribution() {
     Map<Integer, Integer> leaderCounter = new TreeMap<>();
-    regionReplicaSetMap.forEach(
-        (regionGroupId, regionGroup) -> {
+    regionLocationMap.forEach(
+        (regionGroupId, dataNodeIds) -> {
           int minCount = Integer.MAX_VALUE,
               leaderId = regionLeaderMap.getOrDefault(regionGroupId, -1);
-          for (TDataNodeLocation dataNodeLocation : regionGroup.getDataNodeLocations()) {
-            int dataNodeId = dataNodeLocation.getDataNodeId();
-            if (disabledDataNodeSet.contains(dataNodeId)) {
-              continue;
-            }
-            // Select the DataNode with the minimal leader count as the new leader
-            int count = leaderCounter.getOrDefault(dataNodeId, 0);
-            if (count < minCount) {
-              minCount = count;
-              leaderId = dataNodeId;
+          for (int dataNodeId : dataNodeIds) {
+            if (isDataNodeAvailable(dataNodeId) && isRegionAvailable(regionGroupId, dataNodeId)) {
+              // Select the DataNode with the minimal leader count as the new leader
+              int count = leaderCounter.getOrDefault(dataNodeId, 0);
+              if (count < minCount) {
+                minCount = count;
+                leaderId = dataNodeId;
+              }
             }
           }
           regionLeaderMap.put(regionGroupId, leaderId);

@@ -21,12 +21,12 @@ package org.apache.iotdb.db.queryengine.execution.memory;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.runtime.MemoryLeakException;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,6 +52,7 @@ public class MemoryPool {
     private final String fragmentInstanceId;
     private final String planNodeId;
     private final long bytesToReserve;
+
     /**
      * MemoryReservationFuture is created when SinkHandle or SourceHandle tries to reserve memory
      * from pool. This field is max Bytes that SinkHandle or SourceHandle can reserve.
@@ -115,6 +116,7 @@ public class MemoryPool {
   private final long maxBytesPerFragmentInstance;
 
   private final AtomicLong remainingBytes;
+
   /** queryId -> fragmentInstanceId -> planNodeId -> bytesReserved. */
   private final Map<String, Map<String, Map<String, Long>>> queryMemoryReservations =
       new ConcurrentHashMap<>();

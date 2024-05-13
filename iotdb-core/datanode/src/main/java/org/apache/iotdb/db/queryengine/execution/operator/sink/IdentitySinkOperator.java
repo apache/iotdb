@@ -20,17 +20,23 @@
 package org.apache.iotdb.db.queryengine.execution.operator.sink;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
 public class IdentitySinkOperator implements Operator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(IdentitySinkOperator.class)
+          + RamUsageEstimator.shallowSizeOfInstance(DownStreamChannelIndex.class);
 
   private final OperatorContext operatorContext;
   private final List<Operator> children;
@@ -151,5 +157,15 @@ public class IdentitySinkOperator implements Operator {
   @TestOnly
   public List<Operator> getChildren() {
     return children;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + children.stream()
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
+            .sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sinkHandle);
   }
 }

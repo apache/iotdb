@@ -36,11 +36,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.window;
 
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 <#if dataType.dataType == "Binary">
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Binary;
 </#if>
 
 /*

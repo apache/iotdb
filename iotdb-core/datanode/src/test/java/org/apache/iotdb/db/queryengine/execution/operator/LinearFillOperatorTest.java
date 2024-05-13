@@ -31,11 +31,11 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.identity.
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.FloatLinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.junit.Test;
 
 import java.util.concurrent.ExecutorService;
@@ -181,6 +181,11 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public long calculateRetainedSizeAfterCallingNext() {
+                  return 0;
+                }
+
+                @Override
+                public long ramBytesUsed() {
                   return 0;
                 }
               });
@@ -401,6 +406,11 @@ public class LinearFillOperatorTest {
                 public long calculateRetainedSizeAfterCallingNext() {
                   return 0;
                 }
+
+                @Override
+                public long ramBytesUsed() {
+                  return 0;
+                }
               });
 
       float[][][] res =
@@ -617,6 +627,11 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public long calculateRetainedSizeAfterCallingNext() {
+                  return 0;
+                }
+
+                @Override
+                public long ramBytesUsed() {
                   return 0;
                 }
               });
@@ -837,6 +852,11 @@ public class LinearFillOperatorTest {
                 public long calculateRetainedSizeAfterCallingNext() {
                   return 0;
                 }
+
+                @Override
+                public long ramBytesUsed() {
+                  return 0;
+                }
               });
 
       int count = 0;
@@ -1003,6 +1023,11 @@ public class LinearFillOperatorTest {
                 public long calculateRetainedSizeAfterCallingNext() {
                   return 0;
                 }
+
+                @Override
+                public long ramBytesUsed() {
+                  return 0;
+                }
               });
 
       int count = 0;
@@ -1128,6 +1153,11 @@ public class LinearFillOperatorTest {
                 public long calculateRetainedSizeAfterCallingNext() {
                   return 0;
                 }
+
+                @Override
+                public long ramBytesUsed() {
+                  return 0;
+                }
               });
 
       int count = 0;
@@ -1251,6 +1281,11 @@ public class LinearFillOperatorTest {
 
                 @Override
                 public long calculateRetainedSizeAfterCallingNext() {
+                  return 0;
+                }
+
+                @Override
+                public long ramBytesUsed() {
                   return 0;
                 }
               });

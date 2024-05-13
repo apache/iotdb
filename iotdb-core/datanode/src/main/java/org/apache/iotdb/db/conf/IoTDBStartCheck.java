@@ -27,9 +27,9 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,6 +98,7 @@ public class IoTDBStartCheck {
     variableParamValueTable.put(
         DATA_REGION_CONSENSUS_PORT, () -> String.valueOf(config.getDataRegionConsensusPort()));
   }
+
   // endregion
   // region params don't need checking, determined by the system
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
@@ -108,6 +109,7 @@ public class IoTDBStartCheck {
   // endregion
   // region params of old versions
   private static final String VIRTUAL_STORAGE_GROUP_NUM = "virtual_storage_group_num";
+
   // endregion
 
   public static IoTDBStartCheck getInstance() {

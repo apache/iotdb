@@ -35,13 +35,14 @@ import org.apache.iotdb.mpp.rpc.thrift.TCloseSinkChannelEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,6 +119,10 @@ public class SourceHandle implements ISourceHandle {
       DataExchangeCostMetricSet.getInstance();
   private static final DataExchangeCountMetricSet DATA_EXCHANGE_COUNT_METRIC_SET =
       DataExchangeCountMetricSet.getInstance();
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SourceHandle.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class) * 2;
 
   @SuppressWarnings("squid:S107")
   public SourceHandle(
@@ -475,6 +480,14 @@ public class SourceHandle implements ISourceHandle {
         localFragmentInstanceId.getFragmentId(),
         fullFragmentInstanceId,
         localPlanNodeId);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + RamUsageEstimator.sizeOf(threadName)
+        + RamUsageEstimator.sizeOf(localPlanNodeId)
+        + RamUsageEstimator.sizeOf(fullFragmentInstanceId);
   }
 
   @TestOnly
