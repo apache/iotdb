@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.connector.client.LeaderCacheUtils;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeEventBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
@@ -34,6 +33,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
+import org.apache.iotdb.db.pipe.connector.util.LeaderCacheUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -194,8 +194,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           batchToTransfer.deepCopyEvents().toString());
     }
 
-    for (Pair<String, TEndPoint> redirectPair :
-        LeaderCacheUtils.getRedirectionsAfterTransferBatch(status)) {
+    for (final Pair<String, TEndPoint> redirectPair :
+        LeaderCacheUtils.parseRecommendedRedirections(status)) {
       clientManager.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
     }
 

@@ -23,9 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.connector.client.LeaderCacheUtils;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeEventBatch;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
+import org.apache.iotdb.db.pipe.connector.util.LeaderCacheUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -93,7 +93,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
       }
 
       for (Pair<String, TEndPoint> redirectPair :
-          LeaderCacheUtils.getRedirectionsAfterTransferBatch(status)) {
+          LeaderCacheUtils.parseRecommendedRedirections(status)) {
         connector.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
       }
     } catch (final Exception e) {
