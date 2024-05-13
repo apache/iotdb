@@ -57,7 +57,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -163,7 +162,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private void transferWithoutCheck(final TabletInsertionEvent tabletInsertionEvent)
       throws Exception {
     if (isTabletBatchModeEnabled) {
-      Pair<TEndPoint, PipeEventBatch> endPointAndBatch =
+      final Pair<TEndPoint, PipeEventBatch> endPointAndBatch =
           tabletBatchBuilder.onEvent(tabletInsertionEvent);
       if (Objects.nonNull(endPointAndBatch)) {
         final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler =
@@ -409,9 +408,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    List<Pair<TEndPoint, PipeEventBatch>> allNonEmptyBatches =
-        tabletBatchBuilder.getAllNonEmptyBatches();
-    for (Pair<TEndPoint, PipeEventBatch> endPointAndBatch : allNonEmptyBatches) {
+    for (final Pair<TEndPoint, PipeEventBatch> endPointAndBatch :
+        tabletBatchBuilder.getAllNonEmptyBatches()) {
       transfer(
           endPointAndBatch.getLeft(),
           new PipeTransferTabletBatchEventHandler(endPointAndBatch.getRight(), this));
