@@ -620,8 +620,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               new PartialPath(SqlConstant.getSingleRootArray()), orderByHeat);
     }
     if (ctx.timeseriesWhereClause() != null) {
+      if (ctx.timeConditionClause() != null) {
+        throw new SemanticException(
+            "TIMESERIES condition and TIME condition cannot be used at the same time.");
+      }
       SchemaFilter schemaFilter = parseTimeseriesWhereClause(ctx.timeseriesWhereClause());
       showTimeSeriesStatement.setSchemaFilter(schemaFilter);
+    }
+    if (ctx.timeConditionClause() != null) {
+      showTimeSeriesStatement.setTimeCondition(
+          parseWhereClause(ctx.timeConditionClause().whereClause()));
     }
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {
@@ -706,9 +714,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           new ShowDevicesStatement(new PartialPath(SqlConstant.getSingleRootArray()));
     }
     if (ctx.devicesWhereClause() != null) {
+      if (ctx.timeConditionClause() != null) {
+        throw new SemanticException(
+            "DEVICE condition and TIME condition cannot be used at the same time.");
+      }
       showDevicesStatement.setSchemaFilter(parseDevicesWhereClause(ctx.devicesWhereClause()));
     }
-
+    if (ctx.timeConditionClause() != null) {
+      showDevicesStatement.setTimeCondition(
+          parseWhereClause(ctx.timeConditionClause().whereClause()));
+    }
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {
         showDevicesStatement.setLimit(parseLimitClause(ctx.rowPaginationClause().limitClause()));
@@ -756,26 +771,44 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       path = new PartialPath(SqlConstant.getSingleRootArray());
     }
-    return new CountDevicesStatement(path);
+    CountDevicesStatement statement = new CountDevicesStatement(path);
+    if (ctx.timeConditionClause() != null) {
+      WhereCondition timeCondition = parseWhereClause(ctx.timeConditionClause().whereClause());
+      statement.setTimeCondition(timeCondition);
+    }
+    return statement;
   }
 
   // Count TimeSeries ========================================================================
   @Override
   public Statement visitCountTimeseries(CountTimeseriesContext ctx) {
-    Statement statement;
+    Statement statement = null;
     PartialPath path;
     if (ctx.prefixPath() != null) {
       path = parsePrefixPath(ctx.prefixPath());
     } else {
       path = new PartialPath(SqlConstant.getSingleRootArray());
     }
+    if (ctx.timeConditionClause() != null) {
+      statement = new CountTimeSeriesStatement(path);
+      WhereCondition timeCondition = parseWhereClause(ctx.timeConditionClause().whereClause());
+      ((CountTimeSeriesStatement) statement).setTimeCondition(timeCondition);
+    }
     if (ctx.INTEGER_LITERAL() != null) {
+      if (ctx.timeConditionClause() != null) {
+        throw new SemanticException(
+            "TIME condition and GROUP BY LEVEL cannot be used at the same time.");
+      }
       int level = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
       statement = new CountLevelTimeSeriesStatement(path, level);
-    } else {
+    } else if (statement == null) {
       statement = new CountTimeSeriesStatement(path);
     }
     if (ctx.timeseriesWhereClause() != null) {
+      if (ctx.timeConditionClause() != null) {
+        throw new SemanticException(
+            "TIMESERIES condition and TIME condition cannot be used at the same time.");
+      }
       SchemaFilter schemaFilter = parseTimeseriesWhereClause(ctx.timeseriesWhereClause());
       if (statement instanceof CountTimeSeriesStatement) {
         ((CountTimeSeriesStatement) statement).setSchemaFilter(schemaFilter);

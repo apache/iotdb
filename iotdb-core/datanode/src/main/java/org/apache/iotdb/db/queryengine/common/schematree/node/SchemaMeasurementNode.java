@@ -94,6 +94,12 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
   }
 
   @Override
+  public void removeChild(String name) {
+    throw new UnsupportedOperationException(
+        "Remove child operation is not supported in SchemaMeasurementNode.");
+  }
+
+  @Override
   public void copyDataTo(SchemaNode schemaNode) {
     if (!schemaNode.isMeasurement()) {
       return;
