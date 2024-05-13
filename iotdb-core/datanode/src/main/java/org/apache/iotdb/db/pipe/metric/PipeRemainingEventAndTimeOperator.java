@@ -49,8 +49,8 @@ class PipeRemainingEventAndTimeOperator {
   private final Meter schemaRegionCommitMeter =
       new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
 
-  private double lastDataRegionCommitSmoothingValue;
-  private double lastSchemaRegionCommitSmoothingValue;
+  private double lastDataRegionCommitSmoothingValue = Long.MIN_VALUE;
+  private double lastSchemaRegionCommitSmoothingValue = Long.MIN_VALUE;
 
   //////////////////////////// Tags ////////////////////////////
 
@@ -113,10 +113,12 @@ class PipeRemainingEventAndTimeOperator {
                 .orElse(0);
 
     lastDataRegionCommitSmoothingValue =
-        pipeRemainingTimeCommitRateSmoothingFactor
-            * dataRegionCommitMeter.getOneMinuteRate()
-            * (1 - pipeRemainingTimeCommitRateSmoothingFactor)
-            * lastDataRegionCommitSmoothingValue;
+        lastDataRegionCommitSmoothingValue == Long.MIN_VALUE
+            ? dataRegionCommitMeter.getOneMinuteRate()
+            : pipeRemainingTimeCommitRateSmoothingFactor
+                * dataRegionCommitMeter.getOneMinuteRate()
+                * (1 - pipeRemainingTimeCommitRateSmoothingFactor)
+                * lastDataRegionCommitSmoothingValue;
     final double dataRegionRemainingTime;
     if (totalDataRegionWriteEventCount == 0) {
       dataRegionRemainingTime = 0;
@@ -134,10 +136,12 @@ class PipeRemainingEventAndTimeOperator {
             .orElse(0L);
 
     lastSchemaRegionCommitSmoothingValue =
-        pipeRemainingTimeCommitRateSmoothingFactor
-            * schemaRegionCommitMeter.getOneMinuteRate()
-            * (1 - pipeRemainingTimeCommitRateSmoothingFactor)
-            * lastSchemaRegionCommitSmoothingValue;
+        lastSchemaRegionCommitSmoothingValue == Long.MIN_VALUE
+            ? schemaRegionCommitMeter.getOneMinuteRate()
+            : pipeRemainingTimeCommitRateSmoothingFactor
+                * schemaRegionCommitMeter.getOneMinuteRate()
+                * (1 - pipeRemainingTimeCommitRateSmoothingFactor)
+                * lastSchemaRegionCommitSmoothingValue;
     final double schemaRegionRemainingTime;
     if (totalSchemaRegionWriteEventCount == 0) {
       schemaRegionRemainingTime = 0;
