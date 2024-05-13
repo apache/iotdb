@@ -34,6 +34,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.gt;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.intValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.timeSeries;
 import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.getAggregationDescriptor;
 import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.schemaMap;
 
@@ -243,6 +246,72 @@ public class AggregationPushDownTest {
                     .getRoot(),
                 new TestPlanBuilder().scan("1", schemaMap.get("root.sg.d1.s2")).getRoot())
             .rawDataAggregation("4", aggregationDescriptorList, groupByTimeParameter, false)
+            .getRoot());
+  }
+
+  @Test
+  public void testRemoveProject() {
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(0, 100, new TimeDuration(0, 10), new TimeDuration(0, 10), true);
+    List<AggregationDescriptor> aggregationDescriptorList1 =
+        Collections.singletonList(
+            getAggregationDescriptor(AggregationStep.SINGLE, "root.sg.d2.a.s1"));
+
+    checkPushDown(
+        "select count(s1) from root.sg.d2.a where s2 > 1 group by ([0, 100), 10ms);",
+        new TestPlanBuilder()
+            .scanAligned(
+                "0",
+                schemaMap.get("root.sg.d2.a"),
+                ExpressionFactory.gt(
+                    ExpressionFactory.timeSeries(schemaMap.get("root.sg.d2.a.s2")),
+                    ExpressionFactory.intValue("1")))
+            .project("3", Collections.singletonList("root.sg.d2.a.s1"))
+            .rawDataAggregation("2", aggregationDescriptorList1, groupByTimeParameter, false)
+            .getRoot(),
+        new TestPlanBuilder()
+            .alignedAggregationScan(
+                "4",
+                schemaMap.get("aligned_root.sg.d2.a.s1"),
+                aggregationDescriptorList1,
+                groupByTimeParameter,
+                false,
+                ExpressionFactory.gt(
+                    ExpressionFactory.timeSeries(schemaMap.get("root.sg.d2.a.s2")),
+                    ExpressionFactory.intValue("1")))
+            .getRoot());
+
+    List<AggregationDescriptor> aggregationDescriptorList2 =
+        Collections.singletonList(
+            getAggregationDescriptor(AggregationStep.SINGLE, "root.sg.d1.s1"));
+    checkPushDown(
+        "select count(s1) from root.sg.d1 where time > 100 and s2 > 10 group by ([0, 100), 10ms);",
+        new TestPlanBuilder()
+            .leftOuterTimeJoin(
+                "5",
+                Ordering.ASC,
+                new TestPlanBuilder()
+                    .scan(
+                        "1",
+                        schemaMap.get("root.sg.d1.s2"),
+                        gt(timeSeries(schemaMap.get("root.sg.d1.s2")), intValue("10")))
+                    .getRoot(),
+                new TestPlanBuilder().scan("0", schemaMap.get("root.sg.d1.s1")).getRoot())
+            .project("6", Collections.singletonList("root.sg.d1.s1"))
+            .rawDataAggregation("4", aggregationDescriptorList2, groupByTimeParameter, false)
+            .getRoot(),
+        new TestPlanBuilder()
+            .leftOuterTimeJoin(
+                "5",
+                Ordering.ASC,
+                new TestPlanBuilder()
+                    .scan(
+                        "1",
+                        schemaMap.get("root.sg.d1.s2"),
+                        gt(timeSeries(schemaMap.get("root.sg.d1.s2")), intValue("10")))
+                    .getRoot(),
+                new TestPlanBuilder().scan("0", schemaMap.get("root.sg.d1.s1")).getRoot())
+            .rawDataAggregation("4", aggregationDescriptorList2, groupByTimeParameter, false)
             .getRoot());
   }
 
