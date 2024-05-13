@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.progress;
 
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCommitMetrics;
 
@@ -37,7 +38,7 @@ public class PipeEventCommitManager {
   // key: pipeName_regionId
   private final Map<String, PipeEventCommitter> eventCommitterMap = new ConcurrentHashMap<>();
 
-  private Consumer<String> commitRateMarker;
+  private Consumer<PipeTaskRuntimeEnvironment> commitRateMarker;
 
   public void register(
       final String pipeName,
@@ -87,8 +88,11 @@ public class PipeEventCommitManager {
   }
 
   public void commit(final EnrichedEvent event, final String committerKey) {
+    final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
     if (Objects.nonNull(commitRateMarker)) {
-      commitRateMarker.accept(committerKey);
+      commitRateMarker.accept(
+          new PipeTaskRuntimeEnvironment(
+              committer.getPipeName(), committer.getCreationTime(), committer.getRegionId()));
     }
     if (event == null
         || !event.needToCommit()
@@ -97,7 +101,6 @@ public class PipeEventCommitManager {
       return;
     }
 
-    final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
     if (committer == null) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
@@ -116,7 +119,7 @@ public class PipeEventCommitManager {
     return String.format("%s_%s_%s", pipeName, regionId, creationTime);
   }
 
-  public void setCommitRateMarker(final Consumer<String> commitRateMarker) {
+  public void setCommitRateMarker(final Consumer<PipeTaskRuntimeEnvironment> commitRateMarker) {
     this.commitRateMarker = commitRateMarker;
   }
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.metric;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -82,7 +83,7 @@ public class PipeRemainingTimeMetrics implements IMetricSet {
     ImmutableSet.copyOf(remainingTimeOperatorMap.keySet()).forEach(this::deregister);
     if (!remainingTimeOperatorMap.isEmpty()) {
       LOGGER.warn(
-          "Failed to unbind from pipe remain time metrics, remainingTimeOperator map not empty");
+          "Failed to unbind from pipe remaining time metrics, remainingTimeOperator map not empty");
     }
   }
 
@@ -152,7 +153,7 @@ public class PipeRemainingTimeMetrics implements IMetricSet {
   public void deregister(final String taskID) {
     if (!remainingTimeOperatorMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe remain time metrics, RemainTimeOperator({}) does not exist",
+          "Failed to deregister pipe remaining time metrics, RemainingTimeOperator({}) does not exist",
           taskID);
       return;
     }
@@ -162,19 +163,12 @@ public class PipeRemainingTimeMetrics implements IMetricSet {
     remainingTimeOperatorMap.remove(taskID);
   }
 
-  public void markRegionCommit(final String committerKey) {
+  public void markRegionCommit(final PipeTaskRuntimeEnvironment pipeTaskRuntimeEnvironment) {
     // Filter commit attempt from assigner
-    if (Objects.isNull(committerKey)) {
-      return;
-    }
-    final String[] params = committerKey.split("_");
-    if (params.length != 3) {
-      return;
-    }
-    final String pipeName = params[0];
-    final int regionId = Integer.parseInt(params[1]);
-    final long creationTime = Long.parseLong(params[2]);
-    final String taskID = params[0] + "_" + params[2];
+    final String pipeName = pipeTaskRuntimeEnvironment.getPipeName();
+    final int regionId = pipeTaskRuntimeEnvironment.getRegionId();
+    final long creationTime = pipeTaskRuntimeEnvironment.getCreationTime();
+    final String taskID = pipeName + "_" + creationTime;
 
     if (Objects.isNull(metricService)) {
       return;
@@ -182,7 +176,7 @@ public class PipeRemainingTimeMetrics implements IMetricSet {
     final PipeRemainingTimeOperator operator = remainingTimeOperatorMap.get(taskID);
     if (Objects.isNull(operator)) {
       LOGGER.warn(
-          "Failed to mark pipe region commit, RemainTimeOperator({}) does not exist", taskID);
+          "Failed to mark pipe region commit, RemainingTimeOperator({}) does not exist", taskID);
       return;
     }
     // Prevent not set pipeName / creation times & potential differences between pipeNames and
