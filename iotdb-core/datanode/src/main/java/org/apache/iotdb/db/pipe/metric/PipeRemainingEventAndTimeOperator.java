@@ -32,7 +32,7 @@ import com.codahale.metrics.Meter;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-class PipeRemainingTimeOperator {
+class PipeRemainingEventAndTimeOperator {
   private String pipeName;
   private long creationTime = 0;
 
@@ -60,6 +60,25 @@ class PipeRemainingTimeOperator {
   }
 
   //////////////////////////// Remaining time calculation ////////////////////////////
+
+  double getRemainingEvents() {
+    return dataRegionExtractors.keySet().stream()
+            .map(IoTDBDataRegionExtractor::getEventCount)
+            .reduce(Integer::sum)
+            .orElse(0)
+        + dataRegionProcessors.keySet().stream()
+            .map(PipeProcessorSubtask::getEventCount)
+            .reduce(Integer::sum)
+            .orElse(0)
+        + dataRegionConnectors.keySet().stream()
+            .map(PipeConnectorSubtask::getEventCount)
+            .reduce(Integer::sum)
+            .orElse(0)
+        + schemaRegionExtractors.keySet().stream()
+            .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
+            .reduce(Long::sum)
+            .orElse(0L);
+  }
 
   /**
    * This will calculate the estimated remaining time of pipe.
