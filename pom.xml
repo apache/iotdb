@@ -96,7 +96,8 @@
         <jakarta.annotation.version>3.0.0</jakarta.annotation.version>
         <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
         <jakarta.validation-api.version>3.0.2</jakarta.validation-api.version>
-        <jakarta.ws.rs-api.version>4.0.0</jakarta.ws.rs-api.version>
+        <!-- The 3 version is the last to support Java 11. Starting with version 4 Java 17 is minimum. -->
+        <jakarta.ws.rs-api.version>3.1.0</jakarta.ws.rs-api.version>
         <java-websocket.version>1.5.4</java-websocket.version>
         <jcip-annotations.version>1.0-1</jcip-annotations.version>
         <jersey.version>3.1.6</jersey.version>
