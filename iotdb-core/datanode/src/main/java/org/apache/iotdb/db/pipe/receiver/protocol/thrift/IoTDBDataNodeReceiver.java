@@ -354,21 +354,29 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   /**
-   * For {@link InsertRowsStatement}, the returned {@link TSStatus} will use sub-status to record
-   * the endpoint for redirection. Each sub-status records the redirection endpoint for one device
-   * path, and the order is the same as the order of the device paths in the statement. However,
-   * this order is not guaranteed to be the same as in the request. So for each sub-status which
-   * needs to redirect, we record the device path using the message field.
+   * For {@link InsertRowsStatement} and {@link InsertMultiTabletsStatement}, the returned {@link
+   * TSStatus} will use sub-status to record the endpoint for redirection. Each sub-status records
+   * the redirection endpoint for one device path, and the order is the same as the order of the
+   * device paths in the statement. However, this order is not guaranteed to be the same as in the
+   * request. So for each sub-status which needs to redirect, we record the device path using the
+   * message field.
    */
   private TSStatus executeStatementAndAddRedirectInfo(final InsertBaseStatement statement) {
-    TSStatus result = executeStatementAndClassifyExceptions(statement);
+    final TSStatus result = executeStatementAndClassifyExceptions(statement);
+
     if (result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         && result.getSubStatusSize() > 0) {
-      List<PartialPath> devicePaths = new ArrayList<>();
+      final List<PartialPath> devicePaths;
       if (statement instanceof InsertRowsStatement) {
         devicePaths = ((InsertRowsStatement) statement).getDevicePaths();
       } else if (statement instanceof InsertMultiTabletsStatement) {
         devicePaths = ((InsertMultiTabletsStatement) statement).getDevicePaths();
+      } else {
+        LOGGER.warn(
+            "Receiver id = {}: Unsupported statement type {} for redirection.",
+            receiverId.get(),
+            statement);
+        return result;
       }
 
       if (devicePaths.size() == result.getSubStatusSize()) {
@@ -385,6 +393,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             result);
       }
     }
+
     return result;
   }
 
