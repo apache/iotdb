@@ -48,6 +48,22 @@ public interface ISchemaFetcher {
       PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context);
 
   /**
+   * TODO need to be implemented in schema engine
+   *
+   * <p>Fetch all the schema by the given patternTree in device level
+   *
+   * @return schemaTree without measurement nodes
+   */
+  default ISchemaTree fetchSchemaInDeviceLevel(
+      PathPatternTree patternTree, MPPQueryContext context) {
+    ISchemaTree schemaTree = fetchSchema(patternTree, false, context);
+    if (schemaTree.hasLogicalViewMeasurement()) {
+      schemaTree.removeLogicalView();
+    }
+    return schemaTree;
+  }
+
+  /**
    * Fetch all the schema with tags of existing timeseries matched by the given patternTree
    *
    * @param patternTree used for matching the timeseries

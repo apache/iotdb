@@ -22,10 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 
 public class CountTimeSeriesStatement extends CountStatement {
 
   private SchemaFilter schemaFilter;
+
+  private WhereCondition timeCondition;
 
   public CountTimeSeriesStatement(PartialPath partialPath) {
     super(partialPath);
@@ -37,6 +40,18 @@ public class CountTimeSeriesStatement extends CountStatement {
 
   public void setSchemaFilter(SchemaFilter schemaFilter) {
     this.schemaFilter = schemaFilter;
+  }
+
+  public void setTimeCondition(WhereCondition timeCondition) {
+    this.timeCondition = timeCondition;
+  }
+
+  public boolean hasTimeCondition() {
+    return timeCondition != null;
+  }
+
+  public WhereCondition getTimeCondition() {
+    return timeCondition;
   }
 
   @Override
