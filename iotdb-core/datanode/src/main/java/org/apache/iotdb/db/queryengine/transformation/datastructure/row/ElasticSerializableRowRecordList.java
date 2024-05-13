@@ -408,7 +408,7 @@ public class ElasticSerializableRowRecordList {
 
   protected void applyNewMemoryControlParameters(
       int newByteArrayLengthForMemoryControl, int newInternalRowRecordListCapacity)
-      throws IOException, QueryProcessException {
+      throws IOException {
     ElasticSerializableRowRecordList newElasticSerializableRowRecordList =
         new ElasticSerializableRowRecordList(
             dataTypes, queryId, memoryLimitInMB, newInternalRowRecordListCapacity, numCacheBlock);

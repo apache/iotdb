@@ -34,10 +34,9 @@ public class ElasticSerializableTVList {
 
   public static ElasticSerializableTVList newElasticSerializableTVList(
       TSDataType dataType, String queryId, float memoryLimitInMB, int cacheSize) {
-    //    return dataType.equals(TSDataType.TEXT)
-    //        ? new ElasticSerializableBinaryTVList(queryId, memoryLimitInMB, cacheSize)
-    //        : new ElasticSerializableTVList(dataType, queryId, memoryLimitInMB, cacheSize);
-    return new ElasticSerializableTVList(dataType, queryId, memoryLimitInMB, cacheSize);
+    return dataType.equals(TSDataType.TEXT)
+        ? new ElasticSerializableBinaryTVList(queryId, memoryLimitInMB, cacheSize)
+        : new ElasticSerializableTVList(dataType, queryId, memoryLimitInMB, cacheSize);
   }
 
   protected TSDataType dataType;
@@ -47,11 +46,14 @@ public class ElasticSerializableTVList {
   protected int cacheSize;
 
   protected LRUCache cache;
-  protected List<SerializableTVList> tvLists;
+  protected List<SerializableTVList> internalTVList;
 
-  protected int pointCount;
-  protected int columnCount;
+  protected int pointCount; // Expose for row window
+  protected int columnCount; // Only for internal use
   protected int evictionUpperBound;
+
+  // Observer pattern
+  protected List<TVListForwardIterator> iteratorList;
 
   protected ElasticSerializableTVList(
       TSDataType dataType, String queryId, float memoryLimitInMB, int cacheSize) {
@@ -67,10 +69,12 @@ public class ElasticSerializableTVList {
     this.cacheSize = cacheSize;
 
     cache = new LRUCache(cacheSize);
-    tvLists = new ArrayList<>();
+    internalTVList = new ArrayList<>();
     pointCount = 0;
     columnCount = 0;
     evictionUpperBound = 0;
+
+    iteratorList = new ArrayList<>();
   }
 
   protected ElasticSerializableTVList(
@@ -86,10 +90,12 @@ public class ElasticSerializableTVList {
     this.cacheSize = cacheSize;
 
     cache = new LRUCache(cacheSize);
-    tvLists = new ArrayList<>();
+    internalTVList = new ArrayList<>();
     pointCount = 0;
     columnCount = 0;
     evictionUpperBound = 0;
+
+    iteratorList = new ArrayList<>();
   }
 
   public TSDataType getDataType() {
@@ -151,41 +157,34 @@ public class ElasticSerializableTVList {
     return cache.get(externalIndex).getValueColumn(internalIndex);
   }
 
+  public List<SerializableTVList> getInternalTVList() {
+    return internalTVList;
+  }
+
   public TVListForwardIterator constructIterator() {
-    return new TVListForwardIterator() {
-      private int externalIndex; // Which tvList
-      private int internalIndex = -1; // Which block in tvList
+    TVListForwardIterator iterator = new TVListForwardIterator(this);
+    iteratorList.add(iterator);
 
-      @Override
-      public TimeColumn currentTimes() throws IOException {
-        return getTimeColumn(externalIndex, internalIndex);
-      }
+    return iterator;
+  }
 
-      @Override
-      public Column currentValues() throws IOException {
-        return getValueColumn(externalIndex, internalIndex);
-      }
+  public TVListForwardIterator constructIteratorByEvictionUpperBound() {
+    int externalColumnIndex = evictionUpperBound / internalTVListCapacity;
 
-      @Override
-      public boolean hasNext() {
-        // First time call, tvList has no data
-        if (tvLists.size() == 0) {
-          return false;
-        }
-        return externalIndex + 1 < tvLists.size()
-            || internalIndex + 1 < tvLists.get(externalIndex).getColumnCount();
-      }
+    int internalPointIndex = evictionUpperBound % internalTVListCapacity;
+    int internalColumnIndex =
+        internalTVList.get(externalColumnIndex).getColumnIndex(internalPointIndex);
 
-      @Override
-      public void next() {
-        if (internalIndex + 1 == tvLists.get(externalIndex).getColumnCount()) {
-          internalIndex = 0;
-          externalIndex++;
-        } else {
-          internalIndex++;
-        }
-      }
-    };
+    // This iterator is for memory control.
+    // So there is no need to put it into iterator list since it won't be affected by new memory
+    // control strategy.
+    return new TVListForwardIterator(this, externalColumnIndex, internalColumnIndex);
+  }
+
+  public void notifyAllIterators() throws IOException {
+    for (TVListForwardIterator iterator : iteratorList) {
+      iterator.adjust();
+    }
   }
 
   public void putColumn(TimeColumn timeColumn, Column valueColumn) throws IOException {
@@ -232,7 +231,7 @@ public class ElasticSerializableTVList {
   }
 
   private void doExpansion() {
-    tvLists.add(SerializableTVList.newSerializableTVList(dataType, queryId));
+    internalTVList.add(SerializableTVList.newSerializableTVList(dataType, queryId));
   }
 
   /**
@@ -256,15 +255,15 @@ public class ElasticSerializableTVList {
         if (cacheCapacity <= super.size()) {
           int lastIndex = getLast();
           if (lastIndex < evictionUpperBound / internalTVListCapacity) {
-            tvLists.set(lastIndex, null);
+            internalTVList.set(lastIndex, null);
           } else {
-            tvLists.get(lastIndex).serialize();
+            internalTVList.get(lastIndex).serialize();
           }
         }
-        tvLists.get(targetIndex).deserialize();
+        internalTVList.get(targetIndex).deserialize();
       }
       putKey(targetIndex);
-      return tvLists.get(targetIndex);
+      return internalTVList.get(targetIndex);
     }
   }
 }

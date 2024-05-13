@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
@@ -66,8 +65,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
 
   @Override
   protected LayerRowWindowReader constructRowSlidingSizeWindowReader(
-      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB)
-      throws QueryProcessException {
+      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB) {
     return new LayerRowWindowReader() {
       private final int windowSize = strategy.getWindowSize();
       private final int slidingStep = strategy.getSlidingStep();

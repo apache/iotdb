@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator;
 
+import java.io.IOException;
+
 public interface ListForwardIterator {
   boolean hasNext();
 
-  void next();
+  void next() throws IOException;
 }

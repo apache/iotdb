@@ -107,6 +107,23 @@ public class SerializableTVList implements SerializableList {
     init();
   }
 
+  public int getColumnIndex(int index) {
+    assert index < size;
+
+    int ret = -1;
+    int total = 0;
+    for (int i = 0; i < timeColumns.size(); i++) {
+      int length = timeColumns.get(i).getPositionCount();
+      if (index < total + length) {
+        ret = i;
+        break;
+      }
+      total += length;
+    }
+
+    return ret;
+  }
+
   public long getTime(int index) {
     assert index < size;
 

@@ -19,8 +19,30 @@
 
 package org.apache.iotdb.db.queryengine.transformation.datastructure.util;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
+
 public class BinaryUtils {
   public static final int MIN_OBJECT_HEADER_SIZE = 8;
 
   public static final int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
+
+  public static int calculateCapacity(float memoryLimitInMB, int byteArrayLength) {
+    float memoryLimitInB = memoryLimitInMB * MB / 2;
+    return TSFileConfig.ARRAY_CAPACITY_THRESHOLD
+        * (int)
+            (memoryLimitInB
+                / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD
+                    * calculateSingleBinaryTVPairMemory(byteArrayLength)));
+  }
+
+  public static float calculateSingleBinaryTVPairMemory(int byteArrayLength) {
+    return ReadWriteIOUtils.LONG_LEN // time
+        + MIN_OBJECT_HEADER_SIZE // value: header length of Binary
+        + MIN_ARRAY_HEADER_SIZE // value: header length of values in Binary
+        + byteArrayLength // value: length of values array in Binary
+        + ReadWriteIOUtils.BIT_LEN; // extra bit(1/8 Byte): whether the Binary is null
+  }
 }
