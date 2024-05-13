@@ -98,7 +98,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskExtractorRuntimeEnvironment(
-                pipeName, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
+                  pipeName, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
       extractor.customize(extractorParameters, runtimeConfiguration);
     } catch (final Exception e) {
       try {
