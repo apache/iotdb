@@ -18,10 +18,6 @@
 # under the License.
 #
 
-echo ---------------------
-echo Start Loading TsFile
-echo ---------------------
-
 source "$(dirname "$0")/../sbin/iotdb-common.sh"
 #get_iotdb_include and checkAllVariables is in iotdb-common.sh
 VARS=$(get_iotdb_include "$*")
@@ -29,8 +25,8 @@ checkAllVariables
 export IOTDB_HOME="${IOTDB_HOME}"
 eval set -- "$VARS"
 
-
-HELP="Usage: $0 -f <file_path> -cfd <copy_fail_dir> [--sgLevel <sg_level>] [--verify <true/false>] [--onSuccess <none/delete>] [-h <ip>] [-p <port>] [-u <username>] [-pw <password>]"
+PARAMETERS=""
+HELP="Usage: $0 -f <file_path> [--sgLevel <sg_level>] [--verify <true/false>] [--onSuccess <none/delete>] [-h <ip>] [-p <port>] [-u <username>] [-pw <password>]"
 
 # Added parameters when default parameters are missing
 user_param="-u root"
@@ -60,20 +56,16 @@ while true; do
             load_dir_param="$2"
             shift 2
         ;;
-        -cfd)
-            fail_dir_param="$2"
-            shift 2
-        ;;
         --sgLevel)
-            sg_level_param="--sgLevel $2"
+            sg_level_param="$2"
             shift 2
         ;;
         --verify)
-            verify_param="--verify $2"
+            verify_param="$2"
             shift 2
         ;;
         --onSuccess)
-            on_success_param="--onSuccess $2"
+            on_success_param="$2"
             shift 2
         ;;
         "")
@@ -90,57 +82,58 @@ while true; do
 done
 
 if [ -z "${load_dir_param}" ]; then
-    echo "A Loading file path/directory path is required."
+    echo "A Loading file path is required."
     echo "${HELP}"
+    exit 2
 fi
 
-absolute_path_load_dir_param=$(readlink -f $load_dir_param)
 
-echo "start loading TsFiles, please wait..."
-PARAMETERS="$host_param $port_param $user_param $passwd_param $sg_level_param $verify_param $onSuccess"
+if [[ $load_dir_param != *.tsfile ]]; then
+    echo "Loading file path is not a file ending in .tsfile"
+    exit 2
+fi
 
-traverse_files() {
-    local folder="$1"
 
-    for file in "$folder"/*; do
-        if [ -f "$file" ]; then
-            if [[ $file == *.tsfile ]]; then
+LOAD_SQL="load '${load_dir_param}'"
+if [ -n "${sg_level_param}" ]; then
+    LOAD_SQL="${LOAD_SQL} sgLevel=${sg_level_param}"
+fi
+if [ -n "${verify_param}" ]; then
+    LOAD_SQL="${LOAD_SQL} verify=${verify_param}"
+fi
+if [ -n "${on_success_param}" ]; then
+    LOAD_SQL="${LOAD_SQL} onSuccess=${on_success_param}"
+fi
 
-               load_file="-f ${file}"
-               PARAMETERS="$PARAMETERS $load_file"
-               ./${IOTDB_HOME}/tools/load-one-tsfile.sh $PARAMETERS
+PARAMETERS="$host_param $port_param $user_param $passwd_param $PARAMETERS -e \"${LOAD_SQL}\""
 
-               if [ $? -eq 1 ]; then
-                 if [ ! -z "${fail_dir_param}" ]; then
-                    if [ ! -d "${fail_dir_param}" ]; then
-                        mkdir -p "${fail_dir_param}"
-                    fi
-                    cp ${file} ${fail_dir_param}
-                 fi
-               fi
-            fi
-        elif [ -d "$file" ]; then
-            traverse_files "$file"
+IOTDB_CLI_CONF=${IOTDB_HOME}/conf
+
+MAIN_CLASS=org.apache.iotdb.cli.Cli
+
+CLASSPATH=""
+for f in ${IOTDB_HOME}/lib/*.jar; do
+  CLASSPATH=${CLASSPATH}":"$f
+done
+
+if [ -n "$JAVA_HOME" ]; then
+    for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
+        if [ -x "$java" ]; then
+            JAVA="$java"
+            break
         fi
     done
-}
-
-if [ -f "$absolute_path_load_dir_param" ]; then
-    load_file="-f ${absolute_path_load_dir_param}"
-    PARAMETERS="$PARAMETERS $load_file"
-    ./${IOTDB_HOME}/tools/load-one-tsfile.sh $PARAMETERS
-
-    if [ $? -eq 1 ]; then
-      if [ ! -z "${fail_dir_param}" ]; then
-         if [ ! -d "${fail_dir_param}" ]; then
-             mkdir -p "${fail_dir_param}"
-         fi
-         cp ${file} ${fail_dir_param}
-      fi
-    fi
-elif [ -d "$absolute_path_load_dir_param" ]; then
-    traverse_files "$absolute_path_load_dir_param"
+else
+    JAVA=java
 fi
 
-echo "end loading TsFiles"
+set -o noglob
+iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-cli.xml"
+
+exec "$JAVA" $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
+
+if [ $? -eq 0 ]; then
 exit 0
+else
+exit 1
+fi
