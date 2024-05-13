@@ -71,7 +71,7 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferTabletBinaryReq toTPipeTransferReq(ByteBuffer byteBuffer) {
+  public static PipeTransferTabletBinaryReq toTPipeTransferReq(final ByteBuffer byteBuffer) {
     final PipeTransferTabletBinaryReq req = new PipeTransferTabletBinaryReq();
     req.byteBuffer = byteBuffer;
 
@@ -82,7 +82,8 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
     return req;
   }
 
-  public static PipeTransferTabletBinaryReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+  public static PipeTransferTabletBinaryReq fromTPipeTransferReq(
+      final TPipeTransferReq transferReq) {
     final PipeTransferTabletBinaryReq binaryReq = new PipeTransferTabletBinaryReq();
     binaryReq.byteBuffer = transferReq.body;
 
@@ -95,7 +96,7 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferBytes(ByteBuffer byteBuffer) throws IOException {
+  public static byte[] toTPipeTransferBytes(final ByteBuffer byteBuffer) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
@@ -107,14 +108,14 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferTabletBinaryReq that = (PipeTransferTabletBinaryReq) obj;
+    final PipeTransferTabletBinaryReq that = (PipeTransferTabletBinaryReq) obj;
     return byteBuffer.equals(that.byteBuffer)
         && version == that.version
         && type == that.type
