@@ -85,16 +85,16 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
             .statusHandler()
             .handle(status, response.getStatus().getMessage(), events.toString());
       }
+      for (final Pair<String, TEndPoint> redirectPair :
+          LeaderCacheUtils.parseRecommendedRedirections(status)) {
+        connector.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
+      }
+
       for (final Event event : events) {
         if (event instanceof EnrichedEvent) {
           ((EnrichedEvent) event)
               .decreaseReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
         }
-      }
-
-      for (Pair<String, TEndPoint> redirectPair :
-          LeaderCacheUtils.parseRecommendedRedirections(status)) {
-        connector.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
       }
     } catch (final Exception e) {
       onError(e);
