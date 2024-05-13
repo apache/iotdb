@@ -155,6 +155,15 @@ public class PipeConnectorConstant {
                   CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY,
                   CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY)));
 
+  public static final String CONNECTOR_COMPRESSOR_KEY = "connector.compressor";
+  public static final String SINK_COMPRESSOR_KEY = "sink.compressor";
+  public static final String CONNECTOR_COMPRESSOR_DEFAULT_VALUE = "";
+  public static final String CONNECTOR_COMPRESSOR_SNAPPY = "snappy";
+  public static final String CONNECTOR_COMPRESSOR_LZMA2 = "lzma2";
+  public static final Set<String> CONNECTOR_COMPRESSOR_SET =
+      Collections.unmodifiableSet(
+          new HashSet<>(Arrays.asList(CONNECTOR_COMPRESSOR_SNAPPY, CONNECTOR_COMPRESSOR_LZMA2)));
+
   public static final String SINK_TOPIC_KEY = "sink.topic";
   public static final String SINK_CONSUMER_GROUP_KEY = "sink.consumer-group";
 

@@ -21,16 +21,20 @@ package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
+import org.apache.iotdb.commons.pipe.connector.compress.PipeCompressor;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -38,6 +42,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_SET;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_DEFAULT_VALUE;
@@ -57,6 +64,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_SET;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_COMPRESSOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY;
@@ -81,6 +89,9 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected final List<TEndPoint> nodeUrls = new ArrayList<>();
 
   protected String loadBalanceStrategy;
+  protected boolean isRpcCompressionEnabled;
+
+  protected final List<PipeCompressor> compressors = new ArrayList<>();
 
   protected boolean isTabletBatchModeEnabled = true;
 
@@ -126,6 +137,30 @@ public abstract class IoTDBConnector implements PipeConnector {
             "Load balance strategy should be one of %s, but got %s.",
             CONNECTOR_LOAD_BALANCE_STRATEGY_SET, loadBalanceStrategy),
         loadBalanceStrategy);
+
+    String compressionTypes =
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(CONNECTOR_COMPRESSOR_KEY, SINK_COMPRESSOR_KEY),
+                CONNECTOR_COMPRESSOR_DEFAULT_VALUE)
+            .toLowerCase();
+    if (!compressionTypes.isEmpty()) {
+      for (String compressionType : compressionTypes.split(",")) {
+        final String compressionType1 = compressionType.trim();
+        if (compressionType1.isEmpty()) {
+          continue;
+        }
+
+        validator.validate(
+            arg -> CONNECTOR_COMPRESSOR_SET.contains(compressionType1),
+            String.format(
+                "Compressor should be one of %s, but got %s.",
+                CONNECTOR_COMPRESSOR_SET, compressionType1),
+            compressionType1);
+        compressors.add(PipeCompressor.getCompressor(compressionType1));
+      }
+    }
+    isRpcCompressionEnabled = !compressors.isEmpty();
 
     validator.validate(
         arg -> arg.equals("retry") || arg.equals("ignore"),
@@ -260,7 +295,18 @@ public abstract class IoTDBConnector implements PipeConnector {
     }
   }
 
+  protected TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
+    if (isRpcCompressionEnabled) {
+      return PipeTransferCompressedReq.toTPipeTransferReq(req, compressors);
+    }
+    return req;
+  }
+
   public PipeReceiverStatusHandler statusHandler() {
     return receiverStatusHandler;
+  }
+
+  public List<PipeCompressor> getCompressors() {
+    return compressors;
   }
 }

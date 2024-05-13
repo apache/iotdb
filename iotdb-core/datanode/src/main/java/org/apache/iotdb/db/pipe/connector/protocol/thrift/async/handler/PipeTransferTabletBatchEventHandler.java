@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
@@ -57,9 +58,11 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
     // Deep copy to keep Ids' and events' reference
     requestCommitIds = batchBuilder.deepCopyRequestCommitIds();
     events = batchBuilder.deepCopyEvents();
-    req = batchBuilder.toTPipeTransferReq();
 
     this.connector = connector;
+    req =
+        PipeTransferCompressedReq.toTPipeTransferReq(
+            batchBuilder.toTPipeTransferReq(), connector.getCompressors());
   }
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {

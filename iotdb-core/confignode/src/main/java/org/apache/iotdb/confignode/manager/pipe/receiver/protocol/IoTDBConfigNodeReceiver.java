@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
@@ -124,6 +125,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
             return handleTransferFileSealV2(
                 PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req));
+          case TRANSFER_COMPRESSED:
+            return receive(PipeTransferCompressedReq.decompressFromTPipeTransferReq(req));
           default:
             break;
         }
