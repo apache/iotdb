@@ -139,8 +139,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeSnapshotExecutionMaxBatchSize();
   }
 
-  public double[] getPipeRemainingTimeRateWeightRatio() {
-    return COMMON_CONFIG.getPipeRemainingTimeRateWeightRatio();
+  public double getPipeRemainingTimeCommitRateSmoothingFactor() {
+    return COMMON_CONFIG.getPipeRemainingTimeCommitRateSmoothingFactor();
   }
 
   /////////////////////////////// Meta Consistency ///////////////////////////////
@@ -318,7 +318,9 @@ public class PipeConfig {
         "PipeListeningQueueTransferSnapshotThreshold: {}",
         getPipeListeningQueueTransferSnapshotThreshold());
     LOGGER.info("PipeSnapshotExecutionMaxBatchSize: {}", getPipeSnapshotExecutionMaxBatchSize());
-    LOGGER.info("PipeRemainingTimeRateWeightRatio: {}", getPipeRemainingTimeRateWeightRatio());
+    LOGGER.info(
+        "PipeRemainingTimeCommitRateSmoothingFactor: {}",
+        getPipeRemainingTimeCommitRateSmoothingFactor());
 
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());

@@ -24,9 +24,9 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
+import org.apache.iotdb.metrics.core.uitls.IoTDBMovingAverage;
 
 import com.codahale.metrics.Clock;
-import com.codahale.metrics.ExponentialMovingAverages;
 import com.codahale.metrics.Meter;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,9 +45,12 @@ class PipeRemainingEventAndTimeOperator {
   private final ConcurrentMap<IoTDBSchemaRegionExtractor, IoTDBSchemaRegionExtractor>
       schemaRegionExtractors = new ConcurrentHashMap<>();
   private final Meter dataRegionCommitMeter =
-      new Meter(new ExponentialMovingAverages(), Clock.defaultClock());
+      new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
   private final Meter schemaRegionCommitMeter =
-      new Meter(new ExponentialMovingAverages(), Clock.defaultClock());
+      new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
+
+  private double lastDataRegionCommitSmoothingValue;
+  private double lastSchemaRegionCommitSmoothingValue;
 
   //////////////////////////// Tags ////////////////////////////
 
@@ -92,8 +95,8 @@ class PipeRemainingEventAndTimeOperator {
    * @return The estimated remaining time
    */
   double getRemainingTime() {
-    final double[] pipeRemainingTimeRateWeightRatio =
-        PipeConfig.getInstance().getPipeRemainingTimeRateWeightRatio();
+    final double pipeRemainingTimeCommitRateSmoothingFactor =
+        PipeConfig.getInstance().getPipeRemainingTimeCommitRateSmoothingFactor();
 
     final int totalDataRegionWriteEventCount =
         dataRegionExtractors.keySet().stream()
@@ -108,17 +111,20 @@ class PipeRemainingEventAndTimeOperator {
                 .map(PipeConnectorSubtask::getEventCount)
                 .reduce(Integer::sum)
                 .orElse(0);
-    final double dataRegionRate =
-        pipeRemainingTimeRateWeightRatio[0] * dataRegionCommitMeter.getOneMinuteRate()
-            + pipeRemainingTimeRateWeightRatio[1] * dataRegionCommitMeter.getFiveMinuteRate()
-            + pipeRemainingTimeRateWeightRatio[2] * dataRegionCommitMeter.getFifteenMinuteRate()
-            + pipeRemainingTimeRateWeightRatio[3] * dataRegionCommitMeter.getMeanRate();
+
+    lastDataRegionCommitSmoothingValue =
+        pipeRemainingTimeCommitRateSmoothingFactor
+            * dataRegionCommitMeter.getOneMinuteRate()
+            * (1 - pipeRemainingTimeCommitRateSmoothingFactor)
+            * lastDataRegionCommitSmoothingValue;
     final double dataRegionRemainingTime;
     if (totalDataRegionWriteEventCount == 0) {
       dataRegionRemainingTime = 0;
     } else {
       dataRegionRemainingTime =
-          dataRegionRate <= 0 ? Double.MAX_VALUE : totalDataRegionWriteEventCount / dataRegionRate;
+          lastDataRegionCommitSmoothingValue <= 0
+              ? Double.MAX_VALUE
+              : totalDataRegionWriteEventCount / lastDataRegionCommitSmoothingValue;
     }
 
     final long totalSchemaRegionWriteEventCount =
@@ -126,19 +132,20 @@ class PipeRemainingEventAndTimeOperator {
             .map(IoTDBSchemaRegionExtractor::getUnTransferredEventCount)
             .reduce(Long::sum)
             .orElse(0L);
-    final double schemaRegionRate =
-        pipeRemainingTimeRateWeightRatio[0] * schemaRegionCommitMeter.getOneMinuteRate()
-            + pipeRemainingTimeRateWeightRatio[1] * schemaRegionCommitMeter.getFiveMinuteRate()
-            + pipeRemainingTimeRateWeightRatio[2] * schemaRegionCommitMeter.getFifteenMinuteRate()
-            + pipeRemainingTimeRateWeightRatio[3] * schemaRegionCommitMeter.getMeanRate();
+
+    lastSchemaRegionCommitSmoothingValue =
+        pipeRemainingTimeCommitRateSmoothingFactor
+            * schemaRegionCommitMeter.getOneMinuteRate()
+            * (1 - pipeRemainingTimeCommitRateSmoothingFactor)
+            * lastSchemaRegionCommitSmoothingValue;
     final double schemaRegionRemainingTime;
     if (totalSchemaRegionWriteEventCount == 0) {
       schemaRegionRemainingTime = 0;
     } else {
       schemaRegionRemainingTime =
-          schemaRegionRate <= 0
+          lastSchemaRegionCommitSmoothingValue <= 0
               ? Double.MAX_VALUE
-              : totalSchemaRegionWriteEventCount / schemaRegionRate;
+              : totalSchemaRegionWriteEventCount / lastSchemaRegionCommitSmoothingValue;
     }
 
     final double result = Math.max(dataRegionRemainingTime, schemaRegionRemainingTime);

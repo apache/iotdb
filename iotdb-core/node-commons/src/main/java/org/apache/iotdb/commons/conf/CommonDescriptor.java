@@ -23,11 +23,7 @@ import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
-import org.apache.commons.lang3.ArrayUtils;
-
 import java.io.File;
-import java.util.Arrays;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 
@@ -532,23 +528,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_snapshot_execution_max_batch_size",
                 String.valueOf(config.getPipeSnapshotExecutionMaxBatchSize()))));
-    final String pipeRemainingTimeRateWeightRatioStr =
-        properties.getProperty("pipe_remaining_time_rate_weight_ratio");
-    if (Objects.nonNull(pipeRemainingTimeRateWeightRatioStr)) {
-      final Double[] pipeRemainingTimeRateWeightRatio =
-          Arrays.stream(pipeRemainingTimeRateWeightRatioStr.split(":"))
-              .map(Double::parseDouble)
-              .toArray(Double[]::new);
-      if (pipeRemainingTimeRateWeightRatio.length == 4) {
-        final double sum =
-            Arrays.stream(pipeRemainingTimeRateWeightRatio).reduce(Double::sum).orElse(0.1d);
-        config.setPipeRemainingTimeRateWeightRatio(
-            ArrayUtils.toPrimitive(
-                Arrays.stream(pipeRemainingTimeRateWeightRatio)
-                    .map(ratio -> ratio / sum)
-                    .toArray(Double[]::new)));
-      }
-    }
+    config.setPipeRemainingTimeCommitRateSmoothingFactor(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_remaining_time_commit_rate_smoothing_factor",
+                String.valueOf(config.getPipeRemainingTimeCommitRateSmoothingFactor()))));
 
     config.setTwoStageAggregateMaxCombinerLiveTimeInMs(
         Long.parseLong(
