@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
+import org.apache.iotdb.commons.pipe.event.EmptyEvent;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -142,14 +143,15 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     }
 
     // Realtime
-    EnrichedEvent realtimeEvent;
-    do {
-      realtimeEvent = (EnrichedEvent) iterator.next(getMaxBlockingTimeMs());
-      if (Objects.isNull(realtimeEvent)) {
-        return null;
-      }
-    } while (!isTypeListened(realtimeEvent)
-        || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe()));
+    EnrichedEvent realtimeEvent = (EnrichedEvent) iterator.next(getMaxBlockingTimeMs());
+    if (Objects.isNull(realtimeEvent)) {
+      return null;
+    }
+
+    if (!isTypeListened(realtimeEvent)
+        || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe())) {
+      return new EmptyEvent(pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    }
 
     realtimeEvent =
         realtimeEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(

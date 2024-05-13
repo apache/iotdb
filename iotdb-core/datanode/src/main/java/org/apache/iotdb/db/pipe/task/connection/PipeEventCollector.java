@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.connection;
 
+import org.apache.iotdb.commons.pipe.event.EmptyEvent;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
@@ -73,7 +74,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
         parseAndCollectEvent((PipeRawTabletInsertionEvent) event);
       } else if (event instanceof PipeTsFileInsertionEvent) {
         parseAndCollectEvent((PipeTsFileInsertionEvent) event);
-      } else {
+      } else if (!(event instanceof EmptyEvent)) {
         collectEvent(event);
       }
     } catch (final PipeException e) {

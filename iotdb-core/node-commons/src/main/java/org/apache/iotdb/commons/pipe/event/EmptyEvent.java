@@ -31,7 +31,7 @@ public class EmptyEvent extends EnrichedEvent {
 
   private ProgressIndex progressIndex;
 
-  protected EmptyEvent(
+  public EmptyEvent(
       final String pipeName,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pipePattern,
