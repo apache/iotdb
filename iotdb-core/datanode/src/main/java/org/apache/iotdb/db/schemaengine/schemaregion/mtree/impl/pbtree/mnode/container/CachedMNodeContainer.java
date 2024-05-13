@@ -23,10 +23,9 @@ import org.apache.iotdb.commons.schema.MergeSortIterator;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
