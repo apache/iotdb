@@ -1035,14 +1035,14 @@ public class QueryDataSetUtils {
         for (int i = 0; i < currentCount; i++) {
           String deviceId = deviceColumn.getBinary(i).getStringValue(StandardCharsets.UTF_8);
           String[] seriesArray = deviceId.split("\\.");
-          String model = seriesArray[MODEL_LEVEL];
+          String fleet = seriesArray[FLEET_LEVEL];
           String name = seriesArray[NAME_LEVEL];
           Double nominalFuelConsumption = deviceAttributesMap.get(name).nominalFuelConsumption;
           if (nominalFuelConsumption == null) {
             continue;
           }
           AvgIntermediateResult result =
-              map.computeIfAbsent(model, k -> new AvgIntermediateResult());
+              map.computeIfAbsent(fleet, k -> new AvgIntermediateResult());
           long count = countFuelColumn.getLong(i);
           result.count += count;
           result.fuelSum += sumFuelColumn.getDouble(i);
