@@ -2300,7 +2300,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setStatement(createTimeSeriesStatement);
 
     checkIsTemplateCompatible(
-        createTimeSeriesStatement.getPath(), createTimeSeriesStatement.getAlias(), context);
+        createTimeSeriesStatement.getPath(), createTimeSeriesStatement.getAlias(), context, true);
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendFullPath(createTimeSeriesStatement.getPath());
@@ -2312,9 +2312,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void checkIsTemplateCompatible(
-      PartialPath timeseriesPath, String alias, MPPQueryContext context) {
-    DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
-    context.addAcquiredLockNum(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+      PartialPath timeseriesPath, String alias, MPPQueryContext context, boolean takeLock) {
+    if (takeLock) {
+      DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+      context.addAcquiredLockNum(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+    }
     Pair<Template, PartialPath> templateInfo =
         schemaFetcher.checkTemplateSetAndPreSetInfo(timeseriesPath, alias);
     if (templateInfo != null) {
@@ -2328,9 +2330,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       PartialPath devicePath,
       List<String> measurements,
       List<String> aliasList,
-      MPPQueryContext context) {
-    DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
-    context.addAcquiredLockNum(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+      MPPQueryContext context,
+      boolean takeLock) {
+    if (takeLock) {
+      DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+      context.addAcquiredLockNum(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+    }
     for (int i = 0; i < measurements.size(); i++) {
       Pair<Template, PartialPath> templateInfo =
           schemaFetcher.checkTemplateSetAndPreSetInfo(
@@ -2399,7 +2404,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         createAlignedTimeSeriesStatement.getDevicePath(),
         createAlignedTimeSeriesStatement.getMeasurements(),
         createAlignedTimeSeriesStatement.getAliasList(),
-        context);
+        context,
+        true);
 
     PathPatternTree pathPatternTree = new PathPatternTree();
     for (String measurement : createAlignedTimeSeriesStatement.getMeasurements()) {
@@ -2426,7 +2432,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         internalCreateTimeSeriesStatement.getDevicePath(),
         internalCreateTimeSeriesStatement.getMeasurements(),
         null,
-        context);
+        context,
+        true);
 
     PathPatternTree pathPatternTree = new PathPatternTree();
     for (String measurement : internalCreateTimeSeriesStatement.getMeasurements()) {
@@ -2452,10 +2459,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setStatement(internalCreateMultiTimeSeriesStatement);
 
     PathPatternTree pathPatternTree = new PathPatternTree();
+    DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+    context.addAcquiredLockNum(SchemaLockType.TIMESERIES_VS_TEMPLATE);
     for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> entry :
         internalCreateMultiTimeSeriesStatement.getDeviceMap().entrySet()) {
       checkIsTemplateCompatible(
-          entry.getKey(), entry.getValue().right.getMeasurements(), null, context);
+          entry.getKey(), entry.getValue().right.getMeasurements(), null, context, false);
       pathPatternTree.appendFullPath(entry.getKey().concatNode(ONE_LEVEL_PATH_WILDCARD));
     }
 
@@ -2478,9 +2487,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     List<PartialPath> timeseriesPathList = createMultiTimeSeriesStatement.getPaths();
     List<String> aliasList = createMultiTimeSeriesStatement.getAliasList();
+
+    DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+    context.addAcquiredLockNum(SchemaLockType.TIMESERIES_VS_TEMPLATE);
     for (int i = 0; i < timeseriesPathList.size(); i++) {
       checkIsTemplateCompatible(
-          timeseriesPathList.get(i), aliasList == null ? null : aliasList.get(i), context);
+          timeseriesPathList.get(i), aliasList == null ? null : aliasList.get(i), context, false);
     }
 
     PathPatternTree patternTree = new PathPatternTree();
@@ -3588,8 +3600,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     // Make sure all paths are not under any templates
     try {
+      DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.TIMESERIES_VS_TEMPLATE);
+      context.addAcquiredLockNum(SchemaLockType.TIMESERIES_VS_TEMPLATE);
       for (PartialPath path : createLogicalViewStatement.getTargetPathList()) {
-        checkIsTemplateCompatible(path, null, context);
+        checkIsTemplateCompatible(path, null, context, false);
       }
     } catch (Exception e) {
       analysis.setFinishQueryAfterAnalyze(true);
