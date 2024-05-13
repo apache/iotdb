@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.intermediate;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
@@ -159,8 +158,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
   @Override
   protected LayerRowWindowReader constructRowSlidingSizeWindowReader(
-      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB)
-      throws QueryProcessException {
+      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB) {
     return new LayerRowWindowReader() {
 
       private final int windowSize = strategy.getWindowSize();
@@ -236,8 +234,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
   @Override
   protected LayerRowWindowReader constructRowSlidingTimeWindowReader(
-      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
-      throws QueryProcessException, IOException {
+      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
 
     final long timeInterval = strategy.getTimeInterval();
     final long slidingStep = strategy.getSlidingStep();
@@ -405,7 +402,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
               break;
             }
 
-            if (curTime >= displayWindowBegin && curTime - nextTime > sessionTimeGap) {
+            if (curTime >= displayWindowBegin && nextTime - curTime > sessionTimeGap) {
               findWindow = true;
               break;
             }
@@ -453,7 +450,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       }
 
       @Override
-      public void readyForNext() throws IOException, QueryProcessException {
+      public void readyForNext() throws IOException {
         if (nextIndexEnd < tvList.getPointCount()) {
           nextWindowTimeBegin = tvList.getTime(nextIndexEnd);
         }

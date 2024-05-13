@@ -199,7 +199,13 @@ public class UDTFExecutor {
       // Store output data
       TimeColumn timeColumn = collector.buildTimeColumn();
       Column valueColumn = collector.buildValueColumn();
-      outputStorage.putColumn(timeColumn, valueColumn);
+
+      if (timeColumn.getPositionCount() != 0) {
+        cachedColumns = new Column[] {valueColumn, timeColumn};
+        outputStorage.putColumn(timeColumn, valueColumn);
+      } else {
+        cachedColumns = null;
+      }
     } catch (Exception e) {
       onError("transform(RowWindow, PointCollector)", e);
     }

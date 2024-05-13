@@ -510,7 +510,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
               break;
             }
 
-            if (curTime >= displayWindowBegin && curTime - nextTime > sessionTimeGap) {
+            if (curTime >= displayWindowBegin && nextTime - curTime > sessionTimeGap) {
               findWindow = true;
               break;
             }

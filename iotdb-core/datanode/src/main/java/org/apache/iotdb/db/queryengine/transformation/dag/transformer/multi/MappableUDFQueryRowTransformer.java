@@ -25,7 +25,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 public class MappableUDFQueryRowTransformer extends UDFQueryTransformer {
 
@@ -50,13 +49,15 @@ public class MappableUDFQueryRowTransformer extends UDFQueryTransformer {
     return YieldableState.YIELDABLE;
   }
 
-  private Column[] execute(Column[] columns) throws Exception {
+  private Column[] execute(Column[] columns) {
     int count = columns[0].getPositionCount();
-    TimeColumnBuilder timeColumnBuilder = new TimeColumnBuilder(null, count);
     ColumnBuilder valueColumnBuilder = TypeUtils.initColumnBuilder(tsDataType, count);
 
-    executor.execute(columns, timeColumnBuilder, valueColumnBuilder);
-    return executor.getCurrentBlock();
+    executor.execute(columns, valueColumnBuilder);
+
+    Column timeColumn = columns[1];
+    Column valueColumn = valueColumnBuilder.build();
+    return new Column[] {valueColumn, timeColumn};
   }
 
   @Override
