@@ -92,17 +92,13 @@
       https://github.com/apache/iotdb-bin-resources/tree/main/iotdb-tools-thrift
     -->
         <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
-        <jackson.version>2.15.4</jackson.version>
-        <!-- This is the last version to support the javax namespace -->
-        <jakarta.servlet-api.version>4.0.4</jakarta.servlet-api.version>
-        <!-- This is the last version to support the javax namespace -->
-        <jakarta.validation-api.version>2.0.2</jakarta.validation-api.version>
-        <!-- This is the last version to support the javax namespace -->
-        <jakarta.ws.rs-api.version>2.1.6</jakarta.ws.rs-api.version>
+        <jackson.version>2.17.0</jackson.version>
+        <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
+        <jakarta.validation-api.version>3.0.2</jakarta.validation-api.version>
+        <jakarta.ws.rs-api.version>4.0.0</jakarta.ws.rs-api.version>
         <java-websocket.version>1.5.4</java-websocket.version>
         <jcip-annotations.version>1.0-1</jcip-annotations.version>
-        <!-- This is the last version to support the javax namespace -->
-        <jersey.version>2.40</jersey.version>
+        <jersey.version>3.1.6</jersey.version>
         <!-- This was the last version to support Java 8 -->
         <jetty.version>9.4.53.v20231009</jetty.version>
         <jjwt.version>0.11.5</jjwt.version>
@@ -127,8 +123,7 @@
         <netty.version>4.1.97.Final</netty.version>
         <nimbus-jose-jwt.version>9.37.2</nimbus-jose-jwt.version>
         <oauth2-oidc-sdk.version>10.15</oauth2-oidc-sdk.version>
-        <!-- This was the last version to support Java 8 -->
-        <openapi.generator.version>6.6.0</openapi.generator.version>
+        <openapi.generator.version>7.5.0</openapi.generator.version>
         <orc-core.version>1.9.1</orc-core.version>
         <osgi.version>7.0.0</osgi.version>
         <pax-jdbc-common.version>1.5.6</pax-jdbc-common.version>
@@ -167,10 +162,9 @@
         <spotless.version>2.43.0</spotless.version>
         <!-- This is the matching version of spring-boot for spring 5.3.30 -->
         <spring-boot.version>2.7.18</spring-boot.version>
-        <!-- This is the last version to support the javax namespace -->
-        <spring.version>5.3.34</spring.version>
+        <spring.version>6.1.6</spring.version>
         <!-- This was the last version to support Java 8 -->
-        <swagger.version>1.6.11</swagger.version>
+        <swagger.version>1.6.14</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <thrift.exec.absolute.path/>
         <!--

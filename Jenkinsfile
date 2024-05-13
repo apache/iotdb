@@ -120,9 +120,6 @@ pipeline {
         }
 
         stage('Deploy Prepare') {
-        //             when {
-        //                 branch 'master'
-        //             }
             when {
                 expression {
                     env.BRANCH_NAME ==~ "(master)|(rel/.*)"
