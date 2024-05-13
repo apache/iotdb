@@ -65,7 +65,7 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
 
   /////////////////////////////// WriteBack & Batch ///////////////////////////////
 
-  public static PipeTransferTabletInsertNodeReq toTPipeTransferRawReq(InsertNode insertNode) {
+  public static PipeTransferTabletInsertNodeReq toTPipeTransferRawReq(final InsertNode insertNode) {
     final PipeTransferTabletInsertNodeReq req = new PipeTransferTabletInsertNodeReq();
 
     req.insertNode = insertNode;
@@ -75,7 +75,7 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferTabletInsertNodeReq toTPipeTransferReq(InsertNode insertNode) {
+  public static PipeTransferTabletInsertNodeReq toTPipeTransferReq(final InsertNode insertNode) {
     final PipeTransferTabletInsertNodeReq req = new PipeTransferTabletInsertNodeReq();
 
     req.insertNode = insertNode;
@@ -87,7 +87,8 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
     return req;
   }
 
-  public static PipeTransferTabletInsertNodeReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+  public static PipeTransferTabletInsertNodeReq fromTPipeTransferReq(
+      final TPipeTransferReq transferReq) {
     final PipeTransferTabletInsertNodeReq insertNodeReq = new PipeTransferTabletInsertNodeReq();
 
     insertNodeReq.insertNode = (InsertNode) PlanNodeType.deserialize(transferReq.body);
@@ -100,7 +101,7 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
-  public static byte[] toTPipeTransferBytes(InsertNode insertNode) throws IOException {
+  public static byte[] toTPipeTransferBytes(final InsertNode insertNode) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
@@ -113,14 +114,14 @@ public class PipeTransferTabletInsertNodeReq extends TPipeTransferReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferTabletInsertNodeReq that = (PipeTransferTabletInsertNodeReq) obj;
+    final PipeTransferTabletInsertNodeReq that = (PipeTransferTabletInsertNodeReq) obj;
     return Objects.equals(insertNode, that.insertNode)
         && version == that.version
         && type == that.type

@@ -69,6 +69,9 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
         insertRowStatementList.add((InsertRowStatement) statement);
       } else if (statement instanceof InsertTabletStatement) {
         insertTabletStatementList.add((InsertTabletStatement) statement);
+      } else if (statement instanceof InsertRowsStatement) {
+        insertRowStatementList.addAll(
+            ((InsertRowsStatement) statement).getInsertRowStatementList());
       } else {
         throw new UnsupportedOperationException(
             String.format(
@@ -86,11 +89,14 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
         insertRowStatementList.add((InsertRowStatement) statement);
       } else if (statement instanceof InsertTabletStatement) {
         insertTabletStatementList.add((InsertTabletStatement) statement);
+      } else if (statement instanceof InsertRowsStatement) {
+        insertRowStatementList.addAll(
+            ((InsertRowsStatement) statement).getInsertRowStatementList());
       } else {
         throw new UnsupportedOperationException(
             String.format(
-                "unknown InsertBaseStatement %s constructed from PipeTransferTabletInsertNodeReq.",
-                insertNodeReq));
+                "Unknown InsertBaseStatement %s constructed from PipeTransferTabletInsertNodeReq.",
+                statement));
       }
     }
 
@@ -110,9 +116,9 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferTabletBatchReq toTPipeTransferReq(
-      List<ByteBuffer> binaryBuffers,
-      List<ByteBuffer> insertNodeBuffers,
-      List<ByteBuffer> tabletBuffers)
+      final List<ByteBuffer> binaryBuffers,
+      final List<ByteBuffer> insertNodeBuffers,
+      final List<ByteBuffer> tabletBuffers)
       throws IOException {
     final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
 
@@ -146,7 +152,8 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
     return batchReq;
   }
 
-  public static PipeTransferTabletBatchReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+  public static PipeTransferTabletBatchReq fromTPipeTransferReq(
+      final TPipeTransferReq transferReq) {
     final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
 
     int size = ReadWriteIOUtils.readInt(transferReq.body);
@@ -199,14 +206,14 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferTabletBatchReq that = (PipeTransferTabletBatchReq) obj;
+    final PipeTransferTabletBatchReq that = (PipeTransferTabletBatchReq) obj;
     return binaryReqs.equals(that.binaryReqs)
         && insertNodeReqs.equals(that.insertNodeReqs)
         && tabletReqs.equals(that.tabletReqs)
