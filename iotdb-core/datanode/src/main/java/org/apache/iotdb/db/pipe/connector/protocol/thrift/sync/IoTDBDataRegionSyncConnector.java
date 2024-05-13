@@ -361,6 +361,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                         modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length()));
       } catch (final Exception e) {
         clientAndStatus.setRight(false);
+        clientManager.adjustTimeoutIfNecessary(e);
         throw new PipeConnectionException(
             String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()),
             e);
@@ -377,6 +378,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                         tsFile.getName(), tsFile.length()));
       } catch (final Exception e) {
         clientAndStatus.setRight(false);
+        clientManager.adjustTimeoutIfNecessary(e);
         throw new PipeConnectionException(
             String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()),
             e);

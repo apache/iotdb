@@ -158,6 +158,7 @@ public class AlignedChunkData implements ChunkData {
   private void serializeAttr(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(timePartitionSlot.getStartTime(), stream);
     ReadWriteIOUtils.write(device, stream);
+    ReadWriteIOUtils.write(dataSize, stream);
     ReadWriteIOUtils.write(needDecodeChunk, stream);
     ReadWriteIOUtils.write(chunkHeaderList.size(), stream);
     for (ChunkHeader chunkHeader : chunkHeaderList) {
@@ -391,6 +392,7 @@ public class AlignedChunkData implements ChunkData {
     TTimePartitionSlot timePartitionSlot =
         TimePartitionUtils.getTimePartitionSlot(ReadWriteIOUtils.readLong(stream));
     String device = ReadWriteIOUtils.readString(stream);
+    long dataSize = ReadWriteIOUtils.readLong(stream);
     boolean needDecodeChunk = ReadWriteIOUtils.readBool(stream);
     int chunkHeaderListSize = ReadWriteIOUtils.readInt(stream);
     List<ChunkHeader> chunkHeaderList = new ArrayList<>();
@@ -411,6 +413,7 @@ public class AlignedChunkData implements ChunkData {
     chunkData.chunkHeaderList = chunkHeaderList;
     chunkData.pageNumbers = pageNumbers;
     chunkData.deserializeTsFileData(stream);
+    chunkData.dataSize = dataSize;
     chunkData.close();
     return chunkData;
   }

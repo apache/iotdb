@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBClientManager;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -206,6 +207,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+
+    client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
     client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);
     waitHandshakeFinished(isHandshakeFinished);
 
@@ -223,6 +226,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       resp.set(null);
       exception.set(null);
 
+      client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
       client.pipeTransfer(
           PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),

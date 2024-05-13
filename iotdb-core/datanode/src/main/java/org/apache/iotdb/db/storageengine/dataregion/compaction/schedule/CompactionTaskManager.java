@@ -275,8 +275,8 @@ public class CompactionTaskManager implements IService {
     return compactionReadOperationRateLimiter;
   }
 
-  public void setWriteMergeRate(final double throughoutMbPerSec) {
-    setRate(mergeWriteRateLimiter, throughoutMbPerSec * 1024.0 * 1024.0);
+  public void setWriteMergeRate(final double throughputMbPerSec) {
+    setRate(mergeWriteRateLimiter, throughputMbPerSec * 1024.0 * 1024.0);
   }
 
   public void setCompactionReadOperationRate(final double readOperationPerSec) {
@@ -288,7 +288,7 @@ public class CompactionTaskManager implements IService {
   }
 
   private void setRate(RateLimiter rateLimiter, double rate) {
-    // if throughout = 0, disable rate limiting
+    // if throughput = 0, disable rate limiting
     if (rate <= 0) {
       rate = Double.MAX_VALUE;
     }
