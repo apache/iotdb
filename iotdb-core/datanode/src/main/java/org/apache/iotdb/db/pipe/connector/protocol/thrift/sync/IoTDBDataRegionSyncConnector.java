@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.connector.client.LeaderCacheUtils;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeEventBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
@@ -191,6 +192,11 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           resp.getStatus(),
           String.format("Transfer PipeTransferTabletBatchReq error, result status %s", resp.status),
           batchToTransfer.deepCopyEvents().toString());
+    }
+
+    for (Pair<String, TEndPoint> redirectPair :
+        LeaderCacheUtils.getRedirectionsAfterTransferBatch(status)) {
+      clientManager.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
     }
 
     batchToTransfer.decreaseEventsReferenceCount(
