@@ -102,7 +102,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
     try {
       if (isTabletBatchModeEnabled) {
-        Pair<TEndPoint, PipeEventBatch> endPointAndBatch =
+        final Pair<TEndPoint, PipeEventBatch> endPointAndBatch =
             tabletBatchBuilder.onEvent(tabletInsertionEvent);
         if (Objects.nonNull(endPointAndBatch)) {
           doTransfer(endPointAndBatch);
@@ -171,8 +171,9 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   private void doTransfer(Pair<TEndPoint, PipeEventBatch> endPointAndBatch) {
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
         clientManager.getClient(endPointAndBatch.getLeft());
+    final PipeEventBatch batchToTransfer = endPointAndBatch.getRight();
+
     final TPipeTransferResp resp;
-    PipeEventBatch batchToTransfer = endPointAndBatch.getRight();
     try {
       resp = clientAndStatus.getLeft().pipeTransfer(batchToTransfer.toTPipeTransferReq());
     } catch (final Exception e) {
