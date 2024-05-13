@@ -40,8 +40,11 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   private List<PipeSnapshotEvent> historicalEvents = new LinkedList<>();
   // A fixed size initialized only when the historicalEvents are first
-  // filled. Used only for metric framework.
+  // filled. Only used for metric framework.
   private int historicalEventsCount = 0;
+
+  // Only used for metric framework
+  private volatile long lastExtractedIndex = Long.MIN_VALUE;
 
   private ConcurrentIterableLinkedQueue<Event>.DynamicIterator iterator;
 
@@ -151,10 +154,11 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     } while (!isTypeListened(realtimeEvent)
         || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe()));
 
+    lastExtractedIndex = iterator.getNextIndex() - 1;
     realtimeEvent =
         realtimeEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
             pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
-    realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+    realtimeEvent.bindProgressIndex(new MetaProgressIndex(lastExtractedIndex));
     realtimeEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
     return realtimeEvent;
   }
@@ -174,10 +178,9 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public long getUnTransferredEventCount() {
-    return !(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)
-        ? getListeningQueue().getTailIndex()
-            - ((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex()
-            - 1
+    return !(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex
+            || lastExtractedIndex == Long.MIN_VALUE)
+        ? lastExtractedIndex - ((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex()
         : getListeningQueue().getSize() + historicalEventsCount;
   }
 }

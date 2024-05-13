@@ -82,7 +82,7 @@ public class PipeRemainingTimeMetrics implements IMetricSet {
     ImmutableSet.copyOf(remainingTimeOperatorMap.keySet()).forEach(this::deregister);
     if (!remainingTimeOperatorMap.isEmpty()) {
       LOGGER.warn(
-          "Failed to unbind from pipe remain time metrics, remainingTimeOperator map not empty");
+          "Failed to unbind from pipe remaining time metrics, remainingTimeOperator map not empty");
     }
   }
 
@@ -152,7 +152,7 @@ public class PipeRemainingTimeMetrics implements IMetricSet {
   public void deregister(final String taskID) {
     if (!remainingTimeOperatorMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe remain time metrics, RemainTimeOperator({}) does not exist",
+          "Failed to deregister pipe remaining time metrics, RemainingTimeOperator({}) does not exist",
           taskID);
       return;
     }
@@ -182,7 +182,7 @@ public class PipeRemainingTimeMetrics implements IMetricSet {
     final PipeRemainingTimeOperator operator = remainingTimeOperatorMap.get(taskID);
     if (Objects.isNull(operator)) {
       LOGGER.warn(
-          "Failed to mark pipe region commit, RemainTimeOperator({}) does not exist", taskID);
+          "Failed to mark pipe region commit, RemainingTimeOperator({}) does not exist", taskID);
       return;
     }
     // Prevent not set pipeName / creation times & potential differences between pipeNames and
