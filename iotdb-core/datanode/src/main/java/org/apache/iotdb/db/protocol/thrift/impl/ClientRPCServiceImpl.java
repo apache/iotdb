@@ -3654,7 +3654,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   serde,
                   deviceColumnIndex1,
                   1 - deviceColumnIndex1,
-                  1 - deviceColumnIndex2);
+                  1 - deviceColumnIndex2,
+                  req.startTime,
+                  req.endTime);
           finished = pair.right;
           resp.setQueryResult(pair.left);
           resp.setMoreData(!finished);

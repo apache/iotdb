@@ -1228,6 +1228,8 @@ public class QueryDataSetUtils {
     ColumnBuilder nameColumnBuilder = builder.getColumnBuilder(0);
     ColumnBuilder durationColumnBuilder = builder.getColumnBuilder(1);
 
+    int dayCount = (int) ((endTime - startTime - 1) / TimeUnit.DAYS.toMillis(1)) + 1;
+
     int numOfTenMinutesInOneDay = 144;
     List<Double> velocityList = new ArrayList<>(numOfTenMinutesInOneDay);
     List<Long> timeList = new ArrayList<>(numOfTenMinutesInOneDay);
@@ -1295,7 +1297,7 @@ public class QueryDataSetUtils {
 
             day++;
             // 10 days is done, move to next device
-            if (day == 10) {
+            if (day == dayCount) {
               day = 0;
             }
           }
@@ -1528,7 +1530,9 @@ public class QueryDataSetUtils {
       TsBlockSerde serde,
       int deviceColumnIndex,
       int totalColumnIndex,
-      int statusColumnIndex)
+      int statusColumnIndex,
+      long startTime,
+      long endTime)
       throws IoTDBException, IOException {
 
     Map<String, DailyActivityValue> map = new HashMap<>();
@@ -1539,7 +1543,8 @@ public class QueryDataSetUtils {
     TsBlock statusTsBlock = null;
     boolean statusFinished = false;
     int statusIndex = 0;
-    List<Boolean> avtiveList = new ArrayList<>(1440);
+    int groupCount = (int) ((endTime - startTime - 1) / TimeUnit.MINUTES.toMillis(10)) + 1;
+    List<Boolean> avtiveList = new ArrayList<>(groupCount);
 
     while (!totalFinished && !statusFinished) {
       if (totalTsBlock == null || totalTsBlock.isEmpty()) {
@@ -1573,7 +1578,7 @@ public class QueryDataSetUtils {
           long currentStatus = statusColumn.getLong(statusIndex);
 
           avtiveList.add(currentStatus * 1.0d / currentTotal > 0.5);
-          if (avtiveList.size() == 1440) {
+          if (avtiveList.size() == groupCount) {
             String deviceId =
                 deviceColumn.getBinary(totalIndex).getStringValue(StandardCharsets.UTF_8);
             String model = deviceId.split("\\.")[MODEL_LEVEL];
