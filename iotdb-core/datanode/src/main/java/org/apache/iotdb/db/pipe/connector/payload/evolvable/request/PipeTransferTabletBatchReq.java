@@ -70,6 +70,9 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
         insertRowStatementList.add((InsertRowStatement) statement);
       } else if (statement instanceof InsertTabletStatement) {
         insertTabletStatementList.add((InsertTabletStatement) statement);
+      } else if (statement instanceof InsertRowsStatement) {
+        insertRowStatementList.addAll(
+            ((InsertRowsStatement) statement).getInsertRowStatementList());
       } else {
         throw new UnsupportedOperationException(
             String.format(
