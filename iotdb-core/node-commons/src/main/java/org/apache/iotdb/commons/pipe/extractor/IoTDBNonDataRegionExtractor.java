@@ -150,7 +150,10 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
     if (!isTypeListened(realtimeEvent)
         || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe())) {
-      return new EmptyEvent(pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+      final EmptyEvent event =
+          new EmptyEvent(pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+      event.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
+      return event;
     }
 
     realtimeEvent =
