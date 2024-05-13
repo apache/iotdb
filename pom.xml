@@ -99,8 +99,8 @@
         <java-websocket.version>1.5.4</java-websocket.version>
         <jcip-annotations.version>1.0-1</jcip-annotations.version>
         <jersey.version>3.1.6</jersey.version>
-        <!-- This was the last version to support Java 8 -->
-        <jetty.version>9.4.53.v20231009</jetty.version>
+        <!-- Jetty 12 seems to require further refactorings, but 11 was the first to be Jakarta compliant. -->
+        <jetty.version>11.0.20</jetty.version>
         <jjwt.version>0.11.5</jjwt.version>
         <jline.version>3.23.0</jline.version>
         <jna.version>5.14.0</jna.version>

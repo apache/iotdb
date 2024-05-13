@@ -30,29 +30,33 @@
     <name>IoTDB: Protocol: OpenAPI</name>
     <dependencies>
         <dependency>
-            <groupId>io.swagger</groupId>
-            <artifactId>swagger-annotations</artifactId>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-integration-jakarta</artifactId>
+            <version>2.2.21</version>
         </dependency>
         <dependency>
-            <groupId>io.swagger</groupId>
-            <artifactId>swagger-models</artifactId>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-models-jakarta</artifactId>
+            <version>2.2.21</version>
         </dependency>
-        <!--dependency>
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations-jakarta</artifactId>
+            <version>2.2.21</version>
+        </dependency>
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-jaxrs2-servlet-initializer-jakarta</artifactId>
+            <version>2.2.21</version>
+        </dependency>
+        <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.jaxrs</groupId>
-            <artifactId>jackson-jaxrs-json-provider</artifactId>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-jsr310</artifactId>
-        </dependency-->
         <dependency>
             <groupId>com.fasterxml.jackson.jakarta.rs</groupId>
             <artifactId>jackson-jakarta-rs-json-provider</artifactId>
@@ -64,13 +68,13 @@
             <version>2.17.0</version>
         </dependency>
         <dependency>
-            <groupId>jakarta.validation</groupId>
-            <artifactId>jakarta.validation-api</artifactId>
-        </dependency>
-        <dependency>
             <groupId>jakarta.annotation</groupId>
             <artifactId>jakarta.annotation-api</artifactId>
             <version>3.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
         </dependency>
         <dependency>
             <groupId>jakarta.ws.rs</groupId>
@@ -80,15 +84,11 @@
             <groupId>jakarta.servlet</groupId>
             <artifactId>jakarta.servlet-api</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.swagger</groupId>
-            <artifactId>swagger-jaxrs</artifactId>
-        </dependency>
         <!-- Just needed for unused import code -->
-        <dependency>
+        <!--dependency>
             <groupId>org.glassfish.jersey.media</groupId>
             <artifactId>jersey-media-multipart</artifactId>
-        </dependency>
+        </dependency-->
     </dependencies>
     <build>
         <plugins>
@@ -121,6 +121,9 @@
                                 <artifactVersion>${project.version}</artifactVersion>
                                 <dateLibrary>java8</dateLibrary>
                                 <useJakartaEe>true</useJakartaEe>
+                                <library>jersey3</library>
+                                <!-- This helps with reproducible builds -->
+                                <hideGenerationTimestamp>true</hideGenerationTimestamp>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -148,6 +151,9 @@
                                 <artifactVersion>${project.version}</artifactVersion>
                                 <dateLibrary>java8</dateLibrary>
                                 <useJakartaEe>true</useJakartaEe>
+                                <library>jersey3</library>
+                                <!-- This helps with reproducible builds -->
+                                <hideGenerationTimestamp>true</hideGenerationTimestamp>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -175,6 +181,9 @@
                                 <artifactVersion>${project.version}</artifactVersion>
                                 <dateLibrary>java8</dateLibrary>
                                 <useJakartaEe>true</useJakartaEe>
+                                <library>jersey3</library>
+                                <!-- This helps with reproducible builds -->
+                                <hideGenerationTimestamp>true</hideGenerationTimestamp>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -193,10 +202,33 @@
                         <configuration>
                             <sources>
                                 <source>${project.basedir}/target/generated-sources/java/src/gen/java</source>
+                                <source>${project.basedir}/target/generated-sources/java/src/main/java</source>
                             </sources>
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <!-- All of this libraries code is generated, so we simply have spotless remove unused imports -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>optimize-generated-code</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>apply</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <java combine.children="override">
+                        <includes>
+                            <include>target/generated-sources/java/src/gen/java/**/*.java</include>
+                            <include>target/generated-sources/java/src/main/java/**/*.java</include>
+                        </includes>
+                    </java>
+                </configuration>
             </plugin>
             <!--
         TODO: For some reason I am unable to prevent the generation of the default implementations in the "impl"
@@ -217,8 +249,8 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <configuration>
                     <usedDependencies combine.children="append">
-                        <!-- We just need this dependency to prevent the compiler from freaking out on unused imports -->
-                        <usedDependency>org.glassfish.jersey.media:jersey-media-multipart</usedDependency>
+                        <!-- For some reason this is not detected as being used -->
+                        <usedDependency>jakarta.annotation:jakarta.annotation-api</usedDependency>
                     </usedDependencies>
                 </configuration>
             </plugin>

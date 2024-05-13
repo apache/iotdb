@@ -27,7 +27,7 @@ import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscri
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 import java.nio.ByteBuffer;
 import java.util.List;

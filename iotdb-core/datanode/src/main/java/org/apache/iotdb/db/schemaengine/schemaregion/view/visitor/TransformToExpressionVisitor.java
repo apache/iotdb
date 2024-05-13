@@ -74,9 +74,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 
+import jakarta.ws.rs.NotSupportedException;
 import org.apache.tsfile.utils.Pair;
-
-import javax.ws.rs.NotSupportedException;
 
 import java.util.ArrayList;
 import java.util.List;
