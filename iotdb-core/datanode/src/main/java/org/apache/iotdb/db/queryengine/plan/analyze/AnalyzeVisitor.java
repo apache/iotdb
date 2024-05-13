@@ -2817,16 +2817,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       deviceSet.add(devicePath.getFullPath());
       if (isAligned) {
         List<String> measurementList = new ArrayList<>();
-        List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
         List<TimeseriesSchemaInfo> timeseriesSchemaInfoList = new ArrayList<>();
         for (IMeasurementSchemaInfo measurementSchemaInfo :
             deviceSchemaInfo.getMeasurementSchemaInfoList()) {
           measurementList.add(measurementSchemaInfo.getName());
-          measurementSchemas.add(measurementSchemaInfo.getSchema());
           timeseriesSchemaInfoList.add(new TimeseriesSchemaInfo(measurementSchemaInfo));
         }
-        AlignedPath alignedPath =
-            new AlignedPath(devicePath.getFullPath(), measurementList, measurementSchemas);
+        AlignedPath alignedPath = new AlignedPath(devicePath.getFullPath(), measurementList);
         deviceToTimeseriesSchemaInfo
             .computeIfAbsent(devicePath, k -> new HashMap<>())
             .put(alignedPath, timeseriesSchemaInfoList);
@@ -2835,8 +2832,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             deviceSchemaInfo.getMeasurementSchemaInfoList()) {
           MeasurementPath measurementPath =
               new MeasurementPath(
-                  devicePath.concatNode(measurementSchemaInfo.getName()),
-                  measurementSchemaInfo.getSchema());
+                  devicePath.concatNode(measurementSchemaInfo.getName()).getNodes());
           deviceToTimeseriesSchemaInfo
               .computeIfAbsent(devicePath, k -> new HashMap<>())
               .put(
