@@ -494,10 +494,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<String> inputColumnNames;
     List<String> outputColumnNames = node.getOutputColumnNames();
     if (outputColumnNames == null) {
-      outputColumnNames = context.getTypeProvider().getTemplatedInfo().getSelectMeasurements();
-      // skip device column
-      outputColumnNames = outputColumnNames.subList(1, outputColumnNames.size());
-      inputColumnNames = context.getTypeProvider().getTemplatedInfo().getMeasurementList();
+      if (context.getTypeProvider().getTemplatedInfo().aggregationDescriptorList != null) {
+        // outputColumnNames is aggregation expression
+        outputColumnNames = context.getTypeProvider().getTemplatedInfo().getDeviceViewOutputNames();
+        outputColumnNames = outputColumnNames.subList(1, outputColumnNames.size());
+        inputColumnNames = context.getTypeProvider().getTemplatedInfo().getMeasurementList();
+      } else {
+        outputColumnNames = context.getTypeProvider().getTemplatedInfo().getDeviceViewOutputNames();
+        // skip device column
+        outputColumnNames = outputColumnNames.subList(1, outputColumnNames.size());
+        inputColumnNames = context.getTypeProvider().getTemplatedInfo().getMeasurementList();
+      }
     } else {
       inputColumnNames = node.getChild().getOutputColumnNames();
     }

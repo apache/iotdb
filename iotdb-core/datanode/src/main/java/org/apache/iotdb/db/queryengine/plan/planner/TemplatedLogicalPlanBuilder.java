@@ -121,7 +121,7 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
       return this;
     }
 
-    this.root =
+    FilterNode filterNode =
         new FilterNode(
             context.getQueryId().genPlanNodeId(),
             this.getRoot(),
@@ -129,6 +129,9 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
             filterExpression,
             isGroupByTime,
             scanOrder);
+    analysis.setFromWhere(filterNode);
+
+    this.root = filterNode;
 
     return this;
   }

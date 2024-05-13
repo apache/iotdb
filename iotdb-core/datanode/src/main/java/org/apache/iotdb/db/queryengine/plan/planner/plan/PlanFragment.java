@@ -27,7 +27,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.SubPlanTypeExtractor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.IPartitionRelatedNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.VirtualSourceNode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -183,7 +184,8 @@ public class PlanFragment {
     PlanNode root;
     if (typeProvider != null && typeProvider.getTemplatedInfo() != null) {
       root = PlanNodeType.deserializeWithTemplate(byteBuffer, typeProvider);
-      if (root instanceof SeriesSourceNode) {
+      if (root instanceof AlignedSeriesScanNode
+          || root instanceof AlignedSeriesAggregationScanNode) {
         return root;
       }
     } else {

@@ -41,7 +41,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 
@@ -61,7 +60,7 @@ public class TemplatedInfo {
   private final boolean queryAllSensors;
 
   // variables used in DeviceViewOperator
-  private final List<String> selectMeasurements;
+  private final List<String> deviceViewOutputNames;
   private final List<Integer> deviceToMeasurementIndexes;
 
   // variables related to LIMIT/OFFSET push down
@@ -84,9 +83,8 @@ public class TemplatedInfo {
   // variables related to aggregation
   public List<AggregationDescriptor> aggregationDescriptorList;
   public GroupByTimeParameter groupByTimeParameter;
-  public boolean outputEndTime = false;
+  public boolean outputEndTime;
 
-  private Set<Expression> aggSelectExpressions;
   private Expression havingExpression;
 
   public TemplatedInfo(
@@ -95,7 +93,7 @@ public class TemplatedInfo {
       List<TSDataType> dataTypes,
       Ordering scanOrder,
       boolean queryAllSensors,
-      List<String> selectMeasurements,
+      List<String> deviceViewOutputNames,
       List<Integer> deviceToMeasurementIndexes,
       long offsetValue,
       long limitValue,
@@ -112,7 +110,7 @@ public class TemplatedInfo {
     this.dataTypes = dataTypes;
     this.scanOrder = scanOrder;
     this.queryAllSensors = queryAllSensors;
-    this.selectMeasurements = selectMeasurements;
+    this.deviceViewOutputNames = deviceViewOutputNames;
     this.deviceToMeasurementIndexes = deviceToMeasurementIndexes;
     this.offsetValue = offsetValue;
     this.limitValue = limitValue;
@@ -149,8 +147,8 @@ public class TemplatedInfo {
     return this.queryAllSensors;
   }
 
-  public List<String> getSelectMeasurements() {
-    return this.selectMeasurements;
+  public List<String> getDeviceViewOutputNames() {
+    return this.deviceViewOutputNames;
   }
 
   public long getOffsetValue() {
@@ -234,8 +232,8 @@ public class TemplatedInfo {
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(queryAllSensors, byteBuffer);
 
-    ReadWriteIOUtils.write(selectMeasurements.size(), byteBuffer);
-    for (String selectMeasurement : selectMeasurements) {
+    ReadWriteIOUtils.write(deviceViewOutputNames.size(), byteBuffer);
+    for (String selectMeasurement : deviceViewOutputNames) {
       ReadWriteIOUtils.write(selectMeasurement, byteBuffer);
     }
 
@@ -266,7 +264,7 @@ public class TemplatedInfo {
       ReadWriteIOUtils.write(aggregationDescriptorList.size(), byteBuffer);
       aggregationDescriptorList.forEach(d -> d.serialize(byteBuffer));
     } else {
-      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+      ReadWriteIOUtils.write(0, byteBuffer);
     }
   }
 
@@ -284,8 +282,8 @@ public class TemplatedInfo {
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
     ReadWriteIOUtils.write(queryAllSensors, stream);
 
-    ReadWriteIOUtils.write(selectMeasurements.size(), stream);
-    for (String selectMeasurement : selectMeasurements) {
+    ReadWriteIOUtils.write(deviceViewOutputNames.size(), stream);
+    for (String selectMeasurement : deviceViewOutputNames) {
       ReadWriteIOUtils.write(selectMeasurement, stream);
     }
 
@@ -318,7 +316,7 @@ public class TemplatedInfo {
         descriptor.serialize(stream);
       }
     } else {
-      ReadWriteIOUtils.write((byte) 0, stream);
+      ReadWriteIOUtils.write(0, stream);
     }
   }
 
