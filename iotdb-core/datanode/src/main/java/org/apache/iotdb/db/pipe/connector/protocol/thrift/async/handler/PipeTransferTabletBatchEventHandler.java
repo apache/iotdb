@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.connector.client.LeaderCacheUtils;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeEventBatch;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -34,6 +34,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,36 +68,6 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
     client.pipeTransfer(req, this);
   }
 
-  private void updateLeaderCache(TSStatus status) {
-    // If there is no exception, there should be 2 sub-statuses, one for InsertRowsStatement and one
-    // for InsertMultiTabletsStatement (see IoTDBDataNodeReceiver#handleTransferTabletBatch).
-    if (status.getSubStatusSize() != 2) {
-      return;
-    }
-
-    for (TSStatus subStatus : status.getSubStatus()) {
-      if (subStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        continue;
-      }
-
-      for (TSStatus innerSubStatus : subStatus.getSubStatus()) {
-        if (innerSubStatus.isSetRedirectNode()) {
-          try {
-            new PartialPath(innerSubStatus.getMessage());
-            // The message field should be a device path.
-            connector.updateLeaderCache(
-                innerSubStatus.getMessage(), innerSubStatus.getRedirectNode());
-          } catch (IllegalPathException e) {
-            LOGGER.warn(
-                "Illegal device path when updating leader cache: {}",
-                innerSubStatus.getMessage(),
-                e);
-          }
-        }
-      }
-    }
-  }
-
   @Override
   public void onComplete(final TPipeTransferResp response) {
     // Just in case
@@ -121,7 +92,10 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
         }
       }
 
-      updateLeaderCache(status);
+      for (Pair<String, TEndPoint> redirectPair :
+          LeaderCacheUtils.getRedirectionsAfterTransferBatch(status)) {
+        connector.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
+      }
     } catch (final Exception e) {
       onError(e);
     }
