@@ -117,7 +117,7 @@ class PipeRemainingEventAndTimeOperator {
             ? dataRegionCommitMeter.getOneMinuteRate()
             : pipeRemainingTimeCommitRateSmoothingFactor
                 * dataRegionCommitMeter.getOneMinuteRate()
-                * (1 - pipeRemainingTimeCommitRateSmoothingFactor)
+                + (1 - pipeRemainingTimeCommitRateSmoothingFactor)
                 * lastDataRegionCommitSmoothingValue;
     final double dataRegionRemainingTime;
     if (totalDataRegionWriteEventCount == 0) {
@@ -140,7 +140,7 @@ class PipeRemainingEventAndTimeOperator {
             ? schemaRegionCommitMeter.getOneMinuteRate()
             : pipeRemainingTimeCommitRateSmoothingFactor
                 * schemaRegionCommitMeter.getOneMinuteRate()
-                * (1 - pipeRemainingTimeCommitRateSmoothingFactor)
+                + (1 - pipeRemainingTimeCommitRateSmoothingFactor)
                 * lastSchemaRegionCommitSmoothingValue;
     final double schemaRegionRemainingTime;
     if (totalSchemaRegionWriteEventCount == 0) {
