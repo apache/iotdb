@@ -2823,7 +2823,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           measurementList.add(measurementSchemaInfo.getName());
           timeseriesSchemaInfoList.add(new TimeseriesSchemaInfo(measurementSchemaInfo));
         }
-        AlignedPath alignedPath = new AlignedPath(devicePath.getFullPath(), measurementList);
+        AlignedPath alignedPath = new AlignedPath(devicePath.getNodes(), measurementList);
         deviceToTimeseriesSchemaInfo
             .computeIfAbsent(devicePath, k -> new HashMap<>())
             .put(alignedPath, timeseriesSchemaInfoList);
