@@ -225,6 +225,11 @@ public class AggregationPushDown implements PlanOptimizer {
     @Override
     public PlanNode visitRawDataAggregation(RawDataAggregationNode node, RewriterContext context) {
       PlanNode child = node.getChild();
+      if (child instanceof ProjectNode) {
+        // remove ProjectNode
+        node.setChild(((ProjectNode) child).getChild());
+        return visitRawDataAggregation(node, context);
+      }
       if (child instanceof FullOuterTimeJoinNode || child instanceof SeriesScanSourceNode) {
         boolean isSingleSource = child instanceof SeriesScanSourceNode;
         boolean needCheckAscending = node.getGroupByTimeParameter() == null;
