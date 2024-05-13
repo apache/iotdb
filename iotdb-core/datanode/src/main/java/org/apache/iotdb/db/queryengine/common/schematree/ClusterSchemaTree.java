@@ -402,6 +402,32 @@ public class ClusterSchemaTree implements ISchemaTree {
     this.hasNormalTimeSeries |= schemaTree.hasNormalTimeSeries;
   }
 
+  @Override
+  public void removeLogicalView() {
+    removeLogicViewMeasurement(root);
+  }
+
+  private void removeLogicViewMeasurement(SchemaNode parent) {
+    if (parent.isMeasurement()) {
+      return;
+    }
+
+    Map<String, SchemaNode> children = parent.getChildren();
+    List<String> childrenToBeRemoved = new ArrayList<>();
+    for (Map.Entry<String, SchemaNode> entry : children.entrySet()) {
+      SchemaNode child = entry.getValue();
+      if (child.isMeasurement() && child.getAsMeasurementNode().isLogicalView()) {
+        childrenToBeRemoved.add(entry.getKey());
+      } else {
+        removeLogicViewMeasurement(child);
+      }
+    }
+
+    for (String key : childrenToBeRemoved) {
+      parent.removeChild(key);
+    }
+  }
+
   private void traverseAndMerge(SchemaNode thisNode, SchemaNode thisParent, SchemaNode thatNode) {
     SchemaNode thisChild;
     SchemaEntityNode entityNode;

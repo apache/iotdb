@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
@@ -26,6 +27,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFi
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,6 +39,8 @@ import static java.util.Objects.requireNonNull;
 /** Used for linear fill. */
 public class LinearFillOperator implements ProcessOperator {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LinearFillOperator.class);
   private final OperatorContext operatorContext;
   private final ILinearFill[] fillArray;
   private final Operator child;
@@ -182,6 +186,14 @@ public class LinearFillOperator implements ProcessOperator {
   public long calculateRetainedSizeAfterCallingNext() {
     // we can safely ignore two lines cached in LinearFill
     return child.calculateRetainedSizeAfterCallingNext();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + RamUsageEstimator.sizeOf(nextTsBlockIndex);
   }
 
   /**

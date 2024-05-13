@@ -26,11 +26,11 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
@@ -205,7 +205,8 @@ public class AggregationAlignByDeviceTest {
     firstFiTopNode = firstFiRoot.getChildren().get(0);
     assertTrue(firstFiTopNode instanceof MergeSortNode);
     assertTrue(firstFiTopNode.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
+    assertTrue(
+        firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof RawDataAggregationNode);
     assertTrue(
         firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
             instanceof ProjectNode);
@@ -224,7 +225,8 @@ public class AggregationAlignByDeviceTest {
     secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree();
     assertTrue(secondFiRoot instanceof IdentitySinkNode);
     assertTrue(secondFiRoot.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
+    assertTrue(
+        secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof RawDataAggregationNode);
     assertTrue(
         secondFiRoot.getChildren().get(0).getChildren().get(0).getChildren().get(0)
             instanceof ProjectNode);
@@ -254,7 +256,8 @@ public class AggregationAlignByDeviceTest {
     firstFiTopNode = firstFiRoot.getChildren().get(0);
     assertTrue(firstFiTopNode instanceof MergeSortNode);
     assertTrue(firstFiTopNode.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
+    assertTrue(
+        firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof RawDataAggregationNode);
     assertTrue(
         firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
             instanceof ProjectNode);
@@ -273,7 +276,8 @@ public class AggregationAlignByDeviceTest {
     secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree();
     assertTrue(secondFiRoot instanceof IdentitySinkNode);
     assertTrue(secondFiRoot.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof AggregationNode);
+    assertTrue(
+        secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof RawDataAggregationNode);
     assertTrue(
         secondFiRoot.getChildren().get(0).getChildren().get(0).getChildren().get(0)
             instanceof ProjectNode);
@@ -439,14 +443,18 @@ public class AggregationAlignByDeviceTest {
     firstFiTopNode = firstFiRoot.getChildren().get(0);
     assertTrue(firstFiTopNode instanceof MergeSortNode);
     assertTrue(firstFiTopNode.getChildren().get(0) instanceof SingleDeviceViewNode);
+    assertTrue(firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
     assertTrue(
-        firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof HorizontallyConcatNode);
+        firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof HorizontallyConcatNode);
 
     secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree();
     assertTrue(secondFiRoot instanceof ShuffleSinkNode);
     assertTrue(secondFiRoot.getChildren().get(0) instanceof SingleDeviceViewNode);
+    assertTrue(secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
     assertTrue(
-        secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof HorizontallyConcatNode);
+        secondFiRoot.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof HorizontallyConcatNode);
 
     // two aggregation measurement, one device
     sql = "select first_value(s1), count(s2) from root.sg.d22 order by time desc align by device";
@@ -460,6 +468,8 @@ public class AggregationAlignByDeviceTest {
     assertTrue(firstFiRoot instanceof IdentitySinkNode);
     firstFiTopNode = firstFiRoot.getChildren().get(0);
     assertTrue(firstFiTopNode instanceof DeviceViewNode);
-    assertTrue(firstFiTopNode.getChildren().get(0) instanceof HorizontallyConcatNode);
+    assertTrue(firstFiTopNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(
+        firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof HorizontallyConcatNode);
   }
 }

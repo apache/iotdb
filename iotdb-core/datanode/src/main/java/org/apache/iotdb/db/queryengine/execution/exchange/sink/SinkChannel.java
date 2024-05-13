@@ -42,6 +42,7 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -122,6 +123,10 @@ public class SinkChannel implements ISinkChannel {
       DataExchangeCostMetricSet.getInstance();
   private static final DataExchangeCountMetricSet DATA_EXCHANGE_COUNT_METRIC_SET =
       DataExchangeCountMetricSet.getInstance();
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SinkChannel.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class) * 2;
 
   @SuppressWarnings("squid:S107")
   public SinkChannel(
@@ -316,6 +321,15 @@ public class SinkChannel implements ISinkChannel {
   @Override
   public synchronized long getBufferRetainedSizeInBytes() {
     return bufferRetainedSizeInBytes;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + RamUsageEstimator.sizeOf(threadName)
+        + RamUsageEstimator.sizeOf(localPlanNodeId)
+        + RamUsageEstimator.sizeOf(remotePlanNodeId)
+        + RamUsageEstimator.sizeOf(fullFragmentInstanceId);
   }
 
   public ByteBuffer getSerializedTsBlock(int partition, int sequenceId) {

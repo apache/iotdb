@@ -46,6 +46,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -418,6 +419,9 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "max_waiting_time_when_insert_blocked",
                 Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
+
+    String offHeapMemoryStr = System.getProperty("OFF_HEAP_MEMORY");
+    conf.setMaxOffHeapMemoryBytes(MemUtils.strToBytesCnt(offHeapMemoryStr));
 
     conf.setIoTaskQueueSizeForFlushing(
         Integer.parseInt(
@@ -915,6 +919,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_clean_up_task_execution_delay_time_seconds",
                 String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
+    conf.setLoadWriteThroughputBytesPerSecond(
+        Double.parseDouble(
+            properties.getProperty(
+                "load_write_throughput_bytes_per_sec",
+                String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
@@ -1705,6 +1714,12 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "load_clean_up_task_execution_delay_time_seconds",
                   String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
+
+      conf.setLoadWriteThroughputBytesPerSecond(
+          Double.parseDouble(
+              properties.getProperty(
+                  "load_write_throughput_bytes_per_sec",
+                  String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
 
       // update merge_threshold_of_explain_analyze
       conf.setMergeThresholdOfExplainAnalyze(
