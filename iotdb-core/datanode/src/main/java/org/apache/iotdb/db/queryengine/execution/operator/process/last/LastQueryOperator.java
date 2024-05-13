@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
@@ -28,6 +29,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +45,9 @@ public class LastQueryOperator implements ProcessOperator {
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LastQueryOperator.class);
 
   private final OperatorContext operatorContext;
 
@@ -172,5 +177,17 @@ public class LastQueryOperator implements ProcessOperator {
       max = Math.max(max, operator.calculateRetainedSizeAfterCallingNext());
     }
     return max;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + (children == null
+            ? 0
+            : children.stream()
+                .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
+                .sum())
+        + (tsBlockBuilder == null ? 0 : tsBlockBuilder.getRetainedSizeInBytes());
   }
 }

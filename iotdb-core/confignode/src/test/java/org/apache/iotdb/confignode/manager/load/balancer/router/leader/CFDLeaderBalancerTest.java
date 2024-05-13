@@ -39,9 +39,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class CFDLeaderBalancerTest {
 
@@ -101,10 +103,14 @@ public class CFDLeaderBalancerTest {
     // Prepare input parameters
     Map<String, List<TConsensusGroupId>> databaseRegionGroupMap = new TreeMap<>();
     databaseRegionGroupMap.put(DATABASE, regionGroupIds);
-    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new TreeMap<>();
+    Map<TConsensusGroupId, Set<Integer>> regionReplicaSetMap = new TreeMap<>();
     regionReplicaSets.forEach(
         regionReplicaSet ->
-            regionReplicaSetMap.put(regionReplicaSet.getRegionId(), regionReplicaSet));
+            regionReplicaSetMap.put(
+                regionReplicaSet.getRegionId(),
+                regionReplicaSet.getDataNodeLocations().stream()
+                    .map(TDataNodeLocation::getDataNodeId)
+                    .collect(Collectors.toSet())));
     Map<TConsensusGroupId, Integer> regionLeaderMap = new TreeMap<>();
     regionReplicaSets.forEach(
         regionReplicaSet -> regionLeaderMap.put(regionReplicaSet.getRegionId(), 0));
@@ -147,8 +153,12 @@ public class CFDLeaderBalancerTest {
     // Prepare input parameters
     Map<String, List<TConsensusGroupId>> databaseRegionGroupMap = new TreeMap<>();
     databaseRegionGroupMap.put(DATABASE, Collections.singletonList(regionReplicaSet.getRegionId()));
-    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new TreeMap<>();
-    regionReplicaSetMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
+    Map<TConsensusGroupId, Set<Integer>> regionReplicaSetMap = new TreeMap<>();
+    regionReplicaSetMap.put(
+        regionReplicaSet.getRegionId(),
+        regionReplicaSet.getDataNodeLocations().stream()
+            .map(TDataNodeLocation::getDataNodeId)
+            .collect(Collectors.toSet()));
     Map<TConsensusGroupId, Integer> regionLeaderMap = new TreeMap<>();
     regionLeaderMap.put(regionReplicaSet.getRegionId(), 1);
     Map<Integer, NodeStatistics> nodeStatisticsMap = new TreeMap<>();
@@ -190,7 +200,7 @@ public class CFDLeaderBalancerTest {
     nodeStatisticsMap.put(1, new NodeStatistics(NodeStatus.Running));
     // Prepare RegionGroups
     Map<String, List<TConsensusGroupId>> databaseRegionGroupMap = new TreeMap<>();
-    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new TreeMap<>();
+    Map<TConsensusGroupId, Set<Integer>> regionReplicaSetMap = new TreeMap<>();
     Map<TConsensusGroupId, Integer> regionLeaderMap = new TreeMap<>();
     Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap = new TreeMap<>();
     for (int i = 0; i < 5; i++) {
@@ -204,7 +214,11 @@ public class CFDLeaderBalancerTest {
               Arrays.asList(
                   new TDataNodeLocation().setDataNodeId(0),
                   new TDataNodeLocation().setDataNodeId(1)));
-      regionReplicaSetMap.put(regionGroupId, regionReplicaSet);
+      regionReplicaSetMap.put(
+          regionGroupId,
+          regionReplicaSet.getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toSet()));
       regionLeaderMap.put(regionGroupId, 0);
       // Assuming all Regions are migrating from DataNode-1 to DataNode-2
       Map<Integer, RegionStatistics> regionStatistics = new TreeMap<>();
@@ -255,7 +269,7 @@ public class CFDLeaderBalancerTest {
     Random random = new Random();
     Map<String, List<TConsensusGroupId>> databaseRegionGroupMap = new TreeMap<>();
     databaseRegionGroupMap.put(DATABASE, new ArrayList<>());
-    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new TreeMap<>();
+    Map<TConsensusGroupId, Set<Integer>> regionReplicaSetMap = new TreeMap<>();
     Map<TConsensusGroupId, Integer> regionLeaderMap = new TreeMap<>();
     Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap = new TreeMap<>();
     for (int i = 0; i < regionGroupNum; i++) {
@@ -273,7 +287,11 @@ public class CFDLeaderBalancerTest {
       regionStatisticsMap.put(regionGroupId, regionStatistics);
 
       databaseRegionGroupMap.get(DATABASE).add(regionGroupId);
-      regionReplicaSetMap.put(regionGroupId, regionReplicaSet);
+      regionReplicaSetMap.put(
+          regionGroupId,
+          regionReplicaSet.getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toSet()));
       regionLeaderMap.put(regionGroupId, leaderId);
     }
 

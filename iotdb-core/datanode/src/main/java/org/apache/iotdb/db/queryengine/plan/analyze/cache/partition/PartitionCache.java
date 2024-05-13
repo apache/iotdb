@@ -483,7 +483,6 @@ public class PartitionCache {
       if (result) {
         groupIdToReplicaSetMap.clear();
         groupIdToReplicaSetMap.putAll(map);
-        logger.info("groupIdToReplicaSetMap update: {}", groupIdToReplicaSetMap);
       }
       return result;
     } finally {
