@@ -63,18 +63,22 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.SortedMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
+
+  public static final long SLEEP_NS = 1_000_000_000L;
 
   private final List<TEndPoint> initialEndpoints;
 
@@ -87,9 +91,10 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private final long heartbeatIntervalMs;
   private final long endpointsSyncIntervalMs;
 
-  private final Map<Integer, SubscriptionProvider> subscriptionProviders =
-      new ConcurrentHashMap<>();
+  private final SortedMap<Integer, SubscriptionProvider> subscriptionProviders =
+      new ConcurrentSkipListMap<>();
   private final ReentrantReadWriteLock subscriptionProvidersLock = new ReentrantReadWriteLock(true);
+  private int nextDataNodeId = -1;
 
   private ScheduledExecutorService heartbeatWorkerExecutor;
   private ScheduledExecutorService endpointsSyncerExecutor;
@@ -417,6 +422,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
               "Cluster has no available subscription providers to connect with initial endpoints %s",
               initialEndpoints));
     }
+
+    nextDataNodeId = subscriptionProviders.firstKey();
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
@@ -455,18 +462,6 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  boolean containsProvider(final int dataNodeId) {
-    return subscriptionProviders.containsKey(dataNodeId);
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  List<SubscriptionProvider> getAllAvailableProviders() {
-    return subscriptionProviders.values().stream()
-        .filter(SubscriptionProvider::isAvailable)
-        .collect(Collectors.toList());
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   List<SubscriptionProvider> getAllProviders() {
     return new ArrayList<>(subscriptionProviders.values());
   }
@@ -474,6 +469,48 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   SubscriptionProvider getProvider(final int dataNodeId) {
     return containsProvider(dataNodeId) ? subscriptionProviders.get(dataNodeId) : null;
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  private boolean hasNoAvailableProviders() {
+    return subscriptionProviders.values().stream().noneMatch(SubscriptionProvider::isAvailable);
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  private boolean containsProvider(final int dataNodeId) {
+    return subscriptionProviders.containsKey(dataNodeId);
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  private List<SubscriptionProvider> getAllAvailableProviders() {
+    return subscriptionProviders.values().stream()
+        .filter(SubscriptionProvider::isAvailable)
+        .collect(Collectors.toList());
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  private void updateNextDataNodeId() {
+    final SortedMap<Integer, SubscriptionProvider> subProviders =
+        subscriptionProviders.tailMap(nextDataNodeId + 1);
+    nextDataNodeId =
+        subProviders.isEmpty() ? subscriptionProviders.firstKey() : subProviders.firstKey();
+  }
+
+  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
+  private SubscriptionProvider getNextAvailableProvider() {
+    if (hasNoAvailableProviders()) {
+      return null;
+    }
+
+    SubscriptionProvider provider;
+    provider = getProvider(nextDataNodeId);
+    while (Objects.isNull(provider) || !provider.isAvailable()) {
+      updateNextDataNodeId();
+      provider = getProvider(nextDataNodeId);
+    }
+    updateNextDataNodeId();
+
+    return provider;
   }
 
   /////////////////////////////// poll ///////////////////////////////
@@ -515,6 +552,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // update timer
       timer.update();
+      LockSupport.parkNanos(SLEEP_NS); // wait some time
     } while (timer.notExpired());
 
     LOGGER.info(
@@ -757,41 +795,39 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private List<SubscriptionPolledMessage> pollInternal(final Set<String> topicNames)
       throws SubscriptionException {
-    final List<SubscriptionPolledMessage> polledMessages = new ArrayList<>();
-
     acquireReadLock();
     try {
-      for (final SubscriptionProvider provider : getAllAvailableProviders()) {
-        try {
-          polledMessages.addAll(
-              provider.poll(
-                  new SubscriptionPollMessage(
-                      SubscriptionPollMessageType.POLL.getType(),
-                      new PollMessagePayload(topicNames),
-                      0L)));
-        } catch (final SubscriptionRetryableException e) {
-          LOGGER.warn(
-              "SubscriptionRetryableException occurred when SubscriptionConsumer {} polling from SubscriptionProvider {}",
-              this,
-              provider,
-              e);
-          // ignore
-        } catch (final SubscriptionNonRetryableException e) {
-          LOGGER.warn(
-              "SubscriptionNonRetryableException occurred when SubscriptionConsumer {} polling from SubscriptionProvider {}",
-              this,
-              provider,
-              e);
-          // TODO: Consider mid-process failures.
-          // rethrow
-          throw e;
-        }
+      final SubscriptionProvider provider = getNextAvailableProvider();
+      if (Objects.isNull(provider)) {
+        return Collections.emptyList();
+      }
+      try {
+        return provider.poll(
+            new SubscriptionPollMessage(
+                SubscriptionPollMessageType.POLL.getType(),
+                new PollMessagePayload(topicNames),
+                0L));
+      } catch (final SubscriptionRetryableException e) {
+        LOGGER.warn(
+            "SubscriptionRetryableException occurred when SubscriptionConsumer {} polling from SubscriptionProvider {}",
+            this,
+            provider,
+            e);
+        // ignore
+      } catch (final SubscriptionNonRetryableException e) {
+        LOGGER.warn(
+            "SubscriptionNonRetryableException occurred when SubscriptionConsumer {} polling from SubscriptionProvider {}",
+            this,
+            provider,
+            e);
+        // rethrow
+        throw e;
       }
     } finally {
       releaseReadLock();
     }
 
-    return polledMessages;
+    return Collections.emptyList();
   }
 
   private List<SubscriptionPolledMessage> pollTsFileInternal(
