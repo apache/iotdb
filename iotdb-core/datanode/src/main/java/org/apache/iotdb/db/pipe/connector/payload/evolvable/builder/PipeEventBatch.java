@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class PipeEventBatch implements AutoCloseable {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventBatch.class);
 
   private final List<Event> events = new ArrayList<>();
