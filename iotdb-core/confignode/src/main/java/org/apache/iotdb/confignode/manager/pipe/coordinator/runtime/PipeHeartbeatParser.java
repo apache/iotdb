@@ -35,13 +35,7 @@ import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.constraints.NotNull;
-
-import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -68,10 +62,7 @@ public class PipeHeartbeatParser {
     needPushPipeMetaToDataNodes = new AtomicBoolean(false);
   }
 
-  public synchronized void parseHeartbeat(
-      final int nodeId,
-      @NotNull final List<ByteBuffer> pipeMetaByteBufferListFromAgent,
-      /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent) {
+  synchronized void parseHeartbeat(final int nodeId, final NodePipeHeartbeat nodePipeHeartbeat) {
     final long heartbeatCount = ++heartbeatCounter;
 
     final AtomicBoolean canSubmitHandleMetaChangeProcedure = new AtomicBoolean(false);
@@ -92,7 +83,7 @@ public class PipeHeartbeatParser {
       }
     }
 
-    if (pipeMetaByteBufferListFromAgent.isEmpty()
+    if (nodePipeHeartbeat.getPipeHeartbeatMap().isEmpty()
         && !(canSubmitHandleMetaChangeProcedure.get()
             && (needWriteConsensusOnConfigNodes.get() || needPushPipeMetaToDataNodes.get()))) {
       return;
@@ -113,12 +104,8 @@ public class PipeHeartbeatParser {
               }
 
               try {
-                if (!pipeMetaByteBufferListFromAgent.isEmpty()) {
-                  parseHeartbeatAndSaveMetaChangeLocally(
-                      pipeTaskInfo,
-                      nodeId,
-                      pipeMetaByteBufferListFromAgent,
-                      pipeCompletedListFromAgent);
+                if (!nodePipeHeartbeat.getPipeHeartbeatMap().isEmpty()) {
+                  parseHeartbeatAndSaveMetaChangeLocally(pipeTaskInfo, nodeId, nodePipeHeartbeat);
                 }
 
                 if (canSubmitHandleMetaChangeProcedure.get()
@@ -142,23 +129,16 @@ public class PipeHeartbeatParser {
   private void parseHeartbeatAndSaveMetaChangeLocally(
       final AtomicReference<PipeTaskInfo> pipeTaskInfo,
       final int nodeId,
-      @NotNull final List<ByteBuffer> pipeMetaByteBufferListFromAgent,
-      /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent) {
-    final Map<PipeStaticMeta, PipeMeta> pipeMetaMapFromAgent = new HashMap<>();
-    final Map<PipeStaticMeta, Boolean> pipeCompletedMapFromAgent = new HashMap<>();
-    for (int i = 0; i < pipeMetaByteBufferListFromAgent.size(); ++i) {
-      final PipeMeta pipeMeta = PipeMeta.deserialize(pipeMetaByteBufferListFromAgent.get(i));
-      pipeMetaMapFromAgent.put(pipeMeta.getStaticMeta(), pipeMeta);
-      pipeCompletedMapFromAgent.put(
-          pipeMeta.getStaticMeta(),
-          Objects.nonNull(pipeCompletedListFromAgent) && pipeCompletedListFromAgent.get(i));
-    }
+      final NodePipeHeartbeat nodePipeHeartbeat) {
+    final Map<PipeStaticMeta, SinglePipeHeartbeat> pipeHeartbeatMap =
+        nodePipeHeartbeat.getPipeHeartbeatMap();
 
     for (final PipeMeta pipeMetaFromCoordinator : pipeTaskInfo.get().getPipeMetaList()) {
+      final SinglePipeHeartbeat singlePipeHeartbeat =
+          pipeHeartbeatMap.get(pipeMetaFromCoordinator.getStaticMeta());
       // Remove completed pipes
-      final Boolean pipeCompletedFromAgent =
-          pipeCompletedMapFromAgent.get(pipeMetaFromCoordinator.getStaticMeta());
-      if (Objects.nonNull(pipeCompletedFromAgent) && Boolean.TRUE.equals(pipeCompletedFromAgent)) {
+      final boolean pipeCompletedFromAgent = singlePipeHeartbeat.isCompleted();
+      if (Boolean.TRUE.equals(pipeCompletedFromAgent)) {
         final PipeTemporaryMeta temporaryMeta = pipeMetaFromCoordinator.getTemporaryMeta();
         temporaryMeta.putDataNodeCompletion(nodeId);
 
@@ -173,8 +153,7 @@ public class PipeHeartbeatParser {
         }
       }
 
-      final PipeMeta pipeMetaFromAgent =
-          pipeMetaMapFromAgent.get(pipeMetaFromCoordinator.getStaticMeta());
+      final PipeMeta pipeMetaFromAgent = singlePipeHeartbeat.getPipeMeta();
       if (pipeMetaFromAgent == null) {
         LOGGER.info(
             "PipeRuntimeCoordinator meets error in updating pipeMetaKeeper, "

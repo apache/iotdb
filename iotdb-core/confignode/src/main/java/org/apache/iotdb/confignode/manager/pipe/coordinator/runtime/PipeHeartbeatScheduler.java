@@ -36,8 +36,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -66,7 +64,7 @@ public class PipeHeartbeatScheduler {
     this.pipeHeartbeatParser = new PipeHeartbeatParser(configManager);
   }
 
-  public synchronized void start() {
+  synchronized void start() {
     if (IS_SEPERATED_PIPE_HEARTBEAT_ENABLED && heartbeatFuture == null) {
       heartbeatFuture =
           ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
@@ -90,7 +88,7 @@ public class PipeHeartbeatScheduler {
       return;
     }
 
-    // data node heartbeat
+    // Data node heartbeat
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPipeHeartbeatReq request = new TPipeHeartbeatReq(System.currentTimeMillis());
@@ -110,7 +108,8 @@ public class PipeHeartbeatScheduler {
         .forEach(
             (dataNodeId, resp) ->
                 pipeHeartbeatParser.parseHeartbeat(
-                    dataNodeId, resp.getPipeMetaList(), resp.getPipeCompletedList()));
+                    dataNodeId,
+                    new NodePipeHeartbeat(resp.getPipeMetaList(), resp.getPipeCompletedList())));
 
     // config node heartbeat
     try {
@@ -118,14 +117,13 @@ public class PipeHeartbeatScheduler {
       PipeConfigNodeAgent.task().collectPipeMetaList(request, configNodeResp);
       pipeHeartbeatParser.parseHeartbeat(
           ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-          configNodeResp.getPipeMetaList(),
-          null);
+          new NodePipeHeartbeat(configNodeResp.getPipeMetaList(), null));
     } catch (final Exception e) {
       LOGGER.warn("Failed to collect pipe meta list from config node task agent", e);
     }
   }
 
-  public synchronized void stop() {
+  synchronized void stop() {
     if (IS_SEPERATED_PIPE_HEARTBEAT_ENABLED && heartbeatFuture != null) {
       heartbeatFuture.cancel(false);
       heartbeatFuture = null;
@@ -133,11 +131,7 @@ public class PipeHeartbeatScheduler {
     }
   }
 
-  public void parseHeartbeat(
-      final int dataNodeId,
-      final List<ByteBuffer> pipeMetaByteBufferListFromDataNode,
-      final List<Boolean> pipeCompletedListFromAgent) {
-    pipeHeartbeatParser.parseHeartbeat(
-        dataNodeId, pipeMetaByteBufferListFromDataNode, pipeCompletedListFromAgent);
+  void parseHeartbeat(final int dataNodeId, final NodePipeHeartbeat nodePipeHeartbeat) {
+    pipeHeartbeatParser.parseHeartbeat(dataNodeId, nodePipeHeartbeat);
   }
 }
