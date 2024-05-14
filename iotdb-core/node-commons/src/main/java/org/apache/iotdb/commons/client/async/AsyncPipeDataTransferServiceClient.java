@@ -141,7 +141,8 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
         LOGGER.error(
             "Unexpected exception occurs in {}, error msg is {}",
             this,
-            ExceptionUtils.getRootCause(e).toString());
+            ExceptionUtils.getRootCause(e).toString(),
+            e);
       }
       return false;
     }

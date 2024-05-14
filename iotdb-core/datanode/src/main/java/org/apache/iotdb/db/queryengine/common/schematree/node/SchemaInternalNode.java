@@ -54,6 +54,11 @@ public class SchemaInternalNode extends SchemaNode {
   }
 
   @Override
+  public void removeChild(String name) {
+    children.remove(name);
+  }
+
+  @Override
   public void copyDataTo(SchemaNode schemaNode) {
     if (schemaNode.isMeasurement()) {
       return;
