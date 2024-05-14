@@ -216,6 +216,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
   @Override
   public void close() {
     isClosed.set(true);
+
     PipeConfigRegionConnectorMetrics.getInstance().deregister(taskID);
     PipeEventCommitManager.getInstance()
         .deregister(pipeName, creationTime, CONFIG_REGION_ID.getId());
