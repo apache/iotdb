@@ -112,6 +112,12 @@ public class TimeColumn implements Column {
   }
 
   @Override
+  public Column copyRegion(int positionOffset, int length) {
+    checkValidRegion(getPositionCount(), positionOffset, length);
+    return new TimeColumn(positionOffset + arrayOffset, length, values.clone());
+  }
+
+  @Override
   public Column subColumn(int fromIndex) {
     if (fromIndex > positionCount) {
       throw new IllegalArgumentException("fromIndex is not valid");

@@ -143,6 +143,17 @@ public interface Column {
   Column getRegion(int positionOffset, int length);
 
   /**
+   * Returns a column starting at the specified position and extends for the specified length. The
+   * specified region must be entirely contained within this column.
+   *
+   * <p>The region is a copy over this column. If this column is released, the region column won't
+   * be affected.
+   */
+  default Column copyRegion(int positionOffset, int length) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /**
    * This method will create a temporary view of origin column, which will reuse the array of column
    * but with different array offset.
    */

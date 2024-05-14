@@ -276,7 +276,7 @@ public class ElasticSerializableRowRecordList {
         // Construct sub-regions
         insertedColumns = new Column[columns.length];
         for (int i = 0; i < columns.length; i++) {
-          insertedColumns[i] = columns[i].getRegion(begin, consumed);
+          insertedColumns[i] = columns[i].copyRegion(begin, consumed);
         }
       }
 

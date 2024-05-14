@@ -203,8 +203,8 @@ public class ElasticSerializableTVList {
       } else {
         consumed = internalTVListCapacity - pointCount % internalTVListCapacity;
         // Construct sub-regions
-        insertedTimeColumn = (TimeColumn) timeColumn.getRegion(begin, consumed);
-        insertedValueColumn = valueColumn.getRegion(begin, consumed);
+        insertedTimeColumn = (TimeColumn) timeColumn.copyRegion(begin, consumed);
+        insertedValueColumn = valueColumn.copyRegion(begin, consumed);
       }
       end += consumed;
 

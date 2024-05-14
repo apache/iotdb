@@ -88,6 +88,11 @@ public class NullColumn implements Column {
   }
 
   @Override
+  public Column copyRegion(int positionOffset, int length) {
+    return getRegion(positionOffset, length);
+  }
+
+  @Override
   public Column subColumn(int fromIndex) {
     if (fromIndex > positionCount) {
       throw new IllegalArgumentException("fromIndex is not valid");
