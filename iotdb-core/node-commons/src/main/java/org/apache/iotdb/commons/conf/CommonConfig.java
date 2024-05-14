@@ -211,7 +211,7 @@ public class CommonConfig {
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
   private int pipeMaxAllowedPinnedMemTableCount = 50;
   private long pipeMaxAllowedLinkedTsFileCount = 100;
-  private float pipeMaxAllowedLinkedTsFileDiskUsagePercentage = 0.1F;
+  private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
@@ -867,14 +867,14 @@ public class CommonConfig {
     this.pipeMaxAllowedLinkedTsFileCount = pipeMaxAllowedLinkedTsFileCount;
   }
 
-  public float getPipeMaxAllowedLinkedTsFileDiskUsagePercentage() {
-    return pipeMaxAllowedLinkedTsFileDiskUsagePercentage;
+  public float getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage() {
+    return pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage;
   }
 
-  public void setPipeMaxAllowedLinkedTsFileDiskUsagePercentage(
-      float pipeMaxAllowedLinkedTsFileDiskUsagePercentage) {
-    this.pipeMaxAllowedLinkedTsFileDiskUsagePercentage =
-        pipeMaxAllowedLinkedTsFileDiskUsagePercentage;
+  public void setPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage(
+      float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage) {
+    this.pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage =
+        pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage;
   }
 
   public long getPipeStuckRestartIntervalSeconds() {

@@ -445,11 +445,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_linked_tsfile_count",
                 String.valueOf(config.getPipeMaxAllowedLinkedTsFileCount()))));
-    config.setPipeMaxAllowedLinkedTsFileDiskUsagePercentage(
+    config.setPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage(
         Float.parseFloat(
             properties.getProperty(
-                "pipe_max_allowed_linked_tsfile_disk_usage_percentage",
-                String.valueOf(config.getPipeMaxAllowedLinkedTsFileDiskUsagePercentage()))));
+                "pipe_max_allowed_linked_deleted_tsfile_disk_usage_percentage",
+                String.valueOf(config.getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage()))));
     config.setPipeStuckRestartIntervalSeconds(
         Long.parseLong(
             properties.getProperty(

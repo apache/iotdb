@@ -376,7 +376,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             .getValue();
     if (linkedButDeletedTsFileSize > 0 && totalDisk != 0) {
       return linkedButDeletedTsFileSize
-          > PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileDiskUsagePercentage() * totalDisk;
+          > PipeConfig.getInstance().getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage()
+              * totalDisk;
     }
     return false;
   }

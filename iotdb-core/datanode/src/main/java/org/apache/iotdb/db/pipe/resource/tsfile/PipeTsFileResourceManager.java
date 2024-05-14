@@ -343,9 +343,7 @@ public class PipeTsFileResourceManager {
   public long getLinkedButDeletedTsfileSize() {
     lock.lock();
     try {
-      return hardlinkOrCopiedFileToPipeTsFileResourceMap
-          .values()
-          .parallelStream()
+      return hardlinkOrCopiedFileToPipeTsFileResourceMap.values().parallelStream()
           .filter(PipeTsFileResource::isOriginalTsFileDeleted)
           .mapToLong(PipeTsFileResource::getFileSize)
           .sum();

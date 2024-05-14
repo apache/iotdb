@@ -53,6 +53,7 @@ public class PipeTsFileResource implements AutoCloseable {
 
   private final File hardlinkOrCopiedFile;
   private final boolean isTsFile;
+
   /** this TsFileResource is used to track the {@link TsFileResourceStatus} of original TsFile. * */
   private final TsFileResource tsFileResource;
 

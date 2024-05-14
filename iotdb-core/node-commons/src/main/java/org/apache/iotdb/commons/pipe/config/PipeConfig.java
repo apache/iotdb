@@ -193,8 +193,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMaxAllowedLinkedTsFileCount();
   }
 
-  public float getPipeMaxAllowedLinkedTsFileDiskUsagePercentage() {
-    return COMMON_CONFIG.getPipeMaxAllowedLinkedTsFileDiskUsagePercentage();
+  public float getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage() {
+    return COMMON_CONFIG.getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage();
   }
 
   public long getPipeStuckRestartIntervalSeconds() {
