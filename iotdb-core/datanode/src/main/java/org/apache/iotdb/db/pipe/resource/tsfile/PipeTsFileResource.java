@@ -80,7 +80,7 @@ public class PipeTsFileResource implements AutoCloseable {
     return hardlinkOrCopiedFile;
   }
 
-  public boolean isOriginalFileIsTsFileAndDeleted() {
+  public boolean isOriginalTsFileDeleted() {
     return isTsFile && Objects.nonNull(tsFileResource) && tsFileResource.isDeleted();
   }
 
