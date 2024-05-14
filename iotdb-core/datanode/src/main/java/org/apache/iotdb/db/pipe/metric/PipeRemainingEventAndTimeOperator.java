@@ -24,7 +24,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
-import org.apache.iotdb.metrics.core.uitls.IoTDBMovingAverage;
+import org.apache.iotdb.metrics.core.utils.IoTDBMovingAverage;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.Meter;
@@ -64,7 +64,7 @@ class PipeRemainingEventAndTimeOperator {
 
   //////////////////////////// Remaining time calculation ////////////////////////////
 
-  double getRemainingEvents() {
+  long getRemainingEvents() {
     return dataRegionExtractors.keySet().stream()
             .map(IoTDBDataRegionExtractor::getEventCount)
             .reduce(Integer::sum)
@@ -98,6 +98,7 @@ class PipeRemainingEventAndTimeOperator {
     final double pipeRemainingTimeCommitRateSmoothingFactor =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateSmoothingFactor();
 
+    // Do not calculate heartbeat event
     final int totalDataRegionWriteEventCount =
         dataRegionExtractors.keySet().stream()
                 .map(IoTDBDataRegionExtractor::getEventCount)
@@ -110,6 +111,18 @@ class PipeRemainingEventAndTimeOperator {
             + dataRegionConnectors.keySet().stream()
                 .map(PipeConnectorSubtask::getEventCount)
                 .reduce(Integer::sum)
+                .orElse(0)
+            - dataRegionExtractors.keySet().stream()
+                .map(IoTDBDataRegionExtractor::getPipeHeartbeatEventCount)
+                .reduce(Integer::sum)
+                .orElse(0)
+            - dataRegionProcessors.keySet().stream()
+                .map(PipeProcessorSubtask::getPipeHeartbeatEventCount)
+                .reduce(Integer::sum)
+                .orElse(0)
+            - dataRegionConnectors.keySet().stream()
+                .map(PipeConnectorSubtask::getPipeHeartbeatEventCount)
+                .reduce(Integer::sum)
                 .orElse(0);
 
     lastDataRegionCommitSmoothingValue =
@@ -119,7 +132,7 @@ class PipeRemainingEventAndTimeOperator {
                 + (1 - pipeRemainingTimeCommitRateSmoothingFactor)
                     * lastDataRegionCommitSmoothingValue;
     final double dataRegionRemainingTime;
-    if (totalDataRegionWriteEventCount == 0) {
+    if (totalDataRegionWriteEventCount <= 0) {
       dataRegionRemainingTime = 0;
     } else {
       dataRegionRemainingTime =
@@ -142,7 +155,7 @@ class PipeRemainingEventAndTimeOperator {
                 + (1 - pipeRemainingTimeCommitRateSmoothingFactor)
                     * lastSchemaRegionCommitSmoothingValue;
     final double schemaRegionRemainingTime;
-    if (totalSchemaRegionWriteEventCount == 0) {
+    if (totalSchemaRegionWriteEventCount <= 0) {
       schemaRegionRemainingTime = 0;
     } else {
       schemaRegionRemainingTime =
