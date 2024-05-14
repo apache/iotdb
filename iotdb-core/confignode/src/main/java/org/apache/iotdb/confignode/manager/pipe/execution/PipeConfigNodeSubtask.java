@@ -86,9 +86,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
 
     // 1. Construct extractor
-    extractor =
-        (IoTDBConfigRegionExtractor)
-            PipeConfigNodeAgent.plugin().reflectExtractor(extractorParameters);
+    extractor = PipeConfigNodeAgent.plugin().reflectExtractor(extractorParameters);
 
     try {
       // 2. Validate extractor parameters
@@ -215,6 +213,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
   @Override
   public void close() {
     isClosed.set(true);
+
     PipeConfigRegionConnectorMetrics.getInstance().deregister(taskID);
     PipeEventCommitManager.getInstance()
         .deregister(pipeName, creationTime, CONFIG_REGION_ID.getId());
