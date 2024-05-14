@@ -221,8 +221,6 @@ public class QiMingQueryClient {
       long startTime = DATE_FORMATTER.parse(startTimeString).getTime();
       long endTime = DATE_FORMATTER.parse(endTimeString).getTime();
 
-      System.out.println("startTime: " + startTime + ", endTime: " + endTime);
-
       for (int i = 0; i < queryCount; i++) {
         long startTimeNano = System.nanoTime();
         try (SessionDataSet dataSet =
@@ -272,8 +270,6 @@ public class QiMingQueryClient {
 
       long startTime = DATE_FORMATTER.parse(startTimeString).getTime();
       long endTime = DATE_FORMATTER.parse(endTimeString).getTime();
-
-      System.out.println("startTime: " + startTime + ", endTime: " + endTime);
 
       if (sql.endsWith("22")) {
         queryType = "long-driving-sessions";
@@ -343,8 +339,6 @@ public class QiMingQueryClient {
       long startTime = DATE_FORMATTER.parse(startTimeString).getTime();
       long endTime = DATE_FORMATTER.parse(endTimeString).getTime();
 
-      System.out.println("startTime: " + startTime + ", endTime: " + endTime);
-
       for (int i = 0; i < queryCount; i++) {
         long startTimeNano = System.nanoTime();
         try (SessionDataSet dataSet = session.tsbsIoTAvgDailyDrivingDuration(startTime, endTime)) {
@@ -381,8 +375,6 @@ public class QiMingQueryClient {
 
       long startTime = DATE_FORMATTER.parse(startTimeString).getTime();
       long endTime = DATE_FORMATTER.parse(endTimeString).getTime();
-
-      System.out.println("startTime: " + startTime + ", endTime: " + endTime);
 
       for (int i = 0; i < queryCount; i++) {
         long startTimeNano = System.nanoTime();
@@ -435,8 +427,6 @@ public class QiMingQueryClient {
       long startTime = DATE_FORMATTER.parse(startTimeString).getTime();
       long endTime = DATE_FORMATTER.parse(endTimeString).getTime();
 
-      System.out.println("startTime: " + startTime + ", endTime: " + endTime);
-
       for (int i = 0; i < queryCount; i++) {
         long startTimeNano = System.nanoTime();
         try (SessionDataSet dataSet = session.tsbsIoTDailyActivity(startTime, endTime)) {
@@ -473,8 +463,6 @@ public class QiMingQueryClient {
 
       long startTime = DATE_FORMATTER.parse(startTimeString).getTime();
       long endTime = DATE_FORMATTER.parse(endTimeString).getTime();
-
-      System.out.println("startTime: " + startTime + ", endTime: " + endTime);
 
       for (int i = 0; i < queryCount; i++) {
         long startTimeNano = System.nanoTime();

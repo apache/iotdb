@@ -54,7 +54,7 @@
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>org.apache.iotdb.TSBSExample</mainClass>
+                                    <mainClass>org.apache.iotdb.QiMingQueryClient</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>
@@ -76,7 +76,7 @@
                         <configuration>
                             <archive>
                                 <manifest>
-                                    <mainClass>org.apache.iotdb.TSBSExample</mainClass>
+                                    <mainClass>org.apache.iotdb.QiMingQueryClient</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>
