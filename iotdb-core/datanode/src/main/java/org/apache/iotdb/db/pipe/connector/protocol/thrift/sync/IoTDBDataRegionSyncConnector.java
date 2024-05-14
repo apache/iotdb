@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeEventBatch;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
@@ -31,6 +33,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
+import org.apache.iotdb.db.pipe.connector.util.LeaderCacheUtils;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -53,12 +56,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
 
 public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataRegionSyncConnector.class);
 
-  private IoTDBThriftSyncPipeTransferBatchReqBuilder tabletBatchBuilder;
+  private PipeTransferBatchReqBuilder tabletBatchBuilder;
 
   @Override
   public void customize(
@@ -68,7 +72,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
     // tablet batch mode configuration
     if (isTabletBatchModeEnabled) {
-      tabletBatchBuilder = new IoTDBThriftSyncPipeTransferBatchReqBuilder(parameters);
+      tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
     }
   }
 
@@ -99,8 +103,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
     try {
       if (isTabletBatchModeEnabled) {
-        if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
-          doTransfer();
+        final Pair<TEndPoint, PipeEventBatch> endPointAndBatch =
+            tabletBatchBuilder.onEvent(tabletInsertionEvent);
+        if (Objects.nonNull(endPointAndBatch)) {
+          doTransfer(endPointAndBatch);
         }
       } else {
         if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
@@ -163,11 +169,14 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     }
   }
 
-  private void doTransfer() {
-    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
+  private void doTransfer(Pair<TEndPoint, PipeEventBatch> endPointAndBatch) {
+    final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
+        clientManager.getClient(endPointAndBatch.getLeft());
+    final PipeEventBatch batchToTransfer = endPointAndBatch.getRight();
+
     final TPipeTransferResp resp;
     try {
-      resp = clientAndStatus.getLeft().pipeTransfer(tabletBatchBuilder.toTPipeTransferReq());
+      resp = clientAndStatus.getLeft().pipeTransfer(batchToTransfer.toTPipeTransferReq());
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
@@ -182,12 +191,21 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       receiverStatusHandler.handle(
           resp.getStatus(),
           String.format("Transfer PipeTransferTabletBatchReq error, result status %s", resp.status),
-          tabletBatchBuilder.deepCopyEvents().toString());
+          batchToTransfer.deepCopyEvents().toString());
     }
 
-    tabletBatchBuilder.decreaseEventsReferenceCount(
+    for (final Pair<String, TEndPoint> redirectPair :
+        LeaderCacheUtils.parseRecommendedRedirections(status)) {
+      clientManager.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
+    }
+
+    batchToTransfer.decreaseEventsReferenceCount(
         IoTDBDataRegionSyncConnector.class.getName(), true);
-    tabletBatchBuilder.onSuccess();
+    batchToTransfer.onSuccess();
+  }
+
+  private void doTransfer() {
+    tabletBatchBuilder.getAllNonEmptyBatches().forEach(this::doTransfer);
   }
 
   private void doTransferWrapper(
