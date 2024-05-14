@@ -62,7 +62,7 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
   private void createAutoGauge(final String taskID) {
     final PipeConfigNodeRemainingTimeOperator operator = remainingTimeOperatorMap.get(taskID);
     metricService.createAutoGauge(
-        Metric.PIPE_DATANODE_REMAINING_TIME.toString(),
+        Metric.PIPE_CONFIGNODE_REMAINING_TIME.toString(),
         MetricLevel.IMPORTANT,
         operator,
         PipeConfigNodeRemainingTimeOperator::getRemainingTime,
