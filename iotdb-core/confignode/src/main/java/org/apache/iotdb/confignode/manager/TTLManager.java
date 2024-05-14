@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
@@ -111,6 +112,15 @@ public class TTLManager {
 
   public Map<String, Long> getAllTTL() {
     return ((ShowTTLResp) showAllTTL(new ShowTTLPlan())).getPathTTLMap();
+  }
+
+  public int getTTLCount() {
+    return ttlInfo.getTTLCount();
+  }
+
+  /** Only used for upgrading from old database-level ttl to device-level ttl. */
+  public void setTTL(Map<String, Long> databaseTTLMap) throws IllegalPathException {
+    ttlInfo.setTTL(databaseTTLMap);
   }
 
   private boolean checkIsPathValidated(PartialPath path) {

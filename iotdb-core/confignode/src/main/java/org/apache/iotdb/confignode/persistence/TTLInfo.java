@@ -104,6 +104,24 @@ public class TTLInfo implements SnapshotProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
+  /** Only used for upgrading from database level ttl to device level ttl. */
+  public void setTTL(Map<String, Long> databaseTTLMap) throws IllegalPathException {
+    lock.writeLock().lock();
+    try {
+      for (Map.Entry<String, Long> entry : databaseTTLMap.entrySet()) {
+        String[] nodesWithWildcard =
+            PathUtils.splitPathToDetachedNodes(
+                entry
+                    .getKey()
+                    .concat(
+                        IoTDBConstant.PATH_SEPARATOR + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+        ttlCache.setTTL(nodesWithWildcard, entry.getValue());
+      }
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
   public TSStatus unsetTTL(SetTTLPlan plan) {
     lock.writeLock().lock();
     try {

@@ -23,12 +23,14 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -449,6 +451,27 @@ public class ClusterSchemaManager {
       result.setMessage(e.getMessage());
       return result;
     }
+  }
+
+  public Map<String, Long> getTTLInfoForUpgrading() {
+    List<String> databases = getDatabaseNames();
+    Map<String, Long> infoMap = new ConcurrentHashMap<>();
+    for (String database : databases) {
+      try {
+        long ttl = getDatabaseSchemaByName(database).getTTL();
+        if (ttl <= 0 || ttl == CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
+          continue;
+        }
+        ttl =
+            CommonDateTimeUtils.convertMilliTimeWithPrecision(
+                ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+        ttl = ttl <= 0 ? Long.MAX_VALUE : ttl;
+        infoMap.put(database, ttl);
+      } catch (DatabaseNotExistsException e) {
+        LOGGER.warn("Database: {} doesn't exist", databases, e);
+      }
+    }
+    return infoMap;
   }
 
   public TSStatus setSchemaReplicationFactor(
