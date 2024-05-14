@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeAbstractConnectorSubtask;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
-import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
 import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigRegionConnectorMetrics;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -184,10 +183,8 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
         return false;
       }
 
-      if (event instanceof PipeConfigRegionWritePlanEvent) {
-        PipeConfigRegionConnectorMetrics.getInstance().markConfigEvent(taskID);
-      }
       outputPipeConnector.transfer(event);
+      PipeConfigRegionConnectorMetrics.getInstance().markConfigEvent(taskID);
 
       decreaseReferenceCountAndReleaseLastEvent(true);
     } catch (final PipeException e) {

@@ -115,8 +115,8 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       } else if (event instanceof PipeHeartbeatEvent) {
         transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else if (event instanceof PipeSchemaRegionWritePlanEvent) {
-        PipeSchemaRegionConnectorMetrics.getInstance().markSchemaEvent(taskID);
         outputPipeConnector.transfer(event);
+        PipeSchemaRegionConnectorMetrics.getInstance().markSchemaEvent(taskID);
       } else {
         outputPipeConnector.transfer(
             event instanceof UserDefinedEnrichedEvent
