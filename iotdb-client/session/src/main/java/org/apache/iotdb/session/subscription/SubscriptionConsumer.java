@@ -76,7 +76,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
 
-  public static final long SLEEP_NS = 1_000_000_000L;
+  private static final long SLEEP_NS = 1_000_000_000L;
 
   private final String username;
   private final String password;
@@ -302,7 +302,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  /////////////////////////////// endpoints syncer ///////////////////////////////
+  /////////////////////////////// sync endpoints ///////////////////////////////
 
   @SuppressWarnings("unsafeThreadSchedule")
   private void launchEndpointsSyncer() {

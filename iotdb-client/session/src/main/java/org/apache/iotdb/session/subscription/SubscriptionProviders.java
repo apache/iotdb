@@ -70,6 +70,8 @@ final class SubscriptionProviders {
     subscriptionProvidersLock.writeLock().unlock();
   }
 
+  /////////////////////////////// CRUD ///////////////////////////////
+
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
   void openProviders(final SubscriptionConsumer consumer)
       throws SubscriptionException, IoTDBConnectionException {
@@ -213,6 +215,8 @@ final class SubscriptionProviders {
     return provider;
   }
 
+  /////////////////////////////// heartbeat ///////////////////////////////
+
   void heartbeat(final SubscriptionConsumer consumer) {
     if (consumer.isClosed()) {
       return;
@@ -240,6 +244,8 @@ final class SubscriptionProviders {
       }
     }
   }
+
+  /////////////////////////////// sync endpoints ///////////////////////////////
 
   void sync(final SubscriptionConsumer consumer) {
     if (consumer.isClosed()) {
