@@ -88,20 +88,13 @@ public class PipeEventCommitManager {
   }
 
   public void commit(final EnrichedEvent event, final String committerKey) {
-    if (committerKey == null) {
-      return;
-    }
-    final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
-    if (Objects.nonNull(commitRateMarker)) {
-      commitRateMarker.accept(
-          new PipeTaskRuntimeEnvironment(
-              committer.getPipeName(), committer.getCreationTime(), committer.getRegionId()));
-    }
-    if (event == null
+    if (committerKey == null
+        || event == null
         || !event.needToCommit()
         || event.getCommitId() <= EnrichedEvent.NO_COMMIT_ID) {
       return;
     }
+    final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
 
     if (committer == null) {
       if (LOGGER.isDebugEnabled()) {
@@ -113,6 +106,12 @@ public class PipeEventCommitManager {
       }
       return;
     }
+    if (Objects.nonNull(commitRateMarker)) {
+      commitRateMarker.accept(
+          new PipeTaskRuntimeEnvironment(
+              committer.getPipeName(), committer.getCreationTime(), committer.getRegionId()));
+    }
+
     committer.commit(event);
   }
 
