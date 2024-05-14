@@ -21,9 +21,9 @@ package org.apache.iotdb.confignode.manager.pipe.metric;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
+import org.apache.iotdb.metrics.core.utils.IoTDBMovingAverage;
 
 import com.codahale.metrics.Clock;
-import com.codahale.metrics.ExponentialMovingAverages;
 import com.codahale.metrics.Meter;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,7 +36,7 @@ class PipeConfigNodeRemainingTimeOperator {
   private final ConcurrentMap<IoTDBConfigRegionExtractor, IoTDBConfigRegionExtractor>
       configRegionExtractors = new ConcurrentHashMap<>();
   private final Meter configRegionCommitMeter =
-      new Meter(new ExponentialMovingAverages(), Clock.defaultClock());
+      new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
 
   private double lastConfigRegionCommitSmoothingValue = Long.MIN_VALUE;
 
