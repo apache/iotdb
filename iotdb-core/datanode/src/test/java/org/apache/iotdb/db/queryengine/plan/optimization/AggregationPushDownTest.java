@@ -272,7 +272,7 @@ public class AggregationPushDownTest {
         new TestPlanBuilder()
             .alignedAggregationScan(
                 "4",
-                schemaMap.get("aligned_root.sg.d2.a.s1"),
+                schemaMap.get("root.sg.d2.a"),
                 aggregationDescriptorList1,
                 groupByTimeParameter,
                 false,
