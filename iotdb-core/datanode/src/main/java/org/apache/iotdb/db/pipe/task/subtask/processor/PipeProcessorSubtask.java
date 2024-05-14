@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
+import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
@@ -61,7 +62,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   private final String pipeName;
-  private final int dataRegionId;
+  private final int regionId;
 
   // This variable is used to distinguish between old and new subtasks before and after stuck
   // restart.
@@ -78,7 +79,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     super(taskID, creationTime);
     this.subtaskCreationTime = System.currentTimeMillis();
     this.pipeName = pipeName;
-    this.dataRegionId = regionId;
+    this.regionId = regionId;
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
@@ -155,8 +156,13 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               outputEventCollector);
         }
       }
-      decreaseReferenceCountAndReleaseLastEvent(
-          !isClosed.get() && outputEventCollector.hasNoCollectInvocationAfterReset());
+      final boolean shouldReport =
+          !isClosed.get() && outputEventCollector.hasNoCollectInvocationAfterReset();
+      if (shouldReport && event instanceof EnrichedEvent) {
+        PipeEventCommitManager.getInstance()
+            .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
+      }
+      decreaseReferenceCountAndReleaseLastEvent(shouldReport);
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.info(
           "Temporarily out of memory in pipe event processing, will wait for the memory to release.",
@@ -244,8 +250,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     return pipeName;
   }
 
-  public int getDataRegionId() {
-    return dataRegionId;
+  public int getRegionId() {
+    return regionId;
   }
 
   public int getTabletInsertionEventCount() {

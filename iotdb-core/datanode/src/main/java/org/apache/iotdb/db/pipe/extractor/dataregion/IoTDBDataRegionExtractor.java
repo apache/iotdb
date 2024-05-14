@@ -93,6 +93,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
   private DataRegionWatermarkInjector watermarkInjector;
 
   private boolean hasNoExtractionNeed = true;
+  private boolean shouldExtractInsertion = false;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -106,6 +107,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
       return;
     }
     hasNoExtractionNeed = false;
+    shouldExtractInsertion = insertionDeletionListeningOptionPair.getLeft();
 
     if (insertionDeletionListeningOptionPair.getLeft().equals(true)
         && IoTDBDescriptor.getInstance()
@@ -440,6 +442,10 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
   }
 
   //////////////////////////// APIs provided for detecting stuck ////////////////////////////
+
+  public boolean shouldExtractInsertion() {
+    return shouldExtractInsertion;
+  }
 
   public boolean isStreamMode() {
     return realtimeExtractor instanceof PipeRealtimeDataRegionHybridExtractor
