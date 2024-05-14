@@ -17,20 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
+package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 
-import java.util.ArrayList;
-import java.util.List;
+public class ConsumeAllChildrenPipelineMemoryEstimator extends PipelineMemoryEstimator {
 
-public class IoTDBThriftAsyncPipeTransferBatchReqBuilder extends PipeTransferBatchReqBuilder {
-
-  public IoTDBThriftAsyncPipeTransferBatchReqBuilder(PipeParameters parameters) {
-    super(parameters);
+  public ConsumeAllChildrenPipelineMemoryEstimator(
+      final Operator root, final int dependencyPipelineIndex) {
+    super(root, dependencyPipelineIndex);
   }
 
-  public List<Long> deepCopyRequestCommitIds() {
-    return new ArrayList<>(requestCommitIds);
+  @Override
+  public long calculateEstimatedRunningMemorySize() {
+    return root.calculateMaxPeekMemoryWithCounter()
+        + children.stream()
+            .map(PipelineMemoryEstimator::calculateEstimatedRunningMemorySize)
+            .reduce(0L, Long::sum);
   }
 }

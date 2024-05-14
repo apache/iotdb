@@ -80,15 +80,27 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     // 1. Construct extractor
     extractor = PipeConfigNodeAgent.plugin().reflectExtractor(extractorParameters);
 
-    // 2. Validate extractor parameters
-    extractor.validate(new PipeParameterValidator(extractorParameters));
+    try {
+      // 2. Validate extractor parameters
+      extractor.validate(new PipeParameterValidator(extractorParameters));
 
-    // 3. Customize extractor
-    final PipeTaskRuntimeConfiguration runtimeConfiguration =
-        new PipeTaskRuntimeConfiguration(
-            new PipeTaskExtractorRuntimeEnvironment(
-                taskID, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
-    extractor.customize(extractorParameters, runtimeConfiguration);
+      // 3. Customize extractor
+      final PipeTaskRuntimeConfiguration runtimeConfiguration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskExtractorRuntimeEnvironment(
+                  taskID, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
+      extractor.customize(extractorParameters, runtimeConfiguration);
+    } catch (final Exception e) {
+      try {
+        extractor.close();
+      } catch (Exception closeException) {
+        LOGGER.warn(
+            "Failed to close extractor after failed to initialize extractor. "
+                + "Ignore this exception.",
+            closeException);
+      }
+      throw e;
+    }
   }
 
   private void initProcessor(Map<String, String> processorAttributes) {
@@ -114,17 +126,29 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     // 1. Construct connector
     outputPipeConnector = PipeConfigNodeAgent.plugin().reflectConnector(connectorParameters);
 
-    // 2. Validate connector parameters
-    outputPipeConnector.validate(new PipeParameterValidator(connectorParameters));
+    try {
+      // 2. Validate connector parameters
+      outputPipeConnector.validate(new PipeParameterValidator(connectorParameters));
 
-    // 3. Customize connector
-    final PipeTaskRuntimeConfiguration runtimeConfiguration =
-        new PipeTaskRuntimeConfiguration(
-            new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
-    outputPipeConnector.customize(connectorParameters, runtimeConfiguration);
+      // 3. Customize connector
+      final PipeTaskRuntimeConfiguration runtimeConfiguration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
+      outputPipeConnector.customize(connectorParameters, runtimeConfiguration);
 
-    // 4. Handshake
-    outputPipeConnector.handshake();
+      // 4. Handshake
+      outputPipeConnector.handshake();
+    } catch (final Exception e) {
+      try {
+        outputPipeConnector.close();
+      } catch (final Exception closeException) {
+        LOGGER.warn(
+            "Failed to close connector after failed to initialize connector. "
+                + "Ignore this exception.",
+            closeException);
+      }
+      throw e;
+    }
   }
 
   /**
