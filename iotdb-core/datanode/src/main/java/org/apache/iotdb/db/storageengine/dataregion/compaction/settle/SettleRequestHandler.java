@@ -39,8 +39,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
+import org.apache.tsfile.utils.TsFileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

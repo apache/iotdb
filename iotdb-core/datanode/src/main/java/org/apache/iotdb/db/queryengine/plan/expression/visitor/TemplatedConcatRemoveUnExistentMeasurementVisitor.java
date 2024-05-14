@@ -23,7 +23,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.Map;
 

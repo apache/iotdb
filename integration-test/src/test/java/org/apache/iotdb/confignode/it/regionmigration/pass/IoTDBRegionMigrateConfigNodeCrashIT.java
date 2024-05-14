@@ -93,7 +93,7 @@ public class IoTDBRegionMigrateConfigNodeCrashIT extends IoTDBRegionMigrateRelia
         1,
         1,
         2,
-        buildSet(RegionTransitionState.CHANGE_REGION_LEADER),
+        buildSet(RemoveRegionPeerState.TRANSFER_REGION_LEADER),
         noKillPoints(),
         KillNode.CONFIG_NODE);
   }

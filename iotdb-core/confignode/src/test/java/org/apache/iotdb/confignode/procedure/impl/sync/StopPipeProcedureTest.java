@@ -22,8 +22,8 @@ package org.apache.iotdb.confignode.procedure.impl.sync;
 import org.apache.iotdb.commons.sync.PipeStatus;
 import org.apache.iotdb.commons.sync.TsFilePipeInfo;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
+import org.apache.tsfile.utils.PublicBAOS;
 import org.junit.Test;
 
 import java.io.DataOutputStream;

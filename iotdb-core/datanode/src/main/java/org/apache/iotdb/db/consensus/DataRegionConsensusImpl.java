@@ -118,6 +118,8 @@ public class DataRegionConsensusImpl {
                                       .setMaxSizePerBatch(CONF.getMaxSizePerBatch())
                                       .setMaxPendingBatchesNum(CONF.getMaxPendingBatchesNum())
                                       .setMaxMemoryRatioForQueue(CONF.getMaxMemoryRatioForQueue())
+                                      .setRegionMigrationSpeedLimitBytesPerSecond(
+                                          CONF.getRegionMigrationSpeedLimitBytesPerSecond())
                                       .build())
                               .build())
                       .setPipeConsensusConfig(

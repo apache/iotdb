@@ -61,9 +61,9 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribe
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

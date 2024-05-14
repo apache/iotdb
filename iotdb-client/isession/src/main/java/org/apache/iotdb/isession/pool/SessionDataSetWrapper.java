@@ -23,7 +23,8 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
+
+import org.apache.tsfile.read.common.RowRecord;
 
 import java.util.List;
 

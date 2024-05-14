@@ -21,8 +21,8 @@ package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

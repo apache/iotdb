@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.BatchData.BatchDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.read.common.BatchData.BatchDataType;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;

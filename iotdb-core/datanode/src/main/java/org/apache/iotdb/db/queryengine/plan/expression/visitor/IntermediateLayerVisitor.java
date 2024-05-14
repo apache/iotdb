@@ -72,8 +72,9 @@ import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.Regu
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.TransparentTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
+
+import org.apache.tsfile.enums.TSDataType;
 
 import java.io.IOException;
 import java.util.ArrayList;

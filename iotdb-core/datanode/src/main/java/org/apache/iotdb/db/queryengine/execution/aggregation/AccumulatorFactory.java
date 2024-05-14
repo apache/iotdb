@@ -24,7 +24,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.tsfile.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.List;

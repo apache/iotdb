@@ -38,6 +38,8 @@
 
 IoTDB (Internet of Things Database) is a data management system for time series data, which provides users with specific services, including data collection, storage and analysis. Due to its lightweight structure, high performance and usable features, together with its seamless integration with the Hadoop and Spark ecosystem, IoTDB meets the requirements of massive dataset storage, high throughput data input, and complex data analysis in the industrial IoT field.
 
+[Click for More Information](https://www.timecho.com/archives/shi-xu-shu-ju-ku-iotdb-gong-neng-xiang-jie-yu-xing-ye-ying-yong)
+
 # Main Features
 
 The main features of IoTDB are as follows:
@@ -500,6 +502,7 @@ see [The use of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/M
 see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)
 
 # Contact Us
+
 ### QQ Group
 
 * Apache IoTDB User Group: 659990460

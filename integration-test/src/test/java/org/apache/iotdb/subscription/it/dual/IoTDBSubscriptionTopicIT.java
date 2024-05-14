@@ -28,8 +28,8 @@ import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
+import org.apache.tsfile.write.record.Tablet;
 import org.awaitility.Awaitility;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;

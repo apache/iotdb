@@ -20,11 +20,12 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;

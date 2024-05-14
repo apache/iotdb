@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.receiver.protocol.airgap.IoTDBAirGapReceiverAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.legacy.IoTDBLegacyPipeReceiverAgent;
+import org.apache.iotdb.db.pipe.receiver.protocol.pipeconsensus.PipeConsensusReceiverAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
 
 import org.slf4j.Logger;
@@ -39,11 +40,13 @@ public class PipeDataNodeReceiverAgent {
   private final IoTDBDataNodeReceiverAgent thriftAgent;
   private final IoTDBAirGapReceiverAgent airGapAgent;
   private final IoTDBLegacyPipeReceiverAgent legacyAgent;
+  private final PipeConsensusReceiverAgent pipeConsensusAgent;
 
   public PipeDataNodeReceiverAgent() {
     thriftAgent = new IoTDBDataNodeReceiverAgent();
     airGapAgent = new IoTDBAirGapReceiverAgent();
     legacyAgent = new IoTDBLegacyPipeReceiverAgent();
+    pipeConsensusAgent = new PipeConsensusReceiverAgent();
   }
 
   public IoTDBDataNodeReceiverAgent thrift() {
@@ -56,6 +59,10 @@ public class PipeDataNodeReceiverAgent {
 
   public IoTDBLegacyPipeReceiverAgent legacy() {
     return legacyAgent;
+  }
+
+  public PipeConsensusReceiverAgent pipeConsensus() {
+    return pipeConsensusAgent;
   }
 
   public void cleanPipeReceiverDirs() {

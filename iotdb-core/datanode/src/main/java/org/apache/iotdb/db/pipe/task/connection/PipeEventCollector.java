@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.task.connection;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -134,6 +135,9 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
       // Assign a commit id for this event in order to report progress in order.
       PipeEventCommitManager.getInstance()
           .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
+
+      // Assign a rebootTimes to a given event for PipeConsensus.
+      ((EnrichedEvent) event).setRebootTimes(PipeAgent.runtime().getRebootTimes());
     }
     if (event instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) event).recordBufferQueueSize(bufferQueue);

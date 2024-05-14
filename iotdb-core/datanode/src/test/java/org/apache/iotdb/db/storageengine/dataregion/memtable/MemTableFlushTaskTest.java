@@ -23,11 +23,11 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

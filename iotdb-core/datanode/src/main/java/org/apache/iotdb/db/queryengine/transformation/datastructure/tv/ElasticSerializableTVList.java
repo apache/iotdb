@@ -23,14 +23,15 @@ import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.Cache;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.type.Binary;
+
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.BatchData;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -143,7 +144,7 @@ public class ElasticSerializableTVList implements PointCollector {
         .getBooleanByIndex(index % internalTVListCapacity);
   }
 
-  public org.apache.iotdb.tsfile.utils.Binary getBinary(int index) throws IOException {
+  public org.apache.tsfile.utils.Binary getBinary(int index) throws IOException {
     return cache
         .get(index / internalTVListCapacity)
         .getBinaryByIndex(index % internalTVListCapacity);
@@ -176,8 +177,7 @@ public class ElasticSerializableTVList implements PointCollector {
       case TEXT:
         putBinary(
             timestamp,
-            UDFBinaryTransformer.transformToUDFBinary(
-                (org.apache.iotdb.tsfile.utils.Binary) value));
+            UDFBinaryTransformer.transformToUDFBinary((org.apache.tsfile.utils.Binary) value));
         break;
       default:
         throw new UnSupportedDataTypeException(
@@ -256,8 +256,7 @@ public class ElasticSerializableTVList implements PointCollector {
       case TEXT:
         putBinary(
             timestamp,
-            UDFBinaryTransformer.transformToUDFBinary(
-                org.apache.iotdb.tsfile.utils.Binary.EMPTY_VALUE));
+            UDFBinaryTransformer.transformToUDFBinary(org.apache.tsfile.utils.Binary.EMPTY_VALUE));
         break;
       default:
         throw new UnSupportedDataTypeException(
@@ -339,7 +338,7 @@ public class ElasticSerializableTVList implements PointCollector {
       }
 
       @Override
-      public org.apache.iotdb.tsfile.utils.Binary currentBinary() throws IOException {
+      public org.apache.tsfile.utils.Binary currentBinary() throws IOException {
         return getBinary(currentPointIndex);
       }
 

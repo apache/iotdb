@@ -79,5 +79,5 @@ jobs:
           -Dsonar.organization=apache \
           -Dsonar.projectKey=apache_iotdb \
           -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.login=${{ secrets.SONARCLOUD_TOKEN }} \
+          -Dsonar.token=${{ secrets.SONARCLOUD_TOKEN }} \
           -DskipTests -pl '!distribution,!integration-test' -am

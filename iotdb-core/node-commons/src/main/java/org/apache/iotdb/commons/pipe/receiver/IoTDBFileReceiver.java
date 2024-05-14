@@ -35,9 +35,9 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
