@@ -33,9 +33,10 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class PipeConsensusPeerManager {
@@ -48,8 +49,9 @@ public class PipeConsensusPeerManager {
 
   public PipeConsensusPeerManager(String storageDir, List<Peer> peers) {
     this.storageDir = storageDir;
-    this.peers = new HashSet<>(peers);
+    this.peers = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
+    this.peers.addAll(peers);
     if (this.peers.size() != peers.size()) {
       LOGGER.warn("Duplicate peers in the input list, ignore the duplicates.");
     }

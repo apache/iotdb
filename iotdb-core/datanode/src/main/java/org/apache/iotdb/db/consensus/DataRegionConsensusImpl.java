@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
@@ -35,6 +36,10 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataRegionStateMachine;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataRegionStateMachine;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeDispatcher;
+import org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeRuntimeAgentGuardian;
+import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
@@ -115,7 +120,30 @@ public class DataRegionConsensusImpl {
                                       .setMaxMemoryRatioForQueue(CONF.getMaxMemoryRatioForQueue())
                                       .build())
                               .build())
-                      .setPipeConsensusConfig(PipeConsensusConfig.newBuilder().build())
+                      .setPipeConsensusConfig(
+                          PipeConsensusConfig.newBuilder()
+                              .setPipe(
+                                  PipeConsensusConfig.Pipe.newBuilder()
+                                      .setExtractorPluginName(
+                                          BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+                                      .setProcessorPluginName(
+                                          BuiltinPipePlugin.DO_NOTHING_PROCESSOR
+                                              .getPipePluginName())
+                                      .setConnectorPluginName(
+                                          BuiltinPipePlugin.DO_NOTHING_CONNECTOR
+                                              .getPipePluginName()) // TODO: set connector plugin
+                                      // name
+                                      .setConsensusPipeDispatcher(
+                                          new ConsensusPipeDataNodeDispatcher())
+                                      .setConsensusPipeGuardian(
+                                          new ConsensusPipeDataNodeRuntimeAgentGuardian())
+                                      .setConsensusPipeSelector(
+                                          () -> PipeAgent.task().getAllConsensusPipe())
+                                      .setProgressIndexManager(new ProgressIndexDataNodeManager())
+                                      .setConsensusPipeGuardJobIntervalInSeconds(
+                                          300) // TODO: move to config
+                                      .build())
+                              .build())
                       .setRatisConfig(
                           RatisConfig.newBuilder()
                               // An empty log is committed after each restart, even if no data is

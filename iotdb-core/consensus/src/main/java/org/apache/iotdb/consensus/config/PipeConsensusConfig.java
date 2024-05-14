@@ -1,8 +1,10 @@
 package org.apache.iotdb.consensus.config;
 
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.consensus.pipe.ConsensusPipeDispatcher;
-import org.apache.iotdb.consensus.pipe.ConsensusPipeGuardian;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeDispatcher;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeSelector;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ProgressIndexManager;
 
 public class PipeConsensusConfig {
   private final Pipe pipe;
@@ -38,6 +40,8 @@ public class PipeConsensusConfig {
     private final String connectorPluginName;
     private final ConsensusPipeDispatcher consensusPipeDispatcher;
     private final ConsensusPipeGuardian consensusPipeGuardian;
+    private final ConsensusPipeSelector consensusPipeSelector;
+    private final ProgressIndexManager progressIndexManager;
     private final long consensusPipeGuardJobIntervalInSeconds;
 
     public Pipe(
@@ -46,12 +50,16 @@ public class PipeConsensusConfig {
         String connectorPluginName,
         ConsensusPipeDispatcher consensusPipeDispatcher,
         ConsensusPipeGuardian consensusPipeGuardian,
+        ConsensusPipeSelector consensusPipeSelector,
+        ProgressIndexManager progressIndexManager,
         long consensusPipeGuardJobIntervalInSeconds) {
       this.extractorPluginName = extractorPluginName;
       this.processorPluginName = processorPluginName;
       this.connectorPluginName = connectorPluginName;
       this.consensusPipeDispatcher = consensusPipeDispatcher;
       this.consensusPipeGuardian = consensusPipeGuardian;
+      this.consensusPipeSelector = consensusPipeSelector;
+      this.progressIndexManager = progressIndexManager;
       this.consensusPipeGuardJobIntervalInSeconds = consensusPipeGuardJobIntervalInSeconds;
     }
 
@@ -75,6 +83,14 @@ public class PipeConsensusConfig {
       return consensusPipeGuardian;
     }
 
+    public ConsensusPipeSelector getConsensusPipeSelector() {
+      return consensusPipeSelector;
+    }
+
+    public ProgressIndexManager getProgressIndexManager() {
+      return progressIndexManager;
+    }
+
     public long getConsensusPipeGuardJobIntervalInSeconds() {
       return consensusPipeGuardJobIntervalInSeconds;
     }
@@ -91,6 +107,8 @@ public class PipeConsensusConfig {
           BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName();
       private ConsensusPipeDispatcher consensusPipeDispatcher = null;
       private ConsensusPipeGuardian consensusPipeGuardian = null;
+      private ConsensusPipeSelector consensusPipeSelector = null;
+      private ProgressIndexManager progressIndexManager = null;
       private long consensusPipeGuardJobIntervalInSeconds = 180L;
 
       public Pipe.Builder setExtractorPluginName(String extractorPluginName) {
@@ -119,6 +137,16 @@ public class PipeConsensusConfig {
         return this;
       }
 
+      public Pipe.Builder setConsensusPipeSelector(ConsensusPipeSelector consensusPipeSelector) {
+        this.consensusPipeSelector = consensusPipeSelector;
+        return this;
+      }
+
+      public Pipe.Builder setProgressIndexManager(ProgressIndexManager progressIndexManager) {
+        this.progressIndexManager = progressIndexManager;
+        return this;
+      }
+
       public Pipe.Builder setConsensusPipeGuardJobIntervalInSeconds(
           long consensusPipeGuardJobIntervalInSeconds) {
         this.consensusPipeGuardJobIntervalInSeconds = consensusPipeGuardJobIntervalInSeconds;
@@ -132,6 +160,8 @@ public class PipeConsensusConfig {
             connectorPluginName,
             consensusPipeDispatcher,
             consensusPipeGuardian,
+            consensusPipeSelector,
+            progressIndexManager,
             consensusPipeGuardJobIntervalInSeconds);
       }
     }

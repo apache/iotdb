@@ -17,13 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.pipe;
+package org.apache.iotdb.consensus.pipe.consensuspipe;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 
 import com.google.common.collect.ImmutableMap;
+
+import java.util.Map;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_CONSENSUS_GROUP_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
@@ -40,10 +42,12 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstan
 public class ConsensusPipeManager {
   private final PipeConsensusConfig.Pipe config;
   private final ConsensusPipeDispatcher dispatcher;
+  private final ConsensusPipeSelector selector;
 
   public ConsensusPipeManager(PipeConsensusConfig.Pipe config) {
     this.config = config;
     this.dispatcher = config.getConsensusPipeDispatcher();
+    this.selector = config.getConsensusPipeSelector();
   }
 
   public void createConsensusPipe(Peer senderPeer, Peer receiverPeer) throws Exception {
@@ -102,6 +106,10 @@ public class ConsensusPipeManager {
     } else {
       throw new IllegalArgumentException("Unsupported pipe status: " + pipeStatus);
     }
+  }
+
+  public Map<ConsensusPipeName, PipeStatus> getAllConsensusPipe() {
+    return selector.getAllConsensusPipe();
   }
 
   public static ConsensusPipeName getConsensusPipeName(Peer senderPeer, Peer receiverPeer) {

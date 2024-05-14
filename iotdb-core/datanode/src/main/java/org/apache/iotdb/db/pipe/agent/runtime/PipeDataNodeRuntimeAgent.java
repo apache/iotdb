@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
@@ -33,7 +34,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
-import org.apache.iotdb.db.pipe.progress.SimpleConsensusProgressIndexAssigner;
+import org.apache.iotdb.db.pipe.progress.SimpleProgressIndexAssigner;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
@@ -55,8 +56,8 @@ public class PipeDataNodeRuntimeAgent implements IService {
   private final PipeSchemaRegionListenerManager regionListenerManager =
       new PipeSchemaRegionListenerManager();
 
-  private final SimpleConsensusProgressIndexAssigner simpleConsensusProgressIndexAssigner =
-      new SimpleConsensusProgressIndexAssigner();
+  private final SimpleProgressIndexAssigner simpleProgressIndexAssigner =
+      new SimpleProgressIndexAssigner();
 
   private final PipePeriodicalJobExecutor pipePeriodicalJobExecutor =
       new PipePeriodicalJobExecutor();
@@ -72,7 +73,7 @@ public class PipeDataNodeRuntimeAgent implements IService {
     PipeAgent.receiver().cleanPipeReceiverDirs();
 
     PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
-    simpleConsensusProgressIndexAssigner.start();
+    simpleProgressIndexAssigner.start();
   }
 
   @Override
@@ -142,7 +143,13 @@ public class PipeDataNodeRuntimeAgent implements IService {
   ////////////////////// SimpleConsensus ProgressIndex Assigner //////////////////////
 
   public void assignSimpleProgressIndexIfNeeded(InsertNode insertNode) {
-    simpleConsensusProgressIndexAssigner.assignIfNeeded(insertNode);
+    simpleProgressIndexAssigner.assignIfNeeded(insertNode);
+  }
+
+  ////////////////////// PipeConsensus ProgressIndex Assigner //////////////////////
+
+  public ProgressIndex assignSimpleProgressIndexForPipeConsensus() {
+    return simpleProgressIndexAssigner.getSimpleProgressIndex();
   }
 
   ////////////////////// Load ProgressIndex Assigner //////////////////////
@@ -154,8 +161,7 @@ public class PipeDataNodeRuntimeAgent implements IService {
 
   public RecoverProgressIndex getNextProgressIndexForTsFileLoad() {
     return new RecoverProgressIndex(
-        DATA_NODE_ID,
-        simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery());
+        DATA_NODE_ID, simpleProgressIndexAssigner.getSimpleProgressIndex());
   }
 
   ////////////////////// Recover ProgressIndex Assigner //////////////////////
@@ -163,14 +169,13 @@ public class PipeDataNodeRuntimeAgent implements IService {
   public void assignProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
     tsFileResource.updateProgressIndex(
         new RecoverProgressIndex(
-            DATA_NODE_ID,
-            simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery()));
+            DATA_NODE_ID, simpleProgressIndexAssigner.getSimpleProgressIndex()));
   }
 
   ////////////////////// Provided for Subscription Agent //////////////////////
 
   public int getRebootTimes() {
-    return simpleConsensusProgressIndexAssigner.getRebootTimes();
+    return simpleProgressIndexAssigner.getRebootTimes();
   }
 
   //////////////////////////// Runtime Exception Handlers ////////////////////////////

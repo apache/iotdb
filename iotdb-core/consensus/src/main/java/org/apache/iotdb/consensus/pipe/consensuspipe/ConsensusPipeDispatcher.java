@@ -17,16 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.pipe;
-
-import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
+package org.apache.iotdb.consensus.pipe.consensuspipe;
 
 import java.util.Map;
 
-public interface ConsensusPipeGuardian {
-  void start(String id, Runnable guardJob, long intervalInSeconds);
+public interface ConsensusPipeDispatcher {
+  void createPipe(
+      String pipeName,
+      Map<String, String> extractorAttributes,
+      Map<String, String> processorAttributes,
+      Map<String, String> connectorAttributes)
+      throws Exception;
 
-  void stop();
+  void startPipe(String pipeName) throws Exception;
 
-  Map<ConsensusPipeName, PipeStatus> getAllConsensusPipe();
+  void stopPipe(String pipeName) throws Exception;
+
+  void dropPipe(String pipeName) throws Exception;
 }

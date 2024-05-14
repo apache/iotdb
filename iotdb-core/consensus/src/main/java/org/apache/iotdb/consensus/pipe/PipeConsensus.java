@@ -40,6 +40,9 @@ import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeManager;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -134,7 +137,7 @@ public class PipeConsensus implements IConsensus {
 
   public void checkAllConsensusPipe() {
     final Map<ConsensusGroupId, Map<ConsensusPipeName, PipeStatus>> existedPipes =
-        consensusPipeGuardian.getAllConsensusPipe().entrySet().stream()
+        consensusPipeManager.getAllConsensusPipe().entrySet().stream()
             .filter(entry -> entry.getKey().getSenderDataNodeId() == thisNodeId)
             .collect(
                 Collectors.groupingBy(

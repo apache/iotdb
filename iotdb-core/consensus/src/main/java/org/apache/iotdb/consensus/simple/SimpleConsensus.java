@@ -61,7 +61,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <p>Notice: The stateMachine needs to implement WAL itself to ensure recovery after a restart
  */
-class SimpleConsensus implements IConsensus {
+public class SimpleConsensus implements IConsensus {
 
   private final Logger logger = LoggerFactory.getLogger(SimpleConsensus.class);
 

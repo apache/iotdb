@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.pipe;
+package org.apache.iotdb.consensus.pipe.consensuspipe;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
@@ -87,9 +87,5 @@ public class ConsensusPipeName {
         PipeStaticMeta.CONSENSUS_PIPE_PREFIX + consensusGroupId,
         String.valueOf(senderDataNodeId),
         String.valueOf(receiverDataNodeId));
-  }
-
-  public static boolean hasConsensusPipeNamePrefix(String pipeName) {
-    return pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX);
   }
 }
