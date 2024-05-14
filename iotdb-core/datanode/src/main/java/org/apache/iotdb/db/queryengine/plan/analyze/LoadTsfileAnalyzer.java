@@ -211,6 +211,12 @@ public class LoadTsfileAnalyzer {
 
       long writePointCount = 0;
 
+      // check if the tsfile is empty
+      if (!timeseriesMetadataIterator.hasNext()) {
+        LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
+        return;
+      }
+
       // construct tsfile resource
       final TsFileResource tsFileResource = new TsFileResource(tsFile);
       if (!tsFileResource.resourceFileExists()) {
@@ -224,12 +230,6 @@ public class LoadTsfileAnalyzer {
       // auto create or verify schema
       if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
           || loadTsFileStatement.isVerifySchema()) {
-        // check if the tsfile is empty
-        if (!timeseriesMetadataIterator.hasNext()) {
-          LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
-          return;
-        }
-
         while (timeseriesMetadataIterator.hasNext()) {
           Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
               timeseriesMetadataIterator.next();
@@ -243,6 +243,18 @@ public class LoadTsfileAnalyzer {
         }
 
         schemaAutoCreatorAndVerifier.flushAndClearDeviceIsAlignedCacheIfNecessary();
+      }
+      // if auto create schema and verify schema are disabled, we only need to update the tsfile
+      // resource file
+      else {
+        // TODO: how to get the correct write point count
+        while (timeseriesMetadataIterator.hasNext()) {
+          Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
+              timeseriesMetadataIterator.next();
+          if (!tsFileResource.resourceFileExists()) {
+            TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+          }
+        }
       }
 
       TimestampPrecisionUtils.checkTimestampPrecision(tsFileResource.getFileEndTime());
