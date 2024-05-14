@@ -71,7 +71,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTim
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpressionForTemplatedQuery;
-import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAggregationAnalyze.analyzeAggregation;
+import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAggregationAnalyze.canBuildAggregationPlanUseTemplate;
 
 /**
  * This class provides accelerated implementation for multiple devices align by device query. This
@@ -113,7 +113,7 @@ public class TemplatedAnalyze {
     Template template = templates.get(0);
 
     if (queryStatement.isAggregationQuery()) {
-      return analyzeAggregation(
+      return canBuildAggregationPlanUseTemplate(
           analysis, queryStatement, partitionFetcher, schemaTree, context, template);
     }
 

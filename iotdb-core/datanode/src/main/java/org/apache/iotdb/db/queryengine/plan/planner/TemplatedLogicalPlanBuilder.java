@@ -128,7 +128,8 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
             null,
             filterExpression,
             isGroupByTime,
-            scanOrder);
+            scanOrder,
+            true);
     analysis.setFromWhere(filterNode);
 
     this.root = filterNode;

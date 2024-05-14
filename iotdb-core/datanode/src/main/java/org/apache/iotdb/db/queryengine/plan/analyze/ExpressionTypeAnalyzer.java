@@ -100,7 +100,16 @@ public class ExpressionTypeAnalyzer {
       Expression expression,
       TemplatedInfo templatedInfo) {
     ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
-    analyzer.analyze(expression, templatedInfo.getSchemaMap());
+
+    Map<String, IMeasurementSchema> schemaMap = templatedInfo.getSchemaMap();
+    if (schemaMap == null) {
+      schemaMap = new LinkedHashMap<>();
+      for (int i = 0; i < templatedInfo.getMeasurementList().size(); i++) {
+        schemaMap.put(
+            templatedInfo.getMeasurementList().get(i), templatedInfo.getSchemaList().get(i));
+      }
+    }
+    analyzer.analyze(expression, schemaMap);
 
     types.putAll(analyzer.getExpressionTypes());
   }

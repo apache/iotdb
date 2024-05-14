@@ -880,7 +880,8 @@ public class LogicalPlanBuilder {
             selectExpressions.toArray(new Expression[0]),
             filterExpression,
             isGroupByTime,
-            scanOrder);
+            scanOrder,
+            fromWhere);
     if (fromWhere) {
       analysis.setFromWhere(filterNode);
     }

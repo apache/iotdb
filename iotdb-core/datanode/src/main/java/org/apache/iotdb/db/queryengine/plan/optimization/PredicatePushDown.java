@@ -164,7 +164,10 @@ public class PredicatePushDown implements PlanOptimizer {
       if (!cannotPushDownConjuncts.isEmpty()) {
         resultNode =
             planFilter(
-                resultNode, PredicateUtils.combineConjuncts(cannotPushDownConjuncts), context);
+                resultNode,
+                PredicateUtils.combineConjuncts(cannotPushDownConjuncts),
+                context,
+                true);
       } else {
         resultNode = planTransform(resultNode, context);
         resultNode = planProject(resultNode, context);
@@ -249,7 +252,8 @@ public class PredicatePushDown implements PlanOptimizer {
       return resultNode;
     }
 
-    private PlanNode planFilter(PlanNode child, Expression predicate, RewriterContext context) {
+    private PlanNode planFilter(
+        PlanNode child, Expression predicate, RewriterContext context, boolean isFromWhere) {
       FilterNode pushDownFilterNode = context.getPushDownFilterNode();
       return new FilterNode(
           context.genPlanNodeId(),
@@ -257,7 +261,8 @@ public class PredicatePushDown implements PlanOptimizer {
           pushDownFilterNode.getOutputExpressions(),
           predicate,
           pushDownFilterNode.isKeepNull(),
-          pushDownFilterNode.getScanOrder());
+          pushDownFilterNode.getScanOrder(),
+          isFromWhere);
     }
 
     @Override
@@ -330,7 +335,8 @@ public class PredicatePushDown implements PlanOptimizer {
         resultNode = planProject(resultNode, context);
         return resultNode;
       } else {
-        return planFilter(node, PredicateUtils.combineConjuncts(cannotPushDownConjuncts), context);
+        return planFilter(
+            node, PredicateUtils.combineConjuncts(cannotPushDownConjuncts), context, true);
       }
     }
 

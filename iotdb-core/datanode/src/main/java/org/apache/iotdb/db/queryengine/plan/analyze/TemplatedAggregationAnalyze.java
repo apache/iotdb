@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -40,6 +42,8 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.DEVICE
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.END_TIME_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeExpressionType;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeOutput;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.normalizeExpression;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchAggregationExpressions;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDataPartition;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDeviceToWhere;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDeviceViewInput;
@@ -51,7 +55,7 @@ import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushD
 /** Methods in this class are used for aggregation, templated with align by device situation. */
 public class TemplatedAggregationAnalyze {
 
-  static boolean analyzeAggregation(
+  static boolean canBuildAggregationPlanUseTemplate(
       Analysis analysis,
       QueryStatement queryStatement,
       IPartitionFetcher partitionFetcher,
@@ -69,7 +73,10 @@ public class TemplatedAggregationAnalyze {
     }
 
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
-    analyzeSelect(queryStatement, analysis, outputExpressions, template);
+    boolean valid = analyzeSelect(queryStatement, analysis, outputExpressions, template);
+    if (!valid) {
+      return false;
+    }
 
     analyzeDeviceToWhere(analysis, queryStatement);
     if (deviceList.isEmpty()) {
@@ -84,6 +91,8 @@ public class TemplatedAggregationAnalyze {
       analysis.setFinishQueryAfterAnalyze(true);
       return true;
     }
+
+    analyzeHaving(analysis, queryStatement, schemaTree, deviceList);
 
     analyzeDeviceToAggregation(analysis);
     analyzeDeviceToSourceTransform(analysis);
@@ -101,7 +110,7 @@ public class TemplatedAggregationAnalyze {
     return true;
   }
 
-  private static void analyzeSelect(
+  private static boolean analyzeSelect(
       QueryStatement queryStatement,
       Analysis analysis,
       List<Pair<Expression, String>> outputExpressions,
@@ -142,8 +151,9 @@ public class TemplatedAggregationAnalyze {
 
       String measurement = selectExpression.getExpressions().get(0).getOutputSymbol();
       if (!template.getSchemaMap().containsKey(measurement)) {
-        throw new IllegalArgumentException(
-            "Measurement " + measurement + " is not found in template");
+        analysis.setDeviceTemplate(null);
+        // TODO not support agg(*) or agg(s1+1) now
+        return false;
       }
 
       // for agg1(s1) + agg2(s1), only record s1 for one time
@@ -161,6 +171,42 @@ public class TemplatedAggregationAnalyze {
     analysis.setAggregationExpressions(aggregationExpressions);
     analysis.setOutputExpressions(outputExpressions);
     analysis.setSelectExpressions(selectExpressions);
+    return true;
+  }
+
+  private static void analyzeHaving(
+      Analysis analysis,
+      QueryStatement queryStatement,
+      ISchemaTree schemaTree,
+      List<PartialPath> deviceSet) {
+    if (!queryStatement.hasHaving()) {
+      return;
+    }
+
+    // TODO not support having count(s1) + sum(s2) expression
+    Set<Expression> aggregationExpressions = analysis.getAggregationExpressions();
+
+    Expression havingExpression = queryStatement.getHavingCondition().getPredicate();
+
+    // Set<Expression> normalizedAggregationExpressions = new LinkedHashSet<>();
+    for (Expression aggregationExpression : searchAggregationExpressions(havingExpression)) {
+      Expression normalizedAggregationExpression = normalizeExpression(aggregationExpression);
+
+      analyzeExpressionType(analysis, aggregationExpression);
+      analyzeExpressionType(analysis, normalizedAggregationExpression);
+
+      aggregationExpressions.add(aggregationExpression);
+      // normalizedAggregationExpressions.add(normalizedAggregationExpression);
+    }
+
+    TSDataType outputType = analyzeExpressionType(analysis, havingExpression);
+    if (outputType != TSDataType.BOOLEAN) {
+      throw new SemanticException(
+          String.format(
+              "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: %s.",
+              outputType));
+    }
+    analysis.setHavingExpression(havingExpression);
   }
 
   private static void analyzeDeviceToSourceTransform(Analysis analysis) {

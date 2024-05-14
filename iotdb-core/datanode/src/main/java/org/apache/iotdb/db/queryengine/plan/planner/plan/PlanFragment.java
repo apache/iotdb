@@ -153,7 +153,7 @@ public class PlanFragment {
     } else {
       ReadWriteIOUtils.write((byte) 1, stream);
 
-      // templated device, the serialized attribute basically same,
+      // templated align by device query, the serialized attributes are same,
       // so there is no need to serialize all the SeriesScanNode repeated
       if (typeProvider.getTemplatedInfo() != null) {
         typeProvider.serialize(stream);
