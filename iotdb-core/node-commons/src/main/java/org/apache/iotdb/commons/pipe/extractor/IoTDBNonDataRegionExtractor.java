@@ -152,6 +152,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
         || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe())) {
       final EmptyEvent event =
           new EmptyEvent(pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+      event.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
       event.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
       return event;
     }
