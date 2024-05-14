@@ -152,7 +152,7 @@ public class TemplatedAggregationAnalyze {
       String measurement = selectExpression.getExpressions().get(0).getOutputSymbol();
       if (!template.getSchemaMap().containsKey(measurement)) {
         analysis.setDeviceTemplate(null);
-        // TODO not support agg(*) or agg(s1+1) now
+        // TODO not support agg(*), agg(s1+1), count_time(*) now
         return false;
       }
 

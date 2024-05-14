@@ -456,7 +456,7 @@ public class AggregationPushDown implements PlanOptimizer {
                   alignedPath, aggregationDescriptors, scanOrder, groupByTimeParameter, context));
         }
 
-        if (needCheckAscending) {
+        if (needCheckAscending && !descendingAggregations.isEmpty()) {
           aggregationDescriptors =
               descendingAggregations.values().stream()
                   .flatMap(Collection::stream)
