@@ -53,7 +53,7 @@ public class SimpleProgressIndexAssigner {
   private boolean isSimpleConsensusEnable = false;
 
   private int rebootTimes = 0;
-  private final AtomicLong insertionRequestId = new AtomicLong(0);
+  private final AtomicLong insertionRequestId = new AtomicLong(1);
 
   public void start() throws StartupException {
     isSimpleConsensusEnable =
