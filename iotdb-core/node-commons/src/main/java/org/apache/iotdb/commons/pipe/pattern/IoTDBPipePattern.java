@@ -93,11 +93,11 @@ public class IoTDBPipePattern extends PipePattern {
   }
 
   @Override
-  public boolean matchPrefixPath(final String path) {
+  public boolean mayOverlapWithDevice(final String device) {
     try {
-      // In data transfer, another way is to use patternPath.overlapWith("device.*"),
+      // Another way is to use patternPath.overlapWith("device.*"),
       // there will be no false positives but time cost may be higher.
-      return patternPartialPath.matchPrefixPath(new PartialPath(path));
+      return patternPartialPath.matchPrefixPath(new PartialPath(device));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -115,6 +115,17 @@ public class IoTDBPipePattern extends PipePattern {
     } catch (final IllegalPathException e) {
       return false;
     }
+  }
+
+  /**
+   * Check if the {@link PipePattern} matches the given prefix path.
+   *
+   * <p>NOTE: In schema transmission, {@link #mayOverlapWithDevice(String)} can be used to detect
+   * whether the given path can act as a parent path of the {@link PipePattern}, and to transmit
+   * possibly used schemas like database creation and template setting.
+   */
+  public boolean matchPrefixPath(final String path) {
+    return mayOverlapWithDevice(path);
   }
 
   /**

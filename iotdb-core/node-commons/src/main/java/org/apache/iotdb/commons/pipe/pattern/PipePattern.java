@@ -111,17 +111,14 @@ public abstract class PipePattern {
   public abstract boolean coversDevice(final String device);
 
   /**
-   * Check if the {@link PipePattern} matches the given prefix path.
+   * Check if a device may have some measurements matched by the pattern.
    *
-   * <p>NOTE1: In data transmission, this is called when {@link PipePattern#coversDevice} is false,
-   * and plays the role of a loose check and may have false positives. To further check if a
+   * <p>NOTE1: this is only called when {@link PipePattern#coversDevice} is false.
+   *
+   * <p>NOTE2: this is just a loose check and may have false positives. To further check if a
    * measurement matches the pattern, please use {@link PipePattern#matchesMeasurement} after this.
-   *
-   * <p>NOTE2: In schema transmission, it's used to detect whether the given path can act as a
-   * parent path of the {@link PipePattern}, and to transmit possibly used schemas like database
-   * creation and template setting.
    */
-  public abstract boolean matchPrefixPath(final String path);
+  public abstract boolean mayOverlapWithDevice(final String device);
 
   /**
    * Check if a full path with device and measurement can be matched by pattern.
