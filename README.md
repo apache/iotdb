@@ -496,7 +496,7 @@ The server can be stopped with "ctrl-C" or the following script:
 
 # The use of CSV Import and Export Tool
 
-see [The use of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/Master/Maintenance-Tools/CSV-Tool.html)
+see [The use of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/latest/Tools-System/Import-Export-Tool.html)
 
 # Frequent Questions for Compiling
 see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)
