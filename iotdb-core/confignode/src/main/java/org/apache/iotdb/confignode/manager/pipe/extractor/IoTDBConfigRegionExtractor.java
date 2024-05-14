@@ -134,7 +134,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
     if (Objects.nonNull(taskID)) {
       PipeConfigRegionExtractorMetrics.getInstance().deregister(taskID);
-      PipeConfigNodeRemainingTimeMetrics.getInstance().deregister(taskID);
+      PipeConfigNodeRemainingTimeMetrics.getInstance().deregister(pipeName + "_" + creationTime);
     }
   }
 }

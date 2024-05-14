@@ -117,7 +117,7 @@ public class PipeEventCommitMetrics implements IMetricSet {
           committerKey);
       return;
     }
-    if (Objects.nonNull(committerKey)) {
+    if (Objects.nonNull(metricService) && Objects.nonNull(committerKey)) {
       removeMetrics(committerKey);
     }
     eventCommitterMap.remove(committerKey);

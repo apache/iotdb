@@ -62,13 +62,13 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.keySet()).forEach(this::createMetrics);
   }
 
-  private void createMetrics(final String taskID) {
-    createAutoGauge(taskID);
+  private void createMetrics(final String pipeID) {
+    createAutoGauge(pipeID);
   }
 
-  private void createAutoGauge(final String taskID) {
+  private void createAutoGauge(final String pipeID) {
     final PipeDataNodeRemainingEventAndTimeOperator operator =
-        remainingEventAndTimeOperatorMap.get(taskID);
+        remainingEventAndTimeOperatorMap.get(pipeID);
     metricService.createAutoGauge(
         Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
         MetricLevel.IMPORTANT,
@@ -98,13 +98,13 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
-  private void removeMetrics(final String taskID) {
-    removeAutoGauge(taskID);
+  private void removeMetrics(final String pipeID) {
+    removeAutoGauge(pipeID);
   }
 
-  private void removeAutoGauge(final String taskID) {
+  private void removeAutoGauge(final String pipeID) {
     final PipeDataNodeRemainingEventAndTimeOperator operator =
-        remainingEventAndTimeOperatorMap.get(taskID);
+        remainingEventAndTimeOperatorMap.get(pipeID);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_DATANODE_REMAINING_TIME.toString(),
@@ -112,67 +112,66 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(operator.getCreationTime()));
-    remainingEventAndTimeOperatorMap.remove(taskID);
+    remainingEventAndTimeOperatorMap.remove(pipeID);
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
   public void register(final IoTDBDataRegionExtractor extractor) {
     // The metric is global thus the regionId is omitted
-    final String taskID = extractor.getPipeName() + "_" + extractor.getCreationTime();
+    final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(taskID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
         .register(extractor);
     if (Objects.nonNull(metricService)) {
-      createMetrics(taskID);
+      createMetrics(pipeID);
     }
   }
 
   public void register(final PipeProcessorSubtask processorSubtask) {
     // The metric is global thus the regionId is omitted
-    final String taskID = processorSubtask.getPipeName() + "_" + processorSubtask.getCreationTime();
+    final String pipeID = processorSubtask.getPipeName() + "_" + processorSubtask.getCreationTime();
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(taskID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
         .register(processorSubtask);
     if (Objects.nonNull(metricService)) {
-      createMetrics(taskID);
+      createMetrics(pipeID);
     }
   }
 
   public void register(
       final PipeConnectorSubtask connectorSubtask, final String pipeName, final long creationTime) {
     // The metric is global thus the regionId is omitted
-    final String taskID = pipeName + "_" + creationTime;
+    final String pipeID = pipeName + "_" + creationTime;
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(taskID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
         .register(connectorSubtask, pipeName, creationTime);
     if (Objects.nonNull(metricService)) {
-      createMetrics(taskID);
+      createMetrics(pipeID);
     }
   }
 
   public void register(final IoTDBSchemaRegionExtractor extractor) {
     // The metric is global thus the regionId is omitted
-    final String taskID = extractor.getPipeName() + "_" + extractor.getCreationTime();
+    final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(taskID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
         .register(extractor);
     if (Objects.nonNull(metricService)) {
-      createMetrics(taskID);
+      createMetrics(pipeID);
     }
   }
 
-  public void deregister(final String taskID) {
-    if (!remainingEventAndTimeOperatorMap.containsKey(taskID)) {
+  public void deregister(final String pipeID) {
+    if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
       LOGGER.warn(
           "Failed to deregister pipe remaining event and time metrics, RemainingEventAndTimeOperator({}) does not exist",
-          taskID);
+          pipeID);
       return;
     }
     if (Objects.nonNull(metricService)) {
-      removeMetrics(taskID);
+      removeMetrics(pipeID);
     }
-    remainingEventAndTimeOperatorMap.remove(taskID);
   }
 
   public void markRegionCommit(final PipeTaskRuntimeEnvironment pipeTaskRuntimeEnvironment) {
@@ -180,17 +179,17 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     final String pipeName = pipeTaskRuntimeEnvironment.getPipeName();
     final int regionId = pipeTaskRuntimeEnvironment.getRegionId();
     final long creationTime = pipeTaskRuntimeEnvironment.getCreationTime();
-    final String taskID = pipeName + "_" + creationTime;
+    final String pipeID = pipeName + "_" + creationTime;
 
     if (Objects.isNull(metricService)) {
       return;
     }
     final PipeDataNodeRemainingEventAndTimeOperator operator =
-        remainingEventAndTimeOperatorMap.get(taskID);
+        remainingEventAndTimeOperatorMap.get(pipeID);
     if (Objects.isNull(operator)) {
       LOGGER.warn(
           "Failed to mark pipe region commit, RemainingEventAndTimeOperator({}) does not exist",
-          taskID);
+          pipeID);
       return;
     }
     // Prevent not set pipeName / creation times & potential differences between pipeNames and

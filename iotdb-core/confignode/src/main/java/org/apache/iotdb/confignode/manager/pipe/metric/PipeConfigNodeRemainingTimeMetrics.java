@@ -55,12 +55,12 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     ImmutableSet.copyOf(remainingTimeOperatorMap.keySet()).forEach(this::createMetrics);
   }
 
-  private void createMetrics(final String taskID) {
-    createAutoGauge(taskID);
+  private void createMetrics(final String pipeID) {
+    createAutoGauge(pipeID);
   }
 
-  private void createAutoGauge(final String taskID) {
-    final PipeConfigNodeRemainingTimeOperator operator = remainingTimeOperatorMap.get(taskID);
+  private void createAutoGauge(final String pipeID) {
+    final PipeConfigNodeRemainingTimeOperator operator = remainingTimeOperatorMap.get(pipeID);
     metricService.createAutoGauge(
         Metric.PIPE_CONFIGNODE_REMAINING_TIME.toString(),
         MetricLevel.IMPORTANT,
@@ -81,12 +81,12 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     }
   }
 
-  private void removeMetrics(final String taskID) {
-    removeAutoGauge(taskID);
+  private void removeMetrics(final String pipeID) {
+    removeAutoGauge(pipeID);
   }
 
-  private void removeAutoGauge(final String taskID) {
-    final PipeConfigNodeRemainingTimeOperator operator = remainingTimeOperatorMap.get(taskID);
+  private void removeAutoGauge(final String pipeID) {
+    final PipeConfigNodeRemainingTimeOperator operator = remainingTimeOperatorMap.get(pipeID);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_CONFIGNODE_REMAINING_TIME.toString(),
@@ -94,48 +94,47 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(operator.getCreationTime()));
-    remainingTimeOperatorMap.remove(taskID);
+    remainingTimeOperatorMap.remove(pipeID);
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
   public void register(final IoTDBConfigRegionExtractor extractor) {
     // The metric is global thus the regionId is omitted
-    final String taskID = extractor.getPipeName() + "_" + extractor.getCreationTime();
+    final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     remainingTimeOperatorMap
-        .computeIfAbsent(taskID, k -> new PipeConfigNodeRemainingTimeOperator())
+        .computeIfAbsent(pipeID, k -> new PipeConfigNodeRemainingTimeOperator())
         .register(extractor);
     if (Objects.nonNull(metricService)) {
-      createMetrics(taskID);
+      createMetrics(pipeID);
     }
   }
 
-  public void deregister(final String taskID) {
-    if (!remainingTimeOperatorMap.containsKey(taskID)) {
+  public void deregister(final String pipeID) {
+    if (!remainingTimeOperatorMap.containsKey(pipeID)) {
       LOGGER.warn(
           "Failed to deregister pipe remaining time metrics, RemainingTimeOperator({}) does not exist",
-          taskID);
+          pipeID);
       return;
     }
     if (Objects.nonNull(metricService)) {
-      removeMetrics(taskID);
+      removeMetrics(pipeID);
     }
-    remainingTimeOperatorMap.remove(taskID);
   }
 
   public void markRegionCommit(final PipeTaskRuntimeEnvironment pipeTaskRuntimeEnvironment) {
     // Filter commit attempt from assigner
     final String pipeName = pipeTaskRuntimeEnvironment.getPipeName();
     final long creationTime = pipeTaskRuntimeEnvironment.getCreationTime();
-    final String taskID = pipeName + "_" + creationTime;
+    final String pipeID = pipeName + "_" + creationTime;
 
     if (Objects.isNull(metricService)) {
       return;
     }
-    final PipeConfigNodeRemainingTimeOperator operator = remainingTimeOperatorMap.get(taskID);
+    final PipeConfigNodeRemainingTimeOperator operator = remainingTimeOperatorMap.get(pipeID);
     if (Objects.isNull(operator)) {
       LOGGER.warn(
-          "Failed to mark pipe region commit, RemainingTimeOperator({}) does not exist", taskID);
+          "Failed to mark pipe region commit, RemainingTimeOperator({}) does not exist", pipeID);
       return;
     }
     // Prevent not set pipeName / creation times & potential differences between pipeNames and
