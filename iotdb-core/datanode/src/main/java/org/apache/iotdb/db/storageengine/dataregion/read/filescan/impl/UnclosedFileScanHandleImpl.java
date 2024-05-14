@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
-import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
@@ -35,30 +34,30 @@ import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
-import org.apache.tsfile.read.TsFileDeviceIterator;
-import org.apache.tsfile.read.TsFileSequenceReader;
-import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-public class ClosedFileScanHandleImpl implements IFileScanHandle {
+public class UnclosedFileScanHandleImpl implements IFileScanHandle {
 
   private final TsFileResource tsFileResource;
+  private final Map<IDeviceID, Boolean> isAlignedMap;
+  private final Map<IDeviceID, List<IChunkMetadata>> deviceToChunkMetadataMap;
+  private final Map<IDeviceID, Map<String, List<MemChunkHandleImpl>>> deviceToMemChunkHandleMap;
 
-  private final Map<IDeviceID, Boolean> isAligned;
-
-  public ClosedFileScanHandleImpl(
-      TsFileResource tsFileResource, Map<IDeviceID, Boolean> isAligned) {
+  public UnclosedFileScanHandleImpl(
+      Map<IDeviceID, List<IChunkMetadata>> deviceToChunkMetadataMap,
+      Map<IDeviceID, Map<String, List<MemChunkHandleImpl>>> deviceToMemChunkHandleMap,
+      Map<IDeviceID, Boolean> isAlignedMap,
+      TsFileResource tsFileResource) {
+    this.isAlignedMap = isAlignedMap;
+    this.deviceToChunkMetadataMap = deviceToChunkMetadataMap;
+    this.deviceToMemChunkHandleMap = deviceToMemChunkHandleMap;
     this.tsFileResource = tsFileResource;
-    this.isAligned = isAligned;
   }
 
   @Override
@@ -76,30 +75,19 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
 
   @Override
   public Iterator<AbstractDeviceChunkMetaData> getAllDeviceChunkMetaData() throws IOException {
-    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(getFilePath(), true);
-    TsFileDeviceIterator deviceIterator = tsFileReader.getAllDevicesIteratorWithIsAligned();
-
-    List<AbstractDeviceChunkMetaData> deviceChunkMetaDataList = new LinkedList<>();
-    while (deviceIterator.hasNext()) {
-      Pair<IDeviceID, Boolean> deviceIDWithIsAligned = deviceIterator.next();
-      if (!deviceIDWithIsAligned.right) {
-        Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> metadata =
-            tsFileReader.getTimeseriesMetadataOffsetByDevice(
-                deviceIterator.getFirstMeasurementNodeOfCurrentDevice(),
-                Collections.emptySet(),
-                true);
+    List<AbstractDeviceChunkMetaData> deviceChunkMetaDataList = new ArrayList<>();
+    for (Map.Entry<IDeviceID, List<IChunkMetadata>> entry : deviceToChunkMetadataMap.entrySet()) {
+      IDeviceID deviceID = entry.getKey();
+      if (isAlignedMap.get(deviceID)) {
+        List<IChunkMetadata> chunkMetadataList = deviceToChunkMetadataMap.get(deviceID);
+        List<AlignedChunkMetadata> alignedChunkMetadataList = new ArrayList<>();
+        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+          alignedChunkMetadataList.add((AlignedChunkMetadata) chunkMetadata);
+        }
         deviceChunkMetaDataList.add(
-            new DeviceChunkMetaData(
-                deviceIDWithIsAligned.left,
-                metadata.values().stream()
-                    .flatMap(pair -> pair.getLeft().stream())
-                    .collect(Collectors.toList())));
+            new AlignedDeviceChunkMetaData(deviceID, alignedChunkMetadataList));
       } else {
-        // isAligned
-        List<AlignedChunkMetadata> alignedDeviceChunkMetaData =
-            tsFileReader.getAlignedChunkMetadata(deviceIDWithIsAligned.left);
-        deviceChunkMetaDataList.add(
-            new AlignedDeviceChunkMetaData(deviceIDWithIsAligned.left, alignedDeviceChunkMetaData));
+        deviceChunkMetaDataList.add(new DeviceChunkMetaData(deviceID, entry.getValue()));
       }
     }
     return deviceChunkMetaDataList.iterator();
@@ -115,25 +103,19 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
       List<ChunkOffsetInfo> chunkInfoList, List<Statistics<? extends Serializable>> statisticsList)
       throws IOException {
     List<IChunkHandle> chunkHandleList = new ArrayList<>();
-    TsFileSequenceReader reader =
-        FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
-    for (int i = 0; i < chunkInfoList.size(); i++) {
-      ChunkOffsetInfo chunkOffset = chunkInfoList.get(i);
-      chunkHandleList.add(
-          isAligned.get(chunkOffset.getDevicePath())
-              ? new DiskChunkHandleImpl(reader, chunkOffset.getOffSet(), statisticsList.get(i))
-              : new DiskAlignedChunkHandleImpl(
-                  reader,
-                  chunkOffset.getOffSet(),
-                  statisticsList.get(i),
-                  chunkOffset.getSharedTimeDataBuffer()));
+    for (ChunkOffsetInfo chunkOffsetInfo : chunkInfoList) {
+      List<MemChunkHandleImpl> chunkHandle =
+          deviceToMemChunkHandleMap
+              .get(chunkOffsetInfo.getDevicePath())
+              .get(chunkOffsetInfo.getMeasurementPath());
+      chunkHandleList.addAll(chunkHandle);
     }
     return chunkHandleList.iterator();
   }
 
   @Override
   public boolean isClosed() {
-    return tsFileResource.isClosed();
+    return false;
   }
 
   @Override

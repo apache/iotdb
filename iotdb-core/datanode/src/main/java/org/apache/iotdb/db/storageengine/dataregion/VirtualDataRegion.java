@@ -21,12 +21,15 @@ package org.apache.iotdb.db.storageengine.dataregion;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * It's a virtual data region used for query which contains time series that don't belong to any
@@ -58,6 +61,16 @@ public class VirtualDataRegion implements IDataRegionForQuery {
       List<PartialPath> pathList,
       String singleDeviceId,
       QueryContext context,
+      Filter globalTimeFilter,
+      List<Long> timePartitions)
+      throws QueryProcessException {
+    return EMPTY_QUERY_DATA_SOURCE;
+  }
+
+  @Override
+  public IQueryDataSource queryForDeviceRegionScan(
+      Map<IDeviceID, Boolean> devicePathToAligned,
+      QueryContext queryContext,
       Filter globalTimeFilter,
       List<Long> timePartitions)
       throws QueryProcessException {

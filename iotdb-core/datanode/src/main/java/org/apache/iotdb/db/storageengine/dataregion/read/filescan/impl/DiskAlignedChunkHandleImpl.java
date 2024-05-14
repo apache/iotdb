@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 import org.apache.iotdb.db.storageengine.dataregion.utils.SharedTimeDataBuffer;
 
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -37,13 +38,19 @@ public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
   private int pageIndex = 0;
 
   public DiskAlignedChunkHandleImpl(
-      String filePath,
+      TsFileSequenceReader reader,
       long offset,
       Statistics<? extends Serializable> chunkStatistic,
       SharedTimeDataBuffer sharedTimeDataBuffer)
       throws IOException {
-    super(filePath, offset, chunkStatistic);
+    super(reader, offset, chunkStatistic);
     this.sharedTimeDataBuffer = sharedTimeDataBuffer;
+  }
+
+  @Override
+  protected void init() throws IOException {
+    sharedTimeDataBuffer.init(reader);
+    super.init();
   }
 
   @Override

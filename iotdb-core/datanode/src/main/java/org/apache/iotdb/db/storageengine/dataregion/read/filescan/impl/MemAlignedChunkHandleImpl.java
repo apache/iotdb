@@ -17,29 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.read.filescan.model;
+package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
-import org.apache.tsfile.file.metadata.IChunkMetadata;
-import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.BitMap;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
-public class DeviceChunkMetaData extends AbstractDeviceChunkMetaData {
+public class MemAlignedChunkHandleImpl extends MemChunkHandleImpl {
 
-  private final List<IChunkMetadata> measurementChunkMetadata;
+  private final BitMap bitMapOfValue;
 
-  public DeviceChunkMetaData(
-      IDeviceID devicePath, List<IChunkMetadata> measurementChunkMetadataMap) {
-    super(devicePath);
-    this.measurementChunkMetadata = measurementChunkMetadataMap;
-  }
-
-  public List<IChunkMetadata> getMeasurementChunkMetadataMap() {
-    return measurementChunkMetadata;
+  public MemAlignedChunkHandleImpl(long[] dataOfTimestamp, BitMap bitMapOfValue) {
+    super(dataOfTimestamp);
+    this.bitMapOfValue = bitMapOfValue;
   }
 
   @Override
-  public boolean isAligned() {
-    return false;
+  public long[] getDataTime() throws IOException {
+    List<Long> timeList = new ArrayList<>();
+    for (int i = 0; i < dataOfTimestamp.length; i++) {
+      if (!bitMapOfValue.isMarked(i)) {
+        timeList.add(dataOfTimestamp[i]);
+      }
+    }
+    hasRead = true;
+    return timeList.stream().mapToLong(Long::longValue).toArray();
   }
 }

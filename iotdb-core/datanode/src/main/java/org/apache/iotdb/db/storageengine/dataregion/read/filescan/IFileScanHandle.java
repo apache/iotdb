@@ -20,12 +20,17 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.ChunkOffsetInfo;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileDeviceStartEndTimeIterator;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * This interface is used to handle the scan of TSFile. It will supply the interface for metadata
@@ -67,6 +72,18 @@ public interface IFileScanHandle {
    */
   boolean isTimeSeriesTimeDeleted(String timeSeriesName, long timestamp);
 
+  /**
+   * Get the chunkHandles of all chunks needed to be scanned. ChunkHandles are used to read the
+   * chunk
+   *
+   * @param chunkInfoList the list of ChunkOffset.
+   * @param statisticsList the list of Statistics.
+   * @return the iterator of IChunkHandle.
+   */
+  Iterator<IChunkHandle> getChunkHandles(
+      List<ChunkOffsetInfo> chunkInfoList, List<Statistics<? extends Serializable>> statisticsList)
+      throws IOException;
+
   /** If the TsFile of this handle is closed. */
   boolean isClosed();
 
@@ -75,4 +92,7 @@ public interface IFileScanHandle {
 
   /** Get the file path of target TsFile. */
   String getFilePath();
+
+  /** Get the TsFileResource of target TsFile. */
+  TsFileResource getTsResource();
 }

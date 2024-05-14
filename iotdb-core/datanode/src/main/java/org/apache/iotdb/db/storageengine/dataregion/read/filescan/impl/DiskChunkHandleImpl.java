@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
-import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -40,15 +39,24 @@ public class DiskChunkHandleImpl implements IChunkHandle {
   protected ChunkHeader currentChunkHeader;
   protected PageHeader currentPageHeader;
   protected ByteBuffer currentChunkDataBuffer;
+  protected TsFileSequenceReader reader;
+  protected long offset;
 
   // Page will reuse chunkStatistics if there is only one page in chunk
   protected final Statistics<? extends Serializable> chunkStatistic;
 
   public DiskChunkHandleImpl(
-      String filePath, long offset, Statistics<? extends Serializable> chunkStatistics)
+      TsFileSequenceReader reader, long offset, Statistics<? extends Serializable> chunkStatistics)
       throws IOException {
     this.chunkStatistic = chunkStatistics;
-    TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
+    this.reader = reader;
+    this.offset = offset;
+  }
+
+  protected void init() throws IOException {
+    if (currentChunkDataBuffer != null) {
+      return;
+    }
     Chunk chunk = reader.readMemChunk(offset);
     this.currentChunkDataBuffer = chunk.getData();
     this.currentChunkHeader = chunk.getHeader();
@@ -58,6 +66,8 @@ public class DiskChunkHandleImpl implements IChunkHandle {
   // If so, deserialize the page header
   @Override
   public boolean hasNextPage() throws IOException {
+    // read chunk from disk if needed
+    init();
     if (!currentChunkDataBuffer.hasRemaining()) {
       return false;
     }

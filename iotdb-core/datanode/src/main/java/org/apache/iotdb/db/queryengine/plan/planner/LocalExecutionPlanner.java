@@ -88,6 +88,7 @@ public class LocalExecutionPlanner {
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
 
     instanceContext.setSourcePaths(collectSourcePaths(context));
+    // TODO set dataStructure for region scan eg: devicePathsToAligned
 
     context.getTimePartitions().ifPresent(instanceContext::setTimePartitions);
 

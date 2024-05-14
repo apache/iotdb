@@ -16,27 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.storageengine.dataregion.read;
 
-package org.apache.iotdb.db.storageengine.dataregion.read.filescan.model;
-
-import org.apache.tsfile.file.metadata.ChunkMetadata;
-
-import java.util.List;
-
-public class MeasurementChunkMetaData {
-    private  final String measurementId;
-    private  final List<ChunkMetadata> chunkMetadataList;
-
-    public MeasurementChunkMetaData(String measurementId, List<ChunkMetadata> chunkMetadataList) {
-        this.measurementId = measurementId;
-        this.chunkMetadataList = chunkMetadataList;
-    }
-
-    public String getMeasurementId() {
-        return measurementId;
-    }
-
-    public List<ChunkMetadata> getChunkMetadataList() {
-        return chunkMetadataList;
-    }
+public enum QueryDataSourceType {
+  SERIES_SCAN,
+  DEVICE_REGION_SCAN,
+  TIME_SERIES_REGION_SCAN
 }

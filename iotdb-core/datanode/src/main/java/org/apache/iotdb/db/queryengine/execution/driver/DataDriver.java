@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
 import com.google.common.util.concurrent.SettableFuture;
@@ -82,7 +83,7 @@ public class DataDriver extends Driver {
       List<DataSourceOperator> sourceOperators =
           ((DataDriverContext) driverContext).getSourceOperators();
       if (sourceOperators != null && !sourceOperators.isEmpty()) {
-        QueryDataSource dataSource = initQueryDataSource();
+        IQueryDataSource dataSource = initQueryDataSource();
         if (dataSource == null) {
           // If this driver is being initialized, meanwhile the whole FI was aborted or cancelled
           // for some reasons, we may get null QueryDataSource here.
@@ -92,14 +93,7 @@ public class DataDriver extends Driver {
         sourceOperators.forEach(
             sourceOperator -> {
               // Construct QueryDataSource for source operator
-              QueryDataSource queryDataSource =
-                  new QueryDataSource(dataSource.getSeqResources(), dataSource.getUnseqResources());
-
-              queryDataSource.setSingleDevice(dataSource.isSingleDevice());
-
-              queryDataSource.setDataTTL(dataSource.getDataTTL());
-
-              sourceOperator.initQueryDataSource(queryDataSource);
+              sourceOperator.initQueryDataSource(dataSource.clone());
             });
       }
 
@@ -123,7 +117,7 @@ public class DataDriver extends Driver {
    * @throws QueryProcessException while failed to init query resource, QueryProcessException will
    *     be thrown
    */
-  private QueryDataSource initQueryDataSource() throws QueryProcessException {
+  private IQueryDataSource initQueryDataSource() throws QueryProcessException {
     return ((DataDriverContext) driverContext).getSharedQueryDataSource();
   }
 

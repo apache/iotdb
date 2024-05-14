@@ -17,22 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.read.filescan.model;
+package org.apache.iotdb.db.storageengine.dataregion.read;
 
-public class ChunkOffset {
-  private final long offSet;
-  private final String path;
+public interface IQueryDataSource {
 
-  public ChunkOffset(long offSet, String path) {
-    this.offSet = offSet;
-    this.path = path;
-  }
+  IQueryDataSource clone();
 
-  public long getOffSet() {
-    return offSet;
-  }
-
-  public String getPath() {
-    return path;
-  }
+  long getDataTTL();
 }

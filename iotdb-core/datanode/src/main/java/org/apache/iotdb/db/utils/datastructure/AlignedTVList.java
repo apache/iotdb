@@ -1260,4 +1260,8 @@ public abstract class AlignedTVList extends TVList {
 
     return new BitMap(rowCount, rowBitsArr);
   }
+
+  public List<List<BitMap>> getBitMaps() {
+    return bitMaps;
+  }
 }

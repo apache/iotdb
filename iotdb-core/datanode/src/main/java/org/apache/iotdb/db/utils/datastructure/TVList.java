@@ -414,4 +414,8 @@ public abstract class TVList implements WALEntryValue {
     }
     return null;
   }
+
+  public List<long[]> getTimestamps() {
+    return timestamps;
+  }
 }

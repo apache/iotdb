@@ -80,8 +80,12 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegionScan;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandle;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.ClosedFileScanHandleImpl;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -1841,6 +1845,42 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  @Override
+  public IQueryDataSource queryForDeviceRegionScan(
+      Map<IDeviceID, Boolean> devicePathToAligned,
+      QueryContext queryContext,
+      Filter globalTimeFilter,
+      List<Long> timePartitions)
+      throws QueryProcessException {
+    try {
+      List<IFileScanHandle> seqFileScanHandles =
+          getFileHandleListForQuery(
+              tsFileManager.getTsFileList(true, timePartitions, globalTimeFilter),
+              devicePathToAligned,
+              queryContext,
+              globalTimeFilter,
+              true);
+      List<IFileScanHandle> unseqFileScanHandles =
+          getFileHandleListForQuery(
+              tsFileManager.getTsFileList(false, timePartitions, globalTimeFilter),
+              devicePathToAligned,
+              queryContext,
+              globalTimeFilter,
+              false);
+
+      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(SEQUENCE_TSFILE, seqFileScanHandles.size());
+      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(
+          UNSEQUENCE_TSFILE, unseqFileScanHandles.size());
+
+      QueryDataSourceForRegionScan dataSource =
+          new QueryDataSourceForRegionScan(seqFileScanHandles, unseqFileScanHandles);
+      dataSource.setDataTTL(dataTTL);
+      return dataSource;
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+  }
+
   /** lock the read lock of the insert lock */
   @Override
   public void readLock() {
@@ -1867,6 +1907,49 @@ public class DataRegion implements IDataRegionForQuery {
   public void writeUnlock() {
     insertWriteLockHolder = "";
     insertLock.writeLock().unlock();
+  }
+
+  private List<IFileScanHandle> getFileHandleListForQuery(
+      Collection<TsFileResource> tsFileResources,
+      Map<IDeviceID, Boolean> devicePathToAligned,
+      QueryContext context,
+      Filter globalTimeFilter,
+      boolean isSeq)
+      throws MetadataException {
+
+    if (context.isDebug()) {
+      DEBUG_LOGGER.info(
+          "Path: {}, get tsfile list: {} isSeq: {} timefilter: {}",
+          devicePathToAligned,
+          tsFileResources,
+          isSeq,
+          (globalTimeFilter == null ? "null" : globalTimeFilter));
+    }
+
+    List<IFileScanHandle> fileScanHandles = new ArrayList<>();
+
+    long timeLowerBound =
+        dataTTL != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
+    context.setQueryTimeLowerBound(timeLowerBound);
+
+    for (TsFileResource tsFileResource : tsFileResources) {
+      if (!tsFileResource.isSatisfied(null, globalTimeFilter, isSeq, dataTTL, context.isDebug())) {
+        continue;
+      }
+      closeQueryLock.readLock().lock();
+      try {
+        if (tsFileResource.isClosed()) {
+          fileScanHandles.add(new ClosedFileScanHandleImpl(tsFileResource, devicePathToAligned));
+        } else {
+          tsFileResource
+              .getProcessor()
+              .queryForDeviceRegionScan(devicePathToAligned, context, fileScanHandles);
+        }
+      } finally {
+        closeQueryLock.readLock().unlock();
+      }
+    }
+    return fileScanHandles;
   }
 
   /**

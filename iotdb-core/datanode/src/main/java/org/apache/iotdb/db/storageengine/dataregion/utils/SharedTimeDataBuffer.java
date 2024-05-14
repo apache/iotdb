@@ -19,20 +19,32 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.Chunk;
+
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SharedTimeDataBuffer {
-  ByteBuffer timeBuffer;
-  List<Long[]> timeData;
+  private ByteBuffer timeBuffer;
+  private final IChunkMetadata timeChunkMetaData;
+  private final List<Long[]> timeData;
 
-  int pageId;
-
-  public SharedTimeDataBuffer(ByteBuffer timeBuffer) {
-    this.timeBuffer = timeBuffer;
+  public SharedTimeDataBuffer(IChunkMetadata timeChunkMetaData) {
+    this.timeChunkMetaData = timeChunkMetaData;
     this.timeData = new ArrayList<>();
-    this.pageId = 0;
+  }
+
+  // It should be called first before other methods in sharedTimeBuffer.
+  public void init(TsFileSequenceReader reader) throws IOException {
+    if (timeBuffer != null) {
+      return;
+    }
+    Chunk timeChunk = reader.readMemChunk(timeChunkMetaData.getOffsetOfChunkHeader());
+    timeBuffer = timeChunk.getData();
   }
 
   public synchronized Long[] getPageData(int pageId) {

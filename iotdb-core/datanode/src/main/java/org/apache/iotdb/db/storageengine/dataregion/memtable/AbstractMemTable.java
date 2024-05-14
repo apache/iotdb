@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -34,14 +35,19 @@ import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.flush.NotifyFlushMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.MemAlignedChunkHandleImpl;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.MemChunkHandleImpl;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -57,6 +63,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 public abstract class AbstractMemTable implements IMemTable {
   /** Each memTable node has a unique int value identifier, init when recovering wal. */
@@ -460,6 +467,73 @@ public abstract class AbstractMemTable implements IMemTable {
       throws IOException, QueryProcessException {
     return ResourceByPathUtils.getResourceInstance(fullPath)
         .getReadOnlyMemChunkFromMemTable(context, this, modsToMemtable, ttlLowerBound);
+  }
+
+  @Override
+  public void queryForDeviceRegionScan(
+      QueryContext context,
+      IDeviceID deviceID,
+      boolean isAligned,
+      long ttlLowerBound,
+      Map<String, List<MemChunkHandleImpl>> memChunkHandleMap,
+      List<Pair<Modification, IMemTable>> modsToMemtabled)
+      throws IOException, QueryProcessException, MetadataException {
+    Map<IDeviceID, IWritableMemChunkGroup> memTableMap = getMemTableMap();
+    // check If Memtable Contains this path
+    if (!memTableMap.containsKey(deviceID)) {
+      return;
+    }
+    IWritableMemChunkGroup writableMemChunkGroup = memTableMap.get(deviceID);
+    if (isAligned) {
+      getMemAlignedChunkHandleFromMemTable(
+          (AlignedWritableMemChunkGroup) writableMemChunkGroup,
+          memChunkHandleMap,
+          ttlLowerBound,
+          modsToMemtabled);
+    } else {
+      getMemChunkHandleFromMemTable(
+          (WritableMemChunkGroup) writableMemChunkGroup,
+          memChunkHandleMap,
+          ttlLowerBound,
+          modsToMemtabled);
+    }
+  }
+
+  private void getMemAlignedChunkHandleFromMemTable(
+      AlignedWritableMemChunkGroup writableMemChunkGroup,
+      Map<String, List<MemChunkHandleImpl>> memChunkHandleMap,
+      long ttlLowerBound,
+      List<Pair<Modification, IMemTable>> modsToMemtable) {
+    AlignedWritableMemChunk memChunk = writableMemChunkGroup.getAlignedMemChunk();
+    AlignedTVList alignedTVList = (AlignedTVList) memChunk.getSortedTvListForQuery();
+    List<long[]> timestamps = alignedTVList.getTimestamps();
+    List<List<BitMap>> bitMaps = alignedTVList.getBitMaps();
+    for (int i = 0; i < timestamps.size(); i++) {
+      long[] currentTimestamps = timestamps.get(i);
+      for (Entry<String, Integer> entry : memChunk.getMeasurementIndexMap().entrySet()) {
+        memChunkHandleMap
+            .getOrDefault(entry.getKey(), new ArrayList<>())
+            .add(
+                new MemAlignedChunkHandleImpl(
+                    currentTimestamps, bitMaps.get(i).get(entry.getValue())));
+      }
+    }
+  }
+
+  private void getMemChunkHandleFromMemTable(
+      WritableMemChunkGroup writableMemChunkGroup,
+      Map<String, List<MemChunkHandleImpl>> memChunkHandleMap,
+      long ttlLowerBound,
+      List<Pair<Modification, IMemTable>> modsToMemtable) {
+    for (Entry<String, IWritableMemChunk> entry :
+        writableMemChunkGroup.getMemChunkMap().entrySet()) {
+      IWritableMemChunk writableMemChunk = entry.getValue();
+      TVList tvList = writableMemChunk.getSortedTvListForQuery();
+      long[] timestamps = tvList.getTimestamps().stream().flatMapToLong(LongStream::of).toArray();
+      memChunkHandleMap
+          .getOrDefault(entry.getKey(), new ArrayList<>())
+          .add(new MemChunkHandleImpl(timestamps));
+    }
   }
 
   /**

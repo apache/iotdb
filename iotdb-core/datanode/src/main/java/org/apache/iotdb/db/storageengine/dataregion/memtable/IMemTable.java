@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.MemChunkHandleImpl;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -119,6 +120,15 @@ public interface IMemTable extends WALEntryValue {
       QueryContext context,
       PartialPath fullPath,
       long ttlLowerBound,
+      List<Pair<Modification, IMemTable>> modsToMemtabled)
+      throws IOException, QueryProcessException, MetadataException;
+
+  void queryForDeviceRegionScan(
+      QueryContext context,
+      IDeviceID deviceID,
+      boolean isAligned,
+      long ttlLowerBound,
+      Map<String, List<MemChunkHandleImpl>> memChunkHandleMap,
       List<Pair<Modification, IMemTable>> modsToMemtabled)
       throws IOException, QueryProcessException, MetadataException;
 
