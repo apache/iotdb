@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -107,12 +108,15 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   }
 
   public AsyncPipeDataTransferServiceClient borrowClient(String deviceId) throws Exception {
-    if (!useLeaderCache) {
+    if (!useLeaderCache || Objects.isNull(deviceId)) {
       return borrowClient();
     }
 
-    final TEndPoint endPoint = LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId);
-    if (endPoint == null) {
+    return borrowClient(LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId));
+  }
+
+  public AsyncPipeDataTransferServiceClient borrowClient(TEndPoint endPoint) throws Exception {
+    if (!useLeaderCache || Objects.isNull(endPoint)) {
       return borrowClient();
     }
 
