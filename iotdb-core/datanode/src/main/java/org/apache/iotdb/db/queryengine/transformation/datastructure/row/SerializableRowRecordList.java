@@ -43,9 +43,9 @@ import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.
 
 public class SerializableRowRecordList implements SerializableList {
   public static SerializableRowRecordList newSerializableRowRecordList(
-      String queryId, TSDataType[] dataTypes, int internalRowRecordListCapacity) {
+      String queryId, TSDataType[] dataTypes) {
     SerializationRecorder recorder = new SerializationRecorder(queryId);
-    return new SerializableRowRecordList(recorder, dataTypes, internalRowRecordListCapacity);
+    return new SerializableRowRecordList(recorder, dataTypes);
   }
 
   /**
@@ -99,7 +99,6 @@ public class SerializableRowRecordList implements SerializableList {
 
   private final SerializationRecorder serializationRecorder;
   private final TSDataType[] dataTypes;
-  private final int internalRowRecordListCapacity;
   private final int valueColumnCount;
 
   private List<Column[]> blocks;
@@ -111,12 +110,9 @@ public class SerializableRowRecordList implements SerializableList {
   private boolean isAllNull;
 
   private SerializableRowRecordList(
-      SerializationRecorder serializationRecorder,
-      TSDataType[] dataTypes,
-      int internalRowRecordListCapacity) {
+      SerializationRecorder serializationRecorder, TSDataType[] dataTypes) {
     this.serializationRecorder = serializationRecorder;
     this.dataTypes = dataTypes;
-    this.internalRowRecordListCapacity = internalRowRecordListCapacity;
 
     valueColumnCount = dataTypes.length;
     prefixNullCount = 0;
@@ -221,6 +217,29 @@ public class SerializableRowRecordList implements SerializableList {
     }
 
     return time;
+  }
+
+  public int getColumnIndex(int index) {
+    assert index >= prefixNullCount;
+
+    return getColumnIndexSkipPrefixNulls(index - prefixNullCount);
+  }
+
+  private int getColumnIndexSkipPrefixNulls(int index) {
+    assert index < skipPrefixNullCount;
+
+    int ret = -1;
+    int total = 0;
+    for (int i = 0; i < blocks.size(); i++) {
+      int length = blocks.get(i)[0].getPositionCount();
+      if (index < total + length) {
+        ret = i;
+        break;
+      }
+      total += length;
+    }
+
+    return ret;
   }
 
   @Deprecated

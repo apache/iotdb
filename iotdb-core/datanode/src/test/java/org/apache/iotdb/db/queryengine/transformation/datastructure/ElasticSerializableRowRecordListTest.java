@@ -143,7 +143,7 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
     try {
       Column[] columns = generateColumns();
       rowRecordList.put(columns);
-    } catch (IOException e) {
+    } catch (IOException | QueryProcessException e) {
       fail(e.toString());
     }
     assertEquals(ITERATION_TIMES, rowRecordList.size());

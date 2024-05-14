@@ -53,7 +53,9 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     long count = timeColumn.getPositionCount();
     totalByteArrayLengthLimit += byteArrayLengthForMemoryControl * count;
     for (int i = 0; i < count; i++) {
-      if (!valueColumn.isNull(i)) {
+      if (valueColumn.isNull(i)) {
+        totalByteArrayLength += byteArrayLengthForMemoryControl;
+      } else {
         totalByteArrayLength += valueColumn.getBinary(i).getLength();
       }
     }
@@ -120,7 +122,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     }
     // Copy latter lists
     newESTVList.pointCount = internalListEvictionUpperBound * newInternalTVListCapacity;
-    TVListForwardIterator iterator = newESTVList.constructIteratorByEvictionUpperBound();
+    TVListForwardIterator iterator = constructIteratorByEvictionUpperBound();
     copyColumnByIterator(newESTVList, iterator);
     while (iterator.hasNext()) {
       iterator.next();
