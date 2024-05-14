@@ -68,7 +68,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
   }
 
   @Override
-  public synchronized void collect(final Event event) {
+  public void collect(final Event event) {
     try {
       if (event instanceof PipeInsertNodeTabletInsertionEvent) {
         parseAndCollectEvent((PipeInsertNodeTabletInsertionEvent) event);
@@ -90,7 +90,8 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   private void parseAndCollectEvent(final PipeInsertNodeTabletInsertionEvent sourceEvent) {
     if (sourceEvent.shouldParseTimeOrPattern()) {
-      for (PipeRawTabletInsertionEvent parsedEvent : sourceEvent.toRawTabletInsertionEvents()) {
+      for (final PipeRawTabletInsertionEvent parsedEvent :
+          sourceEvent.toRawTabletInsertionEvents()) {
         collectEvent(parsedEvent);
       }
     } else {
@@ -145,7 +146,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
         .ifPresent(this::collectEvent);
   }
 
-  private void collectEvent(final Event event) {
+  private synchronized void collectEvent(final Event event) {
     collectInvocationCount.incrementAndGet();
 
     if (event instanceof EnrichedEvent) {

@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-interface IoTDBDataNodeCacheLeaderClientManager {
+public interface IoTDBDataNodeCacheLeaderClientManager {
 
   LeaderCacheManager LEADER_CACHE_MANAGER = new LeaderCacheManager();
 

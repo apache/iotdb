@@ -38,6 +38,9 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -46,6 +49,8 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class PipeConnectorSubtaskManager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtaskManager.class);
 
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
       "Failed to deregister PipeConnectorSubtask. No such subtask: ";
@@ -117,6 +122,14 @@ public class PipeConnectorSubtaskManager {
               pipeConnectorParameters, new PipeTaskRuntimeConfiguration(environment));
           pipeConnector.handshake();
         } catch (final Exception e) {
+          try {
+            pipeConnector.close();
+          } catch (final Exception closeException) {
+            LOGGER.warn(
+                "Failed to close connector after failed to initialize connector. "
+                    + "Ignore this exception.",
+                closeException);
+          }
           throw new PipeException(
               "Failed to construct PipeConnector, because of " + e.getMessage(), e);
         }

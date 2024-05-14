@@ -191,7 +191,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
       ConfigNodeDescriptor.getInstance().getConf();
 
-  private final ConfigManager configManager;
+  protected ConfigManager configManager;
+
+  protected ConfigNodeRPCServiceProcessor() {}
 
   public ConfigNodeRPCServiceProcessor(ConfigManager configManager) {
     this.configManager = configManager;
