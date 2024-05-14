@@ -95,11 +95,11 @@ public class PipeConfig {
 
   /////////////////////////////// Connector ///////////////////////////////
 
-  public long getPipeConnectorHandshakeTimeoutMs() {
+  public int getPipeConnectorHandshakeTimeoutMs() {
     return COMMON_CONFIG.getPipeConnectorHandshakeTimeoutMs();
   }
 
-  public long getPipeConnectorTransferTimeoutMs() {
+  public int getPipeConnectorTransferTimeoutMs() {
     return COMMON_CONFIG.getPipeConnectorTransferTimeoutMs();
   }
 
@@ -176,6 +176,10 @@ public class PipeConfig {
   }
 
   /////////////////////////////// Hybrid Mode ///////////////////////////////
+
+  public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
+    return COMMON_CONFIG.getPipeMaxAllowedHistoricalTsFilePerDataRegion();
+  }
 
   public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
     return COMMON_CONFIG.getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
@@ -329,6 +333,9 @@ public class PipeConfig {
     LOGGER.info("PipeAirGapReceiverEnabled: {}", getPipeAirGapReceiverEnabled());
     LOGGER.info("PipeAirGapReceiverPort: {}", getPipeAirGapReceiverPort());
 
+    LOGGER.info(
+        "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",
+        getPipeMaxAllowedHistoricalTsFilePerDataRegion());
     LOGGER.info(
         "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
         getPipeMaxAllowedPendingTsFileEpochPerDataRegion());

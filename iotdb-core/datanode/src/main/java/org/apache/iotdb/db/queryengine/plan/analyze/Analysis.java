@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySource;
@@ -299,6 +300,28 @@ public class Analysis implements IAnalysis {
   private List<String> measurementList;
   private List<IMeasurementSchema> measurementSchemaList;
 
+  // Used for regionScan
+  private Map<PartialPath, Boolean> devicePathToAlignedStatus;
+  private Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemas;
+
+  public void setDevicePathToAlignedStatus(Map<PartialPath, Boolean> devicePathToAlignedStatus) {
+    this.devicePathToAlignedStatus = devicePathToAlignedStatus;
+  }
+
+  public Map<PartialPath, Boolean> getDevicePathToAlignedStatus() {
+    return devicePathToAlignedStatus;
+  }
+
+  public void setDeviceToTimeseriesSchemas(
+      Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemas) {
+    this.deviceToTimeseriesSchemas = deviceToTimeseriesSchemas;
+  }
+
+  public Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>>
+      getDeviceToTimeseriesSchemas() {
+    return deviceToTimeseriesSchemas;
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Used in optimizer
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -311,6 +334,12 @@ public class Analysis implements IAnalysis {
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     return dataPartition.getDataRegionReplicaSetWithTimeFilter(seriesPath.getDevice(), timefilter);
+  }
+
+  public List<TRegionReplicaSet> getPartitionInfoByDevice(
+      PartialPath devicePath, Filter timefilter) {
+    return dataPartition.getDataRegionReplicaSetWithTimeFilter(
+        devicePath.getFullPath(), timefilter);
   }
 
   public TRegionReplicaSet getPartitionInfo(

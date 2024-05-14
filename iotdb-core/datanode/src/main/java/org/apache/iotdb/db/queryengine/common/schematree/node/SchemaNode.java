@@ -49,6 +49,8 @@ public abstract class SchemaNode implements ITreeNode {
 
   public abstract void replaceChild(String name, SchemaNode newChild);
 
+  public abstract void removeChild(String name);
+
   public abstract void copyDataTo(SchemaNode schemaNode);
 
   public Map<String, SchemaNode> getChildren() {

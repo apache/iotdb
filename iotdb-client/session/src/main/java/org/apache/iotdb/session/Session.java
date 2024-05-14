@@ -435,6 +435,7 @@ public class Session implements ISession {
     this.enableAutoFetch = builder.enableAutoFetch;
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
+    this.queryTimeoutInMs = builder.timeOut;
   }
 
   @Override
