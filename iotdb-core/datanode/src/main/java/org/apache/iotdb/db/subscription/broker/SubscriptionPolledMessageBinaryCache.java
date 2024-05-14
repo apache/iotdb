@@ -54,7 +54,7 @@ public class SubscriptionPolledMessageBinaryCache {
                   public @Nullable ByteBuffer load(
                       @NonNull final SubscriptionPolledMessage subscriptionPolledMessage)
                       throws IOException {
-                    subscriptionPolledMessage.serialize();
+                    SubscriptionPolledMessage.serialize(subscriptionPolledMessage);
                     return subscriptionPolledMessage.getByteBuffer();
                   }
                 });

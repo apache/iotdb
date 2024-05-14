@@ -57,12 +57,12 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
     try {
       resp.body = new ArrayList<>();
       for (final SubscriptionPolledMessage message : messages) {
-        if (Objects.nonNull(message.getByteBuffer())) {
-          resp.body.add(message.getByteBuffer());
-          message.resetByteBuffer(); // maybe friendly for gc
-        } else {
-          resp.body.add(SubscriptionPolledMessage.serialize(message));
-        }
+        final ByteBuffer byteBuffer =
+            Objects.nonNull(message.getByteBuffer())
+                ? message.getByteBuffer()
+                : SubscriptionPolledMessage.serialize(message);
+        resp.body.add(byteBuffer);
+        message.resetByteBuffer(); // maybe friendly for gc
       }
     } catch (IOException e) {
       resp.status =

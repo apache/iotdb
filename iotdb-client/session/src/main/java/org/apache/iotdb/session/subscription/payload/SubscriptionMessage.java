@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription;
+package org.apache.iotdb.session.subscription.payload;
 
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 

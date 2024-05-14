@@ -40,6 +40,8 @@ import org.apache.iotdb.rpc.subscription.payload.common.TsFileErrorMessagePayloa
 import org.apache.iotdb.rpc.subscription.payload.common.TsFileInitMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.TsFilePieceMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.TsFileSealMessagePayload;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.util.SubscriptionPollTimer;
 import org.apache.iotdb.session.util.SessionUtils;
 
 import org.slf4j.Logger;
@@ -63,24 +65,18 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.SortedMap;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 
 public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
 
   public static final long SLEEP_NS = 1_000_000_000L;
-
-  private final List<TEndPoint> initialEndpoints;
 
   private final String username;
   private final String password;
@@ -91,10 +87,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private final long heartbeatIntervalMs;
   private final long endpointsSyncIntervalMs;
 
-  private final SortedMap<Integer, SubscriptionProvider> subscriptionProviders =
-      new ConcurrentSkipListMap<>();
-  private final ReentrantReadWriteLock subscriptionProvidersLock = new ReentrantReadWriteLock(true);
-  private int nextDataNodeId = -1;
+  private SubscriptionProviders subscriptionProviders;
 
   private ScheduledExecutorService heartbeatWorkerExecutor;
   private ScheduledExecutorService endpointsSyncerExecutor;
@@ -123,7 +116,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// ctor ///////////////////////////////
 
   protected SubscriptionConsumer(final Builder builder) {
-    this.initialEndpoints = new ArrayList<>();
+    final List<TEndPoint> initialEndpoints = new ArrayList<>();
     // From org.apache.iotdb.session.Session.getNodeUrls
     // Priority is given to `host:port` over `nodeUrls`.
     if (Objects.nonNull(builder.host)) {
@@ -131,6 +124,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     } else {
       initialEndpoints.addAll(SessionUtils.parseSeedNodeUrls(builder.nodeUrls));
     }
+    this.subscriptionProviders = new SubscriptionProviders(initialEndpoints);
 
     this.username = builder.username;
     this.password = builder.password;
@@ -189,11 +183,12 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
 
     // open subscription providers
-    acquireWriteLock();
+    subscriptionProviders.acquireWriteLock();
     try {
-      openProviders(); // throw SubscriptionException or IoTDBConnectionException
+      subscriptionProviders.openProviders(
+          this); // throw SubscriptionException or IoTDBConnectionException
     } finally {
-      releaseWriteLock();
+      subscriptionProviders.releaseWriteLock();
     }
 
     // launch heartbeat worker
@@ -219,11 +214,12 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       shutdownWorkers();
 
       // close subscription providers
-      acquireWriteLock();
+      subscriptionProviders.acquireWriteLock();
       try {
-        closeProviders(); // throw SubscriptionException or IoTDBConnectionException
+        subscriptionProviders
+            .closeProviders(); // throw SubscriptionException or IoTDBConnectionException
       } finally {
-        releaseWriteLock();
+        subscriptionProviders.releaseWriteLock();
       }
     } finally {
       isClosed.set(true);
@@ -232,24 +228,6 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   boolean isClosed() {
     return isClosed.get();
-  }
-
-  /////////////////////////////// lock ///////////////////////////////
-
-  void acquireReadLock() {
-    subscriptionProvidersLock.readLock().lock();
-  }
-
-  void releaseReadLock() {
-    subscriptionProvidersLock.readLock().unlock();
-  }
-
-  void acquireWriteLock() {
-    subscriptionProvidersLock.writeLock().lock();
-  }
-
-  void releaseWriteLock() {
-    subscriptionProvidersLock.writeLock().unlock();
   }
 
   /////////////////////////////// subscribe & unsubscribe ///////////////////////////////
@@ -263,11 +241,11 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   public void subscribe(final Set<String> topicNames) throws SubscriptionException {
-    acquireReadLock();
+    subscriptionProviders.acquireReadLock();
     try {
       subscribeWithRedirection(topicNames);
     } finally {
-      releaseReadLock();
+      subscriptionProviders.releaseReadLock();
     }
   }
 
@@ -280,11 +258,11 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   public void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
-    acquireReadLock();
+    subscriptionProviders.acquireReadLock();
     try {
       unsubscribeWithRedirection(topicNames);
     } finally {
-      releaseReadLock();
+      subscriptionProviders.releaseReadLock();
     }
   }
 
@@ -307,7 +285,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
               return t;
             });
     heartbeatWorkerExecutor.scheduleAtFixedRate(
-        new ConsumerHeartbeatWorker(this), 0, heartbeatIntervalMs, TimeUnit.MILLISECONDS);
+        () -> subscriptionProviders.heartbeat(this), 0, heartbeatIntervalMs, TimeUnit.MILLISECONDS);
   }
 
   /**
@@ -343,7 +321,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
               return t;
             });
     endpointsSyncerExecutor.scheduleAtFixedRate(
-        new SubscriptionEndpointsSyncer(this), 0, endpointsSyncIntervalMs, TimeUnit.MILLISECONDS);
+        () -> subscriptionProviders.sync(this), 0, endpointsSyncIntervalMs, TimeUnit.MILLISECONDS);
   }
 
   private void shutdownEndpointsSyncer() {
@@ -367,148 +345,6 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     if (Objects.isNull(this.consumerGroupId)) {
       this.consumerGroupId = provider.getConsumerGroupId();
     }
-
-    return provider;
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void openProviders() throws SubscriptionException, IoTDBConnectionException {
-    // close stale providers
-    closeProviders();
-
-    for (final TEndPoint endPoint : initialEndpoints) {
-      final SubscriptionProvider defaultProvider;
-      final int defaultDataNodeId;
-
-      try {
-        defaultProvider = constructProviderAndHandshake(endPoint);
-      } catch (final Exception e) {
-        LOGGER.warn("Failed to create connection with {}", endPoint, e);
-        continue; // try next endpoint
-      }
-      defaultDataNodeId = defaultProvider.getDataNodeId();
-      addProvider(defaultDataNodeId, defaultProvider);
-
-      final Map<Integer, TEndPoint> allEndPoints;
-      try {
-        allEndPoints = defaultProvider.getSessionConnection().fetchAllEndPoints();
-      } catch (final Exception e) {
-        LOGGER.warn("Failed to fetch all endpoints from {}, will retry later...", endPoint, e);
-        break; // retry later
-      }
-
-      for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
-        if (defaultDataNodeId == entry.getKey()) {
-          continue;
-        }
-
-        final SubscriptionProvider provider;
-        try {
-          provider = constructProviderAndHandshake(entry.getValue());
-        } catch (final Exception e) {
-          LOGGER.warn(
-              "Failed to create connection with {}, will retry later...", entry.getValue(), e);
-          continue; // retry later
-        }
-        addProvider(entry.getKey(), provider);
-      }
-
-      break;
-    }
-
-    if (hasNoProviders()) {
-      throw new SubscriptionConnectionException(
-          String.format(
-              "Cluster has no available subscription providers to connect with initial endpoints %s",
-              initialEndpoints));
-    }
-
-    nextDataNodeId = subscriptionProviders.firstKey();
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  private void closeProviders() throws SubscriptionException, IoTDBConnectionException {
-    for (final SubscriptionProvider provider : getAllProviders()) {
-      provider.close();
-    }
-    subscriptionProviders.clear();
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void addProvider(final int dataNodeId, final SubscriptionProvider provider) {
-    // the subscription provider is opened
-    LOGGER.info("add new subscription provider {}", provider);
-    subscriptionProviders.put(dataNodeId, provider);
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void closeAndRemoveProvider(final int dataNodeId)
-      throws SubscriptionException, IoTDBConnectionException {
-    if (!containsProvider(dataNodeId)) {
-      return;
-    }
-    final SubscriptionProvider provider = subscriptionProviders.get(dataNodeId);
-    try {
-      provider.close();
-    } finally {
-      LOGGER.info("close and remove stale subscription provider {}", provider);
-      subscriptionProviders.remove(dataNodeId);
-    }
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  boolean hasNoProviders() {
-    return subscriptionProviders.isEmpty();
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  List<SubscriptionProvider> getAllProviders() {
-    return new ArrayList<>(subscriptionProviders.values());
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  SubscriptionProvider getProvider(final int dataNodeId) {
-    return containsProvider(dataNodeId) ? subscriptionProviders.get(dataNodeId) : null;
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  private boolean hasNoAvailableProviders() {
-    return subscriptionProviders.values().stream().noneMatch(SubscriptionProvider::isAvailable);
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  private boolean containsProvider(final int dataNodeId) {
-    return subscriptionProviders.containsKey(dataNodeId);
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  private List<SubscriptionProvider> getAllAvailableProviders() {
-    return subscriptionProviders.values().stream()
-        .filter(SubscriptionProvider::isAvailable)
-        .collect(Collectors.toList());
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  private void updateNextDataNodeId() {
-    final SortedMap<Integer, SubscriptionProvider> subProviders =
-        subscriptionProviders.tailMap(nextDataNodeId + 1);
-    nextDataNodeId =
-        subProviders.isEmpty() ? subscriptionProviders.firstKey() : subProviders.firstKey();
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  private SubscriptionProvider getNextAvailableProvider() {
-    if (hasNoAvailableProviders()) {
-      return null;
-    }
-
-    SubscriptionProvider provider;
-    provider = getProvider(nextDataNodeId);
-    while (Objects.isNull(provider) || !provider.isAvailable()) {
-      updateNextDataNodeId();
-      provider = getProvider(nextDataNodeId);
-    }
-    updateNextDataNodeId();
 
     return provider;
   }
@@ -795,9 +631,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private List<SubscriptionPolledMessage> pollInternal(final Set<String> topicNames)
       throws SubscriptionException {
-    acquireReadLock();
+    subscriptionProviders.acquireReadLock();
     try {
-      final SubscriptionProvider provider = getNextAvailableProvider();
+      final SubscriptionProvider provider = subscriptionProviders.getNextAvailableProvider();
       if (Objects.isNull(provider)) {
         return Collections.emptyList();
       }
@@ -824,7 +660,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         throw e;
       }
     } finally {
-      releaseReadLock();
+      subscriptionProviders.releaseReadLock();
     }
 
     return Collections.emptyList();
@@ -833,9 +669,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private List<SubscriptionPolledMessage> pollTsFileInternal(
       final int dataNodeId, final String topicName, final String fileName, final long writingOffset)
       throws SubscriptionException {
-    acquireReadLock();
+    subscriptionProviders.acquireReadLock();
     try {
-      final SubscriptionProvider provider = getProvider(dataNodeId);
+      final SubscriptionProvider provider = subscriptionProviders.getProvider(dataNodeId);
       if (Objects.isNull(provider) || !provider.isAvailable()) {
         throw new SubscriptionConnectionException(
             String.format(
@@ -848,7 +684,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
               new PollTsFileMessagePayload(topicName, fileName, writingOffset),
               0L));
     } finally {
-      releaseReadLock();
+      subscriptionProviders.releaseReadLock();
     }
   }
 
@@ -872,9 +708,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private void commitSyncInternal(
       final int dataNodeId, final List<SubscriptionCommitContext> subscriptionCommitContexts)
       throws SubscriptionException {
-    acquireReadLock();
+    subscriptionProviders.acquireReadLock();
     try {
-      final SubscriptionProvider provider = getProvider(dataNodeId);
+      final SubscriptionProvider provider = subscriptionProviders.getProvider(dataNodeId);
       if (Objects.isNull(provider) || !provider.isAvailable()) {
         throw new SubscriptionConnectionException(
             String.format(
@@ -883,7 +719,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       }
       provider.commitSync(subscriptionCommitContexts);
     } finally {
-      releaseReadLock();
+      subscriptionProviders.releaseReadLock();
     }
   }
 
@@ -927,9 +763,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// redirection ///////////////////////////////
 
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   private void subscribeWithRedirection(final Set<String> topicNames) throws SubscriptionException {
-    final List<SubscriptionProvider> providers = getAllAvailableProviders();
+    final List<SubscriptionProvider> providers = subscriptionProviders.getAllAvailableProviders();
     if (providers.isEmpty()) {
       throw new SubscriptionConnectionException(
           String.format(
@@ -957,10 +792,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     throw new SubscriptionNonRetryableException(errorMessage);
   }
 
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   private void unsubscribeWithRedirection(final Set<String> topicNames)
       throws SubscriptionException {
-    final List<SubscriptionProvider> providers = getAllAvailableProviders();
+    final List<SubscriptionProvider> providers = subscriptionProviders.getAllAvailableProviders();
     if (providers.isEmpty()) {
       throw new SubscriptionConnectionException(
           String.format(
@@ -988,9 +822,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     throw new SubscriptionNonRetryableException(errorMessage);
   }
 
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
   Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection() throws SubscriptionException {
-    final List<SubscriptionProvider> providers = getAllAvailableProviders();
+    final List<SubscriptionProvider> providers = subscriptionProviders.getAllAvailableProviders();
     if (providers.isEmpty()) {
       throw new SubscriptionConnectionException(
           String.format(

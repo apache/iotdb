@@ -29,13 +29,13 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
-import org.apache.iotdb.session.subscription.SubscriptionMessage;
-import org.apache.iotdb.session.subscription.SubscriptionMessageType;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
-import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
-import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
-import org.apache.iotdb.session.subscription.SubscriptionTsFileReader;
+import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSets;
+import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileReader;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.read.TsFileReader;

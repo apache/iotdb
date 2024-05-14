@@ -63,7 +63,7 @@ public class SubscriptionSession extends Session {
             // disable redirection
             .enableRedirection(false)
             // TODO: config
-            .thriftMaxFrameSize(2147483647));
+            .thriftMaxFrameSize(Integer.MAX_VALUE));
   }
 
   @Override

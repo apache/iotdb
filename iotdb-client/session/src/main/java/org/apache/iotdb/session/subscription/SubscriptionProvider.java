@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionNonRetryableException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRetryableException;
@@ -150,15 +151,14 @@ final class SubscriptionProvider extends SubscriptionSession {
     try {
       resp = getSessionConnection().pipeSubscribe(req);
     } catch (final TException e) {
-      // TODO: Distinguish between TTransportException, TApplicationException, and
-      // TProtocolException.
+      // Assume provider unavailable
       LOGGER.warn(
           "TException occurred when SubscriptionProvider {} handshake with request {}, set SubscriptionProvider unavailable",
           this,
           consumerConfig,
           e);
       setUnavailable();
-      throw new SubscriptionNonRetryableException(e.getMessage(), e);
+      throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
     return PipeSubscribeHandshakeResp.fromTPipeSubscribeResp(resp);
@@ -184,14 +184,13 @@ final class SubscriptionProvider extends SubscriptionSession {
     try {
       resp = getSessionConnection().pipeSubscribe(PipeSubscribeCloseReq.toTPipeSubscribeReq());
     } catch (final TException e) {
-      // TODO: Distinguish between TTransportException, TApplicationException, and
-      // TProtocolException.
+      // Assume provider unavailable
       LOGGER.warn(
           "TException occurred when SubscriptionProvider {} close, set SubscriptionProvider unavailable",
           this,
           e);
       setUnavailable();
-      throw new SubscriptionNonRetryableException(e.getMessage(), e);
+      throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
   }
@@ -203,14 +202,13 @@ final class SubscriptionProvider extends SubscriptionSession {
     try {
       resp = getSessionConnection().pipeSubscribe(PipeSubscribeHeartbeatReq.toTPipeSubscribeReq());
     } catch (final TException e) {
-      // TODO: Distinguish between TTransportException, TApplicationException, and
-      // TProtocolException.
+      // Assume provider unavailable
       LOGGER.warn(
           "TException occurred when SubscriptionProvider {} heartbeat, set SubscriptionProvider unavailable",
           this,
           e);
       setUnavailable();
-      throw new SubscriptionNonRetryableException(e.getMessage(), e);
+      throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
   }
@@ -231,15 +229,14 @@ final class SubscriptionProvider extends SubscriptionSession {
     try {
       resp = getSessionConnection().pipeSubscribe(req);
     } catch (final TException e) {
-      // TODO: Distinguish between TTransportException, TApplicationException, and
-      // TProtocolException.
+      // Assume provider unavailable
       LOGGER.warn(
           "TException occurred when SubscriptionProvider {} subscribe with request {}, set SubscriptionProvider unavailable",
           this,
           topicNames,
           e);
       setUnavailable();
-      throw new SubscriptionNonRetryableException(e.getMessage(), e);
+      throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
   }
@@ -260,15 +257,14 @@ final class SubscriptionProvider extends SubscriptionSession {
     try {
       resp = getSessionConnection().pipeSubscribe(req);
     } catch (final TException e) {
-      // TODO: Distinguish between TTransportException, TApplicationException, and
-      // TProtocolException.
+      // Assume provider unavailable
       LOGGER.warn(
           "TException occurred when SubscriptionProvider {} unsubscribe with request {}, set SubscriptionProvider unavailable",
           this,
           topicNames,
           e);
       setUnavailable();
-      throw new SubscriptionNonRetryableException(e.getMessage(), e);
+      throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
   }
@@ -290,15 +286,14 @@ final class SubscriptionProvider extends SubscriptionSession {
     try {
       resp = getSessionConnection().pipeSubscribe(req);
     } catch (final TException e) {
-      // TODO: Distinguish between TTransportException, TApplicationException, and
-      // TProtocolException.
+      // Assume provider unavailable
       LOGGER.warn(
           "TException occurred when SubscriptionProvider {} poll with request {}, set SubscriptionProvider unavailable",
           this,
           pollMessage,
           e);
       setUnavailable();
-      throw new SubscriptionNonRetryableException(e.getMessage(), e);
+      throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
     final PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
@@ -322,15 +317,14 @@ final class SubscriptionProvider extends SubscriptionSession {
     try {
       resp = getSessionConnection().pipeSubscribe(req);
     } catch (final TException e) {
-      // TODO: Distinguish between TTransportException, TApplicationException, and
-      // TProtocolException.
+      // Assume provider unavailable
       LOGGER.warn(
           "TException occurred when SubscriptionProvider {} commit with request {}, set SubscriptionProvider unavailable",
           this,
           subscriptionCommitContexts,
           e);
       setUnavailable();
-      throw new SubscriptionNonRetryableException(e.getMessage(), e);
+      throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
   }

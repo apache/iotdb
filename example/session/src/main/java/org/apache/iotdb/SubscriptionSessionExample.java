@@ -25,12 +25,12 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
-import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
-import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
-import org.apache.iotdb.session.subscription.SubscriptionTsFileReader;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSets;
+import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileReader;
 
 import java.util.ArrayList;
 import java.util.Collections;

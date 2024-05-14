@@ -27,13 +27,13 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.AckStrategy;
 import org.apache.iotdb.session.subscription.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.ConsumeResult;
-import org.apache.iotdb.session.subscription.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
-import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
-import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
-import org.apache.iotdb.session.subscription.SubscriptionTsFileReader;
+import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSets;
+import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileReader;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.read.TsFileReader;

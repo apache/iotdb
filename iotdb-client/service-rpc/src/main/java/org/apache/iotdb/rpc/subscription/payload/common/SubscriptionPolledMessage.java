@@ -71,7 +71,8 @@ public class SubscriptionPolledMessage {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       message.serialize(outputStream);
-      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      return message.byteBuffer =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
   }
 
@@ -79,6 +80,29 @@ public class SubscriptionPolledMessage {
     ReadWriteIOUtils.write(messageType, stream);
     messagePayload.serialize(stream);
     commitContext.serialize(stream);
+  }
+
+  /**
+   * @return true -> byte buffer is not null
+   */
+  public boolean trySerialize() {
+    try {
+      SubscriptionPolledMessage.serialize(this);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "Subscription: something unexpected happened when serializing SubscriptionPolledMessage",
+          e);
+    }
+    return Objects.nonNull(byteBuffer);
+  }
+
+  public ByteBuffer getByteBuffer() {
+    return byteBuffer;
+  }
+
+  public void resetByteBuffer() {
+    // maybe friendly for gc
+    byteBuffer = null;
   }
 
   public static SubscriptionPolledMessage deserialize(final ByteBuffer buffer) {
@@ -111,46 +135,6 @@ public class SubscriptionPolledMessage {
 
     final SubscriptionCommitContext commitContext = SubscriptionCommitContext.deserialize(buffer);
     return new SubscriptionPolledMessage(messageType, messagePayload, commitContext);
-  }
-
-  //////////////////////////// serialization ////////////////////////////
-
-  /**
-   * @return true -> byte buffer is not null
-   */
-  public boolean trySerialize() {
-    if (Objects.isNull(byteBuffer)) {
-      try {
-        serialize();
-        return true;
-      } catch (final IOException e) {
-        LOGGER.warn(
-            "Subscription: something unexpected happened when serializing SubscriptionPolledMessage",
-            e);
-      }
-      return false;
-    }
-    return true;
-  }
-
-  public void serialize() throws IOException {
-    if (Objects.isNull(byteBuffer)) {
-      try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-          final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-        serialize(outputStream);
-        byteBuffer =
-            ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-      }
-    }
-  }
-
-  public ByteBuffer getByteBuffer() {
-    return byteBuffer;
-  }
-
-  public void resetByteBuffer() {
-    // maybe friendly for gc
-    byteBuffer = null;
   }
 
   /////////////////////////////// object ///////////////////////////////
