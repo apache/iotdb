@@ -345,6 +345,9 @@ public class PipeConfig {
         getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
     LOGGER.info("PipeMaxAllowedPinnedMemTableCount: {}", getPipeMaxAllowedPinnedMemTableCount());
     LOGGER.info("PipeMaxAllowedLinkedTsFileCount: {}", getPipeMaxAllowedLinkedTsFileCount());
+    LOGGER.info(
+        "PipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage: {}",
+        getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage());
     LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());
