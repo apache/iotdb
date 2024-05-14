@@ -27,6 +27,7 @@ public class ChunkOffsetInfo {
 
   private final IDeviceID devicePath;
   private String measurementPath;
+  private final boolean isAligned;
 
   private final long offSet;
 
@@ -37,13 +38,19 @@ public class ChunkOffsetInfo {
       long offSet, IDeviceID devicePath, SharedTimeDataBuffer sharedTimeDataBuffer) {
     this.devicePath = devicePath;
     this.offSet = offSet;
+    this.isAligned = true;
     this.sharedTimeDataBuffer = sharedTimeDataBuffer;
   }
 
   public ChunkOffsetInfo(long offSet, IDeviceID devicePath, String measurementPath) {
     this.offSet = offSet;
     this.devicePath = devicePath;
+    this.isAligned = false;
     this.measurementPath = measurementPath;
+  }
+
+  public boolean isAligned() {
+    return isAligned;
   }
 
   public IDeviceID getDevicePath() {

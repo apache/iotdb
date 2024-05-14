@@ -1862,6 +1862,42 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   @Override
+  public IQueryDataSource queryForSeriesRegionScan(
+      List<PartialPath> pathList,
+      QueryContext queryContext,
+      Filter globalTimeFilter,
+      List<Long> timePartitions)
+      throws QueryProcessException {
+    try {
+      List<IFileScanHandle> seqFileScanHandles =
+          getFileHandleListForQuery(
+              tsFileManager.getTsFileList(true, timePartitions, globalTimeFilter),
+              pathList,
+              queryContext,
+              globalTimeFilter,
+              true);
+      List<IFileScanHandle> unseqFileScanHandles =
+          getFileHandleListForQuery(
+              tsFileManager.getTsFileList(false, timePartitions, globalTimeFilter),
+              pathList,
+              queryContext,
+              globalTimeFilter,
+              false);
+
+      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(SEQUENCE_TSFILE, seqFileScanHandles.size());
+      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(
+          UNSEQUENCE_TSFILE, unseqFileScanHandles.size());
+
+      QueryDataSourceForRegionScan dataSource =
+          new QueryDataSourceForRegionScan(seqFileScanHandles, unseqFileScanHandles);
+      dataSource.setDataTTL(dataTTL);
+      return dataSource;
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+  }
+
+  @Override
   public IQueryDataSource queryForDeviceRegionScan(
       Map<IDeviceID, Boolean> devicePathToAligned,
       QueryContext queryContext,
@@ -1955,11 +1991,54 @@ public class DataRegion implements IDataRegionForQuery {
       closeQueryLock.readLock().lock();
       try {
         if (tsFileResource.isClosed()) {
-          fileScanHandles.add(new ClosedFileScanHandleImpl(tsFileResource, devicePathToAligned));
+          fileScanHandles.add(new ClosedFileScanHandleImpl(tsFileResource));
         } else {
           tsFileResource
               .getProcessor()
               .queryForDeviceRegionScan(devicePathToAligned, context, fileScanHandles);
+        }
+      } finally {
+        closeQueryLock.readLock().unlock();
+      }
+    }
+    return fileScanHandles;
+  }
+
+  private List<IFileScanHandle> getFileHandleListForQuery(
+      Collection<TsFileResource> tsFileResources,
+      List<PartialPath> partialPaths,
+      QueryContext context,
+      Filter globalTimeFilter,
+      boolean isSeq)
+      throws MetadataException {
+
+    if (context.isDebug()) {
+      DEBUG_LOGGER.info(
+          "Path: {}, get tsfile list: {} isSeq: {} timefilter: {}",
+          partialPaths,
+          tsFileResources,
+          isSeq,
+          (globalTimeFilter == null ? "null" : globalTimeFilter));
+    }
+
+    List<IFileScanHandle> fileScanHandles = new ArrayList<>();
+
+    long timeLowerBound =
+        dataTTL != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
+    context.setQueryTimeLowerBound(timeLowerBound);
+
+    for (TsFileResource tsFileResource : tsFileResources) {
+      if (!tsFileResource.isSatisfied(null, globalTimeFilter, isSeq, dataTTL, context.isDebug())) {
+        continue;
+      }
+      closeQueryLock.readLock().lock();
+      try {
+        if (tsFileResource.isClosed()) {
+          fileScanHandles.add(new ClosedFileScanHandleImpl(tsFileResource));
+        } else {
+          tsFileResource
+              .getProcessor()
+              .queryForSeriesRegionScan(partialPaths, context, fileScanHandles);
         }
       } finally {
         closeQueryLock.readLock().unlock();

@@ -78,6 +78,16 @@ public class VirtualDataRegion implements IDataRegionForQuery {
   }
 
   @Override
+  public IQueryDataSource queryForSeriesRegionScan(
+      List<PartialPath> pathList,
+      QueryContext queryContext,
+      Filter globalTimeFilter,
+      List<Long> timePartitions)
+      throws QueryProcessException {
+    return EMPTY_QUERY_DATA_SOURCE;
+  }
+
+  @Override
   public long getDataTTL() {
     return Long.MAX_VALUE;
   }

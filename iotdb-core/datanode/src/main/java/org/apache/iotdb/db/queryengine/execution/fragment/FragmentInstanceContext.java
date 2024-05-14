@@ -395,7 +395,7 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
-  public void initQueryDataSource(Map<IDeviceID, Boolean> devicePathToAligned)
+  public void initRegionScanQueryDataSource(Map<IDeviceID, Boolean> devicePathToAligned)
       throws QueryProcessException {
     long startTime = System.nanoTime();
     dataRegion.readLock();
@@ -403,6 +403,29 @@ public class FragmentInstanceContext extends QueryContext {
       this.sharedQueryDataSource =
           dataRegion.queryForDeviceRegionScan(
               devicePathToAligned,
+              this,
+              globalTimeFilter != null ? globalTimeFilter.copy() : null,
+              timePartitions);
+
+      if (sharedQueryDataSource != null) {
+        closedFilePaths = new HashSet<>();
+        unClosedFilePaths = new HashSet<>();
+        addUsedFilesForRegionQuery((QueryDataSourceForRegionScan) sharedQueryDataSource);
+      }
+    } finally {
+      setInitQueryDataSourceCost(System.nanoTime() - startTime);
+      dataRegion.readUnlock();
+    }
+  }
+
+  public void initRegionScanQueryDataSource(List<PartialPath> pathList)
+      throws QueryProcessException {
+    long startTime = System.nanoTime();
+    dataRegion.readLock();
+    try {
+      this.sharedQueryDataSource =
+          dataRegion.queryForSeriesRegionScan(
+              pathList,
               this,
               globalTimeFilter != null ? globalTimeFilter.copy() : null,
               timePartitions);
@@ -427,8 +450,12 @@ public class FragmentInstanceContext extends QueryContext {
           sourcePaths = null;
           break;
         case DEVICE_REGION_SCAN:
-          initQueryDataSource(devicePathsToAligned);
+          initRegionScanQueryDataSource(devicePathsToAligned);
           devicePathsToAligned = null;
+          break;
+        case TIME_SERIES_REGION_SCAN:
+          initRegionScanQueryDataSource(sourcePaths);
+          sourcePaths = null;
           break;
         default:
           throw new QueryProcessException(

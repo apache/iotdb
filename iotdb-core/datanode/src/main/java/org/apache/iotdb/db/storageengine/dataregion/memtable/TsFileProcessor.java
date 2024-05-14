@@ -1617,6 +1617,79 @@ public class TsFileProcessor {
     return storageGroupName;
   }
 
+  public void queryForSeriesRegionScan(
+      List<PartialPath> pathList,
+      QueryContext queryContext,
+      List<IFileScanHandle> fileScanHandlesForQuery) {
+    long startTime = System.nanoTime();
+    try {
+      Map<IDeviceID, Map<String, List<MemChunkHandleImpl>>> deviceToMemChunkHandleMap =
+          new HashMap<>();
+      Map<IDeviceID, List<IChunkMetadata>> deviceToChunkMetadataListMap = new HashMap<>();
+
+      flushQueryLock.readLock().lock();
+      try {
+        for (PartialPath seriesPath : pathList) {
+          IDeviceID devicePath = DeviceIDFactory.getInstance().getDeviceID(seriesPath.getDevice());
+          Map<String, List<MemChunkHandleImpl>> measurementToMemChunkHandleList = new HashMap<>();
+          for (IMemTable flushingMemTable : flushingMemTables) {
+            if (flushingMemTable.isSignalMemTable()) {
+              continue;
+            }
+            flushingMemTable.queryForSeriesRegionScan(
+                queryContext,
+                seriesPath,
+                queryContext.getQueryTimeLowerBound(),
+                measurementToMemChunkHandleList,
+                modsToMemtable);
+            if (workMemTable != null) {
+              workMemTable.queryForSeriesRegionScan(
+                  queryContext,
+                  seriesPath,
+                  queryContext.getQueryTimeLowerBound(),
+                  measurementToMemChunkHandleList,
+                  null);
+            }
+
+            // TODO
+            List<IChunkMetadata> chunkMetadataList = Collections.emptyList();
+
+            if (!measurementToMemChunkHandleList.isEmpty() || !chunkMetadataList.isEmpty()) {
+              deviceToMemChunkHandleMap.put(devicePath, measurementToMemChunkHandleList);
+              deviceToChunkMetadataListMap.put(devicePath, chunkMetadataList);
+            }
+          }
+        }
+      } catch (QueryProcessException | MetadataException | IOException e) {
+        logger.error(
+            "{}: {} get ReadOnlyMemChunk has error",
+            storageGroupName,
+            tsFileResource.getTsFile().getName(),
+            e);
+      } finally {
+        QUERY_RESOURCE_METRICS.recordQueryResourceNum(FLUSHING_MEMTABLE, flushingMemTables.size());
+        QUERY_RESOURCE_METRICS.recordQueryResourceNum(
+            WORKING_MEMTABLE, workMemTable != null ? 1 : 0);
+
+        flushQueryLock.readLock().unlock();
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "{}: {} release flushQueryLock",
+              storageGroupName,
+              tsFileResource.getTsFile().getName());
+        }
+      }
+      if (!deviceToMemChunkHandleMap.isEmpty() || !deviceToChunkMetadataListMap.isEmpty()) {
+        fileScanHandlesForQuery.add(
+            new UnclosedFileScanHandleImpl(
+                deviceToChunkMetadataListMap, deviceToMemChunkHandleMap, tsFileResource));
+      }
+    } finally {
+      QUERY_EXECUTION_METRICS.recordExecutionCost(
+          GET_QUERY_RESOURCE_FROM_MEM, System.nanoTime() - startTime);
+    }
+  }
+
   /**
    * Construct IFileScanHandle for data in memtable and the other ones in flushing memtables. Then
    * get the related ChunkMetadata of data on disk.
@@ -1692,10 +1765,7 @@ public class TsFileProcessor {
       if (!deviceToMemChunkHandleMap.isEmpty() || !deviceToChunkMetadataListMap.isEmpty()) {
         fileScanHandlesForQuery.add(
             new UnclosedFileScanHandleImpl(
-                deviceToChunkMetadataListMap,
-                deviceToMemChunkHandleMap,
-                devicePathToAligned,
-                tsFileResource));
+                deviceToChunkMetadataListMap, deviceToMemChunkHandleMap, tsFileResource));
       }
     } finally {
       QUERY_EXECUTION_METRICS.recordExecutionCost(

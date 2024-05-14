@@ -53,12 +53,8 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
 
   private final TsFileResource tsFileResource;
 
-  private final Map<IDeviceID, Boolean> isAligned;
-
-  public ClosedFileScanHandleImpl(
-      TsFileResource tsFileResource, Map<IDeviceID, Boolean> isAligned) {
+  public ClosedFileScanHandleImpl(TsFileResource tsFileResource) {
     this.tsFileResource = tsFileResource;
-    this.isAligned = isAligned;
   }
 
   @Override
@@ -120,7 +116,7 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
     for (int i = 0; i < chunkInfoList.size(); i++) {
       ChunkOffsetInfo chunkOffset = chunkInfoList.get(i);
       chunkHandleList.add(
-          isAligned.get(chunkOffset.getDevicePath())
+          chunkOffset.isAligned()
               ? new DiskChunkHandleImpl(reader, chunkOffset.getOffSet(), statisticsList.get(i))
               : new DiskAlignedChunkHandleImpl(
                   reader,

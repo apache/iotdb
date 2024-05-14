@@ -123,6 +123,14 @@ public interface IMemTable extends WALEntryValue {
       List<Pair<Modification, IMemTable>> modsToMemtabled)
       throws IOException, QueryProcessException, MetadataException;
 
+  void queryForSeriesRegionScan(
+      QueryContext context,
+      PartialPath fullPath,
+      long ttlLowerBound,
+      Map<String, List<MemChunkHandleImpl>> memChunkHandleMap,
+      List<Pair<Modification, IMemTable>> modsToMemtabled)
+      throws IOException, QueryProcessException, MetadataException;
+
   void queryForDeviceRegionScan(
       QueryContext context,
       IDeviceID deviceID,

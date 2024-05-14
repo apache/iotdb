@@ -45,16 +45,13 @@ import java.util.Map;
 public class UnclosedFileScanHandleImpl implements IFileScanHandle {
 
   private final TsFileResource tsFileResource;
-  private final Map<IDeviceID, Boolean> isAlignedMap;
   private final Map<IDeviceID, List<IChunkMetadata>> deviceToChunkMetadataMap;
   private final Map<IDeviceID, Map<String, List<MemChunkHandleImpl>>> deviceToMemChunkHandleMap;
 
   public UnclosedFileScanHandleImpl(
       Map<IDeviceID, List<IChunkMetadata>> deviceToChunkMetadataMap,
       Map<IDeviceID, Map<String, List<MemChunkHandleImpl>>> deviceToMemChunkHandleMap,
-      Map<IDeviceID, Boolean> isAlignedMap,
       TsFileResource tsFileResource) {
-    this.isAlignedMap = isAlignedMap;
     this.deviceToChunkMetadataMap = deviceToChunkMetadataMap;
     this.deviceToMemChunkHandleMap = deviceToMemChunkHandleMap;
     this.tsFileResource = tsFileResource;
@@ -78,8 +75,12 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
     List<AbstractDeviceChunkMetaData> deviceChunkMetaDataList = new ArrayList<>();
     for (Map.Entry<IDeviceID, List<IChunkMetadata>> entry : deviceToChunkMetadataMap.entrySet()) {
       IDeviceID deviceID = entry.getKey();
-      if (isAlignedMap.get(deviceID)) {
-        List<IChunkMetadata> chunkMetadataList = deviceToChunkMetadataMap.get(deviceID);
+      List<IChunkMetadata> chunkMetadataList = entry.getValue();
+      if (chunkMetadataList.isEmpty()) {
+        continue;
+      }
+      boolean isAligned = chunkMetadataList.get(0) instanceof AlignedChunkMetadata;
+      if (isAligned) {
         List<AlignedChunkMetadata> alignedChunkMetadataList = new ArrayList<>();
         for (IChunkMetadata chunkMetadata : chunkMetadataList) {
           alignedChunkMetadataList.add((AlignedChunkMetadata) chunkMetadata);
@@ -87,7 +88,7 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
         deviceChunkMetaDataList.add(
             new AlignedDeviceChunkMetaData(deviceID, alignedChunkMetadataList));
       } else {
-        deviceChunkMetaDataList.add(new DeviceChunkMetaData(deviceID, entry.getValue()));
+        deviceChunkMetaDataList.add(new DeviceChunkMetaData(deviceID, chunkMetadataList));
       }
     }
     return deviceChunkMetaDataList.iterator();

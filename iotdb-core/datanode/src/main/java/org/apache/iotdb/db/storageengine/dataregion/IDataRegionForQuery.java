@@ -54,6 +54,13 @@ public interface IDataRegionForQuery {
       List<Long> timePartitions)
       throws QueryProcessException;
 
+  IQueryDataSource queryForSeriesRegionScan(
+      List<PartialPath> pathList,
+      QueryContext queryContext,
+      Filter globalTimeFilter,
+      List<Long> timePartitions)
+      throws QueryProcessException;
+
   /** Get TTL of this DataRegion */
   long getDataTTL();
 
