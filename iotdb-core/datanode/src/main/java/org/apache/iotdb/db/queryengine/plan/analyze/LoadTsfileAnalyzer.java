@@ -209,12 +209,6 @@ public class LoadTsfileAnalyzer {
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
           new TsFileSequenceReaderTimeseriesMetadataIterator(reader, true, 1);
 
-      // check if the tsfile is empty
-      if (!timeseriesMetadataIterator.hasNext()) {
-        LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
-        return;
-      }
-
       // construct tsfile resource
       final TsFileResource tsFileResource = new TsFileResource(tsFile);
       if (!tsFileResource.resourceFileExists()) {
@@ -223,6 +217,12 @@ public class LoadTsfileAnalyzer {
         tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
       } else {
         tsFileResource.deserialize();
+      }
+
+      // check if the tsfile is empty
+      if (!timeseriesMetadataIterator.hasNext()) {
+        LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
+        return;
       }
 
       long writePointCount = 0;
