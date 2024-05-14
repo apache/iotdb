@@ -363,7 +363,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   private boolean mayDeletedTsFileSizeReachDangerousThreshold() {
-    long linkedButDeletedTsFileSize = PipeResourceManager.tsfile().getLinkedButDeletedTsfileSize();
+    long linkedButDeletedTsFileSize =
+        PipeResourceManager.tsfile().getTotalLinkedButDeletedTsfileSize();
     double totalDisk =
         MetricService.getInstance()
             .getAutoGauge(

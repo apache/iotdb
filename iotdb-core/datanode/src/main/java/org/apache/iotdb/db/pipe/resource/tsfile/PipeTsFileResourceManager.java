@@ -340,12 +340,21 @@ public class PipeTsFileResourceManager {
   /**
    * Get the total size of linked TsFiles whose original TsFile is deleted (by compaction or else)
    */
-  public long getLinkedButDeletedTsfileSize() {
+  public long getTotalLinkedButDeletedTsfileSize() {
     lock.lock();
     try {
       return hardlinkOrCopiedFileToPipeTsFileResourceMap.values().parallelStream()
           .filter(PipeTsFileResource::isOriginalTsFileDeleted)
-          .mapToLong(PipeTsFileResource::getFileSize)
+          .mapToLong(
+              resource -> {
+                try {
+                  return resource.getFileSize();
+                } catch (Exception e) {
+                  LOGGER.warn(
+                      "failed to get file size of linked but deleted TsFile {}: ", resource, e);
+                  return 0;
+                }
+              })
           .sum();
     } finally {
       lock.unlock();
