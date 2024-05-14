@@ -59,6 +59,7 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
       for (final SubscriptionPolledMessage message : messages) {
         if (Objects.nonNull(message.getByteBuffer())) {
           resp.body.add(message.getByteBuffer());
+          message.resetByteBuffer(); // maybe friendly for gc
         } else {
           resp.body.add(SubscriptionPolledMessage.serialize(message));
         }

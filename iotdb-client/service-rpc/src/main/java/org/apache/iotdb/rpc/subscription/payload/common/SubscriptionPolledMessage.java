@@ -62,10 +62,6 @@ public class SubscriptionPolledMessage {
     return commitContext;
   }
 
-  public ByteBuffer getByteBuffer() {
-    return byteBuffer;
-  }
-
   /////////////////////////////// de/ser ///////////////////////////////
 
   public static ByteBuffer serialize(SubscriptionPolledMessage message) throws IOException {
@@ -146,6 +142,10 @@ public class SubscriptionPolledMessage {
             ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
       }
     }
+  }
+
+  public ByteBuffer getByteBuffer() {
+    return byteBuffer;
   }
 
   public void resetByteBuffer() {
