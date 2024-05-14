@@ -50,7 +50,7 @@ import java.util.Objects;
 public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNode {
 
   // The paths of the target series which will be aggregated.
-  private final AlignedPath alignedPath;
+  private AlignedPath alignedPath;
 
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
@@ -111,6 +111,10 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
 
   public AlignedPath getAlignedPath() {
     return alignedPath;
+  }
+
+  public void setAlignedPath(AlignedPath alignedPath) {
+    this.alignedPath = alignedPath;
   }
 
   @Override

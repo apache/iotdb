@@ -170,6 +170,26 @@ public class TestPlanBuilder {
     return this;
   }
 
+  public TestPlanBuilder alignedAggregationScan(
+      String id,
+      PartialPath path,
+      List<AggregationDescriptor> aggregationDescriptors,
+      GroupByTimeParameter groupByTimeParameter,
+      boolean outputEndTime,
+      Expression pushDownPredicate) {
+    AlignedSeriesAggregationScanNode aggregationScanNode =
+        new AlignedSeriesAggregationScanNode(
+            new PlanNodeId(id),
+            (AlignedPath) path,
+            aggregationDescriptors,
+            Ordering.ASC,
+            groupByTimeParameter);
+    aggregationScanNode.setOutputEndTime(outputEndTime);
+    aggregationScanNode.setPushDownPredicate(pushDownPredicate);
+    this.root = aggregationScanNode;
+    return this;
+  }
+
   public TestPlanBuilder rawDataAggregation(
       String id,
       List<AggregationDescriptor> aggregationDescriptors,
