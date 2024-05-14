@@ -327,6 +327,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           taskId2ExtractorMap.values().stream()
               .filter(e -> e.getPipeName().equals(pipeName))
               .collect(Collectors.toList());
+
       if (extractors.isEmpty()) {
         continue;
       }
@@ -341,12 +342,14 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 || CONFIG.isEnableCrossSpaceCompaction())
             && mayDeletedTsFileSizeReachDangerousThreshold()) {
           LOGGER.warn(
-              "Pipe {} may need to restart because too many TsFiles are out-of-date.",
+              "Pipe {} needs to restart because too many TsFiles are out-of-date.",
               pipeMeta.getStaticMeta());
           stuckPipes.add(pipeMeta);
         }
-      } else if (mayMemTablePinnedCountReachDangerousThreshold()
-          || mayWalSizeReachThrottleThreshold()) {
+        continue;
+      }
+
+      if (mayMemTablePinnedCountReachDangerousThreshold() || mayWalSizeReachThrottleThreshold()) {
         // Extractors of this pipe may be stuck and pinning too much MemTables.
         LOGGER.warn("Pipe {} may be stuck.", pipeMeta.getStaticMeta());
         stuckPipes.add(pipeMeta);
@@ -357,30 +360,34 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     stuckPipes.parallelStream().forEach(this::restartStuckPipe);
   }
 
+  private boolean mayDeletedTsFileSizeReachDangerousThreshold() {
+    try {
+      final long linkedButDeletedTsFileSize =
+          PipeResourceManager.tsfile().getTotalLinkedButDeletedTsfileSize();
+      final double totalDisk =
+          MetricService.getInstance()
+              .getAutoGauge(
+                  SystemMetric.SYS_DISK_TOTAL_SPACE.toString(),
+                  MetricLevel.CORE,
+                  Tag.NAME.toString(),
+                  // This "system" should stay the same with the one in
+                  // DataNodeInternalRPCServiceImpl.
+                  "system")
+              .getValue();
+      return linkedButDeletedTsFileSize > 0
+          && totalDisk > 0
+          && linkedButDeletedTsFileSize
+              > PipeConfig.getInstance().getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage()
+                  * totalDisk;
+    } catch (Exception e) {
+      LOGGER.warn("Failed to judge if deleted TsFile size reaches dangerous threshold.", e);
+      return false;
+    }
+  }
+
   private boolean mayMemTablePinnedCountReachDangerousThreshold() {
     return PipeResourceManager.wal().getPinnedWalCount()
         >= 10 * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
-  }
-
-  private boolean mayDeletedTsFileSizeReachDangerousThreshold() {
-    long linkedButDeletedTsFileSize =
-        PipeResourceManager.tsfile().getTotalLinkedButDeletedTsfileSize();
-    double totalDisk =
-        MetricService.getInstance()
-            .getAutoGauge(
-                SystemMetric.SYS_DISK_TOTAL_SPACE.toString(),
-                MetricLevel.CORE,
-                Tag.NAME.toString(),
-                // This "system" should stay the same with the one in
-                // DataNodeInternalRPCServiceImpl.
-                "system")
-            .getValue();
-    if (linkedButDeletedTsFileSize > 0 && totalDisk != 0) {
-      return linkedButDeletedTsFileSize
-          > PipeConfig.getInstance().getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage()
-              * totalDisk;
-    }
-    return false;
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {
