@@ -91,16 +91,17 @@ public class AddRegionPeerProcedure
               getProcId(),
               consensusGroupId.getId(),
               destDataNode.getDataNodeId());
-          handler.addRegionLocation(consensusGroupId, destDataNode, RegionStatus.Adding);
+          handler.addRegionLocation(consensusGroupId, destDataNode);
+          handler.forceUpdateRegionCache(consensusGroupId, destDataNode, RegionStatus.Adding);
           TSStatus status = handler.createNewRegionPeer(consensusGroupId, destDataNode);
           setKillPoint(state);
           if (status.getCode() != SUCCESS_STATUS.getStatusCode()) {
-            rollback(env, handler);
+            return warnAndRollBackAndNoMoreState(env, handler, "CREATE_NEW_REGION_PEER fail");
           }
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
-          handler.updateRegionCache(consensusGroupId, destDataNode, RegionStatus.Adding);
+          handler.forceUpdateRegionCache(consensusGroupId, destDataNode, RegionStatus.Adding);
           // We don't want to re-submit AddRegionPeerTask when leader change or ConfigNode reboot
           if (!this.isStateDeserialized()) {
             TSStatus tsStatus =
@@ -108,10 +109,8 @@ public class AddRegionPeerProcedure
                     this.getProcId(), destDataNode, consensusGroupId, coordinator);
             setKillPoint(state);
             if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
-              throw new ProcedureException(
-                  String.format(
-                      "[pid%d][AddRegion] failed to submit task to DataNode, procedure failed",
-                      getProcId()));
+              return warnAndRollBackAndNoMoreState(
+                  env, handler, "submit DO_ADD_REGION_PEER task fail");
             }
           }
           TRegionMigrateResult result = handler.waitTaskFinish(this.getProcId(), coordinator);
@@ -120,27 +119,20 @@ public class AddRegionPeerProcedure
               // coordinator crashed and lost its task table
             case FAIL:
               // maybe some DataNode crash
-              LOGGER.warn(
-                  "[pid{}][AddRegion] {} result is {}, procedure failed. Will try to reset peer list automatically...",
-                  getProcId(),
-                  state,
-                  result.getTaskStatus());
-              rollback(env, handler);
-              return Flow.NO_MORE_STATE;
+              return warnAndRollBackAndNoMoreState(
+                  env, handler, String.format("%s result is %s", state, result.getTaskStatus()));
             case PROCESSING:
               // should never happen
-              LOGGER.error("should never happen");
-              throw new UnsupportedOperationException("should never happen");
+              return warnAndRollBackAndNoMoreState(env, handler, "should never return PROCESSING");
             case SUCCESS:
               setNextState(UPDATE_REGION_LOCATION_CACHE);
               break outerSwitch;
             default:
-              String msg = String.format("status %s is unsupported", result.getTaskStatus());
-              LOGGER.error(msg);
-              throw new UnsupportedOperationException(msg);
+              return warnAndRollBackAndNoMoreState(
+                  env, handler, String.format("status %s is unsupported", result.getTaskStatus()));
           }
         case UPDATE_REGION_LOCATION_CACHE:
-          handler.updateRegionCache(consensusGroupId, destDataNode, RegionStatus.Running);
+          handler.forceUpdateRegionCache(consensusGroupId, destDataNode, RegionStatus.Running);
           setKillPoint(state);
           LOGGER.info("[pid{}][AddRegion] state {} complete", getProcId(), state);
           LOGGER.info(
@@ -163,8 +155,20 @@ public class AddRegionPeerProcedure
     return Flow.HAS_MORE_STATE;
   }
 
-  private void rollback(ConfigNodeProcedureEnv env, RegionMaintainHandler handler)
+  private Flow warnAndRollBackAndNoMoreState(
+      ConfigNodeProcedureEnv env, RegionMaintainHandler handler, String reason)
       throws ProcedureException {
+    return warnAndRollBackAndNoMoreState(env, handler, reason, null);
+  }
+
+  private Flow warnAndRollBackAndNoMoreState(
+      ConfigNodeProcedureEnv env, RegionMaintainHandler handler, String reason, Exception e)
+      throws ProcedureException {
+    if (e != null) {
+      LOGGER.warn("[pid{}][AddRegion] Start to roll back, because: {}", getRootProcId(), reason, e);
+    } else {
+      LOGGER.warn("[pid{}][AddRegion] Start to roll back, because: {}", getRootProcId(), reason);
+    }
     handler.removeRegionLocation(consensusGroupId, destDataNode);
 
     List<TDataNodeLocation> correctDataNodeLocations =
@@ -227,6 +231,7 @@ public class AddRegionPeerProcedure
                 correctStr);
           }
         });
+    return Flow.NO_MORE_STATE;
   }
 
   @Override

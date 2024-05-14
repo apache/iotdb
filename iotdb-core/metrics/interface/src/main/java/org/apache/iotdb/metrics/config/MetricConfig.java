@@ -36,6 +36,7 @@ import java.util.Objects;
 
 public class MetricConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricConfig.class);
+
   /** The list of reporters provide metrics for external tool. */
   private List<ReporterType> metricReporterList = Collections.emptyList();
 
@@ -56,12 +57,16 @@ public class MetricConfig {
 
   /** The pid of iotdb instance. */
   private String pid = "";
+
   /** The running system of iotdb instance. */
   private final SystemType systemType = SystemType.getSystemType();
+
   /** The type of monitored node. */
   private NodeType nodeType = NodeType.CONFIGNODE;
+
   /** The name of iotdb cluster. */
   private String clusterName = "defaultCluster";
+
   /** The id of iotdb node. */
   private int nodeId = 0;
 
@@ -205,16 +210,22 @@ public class MetricConfig {
   public static class IoTDBReporterConfig {
     /** The host of iotdb that store metric value. */
     private String host = "127.0.0.1";
+
     /** The port of iotdb that store metric value. */
     private Integer port = 6667;
+
     /** The username of iotdb. */
     private String username = "root";
+
     /** The password of iotdb. */
     private String password = "root";
+
     /** The max number of connection. */
     private Integer maxConnectionNumber = 3;
+
     /** The location of iotdb metrics. */
     private String location = "metric";
+
     /** The period of data pushed by the reporter to the remote monitoring system. */
     private Integer pushPeriodInSecond = 15;
 

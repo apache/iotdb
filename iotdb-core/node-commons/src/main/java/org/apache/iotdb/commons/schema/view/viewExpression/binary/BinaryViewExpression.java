@@ -49,6 +49,7 @@ public abstract class BinaryViewExpression extends ViewExpression {
     this.leftExpression = ViewExpression.deserialize(inputStream);
     this.rightExpression = ViewExpression.deserialize(inputStream);
   }
+
   // endregion
 
   // region common interfaces that have to be implemented
@@ -78,6 +79,7 @@ public abstract class BinaryViewExpression extends ViewExpression {
     ViewExpression.serialize(leftExpression, stream);
     ViewExpression.serialize(rightExpression, stream);
   }
+
   // endregion
   public void setLeftExpression(ViewExpression leftExpression) {
     this.leftExpression = leftExpression;

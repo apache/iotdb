@@ -939,6 +939,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, measurementSize, rowCount);
     isAligned = buffer.get() == 1;
   }
+
   // endregion
 
   @Override

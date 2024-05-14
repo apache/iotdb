@@ -587,7 +587,9 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   // ==========================================================================
   //  runtime state - timeout related
   // ==========================================================================
-  /** @param timeout timeout interval in msec */
+  /**
+   * @param timeout timeout interval in msec
+   */
   protected void setTimeout(long timeout) {
     this.timeout = timeout;
   }
@@ -596,7 +598,9 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     return timeout != NO_TIMEOUT;
   }
 
-  /** @return the timeout in msec */
+  /**
+   * @return the timeout in msec
+   */
   public long getTimeout() {
     return timeout;
   }
@@ -630,12 +634,16 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   // ==========================================================================
   //  runtime state
   // ==========================================================================
-  /** @return the time elapsed between the last update and the start time of the procedure. */
+  /**
+   * @return the time elapsed between the last update and the start time of the procedure.
+   */
   public long elapsedTime() {
     return getLastUpdate() - getSubmittedTime();
   }
 
-  /** @return the serialized result if any, otherwise null */
+  /**
+   * @return the serialized result if any, otherwise null
+   */
   public byte[] getResult() {
     return result.get();
   }
@@ -679,7 +687,9 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   //  just because the procedure can get scheduled on different executor threads on each step.
   // ==============================================================================================
 
-  /** @return true if the procedure is in a RUNNABLE state. */
+  /**
+   * @return true if the procedure is in a RUNNABLE state.
+   */
   public synchronized boolean isRunnable() {
     return state == ProcedureState.RUNNABLE;
   }
@@ -688,12 +698,16 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     return state == ProcedureState.INITIALIZING;
   }
 
-  /** @return true if the procedure has failed. It may or may not have rolled back. */
+  /**
+   * @return true if the procedure has failed. It may or may not have rolled back.
+   */
   public synchronized boolean isFailed() {
     return state == ProcedureState.FAILED || state == ProcedureState.ROLLEDBACK;
   }
 
-  /** @return true if the procedure is finished successfully. */
+  /**
+   * @return true if the procedure is finished successfully.
+   */
   public synchronized boolean isSuccess() {
     return state == ProcedureState.SUCCESS && !hasException();
   }
@@ -706,7 +720,9 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     return isSuccess() || state == ProcedureState.ROLLEDBACK;
   }
 
-  /** @return true if the procedure is waiting for a child to finish or for an external event. */
+  /**
+   * @return true if the procedure is waiting for a child to finish or for an external event.
+   */
   public synchronized boolean isWaiting() {
     switch (state) {
       case WAITING:

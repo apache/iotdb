@@ -54,6 +54,7 @@ public class ElasticSerializableTVList implements PointCollector {
 
   protected LRUCache cache;
   protected List<SerializableTVList> tvLists;
+
   /**
    * the bitmap used to indicate whether one value is null in the tvLists. The size of bitMap is the
    * same as tvLists and the length of whole bits is the same as tvLists' length.

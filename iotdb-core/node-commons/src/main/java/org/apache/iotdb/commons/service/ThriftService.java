@@ -88,8 +88,11 @@ public abstract class ThriftService implements IService {
   }
 
   public abstract void initTProcessor()
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException,
-          NoSuchMethodException, InvocationTargetException;
+      throws ClassNotFoundException,
+          IllegalAccessException,
+          InstantiationException,
+          NoSuchMethodException,
+          InvocationTargetException;
 
   public abstract void initThriftServiceThread()
       throws IllegalAccessException, InstantiationException, ClassNotFoundException;

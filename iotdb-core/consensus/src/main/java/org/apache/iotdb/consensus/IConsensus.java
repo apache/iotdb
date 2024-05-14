@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
@@ -234,4 +235,11 @@ public interface IConsensus {
    * @return region directory
    */
   String getRegionDirFromConsensusGroupId(ConsensusGroupId groupId);
+
+  /**
+   * Reload the consensus config.
+   *
+   * @param consensusConfig the new consensus config
+   */
+  void reloadConsensusConfig(ConsensusConfig consensusConfig);
 }

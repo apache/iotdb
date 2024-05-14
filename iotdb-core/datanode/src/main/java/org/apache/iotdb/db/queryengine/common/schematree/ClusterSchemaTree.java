@@ -70,6 +70,7 @@ public class ClusterSchemaTree implements ISchemaTree {
 
   /** a flag recording whether there is logical view in this schema tree. */
   private boolean hasLogicalMeasurementPath = false;
+
   /** used to judge schema tree type */
   private boolean hasNormalTimeSeries = false;
 
@@ -399,6 +400,32 @@ public class ClusterSchemaTree implements ISchemaTree {
     traverseAndMerge(this.root, null, schemaTree.root);
     this.templateMap.putAll(schemaTree.templateMap);
     this.hasNormalTimeSeries |= schemaTree.hasNormalTimeSeries;
+  }
+
+  @Override
+  public void removeLogicalView() {
+    removeLogicViewMeasurement(root);
+  }
+
+  private void removeLogicViewMeasurement(SchemaNode parent) {
+    if (parent.isMeasurement()) {
+      return;
+    }
+
+    Map<String, SchemaNode> children = parent.getChildren();
+    List<String> childrenToBeRemoved = new ArrayList<>();
+    for (Map.Entry<String, SchemaNode> entry : children.entrySet()) {
+      SchemaNode child = entry.getValue();
+      if (child.isMeasurement() && child.getAsMeasurementNode().isLogicalView()) {
+        childrenToBeRemoved.add(entry.getKey());
+      } else {
+        removeLogicViewMeasurement(child);
+      }
+    }
+
+    for (String key : childrenToBeRemoved) {
+      parent.removeChild(key);
+    }
   }
 
   private void traverseAndMerge(SchemaNode thisNode, SchemaNode thisParent, SchemaNode thatNode) {

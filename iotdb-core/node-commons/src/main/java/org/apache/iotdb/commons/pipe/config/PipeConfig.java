@@ -95,11 +95,11 @@ public class PipeConfig {
 
   /////////////////////////////// Connector ///////////////////////////////
 
-  public long getPipeConnectorHandshakeTimeoutMs() {
+  public int getPipeConnectorHandshakeTimeoutMs() {
     return COMMON_CONFIG.getPipeConnectorHandshakeTimeoutMs();
   }
 
-  public long getPipeConnectorTransferTimeoutMs() {
+  public int getPipeConnectorTransferTimeoutMs() {
     return COMMON_CONFIG.getPipeConnectorTransferTimeoutMs();
   }
 
@@ -177,6 +177,10 @@ public class PipeConfig {
 
   /////////////////////////////// Hybrid Mode ///////////////////////////////
 
+  public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
+    return COMMON_CONFIG.getPipeMaxAllowedHistoricalTsFilePerDataRegion();
+  }
+
   public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
     return COMMON_CONFIG.getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
   }
@@ -247,6 +251,20 @@ public class PipeConfig {
 
   public long getPipeMemoryExpanderIntervalSeconds() {
     return COMMON_CONFIG.getPipeMemoryExpanderIntervalSeconds();
+  }
+
+  /////////////////////////////// TwoStage ///////////////////////////////
+
+  public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
+    return COMMON_CONFIG.getTwoStageAggregateMaxCombinerLiveTimeInMs();
+  }
+
+  public long getTwoStageAggregateDataRegionInfoCacheTimeInMs() {
+    return COMMON_CONFIG.getTwoStageAggregateDataRegionInfoCacheTimeInMs();
+  }
+
+  public long getTwoStageAggregateSenderEndPointsCacheInMs() {
+    return COMMON_CONFIG.getTwoStageAggregateSenderEndPointsCacheInMs();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -320,6 +338,9 @@ public class PipeConfig {
     LOGGER.info("PipeAirGapReceiverPort: {}", getPipeAirGapReceiverPort());
 
     LOGGER.info(
+        "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",
+        getPipeMaxAllowedHistoricalTsFilePerDataRegion());
+    LOGGER.info(
         "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
         getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
     LOGGER.info("PipeMaxAllowedPinnedMemTableCount: {}", getPipeMaxAllowedPinnedMemTableCount());
@@ -341,6 +362,17 @@ public class PipeConfig {
     LOGGER.info(
         "PipeMemoryAllocateForTsFileSequenceReaderInBytes: {}",
         getPipeMemoryAllocateForTsFileSequenceReaderInBytes());
+    LOGGER.info("PipeMemoryExpanderIntervalSeconds: {}", getPipeMemoryExpanderIntervalSeconds());
+
+    LOGGER.info(
+        "TwoStageAggregateMaxCombinerLiveTimeInMs: {}",
+        getTwoStageAggregateMaxCombinerLiveTimeInMs());
+    LOGGER.info(
+        "TwoStageAggregateDataRegionInfoCacheTimeInMs: {}",
+        getTwoStageAggregateDataRegionInfoCacheTimeInMs());
+    LOGGER.info(
+        "TwoStageAggregateSenderEndPointsCacheInMs: {}",
+        getTwoStageAggregateSenderEndPointsCacheInMs());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

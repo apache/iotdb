@@ -146,6 +146,7 @@ public class AlterLogicalViewStatement extends Statement implements IConfigState
     this.targetPaths.setSuffixOfPathsGroup(suffixPaths);
     this.targetPaths.generateFullPathsFromPathsGroup();
   }
+
   // endregion
 
   @Override

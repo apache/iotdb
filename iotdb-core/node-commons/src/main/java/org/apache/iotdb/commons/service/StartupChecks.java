@@ -97,6 +97,7 @@ public abstract class StartupChecks {
     preChecks.add(this::checkJDK);
     preChecks.add(this::checkJVM);
   }
+
   /** execute every pretest. */
   protected void verify() throws StartupException {
     for (StartupCheck check : preChecks) {
