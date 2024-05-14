@@ -344,7 +344,7 @@ public class PipeTsFileResourceManager {
     lock.lock();
     try {
       return hardlinkOrCopiedFileToPipeTsFileResourceMap.values().parallelStream()
-          .filter(PipeTsFileResource::isOriginalTsFileDeleted)
+          .filter(PipeTsFileResource::isOriginalFileIsTsFileAndDeleted)
           .mapToLong(PipeTsFileResource::getFileSize)
           .sum();
     } finally {

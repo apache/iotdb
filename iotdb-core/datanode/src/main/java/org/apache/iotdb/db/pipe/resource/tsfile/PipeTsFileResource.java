@@ -80,6 +80,10 @@ public class PipeTsFileResource implements AutoCloseable {
     return hardlinkOrCopiedFile;
   }
 
+  public boolean isOriginalFileIsTsFileAndDeleted() {
+    return isTsFile && Objects.nonNull(tsFileResource) && tsFileResource.isDeleted();
+  }
+
   public long getFileSize() {
     if (fileSize == -1L) {
       synchronized (this) {
@@ -89,14 +93,6 @@ public class PipeTsFileResource implements AutoCloseable {
       }
     }
     return fileSize;
-  }
-
-  public boolean isOriginalTsFileDeleted() {
-    if (!isTsFile || Objects.isNull(tsFileResource)) {
-      return false;
-    }
-
-    return Objects.equals(tsFileResource.getStatus(), TsFileResourceStatus.DELETED);
   }
 
   ///////////////////// Reference Count /////////////////////
