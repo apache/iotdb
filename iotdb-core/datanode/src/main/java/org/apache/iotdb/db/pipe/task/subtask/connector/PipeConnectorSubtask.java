@@ -43,6 +43,8 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
@@ -240,8 +242,21 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
         : 0;
   }
 
-  public int getEventCount() {
-    return inputPendingQueue.size() + getAsyncConnectorRetryEventQueueSize();
+  // For performance, this will not acquire lock and does not guarantee the correct
+  // result. However, this shall not cause any exceptions when concurrently read & written.
+  public int getEventCount(final String pipeName) {
+    final AtomicInteger count = new AtomicInteger(0);
+    inputPendingQueue.forEach(
+        event -> {
+          if (event instanceof EnrichedEvent
+              && pipeName.equals(((EnrichedEvent) event).getPipeName())) {
+            count.incrementAndGet();
+          }
+        });
+    return count.get()
+        + (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
+            ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getRetryEventCount(pipeName)
+            : 0);
   }
 
   //////////////////////////// Error report ////////////////////////////

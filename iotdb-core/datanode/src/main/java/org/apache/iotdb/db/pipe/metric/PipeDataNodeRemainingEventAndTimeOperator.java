@@ -74,7 +74,7 @@ class PipeDataNodeRemainingEventAndTimeOperator {
             .reduce(Integer::sum)
             .orElse(0)
         + dataRegionConnectors.keySet().stream()
-            .map(PipeConnectorSubtask::getEventCount)
+            .map(connectorSubtask -> connectorSubtask.getEventCount(pipeName))
             .reduce(Integer::sum)
             .orElse(0)
         + schemaRegionExtractors.keySet().stream()
@@ -86,11 +86,7 @@ class PipeDataNodeRemainingEventAndTimeOperator {
   /**
    * This will calculate the estimated remaining time of pipe.
    *
-   * <p>Notes:
-   *
-   * <p>1. The events in pipe assigner are omitted.
-   *
-   * <p>2. Other pipes' events sharing the same connectorSubtasks may be over-calculated.
+   * <p>Note: The events in pipe assigner are omitted.
    *
    * @return The estimated remaining time
    */
@@ -98,7 +94,7 @@ class PipeDataNodeRemainingEventAndTimeOperator {
     final double pipeRemainingTimeCommitRateSmoothingFactor =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateSmoothingFactor();
 
-    // Do not calculate heartbeat event
+    // Do not take heartbeat event into account
     final int totalDataRegionWriteEventCount =
         dataRegionExtractors.keySet().stream()
                 .map(IoTDBDataRegionExtractor::getEventCount)
@@ -109,7 +105,7 @@ class PipeDataNodeRemainingEventAndTimeOperator {
                 .reduce(Integer::sum)
                 .orElse(0)
             + dataRegionConnectors.keySet().stream()
-                .map(PipeConnectorSubtask::getEventCount)
+                .map(connectorSubtask -> connectorSubtask.getEventCount(pipeName))
                 .reduce(Integer::sum)
                 .orElse(0)
             - dataRegionExtractors.keySet().stream()
@@ -197,6 +193,7 @@ class PipeDataNodeRemainingEventAndTimeOperator {
   }
 
   //////////////////////////// Rate ////////////////////////////
+
   void markDataRegionCommit() {
     dataRegionCommitMeter.mark();
   }

@@ -107,6 +107,7 @@ class PipeConfigNodeRemainingTimeOperator {
   }
 
   //////////////////////////// Rate ////////////////////////////
+
   void markConfigRegionCommit() {
     configRegionCommitMeter.mark();
   }

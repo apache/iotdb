@@ -130,7 +130,7 @@ public class PipeSchemaRegionConnectorMetrics implements IMetricSet {
     final Rate rate = schemaRateMap.get(taskID);
     if (rate == null) {
       LOGGER.warn(
-          "Failed to mark pipe data region connector tablet event, PipeConnectorSubtask({}) does not exist",
+          "Failed to mark pipe schema region connector schema event, PipeConnectorSubtask({}) does not exist",
           taskID);
       return;
     }
