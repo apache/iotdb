@@ -162,6 +162,7 @@ public enum Metric {
   PIPE_CONFIG_LINKED_QUEUE_SIZE("pipe_config_linked_queue_size"),
   UNTRANSFERRED_CONFIG_COUNT("untransferred_config_count"),
   PIPE_CONNECTOR_CONFIG_TRANSFER("pipe_connector_config_transfer"),
+  PIPE_CONFIGNODE_REMAINING_TIME("pipe_confignode_remaining_time"),
   // load related
   LOAD_MEM("load_mem");
 

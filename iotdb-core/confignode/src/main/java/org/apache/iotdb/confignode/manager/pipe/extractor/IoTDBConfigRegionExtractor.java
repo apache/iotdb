@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
+import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeRemainingTimeMetrics;
 import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigRegionExtractorMetrics;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -65,6 +66,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
     listenedTypeSet = ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters);
 
     PipeConfigRegionExtractorMetrics.getInstance().register(this);
+    PipeConfigNodeRemainingTimeMetrics.getInstance().register(this);
   }
 
   @Override
@@ -132,6 +134,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
     if (Objects.nonNull(taskID)) {
       PipeConfigRegionExtractorMetrics.getInstance().deregister(taskID);
+      PipeConfigNodeRemainingTimeMetrics.getInstance().deregister(taskID);
     }
   }
 }

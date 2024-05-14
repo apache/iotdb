@@ -44,15 +44,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PipeRemainingEventAndTimeMetrics implements IMetricSet {
+public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeRemainingEventAndTimeMetrics.class);
+      LoggerFactory.getLogger(PipeDataNodeRemainingEventAndTimeMetrics.class);
 
   private volatile AbstractMetricService metricService;
 
-  private final Map<String, PipeRemainingEventAndTimeOperator> remainingEventAndTimeOperatorMap =
-      new ConcurrentHashMap<>();
+  private final Map<String, PipeDataNodeRemainingEventAndTimeOperator>
+      remainingEventAndTimeOperatorMap = new ConcurrentHashMap<>();
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -67,12 +67,13 @@ public class PipeRemainingEventAndTimeMetrics implements IMetricSet {
   }
 
   private void createAutoGauge(final String taskID) {
-    final PipeRemainingEventAndTimeOperator operator = remainingEventAndTimeOperatorMap.get(taskID);
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(taskID);
     metricService.createAutoGauge(
         Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         operator,
-        PipeRemainingEventAndTimeOperator::getRemainingEvents,
+        PipeDataNodeRemainingEventAndTimeOperator::getRemainingEvents,
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
@@ -81,7 +82,7 @@ public class PipeRemainingEventAndTimeMetrics implements IMetricSet {
         Metric.PIPE_DATANODE_REMAINING_TIME.toString(),
         MetricLevel.IMPORTANT,
         operator,
-        PipeRemainingEventAndTimeOperator::getRemainingTime,
+        PipeDataNodeRemainingEventAndTimeOperator::getRemainingTime,
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
@@ -93,7 +94,7 @@ public class PipeRemainingEventAndTimeMetrics implements IMetricSet {
     ImmutableSet.copyOf(remainingEventAndTimeOperatorMap.keySet()).forEach(this::deregister);
     if (!remainingEventAndTimeOperatorMap.isEmpty()) {
       LOGGER.warn(
-          "Failed to unbind from pipe remaining time metrics, remainingTimeOperator map not empty");
+          "Failed to unbind from pipe remaining event and time metrics, RemainingEventAndTimeOperator map not empty");
     }
   }
 
@@ -102,7 +103,8 @@ public class PipeRemainingEventAndTimeMetrics implements IMetricSet {
   }
 
   private void removeAutoGauge(final String taskID) {
-    final PipeRemainingEventAndTimeOperator operator = remainingEventAndTimeOperatorMap.get(taskID);
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(taskID);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_DATANODE_REMAINING_TIME.toString(),
@@ -119,7 +121,7 @@ public class PipeRemainingEventAndTimeMetrics implements IMetricSet {
     // The metric is global thus the regionId is omitted
     final String taskID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(taskID, k -> new PipeRemainingEventAndTimeOperator())
+        .computeIfAbsent(taskID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
         .register(extractor);
     if (Objects.nonNull(metricService)) {
       createMetrics(taskID);
@@ -130,7 +132,7 @@ public class PipeRemainingEventAndTimeMetrics implements IMetricSet {
     // The metric is global thus the regionId is omitted
     final String taskID = processorSubtask.getPipeName() + "_" + processorSubtask.getCreationTime();
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(taskID, k -> new PipeRemainingEventAndTimeOperator())
+        .computeIfAbsent(taskID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
         .register(processorSubtask);
     if (Objects.nonNull(metricService)) {
       createMetrics(taskID);
@@ -142,7 +144,7 @@ public class PipeRemainingEventAndTimeMetrics implements IMetricSet {
     // The metric is global thus the regionId is omitted
     final String taskID = pipeName + "_" + creationTime;
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(taskID, k -> new PipeRemainingEventAndTimeOperator())
+        .computeIfAbsent(taskID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
         .register(connectorSubtask, pipeName, creationTime);
     if (Objects.nonNull(metricService)) {
       createMetrics(taskID);
@@ -153,7 +155,7 @@ public class PipeRemainingEventAndTimeMetrics implements IMetricSet {
     // The metric is global thus the regionId is omitted
     final String taskID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     remainingEventAndTimeOperatorMap
-        .computeIfAbsent(taskID, k -> new PipeRemainingEventAndTimeOperator())
+        .computeIfAbsent(taskID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
         .register(extractor);
     if (Objects.nonNull(metricService)) {
       createMetrics(taskID);
@@ -163,7 +165,7 @@ public class PipeRemainingEventAndTimeMetrics implements IMetricSet {
   public void deregister(final String taskID) {
     if (!remainingEventAndTimeOperatorMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe remaining time metrics, RemainingTimeOperator({}) does not exist",
+          "Failed to deregister pipe remaining event and time metrics, RemainingEventAndTimeOperator({}) does not exist",
           taskID);
       return;
     }
@@ -183,10 +185,12 @@ public class PipeRemainingEventAndTimeMetrics implements IMetricSet {
     if (Objects.isNull(metricService)) {
       return;
     }
-    final PipeRemainingEventAndTimeOperator operator = remainingEventAndTimeOperatorMap.get(taskID);
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(taskID);
     if (Objects.isNull(operator)) {
       LOGGER.warn(
-          "Failed to mark pipe region commit, RemainingTimeOperator({}) does not exist", taskID);
+          "Failed to mark pipe region commit, RemainingEventAndTimeOperator({}) does not exist",
+          taskID);
       return;
     }
     // Prevent not set pipeName / creation times & potential differences between pipeNames and
@@ -208,21 +212,21 @@ public class PipeRemainingEventAndTimeMetrics implements IMetricSet {
 
   //////////////////////////// singleton ////////////////////////////
 
-  private static class PipeRemainTimeMetricsHolder {
+  private static class PipeDataNodeRemainingEventAndTimeMetricsHolder {
 
-    private static final PipeRemainingEventAndTimeMetrics INSTANCE =
-        new PipeRemainingEventAndTimeMetrics();
+    private static final PipeDataNodeRemainingEventAndTimeMetrics INSTANCE =
+        new PipeDataNodeRemainingEventAndTimeMetrics();
 
-    private PipeRemainTimeMetricsHolder() {
+    private PipeDataNodeRemainingEventAndTimeMetricsHolder() {
       // Empty constructor
     }
   }
 
-  public static PipeRemainingEventAndTimeMetrics getInstance() {
-    return PipeRemainTimeMetricsHolder.INSTANCE;
+  public static PipeDataNodeRemainingEventAndTimeMetrics getInstance() {
+    return PipeDataNodeRemainingEventAndTimeMetricsHolder.INSTANCE;
   }
 
-  private PipeRemainingEventAndTimeMetrics() {
+  private PipeDataNodeRemainingEventAndTimeMetrics() {
     PipeEventCommitManager.getInstance().setCommitRateMarker(this::markRegionCommit);
   }
 }
