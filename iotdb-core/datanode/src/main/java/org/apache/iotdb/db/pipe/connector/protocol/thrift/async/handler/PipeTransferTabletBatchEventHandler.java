@@ -64,7 +64,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
     this.connector = connector;
     req =
         PipeTransferCompressedReq.toTPipeTransferReq(
-            batchBuilder.toTPipeTransferReq(), connector.getCompressors());
+            batch.toTPipeTransferReq(), connector.getCompressors());
   }
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {

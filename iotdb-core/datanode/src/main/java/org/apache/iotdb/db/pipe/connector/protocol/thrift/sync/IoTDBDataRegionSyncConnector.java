@@ -176,7 +176,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
     final TPipeTransferResp resp;
     try {
-      resp = clientAndStatus.getLeft().pipeTransfer(compressIfNeeded(batchToTransfer.toTPipeTransferReq()));
+      resp =
+          clientAndStatus
+              .getLeft()
+              .pipeTransfer(compressIfNeeded(batchToTransfer.toTPipeTransferReq()));
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
