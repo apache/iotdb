@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
-import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
@@ -47,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDevi
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanSourceNode;
@@ -66,11 +66,9 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
@@ -282,9 +280,8 @@ public class AggregationPushDown implements PlanOptimizer {
                     (SeriesAggregationSourceNode) sourceNode;
                 aggregationSourceNode.setPushDownPredicate(pushDownPredicate);
                 if (aggregationSourceNode instanceof AlignedSeriesAggregationScanNode) {
-                  extendAlignedPath(
-                      ((AlignedSeriesAggregationScanNode) aggregationSourceNode).getAlignedPath(),
-                      pushDownPredicate);
+                  ((AlignedSeriesAggregationScanNode) aggregationSourceNode)
+                      .setAlignedPath(((AlignedSeriesScanNode) child).getAlignedPath());
                 }
               });
         }
@@ -425,20 +422,6 @@ public class AggregationPushDown implements PlanOptimizer {
             groupByTimeParameter);
       } else {
         throw new IllegalArgumentException("unexpected path type");
-      }
-    }
-
-    private void extendAlignedPath(AlignedPath alignedPath, Expression pushDownPredicate) {
-      Set<PartialPath> sourcePathsInPredicate =
-          ExpressionAnalyzer.searchSourceExpressions(pushDownPredicate).stream()
-              .map(expression -> ((TimeSeriesOperand) expression).getPath())
-              .collect(Collectors.toSet());
-      Set<String> existingMeasurements = new HashSet<>(alignedPath.getMeasurementList());
-      for (PartialPath sourcePath : sourcePathsInPredicate) {
-        if (!existingMeasurements.contains(sourcePath.getMeasurement())) {
-          alignedPath.addMeasurement((MeasurementPath) sourcePath);
-          existingMeasurements.add(sourcePath.getMeasurement());
-        }
       }
     }
 
