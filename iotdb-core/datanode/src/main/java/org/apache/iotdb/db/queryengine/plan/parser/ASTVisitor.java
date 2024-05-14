@@ -2472,7 +2472,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       IoTDBSqlParser.DatabaseAttributesClauseContext ctx) {
     for (IoTDBSqlParser.DatabaseAttributeClauseContext attribute : ctx.databaseAttributeClause()) {
       IoTDBSqlParser.DatabaseAttributeKeyContext attributeKey = attribute.databaseAttributeKey();
-      if (attributeKey.SCHEMA_REPLICATION_FACTOR() != null) {
+      if (attributeKey.TTL() != null) {
+        long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+        databaseSchemaStatement.setTtl(ttl);
+      } else if (attributeKey.SCHEMA_REPLICATION_FACTOR() != null) {
         int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
         databaseSchemaStatement.setSchemaReplicationFactor(schemaReplicationFactor);
       } else if (attributeKey.DATA_REPLICATION_FACTOR() != null) {

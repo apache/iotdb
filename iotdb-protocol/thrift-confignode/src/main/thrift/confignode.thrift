@@ -197,13 +197,14 @@ struct TShowTTLResp {
 
 struct TDatabaseSchema {
   1: required string name
-  2: optional i32 schemaReplicationFactor
-  3: optional i32 dataReplicationFactor
-  4: optional i64 timePartitionInterval
-  5: optional i32 minSchemaRegionGroupNum
-  6: optional i32 maxSchemaRegionGroupNum
-  7: optional i32 minDataRegionGroupNum
-  8: optional i32 maxDataRegionGroupNum
+    2: optional i64 TTL
+    3: optional i32 schemaReplicationFactor
+    4: optional i32 dataReplicationFactor
+    5: optional i64 timePartitionInterval
+    6: optional i32 minSchemaRegionGroupNum
+    7: optional i32 maxSchemaRegionGroupNum
+    8: optional i32 minDataRegionGroupNum
+    9: optional i32 maxDataRegionGroupNum
 }
 
 // Schema

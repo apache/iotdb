@@ -61,10 +61,9 @@ public class TTLManager {
               path.getFullPath()));
       return errorStatus;
     }
-    if (ttlInfo.getTTLCount() >= ttlCountThreshold) {
+    if (setTTLPlan.getTTL() <= 0) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.OVERSIZE_TTL.getStatusCode());
-      errorStatus.setMessage(
-          "The number of TTL stored in the system has reached threshold %d, please increase the ttl_rule_capacity parameter.");
+      errorStatus.setMessage("The TTL should be positive.");
       return errorStatus;
     }
 

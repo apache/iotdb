@@ -339,7 +339,11 @@ public class ConfigPlanExecutor {
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
         }
-        return partitionInfo.createDatabase((DatabaseSchemaPlan) physicalPlan);
+        status = partitionInfo.createDatabase((DatabaseSchemaPlan) physicalPlan);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
+        return ttlInfo.setTTL((DatabaseSchemaPlan) physicalPlan);
       case AlterDatabase:
         return clusterSchemaInfo.alterDatabase((DatabaseSchemaPlan) physicalPlan);
       case AdjustMaxRegionGroupNum:

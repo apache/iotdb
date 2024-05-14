@@ -19,10 +19,14 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -38,6 +42,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -55,17 +60,43 @@ public class TTLInfo implements SnapshotProcessor {
     lock = new ReentrantReadWriteLock();
   }
 
+  /** Set ttl when creating database. */
+  public TSStatus setTTL(DatabaseSchemaPlan plan) {
+    if (!plan.getSchema().isSetTTL()) {
+      // does not set ttl when creating database
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
+    try {
+      String[] nodes = PathUtils.splitPathToDetachedNodes(plan.getSchema().getName());
+      SetTTLPlan setTTLPlan = new SetTTLPlan(nodes, plan.getSchema().getTTL());
+      setTTLPlan.setDataBase(true);
+      TSStatus status = setTTL(setTTLPlan);
+      if (status.getCode() == TSStatusCode.OVERSIZE_TTL.getStatusCode()) {
+        status.setMessage(
+            "Create database successfully, but fail to set ttl, because the number of TTL stored in the system has reached threshold, please increase the ttl_rule_capacity parameter.");
+      }
+      return status;
+    } catch (IllegalPathException e) {
+      return new TSStatus(e.getErrorCode()).setMessage(e.getMessage());
+    }
+  }
+
   public TSStatus setTTL(SetTTLPlan plan) {
     lock.writeLock().lock();
     try {
+      // check ttl rule capacity
+      if (getTTLCount() >= CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity()) {
+        TSStatus errorStatus = new TSStatus(TSStatusCode.OVERSIZE_TTL.getStatusCode());
+        errorStatus.setMessage(
+            "The number of TTL stored in the system has reached threshold, please increase the ttl_rule_capacity parameter.");
+        return errorStatus;
+      }
       ttlCache.setTTL(plan.getPathPattern(), plan.getTTL());
       if (plan.isDataBase()) {
         // set ttl to path.**
-        ttlCache.setTTL(
-            new PartialPath(plan.getPathPattern())
-                .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)
-                .getNodes(),
-            plan.getTTL());
+        String[] pathNodes = Arrays.copyOf(plan.getPathPattern(), plan.getPathPattern().length + 1);
+        pathNodes[pathNodes.length - 1] = IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+        ttlCache.setTTL(pathNodes, plan.getTTL());
       }
     } finally {
       lock.writeLock().unlock();

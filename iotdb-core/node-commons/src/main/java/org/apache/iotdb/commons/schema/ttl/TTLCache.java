@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -185,7 +184,7 @@ public class TTLCache {
   }
 
   public Map<String, Long> getAllPathTTL() {
-    Map<String, Long> result = new LinkedHashMap<>();
+    Map<String, Long> result = new HashMap<>();
     dfsCacheTree(result, new StringBuilder(IoTDBConstant.PATH_ROOT), ttlCacheTree);
     return result;
   }

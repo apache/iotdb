@@ -301,6 +301,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TSStatus errorResp = null;
     boolean isSystemDatabase = databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
 
+    if (databaseSchema.getTTL() <= 0) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage("Failed to create database. The TTL should be positive.");
+    }
+
     if (isSystemDatabase) {
       databaseSchema.setSchemaReplicationFactor(1);
     } else if (!databaseSchema.isSetSchemaReplicationFactor()) {
@@ -380,6 +386,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TSStatus errorResp = null;
 
     // TODO: Support alter the following fields
+    if (databaseSchema.isSetTTL()) {
+      errorResp =
+          new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
+              .setMessage("Failed to alter database. Doesn't support ALTER TTL yet.");
+    }
     if (databaseSchema.isSetSchemaReplicationFactor()) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
