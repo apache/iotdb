@@ -24,9 +24,9 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
-import org.apache.iotdb.metrics.core.utils.IoTDBMovingAverage;
 
 import com.codahale.metrics.Clock;
+import com.codahale.metrics.ExponentialMovingAverages;
 import com.codahale.metrics.Meter;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,9 +45,9 @@ class PipeDataNodeRemainingEventAndTimeOperator {
   private final ConcurrentMap<IoTDBSchemaRegionExtractor, IoTDBSchemaRegionExtractor>
       schemaRegionExtractors = new ConcurrentHashMap<>();
   private final Meter dataRegionCommitMeter =
-      new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
+      new Meter(new ExponentialMovingAverages(), Clock.defaultClock());
   private final Meter schemaRegionCommitMeter =
-      new Meter(new IoTDBMovingAverage(), Clock.defaultClock());
+      new Meter(new ExponentialMovingAverages(), Clock.defaultClock());
 
   private double lastDataRegionCommitSmoothingValue = Long.MIN_VALUE;
   private double lastSchemaRegionCommitSmoothingValue = Long.MIN_VALUE;
