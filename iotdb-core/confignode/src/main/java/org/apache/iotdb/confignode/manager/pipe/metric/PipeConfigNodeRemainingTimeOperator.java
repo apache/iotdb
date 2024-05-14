@@ -30,6 +30,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 class PipeConfigNodeRemainingTimeOperator {
+
+  private static final long CONFIG_NODE_REMAINING_MAX_SECONDS = 365 * 24 * 60 * 60L; // 1 year
+
   private String pipeName;
   private long creationTime = 0;
 
@@ -91,7 +94,9 @@ class PipeConfigNodeRemainingTimeOperator {
               : totalConfigRegionWriteEventCount / lastConfigRegionCommitSmoothingValue;
     }
 
-    return configRegionRemainingTime == Double.MAX_VALUE ? -1 : configRegionRemainingTime;
+    return configRegionRemainingTime >= CONFIG_NODE_REMAINING_MAX_SECONDS
+        ? CONFIG_NODE_REMAINING_MAX_SECONDS
+        : configRegionRemainingTime;
   }
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////

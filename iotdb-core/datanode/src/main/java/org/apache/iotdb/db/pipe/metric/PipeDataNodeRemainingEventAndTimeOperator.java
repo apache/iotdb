@@ -33,6 +33,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 class PipeDataNodeRemainingEventAndTimeOperator {
+
+  private static final long DATA_NODE_REMAINING_MAX_SECONDS = 365 * 24 * 60 * 60L; // 1 year
+
   private String pipeName;
   private long creationTime = 0;
 
@@ -161,7 +164,7 @@ class PipeDataNodeRemainingEventAndTimeOperator {
     }
 
     final double result = Math.max(dataRegionRemainingTime, schemaRegionRemainingTime);
-    return result == Double.MAX_VALUE ? -1 : result;
+    return result >= DATA_NODE_REMAINING_MAX_SECONDS ? DATA_NODE_REMAINING_MAX_SECONDS : result;
   }
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
