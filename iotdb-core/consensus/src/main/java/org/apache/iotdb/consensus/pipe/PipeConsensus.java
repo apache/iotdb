@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -40,6 +41,9 @@ import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
+import org.apache.iotdb.consensus.pipe.client.AsyncPipeConsensusServiceClient;
+import org.apache.iotdb.consensus.pipe.client.PipeConsensusClientPool;
+import org.apache.iotdb.consensus.pipe.client.SyncPipeConsensusServiceClient;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeManager;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
@@ -80,6 +84,8 @@ public class PipeConsensus implements IConsensus {
   private final PipeConsensusConfig config;
   private final ConsensusPipeManager consensusPipeManager;
   private final ConsensusPipeGuardian consensusPipeGuardian;
+  private final IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> asyncClientManager;
+  private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncClientManager;
 
   public PipeConsensus(ConsensusConfig config, IStateMachine.Registry registry) {
     this.thisNode = config.getThisNodeEndPoint();
@@ -90,6 +96,16 @@ public class PipeConsensus implements IConsensus {
     this.consensusPipeManager = new ConsensusPipeManager(config.getPipeConsensusConfig().getPipe());
     this.consensusPipeGuardian =
         config.getPipeConsensusConfig().getPipe().getConsensusPipeGuardian();
+    this.asyncClientManager =
+        new IClientManager.Factory<TEndPoint, AsyncPipeConsensusServiceClient>()
+            .createClientManager(
+                new PipeConsensusClientPool.AsyncPipeConsensusServiceClientPoolFactory(
+                    config.getPipeConsensusConfig()));
+    this.syncClientManager =
+        new IClientManager.Factory<TEndPoint, SyncPipeConsensusServiceClient>()
+            .createClientManager(
+                new PipeConsensusClientPool.SyncPipeConsensusServiceClientPoolFactory(
+                    config.getPipeConsensusConfig()));
   }
 
   @Override
@@ -427,5 +443,13 @@ public class PipeConsensus implements IConsensus {
   @Override
   public String getRegionDirFromConsensusGroupId(ConsensusGroupId groupId) {
     return buildPeerDir(groupId);
+  }
+
+  public IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> getAsyncClientManager() {
+    return asyncClientManager;
+  }
+
+  public IClientManager<TEndPoint, SyncPipeConsensusServiceClient> getSyncClientManager() {
+    return syncClientManager;
   }
 }

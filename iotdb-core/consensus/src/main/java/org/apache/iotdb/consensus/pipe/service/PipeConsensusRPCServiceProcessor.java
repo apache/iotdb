@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.pipe.service;
 
-import org.apache.iotdb.consensus.pipe.PipeConsensusServerImpl;
 import org.apache.iotdb.consensus.pipe.thrift.PipeConsensusIService;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
@@ -35,20 +34,17 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConsensusRPCServiceProcessor.class);
 
-  private final PipeConsensusServerImpl impl;
-
-  public PipeConsensusRPCServiceProcessor(PipeConsensusServerImpl pipeConsensusServerImpl) {
-    this.impl = pipeConsensusServerImpl;
-  }
+  public PipeConsensusRPCServiceProcessor() {}
 
   @Override
   public void pipeConsensusTransfer(
       TPipeConsensusTransferReq req,
       AsyncMethodCallback<TPipeConsensusTransferResp> resultHandler) {
     try {
-      TPipeConsensusTransferResp resp = impl.receive(req);
+      //    TODO:  TPipeConsensusTransferResp resp = impl.receive(req);
+
       // we need to call onComplete by hand
-      resultHandler.onComplete(resp);
+      //      TODO: resultHandler.onComplete(resp);
     } catch (Exception e) {
       resultHandler.onError(e);
     }

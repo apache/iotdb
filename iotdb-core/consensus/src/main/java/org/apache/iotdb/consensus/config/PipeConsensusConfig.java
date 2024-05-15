@@ -1,16 +1,25 @@
 package org.apache.iotdb.consensus.config;
 
+import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeDispatcher;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeSelector;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ProgressIndexManager;
 
+import java.util.concurrent.TimeUnit;
+
 public class PipeConsensusConfig {
+  private final RPC rpc;
   private final Pipe pipe;
 
-  public PipeConsensusConfig(Pipe pipe) {
+  public PipeConsensusConfig(RPC rpc, Pipe pipe) {
+    this.rpc = rpc;
     this.pipe = pipe;
+  }
+
+  public RPC getRpc() {
+    return rpc;
   }
 
   public Pipe getPipe() {
@@ -22,6 +31,7 @@ public class PipeConsensusConfig {
   }
 
   public static class Builder {
+    private RPC rpc;
     private Pipe pipe;
 
     public Builder setPipe(Pipe pipe) {
@@ -29,8 +39,174 @@ public class PipeConsensusConfig {
       return this;
     }
 
+    public Builder setRPC(RPC rpc) {
+      this.rpc = rpc;
+      return this;
+    }
+
     public PipeConsensusConfig build() {
-      return new PipeConsensusConfig(pipe);
+      return new PipeConsensusConfig(rpc, pipe);
+    }
+  }
+
+  public static class RPC {
+    private final int rpcSelectorThreadNum;
+    private final int rpcMinConcurrentClientNum;
+    private final int rpcMaxConcurrentClientNum;
+    private final int thriftServerAwaitTimeForStopService;
+    private final boolean isRpcThriftCompressionEnabled;
+    private final int selectorNumOfClientManager;
+    private final int connectionTimeoutInMs;
+    private final boolean printLogWhenThriftClientEncounterException;
+    private final int thriftMaxFrameSize;
+    private final int maxClientNumForEachNode;
+
+    public RPC(
+        int rpcSelectorThreadNum,
+        int rpcMinConcurrentClientNum,
+        int rpcMaxConcurrentClientNum,
+        int thriftServerAwaitTimeForStopService,
+        boolean isRpcThriftCompressionEnabled,
+        int selectorNumOfClientManager,
+        int connectionTimeoutInMs,
+        boolean printLogWhenThriftClientEncounterException,
+        int thriftMaxFrameSize,
+        int maxClientNumForEachNode) {
+      this.rpcSelectorThreadNum = rpcSelectorThreadNum;
+      this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
+      this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
+      this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
+      this.isRpcThriftCompressionEnabled = isRpcThriftCompressionEnabled;
+      this.selectorNumOfClientManager = selectorNumOfClientManager;
+      this.connectionTimeoutInMs = connectionTimeoutInMs;
+      this.printLogWhenThriftClientEncounterException = printLogWhenThriftClientEncounterException;
+      this.thriftMaxFrameSize = thriftMaxFrameSize;
+      this.maxClientNumForEachNode = maxClientNumForEachNode;
+    }
+
+    public int getRpcSelectorThreadNum() {
+      return rpcSelectorThreadNum;
+    }
+
+    public int getRpcMinConcurrentClientNum() {
+      return rpcMinConcurrentClientNum;
+    }
+
+    public int getRpcMaxConcurrentClientNum() {
+      return rpcMaxConcurrentClientNum;
+    }
+
+    public int getThriftServerAwaitTimeForStopService() {
+      return thriftServerAwaitTimeForStopService;
+    }
+
+    public boolean isRpcThriftCompressionEnabled() {
+      return isRpcThriftCompressionEnabled;
+    }
+
+    public int getSelectorNumOfClientManager() {
+      return selectorNumOfClientManager;
+    }
+
+    public int getConnectionTimeoutInMs() {
+      return connectionTimeoutInMs;
+    }
+
+    public boolean isPrintLogWhenThriftClientEncounterException() {
+      return printLogWhenThriftClientEncounterException;
+    }
+
+    public int getThriftMaxFrameSize() {
+      return thriftMaxFrameSize;
+    }
+
+    public int getMaxClientNumForEachNode() {
+      return maxClientNumForEachNode;
+    }
+
+    public static RPC.Builder newBuilder() {
+      return new RPC.Builder();
+    }
+
+    public static class Builder {
+      private int rpcSelectorThreadNum = 1;
+      private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
+      private int rpcMaxConcurrentClientNum = 65535;
+      private int thriftServerAwaitTimeForStopService = 60;
+      private boolean isRpcThriftCompressionEnabled = false;
+      private int selectorNumOfClientManager = 1;
+      private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(20);
+      private boolean printLogWhenThriftClientEncounterException = true;
+      private int thriftMaxFrameSize = 536870912;
+      private int maxClientNumForEachNode =
+          ClientPoolProperty.DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
+
+      public RPC.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
+        this.rpcSelectorThreadNum = rpcSelectorThreadNum;
+        return this;
+      }
+
+      public RPC.Builder setRpcMinConcurrentClientNum(int rpcMinConcurrentClientNum) {
+        this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
+        return this;
+      }
+
+      public RPC.Builder setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
+        this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
+        return this;
+      }
+
+      public RPC.Builder setThriftServerAwaitTimeForStopService(
+          int thriftServerAwaitTimeForStopService) {
+        this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
+        return this;
+      }
+
+      public RPC.Builder setIsRpcThriftCompressionEnabled(boolean isRpcThriftCompressionEnabled) {
+        this.isRpcThriftCompressionEnabled = isRpcThriftCompressionEnabled;
+        return this;
+      }
+
+      public RPC.Builder setSelectorNumOfClientManager(int selectorNumOfClientManager) {
+        this.selectorNumOfClientManager = selectorNumOfClientManager;
+        return this;
+      }
+
+      public RPC.Builder setConnectionTimeoutInMs(int connectionTimeoutInMs) {
+        this.connectionTimeoutInMs = connectionTimeoutInMs;
+        return this;
+      }
+
+      public RPC.Builder setPrintLogWhenThriftClientEncounterException(
+          boolean printLogWhenThriftClientEncounterException) {
+        this.printLogWhenThriftClientEncounterException =
+            printLogWhenThriftClientEncounterException;
+        return this;
+      }
+
+      public RPC.Builder setThriftMaxFrameSize(int thriftMaxFrameSize) {
+        this.thriftMaxFrameSize = thriftMaxFrameSize;
+        return this;
+      }
+
+      public RPC.Builder setMaxClientNumForEachNode(int maxClientNumForEachNode) {
+        this.maxClientNumForEachNode = maxClientNumForEachNode;
+        return this;
+      }
+
+      public RPC build() {
+        return new RPC(
+            rpcSelectorThreadNum,
+            rpcMinConcurrentClientNum,
+            rpcMaxConcurrentClientNum,
+            thriftServerAwaitTimeForStopService,
+            isRpcThriftCompressionEnabled,
+            selectorNumOfClientManager,
+            connectionTimeoutInMs,
+            printLogWhenThriftClientEncounterException,
+            thriftMaxFrameSize,
+            maxClientNumForEachNode);
+      }
     }
   }
 
@@ -164,127 +340,6 @@ public class PipeConsensusConfig {
             progressIndexManager,
             consensusPipeGuardJobIntervalInSeconds);
       }
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
-package org.apache.iotdb.consensus.config;
-
-import org.apache.iotdb.commons.client.property.ClientPoolProperty;
-
-import java.util.concurrent.TimeUnit;
-
-public class PipeConsensusConfig {
-
-
-  public static class PipeConsensusRPCConfig {
-
-    private int rpcSelectorThreadNum = 1;
-    private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
-    private int rpcMaxConcurrentClientNum = 65535;
-    private int thriftServerAwaitTimeForStopService = 60;
-    private boolean isRpcThriftCompressionEnabled = false;
-    private int selectorNumOfClientManager = 1;
-    private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(20);
-    private boolean printLogWhenThriftClientEncounterException = true;
-    private int thriftMaxFrameSize = 536870912;
-    private int maxClientNumForEachNode =
-        ClientPoolProperty.DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
-
-    public int getRpcMaxConcurrentClientNum() {
-      return rpcMaxConcurrentClientNum;
-    }
-
-    public void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
-      this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
-    }
-
-    public int getThriftServerAwaitTimeForStopService() {
-      return thriftServerAwaitTimeForStopService;
-    }
-
-    public void setThriftServerAwaitTimeForStopService(int thriftServerAwaitTimeForStopService) {
-      this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
-    }
-
-    public boolean isRpcThriftCompressionEnabled() {
-      return isRpcThriftCompressionEnabled;
-    }
-
-    public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
-      isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
-    }
-
-    public int getSelectorNumOfClientManager() {
-      return selectorNumOfClientManager;
-    }
-
-    public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
-      this.selectorNumOfClientManager = selectorNumOfClientManager;
-    }
-
-    public int getConnectionTimeoutInMs() {
-      return connectionTimeoutInMs;
-    }
-
-    public void setConnectionTimeoutInMs(int connectionTimeoutInMs) {
-      this.connectionTimeoutInMs = connectionTimeoutInMs;
-    }
-
-    public boolean isPrintLogWhenThriftClientEncounterException() {
-      return printLogWhenThriftClientEncounterException;
-    }
-
-    public void setPrintLogWhenThriftClientEncounterException(
-        boolean printLogWhenThriftClientEncounterException) {
-      this.printLogWhenThriftClientEncounterException = printLogWhenThriftClientEncounterException;
-    }
-
-    public int getThriftMaxFrameSize() {
-      return thriftMaxFrameSize;
-    }
-
-    public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
-      this.thriftMaxFrameSize = thriftMaxFrameSize;
-    }
-
-    public int getMaxClientNumForEachNode() {
-      return maxClientNumForEachNode;
-    }
-
-    public void setMaxClientNumForEachNode(int maxClientNumForEachNode) {
-      this.maxClientNumForEachNode = maxClientNumForEachNode;
-    }
-
-    public int getRpcSelectorThreadNum() {
-      return rpcSelectorThreadNum;
-    }
-
-    public void setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
-      this.rpcSelectorThreadNum = rpcSelectorThreadNum;
-    }
-
-    public int getRpcMinConcurrentClientNum() {
-      return rpcMinConcurrentClientNum;
-    }
-
-    public void setRpcMinConcurrentClientNum(int rpcMinConcurrentClientNum) {
-      this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
     }
   }
 }

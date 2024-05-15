@@ -373,12 +373,5 @@ public class PipeConsensusServerImpl {
 
   public List<Peer> getPeers() {
     return peerManager.getPeers();
-import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
-import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
-
-public class PipeConsensusServerImpl {
-  // mock interface
-  public TPipeConsensusTransferResp receive(TPipeConsensusTransferReq req) {
-    return null;
   }
 }
