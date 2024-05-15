@@ -161,7 +161,8 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualAutoIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.db.d1(time, s1) values (now(), 3)",
+          Arrays.asList(
+              "insert into root.db.d1(time, s1) values (now(), 3)",
               "insert into root.db.d1(time, s1) values (now(), 4)",
               "insert into root.db.d1(time, s1) values (now(), 5)",
               "insert into root.db.d1(time, s1) values (now(), 6)",
