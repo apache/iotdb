@@ -126,7 +126,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             return handleTransferFileSealV2(
                 PipeTransferConfigSnapshotSealReq.fromTPipeTransferReq(req));
           case TRANSFER_COMPRESSED:
-            return receive(PipeTransferCompressedReq.decompressFromTPipeTransferReq(req));
+            return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
           default:
             break;
         }

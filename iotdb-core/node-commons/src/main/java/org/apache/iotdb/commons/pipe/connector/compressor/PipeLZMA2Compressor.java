@@ -27,8 +27,9 @@ import java.io.IOException;
 
 public class PipeLZMA2Compressor extends PipeCompressor {
 
-  private final ICompressor compressor = ICompressor.getCompressor(CompressionType.LZMA2);
-  private final IUnCompressor decompressor = IUnCompressor.getUnCompressor(CompressionType.LZMA2);
+  private static final ICompressor COMPRESSOR = ICompressor.getCompressor(CompressionType.LZMA2);
+  private static final IUnCompressor DECOMPRESSOR =
+      IUnCompressor.getUnCompressor(CompressionType.LZMA2);
 
   public PipeLZMA2Compressor() {
     super(PipeCompressionType.LZMA2);
@@ -36,11 +37,11 @@ public class PipeLZMA2Compressor extends PipeCompressor {
 
   @Override
   public byte[] compress(byte[] data) throws IOException {
-    return compressor.compress(data);
+    return COMPRESSOR.compress(data);
   }
 
   @Override
   public byte[] decompress(byte[] byteArray) throws IOException {
-    return decompressor.uncompress(byteArray);
+    return DECOMPRESSOR.uncompress(byteArray);
   }
 }

@@ -303,7 +303,7 @@ public abstract class IoTDBConnector implements PipeConnector {
 
   protected byte[] compressIfNeeded(byte[] reqInBytes) throws IOException {
     return isRpcCompressionEnabled
-        ? PipeTransferCompressedReq.toTPipeTransferReqInBytes(reqInBytes, compressors)
+        ? PipeTransferCompressedReq.toTPipeTransferReqBytes(reqInBytes, compressors)
         : reqInBytes;
   }
 

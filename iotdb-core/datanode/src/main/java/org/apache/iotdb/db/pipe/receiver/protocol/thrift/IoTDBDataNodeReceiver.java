@@ -190,7 +190,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             // then transferred to ConfigNode receiver to execute.
             return handleTransferConfigPlan(req);
           case TRANSFER_COMPRESSED:
-            return receive(PipeTransferCompressedReq.decompressFromTPipeTransferReq(req));
+            return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
           default:
             break;
         }

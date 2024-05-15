@@ -27,8 +27,9 @@ import java.io.IOException;
 
 public class PipeSnappyCompressor extends PipeCompressor {
 
-  private final ICompressor compressor = ICompressor.getCompressor(CompressionType.SNAPPY);
-  private final IUnCompressor decompressor = IUnCompressor.getUnCompressor(CompressionType.SNAPPY);
+  private static final ICompressor COMPRESSOR = ICompressor.getCompressor(CompressionType.SNAPPY);
+  private static final IUnCompressor DECOMPRESSOR =
+      IUnCompressor.getUnCompressor(CompressionType.SNAPPY);
 
   public PipeSnappyCompressor() {
     super(PipeCompressionType.SNAPPY);
@@ -36,11 +37,11 @@ public class PipeSnappyCompressor extends PipeCompressor {
 
   @Override
   public byte[] compress(byte[] data) throws IOException {
-    return compressor.compress(data);
+    return COMPRESSOR.compress(data);
   }
 
   @Override
   public byte[] decompress(byte[] byteArray) throws IOException {
-    return decompressor.uncompress(byteArray);
+    return DECOMPRESSOR.uncompress(byteArray);
   }
 }
