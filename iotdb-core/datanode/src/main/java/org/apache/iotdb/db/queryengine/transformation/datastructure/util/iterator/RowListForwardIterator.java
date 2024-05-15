@@ -19,17 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator;
 
-import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowRecordList;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.row.SerializableRowRecordList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 import java.io.IOException;
-import java.util.List;
 
 // Forward iterator used in ElasticSerializableRowRecordList
 // Point to columns(one time column and multiple value columns)
 public class RowListForwardIterator implements ListForwardIterator {
-  private final ElasticSerializableRowRecordList rowList;
+  private final ElasticSerializableRowList rowList;
 
   private int externalIndex; // Which SerializableRowRecordList
   private int internalIndex; // Which columns in SerializableRowRecordList
@@ -37,7 +35,7 @@ public class RowListForwardIterator implements ListForwardIterator {
   // In case of rowList changing
   private int startRowIndex; // Index of first row of the columns
 
-  public RowListForwardIterator(ElasticSerializableRowRecordList rowList) {
+  public RowListForwardIterator(ElasticSerializableRowList rowList) {
     this.rowList = rowList;
     // Point to dummy block for simplicity
     externalIndex = 0;
@@ -46,8 +44,7 @@ public class RowListForwardIterator implements ListForwardIterator {
   }
 
   public RowListForwardIterator(
-      ElasticSerializableRowRecordList rowList, int externalIndex, int internalIndex)
-      throws IOException {
+      ElasticSerializableRowList rowList, int externalIndex, int internalIndex) throws IOException {
     this.rowList = rowList;
     this.externalIndex = externalIndex;
     this.internalIndex = internalIndex;
@@ -61,7 +58,6 @@ public class RowListForwardIterator implements ListForwardIterator {
   @Override
   public boolean hasNext() throws IOException {
     // First time call, rowList has no data
-    List<SerializableRowRecordList> internalLists = rowList.getInternalRowList();
     if (rowList.getSerializableRowListSize() == 0) {
       return false;
     }

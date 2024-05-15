@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.datastructure.row;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.InputRowUtils;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.Cache;
@@ -34,8 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** An elastic list of records that implements memory control using LRU strategy. */
-public class ElasticSerializableRowRecordList {
-
+public class ElasticSerializableRowList {
   protected static final int MEMORY_CHECK_THRESHOLD = 1000;
 
   protected TSDataType[] dataTypes;
@@ -45,7 +45,7 @@ public class ElasticSerializableRowRecordList {
   protected int numCacheBlock;
 
   protected LRUCache cache;
-  protected List<SerializableRowRecordList> internalRowList;
+  protected List<SerializableRowList> internalRowList;
   /** Mark bitMaps of correct index when one row has at least one null field. */
   protected List<BitMap> bitMaps;
 
@@ -73,14 +73,14 @@ public class ElasticSerializableRowRecordList {
    * @param numCacheBlock Number of cache blocks.
    * @throws QueryProcessException by SerializableRowRecordList.calculateCapacity
    */
-  public ElasticSerializableRowRecordList(
+  public ElasticSerializableRowList(
       TSDataType[] dataTypes, String queryId, float memoryLimitInMB, int numCacheBlock)
       throws QueryProcessException {
     this.dataTypes = dataTypes;
     this.queryId = queryId;
     this.memoryLimitInMB = memoryLimitInMB;
     int allocatableCapacity =
-        SerializableRowRecordList.calculateCapacity(
+        SerializableRowList.calculateCapacity(
             dataTypes,
             memoryLimitInMB,
             SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL);
@@ -91,7 +91,7 @@ public class ElasticSerializableRowRecordList {
     }
     this.numCacheBlock = numCacheBlock;
 
-    cache = new ElasticSerializableRowRecordList.LRUCache(numCacheBlock);
+    cache = new ElasticSerializableRowList.LRUCache(numCacheBlock);
     internalRowList = new ArrayList<>();
     bitMaps = new ArrayList<>();
     blockCount = new ArrayList<>();
@@ -122,7 +122,7 @@ public class ElasticSerializableRowRecordList {
     iteratorList = new ArrayList<>();
   }
 
-  protected ElasticSerializableRowRecordList(
+  protected ElasticSerializableRowList(
       TSDataType[] dataTypes,
       String queryId,
       float memoryLimitInMB,
@@ -134,7 +134,7 @@ public class ElasticSerializableRowRecordList {
     this.internalRowRecordListCapacity = internalRowRecordListCapacity;
     this.numCacheBlock = numCacheBlock;
 
-    cache = new ElasticSerializableRowRecordList.LRUCache(numCacheBlock);
+    cache = new ElasticSerializableRowList.LRUCache(numCacheBlock);
     internalRowList = new ArrayList<>();
     bitMaps = new ArrayList<>();
     blockCount = new ArrayList<>();
@@ -147,80 +147,28 @@ public class ElasticSerializableRowRecordList {
     iteratorList = new ArrayList<>();
   }
 
+  public TSDataType[] getDataTypes() {
+    return dataTypes;
+  }
+
   public int size() {
     return rowCount;
+  }
+
+  public int getInternalRowListCapacity() {
+    return internalRowRecordListCapacity;
   }
 
   public int getSerializableRowListSize() {
     return internalRowList.size();
   }
 
-  public SerializableRowRecordList getSerializableRowList(int index) throws IOException {
+  public SerializableRowList getSerializableRowList(int index) throws IOException {
     return cache.get(index);
   }
 
-  public TSDataType[] getDataTypes() {
-    return dataTypes;
-  }
-
-  public long getTime(int index) throws IOException {
-    return cache
-        .get(index / internalRowRecordListCapacity)
-        .getTime(index % internalRowRecordListCapacity);
-  }
-
-  public Object[] getRowRecord(int index) throws IOException {
-    return cache
-        .get(index / internalRowRecordListCapacity)
-        .getRow(index % internalRowRecordListCapacity);
-  }
-
-  public Column[] getColumns(int blockIndex) throws IOException {
-    int externalIndex = 0;
-    int internalIndex = blockIndex;
-    while (externalIndex < blockCount.size() && internalIndex >= blockCount.get(externalIndex)) {
-      internalIndex -= blockCount.get(externalIndex);
-      externalIndex++;
-    }
-
-    return cache.get(externalIndex).getColumns(internalIndex);
-  }
-
-  public Column[] getColumns(int externalIndex, int internalIndex) throws IOException {
-    return cache.get(externalIndex).getColumns(internalIndex);
-  }
-
-  public List<SerializableRowRecordList> getInternalRowList() {
-    return internalRowList;
-  }
-
-  public RowListForwardIterator constructIterator() {
-    RowListForwardIterator iterator = new RowListForwardIterator(this);
-    iteratorList.add(iterator);
-
-    return iterator;
-  }
-
-  public RowListForwardIterator constructIteratorByEvictionUpperBound() throws IOException {
-    int externalColumnIndex = evictionUpperBound / internalRowRecordListCapacity;
-
-    int internalPointIndex = evictionUpperBound % internalRowRecordListCapacity;
-    int internalColumnIndex =
-        internalRowList.get(externalColumnIndex).getColumnIndex(internalPointIndex);
-
-    // This iterator is for memory control.
-    // So there is no need to put it into iterator list since it won't be affected by new memory
-    // control strategy.
-    return new RowListForwardIterator(this, externalColumnIndex, internalColumnIndex);
-  }
-
-  /** true if any field except the timestamp in the current row is null. */
-  public boolean fieldsHasAnyNull(int index) {
-    return bitMaps
-        .get(index / internalRowRecordListCapacity)
-        .isMarked(index % internalRowRecordListCapacity);
-  }
-
+  // region single row methods
+  @TestOnly
   public void put(Object[] rowRecord) throws IOException, QueryProcessException {
     put(rowRecord, InputRowUtils.hasNullField(rowRecord));
   }
@@ -258,6 +206,24 @@ public class ElasticSerializableRowRecordList {
     }
   }
 
+  public long getTime(int index) throws IOException {
+    return cache
+        .get(index / internalRowRecordListCapacity)
+        .getTime(index % internalRowRecordListCapacity);
+  }
+
+  public Object[] getRowRecord(int index) throws IOException {
+    return cache
+        .get(index / internalRowRecordListCapacity)
+        .getRow(index % internalRowRecordListCapacity);
+  }
+  // endregion
+
+  // region batch rows methods
+  public Column[] getColumns(int externalIndex, int internalIndex) throws IOException {
+    return cache.get(externalIndex).getColumns(internalIndex);
+  }
+
   public void put(Column[] columns) throws IOException, QueryProcessException {
     checkExpansion();
 
@@ -293,8 +259,8 @@ public class ElasticSerializableRowRecordList {
       }
     }
 
-    int count = columns[0].getPositionCount();
     if (!disableMemoryControl) {
+      int count = columns[0].getPositionCount();
       totalByteArrayLengthLimit += rowByteArrayLength * count;
 
       for (int i = 0; i < count; i++) {
@@ -309,25 +275,26 @@ public class ElasticSerializableRowRecordList {
       checkMemoryUsage();
     }
   }
+  // endregion
 
-  private void putNulls(int nullCount) throws IOException {
-    checkExpansion();
+  public RowListForwardIterator constructIterator() {
+    RowListForwardIterator iterator = new RowListForwardIterator(this);
+    iteratorList.add(iterator);
 
-    while (nullCount > 0) {
-      int consumed =
-          Math.min(nullCount, internalRowRecordListCapacity)
-              - rowCount % internalRowRecordListCapacity;
+    return iterator;
+  }
 
-      cache.get(rowCount / internalRowRecordListCapacity).putNulls(consumed);
-      markBitMapByGivenNullCount(consumed);
+  public RowListForwardIterator constructIteratorByEvictionUpperBound() throws IOException {
+    int externalColumnIndex = evictionUpperBound / internalRowRecordListCapacity;
 
-      nullCount -= consumed;
-      rowCount += consumed;
+    int internalPointIndex = evictionUpperBound % internalRowRecordListCapacity;
+    int internalColumnIndex =
+        internalRowList.get(externalColumnIndex).getColumnIndex(internalPointIndex);
 
-      if (nullCount > 0) {
-        doExpansion();
-      }
-    }
+    // This iterator is for memory control.
+    // So there is no need to put it into iterator list since it won't be affected by new memory
+    // control strategy.
+    return new RowListForwardIterator(this, externalColumnIndex, internalColumnIndex);
   }
 
   private void checkExpansion() {
@@ -342,7 +309,7 @@ public class ElasticSerializableRowRecordList {
       blockCount.add(internalRowList.get(internalRowList.size() - 1).getBlockCount());
     }
 
-    internalRowList.add(SerializableRowRecordList.construct(queryId, dataTypes));
+    internalRowList.add(SerializableRowList.construct(queryId, dataTypes));
     bitMaps.add(new BitMap(internalRowRecordListCapacity));
   }
 
@@ -357,15 +324,6 @@ public class ElasticSerializableRowRecordList {
           break;
         }
       }
-    }
-  }
-
-  private void markBitMapByGivenNullCount(int nullCount) {
-    BitMap bitmap = bitMaps.get(rowCount / internalRowRecordListCapacity);
-
-    int offset = rowCount % internalRowRecordListCapacity;
-    for (int i = 0; i < nullCount; i++) {
-      bitmap.mark(offset + i);
     }
   }
 
@@ -385,7 +343,7 @@ public class ElasticSerializableRowRecordList {
       newByteArrayLengthForMemoryControl *= 2;
     }
     int newInternalTVListCapacity =
-        SerializableRowRecordList.calculateCapacity(
+        SerializableRowList.calculateCapacity(
                 dataTypes, memoryLimitInMB, newByteArrayLengthForMemoryControl)
             / numCacheBlock;
     if (newInternalTVListCapacity > 0) {
@@ -405,7 +363,7 @@ public class ElasticSerializableRowRecordList {
         byteArrayLengthForMemoryControl
             + 2 * (delta + 1) * SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
     newInternalTVListCapacity =
-        SerializableRowRecordList.calculateCapacity(
+        SerializableRowList.calculateCapacity(
                 dataTypes, memoryLimitInMB, newByteArrayLengthForMemoryControl)
             / numCacheBlock;
     if (newInternalTVListCapacity > 0) {
@@ -420,8 +378,8 @@ public class ElasticSerializableRowRecordList {
   protected void applyNewMemoryControlParameters(
       int newByteArrayLengthForMemoryControl, int newInternalRowRecordListCapacity)
       throws IOException, QueryProcessException {
-    ElasticSerializableRowRecordList newESRowList =
-        new ElasticSerializableRowRecordList(
+    ElasticSerializableRowList newESRowList =
+        new ElasticSerializableRowList(
             dataTypes, queryId, memoryLimitInMB, newInternalRowRecordListCapacity, numCacheBlock);
 
     // Set previous evicted list to null
@@ -458,6 +416,28 @@ public class ElasticSerializableRowRecordList {
     }
   }
 
+  private void copyColumnByIterator(
+      ElasticSerializableRowList target, RowListForwardIterator source)
+      throws IOException, QueryProcessException {
+    Column[] columns = source.currentBlock();
+    target.put(columns);
+  }
+
+  /** true if any field except the timestamp in the current row is null. */
+  @TestOnly
+  public boolean fieldsHasAnyNull(int index) {
+    return bitMaps
+        .get(index / internalRowRecordListCapacity)
+        .isMarked(index % internalRowRecordListCapacity);
+  }
+
+  public int getFirstRowIndex(int externalIndex, int internalIndex) throws IOException {
+    int index = internalRowRecordListCapacity * externalIndex;
+    int offset = cache.get(externalIndex).getFirstRowIndex(internalIndex);
+
+    return index + offset;
+  }
+
   /**
    * Set the upper bound.
    *
@@ -468,31 +448,13 @@ public class ElasticSerializableRowRecordList {
     this.evictionUpperBound = evictionUpperBound;
   }
 
-  private void copyColumnByIterator(
-      ElasticSerializableRowRecordList target, RowListForwardIterator source)
-      throws IOException, QueryProcessException {
-    Column[] columns = source.currentBlock();
-    target.put(columns);
-  }
-
-  public int getFirstRowIndex(int externalIndex, int internalIndex) throws IOException {
-    int index = internalRowRecordListCapacity * externalIndex;
-    int offset = cache.get(externalIndex).getFirstRowIndex(internalIndex);
-
-    return index + offset;
-  }
-
-  public int getInternalRowListCapacity() {
-    return internalRowRecordListCapacity;
-  }
-
   private class LRUCache extends Cache {
 
     LRUCache(int capacity) {
       super(capacity);
     }
 
-    SerializableRowRecordList get(int targetIndex) throws IOException {
+    SerializableRowList get(int targetIndex) throws IOException {
       if (!containsKey(targetIndex)) {
         if (cacheCapacity <= super.size()) {
           int lastIndex = getLast();

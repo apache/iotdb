@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowRecordList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
@@ -46,7 +46,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class ElasticSerializableRowRecordListTest extends SerializableListTest {
+public class ElasticSerializableRowListTest extends SerializableListTest {
 
   private static final TSDataType[] DATA_TYPES = {
     TSDataType.INT32,
@@ -58,7 +58,7 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
     TSDataType.TEXT
   };
 
-  private ElasticSerializableRowRecordList rowRecordList;
+  private ElasticSerializableRowList rowRecordList;
 
   @Override
   @Before
@@ -93,7 +93,7 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
   private void initESRowRecordList() {
     try {
       rowRecordList =
-          new ElasticSerializableRowRecordList(
+          new ElasticSerializableRowList(
               DATA_TYPES, QUERY_ID, MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
     } catch (QueryProcessException e) {
       fail(e.toString());

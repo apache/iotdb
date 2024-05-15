@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.transformation.dag.util;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.IUDFInputDataSet;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowRecordList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -67,8 +67,8 @@ public class LayerCacheUtils {
     return YieldableState.YIELDABLE;
   }
 
-  public static YieldableState yieldRows(
-      IUDFInputDataSet source, ElasticSerializableRowRecordList target) throws Exception {
+  public static YieldableState yieldRows(IUDFInputDataSet source, ElasticSerializableRowList target)
+      throws Exception {
     final YieldableState yieldableState = source.yield();
     if (yieldableState != YieldableState.YIELDABLE) {
       return yieldableState;
@@ -81,8 +81,7 @@ public class LayerCacheUtils {
   }
 
   public static YieldableState yieldRows(
-      IUDFInputDataSet source, ElasticSerializableRowRecordList target, int count)
-      throws Exception {
+      IUDFInputDataSet source, ElasticSerializableRowList target, int count) throws Exception {
     while (count > 0) {
       final YieldableState yieldableState = source.yield();
       if (yieldableState != YieldableState.YIELDABLE) {

@@ -44,9 +44,28 @@ import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.
 import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.constructValueColumnBuilder;
 
 public class SerializableTVList implements SerializableList {
+  protected final SerializationRecorder serializationRecorder;
+
+  private final TSDataType dataType;
+
+  private List<Column> valueColumns;
+
+  private List<TimeColumn> timeColumns;
+
+  private int size;
+
   public static SerializableTVList construct(TSDataType dataType, String queryId) {
     SerializationRecorder recorder = new SerializationRecorder(queryId);
     return new SerializableTVList(dataType, recorder);
+  }
+
+  protected SerializableTVList(TSDataType dataType, SerializationRecorder serializationRecorder) {
+    this.dataType = dataType;
+    this.serializationRecorder = serializationRecorder;
+
+    size = 0;
+
+    init();
   }
 
   protected static int calculateCapacity(TSDataType dataType, float memoryLimitInMB) {
@@ -88,51 +107,16 @@ public class SerializableTVList implements SerializableList {
     return capacity;
   }
 
-  protected final SerializationRecorder serializationRecorder;
-
-  private TSDataType dataType;
-
-  private List<Column> valueColumns;
-
-  private List<TimeColumn> timeColumns;
-
-  private int size;
-
-  protected SerializableTVList(TSDataType dataType, SerializationRecorder serializationRecorder) {
-    this.dataType = dataType;
-    this.serializationRecorder = serializationRecorder;
-
-    size = 0;
-
-    init();
+  @Override
+  public SerializationRecorder getSerializationRecorder() {
+    return serializationRecorder;
   }
 
-  public int getColumnIndex(int pointIndex) {
-    assert pointIndex < size;
-
-    int ret = -1;
-    int total = 0;
-    for (int i = 0; i < timeColumns.size(); i++) {
-      int length = timeColumns.get(i).getPositionCount();
-      if (pointIndex < total + length) {
-        ret = i;
-        break;
-      }
-      total += length;
-    }
-
-    return ret;
+  public int getColumnCount() {
+    return timeColumns.size();
   }
 
-  public int getFirstPointIndex(int columnIndex) {
-    int total = 0;
-    for (int i = 0; i < columnIndex; i++) {
-      total += timeColumns.get(i).getPositionCount();
-    }
-
-    return total;
-  }
-
+  // region single data method
   public long getTime(int index) {
     assert index < size;
 
@@ -276,7 +260,9 @@ public class SerializableTVList implements SerializableList {
 
     return ret;
   }
+  // endregion
 
+  // region batch data method
   public TimeColumn getTimeColumn(int index) {
     assert index < timeColumns.size();
     return timeColumns.get(index);
@@ -292,14 +278,32 @@ public class SerializableTVList implements SerializableList {
     valueColumns.add(valueColumn);
     size += timeColumn.getPositionCount();
   }
+  // endregion
 
-  public int getColumnCount() {
-    return timeColumns.size();
+  public int getColumnIndex(int pointIndex) {
+    assert pointIndex < size;
+
+    int ret = -1;
+    int total = 0;
+    for (int i = 0; i < timeColumns.size(); i++) {
+      int length = timeColumns.get(i).getPositionCount();
+      if (pointIndex < total + length) {
+        ret = i;
+        break;
+      }
+      total += length;
+    }
+
+    return ret;
   }
 
-  @Override
-  public SerializationRecorder getSerializationRecorder() {
-    return serializationRecorder;
+  public int getFirstPointIndex(int columnIndex) {
+    int total = 0;
+    for (int i = 0; i < columnIndex; i++) {
+      total += timeColumns.get(i).getPositionCount();
+    }
+
+    return total;
   }
 
   @Override

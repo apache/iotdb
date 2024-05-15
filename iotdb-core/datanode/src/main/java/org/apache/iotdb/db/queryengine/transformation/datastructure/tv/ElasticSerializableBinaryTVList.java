@@ -63,9 +63,9 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     checkMemoryUsage();
   }
 
-  protected void checkMemoryUsage() throws IOException {
+  private void checkMemoryUsage() throws IOException {
     // Insert more than MEMORY_CHECK_THRESHOLD points
-    // or actual memory footprint is greater than expected
+    // and actual memory footprint is greater than expected
     // to apply new memory control strategy
     if (pointCount - lastPointCount < MEMORY_CHECK_THRESHOLD
         || totalByteArrayLength <= totalByteArrayLengthLimit) {
@@ -108,7 +108,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     throw new RuntimeException("Memory is not enough for current query.");
   }
 
-  protected void applyNewMemoryControlParameters(
+  private void applyNewMemoryControlParameters(
       int newByteArrayLengthForMemoryControl, int newInternalTVListCapacity) throws IOException {
     ElasticSerializableTVList newESTVList =
         new ElasticSerializableTVList(
@@ -129,13 +129,15 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
       copyColumnByIterator(newESTVList, iterator);
     }
 
+    // Assign new tvList to the old
     internalTVListCapacity = newInternalTVListCapacity;
     cache = newESTVList.cache;
     internalTVList = newESTVList.internalTVList;
-
+    // Update metrics
     byteArrayLengthForMemoryControl = newByteArrayLengthForMemoryControl;
     totalByteArrayLengthLimit = (long) pointCount * byteArrayLengthForMemoryControl;
 
+    // Update all iterators
     notifyAllIterators();
   }
 

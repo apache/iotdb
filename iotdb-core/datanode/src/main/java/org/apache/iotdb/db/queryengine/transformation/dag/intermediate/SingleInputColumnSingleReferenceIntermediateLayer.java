@@ -96,7 +96,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
           return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
         }
 
-        final int pointsToBeCollected = endIndex - tvList.getPointCount();
+        final int pointsToBeCollected = endIndex - tvList.size();
         if (pointsToBeCollected > 0) {
           final YieldableState yieldableState =
               LayerCacheUtils.yieldPoints(parentLayerReader, tvList, pointsToBeCollected);
@@ -105,13 +105,13 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
             return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
           }
 
-          if (tvList.getPointCount() <= beginIndex) {
+          if (tvList.size() <= beginIndex) {
             return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
           }
 
           // TVList's size may be less than endIndex
           // When parent layer reader has no more data
-          endIndex = Math.min(endIndex, tvList.getPointCount());
+          endIndex = Math.min(endIndex, tvList.size());
         }
 
         window.seek(beginIndex, endIndex, tvList.getTime(beginIndex), tvList.getTime(endIndex - 1));
@@ -147,8 +147,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
     final long displayWindowEnd = strategy.getDisplayWindowEnd();
 
     final ElasticSerializableTVList tvList =
-        ElasticSerializableTVList.construct(
-            dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
+        ElasticSerializableTVList.construct(dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
     final ElasticSerializableTVListBackedSingleColumnWindow window =
         new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
 
@@ -163,7 +162,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       @Override
       public YieldableState yield() throws Exception {
         if (isFirstIteration) {
-          if (tvList.getPointCount() == 0) {
+          if (tvList.size() == 0) {
             final YieldableState yieldableState =
                 LayerCacheUtils.yieldPoints(parentLayerReader, tvList);
             if (yieldableState != YieldableState.YIELDABLE) {
@@ -175,7 +174,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
             // result set
             nextWindowTimeBegin = tvList.getTime(0);
           }
-          hasAtLeastOneRow = tvList.getPointCount() != 0;
+          hasAtLeastOneRow = tvList.size() != 0;
           isFirstIteration = false;
         }
 
@@ -188,7 +187,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         }
 
         long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
-        while (tvList.getTime(tvList.getPointCount() - 1) < nextWindowTimeEnd) {
+        while (tvList.getTime(tvList.size() - 1) < nextWindowTimeEnd) {
           final YieldableState yieldableState =
               LayerCacheUtils.yieldPoints(parentLayerReader, tvList);
           if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -199,18 +198,18 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
           }
         }
 
-        for (int i = nextIndexBegin; i < tvList.getPointCount(); ++i) {
+        for (int i = nextIndexBegin; i < tvList.size(); ++i) {
           if (tvList.getTime(i) >= nextWindowTimeBegin) {
             nextIndexBegin = i;
             break;
           }
-          if (i == tvList.getPointCount() - 1) {
-            nextIndexBegin = tvList.getPointCount();
+          if (i == tvList.size() - 1) {
+            nextIndexBegin = tvList.size();
           }
         }
 
-        int nextIndexEnd = tvList.getPointCount();
-        for (int i = nextIndexBegin; i < tvList.getPointCount(); ++i) {
+        int nextIndexEnd = tvList.size();
+        for (int i = nextIndexBegin; i < tvList.size(); ++i) {
           if (nextWindowTimeEnd <= tvList.getTime(i)) {
             nextIndexEnd = i;
             break;
@@ -218,7 +217,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         }
 
         if ((nextIndexEnd == nextIndexBegin)
-            && nextWindowTimeEnd < tvList.getTime(tvList.getPointCount() - 1)) {
+            && nextWindowTimeEnd < tvList.getTime(tvList.size() - 1)) {
           window.setEmptyWindow(nextWindowTimeBegin, nextWindowTimeEnd);
           return YieldableState.YIELDABLE;
         }
@@ -229,7 +228,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
             nextWindowTimeBegin,
             nextWindowTimeBegin + timeInterval - 1);
 
-        hasCached = !(nextIndexBegin == nextIndexEnd && nextIndexEnd == tvList.getPointCount());
+        hasCached = !(nextIndexBegin == nextIndexEnd && nextIndexEnd == tvList.size());
         return hasCached ? YieldableState.YIELDABLE : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
       }
 
@@ -262,8 +261,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
     final long sessionTimeGap = strategy.getSessionTimeGap();
 
     final ElasticSerializableTVList tvList =
-        ElasticSerializableTVList.construct(
-            dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
+        ElasticSerializableTVList.construct(dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
     final ElasticSerializableTVListBackedSingleColumnWindow window =
         new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
 
@@ -280,7 +278,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       @Override
       public YieldableState yield() throws Exception {
         if (isFirstIteration) {
-          if (tvList.getPointCount() == 0) {
+          if (tvList.size() == 0) {
             final YieldableState yieldableState =
                 LayerCacheUtils.yieldPoints(parentLayerReader, tvList);
             if (yieldableState != YieldableState.YIELDABLE) {
@@ -288,7 +286,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
             }
           }
           nextWindowTimeBegin = Math.max(displayWindowBegin, tvList.getTime(0));
-          hasAtLeastOneRow = tvList.getPointCount() != 0;
+          hasAtLeastOneRow = tvList.size() != 0;
           isFirstIteration = false;
         }
 
@@ -301,7 +299,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         boolean findWindow = false;
         // Find target window or no more data to exit
         while (!findWindow) {
-          while (nextIndexEnd < tvList.getPointCount()) {
+          while (nextIndexEnd < tvList.size()) {
             long curTime = tvList.getTime(nextIndexEnd - 1);
             long nextTime = tvList.getTime(nextIndexEnd);
 
@@ -319,7 +317,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
           }
 
           if (!findWindow) {
-            if (tvList.getTime(tvList.getPointCount() - 1) < displayWindowEnd) {
+            if (tvList.getTime(tvList.size() - 1) < displayWindowEnd) {
               final YieldableState yieldableState =
                   LayerCacheUtils.yieldPoints(parentLayerReader, tvList);
               if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -341,14 +339,14 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         // loop to find the true index of the first window begin.
         // For other situation, we will only go into if (nextWindowTimeBegin <= tvList.getTime(i))
         // once.
-        for (int i = nextIndexBegin; i < tvList.getPointCount(); ++i) {
+        for (int i = nextIndexBegin; i < tvList.size(); ++i) {
           if (tvList.getTime(i) >= nextWindowTimeBegin) {
             nextIndexBegin = i;
             break;
           }
           // The first window's beginning time is greater than all the timestamp of the query result
           // set
-          if (i == tvList.getPointCount() - 1) {
+          if (i == tvList.size() - 1) {
             return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
           }
         }
@@ -360,7 +358,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
 
       @Override
       public void readyForNext() throws IOException {
-        if (nextIndexEnd < tvList.getPointCount()) {
+        if (nextIndexEnd < tvList.size()) {
           nextWindowTimeBegin = tvList.getTime(nextIndexEnd);
         }
         tvList.setEvictionUpperBound(nextIndexBegin + 1);
@@ -388,8 +386,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
     final double delta = strategy.getDelta();
 
     final ElasticSerializableTVList tvList =
-        ElasticSerializableTVList.construct(
-            dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
+        ElasticSerializableTVList.construct(dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
     final ElasticSerializableTVListBackedSingleColumnWindow window =
         new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
 
@@ -408,7 +405,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       @Override
       public YieldableState yield() throws Exception {
         if (isFirstIteration) {
-          if (tvList.getPointCount() == 0) {
+          if (tvList.size() == 0) {
             final YieldableState yieldableState =
                 LayerCacheUtils.yieldPoints(parentLayerReader, tvList);
             if (yieldableState != YieldableState.YIELDABLE) {
@@ -416,7 +413,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
             }
           }
           nextWindowTimeBegin = Math.max(displayWindowBegin, tvList.getTime(0));
-          hasAtLeastOneRow = tvList.getPointCount() != 0;
+          hasAtLeastOneRow = tvList.size() != 0;
           isFirstIteration = false;
         }
 
@@ -429,7 +426,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         boolean findWindow = false;
         // Find target window or no more data to exit
         while (!findWindow) {
-          while (nextIndexEnd < tvList.getPointCount()) {
+          while (nextIndexEnd < tvList.size()) {
             long curTime = tvList.getTime(nextIndexEnd - 1);
 
             if (curTime >= displayWindowEnd) {
@@ -448,7 +445,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
           }
 
           if (!findWindow) {
-            if (tvList.getTime(tvList.getPointCount() - 1) < displayWindowEnd) {
+            if (tvList.getTime(tvList.size() - 1) < displayWindowEnd) {
               final YieldableState yieldableState =
                   LayerCacheUtils.yieldPoints(parentLayerReader, tvList);
               if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
@@ -470,14 +467,14 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         // loop to find the true index of the first window begin.
         // For other situation, we will only go into if (nextWindowTimeBegin <= tvList.getTime(i))
         // once.
-        for (int i = nextIndexBegin; i < tvList.getPointCount(); ++i) {
+        for (int i = nextIndexBegin; i < tvList.size(); ++i) {
           if (nextWindowTimeBegin <= tvList.getTime(i)) {
             nextIndexBegin = i;
             break;
           }
           // The first window's beginning time is greater than all the timestamp of the query result
           // set
-          if (i == tvList.getPointCount() - 1) {
+          if (i == tvList.size() - 1) {
             return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
           }
         }
@@ -489,7 +486,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
 
       @Override
       public void readyForNext() throws IOException {
-        if (nextIndexEnd < tvList.getPointCount()) {
+        if (nextIndexEnd < tvList.size()) {
           nextWindowTimeBegin = tvList.getTime(nextIndexEnd);
         }
         tvList.setEvictionUpperBound(nextIndexBegin + 1);

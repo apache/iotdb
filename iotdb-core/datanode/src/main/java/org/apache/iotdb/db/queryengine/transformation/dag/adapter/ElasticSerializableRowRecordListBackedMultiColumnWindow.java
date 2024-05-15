@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.adapter;
 
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowRecordList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
@@ -31,7 +31,7 @@ import java.io.IOException;
 
 public class ElasticSerializableRowRecordListBackedMultiColumnWindow implements RowWindow {
 
-  private final ElasticSerializableRowRecordList rowRecordList;
+  private final ElasticSerializableRowList rowRecordList;
   private final TSDataType[] dataTypes;
 
   private int beginIndex;
@@ -45,7 +45,7 @@ public class ElasticSerializableRowRecordListBackedMultiColumnWindow implements 
   private ElasticSerializableRowRecordListBackedMultiColumnWindowIterator rowIterator;
 
   public ElasticSerializableRowRecordListBackedMultiColumnWindow(
-      ElasticSerializableRowRecordList rowRecordList) {
+      ElasticSerializableRowList rowRecordList) {
     this.rowRecordList = rowRecordList;
     this.dataTypes = rowRecordList.getDataTypes();
 

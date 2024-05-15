@@ -27,7 +27,7 @@ import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.adapter.ElasticSerializableRowRecordListBackedMultiColumnWindow;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.IUDFInputDataSet;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.LayerCacheUtils;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowRecordList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.TVColumns;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -262,9 +262,8 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       private final int windowSize = strategy.getWindowSize();
       private final int slidingStep = strategy.getSlidingStep();
 
-      private final ElasticSerializableRowRecordList rowRecordList =
-          new ElasticSerializableRowRecordList(
-              dataTypes, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
+      private final ElasticSerializableRowList rowRecordList =
+          new ElasticSerializableRowList(dataTypes, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
       private final ElasticSerializableRowRecordListBackedMultiColumnWindow window =
           new ElasticSerializableRowRecordListBackedMultiColumnWindow(rowRecordList);
 
@@ -346,9 +345,8 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
     final long displayWindowEnd = strategy.getDisplayWindowEnd();
 
     final IUDFInputDataSet udfInputDataSet = this;
-    final ElasticSerializableRowRecordList rowRecordList =
-        new ElasticSerializableRowRecordList(
-            dataTypes, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
+    final ElasticSerializableRowList rowRecordList =
+        new ElasticSerializableRowList(dataTypes, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
     final ElasticSerializableRowRecordListBackedMultiColumnWindow window =
         new ElasticSerializableRowRecordListBackedMultiColumnWindow(rowRecordList);
 
@@ -461,9 +459,8 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
     final long sessionTimeGap = strategy.getSessionTimeGap();
 
     final IUDFInputDataSet udfInputDataSet = this;
-    final ElasticSerializableRowRecordList rowRecordList =
-        new ElasticSerializableRowRecordList(
-            dataTypes, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
+    final ElasticSerializableRowList rowRecordList =
+        new ElasticSerializableRowList(dataTypes, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
     final ElasticSerializableRowRecordListBackedMultiColumnWindow window =
         new ElasticSerializableRowRecordListBackedMultiColumnWindow(rowRecordList);
 

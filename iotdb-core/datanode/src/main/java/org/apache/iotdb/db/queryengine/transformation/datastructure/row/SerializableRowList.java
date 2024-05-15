@@ -41,7 +41,7 @@ import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.
 import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.buildColumnsByBuilders;
 import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.constructColumnBuilders;
 
-public class SerializableRowRecordList implements SerializableList {
+public class SerializableRowList implements SerializableList {
   private final SerializationRecorder serializationRecorder;
   private final TSDataType[] dataTypes;
   private final int valueColumnCount;
@@ -54,14 +54,12 @@ public class SerializableRowRecordList implements SerializableList {
 
   private boolean isAllNull;
 
-  public static SerializableRowRecordList construct(
-      String queryId, TSDataType[] dataTypes) {
+  public static SerializableRowList construct(String queryId, TSDataType[] dataTypes) {
     SerializationRecorder recorder = new SerializationRecorder(queryId);
-    return new SerializableRowRecordList(recorder, dataTypes);
+    return new SerializableRowList(recorder, dataTypes);
   }
 
-  private SerializableRowRecordList(
-      SerializationRecorder serializationRecorder, TSDataType[] dataTypes) {
+  private SerializableRowList(SerializationRecorder serializationRecorder, TSDataType[] dataTypes) {
     this.serializationRecorder = serializationRecorder;
     this.dataTypes = dataTypes;
 
@@ -242,9 +240,6 @@ public class SerializableRowRecordList implements SerializableList {
     return ret;
   }
 
-  @Deprecated
-  public void putRow(Object[] rowRecord) {}
-
   public void putNulls(int nullCount) {
     assert isAllNull;
     prefixNullCount += nullCount;
@@ -388,4 +383,7 @@ public class SerializableRowRecordList implements SerializableList {
 
     return total;
   }
+
+  @Deprecated
+  public void putRow(Object[] rowRecord) {}
 }

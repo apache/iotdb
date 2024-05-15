@@ -40,8 +40,7 @@ public class ElasticSerializableTVList {
   protected LRUCache cache;
   protected List<SerializableTVList> internalTVList;
 
-  protected int pointCount; // Expose for row window
-  protected int columnCount; // Only for internal use
+  protected int pointCount;
   protected int evictionUpperBound;
 
   // Observer pattern
@@ -70,7 +69,6 @@ public class ElasticSerializableTVList {
     cache = new LRUCache(cacheSize);
     internalTVList = new ArrayList<>();
     pointCount = 0;
-    columnCount = 0;
     evictionUpperBound = 0;
 
     iteratorList = new ArrayList<>();
@@ -91,7 +89,6 @@ public class ElasticSerializableTVList {
     cache = new LRUCache(cacheSize);
     internalTVList = new ArrayList<>();
     pointCount = 0;
-    columnCount = 0;
     evictionUpperBound = 0;
 
     iteratorList = new ArrayList<>();
@@ -101,14 +98,23 @@ public class ElasticSerializableTVList {
     return dataType;
   }
 
-  public int getPointCount() {
+  public int size() {
     return pointCount;
   }
 
-  public int getColumnCount() {
-    return columnCount;
+  public int getInternalTVListCapacity() {
+    return internalTVListCapacity;
   }
 
+  public SerializableTVList getSerializableTVList(int index) throws IOException {
+    return cache.get(index);
+  }
+
+  public int getSerializableTVListSize() {
+    return internalTVList.size();
+  }
+
+  // region single data point methods for row window use
   public boolean isNull(int index) throws IOException {
     return cache.get(index / internalTVListCapacity).isNull(index % internalTVListCapacity);
   }
@@ -147,58 +153,15 @@ public class ElasticSerializableTVList {
         .getBinary(index % internalTVListCapacity)
         .getStringValue(TSFileConfig.STRING_CHARSET);
   }
+  // endregion
 
-  public SerializableTVList getSerializableTVList(int index) throws IOException {
-    return cache.get(index);
-  }
-
-  public int getSerializableTVListSize() {
-    return internalTVList.size();
-  }
-
+  // region batch data points methods
   public TimeColumn getTimeColumn(int externalIndex, int internalIndex) throws IOException {
     return cache.get(externalIndex).getTimeColumn(internalIndex);
   }
 
   public Column getValueColumn(int externalIndex, int internalIndex) throws IOException {
     return cache.get(externalIndex).getValueColumn(internalIndex);
-  }
-
-  public int getInternalTVListCapacity() {
-    return internalTVListCapacity;
-  }
-
-  public int getFirstPointIndex(int externalIndex, int internalIndex) throws IOException {
-    int index = internalTVListCapacity * externalIndex;
-    int offset = cache.get(externalIndex).getFirstPointIndex(internalIndex);
-
-    return index + offset;
-  }
-
-  public TVListForwardIterator constructIterator() {
-    TVListForwardIterator iterator = new TVListForwardIterator(this);
-    iteratorList.add(iterator);
-
-    return iterator;
-  }
-
-  public TVListForwardIterator constructIteratorByEvictionUpperBound() throws IOException {
-    int externalColumnIndex = evictionUpperBound / internalTVListCapacity;
-
-    int internalPointIndex = evictionUpperBound % internalTVListCapacity;
-    int internalColumnIndex =
-        internalTVList.get(externalColumnIndex).getColumnIndex(internalPointIndex);
-
-    // This iterator is for memory control.
-    // So there is no need to put it into iterator list since it won't be affected by new memory
-    // control strategy.
-    return new TVListForwardIterator(this, externalColumnIndex, internalColumnIndex);
-  }
-
-  public void notifyAllIterators() throws IOException {
-    for (TVListForwardIterator iterator : iteratorList) {
-      iterator.adjust();
-    }
   }
 
   public void putColumn(TimeColumn timeColumn, Column valueColumn) throws IOException {
@@ -229,12 +192,38 @@ public class ElasticSerializableTVList {
 
       total -= consumed;
       pointCount += consumed;
-      columnCount++;
       begin = end;
 
       if (total > 0) {
         doExpansion();
       }
+    }
+  }
+  // endregion
+
+  public TVListForwardIterator constructIterator() {
+    TVListForwardIterator iterator = new TVListForwardIterator(this);
+    iteratorList.add(iterator);
+
+    return iterator;
+  }
+
+  public TVListForwardIterator constructIteratorByEvictionUpperBound() throws IOException {
+    int externalColumnIndex = evictionUpperBound / internalTVListCapacity;
+
+    int internalPointIndex = evictionUpperBound % internalTVListCapacity;
+    int internalColumnIndex =
+        internalTVList.get(externalColumnIndex).getColumnIndex(internalPointIndex);
+
+    // This iterator is for memory control.
+    // So there is no need to put it into iterator list since it won't be affected by new memory
+    // control strategy.
+    return new TVListForwardIterator(this, externalColumnIndex, internalColumnIndex);
+  }
+
+  public void notifyAllIterators() throws IOException {
+    for (TVListForwardIterator iterator : iteratorList) {
+      iterator.adjust();
     }
   }
 
@@ -256,6 +245,13 @@ public class ElasticSerializableTVList {
    */
   public void setEvictionUpperBound(int evictionUpperBound) {
     this.evictionUpperBound = evictionUpperBound;
+  }
+
+  public int getFirstPointIndex(int externalIndex, int internalIndex) throws IOException {
+    int index = internalTVListCapacity * externalIndex;
+    int offset = cache.get(externalIndex).getFirstPointIndex(internalIndex);
+
+    return index + offset;
   }
 
   private class LRUCache extends Cache {

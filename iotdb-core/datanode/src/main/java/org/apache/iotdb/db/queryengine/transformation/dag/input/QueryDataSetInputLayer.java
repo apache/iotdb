@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.SafetyLine;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.SafetyLine.SafetyPile;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowRecordList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.RowListForwardIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -34,7 +34,7 @@ public class QueryDataSetInputLayer {
   private TsBlockInputDataSet queryDataSet;
   private TSDataType[] dataTypes;
 
-  private ElasticSerializableRowRecordList rowList;
+  private ElasticSerializableRowList rowList;
   private SafetyLine safetyLine;
 
   public QueryDataSetInputLayer(
@@ -48,7 +48,7 @@ public class QueryDataSetInputLayer {
     this.queryDataSet = queryDataSet;
     dataTypes = queryDataSet.getDataTypes().toArray(new TSDataType[0]);
     rowList =
-        new ElasticSerializableRowRecordList(
+        new ElasticSerializableRowList(
             dataTypes, queryId, memoryBudgetInMB, 1 + dataTypes.length / 2);
     safetyLine = new SafetyLine();
   }

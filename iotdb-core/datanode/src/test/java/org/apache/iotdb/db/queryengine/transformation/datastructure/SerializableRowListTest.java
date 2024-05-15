@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
-import org.apache.iotdb.db.queryengine.transformation.datastructure.row.SerializableRowRecordList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.row.SerializableRowList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -46,7 +46,7 @@ import java.util.Optional;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class SerializableRowRecordListTest extends SerializableListTest {
+public class SerializableRowListTest extends SerializableListTest {
 
   private static final TSDataType[] DATA_TYPES = {
     TSDataType.INT32,
@@ -58,14 +58,14 @@ public class SerializableRowRecordListTest extends SerializableListTest {
   };
 
   private List<RowRecord> originalList;
-  private SerializableRowRecordList testList;
+  private SerializableRowList testList;
 
   @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
     originalList = new ArrayList<>();
-    testList = SerializableRowRecordList.construct(QUERY_ID, DATA_TYPES);
+    testList = SerializableRowList.construct(QUERY_ID, DATA_TYPES);
   }
 
   @Override
