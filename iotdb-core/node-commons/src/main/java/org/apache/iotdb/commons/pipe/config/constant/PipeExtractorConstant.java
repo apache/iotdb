@@ -79,6 +79,13 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_END_TIME_KEY = "extractor.end-time";
   public static final String SOURCE_END_TIME_KEY = "source.end-time";
 
+  ///////////////////// pipe consensus /////////////////////
+  public static final String EXTRACTOR_CONSENSUS_GROUP_ID_KEY = "extractor.consensus.group-id";
+  public static final String EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY =
+      "extractor.consensus.sender-dn-id";
+  public static final String EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY =
+      "extractor.consensus.receiver-dn-id";
+
   private PipeExtractorConstant() {
     throw new IllegalStateException("Utility class");
   }

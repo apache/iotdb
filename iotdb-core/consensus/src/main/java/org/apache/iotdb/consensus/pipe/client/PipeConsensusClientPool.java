@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty.DefaultProperty;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.consensus.config.PipeConsensusConfig.PipeConsensusRPCConfig;
+import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
@@ -40,9 +40,9 @@ public class PipeConsensusClientPool {
   public static class SyncPipeConsensusServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, SyncPipeConsensusServiceClient> {
 
-    private final PipeConsensusRPCConfig config;
+    private final PipeConsensusConfig config;
 
-    public SyncPipeConsensusServiceClientPoolFactory(PipeConsensusRPCConfig config) {
+    public SyncPipeConsensusServiceClientPoolFactory(PipeConsensusConfig config) {
       this.config = config;
     }
 
@@ -56,12 +56,13 @@ public class PipeConsensusClientPool {
                   new ThriftClientProperty.Builder()
                       // TODO: consider timeout and evict strategy.
                       .setConnectionTimeoutMs(DefaultProperty.CONNECTION_NEVER_TIMEOUT_MS)
-                      .setRpcThriftCompressionEnabled(config.isRpcThriftCompressionEnabled())
+                      .setRpcThriftCompressionEnabled(
+                          config.getRpc().isRpcThriftCompressionEnabled())
                       .setPrintLogWhenEncounterException(
-                          config.isPrintLogWhenThriftClientEncounterException())
+                          config.getRpc().isPrintLogWhenThriftClientEncounterException())
                       .build()),
               new ClientPoolProperty.Builder<SyncPipeConsensusServiceClient>()
-                  .setMaxClientNumForEachNode(config.getMaxClientNumForEachNode())
+                  .setMaxClientNumForEachNode(config.getRpc().getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
@@ -73,9 +74,9 @@ public class PipeConsensusClientPool {
   public static class AsyncPipeConsensusServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncPipeConsensusServiceClient> {
 
-    private final PipeConsensusRPCConfig config;
+    private final PipeConsensusConfig config;
 
-    public AsyncPipeConsensusServiceClientPoolFactory(PipeConsensusRPCConfig config) {
+    public AsyncPipeConsensusServiceClientPoolFactory(PipeConsensusConfig config) {
       this.config = config;
     }
 
@@ -89,14 +90,16 @@ public class PipeConsensusClientPool {
                   new ThriftClientProperty.Builder()
                       // TODO: consider timeout and evict strategy.
                       .setConnectionTimeoutMs(DefaultProperty.CONNECTION_NEVER_TIMEOUT_MS)
-                      .setRpcThriftCompressionEnabled(config.isRpcThriftCompressionEnabled())
-                      .setSelectorNumOfAsyncClientManager(config.getSelectorNumOfClientManager())
+                      .setRpcThriftCompressionEnabled(
+                          config.getRpc().isRpcThriftCompressionEnabled())
+                      .setSelectorNumOfAsyncClientManager(
+                          config.getRpc().getSelectorNumOfClientManager())
                       .setPrintLogWhenEncounterException(
-                          config.isPrintLogWhenThriftClientEncounterException())
+                          config.getRpc().isPrintLogWhenThriftClientEncounterException())
                       .build(),
                   ThreadName.ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncPipeConsensusServiceClient>()
-                  .setMaxClientNumForEachNode(config.getMaxClientNumForEachNode())
+                  .setMaxClientNumForEachNode(config.getRpc().getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()

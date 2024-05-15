@@ -37,10 +37,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 
-public class SimpleConsensusProgressIndexAssigner {
+public class SimpleProgressIndexAssigner {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(SimpleConsensusProgressIndexAssigner.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SimpleProgressIndexAssigner.class);
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
@@ -54,12 +53,12 @@ public class SimpleConsensusProgressIndexAssigner {
   private boolean isSimpleConsensusEnable = false;
 
   private int rebootTimes = 0;
-  private final AtomicLong insertionRequestId = new AtomicLong(0);
+  private final AtomicLong insertionRequestId = new AtomicLong(1);
 
   public void start() throws StartupException {
     isSimpleConsensusEnable =
         IOTDB_CONFIG.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS);
-    LOGGER.info("Start SimpleConsensusProgressIndexAssigner ...");
+    LOGGER.info("Start SimpleProgressIndexAssigner ...");
 
     try {
       makeDirIfNecessary();
@@ -107,7 +106,7 @@ public class SimpleConsensusProgressIndexAssigner {
         new SimpleProgressIndex(rebootTimes, insertionRequestId.getAndIncrement()));
   }
 
-  public SimpleProgressIndex getSimpleProgressIndexForTsFileRecovery() {
+  public SimpleProgressIndex getSimpleProgressIndex() {
     return new SimpleProgressIndex(rebootTimes, insertionRequestId.getAndIncrement());
   }
 

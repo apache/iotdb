@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.receiver.protocol.pipeconsensus;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.consensus.pipe.PipeConsensusServerImpl;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -36,7 +35,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
-public class PipeConsensusReceiverAgent extends PipeConsensusServerImpl {
+public class PipeConsensusReceiverAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusReceiverAgent.class);
 

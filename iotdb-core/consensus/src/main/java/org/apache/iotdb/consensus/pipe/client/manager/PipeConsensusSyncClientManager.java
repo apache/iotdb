@@ -21,7 +21,7 @@ package org.apache.iotdb.consensus.pipe.client.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.consensus.config.PipeConsensusConfig.PipeConsensusRPCConfig;
+import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.pipe.client.PipeConsensusClientPool.SyncPipeConsensusServiceClientPoolFactory;
 import org.apache.iotdb.consensus.pipe.client.SyncPipeConsensusServiceClient;
 
@@ -40,7 +40,8 @@ public class PipeConsensusSyncClientManager {
   private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> SYNC_CLIENT_MANAGER =
       new IClientManager.Factory<TEndPoint, SyncPipeConsensusServiceClient>()
           .createClientManager(
-              new SyncPipeConsensusServiceClientPoolFactory(new PipeConsensusRPCConfig()));
+              new SyncPipeConsensusServiceClientPoolFactory(
+                  PipeConsensusConfig.newBuilder().build()));
 
   private PipeConsensusSyncClientManager() {
     // do nothing

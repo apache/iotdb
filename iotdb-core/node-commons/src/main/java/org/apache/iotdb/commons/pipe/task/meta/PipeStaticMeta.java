@@ -217,6 +217,7 @@ public class PipeStaticMeta {
 
   public static final String SYSTEM_PIPE_PREFIX = "__";
   public static final String SUBSCRIPTION_PIPE_PREFIX = SYSTEM_PIPE_PREFIX + "subscription.";
+  public static final String CONSENSUS_PIPE_PREFIX = SYSTEM_PIPE_PREFIX + "consensus.";
 
   public static String generateSubscriptionPipeName(String topicName, String consumerGroupId) {
     return SUBSCRIPTION_PIPE_PREFIX + topicName + "_" + consumerGroupId;

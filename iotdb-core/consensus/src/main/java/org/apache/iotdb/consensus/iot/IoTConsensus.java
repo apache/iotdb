@@ -464,6 +464,7 @@ public class IoTConsensus implements IConsensus {
     return buildPeerDir(storageDir, groupId);
   }
 
+  @Override
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
       throws ConsensusException {
     IoTConsensusServerImpl impl =

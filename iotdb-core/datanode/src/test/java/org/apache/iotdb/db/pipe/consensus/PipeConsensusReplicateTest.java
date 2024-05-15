@@ -32,7 +32,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.config.PipeConsensusConfig.PipeConsensusRPCConfig;
+import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.pipe.client.manager.PipeConsensusAsyncClientManager;
 import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCService;
 import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCServiceProcessor;
@@ -173,9 +173,9 @@ public class PipeConsensusReplicateTest {
 
     // initialize follower's receive component
     followerRPCServer =
-        new PipeConsensusRPCService(peers.get(1).getEndpoint(), new PipeConsensusRPCConfig());
-    followerRPCServer.initAsyncedServiceImpl(
-        new PipeConsensusRPCServiceProcessor(PipeAgent.receiver().pipeConsensus()));
+        new PipeConsensusRPCService(
+            peers.get(1).getEndpoint(), PipeConsensusConfig.newBuilder().build());
+    followerRPCServer.initAsyncedServiceImpl(new PipeConsensusRPCServiceProcessor());
     registerManager.register(followerRPCServer);
 
     // mock static methods

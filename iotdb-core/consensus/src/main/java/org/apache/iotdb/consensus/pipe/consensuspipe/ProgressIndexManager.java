@@ -17,26 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.task.meta;
+package org.apache.iotdb.consensus.pipe.consensuspipe;
 
-public enum PipeType {
-  USER((byte) 0),
-  SUBSCRIPTION((byte) 1),
-  CONSENSUS((byte) 2),
-  ;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 
-  private final byte type;
+public interface ProgressIndexManager {
+  ProgressIndex getProgressIndex(ConsensusPipeName consensusPipeName);
 
-  PipeType(byte type) {
-    this.type = type;
-  }
+  ProgressIndex assignProgressIndex(ConsensusGroupId consensusGroupId);
 
-  public static PipeType getPipeType(String pipeName) {
-    if (pipeName.startsWith(PipeStaticMeta.SUBSCRIPTION_PIPE_PREFIX)) {
-      return SUBSCRIPTION;
-    } else if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-      return CONSENSUS;
-    }
-    return USER;
-  }
+  ProgressIndex getMaxAssignedProgressIndex(ConsensusGroupId consensusGroupId);
 }

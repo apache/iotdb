@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
-import org.apache.iotdb.consensus.config.PipeConsensusConfig.PipeConsensusRPCConfig;
+import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.pipe.thrift.PipeConsensusIService;
 import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
@@ -42,10 +42,10 @@ public class PipeConsensusRPCService extends ThriftService implements PipeConsen
 
   private final TEndPoint thisNode;
   // TODO: migrate this class to PipeConsensusConfig
-  private final PipeConsensusRPCConfig config;
+  private final PipeConsensusConfig config;
   private PipeConsensusRPCServiceProcessor pipeConsensusRPCServiceProcessor;
 
-  public PipeConsensusRPCService(TEndPoint thisNode, PipeConsensusRPCConfig config) {
+  public PipeConsensusRPCService(TEndPoint thisNode, PipeConsensusConfig config) {
     this.thisNode = thisNode;
     this.config = config;
   }
@@ -90,14 +90,14 @@ public class PipeConsensusRPCService extends ThriftService implements PipeConsen
               ThreadName.PIPE_CONSENSUS_RPC_PROCESSOR.getName(),
               getBindIP(),
               getBindPort(),
-              config.getRpcSelectorThreadNum(),
-              config.getRpcMinConcurrentClientNum(),
-              config.getRpcMaxConcurrentClientNum(),
-              config.getThriftServerAwaitTimeForStopService(),
+              config.getRpc().getRpcSelectorThreadNum(),
+              config.getRpc().getRpcMinConcurrentClientNum(),
+              config.getRpc().getRpcMaxConcurrentClientNum(),
+              config.getRpc().getThriftServerAwaitTimeForStopService(),
               new PipeConsensusRPCServiceHandler(pipeConsensusRPCServiceProcessor),
-              config.isRpcThriftCompressionEnabled(),
-              config.getConnectionTimeoutInMs(),
-              config.getThriftMaxFrameSize(),
+              config.getRpc().isRpcThriftCompressionEnabled(),
+              config.getRpc().getConnectionTimeoutInMs(),
+              config.getRpc().getThriftMaxFrameSize(),
               ThriftServiceThread.ServerType.SELECTOR,
               ZeroCopyRpcTransportFactory.INSTANCE);
     } catch (RPCServiceException e) {

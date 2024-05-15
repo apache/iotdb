@@ -17,26 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.task.meta;
+package org.apache.iotdb.consensus.pipe.consensuspipe;
 
-public enum PipeType {
-  USER((byte) 0),
-  SUBSCRIPTION((byte) 1),
-  CONSENSUS((byte) 2),
-  ;
+import java.util.Map;
 
-  private final byte type;
+public interface ConsensusPipeDispatcher {
+  void createPipe(
+      String pipeName,
+      Map<String, String> extractorAttributes,
+      Map<String, String> processorAttributes,
+      Map<String, String> connectorAttributes)
+      throws Exception;
 
-  PipeType(byte type) {
-    this.type = type;
-  }
+  void startPipe(String pipeName) throws Exception;
 
-  public static PipeType getPipeType(String pipeName) {
-    if (pipeName.startsWith(PipeStaticMeta.SUBSCRIPTION_PIPE_PREFIX)) {
-      return SUBSCRIPTION;
-    } else if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-      return CONSENSUS;
-    }
-    return USER;
-  }
+  void stopPipe(String pipeName) throws Exception;
+
+  void dropPipe(String pipeName) throws Exception;
 }

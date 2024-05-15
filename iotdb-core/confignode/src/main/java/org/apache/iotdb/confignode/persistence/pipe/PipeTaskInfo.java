@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeType;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -495,6 +496,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
                     .getPipeMetaList()
                     .forEach(
                         pipeMeta -> {
+                          if (PipeType.CONSENSUS.equals(pipeMeta.getStaticMeta().getPipeType())) {
+                            return; // pipe consensus pipe task will not change
+                          }
+
                           final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
                               pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
 
