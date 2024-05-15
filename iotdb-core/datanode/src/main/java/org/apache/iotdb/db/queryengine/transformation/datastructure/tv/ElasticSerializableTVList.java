@@ -31,14 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ElasticSerializableTVList {
-
-  public static ElasticSerializableTVList newElasticSerializableTVList(
-      TSDataType dataType, String queryId, float memoryLimitInMB, int cacheSize) {
-    return dataType.equals(TSDataType.TEXT)
-        ? new ElasticSerializableBinaryTVList(queryId, memoryLimitInMB, cacheSize)
-        : new ElasticSerializableTVList(dataType, queryId, memoryLimitInMB, cacheSize);
-  }
-
   protected TSDataType dataType;
   protected String queryId;
   protected float memoryLimitInMB;
@@ -54,6 +46,13 @@ public class ElasticSerializableTVList {
 
   // Observer pattern
   protected List<TVListForwardIterator> iteratorList;
+
+  public static ElasticSerializableTVList construct(
+      TSDataType dataType, String queryId, float memoryLimitInMB, int cacheSize) {
+    return dataType.equals(TSDataType.TEXT)
+        ? new ElasticSerializableBinaryTVList(queryId, memoryLimitInMB, cacheSize)
+        : new ElasticSerializableTVList(dataType, queryId, memoryLimitInMB, cacheSize);
+  }
 
   protected ElasticSerializableTVList(
       TSDataType dataType, String queryId, float memoryLimitInMB, int cacheSize) {
@@ -246,7 +245,7 @@ public class ElasticSerializableTVList {
   }
 
   private void doExpansion() {
-    internalTVList.add(SerializableTVList.newSerializableTVList(dataType, queryId));
+    internalTVList.add(SerializableTVList.construct(dataType, queryId));
   }
 
   /**

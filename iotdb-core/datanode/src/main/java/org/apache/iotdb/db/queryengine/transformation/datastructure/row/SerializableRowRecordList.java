@@ -42,10 +42,35 @@ import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.
 import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.constructColumnBuilders;
 
 public class SerializableRowRecordList implements SerializableList {
-  public static SerializableRowRecordList newSerializableRowRecordList(
+  private final SerializationRecorder serializationRecorder;
+  private final TSDataType[] dataTypes;
+  private final int valueColumnCount;
+
+  private List<Column[]> blocks;
+
+  private int skipPrefixNullCount;
+
+  private int prefixNullCount;
+
+  private boolean isAllNull;
+
+  public static SerializableRowRecordList construct(
       String queryId, TSDataType[] dataTypes) {
     SerializationRecorder recorder = new SerializationRecorder(queryId);
     return new SerializableRowRecordList(recorder, dataTypes);
+  }
+
+  private SerializableRowRecordList(
+      SerializationRecorder serializationRecorder, TSDataType[] dataTypes) {
+    this.serializationRecorder = serializationRecorder;
+    this.dataTypes = dataTypes;
+
+    valueColumnCount = dataTypes.length;
+    prefixNullCount = 0;
+    skipPrefixNullCount = 0;
+    isAllNull = true;
+
+    init();
   }
 
   /**
@@ -95,31 +120,6 @@ public class SerializableRowRecordList implements SerializableList {
       throw new QueryProcessException("Memory is not enough for current query.");
     }
     return capacity;
-  }
-
-  private final SerializationRecorder serializationRecorder;
-  private final TSDataType[] dataTypes;
-  private final int valueColumnCount;
-
-  private List<Column[]> blocks;
-
-  private int skipPrefixNullCount;
-
-  private int prefixNullCount;
-
-  private boolean isAllNull;
-
-  private SerializableRowRecordList(
-      SerializationRecorder serializationRecorder, TSDataType[] dataTypes) {
-    this.serializationRecorder = serializationRecorder;
-    this.dataTypes = dataTypes;
-
-    valueColumnCount = dataTypes.length;
-    prefixNullCount = 0;
-    skipPrefixNullCount = 0;
-    isAllNull = true;
-
-    init();
   }
 
   public int size() {

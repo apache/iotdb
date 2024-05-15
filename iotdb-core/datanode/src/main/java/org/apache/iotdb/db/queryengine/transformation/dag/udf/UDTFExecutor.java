@@ -76,7 +76,7 @@ public class UDTFExecutor {
     if (!AccessStrategy.AccessStrategyType.MAPPABLE_ROW_BY_ROW.equals(
         configurations.getAccessStrategy().getAccessStrategyType())) {
       outputStorage =
-          ElasticSerializableTVList.newElasticSerializableTVList(
+          ElasticSerializableTVList.construct(
               UDFDataTypeTransformer.transformToTsDataType(configurations.getOutputDataType()),
               queryId,
               collectorMemoryBudgetInMB,

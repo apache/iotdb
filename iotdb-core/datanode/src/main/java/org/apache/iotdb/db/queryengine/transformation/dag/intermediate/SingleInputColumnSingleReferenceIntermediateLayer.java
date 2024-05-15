@@ -71,7 +71,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       private final int slidingStep = strategy.getSlidingStep();
 
       private final ElasticSerializableTVList tvList =
-          ElasticSerializableTVList.newElasticSerializableTVList(
+          ElasticSerializableTVList.construct(
               dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
       private final ElasticSerializableTVListBackedSingleColumnWindow window =
           new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
@@ -147,7 +147,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
     final long displayWindowEnd = strategy.getDisplayWindowEnd();
 
     final ElasticSerializableTVList tvList =
-        ElasticSerializableTVList.newElasticSerializableTVList(
+        ElasticSerializableTVList.construct(
             dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
     final ElasticSerializableTVListBackedSingleColumnWindow window =
         new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
@@ -262,7 +262,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
     final long sessionTimeGap = strategy.getSessionTimeGap();
 
     final ElasticSerializableTVList tvList =
-        ElasticSerializableTVList.newElasticSerializableTVList(
+        ElasticSerializableTVList.construct(
             dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
     final ElasticSerializableTVListBackedSingleColumnWindow window =
         new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
@@ -388,7 +388,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
     final double delta = strategy.getDelta();
 
     final ElasticSerializableTVList tvList =
-        ElasticSerializableTVList.newElasticSerializableTVList(
+        ElasticSerializableTVList.construct(
             dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
     final ElasticSerializableTVListBackedSingleColumnWindow window =
         new ElasticSerializableTVListBackedSingleColumnWindow(tvList);

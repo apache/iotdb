@@ -67,7 +67,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
     parentLayerReaderDataType = this.parentLayerReader.getDataTypes()[0];
     isParentLayerReaderConstant = this.parentLayerReader.isConstantPointReader();
     tvList =
-        ElasticSerializableTVList.newElasticSerializableTVList(
+        ElasticSerializableTVList.construct(
             parentLayerReaderDataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
     safetyLine = new SafetyLine();
   }

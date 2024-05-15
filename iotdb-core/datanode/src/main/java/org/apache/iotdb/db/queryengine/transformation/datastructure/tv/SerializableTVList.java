@@ -44,7 +44,7 @@ import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.
 import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.constructValueColumnBuilder;
 
 public class SerializableTVList implements SerializableList {
-  public static SerializableTVList newSerializableTVList(TSDataType dataType, String queryId) {
+  public static SerializableTVList construct(TSDataType dataType, String queryId) {
     SerializationRecorder recorder = new SerializationRecorder(queryId);
     return new SerializableTVList(dataType, recorder);
   }

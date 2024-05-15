@@ -54,7 +54,7 @@ public class SerializableTVListTest extends SerializableListTest {
   public void serializableBooleanTVListTest() {
     List<Boolean> compared = new ArrayList<>();
     SerializableTVList target =
-        SerializableTVList.newSerializableTVList(TSDataType.BOOLEAN, QUERY_ID);
+        SerializableTVList.construct(TSDataType.BOOLEAN, QUERY_ID);
 
     serializeAndDeserializeBooleanTVListTest(compared, target);
   }
@@ -63,7 +63,7 @@ public class SerializableTVListTest extends SerializableListTest {
   public void serializableIntTVListTest() {
     List<Integer> compared = new ArrayList<>();
     SerializableTVList target =
-        SerializableTVList.newSerializableTVList(TSDataType.INT32, QUERY_ID);
+        SerializableTVList.construct(TSDataType.INT32, QUERY_ID);
 
     serializeAndDeserializeIntTVListTest(compared, target);
   }
@@ -72,7 +72,7 @@ public class SerializableTVListTest extends SerializableListTest {
   public void serializableLongTVListTest() {
     List<Long> compared = new ArrayList<>();
     SerializableTVList target =
-        SerializableTVList.newSerializableTVList(TSDataType.INT64, QUERY_ID);
+        SerializableTVList.construct(TSDataType.INT64, QUERY_ID);
 
     serializeAndDeserializeLongTVListTest(compared, target);
   }
@@ -81,7 +81,7 @@ public class SerializableTVListTest extends SerializableListTest {
   public void serializableFloatTVListTest() {
     List<Float> compared = new ArrayList<>();
     SerializableTVList target =
-        SerializableTVList.newSerializableTVList(TSDataType.FLOAT, QUERY_ID);
+        SerializableTVList.construct(TSDataType.FLOAT, QUERY_ID);
 
     serializeAndDeserializeFloatTVListTest(compared, target);
   }
@@ -90,7 +90,7 @@ public class SerializableTVListTest extends SerializableListTest {
   public void serializableDoubleTVListTest() {
     List<Double> compared = new ArrayList<>();
     SerializableTVList target =
-        SerializableTVList.newSerializableTVList(TSDataType.DOUBLE, QUERY_ID);
+        SerializableTVList.construct(TSDataType.DOUBLE, QUERY_ID);
 
     serializeAndDeserializeDoubleTVListTest(compared, target);
   }
@@ -98,7 +98,7 @@ public class SerializableTVListTest extends SerializableListTest {
   @Test
   public void serializableBinaryTVListTest() {
     List<Binary> compared = new ArrayList<>();
-    SerializableTVList target = SerializableTVList.newSerializableTVList(TSDataType.TEXT, QUERY_ID);
+    SerializableTVList target = SerializableTVList.construct(TSDataType.TEXT, QUERY_ID);
 
     serializeAndDeserializeBinaryTVListTest(compared, target);
   }

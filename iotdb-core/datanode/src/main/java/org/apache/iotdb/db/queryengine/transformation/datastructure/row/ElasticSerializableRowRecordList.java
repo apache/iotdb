@@ -163,16 +163,6 @@ public class ElasticSerializableRowRecordList {
     return dataTypes;
   }
 
-  public int getTotalBlockCount() {
-    int previous = blockCount.stream().mapToInt(Integer::intValue).sum();
-    int current = 0;
-    if (internalRowList.size() != 0) {
-      current = internalRowList.get(internalRowList.size() - 1).getBlockCount();
-    }
-
-    return previous + current;
-  }
-
   public long getTime(int index) throws IOException {
     return cache
         .get(index / internalRowRecordListCapacity)
@@ -352,7 +342,7 @@ public class ElasticSerializableRowRecordList {
       blockCount.add(internalRowList.get(internalRowList.size() - 1).getBlockCount());
     }
 
-    internalRowList.add(SerializableRowRecordList.newSerializableRowRecordList(queryId, dataTypes));
+    internalRowList.add(SerializableRowRecordList.construct(queryId, dataTypes));
     bitMaps.add(new BitMap(internalRowRecordListCapacity));
   }
 
