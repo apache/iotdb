@@ -162,4 +162,8 @@ public class GroupByTimeParameter {
   public int hashCode() {
     return Objects.hash(startTime, endTime, interval, slidingStep, leftCRightO);
   }
+
+  public GroupByTimeParameter clone() {
+    return new GroupByTimeParameter(startTime, endTime, interval, slidingStep, leftCRightO);
+  }
 }

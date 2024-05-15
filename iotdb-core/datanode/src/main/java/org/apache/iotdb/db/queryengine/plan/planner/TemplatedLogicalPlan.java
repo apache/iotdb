@@ -25,13 +25,19 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
+import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,9 +45,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchSourceExpressions;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo.makeLayout;
+import static org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanBuilder.updateTypeProviderByPartialAggregation;
 import static org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanVisitor.pushDownLimitToScanNode;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode.getDeduplicatedDescriptors;
 
 /**
  * This class provides accelerated implementation for multiple devices align by device query. This
@@ -70,6 +80,10 @@ public class TemplatedLogicalPlan {
 
   private Map<String, List<InputLocation>> filterLayoutMap;
 
+  List<AggregationDescriptor> aggregationDescriptorList;
+
+  List<AggregationDescriptor> deduplicatedDescriptors;
+
   public TemplatedLogicalPlan(
       Analysis analysis, QueryStatement queryStatement, MPPQueryContext context) {
     this.analysis = analysis;
@@ -86,10 +100,70 @@ public class TemplatedLogicalPlan {
     this.whereExpression = analysis.getWhereExpression();
 
     // for align by device query with template, most used variables are same
-    initCommonVariables();
+    if (queryStatement.isAggregationQuery()) {
+      initAggQueryCommonVariables();
+    } else {
+      initNonAggQueryCommonVariables();
+    }
   }
 
-  private void initCommonVariables() {
+  private void initAggQueryCommonVariables() {
+    if (whereExpression != null) {
+      newMeasurementList = new ArrayList<>(measurementList);
+      newSchemaList = new ArrayList<>(schemaList);
+      Set<String> selectMeasurements = new HashSet<>(measurementList);
+      List<Expression> whereSourceExpressions = searchSourceExpressions(whereExpression);
+      for (Expression expression : whereSourceExpressions) {
+        if (expression instanceof TimeSeriesOperand) {
+          String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
+          if (!analysis.getDeviceTemplate().getSchemaMap().containsKey(measurement)) {
+            continue;
+          }
+          if (!selectMeasurements.contains(measurement)) {
+            newMeasurementList.add(measurement);
+            newSchemaList.add(analysis.getDeviceTemplate().getSchema(measurement));
+          }
+        }
+      }
+
+      // TODO fix aggregation filterLayoutMap
+      filterLayoutMap = makeLayout(newMeasurementList);
+
+      analysis
+          .getExpressionTypes()
+          .forEach(
+              (key, value) ->
+                  context.getTypeProvider().setType(key.getNode().getOutputSymbol(), value));
+    }
+
+    context
+        .getTypeProvider()
+        .setTemplatedInfo(
+            new TemplatedInfo(
+                newMeasurementList,
+                newSchemaList,
+                newSchemaList.stream()
+                    .map(IMeasurementSchema::getType)
+                    .collect(Collectors.toList()),
+                queryStatement.getResultTimeOrder(),
+                analysis.isLastLevelUseWildcard(),
+                analysis.getDeviceViewOutputExpressions().stream()
+                    .map(Expression::getExpressionString)
+                    .collect(Collectors.toList()),
+                analysis.getDeviceViewInputIndexesMap().values().iterator().next(),
+                OFFSET_VALUE,
+                limitValue,
+                whereExpression,
+                queryStatement.isGroupByTime(),
+                analysis.getDeviceTemplate().getSchemaMap(),
+                filterLayoutMap,
+                null,
+                null,
+                analysis.getGroupByTimeParameter(),
+                queryStatement.isOutputEndTime()));
+  }
+
+  private void initNonAggQueryCommonVariables() {
     if (whereExpression != null) {
       if (!analysis.isTemplateWildCardQuery()) {
         newMeasurementList = new ArrayList<>(measurementList);
@@ -141,10 +215,17 @@ public class TemplatedLogicalPlan {
                 queryStatement.isGroupByTime(),
                 analysis.getDeviceTemplate().getSchemaMap(),
                 filterLayoutMap,
-                null));
+                null,
+                null,
+                analysis.getGroupByTimeParameter(),
+                queryStatement.isOutputEndTime()));
   }
 
   public PlanNode visitQuery() {
+    if (queryStatement.isAggregationQuery()) {
+      return visitAggregation();
+    }
+
     LogicalPlanBuilder planBuilder =
         new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList);
 
@@ -212,5 +293,158 @@ public class TemplatedLogicalPlan {
                 queryStatement.getResultTimeOrder());
 
     return planBuilder.getRoot();
+  }
+
+  // ============== Methods below are used for templated aggregation ======================
+
+  private PlanNode visitAggregation() {
+    boolean outputPartial =
+        queryStatement.isGroupByLevel()
+            || queryStatement.isGroupByTag()
+            || (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap());
+    AggregationStep curStep = outputPartial ? AggregationStep.PARTIAL : AggregationStep.SINGLE;
+
+    if (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap()) {
+      curStep =
+          (queryStatement.isGroupByLevel() || queryStatement.isGroupByTag())
+              ? AggregationStep.INTERMEDIATE
+              : AggregationStep.FINAL;
+    }
+
+    aggregationDescriptorList =
+        constructAggregationDescriptorList(analysis.getAggregationExpressions(), curStep);
+    updateTypeProvider(analysis.getAggregationExpressions());
+    if (curStep.isOutputPartial()) {
+      aggregationDescriptorList.forEach(
+          aggregationDescriptor ->
+              updateTypeProviderByPartialAggregation(
+                  aggregationDescriptor, context.getTypeProvider()));
+    }
+
+    context.getTypeProvider().getTemplatedInfo().aggregationDescriptorList =
+        aggregationDescriptorList;
+
+    LogicalPlanBuilder planBuilder =
+        new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList);
+    Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
+    deduplicatedDescriptors = getDeduplicatedDescriptors(aggregationDescriptorList);
+    for (PartialPath devicePath : analysis.getDeviceList()) {
+      String deviceName = devicePath.getFullPath();
+      PlanNode rootNode = visitDeviceAggregationBody(devicePath, curStep);
+
+      LogicalPlanBuilder subPlanBuilder =
+          new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList)
+              .withNewRoot(rootNode);
+
+      deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
+    }
+
+    // convert to ALIGN BY DEVICE view
+    planBuilder =
+        planBuilder.planDeviceView(
+            deviceToSubPlanMap,
+            analysis.getDeviceViewOutputExpressions(),
+            analysis.getDeviceViewInputIndexesMap(),
+            analysis.getSelectExpressions(),
+            queryStatement,
+            analysis);
+
+    planBuilder =
+        planBuilder.planHavingAndTransform(
+            analysis.getHavingExpression(),
+            analysis.getSelectExpressions(),
+            analysis.getOrderByExpressions(),
+            queryStatement.isGroupByTime(),
+            queryStatement.getResultTimeOrder());
+
+    if (!queryStatement.needPushDownSort()) {
+      planBuilder = planBuilder.planOrderBy(queryStatement, analysis);
+    }
+
+    planBuilder =
+        planBuilder
+            .planFill(analysis.getFillDescriptor(), queryStatement.getResultTimeOrder())
+            .planOffset(queryStatement.getRowOffset());
+
+    if (!analysis.isUseTopKNode() || queryStatement.hasOffset()) {
+      planBuilder = planBuilder.planLimit(queryStatement.getRowLimit());
+    }
+
+    return planBuilder.getRoot();
+  }
+
+  private PlanNode visitDeviceAggregationBody(PartialPath devicePath, AggregationStep curStep) {
+    TemplatedLogicalPlanBuilder planBuilder =
+        new TemplatedLogicalPlanBuilder(analysis, context, newMeasurementList, newSchemaList);
+
+    planBuilder =
+        planBuilder
+            .planRawDataSource(
+                devicePath,
+                queryStatement.getResultTimeOrder(),
+                OFFSET_VALUE,
+                limitValue,
+                analysis.isLastLevelUseWildcard())
+            .planFilter(
+                whereExpression,
+                queryStatement.isGroupByTime(),
+                queryStatement.getResultTimeOrder());
+
+    planBuilder =
+        planBuilder.planRawDataAggregation(
+            analysis.getAggregationExpressions(),
+            null,
+            analysis.getGroupByTimeParameter(),
+            analysis.getGroupByParameter(),
+            queryStatement.isOutputEndTime(),
+            curStep,
+            queryStatement.getResultTimeOrder(),
+            deduplicatedDescriptors);
+
+    if (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap()) {
+      planBuilder =
+          planBuilder.planSlidingWindowAggregation(
+              analysis.getSelectExpressions(),
+              analysis.getGroupByTimeParameter(),
+              curStep,
+              queryStatement.getResultTimeOrder());
+    }
+
+    // no group by level and group by tag
+    return planBuilder.getRoot();
+  }
+
+  private List<AggregationDescriptor> constructAggregationDescriptorList(
+      Set<Expression> aggregationExpressions, AggregationStep curStep) {
+    return aggregationExpressions.stream()
+        .map(
+            expression -> {
+              Validate.isTrue(expression instanceof FunctionExpression);
+              return new AggregationDescriptor(
+                  ((FunctionExpression) expression).getFunctionName(),
+                  curStep,
+                  expression.getExpressions(),
+                  ((FunctionExpression) expression).getFunctionAttributes());
+            })
+        .collect(Collectors.toList());
+  }
+
+  void updateTypeProvider(Collection<Expression> expressions) {
+    if (expressions == null) {
+      return;
+    }
+    expressions.forEach(
+        expression -> {
+          if (!expression.getExpressionString().equals(DEVICE)
+              && !expression.getExpressionString().equals(ENDTIME)) {
+            context
+                .getTypeProvider()
+                .setType(expression.getExpressionString(), getPreAnalyzedType(expression));
+          }
+        });
+  }
+
+  private TSDataType getPreAnalyzedType(Expression expression) {
+    return analysis.getType(expression);
   }
 }

@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -58,7 +60,7 @@ public class TemplatedInfo {
   private final boolean queryAllSensors;
 
   // variables used in DeviceViewOperator
-  private final List<String> selectMeasurements;
+  private final List<String> deviceViewOutputNames;
   private final List<Integer> deviceToMeasurementIndexes;
 
   // variables related to LIMIT/OFFSET push down
@@ -71,11 +73,19 @@ public class TemplatedInfo {
 
   // utils variables, not serialize
   private Map<String, IMeasurementSchema> schemaMap;
-  private Map<String, List<InputLocation>> layoutMap;
+  private Map<String, List<InputLocation>> filterLayoutMap;
   private int maxTsBlockLineNum = -1;
 
   // variables related to predicate push down
+  // TODO when to init pushDownPredicate in agg situation?
   private Expression pushDownPredicate;
+
+  // variables related to aggregation
+  public List<AggregationDescriptor> aggregationDescriptorList;
+  public GroupByTimeParameter groupByTimeParameter;
+  public boolean outputEndTime;
+
+  private Expression havingExpression;
 
   public TemplatedInfo(
       List<String> measurementList,
@@ -83,21 +93,24 @@ public class TemplatedInfo {
       List<TSDataType> dataTypes,
       Ordering scanOrder,
       boolean queryAllSensors,
-      List<String> selectMeasurements,
+      List<String> deviceViewOutputNames,
       List<Integer> deviceToMeasurementIndexes,
       long offsetValue,
       long limitValue,
       Expression predicate,
       boolean keepNull,
       Map<String, IMeasurementSchema> schemaMap,
-      Map<String, List<InputLocation>> layoutMap,
-      Expression pushDownPredicate) {
+      Map<String, List<InputLocation>> filterLayoutMap,
+      Expression pushDownPredicate,
+      List<AggregationDescriptor> aggregationDescriptorList,
+      GroupByTimeParameter groupByTimeParameter,
+      boolean outputEndTime) {
     this.measurementList = measurementList;
     this.schemaList = schemaList;
     this.dataTypes = dataTypes;
     this.scanOrder = scanOrder;
     this.queryAllSensors = queryAllSensors;
-    this.selectMeasurements = selectMeasurements;
+    this.deviceViewOutputNames = deviceViewOutputNames;
     this.deviceToMeasurementIndexes = deviceToMeasurementIndexes;
     this.offsetValue = offsetValue;
     this.limitValue = limitValue;
@@ -105,9 +118,13 @@ public class TemplatedInfo {
     if (predicate != null) {
       this.keepNull = keepNull;
       this.schemaMap = schemaMap;
-      this.layoutMap = layoutMap;
+      this.filterLayoutMap = filterLayoutMap;
     }
     this.pushDownPredicate = pushDownPredicate;
+
+    this.aggregationDescriptorList = aggregationDescriptorList;
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.outputEndTime = outputEndTime;
   }
 
   public List<String> getMeasurementList() {
@@ -130,8 +147,8 @@ public class TemplatedInfo {
     return this.queryAllSensors;
   }
 
-  public List<String> getSelectMeasurements() {
-    return this.selectMeasurements;
+  public List<String> getDeviceViewOutputNames() {
+    return this.deviceViewOutputNames;
   }
 
   public long getOffsetValue() {
@@ -158,8 +175,8 @@ public class TemplatedInfo {
     return this.schemaMap;
   }
 
-  public Map<String, List<InputLocation>> getLayoutMap() {
-    return this.layoutMap;
+  public Map<String, List<InputLocation>> getFilterLayoutMap() {
+    return this.filterLayoutMap;
   }
 
   public Expression getPushDownPredicate() {
@@ -215,8 +232,8 @@ public class TemplatedInfo {
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(queryAllSensors, byteBuffer);
 
-    ReadWriteIOUtils.write(selectMeasurements.size(), byteBuffer);
-    for (String selectMeasurement : selectMeasurements) {
+    ReadWriteIOUtils.write(deviceViewOutputNames.size(), byteBuffer);
+    for (String selectMeasurement : deviceViewOutputNames) {
       ReadWriteIOUtils.write(selectMeasurement, byteBuffer);
     }
 
@@ -242,6 +259,20 @@ public class TemplatedInfo {
     } else {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     }
+
+    if (aggregationDescriptorList != null) {
+      ReadWriteIOUtils.write(aggregationDescriptorList.size(), byteBuffer);
+      aggregationDescriptorList.forEach(d -> d.serialize(byteBuffer));
+    } else {
+      ReadWriteIOUtils.write(0, byteBuffer);
+    }
+
+    if (groupByTimeParameter != null) {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      groupByTimeParameter.serialize(byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    }
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
@@ -258,8 +289,8 @@ public class TemplatedInfo {
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
     ReadWriteIOUtils.write(queryAllSensors, stream);
 
-    ReadWriteIOUtils.write(selectMeasurements.size(), stream);
-    for (String selectMeasurement : selectMeasurements) {
+    ReadWriteIOUtils.write(deviceViewOutputNames.size(), stream);
+    for (String selectMeasurement : deviceViewOutputNames) {
       ReadWriteIOUtils.write(selectMeasurement, stream);
     }
 
@@ -282,6 +313,22 @@ public class TemplatedInfo {
     if (pushDownPredicate != null) {
       ReadWriteIOUtils.write((byte) 1, stream);
       Expression.serialize(pushDownPredicate, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
+
+    if (aggregationDescriptorList != null) {
+      ReadWriteIOUtils.write(aggregationDescriptorList.size(), stream);
+      for (AggregationDescriptor descriptor : aggregationDescriptorList) {
+        descriptor.serialize(stream);
+      }
+    } else {
+      ReadWriteIOUtils.write(0, stream);
+    }
+
+    if (groupByTimeParameter != null) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      groupByTimeParameter.serialize(stream);
     } else {
       ReadWriteIOUtils.write((byte) 0, stream);
     }
@@ -350,6 +397,23 @@ public class TemplatedInfo {
       pushDownPredicate = Expression.deserialize(byteBuffer);
     }
 
+    List<AggregationDescriptor> aggregationDescriptorList = null;
+    listSize = ReadWriteIOUtils.readInt(byteBuffer);
+    if (listSize > 0) {
+      aggregationDescriptorList = new ArrayList<>(listSize);
+      while (listSize-- > 0) {
+        aggregationDescriptorList.add(AggregationDescriptor.deserialize(byteBuffer));
+      }
+    }
+
+    byte hasGroupByTime = ReadWriteIOUtils.readByte(byteBuffer);
+    GroupByTimeParameter groupByTimeParameter = null;
+    if (hasGroupByTime == 1) {
+      groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
+    }
+
+    // TODO add outputEndTime serialization and deserialization
+
     return new TemplatedInfo(
         measurementList,
         measurementSchemaList,
@@ -364,6 +428,9 @@ public class TemplatedInfo {
         keepNull,
         currentSchemaMap,
         layoutMap,
-        pushDownPredicate);
+        pushDownPredicate,
+        aggregationDescriptorList,
+        groupByTimeParameter,
+        false);
   }
 }

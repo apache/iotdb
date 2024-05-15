@@ -452,7 +452,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> outputColumns = node.getOutputColumnNames();
     if (outputColumns == null) {
       checkArgument(context.getTemplatedInfo() != null);
-      outputColumns = context.getTemplatedInfo().getSelectMeasurements();
+      outputColumns = context.getTemplatedInfo().getDeviceViewOutputNames();
       // skip device column
       outputColumns = outputColumns.subList(1, outputColumns.size());
     }

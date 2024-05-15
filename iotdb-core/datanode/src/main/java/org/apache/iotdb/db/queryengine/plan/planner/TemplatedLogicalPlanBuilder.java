@@ -27,14 +27,20 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByParameter;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * This class provides accelerated implementation for multiple devices align by device query. This
@@ -42,6 +48,7 @@ import java.util.List;
  * unnecessary judgements.
  */
 public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
+
   private final MPPQueryContext context;
 
   private final Analysis analysis;
@@ -121,11 +128,56 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
             null,
             filterExpression,
             isGroupByTime,
-            scanOrder);
+            scanOrder,
+            true);
     analysis.setFromWhere(filterNode);
 
     this.root = filterNode;
 
+    return this;
+  }
+
+  // ===================== Methods below are used for aggregation =============================
+
+  public TemplatedLogicalPlanBuilder planRawDataAggregation(
+      Set<Expression> aggregationExpressions,
+      Expression groupByExpression,
+      GroupByTimeParameter groupByTimeParameter,
+      GroupByParameter groupByParameter,
+      boolean outputEndTime,
+      AggregationStep curStep,
+      Ordering scanOrder,
+      List<AggregationDescriptor> deduplicatedAggregationDescriptorList) {
+    if (aggregationExpressions == null) {
+      return this;
+    }
+
+    this.root =
+        new RawDataAggregationNode(
+            context.getQueryId().genPlanNodeId(),
+            this.getRoot(),
+            deduplicatedAggregationDescriptorList,
+            groupByTimeParameter,
+            groupByParameter,
+            groupByExpression,
+            outputEndTime,
+            scanOrder,
+            true);
+    return this;
+  }
+
+  public TemplatedLogicalPlanBuilder planSlidingWindowAggregation(
+      Set<Expression> aggregationExpressions,
+      GroupByTimeParameter groupByTimeParameter,
+      AggregationStep curStep,
+      Ordering scanOrder) {
+    if (aggregationExpressions == null) {
+      return this;
+    }
+
+    this.root =
+        createSlidingWindowAggregationNode(
+            this.getRoot(), aggregationExpressions, groupByTimeParameter, curStep, scanOrder);
     return this;
   }
 

@@ -746,7 +746,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  private PlanNode createSlidingWindowAggregationNode(
+  protected PlanNode createSlidingWindowAggregationNode(
       PlanNode child,
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
@@ -851,7 +851,7 @@ public class LogicalPlanBuilder {
             .collect(Collectors.toList()));
   }
 
-  private List<AggregationDescriptor> constructAggregationDescriptorList(
+  protected List<AggregationDescriptor> constructAggregationDescriptorList(
       Set<Expression> aggregationExpressions, AggregationStep curStep) {
     return aggregationExpressions.stream()
         .map(
@@ -883,7 +883,8 @@ public class LogicalPlanBuilder {
             selectExpressions.toArray(new Expression[0]),
             filterExpression,
             isGroupByTime,
-            scanOrder);
+            scanOrder,
+            fromWhere);
     if (fromWhere) {
       analysis.setFromWhere(filterNode);
     }

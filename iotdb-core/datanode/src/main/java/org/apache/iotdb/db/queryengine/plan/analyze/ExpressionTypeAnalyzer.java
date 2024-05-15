@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -65,7 +66,10 @@ public class ExpressionTypeAnalyzer {
   public static TSDataType analyzeExpression(Analysis analysis, Expression expression) {
     if (!analysis.getExpressionTypes().containsKey(NodeRef.of(expression))) {
       ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
-      analyzer.analyze(expression, null);
+
+      Map<String, IMeasurementSchema> context =
+          analysis.allDevicesInOneTemplate() ? analysis.getDeviceTemplate().getSchemaMap() : null;
+      analyzer.analyze(expression, context);
 
       addExpressionTypes(analysis, analyzer);
     }
@@ -96,7 +100,16 @@ public class ExpressionTypeAnalyzer {
       Expression expression,
       TemplatedInfo templatedInfo) {
     ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
-    analyzer.analyze(expression, templatedInfo.getSchemaMap());
+
+    Map<String, IMeasurementSchema> schemaMap = templatedInfo.getSchemaMap();
+    if (schemaMap == null) {
+      schemaMap = new LinkedHashMap<>();
+      for (int i = 0; i < templatedInfo.getMeasurementList().size(); i++) {
+        schemaMap.put(
+            templatedInfo.getMeasurementList().get(i), templatedInfo.getSchemaList().get(i));
+      }
+    }
+    analyzer.analyze(expression, schemaMap);
 
     types.putAll(analyzer.getExpressionTypes());
   }
@@ -346,6 +359,14 @@ public class ExpressionTypeAnalyzer {
         return setExpressionType(
             timeSeriesOperand, context.get(timeSeriesOperand.getOutputSymbol()).getType());
       }
+
+      if (context != null
+          && !(timeSeriesOperand.getPath() instanceof MeasurementPath)
+          && context.containsKey(timeSeriesOperand.getPath().getFullPath())) {
+        return setExpressionType(
+            timeSeriesOperand, context.get(timeSeriesOperand.getPath().getFullPath()).getType());
+      }
+
       return setExpressionType(timeSeriesOperand, timeSeriesOperand.getPath().getSeriesType());
     }
 
