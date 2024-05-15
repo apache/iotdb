@@ -227,17 +227,19 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
             poll(Collections.emptySet(), ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_TIME_OUT_MS);
 
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
-          commitSync(messages);
+          ack(messages);
         }
 
-        final List<SubscriptionMessage> ackedMessages = new ArrayList<>();
+        final List<SubscriptionMessage> messagesToAck = new ArrayList<>();
+        final List<SubscriptionMessage> messagesToNack = new ArrayList<>();
         for (final SubscriptionMessage message : messages) {
           final ConsumeResult consumeResult;
           try {
             consumeResult = consumeListener.onReceive(message);
             if (consumeResult.equals(ConsumeResult.SUCCESS)) {
-              ackedMessages.add(message);
+              messagesToAck.add(message);
             } else {
+              messagesToNack.add(message);
               LOGGER.warn("Consumer listener result failure when consuming message: {}", message);
             }
           } catch (final Throwable t) {
@@ -246,8 +248,8 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
         }
 
         if (ackStrategy.equals(AckStrategy.AFTER_CONSUME)) {
-          // TODO: NACK
-          commitSync(ackedMessages);
+          ack(messagesToAck);
+          nack(messagesToNack);
         }
 
       } catch (final Exception e) {

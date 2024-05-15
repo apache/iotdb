@@ -82,7 +82,9 @@ public class SubscriptionBrokerAgent {
    * @return list of successful commit contexts
    */
   public List<SubscriptionCommitContext> commit(
-      final ConsumerConfig consumerConfig, final List<SubscriptionCommitContext> commitContexts) {
+      final ConsumerConfig consumerConfig,
+      final List<SubscriptionCommitContext> commitContexts,
+      final boolean nack) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
@@ -92,7 +94,7 @@ public class SubscriptionBrokerAgent {
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
-    return broker.commit(commitContexts);
+    return broker.commit(commitContexts, nack);
   }
 
   /////////////////////////////// broker ///////////////////////////////

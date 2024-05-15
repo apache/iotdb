@@ -63,9 +63,9 @@ public abstract class SubscriptionPrefetchingQueue {
   /////////////////////////////// commit ///////////////////////////////
 
   /**
-   * @return {@code true} if commit successfully
+   * @return {@code true} if ack successfully
    */
-  public boolean commit(final SubscriptionCommitContext commitContext) {
+  public boolean ack(final SubscriptionCommitContext commitContext) {
     final SubscriptionEvent event = uncommittedEvents.get(commitContext);
     if (Objects.isNull(event)) {
       LOGGER.warn(
@@ -77,6 +77,22 @@ public abstract class SubscriptionPrefetchingQueue {
     event.decreaseReferenceCount();
     event.recordCommittedTimestamp();
     uncommittedEvents.remove(commitContext);
+    return true;
+  }
+
+  /**
+   * @return {@code true} if nack successfully
+   */
+  public boolean nack(final SubscriptionCommitContext commitContext) {
+    final SubscriptionEvent event = uncommittedEvents.get(commitContext);
+    if (Objects.isNull(event)) {
+      LOGGER.warn(
+          "Subscription: subscription commit context [{}] does not exist, it may have been committed or something unexpected happened, prefetching queue: {}",
+          commitContext,
+          this);
+      return false;
+    }
+    event.nack();
     return true;
   }
 

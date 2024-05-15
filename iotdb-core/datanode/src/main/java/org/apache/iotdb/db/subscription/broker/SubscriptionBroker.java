@@ -116,7 +116,7 @@ public class SubscriptionBroker {
    * @return list of successful commit contexts
    */
   public List<SubscriptionCommitContext> commit(
-      final List<SubscriptionCommitContext> commitContexts) {
+      final List<SubscriptionCommitContext> commitContexts, final boolean nack) {
     final List<SubscriptionCommitContext> successfulCommitContexts = new ArrayList<>();
     for (final SubscriptionCommitContext commitContext : commitContexts) {
       final String topicName = commitContext.getTopicName();
@@ -127,8 +127,14 @@ public class SubscriptionBroker {
             "Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
         continue;
       }
-      if (prefetchingQueue.commit(commitContext)) {
-        successfulCommitContexts.add(commitContext);
+      if (!nack) {
+        if (prefetchingQueue.ack(commitContext)) {
+          successfulCommitContexts.add(commitContext);
+        }
+      } else {
+        if (prefetchingQueue.nack(commitContext)) {
+          successfulCommitContexts.add(commitContext);
+        }
       }
     }
     return successfulCommitContexts;

@@ -300,11 +300,11 @@ final class SubscriptionProvider extends SubscriptionSession {
     return pollResp.getMessages();
   }
 
-  void commitSync(final List<SubscriptionCommitContext> subscriptionCommitContexts)
+  void commit(final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack)
       throws SubscriptionException {
     final PipeSubscribeCommitReq req;
     try {
-      req = PipeSubscribeCommitReq.toTPipeSubscribeReq(subscriptionCommitContexts);
+      req = PipeSubscribeCommitReq.toTPipeSubscribeReq(subscriptionCommitContexts, nack);
     } catch (final IOException e) {
       LOGGER.warn(
           "IOException occurred when SubscriptionProvider {} serialize commit request {}",

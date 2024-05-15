@@ -86,6 +86,10 @@ public class SubscriptionEvent {
         > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
   }
 
+  public void nack() {
+    lastPolledTimestamp = INVALID_TIMESTAMP;
+  }
+
   public void recordLastPolledConsumerId(final String consumerId) {
     lastPolledConsumerId = consumerId;
   }

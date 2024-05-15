@@ -688,10 +688,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  /////////////////////////////// commit sync ///////////////////////////////
+  /////////////////////////////// commit sync (ack & nack) ///////////////////////////////
 
-  protected void commitSync(final Iterable<SubscriptionMessage> messages)
-      throws SubscriptionException {
+  protected void ack(final Iterable<SubscriptionMessage> messages) throws SubscriptionException {
     final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
         new HashMap<>();
     for (final SubscriptionMessage message : messages) {
@@ -701,12 +700,28 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
     for (final Map.Entry<Integer, List<SubscriptionCommitContext>> entry :
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
-      commitSyncInternal(entry.getKey(), entry.getValue());
+      commitInternal(entry.getKey(), entry.getValue(), false);
     }
   }
 
-  private void commitSyncInternal(
-      final int dataNodeId, final List<SubscriptionCommitContext> subscriptionCommitContexts)
+  protected void nack(final Iterable<SubscriptionMessage> messages) {
+    final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
+        new HashMap<>();
+    for (final SubscriptionMessage message : messages) {
+      dataNodeIdToSubscriptionCommitContexts
+          .computeIfAbsent(message.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
+          .add(message.getCommitContext());
+    }
+    for (final Map.Entry<Integer, List<SubscriptionCommitContext>> entry :
+        dataNodeIdToSubscriptionCommitContexts.entrySet()) {
+      commitInternal(entry.getKey(), entry.getValue(), true);
+    }
+  }
+
+  private void commitInternal(
+      final int dataNodeId,
+      final List<SubscriptionCommitContext> subscriptionCommitContexts,
+      final boolean nack)
       throws SubscriptionException {
     subscriptionProviders.acquireReadLock();
     try {
@@ -717,7 +732,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
                 "something unexpected happened when commit messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
                 dataNodeId));
       }
-      provider.commitSync(subscriptionCommitContexts);
+      provider.commit(subscriptionCommitContexts, nack);
     } finally {
       subscriptionProviders.releaseReadLock();
     }
@@ -944,7 +959,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       }
 
       try {
-        commitSync(messages);
+        ack(messages);
         callback.onComplete();
       } catch (final Exception e) {
         callback.onFailure(e);

@@ -36,8 +36,14 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
 
   private transient List<SubscriptionCommitContext> commitContexts = new ArrayList<>();
 
+  private transient boolean nack;
+
   public List<SubscriptionCommitContext> getCommitContexts() {
     return commitContexts;
+  }
+
+  public boolean isNack() {
+    return nack;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -47,10 +53,11 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
    * client.
    */
   public static PipeSubscribeCommitReq toTPipeSubscribeReq(
-      List<SubscriptionCommitContext> commitContexts) throws IOException {
+      List<SubscriptionCommitContext> commitContexts, boolean nack) throws IOException {
     final PipeSubscribeCommitReq req = new PipeSubscribeCommitReq();
 
     req.commitContexts = commitContexts;
+    req.nack = nack;
 
     req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();
     req.type = PipeSubscribeRequestType.COMMIT.getType();
@@ -60,6 +67,7 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
       for (final SubscriptionCommitContext commitContext : commitContexts) {
         commitContext.serialize(outputStream);
       }
+      ReadWriteIOUtils.write(nack, outputStream);
       req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
@@ -75,6 +83,7 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
       for (int i = 0; i < size; ++i) {
         req.commitContexts.add(SubscriptionCommitContext.deserialize(commitReq.body));
       }
+      req.nack = ReadWriteIOUtils.readBool(commitReq.body);
     }
 
     req.version = commitReq.version;
@@ -96,6 +105,7 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
     }
     PipeSubscribeCommitReq that = (PipeSubscribeCommitReq) obj;
     return Objects.equals(this.commitContexts, that.commitContexts)
+        && Objects.equals(this.nack, that.nack)
         && this.version == that.version
         && this.type == that.type
         && Objects.equals(this.body, that.body);
@@ -103,6 +113,6 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(commitContexts, version, type, body);
+    return Objects.hash(commitContexts, nack, version, type, body);
   }
 }

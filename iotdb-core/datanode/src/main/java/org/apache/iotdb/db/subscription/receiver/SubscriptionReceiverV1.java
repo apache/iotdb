@@ -426,22 +426,25 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
     }
 
-    // commit
+    // commit (ack or nack)
     final List<SubscriptionCommitContext> commitContexts = req.getCommitContexts();
+    final boolean nack = req.isNack();
     final List<SubscriptionCommitContext> successfulCommitContexts =
-        SubscriptionAgent.broker().commit(consumerConfig, commitContexts);
+        SubscriptionAgent.broker().commit(consumerConfig, commitContexts, nack);
 
     if (Objects.equals(successfulCommitContexts.size(), commitContexts.size())) {
       LOGGER.info(
-          "Subscription: consumer {} commit successfully, commit contexts: {}",
-          consumerConfig,
-          commitContexts);
-    } else {
-      LOGGER.warn(
-          "Subscription: consumer {} commit partially successful, commit contexts: {}, successful commit contexts: {}",
+          "Subscription: consumer {} commit successfully, commit contexts: {}, nack: {}",
           consumerConfig,
           commitContexts,
-          successfulCommitContexts);
+          nack);
+    } else {
+      LOGGER.warn(
+          "Subscription: consumer {} commit partially successful, commit contexts: {}, successful commit contexts: {}, nack: {}",
+          consumerConfig,
+          commitContexts,
+          successfulCommitContexts,
+          nack);
     }
 
     return PipeSubscribeCommitResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);

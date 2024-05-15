@@ -162,12 +162,12 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   /////////////////////////////// commit ///////////////////////////////
 
   public void commitSync(final SubscriptionMessage message) throws SubscriptionException {
-    super.commitSync(Collections.singletonList(message));
+    super.ack(Collections.singletonList(message));
   }
 
   public void commitSync(final Iterable<SubscriptionMessage> messages)
       throws SubscriptionException {
-    super.commitSync(messages);
+    super.ack(messages);
   }
 
   public void commitAsync(final SubscriptionMessage message) {
@@ -221,7 +221,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   private void commitAllUncommittedMessages() {
     for (final Map.Entry<Long, Set<SubscriptionMessage>> entry : uncommittedMessages.entrySet()) {
       try {
-        commitSync(entry.getValue());
+        ack(entry.getValue());
         uncommittedMessages.remove(entry.getKey());
       } catch (final Exception e) {
         LOGGER.warn("something unexpected happened when commit messages during close", e);
@@ -327,7 +327,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       for (final Map.Entry<Long, Set<SubscriptionMessage>> entry :
           uncommittedMessages.headMap(index).entrySet()) {
         try {
-          commitSync(entry.getValue());
+          ack(entry.getValue());
           uncommittedMessages.remove(entry.getKey());
         } catch (final Exception e) {
           LOGGER.warn("something unexpected happened when auto commit messages...", e);
