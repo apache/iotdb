@@ -77,27 +77,32 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testCompression1() throws Exception {
-    doTest("iotdb-thrift-connector", "hybrid", true, "snappy");
+    doTest("iotdb-thrift-connector", "stream", true, "snappy");
   }
 
   @Test
   public void testCompression2() throws Exception {
-    doTest("iotdb-thrift-connector", "hybrid", true, "snappy, lzma2");
+    doTest("iotdb-thrift-connector", "batch", true, "snappy, lzma2");
   }
 
   @Test
   public void testCompression3() throws Exception {
-    doTest("iotdb-thrift-sync-connector", "hybrid", true, "snappy");
+    doTest("iotdb-thrift-sync-connector", "stream", false, "snappy, snappy");
   }
 
   @Test
   public void testCompression4() throws Exception {
-    doTest("iotdb-thrift-sync-connector", "log", false, "lzma2");
+    doTest("iotdb-thrift-sync-connector", "batch", true, "lzma2, lzma2");
   }
 
   @Test
   public void testCompression5() throws Exception {
-    doTest("iotdb-air-gap-connector", "hybrid", false, "snappy, lzma2");
+    doTest("iotdb-air-gap-connector", "stream", false, "lzma2, snappy");
+  }
+
+  @Test
+  public void testCompression6() throws Exception {
+    doTest("iotdb-air-gap-connector", "batch", true, "lzma2");
   }
 
   private void doTest(
@@ -156,7 +161,13 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualAutoIT {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.db.d1(time, s1) values (now(), 3)", "flush"))) {
+          Arrays.asList("insert into root.db.d1(time, s1) values (now(), 3)",
+              "insert into root.db.d1(time, s1) values (now(), 4)",
+              "insert into root.db.d1(time, s1) values (now(), 5)",
+              "insert into root.db.d1(time, s1) values (now(), 6)",
+              "insert into root.db.d1(time, s1) values (now(), 7)",
+              "insert into root.db.d1(time, s1) values (now(), 8)",
+              "flush"))) {
         return;
       }
 
@@ -164,7 +175,7 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
-          Collections.singleton("3,"));
+          Collections.singleton("8,"));
     }
   }
 }
