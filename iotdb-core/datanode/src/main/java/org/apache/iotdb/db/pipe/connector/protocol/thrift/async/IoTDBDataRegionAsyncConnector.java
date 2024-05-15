@@ -185,10 +185,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         final InsertNode insertNode =
             pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
         final TPipeTransferReq pipeTransferReq =
-            Objects.isNull(insertNode)
-                ? PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                    pipeInsertNodeTabletInsertionEvent.getByteBuffer())
-                : PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode);
+            compressIfNeeded(
+                Objects.isNull(insertNode)
+                    ? PipeTransferTabletBinaryReq.toTPipeTransferReq(
+                        pipeInsertNodeTabletInsertionEvent.getByteBuffer())
+                    : PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode));
         final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler =
             new PipeTransferTabletInsertNodeEventHandler(
                 pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
@@ -207,10 +208,11 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
           return;
         }
 
-        final PipeTransferTabletRawReq pipeTransferTabletRawReq =
-            PipeTransferTabletRawReq.toTPipeTransferReq(
-                pipeRawTabletInsertionEvent.convertToTablet(),
-                pipeRawTabletInsertionEvent.isAligned());
+        final TPipeTransferReq pipeTransferTabletRawReq =
+            compressIfNeeded(
+                PipeTransferTabletRawReq.toTPipeTransferReq(
+                    pipeRawTabletInsertionEvent.convertToTablet(),
+                    pipeRawTabletInsertionEvent.isAligned()));
         final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler =
             new PipeTransferTabletRawEventHandler(
                 pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);

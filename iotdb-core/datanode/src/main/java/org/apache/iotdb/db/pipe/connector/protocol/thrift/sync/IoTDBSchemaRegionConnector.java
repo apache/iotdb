@@ -103,13 +103,14 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
           clientAndStatus
               .getLeft()
               .pipeTransfer(
-                  PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
-                      mTreeSnapshotFile.getName(),
-                      mTreeSnapshotFile.length(),
-                      Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
-                      Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
-                      snapshotEvent.getDatabaseName(),
-                      snapshotEvent.toSealTypeString()));
+                  compressIfNeeded(
+                      PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
+                          mTreeSnapshotFile.getName(),
+                          mTreeSnapshotFile.length(),
+                          Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
+                          Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
+                          snapshotEvent.getDatabaseName(),
+                          snapshotEvent.toSealTypeString())));
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
