@@ -19,18 +19,27 @@
 
 package org.apache.iotdb.commons.partition.executor;
 
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.executor.hash.APHashExecutor;
+import org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor;
+import org.apache.iotdb.commons.partition.executor.hash.JSHashExecutor;
+import org.apache.iotdb.commons.partition.executor.hash.SDBMHashExecutor;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class HashExecutorTest {
-
-  private static final int SEED = 131;
-  private static final String PATH_PREFIX = "root.db.d";
+  private static final String PATH_PREFIX = "root.db.g1.d";
   private static final int TEST_SERIES_SLOT_NUM = 1000;
-  private static final HashExecutor EXECUTOR = new HashExecutor(TEST_SERIES_SLOT_NUM);
+  private static final BKDRHashExecutor BKDR_HASH_EXECUTOR =
+      new BKDRHashExecutor(TEST_SERIES_SLOT_NUM);
+
+  private static final APHashExecutor AP_HASH_EXECUTOR = new APHashExecutor(TEST_SERIES_SLOT_NUM);
+
+  private static final JSHashExecutor JS_HASH_EXECUTOR = new JSHashExecutor(TEST_SERIES_SLOT_NUM);
+
+  private static final SDBMHashExecutor SDBM_HASH_EXECUTOR =
+      new SDBMHashExecutor(TEST_SERIES_SLOT_NUM);
 
   @Test
   public void hashExecutorCompatibleTest() {
@@ -38,16 +47,17 @@ public class HashExecutorTest {
       String device = PATH_PREFIX + suffix;
       IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(PATH_PREFIX + suffix);
       Assert.assertEquals(
-          oldVersionGetSeriesPartitionSlot(device), EXECUTOR.getSeriesPartitionSlot(deviceID));
+          BKDR_HASH_EXECUTOR.getSeriesPartitionSlot(device),
+          BKDR_HASH_EXECUTOR.getSeriesPartitionSlot(deviceID));
+      Assert.assertEquals(
+          AP_HASH_EXECUTOR.getSeriesPartitionSlot(device),
+          AP_HASH_EXECUTOR.getSeriesPartitionSlot(deviceID));
+      Assert.assertEquals(
+          JS_HASH_EXECUTOR.getSeriesPartitionSlot(device),
+          JS_HASH_EXECUTOR.getSeriesPartitionSlot(deviceID));
+      Assert.assertEquals(
+          SDBM_HASH_EXECUTOR.getSeriesPartitionSlot(device),
+          SDBM_HASH_EXECUTOR.getSeriesPartitionSlot(deviceID));
     }
-  }
-
-  private TSeriesPartitionSlot oldVersionGetSeriesPartitionSlot(String device) {
-    int hash = 0;
-    for (int i = 0; i < device.length(); i++) {
-      hash = hash * SEED + (int) device.charAt(i);
-    }
-    hash &= Integer.MAX_VALUE;
-    return new TSeriesPartitionSlot(hash % TEST_SERIES_SLOT_NUM);
   }
 }

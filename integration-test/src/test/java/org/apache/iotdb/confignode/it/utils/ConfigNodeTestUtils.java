@@ -319,7 +319,7 @@ public class ConfigNodeTestUtils {
         "org.apache.iotdb.consensus.simple.SimpleConsensus");
     clusterParameters.setSeriesPartitionSlotNum(1000);
     clusterParameters.setSeriesPartitionExecutorClass(
-        "org.apache.iotdb.commons.partition.executor.HashExecutor");
+        "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor");
     clusterParameters.setDefaultTTL(Long.MAX_VALUE);
     clusterParameters.setTimePartitionInterval(604800000);
     clusterParameters.setDataReplicationFactor(1);

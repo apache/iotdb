@@ -17,34 +17,62 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.partition.executor;
+package org.apache.iotdb.commons.partition.executor.hash;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
-public class HashExecutor extends SeriesPartitionExecutor {
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
-  private static final int SEED = 131;
-  private static final char PATH_SEPARATOR = '.';
+public class APHashExecutor extends SeriesPartitionExecutor {
 
-  public HashExecutor(int deviceGroupCount) {
+  public APHashExecutor(int deviceGroupCount) {
     super(deviceGroupCount);
   }
 
   @Override
-  public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {
-    int hash = 0, segmentNum = deviceID.segmentNum();
-    for (int segmentID = 0; segmentID < segmentNum; segmentID++) {
-      String segment = (String) deviceID.segment(segmentID);
-      for (int i = 0; i < segment.length(); i++) {
-        hash = hash * SEED + segment.charAt(i);
-      }
-      if (segmentID < segmentNum - 1) {
-        hash = hash * SEED + PATH_SEPARATOR;
+  public TSeriesPartitionSlot getSeriesPartitionSlot(String device) {
+    int hash = 0;
+
+    for (int i = 0; i < device.length(); i++) {
+      if ((i & 1) == 0) {
+        hash ^= ((hash << 7) ^ (int) device.charAt(i) ^ (hash >> 3));
+      } else {
+        hash ^= (~((hash << 11) ^ (int) device.charAt(i) ^ (hash >> 5)));
       }
     }
     hash &= Integer.MAX_VALUE;
+
+    return new TSeriesPartitionSlot(hash % seriesPartitionSlotNum);
+  }
+
+  @Override
+  public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {
+    int hash = 0;
+    int segmentNum = deviceID.segmentNum();
+    int index = 0;
+
+    for (int segmentID = 0; segmentID < segmentNum; segmentID++) {
+      String segment = (String) deviceID.segment(segmentID);
+      for (int i = 0; i < segment.length(); i++) {
+        if ((index++ & 1) == 0) {
+          hash ^= ((hash << 7) ^ (int) segment.charAt(i) ^ (hash >> 3));
+        } else {
+          hash ^= (~((hash << 11) ^ (int) segment.charAt(i) ^ (hash >> 5)));
+        }
+      }
+      if (segmentID < segmentNum - 1) {
+        if ((index++ & 1) == 0) {
+          hash ^= ((hash << 7) ^ (int) PATH_SEPARATOR ^ (hash >> 3));
+        } else {
+          hash ^= (~((hash << 11) ^ (int) PATH_SEPARATOR ^ (hash >> 5)));
+        }
+      }
+    }
+    hash &= Integer.MAX_VALUE;
+
     return new TSeriesPartitionSlot(hash % seriesPartitionSlotNum);
   }
 }

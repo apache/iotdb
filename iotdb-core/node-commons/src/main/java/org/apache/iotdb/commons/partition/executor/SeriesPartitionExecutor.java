@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.partition.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -38,6 +39,9 @@ public abstract class SeriesPartitionExecutor {
   public SeriesPartitionExecutor(int seriesPartitionSlotNum) {
     this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
+
+  @TestOnly
+  public abstract TSeriesPartitionSlot getSeriesPartitionSlot(String device);
 
   public abstract TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID);
 
