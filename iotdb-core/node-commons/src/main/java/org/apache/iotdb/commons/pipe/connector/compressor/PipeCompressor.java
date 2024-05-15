@@ -58,11 +58,11 @@ public abstract class PipeCompressor {
     if (Objects.equals(name, CONNECTOR_COMPRESSOR_SNAPPY)) {
       return new PipeSnappyCompressor();
     } else if (Objects.equals(name, CONNECTOR_COMPRESSOR_GZIP)) {
-      return new PipeLZMA2Compressor();
+      return new PipeGZIPCompressor();
     } else if (Objects.equals(name, CONNECTOR_COMPRESSOR_LZ4)) {
-      return new PipeLZMA2Compressor();
+      return new PipeLZ4Compressor();
     } else if (Objects.equals(name, CONNECTOR_COMPRESSOR_ZSTD)) {
-      return new PipeLZMA2Compressor();
+      return new PipeZSTDCompressor();
     } else if (Objects.equals(name, CONNECTOR_COMPRESSOR_LZMA2)) {
       return new PipeLZMA2Compressor();
     } else {
