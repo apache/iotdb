@@ -17,17 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.isession;
+package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.function.Supplier;
 
-public interface INodeSupplier extends Supplier<List<TEndPoint>> {
+public interface QueryEndPointPolicy {
 
-  void close();
-
-  Optional<TEndPoint> getQueryEndPoint();
+  TEndPoint chooseOne(List<TEndPoint> endPointList);
 }

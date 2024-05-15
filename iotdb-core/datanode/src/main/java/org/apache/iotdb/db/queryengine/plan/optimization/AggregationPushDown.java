@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDevi
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanSourceNode;
@@ -225,6 +226,11 @@ public class AggregationPushDown implements PlanOptimizer {
     @Override
     public PlanNode visitRawDataAggregation(RawDataAggregationNode node, RewriterContext context) {
       PlanNode child = node.getChild();
+      if (child instanceof ProjectNode) {
+        // remove ProjectNode
+        node.setChild(((ProjectNode) child).getChild());
+        return visitRawDataAggregation(node, context);
+      }
       if (child instanceof FullOuterTimeJoinNode || child instanceof SeriesScanSourceNode) {
         boolean isSingleSource = child instanceof SeriesScanSourceNode;
         boolean needCheckAscending = node.getGroupByTimeParameter() == null;
@@ -269,9 +275,15 @@ public class AggregationPushDown implements PlanOptimizer {
         if (isSingleSource && ((SeriesScanSourceNode) child).getPushDownPredicate() != null) {
           Expression pushDownPredicate = ((SeriesScanSourceNode) child).getPushDownPredicate();
           sourceNodeList.forEach(
-              sourceNode ->
-                  ((SeriesAggregationSourceNode) sourceNode)
-                      .setPushDownPredicate(pushDownPredicate));
+              sourceNode -> {
+                SeriesAggregationSourceNode aggregationSourceNode =
+                    (SeriesAggregationSourceNode) sourceNode;
+                aggregationSourceNode.setPushDownPredicate(pushDownPredicate);
+                if (aggregationSourceNode instanceof AlignedSeriesAggregationScanNode) {
+                  ((AlignedSeriesAggregationScanNode) aggregationSourceNode)
+                      .setAlignedPath(((AlignedSeriesScanNode) child).getAlignedPath());
+                }
+              });
         }
 
         PlanNode resultNode = convergeWithTimeJoin(sourceNodeList, node.getScanOrder(), context);
