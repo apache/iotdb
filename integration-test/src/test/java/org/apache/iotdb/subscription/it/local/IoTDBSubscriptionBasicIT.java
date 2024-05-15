@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.subscription.it.local;
 
+import java.util.stream.Collectors;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -300,11 +301,7 @@ public class IoTDBSubscriptionBasicIT {
                 consumer.open();
                 consumer.subscribe("topic1");
                 while (!isClosed.get()) {
-                  try {
-                    Thread.sleep(1000); // wait some time
-                  } catch (final InterruptedException e) {
-                    break;
-                  }
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages =
                       consumer.poll(Duration.ofMillis(10000));
                   if (messages.isEmpty()) {
@@ -321,7 +318,7 @@ public class IoTDBSubscriptionBasicIT {
                         rowCountInOneMessage++;
                       }
                     }
-                    LOGGER.info(rowCountInOneMessage + " rows in message");
+                    LOGGER.info("{} rows in message", rowCountInOneMessage);
                   }
                   consumer.commitAsync(
                       messages,
@@ -329,12 +326,15 @@ public class IoTDBSubscriptionBasicIT {
                         @Override
                         public void onComplete() {
                           commitSuccessCount.incrementAndGet();
-                          LOGGER.info("commit success, messages size: {}", messages.size());
+                          LOGGER.info("async commit success, commit contexts: {}",
+                              messages.stream().map(SubscriptionMessage::getCommitContext).collect(Collectors.toList()));
                         }
 
                         @Override
-                        public void onFailure(Throwable e) {
+                        public void onFailure(final Throwable e) {
                           commitFailureCount.incrementAndGet();
+                          LOGGER.info("async commit failed, commit contexts: {}",
+                              messages.stream().map(SubscriptionMessage::getCommitContext).collect(Collectors.toList()), e);
                         }
                       });
                 }
