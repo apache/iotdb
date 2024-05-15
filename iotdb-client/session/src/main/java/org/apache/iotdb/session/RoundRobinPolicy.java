@@ -17,17 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.isession;
+package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.function.Supplier;
 
-public interface INodeSupplier extends Supplier<List<TEndPoint>> {
+public class RoundRobinPolicy implements QueryEndPointPolicy {
 
-  void close();
+  private int index = 0;
 
-  Optional<TEndPoint> getQueryEndPoint();
+  @Override
+  public TEndPoint chooseOne(List<TEndPoint> endPointList) {
+    int tmp = index;
+    if (tmp >= endPointList.size()) {
+      tmp = 0;
+    }
+    index = tmp + 1;
+    return endPointList.get(tmp);
+  }
 }
