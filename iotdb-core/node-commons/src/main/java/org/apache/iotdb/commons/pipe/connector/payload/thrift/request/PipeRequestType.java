@@ -50,6 +50,9 @@ public enum PipeRequestType {
   TRANSFER_CONFIG_PLAN((short) 200),
   TRANSFER_CONFIG_SNAPSHOT_PIECE((short) 201),
   TRANSFER_CONFIG_SNAPSHOT_SEAL((short) 202),
+
+  // RPC Compression
+  TRANSFER_COMPRESSED((short) 300),
   ;
 
   private final short type;
