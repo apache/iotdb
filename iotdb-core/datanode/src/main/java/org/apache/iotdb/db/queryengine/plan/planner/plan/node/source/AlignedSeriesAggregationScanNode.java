@@ -291,7 +291,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
         typeProvider.getTemplatedInfo().getScanOrder(),
         typeProvider.getTemplatedInfo().outputEndTime,
         typeProvider.getTemplatedInfo().getPushDownPredicate(),
-        typeProvider.getTemplatedInfo().groupByTimeParameter.clone(),
+        typeProvider.getTemplatedInfo().groupByTimeParameter,
         null);
   }
 
