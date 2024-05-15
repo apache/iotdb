@@ -447,7 +447,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             seriesScanOperator,
             templatedInfo.getProjectExpressions(),
             templatedInfo.getDataTypes(),
-            templatedInfo.getLayoutMap(),
+            templatedInfo.getFilterLayoutMap(),
             templatedInfo.isKeepNull(),
             node.getPlanNodeId(),
             templatedInfo.getScanOrder(),
@@ -1444,7 +1444,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           generateOnlyChildOperator(node, context),
           templatedInfo.getProjectExpressions(),
           templatedInfo.getDataTypes(),
-          templatedInfo.getLayoutMap(),
+          templatedInfo.getFilterLayoutMap(),
           templatedInfo.isKeepNull(),
           node.getPlanNodeId(),
           templatedInfo.getScanOrder(),
@@ -1832,7 +1832,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     if (context.isBuildPlanUseTemplate()) {
       // in template situation, output columns of ProjectNode is not stored, it's same as its
       // children
-      layout = context.getTemplatedInfo().getLayoutMap();
+      layout = context.getTemplatedInfo().getFilterLayoutMap();
     } else {
       layout = makeLayout(node);
     }

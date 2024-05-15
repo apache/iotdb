@@ -147,7 +147,7 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
       boolean outputEndTime,
       AggregationStep curStep,
       Ordering scanOrder,
-      List<AggregationDescriptor> aggregationDescriptorList) {
+      List<AggregationDescriptor> deduplicatedAggregationDescriptorList) {
     if (aggregationExpressions == null) {
       return this;
     }
@@ -156,12 +156,13 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
         new RawDataAggregationNode(
             context.getQueryId().genPlanNodeId(),
             this.getRoot(),
-            aggregationDescriptorList,
+            deduplicatedAggregationDescriptorList,
             groupByTimeParameter,
             groupByParameter,
             groupByExpression,
             outputEndTime,
-            scanOrder);
+            scanOrder,
+            true);
     return this;
   }
 

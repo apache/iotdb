@@ -1866,7 +1866,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  private void analyzeGroupByTime(Analysis analysis, QueryStatement queryStatement) {
+  static void analyzeGroupByTime(Analysis analysis, QueryStatement queryStatement) {
     if (!queryStatement.isGroupByTime()) {
       return;
     }

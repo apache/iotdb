@@ -70,6 +70,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyz
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchAggregationExpressions;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpressionForTemplatedQuery;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAggregationAnalyze.canBuildAggregationPlanUseTemplate;
 
@@ -97,8 +98,7 @@ public class TemplatedAnalyze {
       IPartitionFetcher partitionFetcher,
       ISchemaTree schemaTree,
       MPPQueryContext context) {
-    if (queryStatement.isGroupBy()
-        || (queryStatement.isGroupByTime() && !queryStatement.isAggregationQuery())
+    if (queryStatement.getGroupByComponent() != null
         || queryStatement.isSelectInto()
         || queryStatement.hasFill()
         || schemaTree.hasNormalTimeSeries()) {
@@ -191,7 +191,7 @@ public class TemplatedAnalyze {
     analyzeDeviceToSource(analysis);
 
     analyzeDeviceViewOutput(analysis, queryStatement);
-    analyzeDeviceViewInput(analysis);
+    analyzeDeviceViewInput(analysis, queryStatement);
 
     analyzeFill(analysis, queryStatement);
 
@@ -329,23 +329,53 @@ public class TemplatedAnalyze {
 
   static void analyzeDeviceViewOutput(Analysis analysis, QueryStatement queryStatement) {
     Set<Expression> selectExpressions = analysis.getSelectExpressions();
-    // TODO if no order by, just set deviceViewOutputExpressions as selectExpressions
-    Set<Expression> deviceViewOutputExpressions = new LinkedHashSet<>(selectExpressions);
-    if (queryStatement.hasOrderByExpression()) {
-      deviceViewOutputExpressions.addAll(analysis.getOrderByExpressions());
+    // if no order by, just set deviceViewOutputExpressions as selectExpressions
+    Set<Expression> deviceViewOutputExpressions = new LinkedHashSet<>();
+
+    if (queryStatement.isAggregationQuery()) {
+      deviceViewOutputExpressions.add(DEVICE_EXPRESSION);
+      if (queryStatement.isOutputEndTime()) {
+        deviceViewOutputExpressions.add(END_TIME_EXPRESSION);
+      }
+      for (Expression selectExpression : selectExpressions) {
+        deviceViewOutputExpressions.addAll(searchAggregationExpressions(selectExpression));
+      }
+      if (queryStatement.hasHaving()) {
+        deviceViewOutputExpressions.addAll(
+            searchAggregationExpressions(analysis.getHavingExpression()));
+      }
+      if (queryStatement.hasOrderByExpression()) {
+        for (Expression orderByExpression : analysis.getOrderByExpressions()) {
+          deviceViewOutputExpressions.addAll(searchAggregationExpressions(orderByExpression));
+        }
+      }
+    } else {
+      deviceViewOutputExpressions.addAll(selectExpressions);
+      if (queryStatement.hasOrderByExpression()) {
+        deviceViewOutputExpressions.addAll(analysis.getOrderByExpressions());
+      }
     }
+
     analysis.setDeviceViewOutputExpressions(deviceViewOutputExpressions);
     analysis.setDeviceViewSpecialProcess(
         analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement, analysis));
   }
 
-  static void analyzeDeviceViewInput(Analysis analysis) {
+  static void analyzeDeviceViewInput(Analysis analysis, QueryStatement queryStatement) {
     List<Integer> indexes = new ArrayList<>();
 
-    // index-0 is `Device`
-    for (int i = 1; i < analysis.getSelectExpressions().size(); i++) {
-      indexes.add(i);
+    if (queryStatement.isAggregationQuery()) {
+      // TODO verify the rightness of order
+      for (int i = 1; i <= analysis.getAggregationExpressions().size(); i++) {
+        indexes.add(i);
+      }
+    } else {
+      for (int i = 1; i < analysis.getSelectExpressions().size(); i++) {
+        indexes.add(i);
+      }
     }
+
+    // TODO only store once
     Map<String, List<Integer>> deviceViewInputIndexesMap = new HashMap<>();
     for (PartialPath devicePath : analysis.getDeviceList()) {
       deviceViewInputIndexesMap.put(devicePath.getFullPath(), indexes);

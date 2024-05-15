@@ -51,6 +51,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.se
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo.makeLayout;
 import static org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanBuilder.updateTypeProviderByPartialAggregation;
 import static org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanVisitor.pushDownLimitToScanNode;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode.getDeduplicatedDescriptors;
 
 /**
  * This class provides accelerated implementation for multiple devices align by device query. This
@@ -80,6 +81,8 @@ public class TemplatedLogicalPlan {
   private Map<String, List<InputLocation>> filterLayoutMap;
 
   List<AggregationDescriptor> aggregationDescriptorList;
+
+  List<AggregationDescriptor> deduplicatedDescriptors;
 
   public TemplatedLogicalPlan(
       Analysis analysis, QueryStatement queryStatement, MPPQueryContext context) {
@@ -324,6 +327,7 @@ public class TemplatedLogicalPlan {
     LogicalPlanBuilder planBuilder =
         new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList);
     Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
+    deduplicatedDescriptors = getDeduplicatedDescriptors(aggregationDescriptorList);
     for (PartialPath devicePath : analysis.getDeviceList()) {
       String deviceName = devicePath.getFullPath();
       PlanNode rootNode = visitDeviceAggregationBody(devicePath, curStep);
@@ -395,7 +399,7 @@ public class TemplatedLogicalPlan {
             queryStatement.isOutputEndTime(),
             curStep,
             queryStatement.getResultTimeOrder(),
-            aggregationDescriptorList);
+            deduplicatedDescriptors);
 
     if (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap()) {
       planBuilder =

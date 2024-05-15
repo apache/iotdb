@@ -41,6 +41,7 @@ import java.util.Set;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.DEVICE_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.END_TIME_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeExpressionType;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeGroupByTime;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeOutput;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.normalizeExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchAggregationExpressions;
@@ -99,12 +100,14 @@ public class TemplatedAggregationAnalyze {
     analyzeDeviceToSource(analysis);
 
     analyzeDeviceViewOutput(analysis, queryStatement);
-    analyzeDeviceViewInput(analysis);
+    analyzeDeviceViewInput(analysis, queryStatement);
 
     // generate result set header according to output expressions
     analyzeOutput(analysis, queryStatement, outputExpressions);
 
+    analyzeGroupByTime(analysis, queryStatement);
     context.generateGlobalTimeFilter(analysis);
+
     // fetch partition information
     analyzeDataPartition(analysis, schemaTree, partitionFetcher, context.getGlobalTimeFilter());
     return true;
@@ -215,7 +218,6 @@ public class TemplatedAggregationAnalyze {
   }
 
   private static void analyzeDeviceToSource(Analysis analysis) {
-    // TODO add having into Source
     analysis.setDeviceToSourceExpressions(analysis.getDeviceToSelectExpressions());
     analysis.setDeviceToOutputExpressions(analysis.getDeviceToSelectExpressions());
   }

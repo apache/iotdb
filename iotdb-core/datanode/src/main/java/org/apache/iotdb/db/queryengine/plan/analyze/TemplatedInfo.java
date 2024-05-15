@@ -73,7 +73,7 @@ public class TemplatedInfo {
 
   // utils variables, not serialize
   private Map<String, IMeasurementSchema> schemaMap;
-  private Map<String, List<InputLocation>> layoutMap;
+  private Map<String, List<InputLocation>> filterLayoutMap;
   private int maxTsBlockLineNum = -1;
 
   // variables related to predicate push down
@@ -100,7 +100,7 @@ public class TemplatedInfo {
       Expression predicate,
       boolean keepNull,
       Map<String, IMeasurementSchema> schemaMap,
-      Map<String, List<InputLocation>> layoutMap,
+      Map<String, List<InputLocation>> filterLayoutMap,
       Expression pushDownPredicate,
       List<AggregationDescriptor> aggregationDescriptorList,
       GroupByTimeParameter groupByTimeParameter,
@@ -118,7 +118,7 @@ public class TemplatedInfo {
     if (predicate != null) {
       this.keepNull = keepNull;
       this.schemaMap = schemaMap;
-      this.layoutMap = layoutMap;
+      this.filterLayoutMap = filterLayoutMap;
     }
     this.pushDownPredicate = pushDownPredicate;
 
@@ -175,8 +175,8 @@ public class TemplatedInfo {
     return this.schemaMap;
   }
 
-  public Map<String, List<InputLocation>> getLayoutMap() {
-    return this.layoutMap;
+  public Map<String, List<InputLocation>> getFilterLayoutMap() {
+    return this.filterLayoutMap;
   }
 
   public Expression getPushDownPredicate() {
@@ -266,6 +266,13 @@ public class TemplatedInfo {
     } else {
       ReadWriteIOUtils.write(0, byteBuffer);
     }
+
+    if (groupByTimeParameter != null) {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      groupByTimeParameter.serialize(byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    }
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
@@ -317,6 +324,13 @@ public class TemplatedInfo {
       }
     } else {
       ReadWriteIOUtils.write(0, stream);
+    }
+
+    if (groupByTimeParameter != null) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      groupByTimeParameter.serialize(stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
     }
   }
 
@@ -392,7 +406,13 @@ public class TemplatedInfo {
       }
     }
 
-    // TODO add groupByTimeParameter, outputEndTime serialization and deserialization
+    byte hasGroupByTime = ReadWriteIOUtils.readByte(byteBuffer);
+    GroupByTimeParameter groupByTimeParameter = null;
+    if (hasGroupByTime == 1) {
+      groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
+    }
+
+    // TODO add outputEndTime serialization and deserialization
 
     return new TemplatedInfo(
         measurementList,
@@ -410,7 +430,7 @@ public class TemplatedInfo {
         layoutMap,
         pushDownPredicate,
         aggregationDescriptorList,
-        null,
+        groupByTimeParameter,
         false);
   }
 }
