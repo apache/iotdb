@@ -17,13 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
+package org.apache.iotdb.session;
 
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
-public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatchReqBuilder {
+import java.util.List;
 
-  public IoTDBThriftSyncPipeTransferBatchReqBuilder(final PipeParameters parameters) {
-    super(parameters);
+public class RoundRobinPolicy implements QueryEndPointPolicy {
+
+  private int index = 0;
+
+  @Override
+  public TEndPoint chooseOne(List<TEndPoint> endPointList) {
+    int tmp = index;
+    if (tmp >= endPointList.size()) {
+      tmp = 0;
+    }
+    index = tmp + 1;
+    return endPointList.get(tmp);
   }
 }

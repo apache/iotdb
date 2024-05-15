@@ -43,26 +43,15 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
 
-  /**
-   * This event doesn't share resources with other events, so no need to maintain reference count.
-   * We just use a counter to prevent the reference count from being less than 0.
-   */
+  /** This event doesn't share resources with other events. */
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
-    referenceCount.incrementAndGet();
     return true;
   }
 
-  /**
-   * This event doesn't share resources with other events, so no need to maintain reference count.
-   * We just use a counter to prevent the reference count from being less than 0.
-   */
+  /** This event doesn't share resources with other events. */
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
-    final long count = referenceCount.decrementAndGet();
-    if (count < 0) {
-      LOGGER.warn("The reference count is less than 0, may need to check the implementation.");
-    }
     return true;
   }
 

@@ -79,7 +79,7 @@ public class PipeProcessorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         processor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(processor.getDataRegionId()),
+        String.valueOf(processor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(processor.getCreationTime()));
     metricService.createAutoGauge(
@@ -90,7 +90,7 @@ public class PipeProcessorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         processor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(processor.getDataRegionId()),
+        String.valueOf(processor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(processor.getCreationTime()));
     metricService.createAutoGauge(
@@ -101,7 +101,7 @@ public class PipeProcessorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         processor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(processor.getDataRegionId()),
+        String.valueOf(processor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(processor.getCreationTime()));
   }
@@ -117,7 +117,7 @@ public class PipeProcessorMetrics implements IMetricSet {
             Tag.NAME.toString(),
             processor.getPipeName(),
             Tag.REGION.toString(),
-            String.valueOf(processor.getDataRegionId()),
+            String.valueOf(processor.getRegionId()),
             Tag.CREATION_TIME.toString(),
             String.valueOf(processor.getCreationTime())));
     tsFileRateMap.put(
@@ -128,7 +128,7 @@ public class PipeProcessorMetrics implements IMetricSet {
             Tag.NAME.toString(),
             processor.getPipeName(),
             Tag.REGION.toString(),
-            String.valueOf(processor.getDataRegionId()),
+            String.valueOf(processor.getRegionId()),
             Tag.CREATION_TIME.toString(),
             String.valueOf(processor.getCreationTime())));
     pipeHeartbeatRateMap.put(
@@ -139,7 +139,7 @@ public class PipeProcessorMetrics implements IMetricSet {
             Tag.NAME.toString(),
             processor.getPipeName(),
             Tag.REGION.toString(),
-            String.valueOf(processor.getDataRegionId()),
+            String.valueOf(processor.getRegionId()),
             Tag.CREATION_TIME.toString(),
             String.valueOf(processor.getCreationTime())));
   }
@@ -169,7 +169,7 @@ public class PipeProcessorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         processor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(processor.getDataRegionId()),
+        String.valueOf(processor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(processor.getCreationTime()));
     metricService.remove(
@@ -178,7 +178,7 @@ public class PipeProcessorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         processor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(processor.getDataRegionId()),
+        String.valueOf(processor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(processor.getCreationTime()));
     metricService.remove(
@@ -187,7 +187,7 @@ public class PipeProcessorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         processor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(processor.getDataRegionId()),
+        String.valueOf(processor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(processor.getCreationTime()));
   }
@@ -201,7 +201,7 @@ public class PipeProcessorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         processor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(processor.getDataRegionId()),
+        String.valueOf(processor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(processor.getCreationTime()));
     metricService.remove(
@@ -210,7 +210,7 @@ public class PipeProcessorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         processor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(processor.getDataRegionId()),
+        String.valueOf(processor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(processor.getCreationTime()));
     metricService.remove(
@@ -219,7 +219,7 @@ public class PipeProcessorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         processor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(processor.getDataRegionId()),
+        String.valueOf(processor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(processor.getCreationTime()));
     tabletRateMap.remove(taskID);

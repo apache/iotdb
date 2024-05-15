@@ -988,7 +988,7 @@ public class IoTDBDataBackTool {
                   try {
                     Files.createLink(targetFile, file);
                   } catch (UnsupportedOperationException | IOException e) {
-                    LOGGER.error("link file error {}", e);
+                    LOGGER.debug("link file error {}", e);
                     try {
                       Files.copy(file, targetFile, StandardCopyOption.REPLACE_EXISTING);
                     } catch (IOException ex) {
