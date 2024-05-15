@@ -92,12 +92,12 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testCompression4() throws Exception {
-    doTest("iotdb-thrift-sync-connector", "batch", true, "lzma2, lzma2");
+    doTest("iotdb-thrift-sync-connector", "batch", true, "gzip, zstd");
   }
 
   @Test
   public void testCompression5() throws Exception {
-    doTest("iotdb-air-gap-connector", "stream", false, "lzma2, snappy");
+    doTest("iotdb-air-gap-connector", "stream", false, "lzma2, lz4");
   }
 
   @Test
