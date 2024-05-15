@@ -43,7 +43,7 @@ public class ConsumerConstant {
   public static final long ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE = 5000;
 
   public static final String TS_FILE_BASE_DIR_KEY = "ts-file-base-dir";
-  public static final String TS_FILE_BASE_DIR_DEFAULT_VALUE = System.getProperty("java.io.tmpdir");
+  public static final String TS_FILE_BASE_DIR_DEFAULT_VALUE = System.getProperty("user.dir");
 
   /////////////////////////////// pull consumer ///////////////////////////////
 

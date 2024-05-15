@@ -27,6 +27,7 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
@@ -222,26 +223,35 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
       try {
         // Poll all subscribed topics by passing an empty set
-        final List<SubscriptionMessage> pollResults =
+        final List<SubscriptionMessage> messages =
             poll(Collections.emptySet(), ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_TIME_OUT_MS);
 
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
-          commitSync(pollResults);
+          commitSync(messages);
         }
 
-        for (final SubscriptionMessage pollResult : pollResults) {
-          final ConsumeResult consumeResult = consumeListener.onReceive(pollResult);
-          if (consumeResult.equals(ConsumeResult.FAILURE)) {
-            LOGGER.warn("consumeListener failed when processing message: {}", pollResult);
+        final List<SubscriptionMessage> ackedMessages = new ArrayList<>();
+        for (final SubscriptionMessage message : messages) {
+          final ConsumeResult consumeResult;
+          try {
+            consumeResult = consumeListener.onReceive(message);
+            if (consumeResult.equals(ConsumeResult.SUCCESS)) {
+              ackedMessages.add(message);
+            } else {
+              LOGGER.warn("Consumer listener result failure when consuming message: {}", message);
+            }
+          } catch (final Throwable t) {
+            LOGGER.warn("Consumer listener raised an exception while consuming messages", t);
           }
         }
 
         if (ackStrategy.equals(AckStrategy.AFTER_CONSUME)) {
-          commitSync(pollResults);
+          // TODO: NACK
+          commitSync(ackedMessages);
         }
 
-      } catch (final SubscriptionException e) {
-        LOGGER.warn("Exception occurred when auto polling: ", e);
+      } catch (final Exception e) {
+        LOGGER.warn("something unexpected happened when auto poll messages...", e);
       }
     }
   }
