@@ -114,7 +114,7 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
     // 2. Transfer file seal signal, which means the snapshots is transferred completely
     if (!send(
         socket,
-        compressBytesIfNeeded(
+        compressIfNeeded(
             PipeTransferSchemaSnapshotSealReq.toTPipeTransferBytes(
                 mtreeSnapshotFile.getName(),
                 mtreeSnapshotFile.length(),

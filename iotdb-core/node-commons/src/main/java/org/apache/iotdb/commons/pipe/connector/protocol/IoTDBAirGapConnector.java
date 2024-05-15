@@ -226,7 +226,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
                 : Arrays.copyOfRange(readBuffer, 0, readLength);
         if (!send(
             socket,
-            compressBytesIfNeeded(
+            compressIfNeeded(
                 isMultiFile
                     ? getTransferMultiFilePieceBytes(file.getName(), position, payload)
                     : getTransferSingleFilePieceBytes(file.getName(), position, payload)))) {

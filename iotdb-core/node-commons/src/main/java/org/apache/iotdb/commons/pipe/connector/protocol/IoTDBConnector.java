@@ -89,8 +89,8 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected final List<TEndPoint> nodeUrls = new ArrayList<>();
 
   protected String loadBalanceStrategy;
-  protected boolean isRpcCompressionEnabled;
 
+  protected boolean isRpcCompressionEnabled;
   protected final List<PipeCompressor> compressors = new ArrayList<>();
 
   protected boolean isTabletBatchModeEnabled = true;
@@ -138,7 +138,7 @@ public abstract class IoTDBConnector implements PipeConnector {
             CONNECTOR_LOAD_BALANCE_STRATEGY_SET, loadBalanceStrategy),
         loadBalanceStrategy);
 
-    String compressionTypes =
+    final String compressionTypes =
         parameters
             .getStringOrDefault(
                 Arrays.asList(CONNECTOR_COMPRESSOR_KEY, SINK_COMPRESSOR_KEY),
@@ -296,24 +296,26 @@ public abstract class IoTDBConnector implements PipeConnector {
   }
 
   protected TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
-    if (isRpcCompressionEnabled) {
-      return PipeTransferCompressedReq.toTPipeTransferReq(req, compressors);
-    }
-    return req;
+    return isRpcCompressionEnabled
+        ? PipeTransferCompressedReq.toTPipeTransferReq(req, compressors)
+        : req;
   }
 
-  protected byte[] compressBytesIfNeeded(byte[] reqInBytes) throws IOException {
-    if (isRpcCompressionEnabled) {
-      return PipeTransferCompressedReq.toTPipeTransferReqInBytes(reqInBytes, compressors);
-    }
-    return reqInBytes;
+  protected byte[] compressIfNeeded(byte[] reqInBytes) throws IOException {
+    return isRpcCompressionEnabled
+        ? PipeTransferCompressedReq.toTPipeTransferReqInBytes(reqInBytes, compressors)
+        : reqInBytes;
   }
 
-  public PipeReceiverStatusHandler statusHandler() {
-    return receiverStatusHandler;
+  public boolean isRpcCompressionEnabled() {
+    return isRpcCompressionEnabled;
   }
 
   public List<PipeCompressor> getCompressors() {
     return compressors;
+  }
+
+  public PipeReceiverStatusHandler statusHandler() {
+    return receiverStatusHandler;
   }
 }

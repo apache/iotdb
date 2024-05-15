@@ -170,7 +170,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
     final InsertNode insertNode =
         pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
     final byte[] bytes =
-        compressBytesIfNeeded(
+        compressIfNeeded(
             Objects.isNull(insertNode)
                 ? PipeTransferTabletBinaryReq.toTPipeTransferBytes(
                     pipeInsertNodeTabletInsertionEvent.getByteBuffer())
@@ -210,7 +210,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
       throws PipeException, IOException {
     if (!send(
         socket,
-        compressBytesIfNeeded(
+        compressIfNeeded(
             PipeTransferTabletRawReq.toTPipeTransferBytes(
                 pipeRawTabletInsertionEvent.convertToTablet(),
                 pipeRawTabletInsertionEvent.isAligned())))) {
@@ -256,7 +256,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
       // 2. Transfer file seal signal with mod, which means the file is transferred completely
       if (!send(
           socket,
-          compressBytesIfNeeded(
+          compressIfNeeded(
               PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
                   modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())))) {
         receiverStatusHandler.handle(
@@ -272,7 +272,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
       // 2. Transfer file seal signal without mod, which means the file is transferred completely
       if (!send(
           socket,
-          compressBytesIfNeeded(
+          compressIfNeeded(
               PipeTransferTsFileSealReq.toTPipeTransferBytes(tsFile.getName(), tsFile.length())))) {
         receiverStatusHandler.handle(
             new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())

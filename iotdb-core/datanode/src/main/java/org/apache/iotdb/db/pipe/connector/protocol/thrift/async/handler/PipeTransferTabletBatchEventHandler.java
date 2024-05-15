@@ -60,11 +60,13 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
     // Deep copy to keep Ids' and events' reference
     requestCommitIds = batch.deepCopyRequestCommitIds();
     events = batch.deepCopyEvents();
+    req =
+        connector.isRpcCompressionEnabled()
+            ? batch.toTPipeTransferReq()
+            : PipeTransferCompressedReq.toTPipeTransferReq(
+                batch.toTPipeTransferReq(), connector.getCompressors());
 
     this.connector = connector;
-    req =
-        PipeTransferCompressedReq.toTPipeTransferReq(
-            batch.toTPipeTransferReq(), connector.getCompressors());
   }
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {

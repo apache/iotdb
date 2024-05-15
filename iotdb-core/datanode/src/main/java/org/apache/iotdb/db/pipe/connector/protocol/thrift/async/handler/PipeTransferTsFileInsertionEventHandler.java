@@ -32,6 +32,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
@@ -135,14 +136,19 @@ public class PipeTransferTsFileInsertionEventHandler
         readLength == readFileBufferSize
             ? readBuffer
             : Arrays.copyOfRange(readBuffer, 0, readLength);
-    client.pipeTransfer(
+    final TPipeTransferReq uncompressedReq =
         PipeTransferCompressedReq.toTPipeTransferReq(
             transferMod
                 ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
                     currentFile.getName(), position, payload)
                 : PipeTransferTsFilePieceReq.toTPipeTransferReq(
                     currentFile.getName(), position, payload),
-            connector.getCompressors()),
+            connector.getCompressors());
+    client.pipeTransfer(
+        connector.isRpcCompressionEnabled()
+            ? PipeTransferCompressedReq.toTPipeTransferReq(
+                uncompressedReq, connector.getCompressors())
+            : uncompressedReq,
         this);
     position += readLength;
   }
