@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.compress;
+package org.apache.iotdb.commons.pipe.connector.compressor;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -26,7 +26,23 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_SNAPPY;
 
 public abstract class PipeCompressor {
-  protected PipeCompressionType compressionType;
+
+  public enum PipeCompressionType {
+    SNAPPY((byte) 0),
+    LZMA2((byte) 1);
+
+    final byte index;
+
+    PipeCompressionType(byte index) {
+      this.index = index;
+    }
+  }
+
+  private final PipeCompressionType compressionType;
+
+  protected PipeCompressor(PipeCompressionType compressionType) {
+    this.compressionType = compressionType;
+  }
 
   public abstract byte[] compress(byte[] data) throws IOException;
 
@@ -55,16 +71,5 @@ public abstract class PipeCompressor {
 
   public byte serialize() {
     return compressionType.index;
-  }
-}
-
-enum PipeCompressionType {
-  SNAPPY((byte) 0),
-  LZMA2((byte) 1);
-
-  final byte index;
-
-  PipeCompressionType(byte index) {
-    this.index = index;
   }
 }

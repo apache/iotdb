@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.compress;
+package org.apache.iotdb.commons.pipe.connector.compressor;
 
 import org.apache.tsfile.compress.ICompressor;
 import org.apache.tsfile.compress.IUnCompressor;
@@ -25,12 +25,13 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 
 import java.io.IOException;
 
-public class PipeSnappyCompressor extends PipeCompressor {
-  ICompressor compressor = ICompressor.getCompressor(CompressionType.SNAPPY);
-  IUnCompressor decompressor = IUnCompressor.getUnCompressor(CompressionType.SNAPPY);
+public class PipeLZMA2Compressor extends PipeCompressor {
 
-  public PipeSnappyCompressor() {
-    compressionType = PipeCompressionType.SNAPPY;
+  private final ICompressor compressor = ICompressor.getCompressor(CompressionType.LZMA2);
+  private final IUnCompressor decompressor = IUnCompressor.getUnCompressor(CompressionType.LZMA2);
+
+  public PipeLZMA2Compressor() {
+    super(PipeCompressionType.LZMA2);
   }
 
   @Override

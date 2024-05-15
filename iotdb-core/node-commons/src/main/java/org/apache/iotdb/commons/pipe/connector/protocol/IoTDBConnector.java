@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
-import org.apache.iotdb.commons.pipe.connector.compress.PipeCompressor;
+import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -145,19 +145,19 @@ public abstract class IoTDBConnector implements PipeConnector {
                 CONNECTOR_COMPRESSOR_DEFAULT_VALUE)
             .toLowerCase();
     if (!compressionTypes.isEmpty()) {
-      for (String compressionType : compressionTypes.split(",")) {
-        final String compressionType1 = compressionType.trim();
-        if (compressionType1.isEmpty()) {
+      for (final String compressionType : compressionTypes.split(",")) {
+        final String trimmedCompressionType = compressionType.trim();
+        if (trimmedCompressionType.isEmpty()) {
           continue;
         }
 
         validator.validate(
-            arg -> CONNECTOR_COMPRESSOR_SET.contains(compressionType1),
+            arg -> CONNECTOR_COMPRESSOR_SET.contains(trimmedCompressionType),
             String.format(
                 "Compressor should be one of %s, but got %s.",
-                CONNECTOR_COMPRESSOR_SET, compressionType1),
-            compressionType1);
-        compressors.add(PipeCompressor.getCompressor(compressionType1));
+                CONNECTOR_COMPRESSOR_SET, trimmedCompressionType),
+            trimmedCompressionType);
+        compressors.add(PipeCompressor.getCompressor(trimmedCompressionType));
       }
     }
     isRpcCompressionEnabled = !compressors.isEmpty();

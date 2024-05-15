@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
 
-import org.apache.iotdb.commons.pipe.connector.compress.PipeCompressor;
+import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.tsfile.utils.BytesUtils;
