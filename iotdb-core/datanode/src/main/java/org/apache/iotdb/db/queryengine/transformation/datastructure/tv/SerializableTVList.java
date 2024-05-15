@@ -107,14 +107,14 @@ public class SerializableTVList implements SerializableList {
     init();
   }
 
-  public int getColumnIndex(int index) {
-    assert index < size;
+  public int getColumnIndex(int pointIndex) {
+    assert pointIndex < size;
 
     int ret = -1;
     int total = 0;
     for (int i = 0; i < timeColumns.size(); i++) {
       int length = timeColumns.get(i).getPositionCount();
-      if (index < total + length) {
+      if (pointIndex < total + length) {
         ret = i;
         break;
       }
@@ -122,6 +122,15 @@ public class SerializableTVList implements SerializableList {
     }
 
     return ret;
+  }
+
+  public int getFirstPointIndex(int columnIndex) {
+    int total = 0;
+    for (int i = 0; i < columnIndex; i++) {
+      total += timeColumns.get(i).getPositionCount();
+    }
+
+    return total;
   }
 
   public long getTime(int index) {

@@ -151,6 +151,14 @@ public class ElasticSerializableRowRecordList {
     return rowCount;
   }
 
+  public int getSerializableRowListSize() {
+    return internalRowList.size();
+  }
+
+  public SerializableRowRecordList getSerializableRowList(int index) throws IOException {
+    return cache.get(index);
+  }
+
   public TSDataType[] getDataTypes() {
     return dataTypes;
   }
@@ -203,7 +211,7 @@ public class ElasticSerializableRowRecordList {
     return iterator;
   }
 
-  public RowListForwardIterator constructIteratorByEvictionUpperBound() {
+  public RowListForwardIterator constructIteratorByEvictionUpperBound() throws IOException {
     int externalColumnIndex = evictionUpperBound / internalRowRecordListCapacity;
 
     int internalPointIndex = evictionUpperBound % internalRowRecordListCapacity;
@@ -475,6 +483,17 @@ public class ElasticSerializableRowRecordList {
       throws IOException, QueryProcessException {
     Column[] columns = source.currentBlock();
     target.put(columns);
+  }
+
+  public int getFirstRowIndex(int externalIndex, int internalIndex) throws IOException {
+    int index = internalRowRecordListCapacity * externalIndex;
+    int offset = cache.get(externalIndex).getFirstRowIndex(internalIndex);
+
+    return index + offset;
+  }
+
+  public int getInternalRowListCapacity() {
+    return internalRowRecordListCapacity;
   }
 
   private class LRUCache extends Cache {

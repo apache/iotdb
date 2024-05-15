@@ -20,88 +20,90 @@
 package org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator;
 
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableTVList;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
 import java.io.IOException;
-import java.util.List;
 
+// Forward iterator used in ElasticSerializableTVList
+// Point to columns(time column and value column)
 public class TVListForwardIterator implements ListForwardIterator {
-  private ElasticSerializableTVList tvList;
+  private final ElasticSerializableTVList tvList;
 
-  private int externalIndex; // Which tvList
-  private int internalIndex; // Which block in tvList
+  private int externalIndex; // Which SerializableTVList
+  private int internalIndex; // Which columns in SerializableTVList
 
-  // Cached in case of TVList's change
-  private TimeColumn cachedTimeColumn;
-  private Column cachedValueColumn;
+  // In case of tvList changing
+  private int startPointIndex; // Index of first point of the columns
 
   public TVListForwardIterator(ElasticSerializableTVList tvList) {
     this.tvList = tvList;
-    // Point to dummy block
+    // Point to dummy block for simplicity
     externalIndex = 0;
     internalIndex = -1;
+    startPointIndex = -1;
   }
 
   public TVListForwardIterator(
-      ElasticSerializableTVList tvList, int externalIndex, int internalIndex) {
+      ElasticSerializableTVList tvList, int externalIndex, int internalIndex) throws IOException {
     this.tvList = tvList;
     this.externalIndex = externalIndex;
     this.internalIndex = internalIndex;
+    startPointIndex = tvList.getFirstPointIndex(externalIndex, internalIndex);
   }
 
   public TimeColumn currentTimes() throws IOException {
-    return cachedTimeColumn == null
-        ? tvList.getTimeColumn(externalIndex, internalIndex)
-        : cachedTimeColumn;
+    return tvList.getTimeColumn(externalIndex, internalIndex);
   }
 
   public Column currentValues() throws IOException {
-    return cachedValueColumn == null
-        ? tvList.getValueColumn(externalIndex, internalIndex)
-        : cachedValueColumn;
+    return tvList.getValueColumn(externalIndex, internalIndex);
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws IOException {
     // First time call, tvList has no data
-    List<SerializableTVList> internalLists = tvList.getInternalTVList();
-    if (internalLists.size() == 0) {
+    if (tvList.getSerializableTVListSize() == 0) {
       return false;
     }
 
-    return externalIndex + 1 < internalLists.size()
-        || internalIndex + 1 < internalLists.get(externalIndex).getColumnCount();
+    return externalIndex + 1 < tvList.getSerializableTVListSize()
+        || internalIndex + 1 < tvList.getSerializableTVList(externalIndex).getColumnCount();
   }
 
   @Override
   public void next() throws IOException {
-    List<SerializableTVList> internalLists = tvList.getInternalTVList();
-    if (internalIndex + 1 == internalLists.get(externalIndex).getColumnCount()) {
+    // Acquire previous columns size
+    int prevSize;
+    if (externalIndex == 0 && internalIndex == -1) {
+      prevSize = 1;
+    } else {
+      prevSize = tvList.getTimeColumn(externalIndex, internalIndex).getPositionCount();
+    }
+
+    // Move forward iterator
+    if (internalIndex + 1 == tvList.getSerializableTVList(externalIndex).getColumnCount()) {
       internalIndex = 0;
       externalIndex++;
     } else {
       internalIndex++;
     }
 
-    cachedTimeColumn = tvList.getTimeColumn(externalIndex, internalIndex);
-    cachedValueColumn = tvList.getValueColumn(externalIndex, internalIndex);
+    // Update startPointIndex
+    startPointIndex += prevSize;
   }
 
-  // When tvList apply new memory control strategy, the origin tvList become invalid.
-  // We must iterate all columns to find matched columns
+  // When tvList apply new memory control strategy, the origin iterators become invalid.
+  // We can relocate these old iterators by its startPointIndex
   public void adjust() throws IOException {
-    TVListForwardIterator iterator = tvList.constructIterator();
+    int capacity = tvList.getInternalTVListCapacity();
 
-    while (iterator.hasNext()) {
-      iterator.next();
-      TimeColumn times = iterator.currentTimes();
-      if (times == cachedTimeColumn) {
-        this.externalIndex = iterator.externalIndex;
-        this.internalIndex = iterator.internalIndex;
-        break;
-      }
-    }
+    int externalColumnIndex = startPointIndex / capacity;
+    int internalPointIndex = startPointIndex % capacity;
+    int internalColumnIndex =
+        tvList.getSerializableTVList(externalIndex).getColumnIndex(internalPointIndex);
+
+    this.externalIndex = externalColumnIndex;
+    this.internalIndex = internalColumnIndex;
   }
 }

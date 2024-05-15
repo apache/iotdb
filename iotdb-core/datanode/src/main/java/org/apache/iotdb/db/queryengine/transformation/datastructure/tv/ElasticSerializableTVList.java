@@ -149,6 +149,14 @@ public class ElasticSerializableTVList {
         .getStringValue(TSFileConfig.STRING_CHARSET);
   }
 
+  public SerializableTVList getSerializableTVList(int index) throws IOException {
+    return cache.get(index);
+  }
+
+  public int getSerializableTVListSize() {
+    return internalTVList.size();
+  }
+
   public TimeColumn getTimeColumn(int externalIndex, int internalIndex) throws IOException {
     return cache.get(externalIndex).getTimeColumn(internalIndex);
   }
@@ -157,8 +165,15 @@ public class ElasticSerializableTVList {
     return cache.get(externalIndex).getValueColumn(internalIndex);
   }
 
-  public List<SerializableTVList> getInternalTVList() {
-    return internalTVList;
+  public int getInternalTVListCapacity() {
+    return internalTVListCapacity;
+  }
+
+  public int getFirstPointIndex(int externalIndex, int internalIndex) throws IOException {
+    int index = internalTVListCapacity * externalIndex;
+    int offset = cache.get(externalIndex).getFirstPointIndex(internalIndex);
+
+    return index + offset;
   }
 
   public TVListForwardIterator constructIterator() {
@@ -168,7 +183,7 @@ public class ElasticSerializableTVList {
     return iterator;
   }
 
-  public TVListForwardIterator constructIteratorByEvictionUpperBound() {
+  public TVListForwardIterator constructIteratorByEvictionUpperBound() throws IOException {
     int externalColumnIndex = evictionUpperBound / internalTVListCapacity;
 
     int internalPointIndex = evictionUpperBound % internalTVListCapacity;

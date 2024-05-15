@@ -26,67 +26,82 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import java.io.IOException;
 import java.util.List;
 
+// Forward iterator used in ElasticSerializableRowRecordList
+// Point to columns(one time column and multiple value columns)
 public class RowListForwardIterator implements ListForwardIterator {
-  private ElasticSerializableRowRecordList rowList;
+  private final ElasticSerializableRowRecordList rowList;
 
-  private int externalIndex;
-  private int internalIndex;
+  private int externalIndex; // Which SerializableRowRecordList
+  private int internalIndex; // Which columns in SerializableRowRecordList
 
-  private Column[] cachedColumns;
+  // In case of rowList changing
+  private int startRowIndex; // Index of first row of the columns
 
   public RowListForwardIterator(ElasticSerializableRowRecordList rowList) {
     this.rowList = rowList;
-    // Point to dummy block
-    this.externalIndex = 0;
-    this.internalIndex = -1;
+    // Point to dummy block for simplicity
+    externalIndex = 0;
+    internalIndex = -1;
+    startRowIndex = -1;
   }
 
   public RowListForwardIterator(
-      ElasticSerializableRowRecordList rowList, int externalIndex, int internalIndex) {
+      ElasticSerializableRowRecordList rowList, int externalIndex, int internalIndex)
+      throws IOException {
     this.rowList = rowList;
     this.externalIndex = externalIndex;
     this.internalIndex = internalIndex;
+    startRowIndex = rowList.getFirstRowIndex(externalIndex, internalIndex);
   }
 
   public Column[] currentBlock() throws IOException {
-    return cachedColumns == null ? rowList.getColumns(externalIndex, internalIndex) : cachedColumns;
+    return rowList.getColumns(externalIndex, internalIndex);
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws IOException {
     // First time call, rowList has no data
     List<SerializableRowRecordList> internalLists = rowList.getInternalRowList();
-    if (internalLists.size() == 0) {
+    if (rowList.getSerializableRowListSize() == 0) {
       return false;
     }
-    return externalIndex + 1 < internalLists.size()
-        || internalIndex + 1 < internalLists.get(externalIndex).getBlockCount();
+    return externalIndex + 1 < rowList.getSerializableRowListSize()
+        || internalIndex + 1 < rowList.getSerializableRowList(externalIndex).getBlockCount();
   }
 
   @Override
   public void next() throws IOException {
-    List<SerializableRowRecordList> internalLists = rowList.getInternalRowList();
-    if (internalIndex + 1 == internalLists.get(externalIndex).getBlockCount()) {
+    // Acquire previous columns size
+    int prevSize;
+    if (externalIndex == 0 && internalIndex == -1) {
+      prevSize = 1;
+    } else {
+      prevSize = rowList.getColumns(externalIndex, internalIndex)[0].getPositionCount();
+    }
+
+    // Move forward iterator
+    if (internalIndex + 1 == rowList.getSerializableRowList(externalIndex).getBlockCount()) {
       internalIndex = 0;
       externalIndex++;
     } else {
       internalIndex++;
     }
 
-    cachedColumns = rowList.getColumns(externalIndex, internalIndex);
+    // Update startRowIndex
+    startRowIndex += prevSize;
   }
 
+  // When rowList apply new memory control strategy, the origin iterators become invalid.
+  // We can relocate these old iterators by its startPointIndex
   public void adjust() throws IOException {
-    RowListForwardIterator iterator = rowList.constructIterator();
+    int capacity = rowList.getInternalRowListCapacity();
 
-    while (iterator.hasNext()) {
-      iterator.next();
-      Column[] columns = iterator.currentBlock();
-      if (columns == cachedColumns) {
-        this.externalIndex = iterator.externalIndex;
-        this.internalIndex = iterator.internalIndex;
-        break;
-      }
-    }
+    int externalColumnIndex = startRowIndex / capacity;
+    int internalRowIndex = startRowIndex % capacity;
+    int internalColumnIndex =
+        rowList.getSerializableRowList(externalIndex).getColumnIndex(internalRowIndex);
+
+    this.externalIndex = externalColumnIndex;
+    this.internalIndex = internalColumnIndex;
   }
 }

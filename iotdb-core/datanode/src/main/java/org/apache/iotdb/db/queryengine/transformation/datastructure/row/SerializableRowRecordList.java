@@ -379,4 +379,13 @@ public class SerializableRowRecordList implements SerializableList {
   public SerializationRecorder getSerializationRecorder() {
     return serializationRecorder;
   }
+
+  public int getFirstRowIndex(int blockIndex) {
+    int total = 0;
+    for (int i = 0; i < blockIndex; i++) {
+      total += blocks.get(i)[0].getPositionCount();
+    }
+
+    return total;
+  }
 }
