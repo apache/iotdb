@@ -14,7 +14,7 @@ import java.util.Arrays;
 
 import static java.lang.Math.*;
 
-public class TSDIFFBOSHTest {
+public class TSDIFFBOSHExample {
 
     public static long combine2Int(int int1, int int2) {
         return ((long) int1 << 32) | (int2 & 0xFFFFFFFFL);
@@ -486,11 +486,29 @@ public class TSDIFFBOSHTest {
         }
     }
 
-    private static int BOSBlockEncoder(int[] ts_block, int block_i, int block_size, int remaining, int encode_pos, byte[] cur_byte) {
+    private static int BOSBlockEncoder(String data_name, int[] ts_block, int block_i, int block_size, int remaining, int encode_pos, byte[] cur_byte) throws IOException {
 
         int[] min_delta = new int[3];
         int[] ts_block_delta = getAbsDeltaTsBlock(ts_block, block_i, block_size, remaining, min_delta);
         System.out.println(Arrays.toString(ts_block_delta));
+
+
+        String Output = "/Users/xiaojinzhao/Documents/GitHub/encoding-outlier/vldb/compression_ratio/pruning_bos_example_test/"+data_name+".csv";
+        CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
+
+        String[] head = {
+                "Delta"
+        };
+        writer.writeRecord(head);
+        for(int delta : ts_block_delta){
+            String[] record = {
+                    String.valueOf(delta)
+            };
+            writer.writeRecord(record);
+        }
+        writer.close();
+
+
 
         block_size = remaining - 1;
         int max_delta_value = min_delta[2];
@@ -1048,7 +1066,7 @@ public class TSDIFFBOSHTest {
     }
 
     public static int BOSEncoder(
-            int[] data, int block_size, byte[] encoded_result) {
+          String data_name, int[] data, int block_size, byte[] encoded_result) throws IOException {
         block_size++;
 
         int length_all = data.length;
@@ -1063,7 +1081,7 @@ public class TSDIFFBOSHTest {
 
         for (int i = 0; i < 1; i++) {
 //        for (int i = 0; i < block_num; i++) {
-            encode_pos =  BOSBlockEncoder(data, i, block_size, block_size,encode_pos,encoded_result);
+            encode_pos =  BOSBlockEncoder(data_name,data, i, block_size, block_size,encode_pos,encoded_result);
         }
 
         int remaining_length = length_all - block_num * block_size;
@@ -1080,7 +1098,7 @@ public class TSDIFFBOSHTest {
             int remaining = length_all-start;
 
 
-            encode_pos = BOSBlockEncoder(data, block_num, block_size,remaining, encode_pos,encoded_result);
+            encode_pos = BOSBlockEncoder(data_name,data, block_num, block_size,remaining, encode_pos,encoded_result);
 
         }
 
@@ -1303,7 +1321,7 @@ public class TSDIFFBOSHTest {
 
         for (String value : dataset_name) {
             input_path_list.add(input_parent_dir + value);
-            dataset_block_size.add(1024);
+            dataset_block_size.add(512);
         }
 
         output_path_list.add(output_parent_dir + "/CS-Sensors_ratio.csv"); // 0
@@ -1333,8 +1351,8 @@ public class TSDIFFBOSHTest {
 
         int repeatTime2 = 1;
 
-        for (int file_i = 9; file_i < 10; file_i++) {
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//        for (int file_i = 7; file_i < 8; file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             System.out.println(inputPath);
@@ -1390,7 +1408,7 @@ public class TSDIFFBOSHTest {
 
                 long s = System.nanoTime();
                 for (int repeat = 0; repeat < repeatTime2; repeat++) {
-                    length =  BOSEncoder(data2_arr, dataset_block_size.get(file_i), encoded_result);
+                    length =  BOSEncoder( dataset_name.get(file_i), data2_arr, dataset_block_size.get(file_i), encoded_result);
                 }
 
                 long e = System.nanoTime();
