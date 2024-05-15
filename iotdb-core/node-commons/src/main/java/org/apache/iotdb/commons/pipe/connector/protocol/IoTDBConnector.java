@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.connector.protocol;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
+import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorFactory;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -157,7 +158,7 @@ public abstract class IoTDBConnector implements PipeConnector {
                 "Compressor should be one of %s, but got %s.",
                 CONNECTOR_COMPRESSOR_SET, trimmedCompressionType),
             trimmedCompressionType);
-        compressors.add(PipeCompressor.getCompressor(trimmedCompressionType));
+        compressors.add(PipeCompressorFactory.getCompressor(trimmedCompressionType));
       }
     }
     isRpcCompressionEnabled = !compressors.isEmpty();

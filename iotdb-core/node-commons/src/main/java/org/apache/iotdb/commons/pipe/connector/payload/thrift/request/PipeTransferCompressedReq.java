@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.connector.payload.thrift.request;
 
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
+import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorFactory;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.apache.tsfile.utils.BytesUtils;
@@ -56,7 +57,7 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write((byte) compressors.size(), outputStream);
-      for (PipeCompressor compressor : compressors) {
+      for (final PipeCompressor compressor : compressors) {
         ReadWriteIOUtils.write(compressor.serialize(), outputStream);
       }
 
@@ -85,7 +86,8 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
     final List<PipeCompressor> compressors = new ArrayList<>();
     final int compressorsSize = ReadWriteIOUtils.readByte(compressedBuffer);
     for (int i = 0; i < compressorsSize; ++i) {
-      compressors.add(PipeCompressor.getCompressor(ReadWriteIOUtils.readByte(compressedBuffer)));
+      compressors.add(
+          PipeCompressorFactory.getCompressor(ReadWriteIOUtils.readByte(compressedBuffer)));
     }
 
     byte[] body = new byte[compressedBuffer.remaining()];

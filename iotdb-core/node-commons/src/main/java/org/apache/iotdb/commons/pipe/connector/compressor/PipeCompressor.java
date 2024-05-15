@@ -20,13 +20,6 @@
 package org.apache.iotdb.commons.pipe.connector.compressor;
 
 import java.io.IOException;
-import java.util.Objects;
-
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_GZIP;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_LZ4;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_LZMA2;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_SNAPPY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_ZSTD;
 
 public abstract class PipeCompressor {
 
@@ -42,6 +35,10 @@ public abstract class PipeCompressor {
     PipeCompressionType(byte index) {
       this.index = index;
     }
+
+    public byte getIndex() {
+      return index;
+    }
   }
 
   private final PipeCompressionType compressionType;
@@ -54,40 +51,7 @@ public abstract class PipeCompressor {
 
   public abstract byte[] decompress(byte[] byteArray) throws IOException;
 
-  public static PipeCompressor getCompressor(String name) {
-    if (Objects.equals(name, CONNECTOR_COMPRESSOR_SNAPPY)) {
-      return new PipeSnappyCompressor();
-    } else if (Objects.equals(name, CONNECTOR_COMPRESSOR_GZIP)) {
-      return new PipeGZIPCompressor();
-    } else if (Objects.equals(name, CONNECTOR_COMPRESSOR_LZ4)) {
-      return new PipeLZ4Compressor();
-    } else if (Objects.equals(name, CONNECTOR_COMPRESSOR_ZSTD)) {
-      return new PipeZSTDCompressor();
-    } else if (Objects.equals(name, CONNECTOR_COMPRESSOR_LZMA2)) {
-      return new PipeLZMA2Compressor();
-    } else {
-      throw new UnsupportedOperationException("PipeCompressor not found: " + name);
-    }
-  }
-
-  public static PipeCompressor getCompressor(byte index) {
-    switch (index) {
-      case 0:
-        return new PipeSnappyCompressor();
-      case 1:
-        return new PipeGZIPCompressor();
-      case 2:
-        return new PipeLZ4Compressor();
-      case 3:
-        return new PipeZSTDCompressor();
-      case 4:
-        return new PipeLZMA2Compressor();
-      default:
-        throw new IllegalArgumentException("Unknown PipeCompressionType index: " + index);
-    }
-  }
-
   public byte serialize() {
-    return compressionType.index;
+    return compressionType.getIndex();
   }
 }
