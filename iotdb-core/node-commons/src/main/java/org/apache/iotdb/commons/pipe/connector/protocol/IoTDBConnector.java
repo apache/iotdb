@@ -161,6 +161,12 @@ public abstract class IoTDBConnector implements PipeConnector {
         compressors.add(PipeCompressorFactory.getCompressor(trimmedCompressionType));
       }
     }
+    validator.validate(
+        arg -> compressors.size() <= Byte.MAX_VALUE,
+        String.format(
+            "The number of compressors should be less than or equal to %d, but got %d.",
+            Byte.MAX_VALUE, compressors.size()),
+        compressors.size());
     isRpcCompressionEnabled = !compressors.isEmpty();
 
     validator.validate(
