@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.subscription.it.local;
 
-import java.util.stream.Collectors;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -59,6 +58,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.fail;
 
@@ -326,15 +326,22 @@ public class IoTDBSubscriptionBasicIT {
                         @Override
                         public void onComplete() {
                           commitSuccessCount.incrementAndGet();
-                          LOGGER.info("async commit success, commit contexts: {}",
-                              messages.stream().map(SubscriptionMessage::getCommitContext).collect(Collectors.toList()));
+                          LOGGER.info(
+                              "async commit success, commit contexts: {}",
+                              messages.stream()
+                                  .map(SubscriptionMessage::getCommitContext)
+                                  .collect(Collectors.toList()));
                         }
 
                         @Override
                         public void onFailure(final Throwable e) {
                           commitFailureCount.incrementAndGet();
-                          LOGGER.info("async commit failed, commit contexts: {}",
-                              messages.stream().map(SubscriptionMessage::getCommitContext).collect(Collectors.toList()), e);
+                          LOGGER.info(
+                              "async commit failed, commit contexts: {}",
+                              messages.stream()
+                                  .map(SubscriptionMessage::getCommitContext)
+                                  .collect(Collectors.toList()),
+                              e);
                         }
                       });
                 }

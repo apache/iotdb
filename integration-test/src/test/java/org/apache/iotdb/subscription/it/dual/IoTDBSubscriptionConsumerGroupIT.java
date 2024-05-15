@@ -95,6 +95,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
   private static Pair<List<SubscriptionInfo>, Map<String, String>> __4C_2CG_SUBSCRIBE_TWO_TOPIC;
   private static Pair<List<SubscriptionInfo>, Map<String, String>>
       __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE;
+  private static Pair<List<SubscriptionInfo>, Map<String, String>> __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC;
 
   static final class SubscriptionInfo {
     final String consumerId;
@@ -238,6 +239,25 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
 
       __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE =
           new Pair<>(subscriptionInfoList, expectedHeaderWithResult);
+    }
+    {
+      final List<SubscriptionInfo> subscriptionInfoList = new ArrayList<>();
+      subscriptionInfoList.add(new SubscriptionInfo("c1", "cg1", Collections.singleton("all")));
+      subscriptionInfoList.add(new SubscriptionInfo("c2", "cg1", Collections.singleton("all")));
+      subscriptionInfoList.add(new SubscriptionInfo("c3", "cg1", Collections.singleton("all")));
+      subscriptionInfoList.add(new SubscriptionInfo("c4", "cg1", Collections.singleton("all")));
+      subscriptionInfoList.add(new SubscriptionInfo("c5", "cg2", Collections.singleton("all")));
+      subscriptionInfoList.add(new SubscriptionInfo("c6", "cg2", Collections.singleton("all")));
+
+      final Map<String, String> expectedHeaderWithResult = new HashMap<>();
+      expectedHeaderWithResult.put("count(root.cg1.topic1.s)", "100");
+      expectedHeaderWithResult.put("count(root.cg1.topic2.s)", "100");
+      expectedHeaderWithResult.put("count(root.cg2.topic1.s)", "100");
+      expectedHeaderWithResult.put("count(root.cg2.topic2.s)", "100");
+      expectedHeaderWithResult.put("count(root.topic1.s)", "100");
+      expectedHeaderWithResult.put("count(root.topic2.s)", "100");
+
+      __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC = new Pair<>(subscriptionInfoList, expectedHeaderWithResult);
     }
   }
 
@@ -722,6 +742,74 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
         AIR_GAP_CONNECTOR_ATTRIBUTES,
         __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.left,
         __4C_2CG_SUBSCRIBE_TWO_TOPIC_WITH_TS_FILE.right);
+  }
+
+  // ------------------------------------------------ //
+  // 6 consumers, 2 consumer groups, 1 topic (tsfile) //
+  // ------------------------------------------------ //
+
+  @Test
+  public void test6C2CGSubscribeOneTsFileTopicHistoricalDataWithAsyncConnector() throws Exception {
+    testSubscriptionHistoricalDataTemplate(
+        ASYNC_CONNECTOR_ATTRIBUTES,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+  }
+
+  @Test
+  public void test6C2CGSubscribeOneTsFileTopicHistoricalDataWithSyncConnector() throws Exception {
+    testSubscriptionHistoricalDataTemplate(
+        SYNC_CONNECTOR_ATTRIBUTES,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+  }
+
+  @Test
+  public void test6C2CGSubscribeOneTsFileTopicHistoricalDataWithLegacyConnector() throws Exception {
+    testSubscriptionHistoricalDataTemplate(
+        LEGACY_CONNECTOR_ATTRIBUTES,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+  }
+
+  @Test
+  public void test6C2CGSubscribeOneTsFileTopicHistoricalDataWithAirGapConnector() throws Exception {
+    testSubscriptionHistoricalDataTemplate(
+        AIR_GAP_CONNECTOR_ATTRIBUTES,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+  }
+
+  @Test
+  public void test6C2CGSubscribeOneTsFileTopicRealtimeDataWithAsyncConnector() throws Exception {
+    testSubscriptionRealtimeDataTemplate(
+        ASYNC_CONNECTOR_ATTRIBUTES,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+  }
+
+  @Test
+  public void test6C2CGSubscribeOneTsFileTopicRealtimeDataWithSyncConnector() throws Exception {
+    testSubscriptionRealtimeDataTemplate(
+        SYNC_CONNECTOR_ATTRIBUTES,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+  }
+
+  @Test
+  public void test6C2CGSubscribeOneTsFileTopicRealtimeDataWithLegacyConnector() throws Exception {
+    testSubscriptionRealtimeDataTemplate(
+        LEGACY_CONNECTOR_ATTRIBUTES,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
+  }
+
+  @Test
+  public void test6C2CGSubscribeOneTsFileTopicRealtimeDataWithAirGapConnector() throws Exception {
+    testSubscriptionRealtimeDataTemplate(
+        AIR_GAP_CONNECTOR_ATTRIBUTES,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.left,
+        __6C_2CG_SUBSCRIBE_TS_FILE_TOPIC.right);
   }
 
   /////////////////////////////// utility ///////////////////////////////

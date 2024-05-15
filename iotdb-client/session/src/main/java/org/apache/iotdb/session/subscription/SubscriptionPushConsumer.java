@@ -251,7 +251,6 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
           ack(messagesToAck);
           nack(messagesToNack);
         }
-
       } catch (final Exception e) {
         LOGGER.warn("something unexpected happened when auto poll messages...", e);
       }
