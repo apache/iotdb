@@ -50,6 +50,8 @@ public class SerializableTVList implements SerializableList {
 
   private List<TimeColumn> timeColumns;
 
+  private final List<Integer> columnSizes;
+
   private int size;
 
   public static SerializableTVList construct(String queryId) {
@@ -61,6 +63,7 @@ public class SerializableTVList implements SerializableList {
     this.serializationRecorder = serializationRecorder;
 
     serde = new TsBlockSerde();
+    columnSizes = new ArrayList<>();
     size = 0;
 
     init();
@@ -111,7 +114,7 @@ public class SerializableTVList implements SerializableList {
   }
 
   public int getColumnCount() {
-    return timeColumns.size();
+    return columnSizes.size();
   }
 
   // region single data methods
@@ -274,6 +277,9 @@ public class SerializableTVList implements SerializableList {
   public void putColumns(TimeColumn timeColumn, Column valueColumn) {
     timeColumns.add(timeColumn);
     valueColumns.add(valueColumn);
+
+    int columnSize = timeColumn.getPositionCount();
+    columnSizes.add(columnSize);
     size += timeColumn.getPositionCount();
   }
   // endregion
@@ -283,8 +289,8 @@ public class SerializableTVList implements SerializableList {
 
     int ret = -1;
     int total = 0;
-    for (int i = 0; i < timeColumns.size(); i++) {
-      int length = timeColumns.get(i).getPositionCount();
+    for (int i = 0; i < columnSizes.size(); i++) {
+      int length = columnSizes.get(i);
       if (pointIndex < total + length) {
         ret = i;
         break;
@@ -300,8 +306,7 @@ public class SerializableTVList implements SerializableList {
 
     int ret = -1;
     int total = 0;
-    for (TimeColumn timeColumn : timeColumns) {
-      int length = timeColumn.getPositionCount();
+    for (int length : columnSizes) {
       if (index < total + length) {
         ret = index - total;
         break;
@@ -315,7 +320,7 @@ public class SerializableTVList implements SerializableList {
   public int getLastPointIndex(int columnIndex) {
     int total = 0;
     for (int i = 0; i <= columnIndex; i++) {
-      total += timeColumns.get(i).getPositionCount();
+      total += columnSizes.get(i);
     }
 
     return total;

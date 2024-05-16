@@ -160,8 +160,10 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     int externalColumnIndex = evictionUpperBound / internalTVListCapacity;
 
     int internalRowIndex = evictionUpperBound % internalTVListCapacity;
-    int internalColumnIndex = cache.get(externalColumnIndex).getColumnIndex(internalRowIndex);
-    int tvOffsetInColumns = cache.get(externalColumnIndex).getTVOffsetInColumns(internalRowIndex);
+    int internalColumnIndex =
+        internalTVList.get(externalColumnIndex).getColumnIndex(internalRowIndex);
+    int tvOffsetInColumns =
+        internalTVList.get(externalColumnIndex).getTVOffsetInColumns(internalRowIndex);
 
     // This iterator is for memory control.
     // So there is no need to put it into iterator list since it won't be affected by new memory

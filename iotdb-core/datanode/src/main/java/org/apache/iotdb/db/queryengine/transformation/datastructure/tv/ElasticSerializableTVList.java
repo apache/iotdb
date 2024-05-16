@@ -106,8 +106,9 @@ public class ElasticSerializableTVList {
     return internalTVListCapacity;
   }
 
-  public SerializableTVList getSerializableTVList(int index) throws IOException {
-    return cache.get(index);
+  public SerializableTVList getSerializableTVList(int index) {
+    // Do not cache this TVList
+    return internalTVList.get(index);
   }
 
   public int getSerializableTVListSize() {
@@ -235,9 +236,9 @@ public class ElasticSerializableTVList {
     this.evictionUpperBound = evictionUpperBound;
   }
 
-  public int getLastPointIndex(int externalIndex, int internalIndex) throws IOException {
+  public int getLastPointIndex(int externalIndex, int internalIndex) {
     int index = internalTVListCapacity * externalIndex;
-    int offset = cache.get(externalIndex).getLastPointIndex(internalIndex);
+    int offset = internalTVList.get(externalIndex).getLastPointIndex(internalIndex);
 
     return index + offset;
   }

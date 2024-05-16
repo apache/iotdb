@@ -46,6 +46,7 @@ public class SerializableRowList implements SerializableList {
   private final int valueColumnCount;
 
   private List<Column[]> blocks;
+  private final List<Integer> blockSizes;
 
   private int skipPrefixNullCount;
 
@@ -60,6 +61,7 @@ public class SerializableRowList implements SerializableList {
     this.serializationRecorder = serializationRecorder;
     this.dataTypes = dataTypes;
     serde = new TsBlockSerde();
+    blockSizes = new ArrayList<>();
 
     valueColumnCount = dataTypes.length;
     prefixNullCount = 0;
@@ -124,7 +126,7 @@ public class SerializableRowList implements SerializableList {
   public int getBlockCount() {
     // Threat prefix null values as one column
     int additional_null_block = prefixNullCount == 0 ? 0 : 1;
-    return blocks.size() + additional_null_block;
+    return blockSizes.size() + additional_null_block;
   }
 
   // region single data methods
@@ -217,7 +219,10 @@ public class SerializableRowList implements SerializableList {
   // region batch data methods
   public void putColumns(Column[] columns) {
     blocks.add(columns);
-    skipPrefixNullCount += columns[0].getPositionCount();
+
+    int size = columns[0].getPositionCount();
+    blockSizes.add(size);
+    skipPrefixNullCount += size;
   }
 
   public void putNulls(int count) {
@@ -246,8 +251,8 @@ public class SerializableRowList implements SerializableList {
 
     int ret = -1;
     int total = 0;
-    for (int i = 0; i < blocks.size(); i++) {
-      int length = blocks.get(i)[0].getPositionCount();
+    for (int i = 0; i < blockSizes.size(); i++) {
+      int length = blockSizes.get(i);
       if (index < total + length) {
         ret = i;
         break;
@@ -269,8 +274,7 @@ public class SerializableRowList implements SerializableList {
 
     int ret = -1;
     int total = 0;
-    for (Column[] block : blocks) {
-      int length = block[0].getPositionCount();
+    for (int length : blockSizes) {
       if (index < total + length) {
         ret = index - total;
         break;
@@ -284,7 +288,7 @@ public class SerializableRowList implements SerializableList {
   public int getLastRowIndex(int blockIndex) {
     int total = prefixNullCount;
     for (int i = 0; i <= blockIndex; i++) {
-      total += blocks.get(i)[0].getPositionCount();
+      total += blockSizes.get(i);
     }
 
     return total;
