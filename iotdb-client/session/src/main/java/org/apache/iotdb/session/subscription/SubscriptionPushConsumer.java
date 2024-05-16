@@ -242,9 +242,9 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
               LOGGER.warn("Consumer listener result failure when consuming message: {}", message);
               messagesToNack.add(message);
             }
-          } catch (final Throwable t) {
+          } catch (final Exception e) {
             LOGGER.warn(
-                "Consumer listener raised an exception while consuming message: {}", message, t);
+                "Consumer listener raised an exception while consuming message: {}", message, e);
             messagesToNack.add(message);
           }
         }

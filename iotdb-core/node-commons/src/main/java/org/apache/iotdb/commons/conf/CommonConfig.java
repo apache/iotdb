@@ -235,6 +235,8 @@ public class CommonConfig {
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000; // 3 minutes
   private long twoStageAggregateSenderEndPointsCacheInMs = 3 * 60 * 1000; // 3 minutes
 
+  private float subscriptionCacheMemoryUsagePercentage = 0.1F;
+
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
   private int subscriptionMaxTabletsPerPrefetching = 16;
@@ -1033,6 +1035,15 @@ public class CommonConfig {
   public void setTwoStageAggregateSenderEndPointsCacheInMs(
       long twoStageAggregateSenderEndPointsCacheInMs) {
     this.twoStageAggregateSenderEndPointsCacheInMs = twoStageAggregateSenderEndPointsCacheInMs;
+  }
+
+  public float getSubscriptionCacheMemoryUsagePercentage() {
+    return subscriptionCacheMemoryUsagePercentage;
+  }
+
+  public void setSubscriptionCacheMemoryUsagePercentage(
+      float subscriptionCacheMemoryUsagePercentage) {
+    this.subscriptionCacheMemoryUsagePercentage = subscriptionCacheMemoryUsagePercentage;
   }
 
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {

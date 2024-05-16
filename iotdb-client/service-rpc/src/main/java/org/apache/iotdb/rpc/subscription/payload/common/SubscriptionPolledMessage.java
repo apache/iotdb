@@ -82,20 +82,6 @@ public class SubscriptionPolledMessage {
     commitContext.serialize(stream);
   }
 
-  /**
-   * @return true -> byte buffer is not null
-   */
-  public boolean trySerialize() {
-    try {
-      SubscriptionPolledMessage.serialize(this);
-    } catch (final IOException e) {
-      LOGGER.warn(
-          "Subscription: something unexpected happened when serializing SubscriptionPolledMessage",
-          e);
-    }
-    return Objects.nonNull(byteBuffer);
-  }
-
   public ByteBuffer getByteBuffer() {
     return byteBuffer;
   }

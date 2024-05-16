@@ -20,12 +20,9 @@
 package org.apache.iotdb.rpc.subscription.payload.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,28 +43,15 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
    * server.
    */
   public static PipeSubscribePollResp toTPipeSubscribeResp(
-      TSStatus status, List<SubscriptionPolledMessage> messages) {
+      TSStatus status, List<ByteBuffer> byteBuffers) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
-    resp.messages = messages;
+    // resp.messages = messages;
 
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
     resp.type = PipeSubscribeResponseType.ACK.getType();
-    try {
-      resp.body = new ArrayList<>();
-      for (final SubscriptionPolledMessage message : messages) {
-        final ByteBuffer byteBuffer =
-            Objects.nonNull(message.getByteBuffer())
-                ? message.getByteBuffer()
-                : SubscriptionPolledMessage.serialize(message);
-        resp.body.add(byteBuffer);
-        message.resetByteBuffer(); // maybe friendly for gc
-      }
-    } catch (IOException e) {
-      resp.status =
-          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_SERIALIZATION_ERROR, e.getMessage());
-    }
+    resp.body = byteBuffers;
 
     return resp;
   }

@@ -126,7 +126,12 @@ public abstract class SubscriptionPrefetchingQueue {
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public String getPrefetchingQueueId() {
-    return brokerId + "_" + topicName;
+    return generatePrefetchingQueueId(brokerId, topicName);
+  }
+
+  public static String generatePrefetchingQueueId(
+      final String consumerGroupId, final String topicName) {
+    return consumerGroupId + "_" + topicName;
   }
 
   public long getUncommittedEventCount() {

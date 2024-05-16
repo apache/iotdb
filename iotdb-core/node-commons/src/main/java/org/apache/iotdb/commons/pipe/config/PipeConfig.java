@@ -267,6 +267,12 @@ public class PipeConfig {
     return COMMON_CONFIG.getTwoStageAggregateSenderEndPointsCacheInMs();
   }
 
+  /////////////////////////////// Subscription ///////////////////////////////
+
+  public float getSubscriptionCacheMemoryUsagePercentage() {
+    return COMMON_CONFIG.getSubscriptionCacheMemoryUsagePercentage();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
@@ -376,6 +382,9 @@ public class PipeConfig {
     LOGGER.info(
         "TwoStageAggregateSenderEndPointsCacheInMs: {}",
         getTwoStageAggregateSenderEndPointsCacheInMs());
+
+    LOGGER.info(
+        "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

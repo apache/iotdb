@@ -67,12 +67,6 @@ public class SubscriptionBroker {
       if (topicNames.contains(topicName)) {
         final SubscriptionEvent event = prefetchingQueue.poll(consumerId);
         if (Objects.nonNull(event)) {
-          if (event.getMessage().trySerialize()) {
-            SubscriptionPrefetchingQueueMetrics.getInstance()
-                .mark(
-                    prefetchingQueue.getPrefetchingQueueId(),
-                    event.getMessage().getByteBuffer().limit());
-          }
           events.add(event);
         }
       }
@@ -104,11 +98,6 @@ public class SubscriptionBroker {
     final SubscriptionEvent event =
         ((SubscriptionPrefetchingTsFileQueue) prefetchingQueue)
             .pollTsFile(consumerId, fileName, writingOffset);
-    if (event.getMessage().trySerialize()) {
-      SubscriptionPrefetchingQueueMetrics.getInstance()
-          .mark(
-              prefetchingQueue.getPrefetchingQueueId(), event.getMessage().getByteBuffer().limit());
-    }
     return Collections.singletonList(event);
   }
 
