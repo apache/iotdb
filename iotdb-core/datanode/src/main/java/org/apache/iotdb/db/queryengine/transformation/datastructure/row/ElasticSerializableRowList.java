@@ -21,13 +21,11 @@ package org.apache.iotdb.db.queryengine.transformation.datastructure.row;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.InputRowUtils;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.Cache;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.RowListForwardIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.io.IOException;
@@ -164,42 +162,6 @@ public class ElasticSerializableRowList {
   }
 
   // region single row methods
-  @TestOnly
-  public void put(Object[] rowRecord) throws IOException, QueryProcessException {
-    put(rowRecord, InputRowUtils.hasNullField(rowRecord));
-  }
-
-  /**
-   * Put the row in the list with an any-field-null marker, this method is faster than calling put
-   * directly.
-   *
-   * @throws IOException by checkMemoryUsage()
-   * @throws QueryProcessException by checkMemoryUsage()
-   */
-  private void put(Object[] rowRecord, boolean hasNullField)
-      throws IOException, QueryProcessException {
-    checkExpansion();
-    cache.get(rowCount / internalRowListCapacity).putRow(rowRecord);
-    if (hasNullField) {
-      bitMaps.get(rowCount / internalRowListCapacity).mark(rowCount % internalRowListCapacity);
-    }
-    ++rowCount;
-
-    if (!disableMemoryControl) {
-      totalByteArrayLengthLimit += rowByteArrayLength;
-
-      if (rowRecord == null) {
-        totalByteArrayLength += rowByteArrayLength;
-      } else {
-        for (int indexListOfTextField : indexListOfTextFields) {
-          Binary binary = (Binary) rowRecord[indexListOfTextField];
-          totalByteArrayLength += binary == null ? 0 : binary.getLength();
-        }
-        checkMemoryUsage();
-      }
-    }
-  }
-
   public long getTime(int index) throws IOException {
     return cache.get(index / internalRowListCapacity).getTime(index % internalRowListCapacity);
   }

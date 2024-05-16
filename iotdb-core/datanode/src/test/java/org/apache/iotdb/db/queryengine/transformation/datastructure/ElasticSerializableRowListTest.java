@@ -395,40 +395,6 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
     return columns;
   }
 
-  private Object[] generateRowRecord(int time, int byteLength) {
-    Object[] rowRecord = new Object[DATA_TYPES.length + 1];
-    rowRecord[DATA_TYPES.length] = (long) time;
-    for (int i = 0; i < DATA_TYPES.length; ++i) {
-      switch (DATA_TYPES[i]) {
-        case INT32:
-          rowRecord[i] = time;
-          break;
-        case INT64:
-          rowRecord[i] = (long) time;
-          break;
-        case FLOAT:
-          rowRecord[i] = (float) time;
-          break;
-        case DOUBLE:
-          rowRecord[i] = (double) time;
-          break;
-        case BOOLEAN:
-          rowRecord[i] = time % 2 == 0;
-          break;
-        case TEXT:
-          rowRecord[i] = BytesUtils.valueOf(generateRandomString(byteLength));
-          break;
-      }
-    }
-    return rowRecord;
-  }
-
-  private Object[] generateRowRecordWithAllNullFields(int time) {
-    Object[] rowRecord = new Object[DATA_TYPES.length + 1];
-    rowRecord[DATA_TYPES.length] = (long) time;
-    return rowRecord;
-  }
-
   private String generateRandomString(int length) {
     StringBuilder stringBuilder = new StringBuilder();
     for (int i = 0; i < length; ++i) {

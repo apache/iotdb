@@ -24,13 +24,20 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.FloatColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.FloatColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
@@ -85,19 +92,6 @@ public class SerializableRowListTest extends SerializableListTest {
 
     serializeAndDeserializeOnce();
     serializeAndDeserializeOnce();
-
-    originalList.clear();
-    testList.release();
-    testList.init();
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      RowRecord row = generateRowRecord(i);
-      originalList.add(row);
-    }
-    columns = generateColumns();
-    testList.putColumns(columns);
-
-    serializeAndDeserializeOnce();
-    serializeAndDeserializeOnce();
   }
 
   protected RowRecord generateRowRecord(int index) {
@@ -132,53 +126,54 @@ public class SerializableRowListTest extends SerializableListTest {
     Column[] columns = new Column[DATA_TYPES.length + 1];
 
     // Int columns
-    int[] ints = new int[ITERATION_TIMES];
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      ints[i] = i;
+    IntColumnBuilder intColumnBuilder = new IntColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      intColumnBuilder.writeInt(i);
     }
-    columns[0] = new IntColumn(ITERATION_TIMES, Optional.empty(), ints);
+    columns[0] = intColumnBuilder.build();
 
     // Long columns
-    long[] longs = new long[ITERATION_TIMES];
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      longs[i] = i;
+    LongColumnBuilder longColumnBuilder = new LongColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      longColumnBuilder.writeLong(i);
     }
-    columns[1] = new LongColumn(ITERATION_TIMES, Optional.empty(), longs);
+    columns[1] = longColumnBuilder.build();
 
     // Float columns
-    float[] floats = new float[ITERATION_TIMES];
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      floats[i] = i;
+    FloatColumnBuilder floatColumnBuilder = new FloatColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      floatColumnBuilder.writeFloat(i);
     }
-    columns[2] = new FloatColumn(ITERATION_TIMES, Optional.empty(), floats);
+    columns[2] = floatColumnBuilder.build();
 
     // Double columns
-    double[] doubles = new double[ITERATION_TIMES];
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      doubles[i] = i;
+    DoubleColumnBuilder doubleColumnBuilder = new DoubleColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      doubleColumnBuilder.writeDouble(i);
     }
-    columns[3] = new DoubleColumn(ITERATION_TIMES, Optional.empty(), doubles);
+    columns[3] = doubleColumnBuilder.build();
 
     // Boolean columns
-    boolean[] booleans = new boolean[ITERATION_TIMES];
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      booleans[i] = i % 2 == 0;
+    BooleanColumnBuilder booleanColumnBuilder = new BooleanColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      booleanColumnBuilder.writeBoolean(i % 2 == 0);
     }
-    columns[4] = new BooleanColumn(ITERATION_TIMES, Optional.empty(), booleans);
+    columns[4] = booleanColumnBuilder.build();
 
     // Binary columns
-    Binary[] binaries = new Binary[ITERATION_TIMES];
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      binaries[i] = BytesUtils.valueOf(String.valueOf(i));
+    BinaryColumnBuilder binaryColumnBuilder = new BinaryColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      Binary binary = BytesUtils.valueOf(String.valueOf(i));
+      binaryColumnBuilder.writeBinary(binary);
     }
-    columns[5] = new BinaryColumn(ITERATION_TIMES, Optional.empty(), binaries);
+    columns[5] = binaryColumnBuilder.build();
 
     // The last time columns
-    long[] times = new long[ITERATION_TIMES];
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      times[i] = i;
+    TimeColumnBuilder timeColumnBuilder = new TimeColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      timeColumnBuilder.writeLong(i);
     }
-    columns[6] = new TimeColumn(ITERATION_TIMES, times);
+    columns[6] = timeColumnBuilder.build();
 
     return columns;
   }

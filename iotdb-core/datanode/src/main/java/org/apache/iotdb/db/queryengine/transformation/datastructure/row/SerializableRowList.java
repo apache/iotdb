@@ -127,6 +127,15 @@ public class SerializableRowList implements SerializableList {
     return blocks.size() + additional_null_block;
   }
 
+  public void putColumns(Column[] columns) {
+    blocks.add(columns);
+    skipPrefixNullCount += columns[0].getPositionCount();
+  }
+
+  public void putNulls(int count) {
+    prefixNullCount += count;
+  }
+
   public Object[] getRow(int index) {
     // Fall into prefix null values
     if (index < prefixNullCount) {
@@ -268,9 +277,13 @@ public class SerializableRowList implements SerializableList {
     return ret;
   }
 
-  public void putColumns(Column[] columns) {
-    blocks.add(columns);
-    skipPrefixNullCount += columns[0].getPositionCount();
+  public int getFirstRowIndex(int blockIndex) {
+    int total = prefixNullCount;
+    for (int i = 0; i < blockIndex; i++) {
+      total += blocks.get(i)[0].getPositionCount();
+    }
+
+    return total;
   }
 
   @Override
@@ -287,8 +300,11 @@ public class SerializableRowList implements SerializableList {
   // Other field are kept in memory
   @Override
   public void serialize(PublicBAOS outputStream) throws IOException {
+    int bufferSize = 0;
+
     // Write TsBlocks count
-    outputStream.write(blocks.size());
+    bufferSize += ReadWriteIOUtils.write(blocks.size(), outputStream);
+
     for (Column[] block : blocks) {
       TimeColumn timeColumn = (TimeColumn) block[block.length - 1];
       Column[] valueColumns = new Column[block.length - 1];
@@ -300,7 +316,10 @@ public class SerializableRowList implements SerializableList {
       byte[] byteArray = buffer.array();
       // Write TsBlocks data
       outputStream.write(byteArray);
+      bufferSize += byteArray.length;
     }
+
+    serializationRecorder.setSerializedByteLength(bufferSize);
   }
 
   // Deserialized blocks from disk to memory
@@ -320,21 +339,5 @@ public class SerializableRowList implements SerializableList {
   @Override
   public SerializationRecorder getSerializationRecorder() {
     return serializationRecorder;
-  }
-
-  public int getFirstRowIndex(int blockIndex) {
-    int total = prefixNullCount;
-    for (int i = 0; i < blockIndex; i++) {
-      total += blocks.get(i)[0].getPositionCount();
-    }
-
-    return total;
-  }
-
-  @Deprecated
-  public void putRow(Object[] rowRecord) {}
-
-  public void putNulls(int count) {
-    prefixNullCount += count;
   }
 }
