@@ -23,8 +23,13 @@ import org.apache.iotdb.db.queryengine.transformation.datastructure.Serializable
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.BinaryUtils;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.TVListForwardIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 import java.io.IOException;
 
@@ -120,14 +125,23 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     for (int i = 0; i < internalListEvictionUpperBound; ++i) {
       newESTVList.internalTVList.add(null);
     }
-    // Copy latter lists
+    // Put all null columns to middle list
     newESTVList.pointCount = internalListEvictionUpperBound * newInternalTVListCapacity;
-    TVListForwardIterator iterator = constructIteratorByEvictionUpperBound();
-    copyColumnByIterator(newESTVList, iterator);
-    while (iterator.hasNext()) {
-      iterator.next();
-      copyColumnByIterator(newESTVList, iterator);
+    int emptyColumnSize = evictionUpperBound - newESTVList.pointCount;
+    if (emptyColumnSize != 0) {
+      Binary empty = BytesUtils.valueOf("");
+      TimeColumnBuilder timeColumnBuilder = new TimeColumnBuilder(null, emptyColumnSize);
+      ColumnBuilder valueColumnBuilder = new BinaryColumnBuilder(null, emptyColumnSize);
+      for (int i = 0; i < emptyColumnSize; i++) {
+        timeColumnBuilder.writeLong(i);
+        valueColumnBuilder.writeBinary(empty);
+      }
+      TimeColumn timeColumn = (TimeColumn) timeColumnBuilder.build();
+      Column valueColumn = valueColumnBuilder.build();
+      newESTVList.putColumn(timeColumn, valueColumn);
     }
+    // Copy latter lists
+    copyLatterColumnsAfterEvictionUpperBound(newESTVList);
 
     // Assign new tvList to the old
     internalTVListCapacity = newInternalTVListCapacity;
@@ -137,8 +151,45 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     byteArrayLengthForMemoryControl = newByteArrayLengthForMemoryControl;
     totalByteArrayLengthLimit = (long) pointCount * byteArrayLengthForMemoryControl;
 
-    // Update all iterators
+    // Notify all iterators to update
     notifyAllIterators();
+  }
+
+  public void copyLatterColumnsAfterEvictionUpperBound(ElasticSerializableTVList newESTVList)
+      throws IOException {
+    int externalColumnIndex = evictionUpperBound / internalTVListCapacity;
+
+    int internalRowIndex = evictionUpperBound % internalTVListCapacity;
+    int internalColumnIndex =
+        cache.get(externalColumnIndex).getColumnIndex(internalRowIndex);
+    int tvOffsetInColumns =
+        cache.get(externalColumnIndex).getTVOffsetInColumns(internalRowIndex);
+
+    // This iterator is for memory control.
+    // So there is no need to put it into iterator list since it won't be affected by new memory
+    // control strategy.
+    TVListForwardIterator iterator =
+        new TVListForwardIterator(this, externalColumnIndex, internalColumnIndex);
+    // Get and put split columns after eviction upper bound
+    TimeColumn timeColumn = iterator.currentTimes();
+    Column valueColumn = iterator.currentValues();
+    if (tvOffsetInColumns != 0) {
+      timeColumn = (TimeColumn) timeColumn.subColumnCopy(tvOffsetInColumns);
+      valueColumn = valueColumn.subColumnCopy(tvOffsetInColumns);
+    }
+    newESTVList.putColumn(timeColumn, valueColumn);
+
+    // Copy latter columns
+    while (iterator.hasNext()) {
+      iterator.next();
+      copyColumnByIterator(newESTVList, iterator);
+    }
+  }
+
+  public void notifyAllIterators() throws IOException {
+    for (TVListForwardIterator iterator : iteratorList) {
+      iterator.adjust();
+    }
   }
 
   private void copyColumnByIterator(ElasticSerializableTVList target, TVListForwardIterator source)

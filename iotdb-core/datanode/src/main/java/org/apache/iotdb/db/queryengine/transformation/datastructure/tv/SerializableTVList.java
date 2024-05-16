@@ -295,9 +295,26 @@ public class SerializableTVList implements SerializableList {
     return ret;
   }
 
-  public int getFirstPointIndex(int columnIndex) {
+  public int getTVOffsetInColumns(int index) {
+    assert index < size;
+
+    int ret = -1;
     int total = 0;
-    for (int i = 0; i < columnIndex; i++) {
+    for (TimeColumn timeColumn : timeColumns) {
+      int length = timeColumn.getPositionCount();
+      if (index < total + length) {
+        ret = index - total;
+        break;
+      }
+      total += length;
+    }
+
+    return ret;
+  }
+
+  public int getLastPointIndex(int columnIndex) {
+    int total = 0;
+    for (int i = 0; i <= columnIndex; i++) {
       total += timeColumns.get(i).getPositionCount();
     }
 

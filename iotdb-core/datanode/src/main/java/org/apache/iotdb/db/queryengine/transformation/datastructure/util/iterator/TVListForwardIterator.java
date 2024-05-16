@@ -34,14 +34,14 @@ public class TVListForwardIterator implements ListForwardIterator {
   private int internalIndex; // Which columns in SerializableTVList
 
   // In case of tvList changing
-  private int startPointIndex; // Index of first point of the columns
+  private int endPointIndex; // Index of last point of the columns
 
   public TVListForwardIterator(ElasticSerializableTVList tvList) {
     this.tvList = tvList;
     // Point to dummy block for simplicity
     externalIndex = 0;
     internalIndex = -1;
-    startPointIndex = -1;
+    endPointIndex = 0;
   }
 
   public TVListForwardIterator(
@@ -49,7 +49,7 @@ public class TVListForwardIterator implements ListForwardIterator {
     this.tvList = tvList;
     this.externalIndex = externalIndex;
     this.internalIndex = internalIndex;
-    startPointIndex = tvList.getFirstPointIndex(externalIndex, internalIndex);
+    endPointIndex = tvList.getLastPointIndex(externalIndex, internalIndex);
   }
 
   public TimeColumn currentTimes() throws IOException {
@@ -73,14 +73,6 @@ public class TVListForwardIterator implements ListForwardIterator {
 
   @Override
   public void next() throws IOException {
-    // Acquire previous columns size
-    int prevSize;
-    if (externalIndex == 0 && internalIndex == -1) {
-      prevSize = 1;
-    } else {
-      prevSize = tvList.getTimeColumn(externalIndex, internalIndex).getPositionCount();
-    }
-
     // Move forward iterator
     if (internalIndex + 1 == tvList.getSerializableTVList(externalIndex).getColumnCount()) {
       internalIndex = 0;
@@ -89,8 +81,8 @@ public class TVListForwardIterator implements ListForwardIterator {
       internalIndex++;
     }
 
-    // Update startPointIndex
-    startPointIndex += prevSize;
+    // Assume we already consume all data in this block
+    endPointIndex += tvList.getTimeColumn(externalIndex, internalIndex).getPositionCount();
   }
 
   // When tvList apply new memory control strategy, the origin iterators become invalid.
@@ -98,10 +90,11 @@ public class TVListForwardIterator implements ListForwardIterator {
   public void adjust() throws IOException {
     int capacity = tvList.getInternalTVListCapacity();
 
-    int externalColumnIndex = startPointIndex / capacity;
-    int internalPointIndex = startPointIndex % capacity;
+    int externalColumnIndex = endPointIndex / capacity;
+    int internalPointIndex = endPointIndex % capacity;
+    // endPointIndex is not closed
     int internalColumnIndex =
-        tvList.getSerializableTVList(externalIndex).getColumnIndex(internalPointIndex);
+        tvList.getSerializableTVList(externalIndex).getColumnIndex(internalPointIndex - 1);
 
     this.externalIndex = externalColumnIndex;
     this.internalIndex = internalColumnIndex;

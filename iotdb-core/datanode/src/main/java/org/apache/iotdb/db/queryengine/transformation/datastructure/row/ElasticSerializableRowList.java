@@ -161,7 +161,7 @@ public class ElasticSerializableRowList {
     return cache.get(index);
   }
 
-  // region single row methods
+  // region single row methods for row window
   public long getTime(int index) throws IOException {
     return cache.get(index / internalRowListCapacity).getTime(index % internalRowListCapacity);
   }
@@ -187,8 +187,8 @@ public class ElasticSerializableRowList {
       Column[] insertedColumns;
       if (total + rowCount % internalRowListCapacity < internalRowListCapacity) {
         consumed = total;
-        if (begin == 0 && consumed == columns[0].getPositionCount()) {
-          // No need to copy if the list do not split
+        if (begin == 0) {
+          // No need to copy if the columns do not split
           insertedColumns = columns;
         } else {
           insertedColumns = new Column[columns.length];
@@ -269,15 +269,15 @@ public class ElasticSerializableRowList {
     return iterator;
   }
 
-  public void copyLatterColumnsAfterEvictionUpperBound(ElasticSerializableRowList newESRowList)
+  private void copyLatterColumnsAfterEvictionUpperBound(ElasticSerializableRowList newESRowList)
       throws IOException, QueryProcessException {
     int externalColumnIndex = evictionUpperBound / internalRowListCapacity;
 
     int internalRowIndex = evictionUpperBound % internalRowListCapacity;
     int internalColumnIndex =
-        internalRowList.get(externalColumnIndex).getColumnIndex(internalRowIndex);
+        cache.get(externalColumnIndex).getColumnIndex(internalRowIndex);
     int rowOffsetInColumns =
-        internalRowList.get(externalColumnIndex).getRowOffsetInColumns(internalRowIndex);
+        cache.get(externalColumnIndex).getRowOffsetInColumns(internalRowIndex);
 
     // This iterator is for memory control.
     // So there is no need to put it into iterator list since it won't be affected by new memory
@@ -299,6 +299,14 @@ public class ElasticSerializableRowList {
       copyColumnByIterator(newESRowList, iterator);
     }
   }
+
+  private void copyColumnByIterator(
+      ElasticSerializableRowList target, RowListForwardIterator source)
+      throws IOException, QueryProcessException {
+    Column[] columns = source.currentBlock();
+    target.put(columns);
+  }
+
 
   private void checkExpansion() {
     if (rowCount % internalRowListCapacity == 0) {
@@ -409,11 +417,12 @@ public class ElasticSerializableRowList {
     cache = newESRowList.cache;
     internalRowList = newESRowList.internalRowList;
     bitMaps = newESRowList.bitMaps;
-
+    // Update metrics
     byteArrayLengthForMemoryControl = newByteArrayLengthForMemoryControl;
     rowByteArrayLength = (long) byteArrayLengthForMemoryControl * indexListOfTextFields.length;
     totalByteArrayLengthLimit = (long) rowCount * rowByteArrayLength;
 
+    // Notify all iterators to update
     notifyAllIterators();
   }
 
@@ -421,13 +430,6 @@ public class ElasticSerializableRowList {
     for (RowListForwardIterator iterator : iteratorList) {
       iterator.adjust();
     }
-  }
-
-  private void copyColumnByIterator(
-      ElasticSerializableRowList target, RowListForwardIterator source)
-      throws IOException, QueryProcessException {
-    Column[] columns = source.currentBlock();
-    target.put(columns);
   }
 
   /** true if any field except the timestamp in the current row is null. */

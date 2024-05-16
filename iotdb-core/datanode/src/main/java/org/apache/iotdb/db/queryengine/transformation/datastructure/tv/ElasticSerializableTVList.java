@@ -114,7 +114,7 @@ public class ElasticSerializableTVList {
     return internalTVList.size();
   }
 
-  // region single data point methods for row window use
+  // region single data point methods for row window
   public boolean isNull(int index) throws IOException {
     return cache.get(index / internalTVListCapacity).isNull(index % internalTVListCapacity);
   }
@@ -175,14 +175,21 @@ public class ElasticSerializableTVList {
       Column insertedValueColumn;
       if (total + pointCount % internalTVListCapacity < internalTVListCapacity) {
         consumed = total;
-        insertedTimeColumn = timeColumn;
-        insertedValueColumn = valueColumn;
+        if (begin == 0) {
+          // No need to copy if the columns do not split
+          insertedTimeColumn = timeColumn;
+          insertedValueColumn = valueColumn;
+        } else {
+          insertedTimeColumn = (TimeColumn) timeColumn.getRegion(begin, consumed);
+          insertedValueColumn = valueColumn.getRegionCopy(begin, consumed);
+        }
       } else {
         consumed = internalTVListCapacity - pointCount % internalTVListCapacity;
         // Construct sub-regions
         insertedTimeColumn = (TimeColumn) timeColumn.getRegionCopy(begin, consumed);
         insertedValueColumn = valueColumn.getRegionCopy(begin, consumed);
       }
+
       end += consumed;
 
       // Fill row record list
@@ -208,25 +215,6 @@ public class ElasticSerializableTVList {
     return iterator;
   }
 
-  public TVListForwardIterator constructIteratorByEvictionUpperBound() throws IOException {
-    int externalColumnIndex = evictionUpperBound / internalTVListCapacity;
-
-    int internalPointIndex = evictionUpperBound % internalTVListCapacity;
-    int internalColumnIndex =
-        internalTVList.get(externalColumnIndex).getColumnIndex(internalPointIndex);
-
-    // This iterator is for memory control.
-    // So there is no need to put it into iterator list since it won't be affected by new memory
-    // control strategy.
-    return new TVListForwardIterator(this, externalColumnIndex, internalColumnIndex);
-  }
-
-  public void notifyAllIterators() throws IOException {
-    for (TVListForwardIterator iterator : iteratorList) {
-      iterator.adjust();
-    }
-  }
-
   private void checkExpansion() {
     if (pointCount % internalTVListCapacity == 0) {
       doExpansion();
@@ -247,20 +235,20 @@ public class ElasticSerializableTVList {
     this.evictionUpperBound = evictionUpperBound;
   }
 
-  public int getFirstPointIndex(int externalIndex, int internalIndex) throws IOException {
+  public int getLastPointIndex(int externalIndex, int internalIndex) throws IOException {
     int index = internalTVListCapacity * externalIndex;
-    int offset = cache.get(externalIndex).getFirstPointIndex(internalIndex);
+    int offset = cache.get(externalIndex).getLastPointIndex(internalIndex);
 
     return index + offset;
   }
 
-  private class LRUCache extends Cache {
+  public class LRUCache extends Cache {
 
     LRUCache(int capacity) {
       super(capacity);
     }
 
-    SerializableTVList get(int targetIndex) throws IOException {
+    public SerializableTVList get(int targetIndex) throws IOException {
       if (!containsKey(targetIndex)) {
         if (cacheCapacity <= super.size()) {
           int lastIndex = getLast();

@@ -303,12 +303,12 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
     }
   }
 
-  private Column[] generateColumnsWithRandomBinaries(int iter_times, int byteLength) {
+  private Column[] generateColumnsWithRandomBinaries(int iterTimes, int byteLength) {
     Column[] columns = new Column[DATA_TYPES.length + 1];
 
     // Int columns
     IntColumnBuilder intColumnBuilder = new IntColumnBuilder(null, ITERATION_TIMES);
-    for (int i = 0; i < iter_times; i++) {
+    for (int i = 0; i < iterTimes; i++) {
       if (i % 7 == 0) {
         intColumnBuilder.appendNull();
       } else {
@@ -319,7 +319,7 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
 
     // Long columns
     LongColumnBuilder longColumnBuilder = new LongColumnBuilder(null, ITERATION_TIMES);
-    for (int i = 0; i < iter_times; i++) {
+    for (int i = 0; i < iterTimes; i++) {
       if (i % 7 == 0) {
         longColumnBuilder.appendNull();
       } else {
@@ -330,7 +330,7 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
 
     // Float columns
     FloatColumnBuilder floatColumnBuilder = new FloatColumnBuilder(null, ITERATION_TIMES);
-    for (int i = 0; i < iter_times; i++) {
+    for (int i = 0; i < iterTimes; i++) {
       if (i % 7 == 0) {
         floatColumnBuilder.appendNull();
       } else {
@@ -341,7 +341,7 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
 
     // Double columns
     DoubleColumnBuilder doubleColumnBuilder = new DoubleColumnBuilder(null, ITERATION_TIMES);
-    for (int i = 0; i < iter_times; i++) {
+    for (int i = 0; i < iterTimes; i++) {
       if (i % 7 == 0) {
         doubleColumnBuilder.appendNull();
       } else {
@@ -352,7 +352,7 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
 
     // Boolean columns
     BooleanColumnBuilder booleanColumnBuilder = new BooleanColumnBuilder(null, ITERATION_TIMES);
-    for (int i = 0; i < iter_times; i++) {
+    for (int i = 0; i < iterTimes; i++) {
       if (i % 7 == 0) {
         booleanColumnBuilder.appendNull();
       } else {
@@ -363,7 +363,7 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
 
     // Binary columns
     BinaryColumnBuilder binaryColumnBuilder = new BinaryColumnBuilder(null, ITERATION_TIMES);
-    for (int i = 0; i < iter_times; i++) {
+    for (int i = 0; i < iterTimes; i++) {
       if (i % 7 == 0) {
         binaryColumnBuilder.appendNull();
       } else {
@@ -375,7 +375,7 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
 
     // Another binary columns
     BinaryColumnBuilder anotherbinaryColumnBuilder = new BinaryColumnBuilder(null, ITERATION_TIMES);
-    for (int i = 0; i < iter_times; i++) {
+    for (int i = 0; i < iterTimes; i++) {
       if (i % 7 == 0) {
         anotherbinaryColumnBuilder.appendNull();
       } else {
@@ -387,7 +387,7 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
 
     // The last time columns
     TimeColumnBuilder timeColumnBuilder = new TimeColumnBuilder(null, ITERATION_TIMES);
-    for (int i = 0; i < iter_times; i++) {
+    for (int i = 0; i < iterTimes; i++) {
       timeColumnBuilder.writeLong(i);
     }
     columns[7] = timeColumnBuilder.build();
