@@ -57,6 +57,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
+import org.apache.iotdb.consensus.ratis.RatisConsensus;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -2157,7 +2158,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       if (regionId instanceof DataRegionId) {
         DataRegionConsensusImpl.getInstance().createLocalPeer(regionId, peers);
       } else {
-        SchemaRegionConsensusImpl.getInstance().createLocalPeer(regionId, peers);
+        // RatisConsensus requires an empty peer list during region transition
+        final List<Peer> createPeers =
+            SchemaRegionConsensusImpl.getInstance() instanceof RatisConsensus
+                ? Collections.emptyList()
+                : peers;
+        SchemaRegionConsensusImpl.getInstance().createLocalPeer(regionId, createPeers);
       }
     } catch (ConsensusException e) {
       if (!(e instanceof ConsensusGroupAlreadyExistException)) {
