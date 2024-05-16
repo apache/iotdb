@@ -239,11 +239,13 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
             if (consumeResult.equals(ConsumeResult.SUCCESS)) {
               messagesToAck.add(message);
             } else {
-              messagesToNack.add(message);
               LOGGER.warn("Consumer listener result failure when consuming message: {}", message);
+              messagesToNack.add(message);
             }
           } catch (final Throwable t) {
-            LOGGER.warn("Consumer listener raised an exception while consuming messages", t);
+            LOGGER.warn(
+                "Consumer listener raised an exception while consuming message: {}", message, t);
+            messagesToNack.add(message);
           }
         }
 

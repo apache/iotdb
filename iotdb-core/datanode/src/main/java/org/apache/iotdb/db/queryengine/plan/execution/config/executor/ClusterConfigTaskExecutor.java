@@ -1954,7 +1954,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               "Failed to create topic %s, topic config %s is invalid.", topicName, topicConfig);
       LOGGER.warn(exceptionMessage);
       future.setException(
-          new IoTDBException(exceptionMessage, TSStatusCode.PIPE_ERROR.getStatusCode()));
+          new IoTDBException(exceptionMessage, TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode()));
       return future;
     }
 
