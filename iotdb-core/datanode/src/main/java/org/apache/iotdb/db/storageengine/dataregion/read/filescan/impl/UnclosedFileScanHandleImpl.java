@@ -68,10 +68,8 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
 
   @Override
   public boolean isDeviceTimeDeleted(IDeviceID deviceID, long timestamp) {
-
     Map<String, List<IChunkMetadata>> chunkMetadataMap = deviceToChunkMetadataMap.get(deviceID);
-    for (Map.Entry<String, List<IChunkMetadata>> entry : chunkMetadataMap.entrySet()) {
-      List<IChunkMetadata> chunkMetadataList = entry.getValue();
+    for (List<IChunkMetadata> chunkMetadataList : chunkMetadataMap.values()) {
       for (IChunkMetadata chunkMetadata : chunkMetadataList) {
         Integer deleteCursor = 0;
         if (ModificationUtils.isPointDeleted(

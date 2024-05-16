@@ -30,6 +30,8 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
 
 import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -81,12 +83,11 @@ public class QueryContext {
   }
 
   /**
-   * Find the modifications of device in 'modFile'. If they are not in the cache, read them from
-   * 'modFile' and put then into the cache. @Return a map of nested-list . It will contain all the
-   * modification of measurements under specified device.
+   * Find the modifications of device in 'modFile'. \ @Return a map of nested-list . It will contain
+   * all the modification of measurements under specified device.
    */
   public Map<String, List<Modification>> getDeviceModifications(
-      TsFileResource tsFileResource, PartialPath deviceID) {
+      TsFileResource tsFileResource, IDeviceID deviceID) {
     // if the mods file does not exist, do not add it to the cache
     if (nonExistentModFiles.contains(tsFileResource.getTsFileID())) {
       return Collections.emptyMap();
@@ -100,7 +101,7 @@ public class QueryContext {
 
     Map<String, List<Modification>> measurementModificationMap = new HashMap<>();
     for (Modification modification : modFile.getModificationsIter()) {
-      if (modification.getDevice().equals(deviceID.getFullPath())) {
+      if (modification.getDevice().equals(((PlainDeviceID) deviceID).toStringID())) {
         measurementModificationMap
             .computeIfAbsent(modification.getPath().getFullPath(), k -> new ArrayList<>())
             .add(modification);

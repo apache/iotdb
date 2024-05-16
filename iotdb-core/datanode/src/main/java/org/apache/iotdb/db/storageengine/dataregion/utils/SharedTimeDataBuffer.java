@@ -47,7 +47,7 @@ public class SharedTimeDataBuffer {
     timeBuffer = timeChunk.getData();
   }
 
-  public synchronized Long[] getPageData(int pageId) {
+  public synchronized Long[] getPageTime(int pageId) {
     int size = timeData.size();
     if (pageId < size) {
       return timeData.get(pageId);

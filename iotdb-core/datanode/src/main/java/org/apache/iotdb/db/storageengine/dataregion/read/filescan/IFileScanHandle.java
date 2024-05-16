@@ -33,52 +33,52 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * This interface is used to handle the scan of TSFile. It will supply the interface for metadata
- * check and chunkScan for one TsFile.
+ * IFileScanHandle will supply interfaces for metadata checking and chunk scanning for specified one
+ * TsFile.
  */
 public interface IFileScanHandle {
 
   /**
-   * Get the metaData of devices in current TsFile. MetaData includes the devicePath, startTime and
-   * endTime of specified devicePath.
+   * Get timeIndex for devices in current TsFile.
    *
-   * @return the iterator of DeviceStartEndTime.
+   * @return the iterator of DeviceStartEndTime, which includes devicePath and startEndTime of this
+   *     devicePath.
    */
   TsFileDeviceStartEndTimeIterator getDeviceStartEndTimeIterator() throws IOException;
 
   /**
-   * Check whether specified timestamp in the devicePath is deleted in current TsFile.
+   * Check whether timestamp is deleted in specified device.
    *
    * @param deviceID the devicePath needs to be checked.
-   * @param timestamp the timestamp for the devicePath.
-   * @return if timestamp is deleted in mods file , return true, else return false.
+   * @param timestamp time value.
+   * @return if timestamp is deleted, return true, else return false.
    */
   boolean isDeviceTimeDeleted(IDeviceID deviceID, long timestamp);
 
   /**
-   * Get the chunkMetaData of all devices in current TsFile. MetaData includes the devicePath,
-   * measurementId and chunkMetaDataList of specified devicePath.
+   * Get all the chunkMetaData in current TsFile. ChunkMetaData will be organized in device level.
    *
-   * @return the iterator of DeviceChunkMetaData.
+   * @return the iterator of DeviceChunkMetaData, which includes the devicePath, measurementId and
+   *     relating chunkMetaDataList.
    */
   Iterator<AbstractDeviceChunkMetaData> getAllDeviceChunkMetaData() throws IOException;
 
   /**
-   * Check whether specified timestamp in the timeSeries is deleted.
+   * Check whether timestamp in specified timeSeries is deleted.
    *
    * @param deviceID the devicePath needs to be checked.
    * @param timeSeriesName the timeSeries needs to be checked.
-   * @param timestamp the timestamp for the timeSeries.
-   * @return if timestamp is deleted in mods file , return true, else return false.
+   * @param timestamp time value.
+   * @return if timestamp is deleted, return true, else return false.
    */
   boolean isTimeSeriesTimeDeleted(IDeviceID deviceID, String timeSeriesName, long timestamp);
 
   /**
-   * Get the chunkHandles of all chunks needed to be scanned. ChunkHandles are used to read the
-   * chunk
+   * Get the chunkHandles of chunks needed to be scanned. ChunkHandles are used to read chunk.
    *
-   * @param chunkInfoList the list of ChunkOffset.
-   * @param statisticsList the list of Statistics.
+   * @param chunkInfoList the list of ChunkOffset, which decides the chunk needed to be scanned.
+   * @param statisticsList the list of Statistics, which will be used when there is only one page in
+   *     chunk.
    * @return the iterator of IChunkHandle.
    */
   Iterator<IChunkHandle> getChunkHandles(
@@ -91,9 +91,9 @@ public interface IFileScanHandle {
   /** If the TsFile of this handle is deleted. */
   boolean isDeleted();
 
-  /** Get the file path of target TsFile. */
+  /** Get file path of current TsFile. */
   String getFilePath();
 
-  /** Get the TsFileResource of target TsFile. */
+  /** Get TsFileResource of current TsFile. */
   TsFileResource getTsResource();
 }

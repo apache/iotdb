@@ -465,6 +465,7 @@ public class FragmentInstanceContext extends QueryContext {
     return sharedQueryDataSource;
   }
 
+  /** Lock and check if tsFileResource is deleted */
   private boolean processTsFileResource(TsFileResource tsFileResource, boolean isClosed) {
     addFilePathToMap(tsFileResource, isClosed);
     // this file may be deleted just before we lock it

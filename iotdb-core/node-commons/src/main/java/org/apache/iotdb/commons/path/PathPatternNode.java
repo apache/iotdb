@@ -71,10 +71,6 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     return name;
   }
 
-  Map<String, PathPatternNode<V, VSerializer>> getAllChildren() {
-    return children;
-  }
-
   public PathPatternNode<V, VSerializer> getChildren(String nodeName) {
     return children.getOrDefault(nodeName, null);
   }

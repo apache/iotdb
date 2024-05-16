@@ -497,10 +497,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         .getTimestamp();
   }
 
-  public Map<String, Integer> getMeasurementIndexMap() {
-    return measurementIndexMap;
-  }
-
   @Override
   public boolean isEmpty() {
     return list.rowCount() == 0;
@@ -540,5 +536,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
     AlignedTVList list = (AlignedTVList) TVList.deserialize(stream);
     return new AlignedWritableMemChunk(schemaList, list);
+  }
+
+  public List<IMeasurementSchema> getSchemaList() {
+    return schemaList;
   }
 }

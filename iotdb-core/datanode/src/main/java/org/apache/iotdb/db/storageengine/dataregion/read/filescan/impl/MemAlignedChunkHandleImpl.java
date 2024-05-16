@@ -34,12 +34,23 @@ public class MemAlignedChunkHandleImpl extends MemChunkHandleImpl {
 
   private final List<BitMap> bitMapOfValue;
   private final List<TimeRange> deletionList;
+  // start time and end time of the chunk according to bitMap
+  private final long[] startEndTime;
 
   public MemAlignedChunkHandleImpl(
-      long[] dataOfTimestamp, List<BitMap> bitMapOfValue, List<TimeRange> deletionList) {
+      long[] dataOfTimestamp,
+      List<BitMap> bitMapOfValue,
+      List<TimeRange> deletionList,
+      long[] startEndTime) {
     super(dataOfTimestamp);
     this.bitMapOfValue = bitMapOfValue;
     this.deletionList = deletionList;
+    this.startEndTime = startEndTime;
+  }
+
+  @Override
+  public long[] getPageStatisticsTime() {
+    return startEndTime;
   }
 
   @Override
@@ -50,7 +61,8 @@ public class MemAlignedChunkHandleImpl extends MemChunkHandleImpl {
       int arrayIndex = i / ARRAY_SIZE;
       int elementIndex = i % ARRAY_SIZE;
       if (!bitMapOfValue.get(arrayIndex).isMarked(elementIndex)
-          && !ModificationUtils.isPointDeleted(dataOfTimestamp[i], deletionList, deletionCursor)) {
+          && !ModificationUtils.isPointDeleted(dataOfTimestamp[i], deletionList, deletionCursor)
+          && (i == dataOfTimestamp.length - 1 || dataOfTimestamp[i] != dataOfTimestamp[i + 1])) {
         timeList.add(dataOfTimestamp[i]);
       }
     }

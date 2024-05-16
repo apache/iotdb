@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -195,6 +194,12 @@ public class ModificationUtils {
     return deletionList;
   }
 
+  /**
+   * construct a deletion list from a memtable.
+   *
+   * @param memTable memtable
+   * @param timeLowerBound time watermark
+   */
   public static List<TimeRange> constructDeletionList(
       MeasurementPath partialPath,
       IMemTable memTable,
@@ -220,8 +225,7 @@ public class ModificationUtils {
       String measurement,
       IMemTable memTable,
       List<Pair<Modification, IMemTable>> modsToMemtable,
-      long timeLowerBound)
-      throws IllegalPathException {
+      long timeLowerBound) {
     List<TimeRange> deletionList = new ArrayList<>();
     deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
     for (Modification modification : getModificationsForMemtable(memTable, modsToMemtable)) {

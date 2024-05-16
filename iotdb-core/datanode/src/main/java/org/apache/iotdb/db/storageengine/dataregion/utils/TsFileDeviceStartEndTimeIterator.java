@@ -26,6 +26,10 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Iterator;
 
+/**
+ * This class is used to iterate over the devicesTimeIndex in a TsFile to get the start and end
+ * times of each device.
+ */
 public class TsFileDeviceStartEndTimeIterator {
 
   private final DeviceTimeIndex deviceTimeIndex;

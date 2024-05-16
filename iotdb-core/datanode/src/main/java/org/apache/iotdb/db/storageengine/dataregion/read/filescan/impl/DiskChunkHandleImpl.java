@@ -46,8 +46,9 @@ public class DiskChunkHandleImpl implements IChunkHandle {
   protected final Statistics<? extends Serializable> chunkStatistic;
 
   public DiskChunkHandleImpl(
-      TsFileSequenceReader reader, long offset, Statistics<? extends Serializable> chunkStatistics)
-      throws IOException {
+      TsFileSequenceReader reader,
+      long offset,
+      Statistics<? extends Serializable> chunkStatistics) {
     this.chunkStatistic = chunkStatistics;
     this.reader = reader;
     this.offset = offset;
@@ -81,7 +82,7 @@ public class DiskChunkHandleImpl implements IChunkHandle {
           PageHeader.deserializeFrom(
               this.currentChunkDataBuffer, this.currentChunkHeader.getDataType());
     }
-    return false;
+    return true;
   }
 
   @Override

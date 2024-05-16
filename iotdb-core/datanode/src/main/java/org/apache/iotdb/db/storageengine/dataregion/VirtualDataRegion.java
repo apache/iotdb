@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegionScan;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -41,6 +42,9 @@ public class VirtualDataRegion implements IDataRegionForQuery {
 
   private static final QueryDataSource EMPTY_QUERY_DATA_SOURCE =
       new QueryDataSource(Collections.emptyList(), Collections.emptyList());
+
+  private static final QueryDataSourceForRegionScan EMPTY_REGION_QUERY_DATA_SOURCE =
+      new QueryDataSourceForRegionScan(Collections.emptyList(), Collections.emptyList());
 
   public static VirtualDataRegion getInstance() {
     return VirtualDataRegion.InstanceHolder.INSTANCE;
@@ -74,7 +78,7 @@ public class VirtualDataRegion implements IDataRegionForQuery {
       Filter globalTimeFilter,
       List<Long> timePartitions)
       throws QueryProcessException {
-    return EMPTY_QUERY_DATA_SOURCE;
+    return EMPTY_REGION_QUERY_DATA_SOURCE;
   }
 
   @Override
@@ -84,7 +88,7 @@ public class VirtualDataRegion implements IDataRegionForQuery {
       Filter globalTimeFilter,
       List<Long> timePartitions)
       throws QueryProcessException {
-    return EMPTY_QUERY_DATA_SOURCE;
+    return EMPTY_REGION_QUERY_DATA_SOURCE;
   }
 
   @Override

@@ -41,8 +41,7 @@ public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
       TsFileSequenceReader reader,
       long offset,
       Statistics<? extends Serializable> chunkStatistic,
-      SharedTimeDataBuffer sharedTimeDataBuffer)
-      throws IOException {
+      SharedTimeDataBuffer sharedTimeDataBuffer) {
     super(reader, offset, chunkStatistic);
     this.sharedTimeDataBuffer = sharedTimeDataBuffer;
   }
@@ -62,7 +61,7 @@ public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
     byte[] bitmap = new byte[(size + 7) / 8];
     currentPageDataBuffer.get(bitmap);
 
-    Long[] timeData = sharedTimeDataBuffer.getPageData(pageIndex);
+    Long[] timeData = sharedTimeDataBuffer.getPageTime(pageIndex);
     if (timeData.length != size) {
       throw new UnsupportedOperationException("Time data size not match");
     }

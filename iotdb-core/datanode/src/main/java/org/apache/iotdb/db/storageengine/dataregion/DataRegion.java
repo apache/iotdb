@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -1863,227 +1862,6 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  @Override
-  public IQueryDataSource queryForSeriesRegionScan(
-      List<PartialPath> pathList,
-      QueryContext queryContext,
-      Filter globalTimeFilter,
-      List<Long> timePartitions)
-      throws QueryProcessException {
-    try {
-      List<IFileScanHandle> seqFileScanHandles =
-          getFileHandleListForQuery(
-              tsFileManager.getTsFileList(true, timePartitions, globalTimeFilter),
-              pathList,
-              queryContext,
-              globalTimeFilter,
-              true);
-      List<IFileScanHandle> unseqFileScanHandles =
-          getFileHandleListForQuery(
-              tsFileManager.getTsFileList(false, timePartitions, globalTimeFilter),
-              pathList,
-              queryContext,
-              globalTimeFilter,
-              false);
-
-      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(SEQUENCE_TSFILE, seqFileScanHandles.size());
-      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(
-          UNSEQUENCE_TSFILE, unseqFileScanHandles.size());
-
-      QueryDataSourceForRegionScan dataSource =
-          new QueryDataSourceForRegionScan(seqFileScanHandles, unseqFileScanHandles);
-      dataSource.setDataTTL(dataTTL);
-      return dataSource;
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
-  }
-
-  @Override
-  public IQueryDataSource queryForDeviceRegionScan(
-      Map<IDeviceID, Boolean> devicePathToAligned,
-      QueryContext queryContext,
-      Filter globalTimeFilter,
-      List<Long> timePartitions)
-      throws QueryProcessException {
-    try {
-      List<IFileScanHandle> seqFileScanHandles =
-          getFileHandleListForQuery(
-              tsFileManager.getTsFileList(true, timePartitions, globalTimeFilter),
-              devicePathToAligned,
-              queryContext,
-              globalTimeFilter,
-              true);
-      List<IFileScanHandle> unseqFileScanHandles =
-          getFileHandleListForQuery(
-              tsFileManager.getTsFileList(false, timePartitions, globalTimeFilter),
-              devicePathToAligned,
-              queryContext,
-              globalTimeFilter,
-              false);
-
-      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(SEQUENCE_TSFILE, seqFileScanHandles.size());
-      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(
-          UNSEQUENCE_TSFILE, unseqFileScanHandles.size());
-
-      QueryDataSourceForRegionScan dataSource =
-          new QueryDataSourceForRegionScan(seqFileScanHandles, unseqFileScanHandles);
-      dataSource.setDataTTL(dataTTL);
-      return dataSource;
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
-  }
-
-  /** lock the read lock of the insert lock */
-  @Override
-  public void readLock() {
-    // apply read lock for SG insert lock to prevent inconsistent with concurrently writing memtable
-    insertLock.readLock().lock();
-    // apply read lock for TsFileResource list
-    tsFileManager.readLock();
-  }
-
-  /** unlock the read lock of insert lock */
-  @Override
-  public void readUnlock() {
-    tsFileManager.readUnlock();
-    insertLock.readLock().unlock();
-  }
-
-  /** lock the write lock of the insert lock */
-  public void writeLock(String holder) {
-    insertLock.writeLock().lock();
-    insertWriteLockHolder = holder;
-  }
-
-  /** unlock the write lock of the insert lock */
-  public void writeUnlock() {
-    insertWriteLockHolder = "";
-    insertLock.writeLock().unlock();
-  }
-
-  private List<IFileScanHandle> getFileHandleListForQuery(
-      Collection<TsFileResource> tsFileResources,
-      Map<IDeviceID, Boolean> devicePathToAligned,
-      QueryContext context,
-      Filter globalTimeFilter,
-      boolean isSeq)
-      throws MetadataException {
-
-    if (context.isDebug()) {
-      DEBUG_LOGGER.info(
-          "Path: {}, get tsfile list: {} isSeq: {} timefilter: {}",
-          devicePathToAligned,
-          tsFileResources,
-          isSeq,
-          (globalTimeFilter == null ? "null" : globalTimeFilter));
-    }
-
-    List<IFileScanHandle> fileScanHandles = new ArrayList<>();
-
-    long timeLowerBound =
-        dataTTL != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
-    context.setQueryTimeLowerBound(timeLowerBound);
-
-    for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(null, globalTimeFilter, isSeq, dataTTL, context.isDebug())) {
-        continue;
-      }
-      closeQueryLock.readLock().lock();
-      try {
-        if (tsFileResource.isClosed()) {
-          // Get all the modification in current device
-          fileScanHandles.add(
-              new ClosedFileScanHandleImpl(
-                  tsFileResource,
-                  buildModificationForDevice(tsFileResource, devicePathToAligned, context)));
-        } else {
-          tsFileResource
-              .getProcessor()
-              .queryForDeviceRegionScan(devicePathToAligned, context, fileScanHandles);
-        }
-      } finally {
-        closeQueryLock.readLock().unlock();
-      }
-    }
-    return fileScanHandles;
-  }
-
-  /** Get all the modification below devices */
-  private Map<IDeviceID, Map<String, List<Modification>>> buildModificationForDevice(
-      TsFileResource tsFileResource,
-      Map<IDeviceID, Boolean> devicePathToAligned,
-      QueryContext context)
-      throws IllegalPathException {
-    Map<IDeviceID, Map<String, List<Modification>>> deviceModificationMap = new HashMap<>();
-    for (Map.Entry<IDeviceID, Boolean> entry : devicePathToAligned.entrySet()) {
-      IDeviceID deviceId = entry.getKey();
-      deviceModificationMap.put(
-          deviceId, context.getDeviceModifications(tsFileResource, new PartialPath(deviceId)));
-    }
-    return deviceModificationMap;
-  }
-
-  /** Get all the modification of partialPaths */
-  private Map<IDeviceID, Map<String, List<Modification>>> buildModificationForDevice(
-      TsFileResource tsFileResource, List<PartialPath> pathList, QueryContext context) {
-    Map<IDeviceID, Map<String, List<Modification>>> deviceModificationMap = new HashMap<>();
-    for (PartialPath path : pathList) {
-      List<Modification> modificationsList = context.getPathModifications(tsFileResource, path);
-      deviceModificationMap
-          .computeIfAbsent(path.getIDeviceID(), k -> new HashMap<>())
-          .put(path.getMeasurement(), modificationsList);
-    }
-    return deviceModificationMap;
-  }
-
-  private List<IFileScanHandle> getFileHandleListForQuery(
-      Collection<TsFileResource> tsFileResources,
-      List<PartialPath> partialPaths,
-      QueryContext context,
-      Filter globalTimeFilter,
-      boolean isSeq)
-      throws MetadataException {
-
-    if (context.isDebug()) {
-      DEBUG_LOGGER.info(
-          "Path: {}, get tsfile list: {} isSeq: {} timefilter: {}",
-          partialPaths,
-          tsFileResources,
-          isSeq,
-          (globalTimeFilter == null ? "null" : globalTimeFilter));
-    }
-
-    List<IFileScanHandle> fileScanHandles = new ArrayList<>();
-
-    long timeLowerBound =
-        dataTTL != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
-    context.setQueryTimeLowerBound(timeLowerBound);
-
-    for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(null, globalTimeFilter, isSeq, dataTTL, context.isDebug())) {
-        continue;
-      }
-      closeQueryLock.readLock().lock();
-      try {
-        if (tsFileResource.isClosed()) {
-          fileScanHandles.add(
-              new ClosedFileScanHandleImpl(
-                  tsFileResource,
-                  buildModificationForDevice(tsFileResource, partialPaths, context)));
-        } else {
-          tsFileResource
-              .getProcessor()
-              .queryForSeriesRegionScan(partialPaths, context, fileScanHandles);
-        }
-      } finally {
-        closeQueryLock.readLock().unlock();
-      }
-    }
-    return fileScanHandles;
-  }
-
   /**
    * @param tsFileResources includes sealed and unsealed tsfile resources
    * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
@@ -2135,6 +1913,207 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
     return tsFileResourcesForQuery;
+  }
+
+  @Override
+  public IQueryDataSource queryForSeriesRegionScan(
+      List<PartialPath> pathList,
+      QueryContext queryContext,
+      Filter globalTimeFilter,
+      List<Long> timePartitions)
+      throws QueryProcessException {
+    try {
+      List<IFileScanHandle> seqFileScanHandles =
+          getFileHandleListForQuery(
+              tsFileManager.getTsFileList(true, timePartitions, globalTimeFilter),
+              pathList,
+              queryContext,
+              globalTimeFilter,
+              true);
+      List<IFileScanHandle> unseqFileScanHandles =
+          getFileHandleListForQuery(
+              tsFileManager.getTsFileList(false, timePartitions, globalTimeFilter),
+              pathList,
+              queryContext,
+              globalTimeFilter,
+              false);
+
+      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(SEQUENCE_TSFILE, seqFileScanHandles.size());
+      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(
+          UNSEQUENCE_TSFILE, unseqFileScanHandles.size());
+
+      QueryDataSourceForRegionScan dataSource =
+          new QueryDataSourceForRegionScan(seqFileScanHandles, unseqFileScanHandles);
+      dataSource.setDataTTL(dataTTL);
+      return dataSource;
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+  }
+
+  private List<IFileScanHandle> getFileHandleListForQuery(
+      Collection<TsFileResource> tsFileResources,
+      List<PartialPath> partialPaths,
+      QueryContext context,
+      Filter globalTimeFilter,
+      boolean isSeq)
+      throws MetadataException {
+
+    List<IFileScanHandle> fileScanHandles = new ArrayList<>();
+
+    long timeLowerBound =
+        dataTTL != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
+    context.setQueryTimeLowerBound(timeLowerBound);
+
+    for (TsFileResource tsFileResource : tsFileResources) {
+      if (!tsFileResource.isSatisfied(null, globalTimeFilter, isSeq, dataTTL, context.isDebug())) {
+        continue;
+      }
+      closeQueryLock.readLock().lock();
+      try {
+        if (tsFileResource.isClosed()) {
+          fileScanHandles.add(
+              new ClosedFileScanHandleImpl(
+                  tsFileResource,
+                  buildModificationForDevice(tsFileResource, partialPaths, context)));
+        } else {
+          tsFileResource
+              .getProcessor()
+              .queryForSeriesRegionScan(partialPaths, context, fileScanHandles);
+        }
+      } finally {
+        closeQueryLock.readLock().unlock();
+      }
+    }
+    return fileScanHandles;
+  }
+
+  @Override
+  public IQueryDataSource queryForDeviceRegionScan(
+      Map<IDeviceID, Boolean> devicePathToAligned,
+      QueryContext queryContext,
+      Filter globalTimeFilter,
+      List<Long> timePartitions)
+      throws QueryProcessException {
+    try {
+      List<IFileScanHandle> seqFileScanHandles =
+          getFileHandleListForQuery(
+              tsFileManager.getTsFileList(true, timePartitions, globalTimeFilter),
+              devicePathToAligned,
+              queryContext,
+              globalTimeFilter,
+              true);
+      List<IFileScanHandle> unseqFileScanHandles =
+          getFileHandleListForQuery(
+              tsFileManager.getTsFileList(false, timePartitions, globalTimeFilter),
+              devicePathToAligned,
+              queryContext,
+              globalTimeFilter,
+              false);
+
+      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(SEQUENCE_TSFILE, seqFileScanHandles.size());
+      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(
+          UNSEQUENCE_TSFILE, unseqFileScanHandles.size());
+
+      QueryDataSourceForRegionScan dataSource =
+          new QueryDataSourceForRegionScan(seqFileScanHandles, unseqFileScanHandles);
+      dataSource.setDataTTL(dataTTL);
+      return dataSource;
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+  }
+
+  private List<IFileScanHandle> getFileHandleListForQuery(
+      Collection<TsFileResource> tsFileResources,
+      Map<IDeviceID, Boolean> devicePathToAligned,
+      QueryContext context,
+      Filter globalTimeFilter,
+      boolean isSeq)
+      throws MetadataException {
+
+    List<IFileScanHandle> fileScanHandles = new ArrayList<>();
+
+    long timeLowerBound =
+        dataTTL != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
+    context.setQueryTimeLowerBound(timeLowerBound);
+
+    for (TsFileResource tsFileResource : tsFileResources) {
+      if (!tsFileResource.isSatisfied(null, globalTimeFilter, isSeq, dataTTL, context.isDebug())) {
+        continue;
+      }
+      closeQueryLock.readLock().lock();
+      try {
+        if (tsFileResource.isClosed()) {
+          // Get all the modification in current device
+          fileScanHandles.add(
+              new ClosedFileScanHandleImpl(
+                  tsFileResource,
+                  buildModificationForDevice(tsFileResource, devicePathToAligned, context)));
+        } else {
+          tsFileResource
+              .getProcessor()
+              .queryForDeviceRegionScan(devicePathToAligned, context, fileScanHandles);
+        }
+      } finally {
+        closeQueryLock.readLock().unlock();
+      }
+    }
+    return fileScanHandles;
+  }
+
+  /** Get all the modification below devices */
+  private Map<IDeviceID, Map<String, List<Modification>>> buildModificationForDevice(
+      TsFileResource tsFileResource,
+      Map<IDeviceID, Boolean> devicePathToAligned,
+      QueryContext context) {
+    Map<IDeviceID, Map<String, List<Modification>>> deviceModificationMap = new HashMap<>();
+    for (Map.Entry<IDeviceID, Boolean> entry : devicePathToAligned.entrySet()) {
+      IDeviceID deviceId = entry.getKey();
+      deviceModificationMap.put(deviceId, context.getDeviceModifications(tsFileResource, deviceId));
+    }
+    return deviceModificationMap;
+  }
+
+  /** Get all the modification of partialPaths */
+  private Map<IDeviceID, Map<String, List<Modification>>> buildModificationForDevice(
+      TsFileResource tsFileResource, List<PartialPath> pathList, QueryContext context) {
+    Map<IDeviceID, Map<String, List<Modification>>> deviceModificationMap = new HashMap<>();
+    for (PartialPath path : pathList) {
+      List<Modification> modificationsList = context.getPathModifications(tsFileResource, path);
+      deviceModificationMap
+          .computeIfAbsent(path.getIDeviceID(), k -> new HashMap<>())
+          .put(path.getMeasurement(), modificationsList);
+    }
+    return deviceModificationMap;
+  }
+
+  /** lock the read lock of the insert lock */
+  @Override
+  public void readLock() {
+    // apply read lock for SG insert lock to prevent inconsistent with concurrently writing memtable
+    insertLock.readLock().lock();
+    // apply read lock for TsFileResource list
+    tsFileManager.readLock();
+  }
+
+  /** unlock the read lock of insert lock */
+  @Override
+  public void readUnlock() {
+    tsFileManager.readUnlock();
+    insertLock.readLock().unlock();
+  }
+
+  /** lock the write lock of the insert lock */
+  public void writeLock(String holder) {
+    insertLock.writeLock().lock();
+    insertWriteLockHolder = holder;
+  }
+
+  /** unlock the write lock of the insert lock */
+  public void writeUnlock() {
+    insertWriteLockHolder = "";
+    insertLock.writeLock().unlock();
   }
 
   /** Seperate tsfiles in TsFileManager to sealedList and unsealedList. */

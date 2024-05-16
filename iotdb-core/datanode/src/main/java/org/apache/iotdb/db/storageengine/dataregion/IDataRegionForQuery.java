@@ -47,6 +47,7 @@ public interface IDataRegionForQuery {
       List<Long> timePartitions)
       throws QueryProcessException;
 
+  /** Get satisfied QueryDataSource from DataRegion for regionScan */
   IQueryDataSource queryForDeviceRegionScan(
       Map<IDeviceID, Boolean> devicePathToAligned,
       QueryContext queryContext,
