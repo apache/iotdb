@@ -64,6 +64,10 @@ public class TemplatedAggregationAnalyze {
       MPPQueryContext context,
       Template template) {
 
+    if (queryStatement.hasOrderByExpression()) {
+      return false;
+    }
+
     analysis.setNoWhereAndAggregation(false);
 
     List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
@@ -93,7 +97,7 @@ public class TemplatedAggregationAnalyze {
       return true;
     }
 
-    analyzeHaving(analysis, queryStatement, schemaTree, deviceList);
+    analyzeHaving(analysis, queryStatement);
 
     analyzeDeviceToAggregation(analysis);
     analyzeDeviceToSourceTransform(analysis);
@@ -177,11 +181,7 @@ public class TemplatedAggregationAnalyze {
     return true;
   }
 
-  private static void analyzeHaving(
-      Analysis analysis,
-      QueryStatement queryStatement,
-      ISchemaTree schemaTree,
-      List<PartialPath> deviceSet) {
+  private static void analyzeHaving(Analysis analysis, QueryStatement queryStatement) {
     if (!queryStatement.hasHaving()) {
       return;
     }

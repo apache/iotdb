@@ -287,11 +287,11 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
     return new AlignedSeriesAggregationScanNode(
         planNodeId,
         alignedPath,
-        typeProvider.getTemplatedInfo().aggregationDescriptorList,
+        typeProvider.getTemplatedInfo().getAggregationDescriptorList(),
         typeProvider.getTemplatedInfo().getScanOrder(),
-        typeProvider.getTemplatedInfo().outputEndTime,
+        typeProvider.getTemplatedInfo().isOutputEndTime(),
         typeProvider.getTemplatedInfo().getPushDownPredicate(),
-        typeProvider.getTemplatedInfo().groupByTimeParameter,
+        typeProvider.getTemplatedInfo().getGroupByTimeParameter(),
         null);
   }
 

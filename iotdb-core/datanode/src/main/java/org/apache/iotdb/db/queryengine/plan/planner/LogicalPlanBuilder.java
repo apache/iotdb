@@ -736,9 +736,6 @@ public class LogicalPlanBuilder {
       GroupByTimeParameter groupByTimeParameter,
       AggregationStep curStep,
       Ordering scanOrder) {
-    if (aggregationExpressions == null) {
-      return this;
-    }
 
     this.root =
         createSlidingWindowAggregationNode(

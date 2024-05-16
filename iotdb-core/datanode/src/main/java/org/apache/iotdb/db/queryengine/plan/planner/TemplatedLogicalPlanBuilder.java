@@ -35,12 +35,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationSt
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
 
 /**
  * This class provides accelerated implementation for multiple devices align by device query. This
@@ -167,17 +171,29 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
   }
 
   public TemplatedLogicalPlanBuilder planSlidingWindowAggregation(
+      QueryStatement queryStatement,
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
-      AggregationStep curStep,
       Ordering scanOrder) {
-    if (aggregationExpressions == null) {
+    if (!queryStatement.isGroupByTime() || !analysis.getGroupByTimeParameter().hasOverlap()) {
       return this;
     }
 
+    LinkedHashSet<Expression> slidingWindowsExpressions = new LinkedHashSet<>();
+    aggregationExpressions.forEach(
+        expression -> {
+          if (!DEVICE.equalsIgnoreCase(expression.getOutputSymbol())) {
+            slidingWindowsExpressions.add(expression);
+          }
+        });
     this.root =
         createSlidingWindowAggregationNode(
-            this.getRoot(), aggregationExpressions, groupByTimeParameter, curStep, scanOrder);
+            this.getRoot(),
+            slidingWindowsExpressions,
+            groupByTimeParameter,
+            AggregationStep.FINAL,
+            scanOrder);
+
     return this;
   }
 

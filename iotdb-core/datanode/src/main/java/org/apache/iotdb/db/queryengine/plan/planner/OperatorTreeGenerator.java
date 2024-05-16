@@ -494,7 +494,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<String> inputColumnNames;
     List<String> outputColumnNames = node.getOutputColumnNames();
     if (outputColumnNames == null) {
-      if (context.getTypeProvider().getTemplatedInfo().aggregationDescriptorList != null) {
+      if (context.getTypeProvider().getTemplatedInfo().getAggregationDescriptorList() != null) {
         // TODO fix it
         // outputColumnNames is aggregation expression
         outputColumnNames = context.getTypeProvider().getTemplatedInfo().getDeviceViewOutputNames();
@@ -600,14 +600,15 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, LocalExecutionPlanContext context) {
     if (context.isBuildPlanUseTemplate()) {
+      // TODO template situation, variables such as aggregator, scanOptions may be serialized once
       return constructAlignedSeriesAggregationScanOperator(
           node.getPlanNodeId(),
           node.getAlignedPath(),
-          context.getTemplatedInfo().aggregationDescriptorList,
+          context.getTemplatedInfo().getAggregationDescriptorList(),
           context.getTemplatedInfo().getPushDownPredicate(),
           context.getTemplatedInfo().getScanOrder(),
-          context.getTemplatedInfo().groupByTimeParameter,
-          context.getTemplatedInfo().outputEndTime,
+          context.getTemplatedInfo().getGroupByTimeParameter(),
+          context.getTemplatedInfo().isOutputEndTime(),
           context);
     }
 
@@ -640,7 +641,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
       Expression expression = descriptor.getInputExpressions().get(0);
       if (expression instanceof TimeSeriesOperand) {
-        // TODO for template_agg, no need use getPath.getMeasurement
         String inputSeries =
             ((TimeSeriesOperand) (descriptor.getInputExpressions().get(0)))
                 .getPath()
@@ -654,7 +654,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                     descriptor.getAggregationFuncName(),
                     descriptor.getAggregationType(),
                     Collections.singletonList(seriesDataType),
-                    // TODO inputExpression must be devicePath+measurement
                     descriptor.getInputExpressions(),
                     descriptor.getInputAttributes(),
                     ascending,
@@ -669,7 +668,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                     descriptor.getAggregationFuncName(),
                     descriptor.getAggregationType(),
                     Collections.singletonList(TSDataType.INT64),
-                    // TODO inputExpression must be devicePath+measurement
                     descriptor.getInputExpressions(),
                     descriptor.getInputAttributes(),
                     ascending,
@@ -698,7 +696,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           convertPredicateToFilter(
               pushDownPredicate,
               alignedPath.getMeasurementList(),
-              // TODO what's the meaning of isBuildPlanUseTemplate
               context.getTypeProvider().getTemplatedInfo() != null,
               context.getTypeProvider()));
     }
@@ -1364,7 +1361,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     final Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
 
     for (Expression projectExpression : projectExpressions) {
-      ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, projectExpression);
+      if (context.isBuildPlanUseTemplate()) {
+        ExpressionTypeAnalyzer.analyzeExpressionUsingTemplatedInfo(
+            expressionTypes, projectExpression, context.getTemplatedInfo());
+      } else {
+        ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, projectExpression);
+      }
     }
 
     boolean hasNonMappableUDF = false;
@@ -1764,13 +1766,24 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
     for (AggregationDescriptor descriptor : aggregationDescriptors) {
       List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
+      List<TSDataType> dataTypes = new ArrayList<>();
+      for (Expression expression : descriptor.getInputExpressions()) {
+        if (context.isBuildPlanUseTemplate() && expression instanceof TimeSeriesOperand) {
+          dataTypes.add(
+              context
+                  .getTemplatedInfo()
+                  .getSchemaMap()
+                  .get(expression.getExpressionString())
+                  .getType());
+        } else {
+          dataTypes.add(context.getTypeProvider().getType(expression.getExpressionString()));
+        }
+      }
       aggregators.add(
           SlidingWindowAggregatorFactory.createSlidingWindowAggregator(
               descriptor.getAggregationFuncName(),
               descriptor.getAggregationType(),
-              descriptor.getInputExpressions().stream()
-                  .map(x -> context.getTypeProvider().getType(x.getExpressionString()))
-                  .collect(Collectors.toList()),
+              dataTypes,
               descriptor.getInputExpressions(),
               descriptor.getInputAttributes(),
               ascending,

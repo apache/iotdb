@@ -270,7 +270,7 @@ public class TemplatedAnalyze {
     }
   }
 
-  private static void analyzeDeviceToOrderBy(
+  static void analyzeDeviceToOrderBy(
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,

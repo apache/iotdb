@@ -77,15 +77,12 @@ public class TemplatedInfo {
   private int maxTsBlockLineNum = -1;
 
   // variables related to predicate push down
-  // TODO when to init pushDownPredicate in agg situation?
   private Expression pushDownPredicate;
 
   // variables related to aggregation
-  public List<AggregationDescriptor> aggregationDescriptorList;
-  public GroupByTimeParameter groupByTimeParameter;
-  public boolean outputEndTime;
-
-  private Expression havingExpression;
+  private List<AggregationDescriptor> aggregationDescriptorList;
+  private final GroupByTimeParameter groupByTimeParameter;
+  private final boolean outputEndTime;
 
   public TemplatedInfo(
       List<String> measurementList,
@@ -117,11 +114,11 @@ public class TemplatedInfo {
     this.predicate = predicate;
     if (predicate != null) {
       this.keepNull = keepNull;
-      this.schemaMap = schemaMap;
       this.filterLayoutMap = filterLayoutMap;
     }
     this.pushDownPredicate = pushDownPredicate;
 
+    this.schemaMap = schemaMap;
     this.aggregationDescriptorList = aggregationDescriptorList;
     this.groupByTimeParameter = groupByTimeParameter;
     this.outputEndTime = outputEndTime;
@@ -202,6 +199,22 @@ public class TemplatedInfo {
     return projectExpressions;
   }
 
+  public void setAggregationDescriptorList(List<AggregationDescriptor> aggregationDescriptorList) {
+    this.aggregationDescriptorList = aggregationDescriptorList;
+  }
+
+  public List<AggregationDescriptor> getAggregationDescriptorList() {
+    return this.aggregationDescriptorList;
+  }
+
+  public GroupByTimeParameter getGroupByTimeParameter() {
+    return this.groupByTimeParameter;
+  }
+
+  public boolean isOutputEndTime() {
+    return outputEndTime;
+  }
+
   public static Map<String, List<InputLocation>> makeLayout(List<String> measurementList) {
     Map<String, List<InputLocation>> outputMappings = new LinkedHashMap<>();
     int tsBlockIndex = 0;
@@ -273,6 +286,8 @@ public class TemplatedInfo {
     } else {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     }
+
+    ReadWriteIOUtils.write(outputEndTime, byteBuffer);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
@@ -332,6 +347,8 @@ public class TemplatedInfo {
     } else {
       ReadWriteIOUtils.write((byte) 0, stream);
     }
+
+    ReadWriteIOUtils.write(outputEndTime, stream);
   }
 
   public static TemplatedInfo deserialize(ByteBuffer byteBuffer) {
@@ -377,19 +394,20 @@ public class TemplatedInfo {
     long limitValue = ReadWriteIOUtils.readLong(byteBuffer);
 
     Expression predicate = null;
-    byte hasFilter = ReadWriteIOUtils.readByte(byteBuffer);
-    Map<String, IMeasurementSchema> currentSchemaMap = null;
-    Map<String, List<InputLocation>> layoutMap = null;
     boolean keepNull = false;
+    Map<String, List<InputLocation>> filterLayoutMap = null;
+    byte hasFilter = ReadWriteIOUtils.readByte(byteBuffer);
     if (hasFilter == 1) {
       predicate = Expression.deserialize(byteBuffer);
       keepNull = ReadWriteIOUtils.readBool(byteBuffer);
-      currentSchemaMap = new HashMap<>();
-      for (IMeasurementSchema measurementSchema : measurementSchemaList) {
-        currentSchemaMap.put(measurementSchema.getMeasurementId(), measurementSchema);
-      }
-      layoutMap = makeLayout(measurementList);
+      filterLayoutMap = makeLayout(measurementList);
     }
+
+    Map<String, IMeasurementSchema> measurementSchemaMap =
+        new HashMap<>(measurementSchemaList.size());
+    measurementSchemaList.forEach(
+        measurementSchema ->
+            measurementSchemaMap.put(measurementSchema.getMeasurementId(), measurementSchema));
 
     Expression pushDownPredicate = null;
     byte hasPushDownFilter = ReadWriteIOUtils.readByte(byteBuffer);
@@ -412,7 +430,7 @@ public class TemplatedInfo {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
 
-    // TODO add outputEndTime serialization and deserialization
+    boolean outputEndTime = ReadWriteIOUtils.readBool(byteBuffer);
 
     return new TemplatedInfo(
         measurementList,
@@ -426,11 +444,11 @@ public class TemplatedInfo {
         limitValue,
         predicate,
         keepNull,
-        currentSchemaMap,
-        layoutMap,
+        measurementSchemaMap,
+        filterLayoutMap,
         pushDownPredicate,
         aggregationDescriptorList,
         groupByTimeParameter,
-        false);
+        outputEndTime);
   }
 }

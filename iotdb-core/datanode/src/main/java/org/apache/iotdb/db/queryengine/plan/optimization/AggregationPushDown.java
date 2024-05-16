@@ -194,6 +194,7 @@ public class AggregationPushDown implements PlanOptimizer {
     @Override
     public PlanNode visitSingleDeviceView(SingleDeviceViewNode node, RewriterContext context) {
       context.setCurDevice(node.getDevice());
+      context.setCurDevicePath(new PartialPath(node.getDevice().split(",")));
       PlanNode rewrittenChild = node.getChild().accept(this, context);
       node.setChild(rewrittenChild);
       return node;

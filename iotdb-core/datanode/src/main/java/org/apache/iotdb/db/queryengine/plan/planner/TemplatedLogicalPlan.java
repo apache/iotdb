@@ -298,19 +298,10 @@ public class TemplatedLogicalPlan {
   // ============== Methods below are used for templated aggregation ======================
 
   private PlanNode visitAggregation() {
+    // group by level and group by tag is not allowed in align by device
     boolean outputPartial =
-        queryStatement.isGroupByLevel()
-            || queryStatement.isGroupByTag()
-            || (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap());
+        queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap();
     AggregationStep curStep = outputPartial ? AggregationStep.PARTIAL : AggregationStep.SINGLE;
-
-    if (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap()) {
-      curStep =
-          (queryStatement.isGroupByLevel() || queryStatement.isGroupByTag())
-              ? AggregationStep.INTERMEDIATE
-              : AggregationStep.FINAL;
-    }
-
     aggregationDescriptorList =
         constructAggregationDescriptorList(analysis.getAggregationExpressions(), curStep);
     updateTypeProvider(analysis.getAggregationExpressions());
@@ -321,13 +312,14 @@ public class TemplatedLogicalPlan {
                   aggregationDescriptor, context.getTypeProvider()));
     }
 
-    context.getTypeProvider().getTemplatedInfo().aggregationDescriptorList =
-        aggregationDescriptorList;
-
-    LogicalPlanBuilder planBuilder =
+    LogicalPlanBuilder templatedPlanBuilder =
         new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList);
     Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
-    deduplicatedDescriptors = getDeduplicatedDescriptors(aggregationDescriptorList);
+    aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
+    context
+        .getTypeProvider()
+        .getTemplatedInfo()
+        .setAggregationDescriptorList(aggregationDescriptorList);
     for (PartialPath devicePath : analysis.getDeviceList()) {
       String deviceName = devicePath.getFullPath();
       PlanNode rootNode = visitDeviceAggregationBody(devicePath, curStep);
@@ -339,46 +331,44 @@ public class TemplatedLogicalPlan {
       deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
     }
 
-    // convert to ALIGN BY DEVICE view
-    planBuilder =
-        planBuilder.planDeviceView(
-            deviceToSubPlanMap,
-            analysis.getDeviceViewOutputExpressions(),
-            analysis.getDeviceViewInputIndexesMap(),
-            analysis.getSelectExpressions(),
-            queryStatement,
-            analysis);
-
-    planBuilder =
-        planBuilder.planHavingAndTransform(
-            analysis.getHavingExpression(),
-            analysis.getSelectExpressions(),
-            analysis.getOrderByExpressions(),
-            queryStatement.isGroupByTime(),
-            queryStatement.getResultTimeOrder());
+    templatedPlanBuilder =
+        templatedPlanBuilder
+            .planDeviceView(
+                deviceToSubPlanMap,
+                analysis.getDeviceViewOutputExpressions(),
+                analysis.getDeviceViewInputIndexesMap(),
+                analysis.getSelectExpressions(),
+                queryStatement,
+                analysis)
+            .planHavingAndTransform(
+                analysis.getHavingExpression(),
+                analysis.getSelectExpressions(),
+                analysis.getOrderByExpressions(),
+                queryStatement.isGroupByTime(),
+                queryStatement.getResultTimeOrder());
 
     if (!queryStatement.needPushDownSort()) {
-      planBuilder = planBuilder.planOrderBy(queryStatement, analysis);
+      templatedPlanBuilder = templatedPlanBuilder.planOrderBy(queryStatement, analysis);
     }
 
-    planBuilder =
-        planBuilder
+    templatedPlanBuilder =
+        templatedPlanBuilder
             .planFill(analysis.getFillDescriptor(), queryStatement.getResultTimeOrder())
             .planOffset(queryStatement.getRowOffset());
 
     if (!analysis.isUseTopKNode() || queryStatement.hasOffset()) {
-      planBuilder = planBuilder.planLimit(queryStatement.getRowLimit());
+      templatedPlanBuilder = templatedPlanBuilder.planLimit(queryStatement.getRowLimit());
     }
 
-    return planBuilder.getRoot();
+    return templatedPlanBuilder.getRoot();
   }
 
   private PlanNode visitDeviceAggregationBody(PartialPath devicePath, AggregationStep curStep) {
-    TemplatedLogicalPlanBuilder planBuilder =
+    TemplatedLogicalPlanBuilder templatedPlanBuilder =
         new TemplatedLogicalPlanBuilder(analysis, context, newMeasurementList, newSchemaList);
 
-    planBuilder =
-        planBuilder
+    templatedPlanBuilder =
+        templatedPlanBuilder
             .planRawDataSource(
                 devicePath,
                 queryStatement.getResultTimeOrder(),
@@ -388,30 +378,23 @@ public class TemplatedLogicalPlan {
             .planFilter(
                 whereExpression,
                 queryStatement.isGroupByTime(),
+                queryStatement.getResultTimeOrder())
+            .planRawDataAggregation(
+                analysis.getAggregationExpressions(),
+                null,
+                analysis.getGroupByTimeParameter(),
+                analysis.getGroupByParameter(),
+                queryStatement.isOutputEndTime(),
+                curStep,
+                queryStatement.getResultTimeOrder(),
+                aggregationDescriptorList)
+            .planSlidingWindowAggregation(
+                queryStatement,
+                analysis.getAggregationExpressions(),
+                analysis.getGroupByTimeParameter(),
                 queryStatement.getResultTimeOrder());
 
-    planBuilder =
-        planBuilder.planRawDataAggregation(
-            analysis.getAggregationExpressions(),
-            null,
-            analysis.getGroupByTimeParameter(),
-            analysis.getGroupByParameter(),
-            queryStatement.isOutputEndTime(),
-            curStep,
-            queryStatement.getResultTimeOrder(),
-            deduplicatedDescriptors);
-
-    if (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap()) {
-      planBuilder =
-          planBuilder.planSlidingWindowAggregation(
-              analysis.getSelectExpressions(),
-              analysis.getGroupByTimeParameter(),
-              curStep,
-              queryStatement.getResultTimeOrder());
-    }
-
-    // no group by level and group by tag
-    return planBuilder.getRoot();
+    return templatedPlanBuilder.getRoot();
   }
 
   private List<AggregationDescriptor> constructAggregationDescriptorList(

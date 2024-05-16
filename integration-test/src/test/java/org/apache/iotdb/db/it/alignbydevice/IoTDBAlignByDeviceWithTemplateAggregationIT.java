@@ -32,6 +32,7 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
@@ -100,32 +101,95 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
         expectedHeader,
         retArray);
 
-    // value filter + having + group by time
+    // ascending with descending
+
+    // group by session, condition,
+
+    // wildcard: agg(*)
+
+    // count_time(*)
+
+    // agg operation expression : agg(s1+1)
+
+    // duplicate select expressions
+
+    // non aligned template: sg1
+
+    // filter cannot push down
+
+    // having count(s1+s2)
+  }
+
+  @Test
+  public void groupByTest() {
+    //
+    String[] expectedHeader =
+        new String[] {"Time,Device,max_time(s1),last_value(s1),last_value(s2)"};
+    String[] retArray =
+        new String[] {
+          "1,root.sg2.d1,2,2.2,false,",
+          "5,root.sg2.d1,5,5.5,true,",
+          "1,root.sg2.d2,2,22.2,false,",
+          "5,root.sg2.d2,5,50.0,false,",
+          "1,root.sg2.d3,1,111.1,true,",
+        };
+    resultSetEqualTest(
+        "select max_time(s1), last_value(s1), last_value(s2) from root.sg2.** group by ([1,10), 2ms) having last_value(s2) is not null limit 5 align by device;",
+        expectedHeader,
+        retArray);
+
+    // sliding window
     expectedHeader = new String[] {"Time,Device,max_time(s1),last_value(s1),last_value(s2)"};
     retArray =
         new String[] {
           "1,root.sg2.d1,2,2.2,false,",
           "1,root.sg2.d2,2,22.2,false,",
+          "3,root.sg2.d2,5,50.0,false,",
           "5,root.sg2.d2,5,50.0,false,",
           "7,root.sg2.d3,8,8.8,false,",
+          "3,root.sg2.d4,5,5555.5,false,",
           "5,root.sg2.d4,5,5555.5,false,",
         };
     resultSetEqualTest(
-        "SELECT max_time(s1), last_value(s1), last_value(s2) FROM root.sg2.** where s3+1=1316 or s2=false group by ([1,10),2ms) having avg(s1)>0 align by device;",
+        "SELECT max_time(s1), last_value(s1), last_value(s2) FROM root.sg2.** where s3+1=1316 or s2=false group by ([1,10),3ms,2ms) having avg(s1)>0 align by device;",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void orderByTest() {
+    String[] expectedHeader = new String[] {"Time,Device,sum(s3)"};
+    String[] retArray =
+        new String[] {
+          "4,root.sg2.d1,5.0,",
+          "4,root.sg2.d2,5.0,",
+          "4,root.sg2.d3,44.0,",
+          "4,root.sg2.d4,5555.0,",
+          "2,root.sg2.d1,2.0,",
+        };
+    resultSetEqualTest(
+        "select sum(s3) from root.sg2.** where s1>1 GROUP BY([0, 10), 2ms) order by time desc offset 8 limit 5 align by device;",
         expectedHeader,
         retArray);
 
-    // agg operation expression
+    expectedHeader = new String[] {"Time,Device,sum(s3)"};
+    retArray =
+        new String[] {
+          "0,root.sg2.d1,1.0,",
+          "2,root.sg2.d1,2.0,",
+          "4,root.sg2.d1,5.0,",
+          "0,root.sg2.d2,11.0,",
+          "2,root.sg2.d2,22.0,",
+        };
+    resultSetEqualTest(
+        "select sum(s3) from root.sg2.** where s1>1 GROUP BY([0, 10), 2ms) order by count(s2) desc limit 5 align by device;",
+        expectedHeader,
+        retArray);
 
-    // group by session,
-
-    // order by
-
-    // wildcald
-
-    // ascending with descending
-
-    // count_time
+    // order by non-existent measurement
+    assertTestFail(
+        "select sum(s3) from root.sg2.** where s1>1 order by count(s_null) desc limit 5 align by device;",
+        "count(s_null) in order by clause doesn't exist.");
   }
 
   protected static void insertData() {
