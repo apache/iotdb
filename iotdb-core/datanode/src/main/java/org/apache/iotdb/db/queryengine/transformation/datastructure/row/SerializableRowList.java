@@ -281,9 +281,9 @@ public class SerializableRowList implements SerializableList {
     return ret;
   }
 
-  public int getFirstRowIndex(int blockIndex) {
+  public int getLastRowIndex(int blockIndex) {
     int total = prefixNullCount;
-    for (int i = 0; i < blockIndex; i++) {
+    for (int i = 0; i <= blockIndex; i++) {
       total += blocks.get(i)[0].getPositionCount();
     }
 

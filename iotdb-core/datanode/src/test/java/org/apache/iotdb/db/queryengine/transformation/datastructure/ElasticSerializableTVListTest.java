@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,31 +60,6 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
   public void tearDown() {
     super.tearDown();
   }
-
-  //  @Test
-  //  public void testESIntTVList() {
-  //    testESTVList(TSDataType.INT32);
-  //  }
-  //
-  //  @Test
-  //  public void testESLongTVList() {
-  //    testESTVList(TSDataType.INT64);
-  //  }
-  //
-  //  @Test
-  //  public void testESFloatTVList() {
-  //    testESTVList(TSDataType.FLOAT);
-  //  }
-  //
-  //  @Test
-  //  public void testESDoubleTVList() {
-  //    testESTVList(TSDataType.DOUBLE);
-  //  }
-  //
-  //  @Test
-  //  public void testESTextTVList() {
-  //    testESTVList(TSDataType.TEXT);
-  //  }
 
   @Test
   public void testESIntTVListWithBatchInsert() {
@@ -116,19 +92,6 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     }
   }
 
-  //  @Test
-  //  public void testESBooleanTVList() {
-  //    testESTVList(TSDataType.BOOLEAN);
-  //  }
-
-  //  private void testESTVList(TSDataType dataType) {
-  //    initESTVList(dataType);
-  //
-  //    testPut(dataType);
-  //
-  //    testOrderedAccessByIndex(dataType);
-  //  }
-
   private void initESTVList(TSDataType dataType) {
     tvList =
         ElasticSerializableTVList.construct(
@@ -136,180 +99,40 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     assertEquals(0, tvList.size());
   }
 
-  //  private void testPut(TSDataType dataType) {
-  //    try {
-  //      switch (dataType) {
-  //        case INT32:
-  //          for (int i = 0; i < ITERATION_TIMES; ++i) {
-  //            if (i % 7 == 0) {
-  //              tvList.putNull(i);
-  //            } else {
-  //              tvList.putInt(i, i);
-  //            }
-  //          }
-  //          break;
-  //        case INT64:
-  //          for (int i = 0; i < ITERATION_TIMES; ++i) {
-  //            if (i % 7 == 0) {
-  //              tvList.putNull(i);
-  //            } else {
-  //              tvList.putLong(i, i);
-  //            }
-  //          }
-  //          break;
-  //        case FLOAT:
-  //          for (int i = 0; i < ITERATION_TIMES; ++i) {
-  //            if (i % 7 == 0) {
-  //              tvList.putNull(i);
-  //            } else {
-  //              tvList.putFloat(i, i);
-  //            }
-  //          }
-  //          break;
-  //        case DOUBLE:
-  //          for (int i = 0; i < ITERATION_TIMES; ++i) {
-  //            if (i % 7 == 0) {
-  //              tvList.putNull(i);
-  //            } else {
-  //              tvList.putDouble(i, i);
-  //            }
-  //          }
-  //          break;
-  //        case BOOLEAN:
-  //          for (int i = 0; i < ITERATION_TIMES; ++i) {
-  //            if (i % 7 == 0) {
-  //              tvList.putNull(i);
-  //            } else {
-  //              tvList.putBoolean(i, i % 2 == 0);
-  //            }
-  //          }
-  //          break;
-  //        case TEXT:
-  //          for (int i = 0; i < ITERATION_TIMES; ++i) {
-  //            if (i % 7 == 0) {
-  //              tvList.putNull(i);
-  //            } else {
-  //              tvList.putBinary(i, Binary.valueOf(String.valueOf(i)));
-  //            }
-  //          }
-  //          break;
-  //      }
-  //    } catch (IOException e) {
-  //      fail(e.toString());
-  //    }
-  //    assertEquals(ITERATION_TIMES, tvList.size());
-  //  }
+  @Test
+  public void testMemoryControl() {
+    initESTVList(TSDataType.TEXT);
 
-  private void testOrderedAccessByIndex(TSDataType dataType) {
+    int byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 2;
+    int byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 8;
+
     try {
-      switch (dataType) {
-        case INT32:
-          for (int i = 0; i < ITERATION_TIMES; ++i) {
-            assertEquals(i, tvList.getTime(i));
-            if (i % 7 == 0) {
-              assertTrue(tvList.isNull(i));
-            } else {
-              assertFalse(tvList.isNull(i));
-              assertEquals(i, tvList.getInt(i));
-            }
-          }
-          break;
-        case INT64:
-          for (int i = 0; i < ITERATION_TIMES; ++i) {
-            assertEquals(i, tvList.getTime(i));
-            if (i % 7 == 0) {
-              assertTrue(tvList.isNull(i));
-            } else {
-              assertFalse(tvList.isNull(i));
-              assertEquals(i, tvList.getLong(i));
-            }
-          }
-          break;
-        case FLOAT:
-          for (int i = 0; i < ITERATION_TIMES; ++i) {
-            assertEquals(i, tvList.getTime(i));
-            if (i % 7 == 0) {
-              assertTrue(tvList.isNull(i));
-            } else {
-              assertFalse(tvList.isNull(i));
-              assertEquals(i, tvList.getFloat(i), 0);
-            }
-          }
-          break;
-        case DOUBLE:
-          for (int i = 0; i < ITERATION_TIMES; ++i) {
-            assertEquals(i, tvList.getTime(i));
-            if (i % 7 == 0) {
-              assertTrue(tvList.isNull(i));
-            } else {
-              assertFalse(tvList.isNull(i));
-              assertEquals(i, tvList.getDouble(i), 0);
-            }
-          }
-          break;
-        case BOOLEAN:
-          for (int i = 0; i < ITERATION_TIMES; ++i) {
-            assertEquals(i, tvList.getTime(i));
-            if (i % 7 == 0) {
-              assertTrue(tvList.isNull(i));
-            } else {
-              assertFalse(tvList.isNull(i));
-              assertEquals(i % 2 == 0, tvList.getBoolean(i));
-            }
-          }
-          break;
-        case TEXT:
-          for (int i = 0; i < ITERATION_TIMES; ++i) {
-            assertEquals(i, tvList.getTime(i));
-            if (i % 7 == 0) {
-              assertTrue(tvList.isNull(i));
-            } else {
-              assertFalse(tvList.isNull(i));
-              assertEquals(BytesUtils.valueOf(String.valueOf(i)), tvList.getBinary(i));
-            }
-          }
-          break;
-      }
+      generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
+      TVListForwardIterator iterator = tvList.constructIterator();
+      testBinaryLengthMatch(iterator, byteLengthMin, byteLengthMax);
+
+      byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 16;
+      byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 32;
+      generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
+      testBinaryLengthMatch(iterator, byteLengthMin, byteLengthMax);
+
+      byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 256;
+      byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 512;
+      generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
+      testBinaryLengthMatch(iterator, byteLengthMin, byteLengthMax);
+
+      generateColumnsWithRandomBinaries(ITERATION_TIMES * 2, byteLengthMin, byteLengthMax);
+      testBinaryLengthMatch(iterator, byteLengthMin, byteLengthMax);
+
+      assertEquals(ITERATION_TIMES * 5, tvList.size());
     } catch (IOException e) {
-      fail(e.toString());
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
-    @Test
-    public void testMemoryControl() {
-      initESTVList(TSDataType.TEXT);
-
-      int byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 2;
-      int byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 8;
-
-      try {
-        generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
-        TVListForwardIterator iterator = tvList.constructIterator();
-        testBinaryLengthMatch(iterator, byteLengthMin, byteLengthMax);
-
-        byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 16;
-        byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 32;
-        generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
-        testBinaryLengthMatch(iterator, byteLengthMin, byteLengthMax);
-
-
-        byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 256;
-        byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 512;
-        generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
-        testBinaryLengthMatch(iterator, byteLengthMin, byteLengthMax);
-
-
-        generateColumnsWithRandomBinaries(ITERATION_TIMES * 2, byteLengthMin, byteLengthMax);
-        testBinaryLengthMatch(iterator, byteLengthMin, byteLengthMax);
-
-        assertEquals(ITERATION_TIMES * 5, tvList.size());
-      } catch (IOException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
-    }
-
-  private void generateColumnsWithRandomBinaries(int iterTimes, int byteLengthMin, int byteLengthMax) throws IOException {
+  private void generateColumnsWithRandomBinaries(
+      int iterTimes, int byteLengthMin, int byteLengthMax) throws IOException {
     Random random = new Random();
     TimeColumnBuilder timeColumnBuilder = new TimeColumnBuilder(null, iterTimes);
     BinaryColumnBuilder binaryColumnBuilder = new BinaryColumnBuilder(null, iterTimes);
@@ -319,7 +142,8 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
       if (i % 7 == 0) {
         binaryColumnBuilder.appendNull();
       } else {
-        String randomString = generateRandomString(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin));
+        String randomString =
+            generateRandomString(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin));
         Binary value = BytesUtils.valueOf(randomString);
         binaryColumnBuilder.writeBinary(value);
       }
@@ -331,7 +155,8 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     tvList.putColumn(timeColumn, valueColumn);
   }
 
-  private void testBinaryLengthMatch(TVListForwardIterator iterator, int byteLengthMin, int byteLengthMax) throws IOException {
+  private void testBinaryLengthMatch(
+      TVListForwardIterator iterator, int byteLengthMin, int byteLengthMax) throws IOException {
     int index = 0;
 
     while (iterator.hasNext()) {

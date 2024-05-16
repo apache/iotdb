@@ -274,10 +274,8 @@ public class ElasticSerializableRowList {
     int externalColumnIndex = evictionUpperBound / internalRowListCapacity;
 
     int internalRowIndex = evictionUpperBound % internalRowListCapacity;
-    int internalColumnIndex =
-        cache.get(externalColumnIndex).getColumnIndex(internalRowIndex);
-    int rowOffsetInColumns =
-        cache.get(externalColumnIndex).getRowOffsetInColumns(internalRowIndex);
+    int internalColumnIndex = cache.get(externalColumnIndex).getColumnIndex(internalRowIndex);
+    int rowOffsetInColumns = cache.get(externalColumnIndex).getRowOffsetInColumns(internalRowIndex);
 
     // This iterator is for memory control.
     // So there is no need to put it into iterator list since it won't be affected by new memory
@@ -306,7 +304,6 @@ public class ElasticSerializableRowList {
     Column[] columns = source.currentBlock();
     target.put(columns);
   }
-
 
   private void checkExpansion() {
     if (rowCount % internalRowListCapacity == 0) {
@@ -438,9 +435,9 @@ public class ElasticSerializableRowList {
     return bitMaps.get(index / internalRowListCapacity).isMarked(index % internalRowListCapacity);
   }
 
-  public int getFirstRowIndex(int externalIndex, int internalIndex) throws IOException {
+  public int getLastRowIndex(int externalIndex, int internalIndex) throws IOException {
     int index = internalRowListCapacity * externalIndex;
-    int offset = cache.get(externalIndex).getFirstRowIndex(internalIndex);
+    int offset = cache.get(externalIndex).getLastRowIndex(internalIndex);
 
     return index + offset;
   }

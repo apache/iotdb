@@ -33,14 +33,14 @@ public class RowListForwardIterator implements ListForwardIterator {
   private int internalIndex; // Which columns in SerializableRowRecordList
 
   // In case of rowList changing
-  private int startRowIndex; // Index of first row of the columns
+  private int endRowIndex; // Index of last row of the columns(open)
 
   public RowListForwardIterator(ElasticSerializableRowList rowList) {
     this.rowList = rowList;
     // Point to dummy block for simplicity
     externalIndex = 0;
     internalIndex = -1;
-    startRowIndex = -1;
+    endRowIndex = 0;
   }
 
   public RowListForwardIterator(
@@ -48,7 +48,7 @@ public class RowListForwardIterator implements ListForwardIterator {
     this.rowList = rowList;
     this.externalIndex = externalIndex;
     this.internalIndex = internalIndex;
-    startRowIndex = rowList.getFirstRowIndex(externalIndex, internalIndex);
+    endRowIndex = rowList.getLastRowIndex(externalIndex, internalIndex);
   }
 
   public Column[] currentBlock() throws IOException {
@@ -67,14 +67,6 @@ public class RowListForwardIterator implements ListForwardIterator {
 
   @Override
   public void next() throws IOException {
-    // Acquire previous columns size
-    int prevSize;
-    if (externalIndex == 0 && internalIndex == -1) {
-      prevSize = 1;
-    } else {
-      prevSize = rowList.getColumns(externalIndex, internalIndex)[0].getPositionCount();
-    }
-
     // Move forward iterator
     if (internalIndex + 1 == rowList.getSerializableRowList(externalIndex).getBlockCount()) {
       internalIndex = 0;
@@ -83,8 +75,8 @@ public class RowListForwardIterator implements ListForwardIterator {
       internalIndex++;
     }
 
-    // Update startRowIndex
-    startRowIndex += prevSize;
+    // Assume we already consume all data in this block
+    endRowIndex += rowList.getColumns(externalIndex, internalIndex)[0].getPositionCount();
   }
 
   // When rowList apply new memory control strategy, the origin iterators become invalid.
@@ -93,16 +85,13 @@ public class RowListForwardIterator implements ListForwardIterator {
     // Ensure the row list capacity is updated
     int capacity = rowList.getInternalRowListCapacity();
 
-    int externalColumnIndex = startRowIndex / capacity;
-    int internalRowIndex = startRowIndex % capacity;
+    int externalColumnIndex = endRowIndex / capacity;
+    int internalRowIndex = endRowIndex % capacity;
+    // endPointIndex is not closed, i.e. endPointIndex)
     int internalColumnIndex =
-        rowList.getSerializableRowList(externalIndex).getColumnIndex(internalRowIndex);
+        rowList.getSerializableRowList(externalIndex).getColumnIndex(internalRowIndex - 1);
 
     this.externalIndex = externalColumnIndex;
     this.internalIndex = internalColumnIndex;
-  }
-
-  public void moveForwardStartRowIndex(int step) {
-    startRowIndex += step;
   }
 }

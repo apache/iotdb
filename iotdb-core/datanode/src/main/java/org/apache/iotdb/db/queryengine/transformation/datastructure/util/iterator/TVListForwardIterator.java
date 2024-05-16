@@ -34,7 +34,7 @@ public class TVListForwardIterator implements ListForwardIterator {
   private int internalIndex; // Which columns in SerializableTVList
 
   // In case of tvList changing
-  private int endPointIndex; // Index of last point of the columns
+  private int endPointIndex; // Index of last point of the columns(open)
 
   public TVListForwardIterator(ElasticSerializableTVList tvList) {
     this.tvList = tvList;
@@ -92,7 +92,7 @@ public class TVListForwardIterator implements ListForwardIterator {
 
     int externalColumnIndex = endPointIndex / capacity;
     int internalPointIndex = endPointIndex % capacity;
-    // endPointIndex is not closed
+    // endPointIndex is not closed, i.e. endPointIndex)
     int internalColumnIndex =
         tvList.getSerializableTVList(externalIndex).getColumnIndex(internalPointIndex - 1);
 
