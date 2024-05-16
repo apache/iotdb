@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandle;
@@ -52,9 +54,13 @@ import java.util.stream.Collectors;
 public class ClosedFileScanHandleImpl implements IFileScanHandle {
 
   private final TsFileResource tsFileResource;
+  private final Map<IDeviceID, Map<String, List<Modification>>> deviceToModifications;
 
-  public ClosedFileScanHandleImpl(TsFileResource tsFileResource) {
+  public ClosedFileScanHandleImpl(
+      TsFileResource tsFileResource,
+      Map<IDeviceID, Map<String, List<Modification>>> deviceToModifications) {
     this.tsFileResource = tsFileResource;
+    this.deviceToModifications = deviceToModifications;
   }
 
   @Override
@@ -67,7 +73,29 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
 
   @Override
   public boolean isDeviceTimeDeleted(IDeviceID deviceID, long timestamp) {
+    for (Map.Entry<String, List<Modification>> entry :
+        deviceToModifications.get(deviceID).entrySet()) {
+      if (entry.getValue().stream()
+          .anyMatch(
+              modification ->
+                  modification instanceof Deletion
+                      && ((Deletion) modification).getStartTime() <= timestamp
+                      && ((Deletion) modification).getEndTime() >= timestamp)) {
+        return true;
+      }
+    }
     return false;
+  }
+
+  @Override
+  public boolean isTimeSeriesTimeDeleted(
+      IDeviceID deviceID, String timeSeriesName, long timestamp) {
+    return deviceToModifications.get(deviceID).get(timeSeriesName).stream()
+        .anyMatch(
+            modification ->
+                modification instanceof Deletion
+                    && ((Deletion) modification).getStartTime() <= timestamp
+                    && ((Deletion) modification).getEndTime() >= timestamp);
   }
 
   @Override
@@ -99,11 +127,6 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
       }
     }
     return deviceChunkMetaDataList.iterator();
-  }
-
-  @Override
-  public boolean isTimeSeriesTimeDeleted(String timeSeriesName, long timestamp) {
-    return false;
   }
 
   @Override

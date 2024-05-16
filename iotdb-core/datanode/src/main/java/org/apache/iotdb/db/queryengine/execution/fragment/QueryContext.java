@@ -33,6 +33,7 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -77,6 +78,40 @@ public class QueryContext {
     this.debug = debug;
     this.startTime = startTime;
     this.timeout = timeout;
+  }
+
+  /**
+   * Find the modifications of device in 'modFile'. If they are not in the cache, read them from
+   * 'modFile' and put then into the cache. @Return a map of nested-list . It will contain all the
+   * modification of measurements under specified device.
+   */
+  public Map<String, List<Modification>> getDeviceModifications(
+      TsFileResource tsFileResource, PartialPath deviceID) {
+    // if the mods file does not exist, do not add it to the cache
+    if (nonExistentModFiles.contains(tsFileResource.getTsFileID())) {
+      return Collections.emptyMap();
+    }
+
+    ModificationFile modFile = tsFileResource.getModFile();
+    if (!modFile.exists()) {
+      nonExistentModFiles.add(tsFileResource.getTsFileID());
+      return Collections.emptyMap();
+    }
+
+    Map<String, List<Modification>> measurementModificationMap = new HashMap<>();
+    for (Modification modification : modFile.getModificationsIter()) {
+      if (modification.getDevice().equals(deviceID.getFullPath())) {
+        measurementModificationMap
+            .computeIfAbsent(modification.getPath().getFullPath(), k -> new ArrayList<>())
+            .add(modification);
+      }
+    }
+
+    // Sort modification list in map
+    for (Map.Entry<String, List<Modification>> entry : measurementModificationMap.entrySet()) {
+      entry.setValue(ModificationFile.sortAndMerge(entry.getValue()));
+    }
+    return measurementModificationMap;
   }
 
   /**

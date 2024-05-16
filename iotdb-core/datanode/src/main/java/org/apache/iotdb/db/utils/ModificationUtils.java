@@ -19,13 +19,20 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.Pair;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ModificationUtils {
@@ -140,10 +147,108 @@ public class ModificationUtils {
         });
   }
 
+  public static boolean isPointDeleted(
+      long timestamp, List<TimeRange> deletionList, Integer deleteCursor) {
+    while (deletionList != null && deleteCursor < deletionList.size()) {
+      if (deletionList.get(deleteCursor).contains(timestamp)) {
+        return true;
+      } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
+        deleteCursor++;
+      } else {
+        return false;
+      }
+    }
+    return false;
+  }
+
   private static void doModifyChunkMetaData(Modification modification, IChunkMetadata metaData) {
     if (modification instanceof Deletion) {
       Deletion deletion = (Deletion) modification;
       metaData.insertIntoSortedDeletions(deletion.getTimeRange());
     }
+  }
+
+  /** Methods for modification in memory table */
+  public static List<List<TimeRange>> constructDeletionList(
+      AlignedPath partialPath,
+      IMemTable memTable,
+      List<Pair<Modification, IMemTable>> modsToMemtable,
+      long timeLowerBound) {
+    List<List<TimeRange>> deletionList = new ArrayList<>();
+    for (String measurement : partialPath.getMeasurementList()) {
+      List<TimeRange> columnDeletionList = new ArrayList<>();
+      columnDeletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
+      for (Modification modification :
+          ModificationUtils.getModificationsForMemtable(memTable, modsToMemtable)) {
+        if (modification instanceof Deletion) {
+          Deletion deletion = (Deletion) modification;
+          PartialPath fullPath = partialPath.concatNode(measurement);
+          if (deletion.getPath().matchFullPath(fullPath)
+              && deletion.getEndTime() > timeLowerBound) {
+            long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
+            columnDeletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
+          }
+        }
+      }
+      deletionList.add(TimeRange.sortAndMerge(columnDeletionList));
+    }
+    return deletionList;
+  }
+
+  public static List<TimeRange> constructDeletionList(
+      MeasurementPath partialPath,
+      IMemTable memTable,
+      List<Pair<Modification, IMemTable>> modsToMemtable,
+      long timeLowerBound) {
+    List<TimeRange> deletionList = new ArrayList<>();
+    deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
+    for (Modification modification : getModificationsForMemtable(memTable, modsToMemtable)) {
+      if (modification instanceof Deletion) {
+        Deletion deletion = (Deletion) modification;
+        if (deletion.getPath().matchFullPath(partialPath)
+            && deletion.getEndTime() > timeLowerBound) {
+          long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
+          deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
+        }
+      }
+    }
+    return TimeRange.sortAndMerge(deletionList);
+  }
+
+  public static List<TimeRange> constructDeletionList(
+      String deviceID,
+      String measurement,
+      IMemTable memTable,
+      List<Pair<Modification, IMemTable>> modsToMemtable,
+      long timeLowerBound)
+      throws IllegalPathException {
+    List<TimeRange> deletionList = new ArrayList<>();
+    deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
+    for (Modification modification : getModificationsForMemtable(memTable, modsToMemtable)) {
+      if (modification instanceof Deletion) {
+        Deletion deletion = (Deletion) modification;
+        PartialPath partialPath = deletion.getPath();
+        if ((partialPath.getDevice().equals(deviceID)
+                && partialPath.getMeasurement().equals(measurement))
+            && deletion.getEndTime() > timeLowerBound) {
+          long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
+          deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
+        }
+      }
+    }
+    return TimeRange.sortAndMerge(deletionList);
+  }
+
+  private static List<Modification> getModificationsForMemtable(
+      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable) {
+    List<Modification> modifications = new ArrayList<>();
+    boolean foundMemtable = false;
+    for (Pair<Modification, IMemTable> entry : modsToMemtable) {
+      if (foundMemtable || entry.right.equals(memTable)) {
+        modifications.add(entry.left);
+        foundMemtable = true;
+      }
+    }
+    return modifications;
   }
 }

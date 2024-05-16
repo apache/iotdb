@@ -66,11 +66,12 @@ public interface IFileScanHandle {
   /**
    * Check whether specified timestamp in the timeSeries is deleted.
    *
+   * @param deviceID the devicePath needs to be checked.
    * @param timeSeriesName the timeSeries needs to be checked.
    * @param timestamp the timestamp for the timeSeries.
    * @return if timestamp is deleted in mods file , return true, else return false.
    */
-  boolean isTimeSeriesTimeDeleted(String timeSeriesName, long timestamp);
+  boolean isTimeSeriesTimeDeleted(IDeviceID deviceID, String timeSeriesName, long timestamp);
 
   /**
    * Get the chunkHandles of all chunks needed to be scanned. ChunkHandles are used to read the

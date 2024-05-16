@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileDeviceStartEndTimeIterator;
+import org.apache.iotdb.db.utils.ModificationUtils;
 
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -45,12 +46,12 @@ import java.util.Map;
 public class UnclosedFileScanHandleImpl implements IFileScanHandle {
 
   private final TsFileResource tsFileResource;
-  private final Map<IDeviceID, List<IChunkMetadata>> deviceToChunkMetadataMap;
-  private final Map<IDeviceID, Map<String, List<MemChunkHandleImpl>>> deviceToMemChunkHandleMap;
+  private final Map<IDeviceID, Map<String, List<IChunkMetadata>>> deviceToChunkMetadataMap;
+  private final Map<IDeviceID, Map<String, List<IChunkHandle>>> deviceToMemChunkHandleMap;
 
   public UnclosedFileScanHandleImpl(
-      Map<IDeviceID, List<IChunkMetadata>> deviceToChunkMetadataMap,
-      Map<IDeviceID, Map<String, List<MemChunkHandleImpl>>> deviceToMemChunkHandleMap,
+      Map<IDeviceID, Map<String, List<IChunkMetadata>>> deviceToChunkMetadataMap,
+      Map<IDeviceID, Map<String, List<IChunkHandle>>> deviceToMemChunkHandleMap,
       TsFileResource tsFileResource) {
     this.deviceToChunkMetadataMap = deviceToChunkMetadataMap;
     this.deviceToMemChunkHandleMap = deviceToMemChunkHandleMap;
@@ -67,35 +68,62 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
 
   @Override
   public boolean isDeviceTimeDeleted(IDeviceID deviceID, long timestamp) {
+
+    Map<String, List<IChunkMetadata>> chunkMetadataMap = deviceToChunkMetadataMap.get(deviceID);
+    for (Map.Entry<String, List<IChunkMetadata>> entry : chunkMetadataMap.entrySet()) {
+      List<IChunkMetadata> chunkMetadataList = entry.getValue();
+      for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+        Integer deleteCursor = 0;
+        if (ModificationUtils.isPointDeleted(
+            timestamp, chunkMetadata.getDeleteIntervalList(), deleteCursor)) {
+          return true;
+        }
+      }
+    }
     return false;
   }
 
   @Override
   public Iterator<AbstractDeviceChunkMetaData> getAllDeviceChunkMetaData() throws IOException {
     List<AbstractDeviceChunkMetaData> deviceChunkMetaDataList = new ArrayList<>();
-    for (Map.Entry<IDeviceID, List<IChunkMetadata>> entry : deviceToChunkMetadataMap.entrySet()) {
+    for (Map.Entry<IDeviceID, Map<String, List<IChunkMetadata>>> entry :
+        deviceToChunkMetadataMap.entrySet()) {
       IDeviceID deviceID = entry.getKey();
-      List<IChunkMetadata> chunkMetadataList = entry.getValue();
+      Map<String, List<IChunkMetadata>> chunkMetadataList = entry.getValue();
       if (chunkMetadataList.isEmpty()) {
         continue;
       }
-      boolean isAligned = chunkMetadataList.get(0) instanceof AlignedChunkMetadata;
-      if (isAligned) {
-        List<AlignedChunkMetadata> alignedChunkMetadataList = new ArrayList<>();
-        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-          alignedChunkMetadataList.add((AlignedChunkMetadata) chunkMetadata);
+      for (Map.Entry<String, List<IChunkMetadata>> measurementMetaData :
+          chunkMetadataList.entrySet()) {
+        String timeSeriesName = measurementMetaData.getKey();
+        List<IChunkMetadata> curChunkMetadataList = measurementMetaData.getValue();
+        if (timeSeriesName.isEmpty()) {
+          List<AlignedChunkMetadata> alignedChunkMetadataList = new ArrayList<>();
+          for (IChunkMetadata chunkMetadata : curChunkMetadataList) {
+            alignedChunkMetadataList.add((AlignedChunkMetadata) chunkMetadata);
+          }
+          deviceChunkMetaDataList.add(
+              new AlignedDeviceChunkMetaData(deviceID, alignedChunkMetadataList));
+        } else {
+          deviceChunkMetaDataList.add(new DeviceChunkMetaData(deviceID, curChunkMetadataList));
         }
-        deviceChunkMetaDataList.add(
-            new AlignedDeviceChunkMetaData(deviceID, alignedChunkMetadataList));
-      } else {
-        deviceChunkMetaDataList.add(new DeviceChunkMetaData(deviceID, chunkMetadataList));
       }
     }
     return deviceChunkMetaDataList.iterator();
   }
 
   @Override
-  public boolean isTimeSeriesTimeDeleted(String timeSeriesName, long timestamp) {
+  public boolean isTimeSeriesTimeDeleted(
+      IDeviceID deviceID, String timeSeriesName, long timestamp) {
+    List<IChunkMetadata> chunkMetadataList =
+        deviceToChunkMetadataMap.get(deviceID).get(timeSeriesName);
+    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+      Integer deleteCursor = 0;
+      if (ModificationUtils.isPointDeleted(
+          timestamp, chunkMetadata.getDeleteIntervalList(), deleteCursor)) {
+        return true;
+      }
+    }
     return false;
   }
 
@@ -105,7 +133,7 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
       throws IOException {
     List<IChunkHandle> chunkHandleList = new ArrayList<>();
     for (ChunkOffsetInfo chunkOffsetInfo : chunkInfoList) {
-      List<MemChunkHandleImpl> chunkHandle =
+      List<IChunkHandle> chunkHandle =
           deviceToMemChunkHandleMap
               .get(chunkOffsetInfo.getDevicePath())
               .get(chunkOffsetInfo.getMeasurementPath());

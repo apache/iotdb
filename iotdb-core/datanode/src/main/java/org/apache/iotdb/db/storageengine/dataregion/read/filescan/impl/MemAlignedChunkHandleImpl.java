@@ -19,26 +19,38 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
+import org.apache.iotdb.db.utils.ModificationUtils;
+
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.BitMap;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
+
 public class MemAlignedChunkHandleImpl extends MemChunkHandleImpl {
 
-  private final BitMap bitMapOfValue;
+  private final List<BitMap> bitMapOfValue;
+  private final List<TimeRange> deletionList;
 
-  public MemAlignedChunkHandleImpl(long[] dataOfTimestamp, BitMap bitMapOfValue) {
+  public MemAlignedChunkHandleImpl(
+      long[] dataOfTimestamp, List<BitMap> bitMapOfValue, List<TimeRange> deletionList) {
     super(dataOfTimestamp);
     this.bitMapOfValue = bitMapOfValue;
+    this.deletionList = deletionList;
   }
 
   @Override
   public long[] getDataTime() throws IOException {
     List<Long> timeList = new ArrayList<>();
+    Integer deletionCursor = 0;
     for (int i = 0; i < dataOfTimestamp.length; i++) {
-      if (!bitMapOfValue.isMarked(i)) {
+      int arrayIndex = i / ARRAY_SIZE;
+      int elementIndex = i % ARRAY_SIZE;
+      if (!bitMapOfValue.get(arrayIndex).isMarked(elementIndex)
+          && !ModificationUtils.isPointDeleted(dataOfTimestamp[i], deletionList, deletionCursor)) {
         timeList.add(dataOfTimestamp[i]);
       }
     }

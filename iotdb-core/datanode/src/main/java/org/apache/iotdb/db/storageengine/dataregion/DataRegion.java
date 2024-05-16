@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -80,6 +81,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -1991,7 +1993,11 @@ public class DataRegion implements IDataRegionForQuery {
       closeQueryLock.readLock().lock();
       try {
         if (tsFileResource.isClosed()) {
-          fileScanHandles.add(new ClosedFileScanHandleImpl(tsFileResource));
+          // Get all the modification in current device
+          fileScanHandles.add(
+              new ClosedFileScanHandleImpl(
+                  tsFileResource,
+                  buildModificationForDevice(tsFileResource, devicePathToAligned, context)));
         } else {
           tsFileResource
               .getProcessor()
@@ -2002,6 +2008,34 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
     return fileScanHandles;
+  }
+
+  /** Get all the modification below devices */
+  private Map<IDeviceID, Map<String, List<Modification>>> buildModificationForDevice(
+      TsFileResource tsFileResource,
+      Map<IDeviceID, Boolean> devicePathToAligned,
+      QueryContext context)
+      throws IllegalPathException {
+    Map<IDeviceID, Map<String, List<Modification>>> deviceModificationMap = new HashMap<>();
+    for (Map.Entry<IDeviceID, Boolean> entry : devicePathToAligned.entrySet()) {
+      IDeviceID deviceId = entry.getKey();
+      deviceModificationMap.put(
+          deviceId, context.getDeviceModifications(tsFileResource, new PartialPath(deviceId)));
+    }
+    return deviceModificationMap;
+  }
+
+  /** Get all the modification of partialPaths */
+  private Map<IDeviceID, Map<String, List<Modification>>> buildModificationForDevice(
+      TsFileResource tsFileResource, List<PartialPath> pathList, QueryContext context) {
+    Map<IDeviceID, Map<String, List<Modification>>> deviceModificationMap = new HashMap<>();
+    for (PartialPath path : pathList) {
+      List<Modification> modificationsList = context.getPathModifications(tsFileResource, path);
+      deviceModificationMap
+          .computeIfAbsent(path.getIDeviceID(), k -> new HashMap<>())
+          .put(path.getMeasurement(), modificationsList);
+    }
+    return deviceModificationMap;
   }
 
   private List<IFileScanHandle> getFileHandleListForQuery(
@@ -2034,7 +2068,10 @@ public class DataRegion implements IDataRegionForQuery {
       closeQueryLock.readLock().lock();
       try {
         if (tsFileResource.isClosed()) {
-          fileScanHandles.add(new ClosedFileScanHandleImpl(tsFileResource));
+          fileScanHandles.add(
+              new ClosedFileScanHandleImpl(
+                  tsFileResource,
+                  buildModificationForDevice(tsFileResource, partialPaths, context)));
         } else {
           tsFileResource
               .getProcessor()
@@ -2069,7 +2106,7 @@ public class DataRegion implements IDataRegionForQuery {
           (globalTimeFilter == null ? "null" : globalTimeFilter));
     }
 
-    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
+    List<TsFileResource> tsFileResourcesForQuery = new ArrayList<>();
 
     long timeLowerBound =
         dataTTL != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
@@ -2087,9 +2124,9 @@ public class DataRegion implements IDataRegionForQuery {
       closeQueryLock.readLock().lock();
       try {
         if (tsFileResource.isClosed()) {
-          tsfileResourcesForQuery.add(tsFileResource);
+          tsFileResourcesForQuery.add(tsFileResource);
         } else {
-          tsFileResource.getProcessor().query(pathList, context, tsfileResourcesForQuery);
+          tsFileResource.getProcessor().query(pathList, context, tsFileResourcesForQuery);
         }
       } catch (IOException e) {
         throw new MetadataException(e);
@@ -2097,7 +2134,7 @@ public class DataRegion implements IDataRegionForQuery {
         closeQueryLock.readLock().unlock();
       }
     }
-    return tsfileResourcesForQuery;
+    return tsFileResourcesForQuery;
   }
 
   /** Seperate tsfiles in TsFileManager to sealedList and unsealedList. */
