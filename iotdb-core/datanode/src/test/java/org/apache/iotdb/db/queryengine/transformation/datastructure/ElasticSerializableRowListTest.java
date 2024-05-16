@@ -23,13 +23,14 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.FloatColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.FloatColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
@@ -58,7 +59,7 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
     TSDataType.TEXT
   };
 
-  private ElasticSerializableRowList rowRecordList;
+  private ElasticSerializableRowList rowList;
 
   @Override
   @Before
@@ -73,80 +74,33 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
   }
 
   @Test
-  public void testESRowRecordList() {
-    initESRowRecordList();
-
-    testPut();
-
-    testOrderedAccessByIndex();
-  }
-
-  @Test
-  public void testInsertColumns() {
+  public void testPutAndGet() {
     initESRowRecordList();
 
     testPuts();
 
-    testOrderedAccessByIndex();
+    testGetByIndex();
   }
 
   private void initESRowRecordList() {
     try {
-      rowRecordList =
+      rowList =
           new ElasticSerializableRowList(
               DATA_TYPES, QUERY_ID, MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
     } catch (QueryProcessException e) {
       fail(e.toString());
     }
-    assertEquals(0, rowRecordList.size());
-  }
-
-  private void testPut() {
-    try {
-      for (int i = 0; i < ITERATION_TIMES; ++i) {
-        Object[] rowRecord = new Object[DATA_TYPES.length + 1];
-        rowRecord[DATA_TYPES.length] = (long) i;
-        if (i % 7 != 0) {
-          for (int j = 0; j < DATA_TYPES.length; ++j) {
-            switch (DATA_TYPES[j]) {
-              case INT32:
-                rowRecord[j] = i;
-                break;
-              case INT64:
-                rowRecord[j] = (long) i;
-                break;
-              case FLOAT:
-                rowRecord[j] = (float) i;
-                break;
-              case DOUBLE:
-                rowRecord[j] = (double) i;
-                break;
-              case BOOLEAN:
-                rowRecord[j] = i % 2 == 0;
-                break;
-              case TEXT:
-                rowRecord[j] = BytesUtils.valueOf(String.valueOf(i));
-                break;
-            }
-          }
-        }
-
-        rowRecordList.put(rowRecord);
-      }
-    } catch (IOException | QueryProcessException e) {
-      fail(e.toString());
-    }
-    assertEquals(ITERATION_TIMES, rowRecordList.size());
+    assertEquals(0, rowList.size());
   }
 
   private void testPuts() {
     try {
       Column[] columns = generateColumns();
-      rowRecordList.put(columns);
+      rowList.put(columns);
     } catch (IOException | QueryProcessException e) {
       fail(e.toString());
     }
-    assertEquals(ITERATION_TIMES, rowRecordList.size());
+    assertEquals(ITERATION_TIMES, rowList.size());
   }
 
   private Column[] generateColumns() {
@@ -157,56 +111,82 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
       isNulls[i] = i % 7 == 0;
     }
     // Int columns
-    int[] ints = new int[ITERATION_TIMES];
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      ints[i] = i;
+    IntColumnBuilder intColumnBuilder = new IntColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      if (i % 7 == 0) {
+        intColumnBuilder.appendNull();
+      } else {
+        intColumnBuilder.writeInt(i);
+      }
     }
-    columns[0] = new IntColumn(ITERATION_TIMES, Optional.of(isNulls), ints);
+    columns[0] = intColumnBuilder.build();
 
     // Long columns
-    long[] longs = new long[ITERATION_TIMES];
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      longs[i] = i;
+    LongColumnBuilder longColumnBuilder = new LongColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      if (i % 7 == 0) {
+        longColumnBuilder.appendNull();
+      } else {
+        longColumnBuilder.writeLong(i);
+      }
     }
-    columns[1] = new LongColumn(ITERATION_TIMES, Optional.of(isNulls), longs);
+    columns[1] = longColumnBuilder.build();
 
     // Float columns
-    float[] floats = new float[ITERATION_TIMES];
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      floats[i] = i;
+    FloatColumnBuilder floatColumnBuilder = new FloatColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      if (i % 7 == 0) {
+        floatColumnBuilder.appendNull();
+      } else {
+        floatColumnBuilder.writeFloat(i);
+      }
     }
-    columns[2] = new FloatColumn(ITERATION_TIMES, Optional.of(isNulls), floats);
+    columns[2] = floatColumnBuilder.build();
 
     // Double columns
-    double[] doubles = new double[ITERATION_TIMES];
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      doubles[i] = i;
+    DoubleColumnBuilder doubleColumnBuilder = new DoubleColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      if (i % 7 == 0) {
+        doubleColumnBuilder.appendNull();
+      } else {
+        doubleColumnBuilder.writeDouble(i);
+      }
     }
-    columns[3] = new DoubleColumn(ITERATION_TIMES, Optional.of(isNulls), doubles);
+    columns[3] = doubleColumnBuilder.build();
 
     // Boolean columns
-    boolean[] booleans = new boolean[ITERATION_TIMES];
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      booleans[i] = i % 2 == 0;
+    BooleanColumnBuilder booleanColumnBuilder = new BooleanColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      if (i % 7 == 0) {
+        booleanColumnBuilder.appendNull();
+      } else {
+        booleanColumnBuilder.writeBoolean(i % 2 == 0);
+      }
     }
-    columns[4] = new BooleanColumn(ITERATION_TIMES, Optional.of(isNulls), booleans);
+    columns[4] = booleanColumnBuilder.build();
 
     // Binary columns
-    Binary[] binaries = new Binary[ITERATION_TIMES];
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      binaries[i] = BytesUtils.valueOf(String.valueOf(i));
+    BinaryColumnBuilder binaryColumnBuilder = new BinaryColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      if (i % 7 == 0) {
+        binaryColumnBuilder.appendNull();
+      } else {
+        Binary binary = BytesUtils.valueOf(String.valueOf(i));
+        binaryColumnBuilder.writeBinary(binary);
+      }
     }
-    columns[5] = new BinaryColumn(ITERATION_TIMES, Optional.of(isNulls), binaries);
+    columns[5] = binaryColumnBuilder.build();
 
     // Another binary columns
+    Binary[] binaries = columns[5].getBinaries().clone();
     columns[6] = new BinaryColumn(ITERATION_TIMES, Optional.of(isNulls), binaries.clone());
 
     // The last time columns
-    long[] times = new long[ITERATION_TIMES];
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      times[i] = i;
+    TimeColumnBuilder timeColumnBuilder = new TimeColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      timeColumnBuilder.writeLong(i);
     }
-    columns[7] = new TimeColumn(ITERATION_TIMES, times);
+    columns[7] = timeColumnBuilder.build();
 
     return columns;
   }
@@ -237,14 +217,14 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
     assertEquals(DATA_TYPES.length, rowRecord.length - 1);
   }
 
-  private void testOrderedAccessByIndex() {
+  private void testGetByIndex() {
     try {
       for (int i = 0; i < ITERATION_TIMES; ++i) {
         if (i % 7 == 0) {
-          assertTrue(rowRecordList.fieldsHasAnyNull(i));
+          assertTrue(rowList.fieldsHasAnyNull(i));
         } else {
-          assertFalse(rowRecordList.fieldsHasAnyNull(i));
-          testRowRecord(rowRecordList.getRowRecord(i), i);
+          assertFalse(rowList.fieldsHasAnyNull(i));
+          testRowRecord(rowList.getRowRecord(i), i);
         }
       }
     } catch (IOException e) {
@@ -261,84 +241,158 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
     Random random = new Random();
 
     try {
+      int byteLength = byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin);
+      Column[] columns = generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLength);
+      rowList.put(columns);
+      rowList.setEvictionUpperBound(rowList.size());
+
       for (int i = 0; i < ITERATION_TIMES; i++) {
         if (i % 7 == 0) {
-          rowRecordList.put(generateRowRecordWithAllNullFields(i));
+          assertTrue(rowList.fieldsHasAnyNull(i));
         } else {
-          rowRecordList.put(
-              generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
-        }
-      }
-      rowRecordList.setEvictionUpperBound(rowRecordList.size());
-      for (int i = 0; i < ITERATION_TIMES; i++) {
-        if (i % 7 == 0) {
-          assertTrue(rowRecordList.fieldsHasAnyNull(i));
-        } else {
-          assertFalse(rowRecordList.fieldsHasAnyNull(i));
+          assertFalse(rowList.fieldsHasAnyNull(i));
         }
       }
 
       byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 16;
       byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 32;
+      byteLength = byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin);
+      columns = generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLength);
+      rowList.put(columns);
+      rowList.setEvictionUpperBound(rowList.size());
+
       for (int i = 0; i < ITERATION_TIMES; i++) {
         if (i % 7 == 0) {
-          rowRecordList.put(generateRowRecordWithAllNullFields(i));
+          assertTrue(rowList.fieldsHasAnyNull(i + ITERATION_TIMES));
         } else {
-          rowRecordList.put(
-              generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
-        }
-      }
-      rowRecordList.setEvictionUpperBound(rowRecordList.size());
-      for (int i = 0; i < ITERATION_TIMES; i++) {
-        if (i % 7 == 0) {
-          assertTrue(rowRecordList.fieldsHasAnyNull(i + ITERATION_TIMES));
-        } else {
-          assertFalse(rowRecordList.fieldsHasAnyNull(i + ITERATION_TIMES));
+          assertFalse(rowList.fieldsHasAnyNull(i + ITERATION_TIMES));
         }
       }
 
       byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 256;
       byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 512;
-      for (int i = 0; i < ITERATION_TIMES; i++) {
-        if (i % 7 == 0) {
-          rowRecordList.put(generateRowRecordWithAllNullFields(i));
-        } else {
-          rowRecordList.put(
-              generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
-        }
-      }
-      rowRecordList.setEvictionUpperBound(rowRecordList.size());
-      for (int i = 0; i < ITERATION_TIMES; i++) {
-        if (i % 7 == 0) {
-          assertTrue(rowRecordList.fieldsHasAnyNull(i + 2 * ITERATION_TIMES));
-        } else {
-          assertFalse(rowRecordList.fieldsHasAnyNull(i + 2 * ITERATION_TIMES));
-        }
-      }
-
-      for (int i = 0; i < 2 * ITERATION_TIMES; i++) {
-        if (i % 7 == 0) {
-          rowRecordList.put(generateRowRecordWithAllNullFields(i));
-        } else {
-          rowRecordList.put(
-              generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
-        }
-        rowRecordList.setEvictionUpperBound(rowRecordList.size());
-      }
+      byteLength = byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin);
+      columns = generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLength);
+      rowList.put(columns);
+      rowList.setEvictionUpperBound(rowList.size());
 
       for (int i = 0; i < ITERATION_TIMES; i++) {
         if (i % 7 == 0) {
-          assertTrue(rowRecordList.fieldsHasAnyNull(i + 3 * ITERATION_TIMES));
+          assertTrue(rowList.fieldsHasAnyNull(i + 2 * ITERATION_TIMES));
         } else {
-          assertFalse(rowRecordList.fieldsHasAnyNull(i + 3 * ITERATION_TIMES));
+          assertFalse(rowList.fieldsHasAnyNull(i + 2 * ITERATION_TIMES));
         }
       }
 
-      assertEquals(ITERATION_TIMES * 5, rowRecordList.size());
+      columns = generateColumnsWithRandomBinaries(2 * ITERATION_TIMES, byteLength);
+      rowList.put(columns);
+      rowList.setEvictionUpperBound(rowList.size());
+
+      for (int i = 0; i < ITERATION_TIMES; i++) {
+        if (i % 7 == 0) {
+          assertTrue(rowList.fieldsHasAnyNull(i + 3 * ITERATION_TIMES));
+        } else {
+          assertFalse(rowList.fieldsHasAnyNull(i + 3 * ITERATION_TIMES));
+        }
+      }
+
+      assertEquals(ITERATION_TIMES * 5, rowList.size());
     } catch (QueryProcessException | IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  private Column[] generateColumnsWithRandomBinaries(int iter_times, int byteLength) {
+    Column[] columns = new Column[DATA_TYPES.length + 1];
+
+    // Int columns
+    IntColumnBuilder intColumnBuilder = new IntColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < iter_times; i++) {
+      if (i % 7 == 0) {
+        intColumnBuilder.appendNull();
+      } else {
+        intColumnBuilder.writeInt(i);
+      }
+    }
+    columns[0] = intColumnBuilder.build();
+
+    // Long columns
+    LongColumnBuilder longColumnBuilder = new LongColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < iter_times; i++) {
+      if (i % 7 == 0) {
+        longColumnBuilder.appendNull();
+      } else {
+        longColumnBuilder.writeLong(i);
+      }
+    }
+    columns[1] = longColumnBuilder.build();
+
+    // Float columns
+    FloatColumnBuilder floatColumnBuilder = new FloatColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < iter_times; i++) {
+      if (i % 7 == 0) {
+        floatColumnBuilder.appendNull();
+      } else {
+        floatColumnBuilder.writeFloat(i);
+      }
+    }
+    columns[2] = floatColumnBuilder.build();
+
+    // Double columns
+    DoubleColumnBuilder doubleColumnBuilder = new DoubleColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < iter_times; i++) {
+      if (i % 7 == 0) {
+        doubleColumnBuilder.appendNull();
+      } else {
+        doubleColumnBuilder.writeDouble(i);
+      }
+    }
+    columns[3] = doubleColumnBuilder.build();
+
+    // Boolean columns
+    BooleanColumnBuilder booleanColumnBuilder = new BooleanColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < iter_times; i++) {
+      if (i % 7 == 0) {
+        booleanColumnBuilder.appendNull();
+      } else {
+        booleanColumnBuilder.writeBoolean(i % 2 == 0);
+      }
+    }
+    columns[4] = booleanColumnBuilder.build();
+
+    // Binary columns
+    BinaryColumnBuilder binaryColumnBuilder = new BinaryColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < iter_times; i++) {
+      if (i % 7 == 0) {
+        binaryColumnBuilder.appendNull();
+      } else {
+        Binary binary = BytesUtils.valueOf(generateRandomString(byteLength));
+        binaryColumnBuilder.writeBinary(binary);
+      }
+    }
+    columns[5] = binaryColumnBuilder.build();
+
+    // Another binary columns
+    BinaryColumnBuilder anotherbinaryColumnBuilder = new BinaryColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < iter_times; i++) {
+      if (i % 7 == 0) {
+        anotherbinaryColumnBuilder.appendNull();
+      } else {
+        Binary binary = BytesUtils.valueOf(generateRandomString(byteLength));
+        anotherbinaryColumnBuilder.writeBinary(binary);
+      }
+    }
+    columns[6] = anotherbinaryColumnBuilder.build();
+
+    // The last time columns
+    TimeColumnBuilder timeColumnBuilder = new TimeColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < iter_times; i++) {
+      timeColumnBuilder.writeLong(i);
+    }
+    columns[7] = timeColumnBuilder.build();
+
+    return columns;
   }
 
   private Object[] generateRowRecord(int time, int byteLength) {

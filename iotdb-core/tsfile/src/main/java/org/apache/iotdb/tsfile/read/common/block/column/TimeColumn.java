@@ -20,7 +20,6 @@
 package org.apache.iotdb.tsfile.read.common.block.column;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import java.util.Arrays;
@@ -127,6 +126,14 @@ public class TimeColumn implements Column {
 
   @Override
   public Column subColumn(int fromIndex) {
+    if (fromIndex > positionCount) {
+      throw new IllegalArgumentException("fromIndex is not valid");
+    }
+    return new TimeColumn(arrayOffset + fromIndex, positionCount - fromIndex, values);
+  }
+
+  @Override
+  public Column subColumnCopy(int fromIndex) {
     if (fromIndex > positionCount) {
       throw new IllegalArgumentException("fromIndex is not valid");
     }

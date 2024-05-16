@@ -23,9 +23,10 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -37,12 +38,10 @@ import java.util.List;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.BinaryUtils.MIN_ARRAY_HEADER_SIZE;
 import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.BinaryUtils.MIN_OBJECT_HEADER_SIZE;
-import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.appendRowInColumnBuilders;
-import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.buildColumnsByBuilders;
-import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.constructColumnBuilders;
 
 public class SerializableRowList implements SerializableList {
   private final SerializationRecorder serializationRecorder;
+  private final TsBlockSerde serde;
   private final TSDataType[] dataTypes;
   private final int valueColumnCount;
 
@@ -52,8 +51,6 @@ public class SerializableRowList implements SerializableList {
 
   private int prefixNullCount;
 
-  private boolean isAllNull;
-
   public static SerializableRowList construct(String queryId, TSDataType[] dataTypes) {
     SerializationRecorder recorder = new SerializationRecorder(queryId);
     return new SerializableRowList(recorder, dataTypes);
@@ -62,11 +59,11 @@ public class SerializableRowList implements SerializableList {
   private SerializableRowList(SerializationRecorder serializationRecorder, TSDataType[] dataTypes) {
     this.serializationRecorder = serializationRecorder;
     this.dataTypes = dataTypes;
+    serde = new TsBlockSerde();
 
     valueColumnCount = dataTypes.length;
     prefixNullCount = 0;
     skipPrefixNullCount = 0;
-    isAllNull = true;
 
     init();
   }
@@ -125,11 +122,13 @@ public class SerializableRowList implements SerializableList {
   }
 
   public int getBlockCount() {
-    return blocks.size();
+    // Threat prefix null values as one column
+    int additional_null_block = prefixNullCount == 0 ? 0 : 1;
+    return blocks.size() + additional_null_block;
   }
 
   public Object[] getRow(int index) {
-    // Fall into prefix nulls
+    // Fall into prefix null values
     if (index < prefixNullCount) {
       return null;
     }
@@ -187,11 +186,17 @@ public class SerializableRowList implements SerializableList {
   }
 
   public Column[] getColumns(int index) {
+    // Skip all null columns at first
+    if (prefixNullCount != 0) {
+      index--;
+    }
+    // Forbid to fetch first null column
+    assert index >= 0;
     return blocks.get(index);
   }
 
   public long getTime(int index) {
-    // Would never access null row's time
+    // Never access null row's time
     assert index >= prefixNullCount;
 
     return getTimeSkipPrefixNulls(index - prefixNullCount);
@@ -240,14 +245,30 @@ public class SerializableRowList implements SerializableList {
     return ret;
   }
 
-  public void putNulls(int nullCount) {
-    assert isAllNull;
-    prefixNullCount += nullCount;
+  public int getRowOffsetInColumns(int index) {
+    assert index >= prefixNullCount;
+
+    return getRowOffsetInColumnsSkipPrefixNulls(index - prefixNullCount);
+  }
+
+  private int getRowOffsetInColumnsSkipPrefixNulls(int index) {
+    assert index < skipPrefixNullCount;
+
+    int ret = -1;
+    int total = 0;
+    for (Column[] block : blocks) {
+      int length = block[0].getPositionCount();
+      if (index < total + length) {
+        ret = index - total;
+        break;
+      }
+      total += length;
+    }
+
+    return ret;
   }
 
   public void putColumns(Column[] columns) {
-    isAllNull = false;
-
     blocks.add(columns);
     skipPrefixNullCount += columns[0].getPositionCount();
   }
@@ -262,111 +283,37 @@ public class SerializableRowList implements SerializableList {
     blocks = new ArrayList<>();
   }
 
+  // Only blocks data are serialized to disk
+  // Other field are kept in memory
   @Override
   public void serialize(PublicBAOS outputStream) throws IOException {
-    // Write size field
-    int total = size();
-    serializationRecorder.setSerializedElementSize(total);
-    // Write prefix null count field
-    int serializedByteLength = 0;
-    serializedByteLength += ReadWriteIOUtils.write(prefixNullCount, outputStream);
-    // Write subsequent rows
-    for (int i = 0; i < skipPrefixNullCount; ++i) {
-      Object[] rowRecord = getRowSkipPrefixNulls(i);
-      serializedByteLength +=
-          ReadWriteIOUtils.write((long) rowRecord[valueColumnCount], outputStream);
-      serializedByteLength += writeFields(rowRecord, outputStream);
+    // Write TsBlocks count
+    outputStream.write(blocks.size());
+    for (Column[] block : blocks) {
+      TimeColumn timeColumn = (TimeColumn) block[block.length - 1];
+      Column[] valueColumns = new Column[block.length - 1];
+      // Only references are copied
+      System.arraycopy(block, 0, valueColumns, 0, block.length - 1);
+      TsBlock tsBlock = new TsBlock(timeColumn, valueColumns);
+
+      ByteBuffer buffer = serde.serialize(tsBlock);
+      byte[] byteArray = buffer.array();
+      // Write TsBlocks data
+      outputStream.write(byteArray);
     }
-    serializationRecorder.setSerializedByteLength(serializedByteLength);
   }
 
+  // Deserialized blocks from disk to memory
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
-    // Read total size
-    int serializedElementSize = serializationRecorder.getSerializedElementSize();
-    // Read prefix null count size and set relevant field
-    isAllNull = true;
-    prefixNullCount = ReadWriteIOUtils.readInt(byteBuffer);
-    skipPrefixNullCount = serializedElementSize - prefixNullCount;
-    putNulls(prefixNullCount);
-    // Read subsequent rows
-    ColumnBuilder[] builders = constructColumnBuilders(dataTypes, skipPrefixNullCount);
-    for (int i = 0; i < skipPrefixNullCount; ++i) {
-      Object[] rowRecord = new Object[valueColumnCount + 1];
-      rowRecord[valueColumnCount] = ReadWriteIOUtils.readLong(byteBuffer); // timestamp
-      readFields(byteBuffer, rowRecord);
-      appendRowInColumnBuilders(dataTypes, rowRecord, builders);
-    }
-    // Discard old columns and build a new one
-    blocks = new ArrayList<>();
-    blocks.add(buildColumnsByBuilders(dataTypes, builders));
-  }
+    // Read TsBlocks count
+    int blockCount = ReadWriteIOUtils.readInt(byteBuffer);
+    blocks = new ArrayList<>(blockCount);
 
-  private int writeFields(Object[] rowRecord, PublicBAOS outputStream) throws IOException {
-    int serializedByteLength = 0;
-    for (int i = 0; i < valueColumnCount; ++i) {
-      Object field = rowRecord[i];
-      boolean isNull = field == null;
-      serializedByteLength += ReadWriteIOUtils.write(isNull, outputStream);
-      if (isNull) {
-        continue;
-      }
-
-      switch (dataTypes[i]) {
-        case INT32:
-          serializedByteLength += ReadWriteIOUtils.write((int) field, outputStream);
-          break;
-        case INT64:
-          serializedByteLength += ReadWriteIOUtils.write((long) field, outputStream);
-          break;
-        case FLOAT:
-          serializedByteLength += ReadWriteIOUtils.write((float) field, outputStream);
-          break;
-        case DOUBLE:
-          serializedByteLength += ReadWriteIOUtils.write((double) field, outputStream);
-          break;
-        case BOOLEAN:
-          serializedByteLength += ReadWriteIOUtils.write((boolean) field, outputStream);
-          break;
-        case TEXT:
-          serializedByteLength += ReadWriteIOUtils.write((Binary) field, outputStream);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(dataTypes[i].toString());
-      }
-    }
-    return serializedByteLength;
-  }
-
-  private void readFields(ByteBuffer byteBuffer, Object[] rowRecord) {
-    for (int i = 0; i < valueColumnCount; ++i) {
-      boolean isNull = ReadWriteIOUtils.readBool(byteBuffer);
-      if (isNull) {
-        continue;
-      }
-
-      switch (dataTypes[i]) {
-        case INT32:
-          rowRecord[i] = ReadWriteIOUtils.readInt(byteBuffer);
-          break;
-        case INT64:
-          rowRecord[i] = ReadWriteIOUtils.readLong(byteBuffer);
-          break;
-        case FLOAT:
-          rowRecord[i] = ReadWriteIOUtils.readFloat(byteBuffer);
-          break;
-        case DOUBLE:
-          rowRecord[i] = ReadWriteIOUtils.readDouble(byteBuffer);
-          break;
-        case BOOLEAN:
-          rowRecord[i] = ReadWriteIOUtils.readBool(byteBuffer);
-          break;
-        case TEXT:
-          rowRecord[i] = ReadWriteIOUtils.readBinary(byteBuffer);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(dataTypes[i].toString());
-      }
+    for (int i = 0; i < blockCount; i++) {
+      // Read TsBlocks data
+      TsBlock tsBlock = serde.deserialize(byteBuffer);
+      blocks.add(tsBlock.getAllColumns());
     }
   }
 
@@ -376,7 +323,7 @@ public class SerializableRowList implements SerializableList {
   }
 
   public int getFirstRowIndex(int blockIndex) {
-    int total = 0;
+    int total = prefixNullCount;
     for (int i = 0; i < blockIndex; i++) {
       total += blocks.get(i)[0].getPositionCount();
     }
@@ -386,4 +333,8 @@ public class SerializableRowList implements SerializableList {
 
   @Deprecated
   public void putRow(Object[] rowRecord) {}
+
+  public void putNulls(int count) {
+    prefixNullCount += count;
+  }
 }

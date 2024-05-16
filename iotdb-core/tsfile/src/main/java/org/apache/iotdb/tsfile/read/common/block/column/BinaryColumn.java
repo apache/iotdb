@@ -144,7 +144,8 @@ public class BinaryColumn implements Column {
 
     int from = positionOffset + arrayOffset;
     int to = from + length;
-    boolean[] valueIsNullCopy = valueIsNull != null? Arrays.copyOfRange(valueIsNull, from, to) : null;
+    boolean[] valueIsNullCopy =
+        valueIsNull != null ? Arrays.copyOfRange(valueIsNull, from, to) : null;
     Binary[] valuesCopy = Arrays.copyOfRange(values, from, to);
 
     return new BinaryColumn(0, length, valueIsNullCopy, valuesCopy);
@@ -166,7 +167,8 @@ public class BinaryColumn implements Column {
     }
 
     int from = arrayOffset + fromIndex;
-    boolean[] valueIsNullCopy = valueIsNull != null? Arrays.copyOfRange(valueIsNull, from, positionCount) : null;
+    boolean[] valueIsNullCopy =
+        valueIsNull != null ? Arrays.copyOfRange(valueIsNull, from, positionCount) : null;
     Binary[] valuesCopy = Arrays.copyOfRange(values, from, positionCount);
 
     int length = positionCount - fromIndex;

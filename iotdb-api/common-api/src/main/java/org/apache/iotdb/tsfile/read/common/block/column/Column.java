@@ -159,9 +159,7 @@ public interface Column {
    */
   Column subColumn(int fromIndex);
 
-  /**
-   * This method will create a copy of origin column with different array offset.
-   */
+  /** This method will create a copy of origin column with different array offset. */
   default Column subColumnCopy(int fromIndex) {
     throw new UnsupportedOperationException(getClass().getName());
   }

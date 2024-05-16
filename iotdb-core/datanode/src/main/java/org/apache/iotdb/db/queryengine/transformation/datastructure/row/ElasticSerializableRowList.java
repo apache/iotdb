@@ -41,15 +41,13 @@ public class ElasticSerializableRowList {
   protected TSDataType[] dataTypes;
   protected String queryId;
   protected float memoryLimitInMB;
-  protected int internalRowRecordListCapacity;
+  protected int internalRowListCapacity;
   protected int numCacheBlock;
 
   protected LRUCache cache;
   protected List<SerializableRowList> internalRowList;
   /** Mark bitMaps of correct index when one row has at least one null field. */
   protected List<BitMap> bitMaps;
-
-  protected List<Integer> blockCount;
 
   protected int rowCount;
   protected int lastRowCount;
@@ -84,17 +82,16 @@ public class ElasticSerializableRowList {
             dataTypes,
             memoryLimitInMB,
             SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL);
-    internalRowRecordListCapacity = allocatableCapacity / numCacheBlock;
-    if (internalRowRecordListCapacity == 0) {
+    internalRowListCapacity = allocatableCapacity / numCacheBlock;
+    if (internalRowListCapacity == 0) {
       numCacheBlock = 1;
-      internalRowRecordListCapacity = allocatableCapacity;
+      internalRowListCapacity = allocatableCapacity;
     }
     this.numCacheBlock = numCacheBlock;
 
     cache = new ElasticSerializableRowList.LRUCache(numCacheBlock);
     internalRowList = new ArrayList<>();
     bitMaps = new ArrayList<>();
-    blockCount = new ArrayList<>();
 
     rowCount = 0;
     evictionUpperBound = 0;
@@ -126,18 +123,17 @@ public class ElasticSerializableRowList {
       TSDataType[] dataTypes,
       String queryId,
       float memoryLimitInMB,
-      int internalRowRecordListCapacity,
+      int internalRowListCapacity,
       int numCacheBlock) {
     this.dataTypes = dataTypes;
     this.queryId = queryId;
     this.memoryLimitInMB = memoryLimitInMB;
-    this.internalRowRecordListCapacity = internalRowRecordListCapacity;
+    this.internalRowListCapacity = internalRowListCapacity;
     this.numCacheBlock = numCacheBlock;
 
     cache = new ElasticSerializableRowList.LRUCache(numCacheBlock);
     internalRowList = new ArrayList<>();
     bitMaps = new ArrayList<>();
-    blockCount = new ArrayList<>();
 
     rowCount = 0;
     evictionUpperBound = 0;
@@ -156,7 +152,7 @@ public class ElasticSerializableRowList {
   }
 
   public int getInternalRowListCapacity() {
-    return internalRowRecordListCapacity;
+    return internalRowListCapacity;
   }
 
   public int getSerializableRowListSize() {
@@ -183,11 +179,9 @@ public class ElasticSerializableRowList {
   private void put(Object[] rowRecord, boolean hasNullField)
       throws IOException, QueryProcessException {
     checkExpansion();
-    cache.get(rowCount / internalRowRecordListCapacity).putRow(rowRecord);
+    cache.get(rowCount / internalRowListCapacity).putRow(rowRecord);
     if (hasNullField) {
-      bitMaps
-          .get(rowCount / internalRowRecordListCapacity)
-          .mark(rowCount % internalRowRecordListCapacity);
+      bitMaps.get(rowCount / internalRowListCapacity).mark(rowCount % internalRowListCapacity);
     }
     ++rowCount;
 
@@ -207,15 +201,11 @@ public class ElasticSerializableRowList {
   }
 
   public long getTime(int index) throws IOException {
-    return cache
-        .get(index / internalRowRecordListCapacity)
-        .getTime(index % internalRowRecordListCapacity);
+    return cache.get(index / internalRowListCapacity).getTime(index % internalRowListCapacity);
   }
 
   public Object[] getRowRecord(int index) throws IOException {
-    return cache
-        .get(index / internalRowRecordListCapacity)
-        .getRow(index % internalRowRecordListCapacity);
+    return cache.get(index / internalRowListCapacity).getRow(index % internalRowListCapacity);
   }
   // endregion
 
@@ -225,6 +215,7 @@ public class ElasticSerializableRowList {
   }
 
   public void put(Column[] columns) throws IOException, QueryProcessException {
+    // Check if we need to add new internal list
     checkExpansion();
 
     int begin = 0, end = 0;
@@ -232,23 +223,30 @@ public class ElasticSerializableRowList {
     while (total > 0) {
       int consumed;
       Column[] insertedColumns;
-      if (total + rowCount % internalRowRecordListCapacity < internalRowRecordListCapacity) {
+      if (total + rowCount % internalRowListCapacity < internalRowListCapacity) {
         consumed = total;
-        insertedColumns = columns;
+        if (begin == 0 && consumed == columns[0].getPositionCount()) {
+          insertedColumns = columns;
+        } else {
+          insertedColumns = new Column[columns.length];
+          for (int i = 0; i < columns.length; i++) {
+            insertedColumns[i] = columns[i].getRegionCopy(begin, consumed);
+          }
+        }
       } else {
-        consumed = internalRowRecordListCapacity - rowCount % internalRowRecordListCapacity;
+        consumed = internalRowListCapacity - rowCount % internalRowListCapacity;
         // Construct sub-regions
         insertedColumns = new Column[columns.length];
         for (int i = 0; i < columns.length; i++) {
-          insertedColumns[i] = columns[i].copyRegion(begin, consumed);
+          insertedColumns[i] = columns[i].getRegionCopy(begin, consumed);
         }
       }
 
       end += consumed;
 
       // Fill row record list and bitmap
-      cache.get(rowCount / internalRowRecordListCapacity).putColumns(insertedColumns);
-      markBitMapByColumns(insertedColumns, begin, end);
+      cache.get(rowCount / internalRowListCapacity).putColumns(insertedColumns);
+      markBitMapByColumns(insertedColumns);
 
       total -= consumed;
       rowCount += consumed;
@@ -275,6 +273,30 @@ public class ElasticSerializableRowList {
       checkMemoryUsage();
     }
   }
+
+  public void putNulls(int total) throws IOException {
+    // Only batch insert nulls at the beginning of internal list
+    assert rowCount % internalRowListCapacity == 0;
+
+    // Check if we need to add new internal list
+    checkExpansion();
+    while (total > 0) {
+      int consumed = Math.min(total, internalRowListCapacity);
+      cache.get(rowCount / internalRowListCapacity).putNulls(consumed);
+      markAllBitMap(consumed);
+
+      total -= consumed;
+      rowCount += consumed;
+      if (total > 0) {
+        doExpansion();
+      }
+    }
+
+    if (!disableMemoryControl) {
+      totalByteArrayLengthLimit += rowByteArrayLength * total;
+      totalByteArrayLength += rowByteArrayLength * total;
+    }
+  }
   // endregion
 
   public RowListForwardIterator constructIterator() {
@@ -284,46 +306,67 @@ public class ElasticSerializableRowList {
     return iterator;
   }
 
-  public RowListForwardIterator constructIteratorByEvictionUpperBound() throws IOException {
-    int externalColumnIndex = evictionUpperBound / internalRowRecordListCapacity;
+  public void copyLatterColumnsAfterEvictionUpperBound(ElasticSerializableRowList newESRowList)
+      throws IOException, QueryProcessException {
+    int externalColumnIndex = evictionUpperBound / internalRowListCapacity;
 
-    int internalPointIndex = evictionUpperBound % internalRowRecordListCapacity;
+    int internalRowIndex = evictionUpperBound % internalRowListCapacity;
     int internalColumnIndex =
-        internalRowList.get(externalColumnIndex).getColumnIndex(internalPointIndex);
+        internalRowList.get(externalColumnIndex).getColumnIndex(internalRowIndex);
+    int rowOffsetInColumns =
+        internalRowList.get(externalColumnIndex).getRowOffsetInColumns(internalRowIndex);
 
     // This iterator is for memory control.
     // So there is no need to put it into iterator list since it won't be affected by new memory
     // control strategy.
-    return new RowListForwardIterator(this, externalColumnIndex, internalColumnIndex);
+    RowListForwardIterator iterator =
+        new RowListForwardIterator(this, externalColumnIndex, internalColumnIndex);
+    // Get and put split columns after eviction upper bound
+    Column[] columns = iterator.currentBlock();
+    if (rowOffsetInColumns != 0) {
+      for (int i = 0; i < columns.length; i++) {
+        columns[i] = columns[i].subColumnCopy(rowOffsetInColumns);
+      }
+    }
+    newESRowList.put(columns);
+
+    // Copy latter columns
+    while (iterator.hasNext()) {
+      iterator.next();
+      copyColumnByIterator(newESRowList, iterator);
+    }
   }
 
   private void checkExpansion() {
-    if (rowCount % internalRowRecordListCapacity == 0) {
+    if (rowCount % internalRowListCapacity == 0) {
       doExpansion();
     }
   }
 
   private void doExpansion() {
-    if (internalRowList.size() > 1) {
-      // Add last row record list's block count
-      blockCount.add(internalRowList.get(internalRowList.size() - 1).getBlockCount());
-    }
-
     internalRowList.add(SerializableRowList.construct(queryId, dataTypes));
-    bitMaps.add(new BitMap(internalRowRecordListCapacity));
+    bitMaps.add(new BitMap(internalRowListCapacity));
   }
 
-  private void markBitMapByColumns(Column[] columns, int from, int to) {
-    BitMap bitmap = bitMaps.get(rowCount / internalRowRecordListCapacity);
+  private void markBitMapByColumns(Column[] columns) {
+    BitMap bitmap = bitMaps.get(rowCount / internalRowListCapacity);
 
-    int offset = rowCount % internalRowRecordListCapacity;
-    for (int i = from; i < to; i++) {
+    int offset = rowCount % internalRowListCapacity;
+    for (int i = 0; i < columns[0].getPositionCount(); i++) {
       for (Column column : columns) {
         if (column.isNull(i)) {
-          bitmap.mark(offset + i - from);
+          bitmap.mark(offset + i);
           break;
         }
       }
+    }
+  }
+
+  private void markAllBitMap(int count) {
+    BitMap bitmap = bitMaps.get(rowCount / internalRowListCapacity);
+
+    for (int i = 0; i < count; i++) {
+      bitmap.mark(i);
     }
   }
 
@@ -389,16 +432,17 @@ public class ElasticSerializableRowList {
       newESRowList.internalRowList.add(null);
       newESRowList.bitMaps.add(null);
     }
-    // Copy latter lists
+    // Put all null columns to middle list
     newESRowList.rowCount = internalListEvictionUpperBound * newInternalRowRecordListCapacity;
-    RowListForwardIterator iterator = constructIteratorByEvictionUpperBound();
-    copyColumnByIterator(newESRowList, iterator);
-    while (iterator.hasNext()) {
-      iterator.next();
-      copyColumnByIterator(newESRowList, iterator);
+    int emptyColumnSize = evictionUpperBound - newESRowList.rowCount;
+    if (emptyColumnSize != 0) {
+      newESRowList.putNulls(emptyColumnSize);
     }
+    // Copy latter columns
+    copyLatterColumnsAfterEvictionUpperBound(newESRowList);
 
-    internalRowRecordListCapacity = newInternalRowRecordListCapacity;
+    // Replace old list with new ones
+    internalRowListCapacity = newInternalRowRecordListCapacity;
     cache = newESRowList.cache;
     internalRowList = newESRowList.internalRowList;
     bitMaps = newESRowList.bitMaps;
@@ -426,13 +470,11 @@ public class ElasticSerializableRowList {
   /** true if any field except the timestamp in the current row is null. */
   @TestOnly
   public boolean fieldsHasAnyNull(int index) {
-    return bitMaps
-        .get(index / internalRowRecordListCapacity)
-        .isMarked(index % internalRowRecordListCapacity);
+    return bitMaps.get(index / internalRowListCapacity).isMarked(index % internalRowListCapacity);
   }
 
   public int getFirstRowIndex(int externalIndex, int internalIndex) throws IOException {
-    int index = internalRowRecordListCapacity * externalIndex;
+    int index = internalRowListCapacity * externalIndex;
     int offset = cache.get(externalIndex).getFirstRowIndex(internalIndex);
 
     return index + offset;
@@ -458,7 +500,7 @@ public class ElasticSerializableRowList {
       if (!containsKey(targetIndex)) {
         if (cacheCapacity <= super.size()) {
           int lastIndex = getLast();
-          if (lastIndex < evictionUpperBound / internalRowRecordListCapacity) {
+          if (lastIndex < evictionUpperBound / internalRowListCapacity) {
             internalRowList.set(lastIndex, null);
             bitMaps.set(lastIndex, null);
           } else {

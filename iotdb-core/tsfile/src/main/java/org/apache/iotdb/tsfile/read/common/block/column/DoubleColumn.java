@@ -20,7 +20,6 @@
 package org.apache.iotdb.tsfile.read.common.block.column;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -144,7 +143,8 @@ public class DoubleColumn implements Column {
 
     int from = positionOffset + arrayOffset;
     int to = from + length;
-    boolean[] valueIsNullCopy = valueIsNull != null? Arrays.copyOfRange(valueIsNull, from, to) : null;
+    boolean[] valueIsNullCopy =
+        valueIsNull != null ? Arrays.copyOfRange(valueIsNull, from, to) : null;
     double[] valuesCopy = Arrays.copyOfRange(values, from, to);
 
     return new DoubleColumn(0, length, valueIsNullCopy, valuesCopy);
@@ -166,7 +166,8 @@ public class DoubleColumn implements Column {
     }
 
     int from = arrayOffset + fromIndex;
-    boolean[] valueIsNullCopy = valueIsNull != null? Arrays.copyOfRange(valueIsNull, from, positionCount) : null;
+    boolean[] valueIsNullCopy =
+        valueIsNull != null ? Arrays.copyOfRange(valueIsNull, from, positionCount) : null;
     double[] valuesCopy = Arrays.copyOfRange(values, from, positionCount);
 
     int length = positionCount - fromIndex;

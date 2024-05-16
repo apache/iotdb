@@ -90,6 +90,7 @@ public class RowListForwardIterator implements ListForwardIterator {
   // When rowList apply new memory control strategy, the origin iterators become invalid.
   // We can relocate these old iterators by its startPointIndex
   public void adjust() throws IOException {
+    // Ensure the row list capacity is updated
     int capacity = rowList.getInternalRowListCapacity();
 
     int externalColumnIndex = startRowIndex / capacity;
@@ -99,5 +100,9 @@ public class RowListForwardIterator implements ListForwardIterator {
 
     this.externalIndex = externalColumnIndex;
     this.internalIndex = internalColumnIndex;
+  }
+
+  public void moveForwardStartRowIndex(int step) {
+    startRowIndex += step;
   }
 }
