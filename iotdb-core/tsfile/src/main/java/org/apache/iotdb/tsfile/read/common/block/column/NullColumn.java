@@ -88,7 +88,7 @@ public class NullColumn implements Column {
   }
 
   @Override
-  public Column copyRegion(int positionOffset, int length) {
+  public Column getRegionCopy(int positionOffset, int length) {
     return getRegion(positionOffset, length);
   }
 
@@ -98,6 +98,11 @@ public class NullColumn implements Column {
       throw new IllegalArgumentException("fromIndex is not valid");
     }
     return new NullColumn(positionCount - fromIndex);
+  }
+
+  @Override
+  public Column subColumnCopy(int fromIndex) {
+    return subColumn(fromIndex);
   }
 
   @Override

@@ -139,9 +139,15 @@ public class BinaryColumn implements Column {
   }
 
   @Override
-  public Column copyRegion(int positionOffset, int length) {
+  public Column getRegionCopy(int positionOffset, int length) {
     checkValidRegion(getPositionCount(), positionOffset, length);
-    return new BinaryColumn(positionOffset + arrayOffset, length, valueIsNull, values.clone());
+
+    int from = positionOffset + arrayOffset;
+    int to = from + length;
+    boolean[] valueIsNullCopy = valueIsNull != null? Arrays.copyOfRange(valueIsNull, from, to) : null;
+    Binary[] valuesCopy = Arrays.copyOfRange(values, from, to);
+
+    return new BinaryColumn(0, length, valueIsNullCopy, valuesCopy);
   }
 
   @Override
@@ -151,6 +157,20 @@ public class BinaryColumn implements Column {
     }
     return new BinaryColumn(
         arrayOffset + fromIndex, positionCount - fromIndex, valueIsNull, values);
+  }
+
+  @Override
+  public Column subColumnCopy(int fromIndex) {
+    if (fromIndex > positionCount) {
+      throw new IllegalArgumentException("fromIndex is not valid");
+    }
+
+    int from = arrayOffset + fromIndex;
+    boolean[] valueIsNullCopy = valueIsNull != null? Arrays.copyOfRange(valueIsNull, from, positionCount) : null;
+    Binary[] valuesCopy = Arrays.copyOfRange(values, from, positionCount);
+
+    int length = positionCount - fromIndex;
+    return new BinaryColumn(0, length, valueIsNullCopy, valuesCopy);
   }
 
   @Override

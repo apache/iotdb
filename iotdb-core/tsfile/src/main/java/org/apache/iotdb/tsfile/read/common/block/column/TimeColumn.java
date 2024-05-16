@@ -20,7 +20,10 @@
 package org.apache.iotdb.tsfile.read.common.block.column;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
+
+import java.util.Arrays;
 
 import static org.apache.iotdb.tsfile.read.common.block.column.ColumnUtil.checkValidRegion;
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.sizeOfLongArray;
@@ -112,9 +115,14 @@ public class TimeColumn implements Column {
   }
 
   @Override
-  public Column copyRegion(int positionOffset, int length) {
+  public Column getRegionCopy(int positionOffset, int length) {
     checkValidRegion(getPositionCount(), positionOffset, length);
-    return new TimeColumn(positionOffset + arrayOffset, length, values.clone());
+
+    int from = positionOffset + arrayOffset;
+    int to = from + length;
+    long[] valuesCopy = Arrays.copyOfRange(values, from, to);
+
+    return new TimeColumn(0, length, valuesCopy);
   }
 
   @Override
@@ -122,7 +130,12 @@ public class TimeColumn implements Column {
     if (fromIndex > positionCount) {
       throw new IllegalArgumentException("fromIndex is not valid");
     }
-    return new TimeColumn(arrayOffset + fromIndex, positionCount - fromIndex, values);
+
+    int from = arrayOffset + fromIndex;
+    long[] valuesCopy = Arrays.copyOfRange(values, from, positionCount);
+
+    int length = positionCount - fromIndex;
+    return new TimeColumn(0, length, valuesCopy);
   }
 
   @Override

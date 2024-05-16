@@ -20,6 +20,7 @@
 package org.apache.iotdb.tsfile.read.common.block.column;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -138,9 +139,15 @@ public class FloatColumn implements Column {
   }
 
   @Override
-  public Column copyRegion(int positionOffset, int length) {
+  public Column getRegionCopy(int positionOffset, int length) {
     checkValidRegion(getPositionCount(), positionOffset, length);
-    return new FloatColumn(positionOffset + arrayOffset, length, valueIsNull, values.clone());
+
+    int from = positionOffset + arrayOffset;
+    int to = from + length;
+    boolean[] valueIsNullCopy = valueIsNull != null? Arrays.copyOfRange(valueIsNull, from, to) : null;
+    float[] valuesCopy = Arrays.copyOfRange(values, from, to);
+
+    return new FloatColumn(0, length, valueIsNullCopy, valuesCopy);
   }
 
   @Override
@@ -149,6 +156,20 @@ public class FloatColumn implements Column {
       throw new IllegalArgumentException("fromIndex is not valid");
     }
     return new FloatColumn(arrayOffset + fromIndex, positionCount - fromIndex, valueIsNull, values);
+  }
+
+  @Override
+  public Column subColumnCopy(int fromIndex) {
+    if (fromIndex > positionCount) {
+      throw new IllegalArgumentException("fromIndex is not valid");
+    }
+
+    int from = arrayOffset + fromIndex;
+    boolean[] valueIsNullCopy = valueIsNull != null? Arrays.copyOfRange(valueIsNull, from, positionCount) : null;
+    float[] valuesCopy = Arrays.copyOfRange(values, from, positionCount);
+
+    int length = positionCount - fromIndex;
+    return new FloatColumn(0, length, valueIsNullCopy, valuesCopy);
   }
 
   @Override
