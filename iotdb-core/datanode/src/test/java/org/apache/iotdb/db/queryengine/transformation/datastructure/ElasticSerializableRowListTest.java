@@ -238,11 +238,9 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
 
     int byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 2;
     int byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 8;
-    Random random = new Random();
 
     try {
-      int byteLength = byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin);
-      Column[] columns = generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLength);
+      Column[] columns = generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
       rowList.put(columns);
       rowList.setEvictionUpperBound(rowList.size());
 
@@ -256,8 +254,7 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
 
       byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 16;
       byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 32;
-      byteLength = byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin);
-      columns = generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLength);
+      columns = generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
       rowList.put(columns);
       rowList.setEvictionUpperBound(rowList.size());
 
@@ -271,8 +268,7 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
 
       byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 256;
       byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 512;
-      byteLength = byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin);
-      columns = generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLength);
+      columns = generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
       rowList.put(columns);
       rowList.setEvictionUpperBound(rowList.size());
 
@@ -284,7 +280,7 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
         }
       }
 
-      columns = generateColumnsWithRandomBinaries(2 * ITERATION_TIMES, byteLength);
+      columns = generateColumnsWithRandomBinaries(2 * ITERATION_TIMES, byteLengthMin, byteLengthMax);
       rowList.put(columns);
       rowList.setEvictionUpperBound(rowList.size());
 
@@ -303,7 +299,8 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
     }
   }
 
-  private Column[] generateColumnsWithRandomBinaries(int iterTimes, int byteLength) {
+  private Column[] generateColumnsWithRandomBinaries(int iterTimes, int byteLengthMin, int byteLengthMax) {
+    Random random = new Random();
     Column[] columns = new Column[DATA_TYPES.length + 1];
 
     // Int columns
@@ -367,7 +364,7 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
       if (i % 7 == 0) {
         binaryColumnBuilder.appendNull();
       } else {
-        Binary binary = BytesUtils.valueOf(generateRandomString(byteLength));
+        Binary binary = BytesUtils.valueOf(generateStringByLength(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
         binaryColumnBuilder.writeBinary(binary);
       }
     }
@@ -379,7 +376,7 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
       if (i % 7 == 0) {
         anotherbinaryColumnBuilder.appendNull();
       } else {
-        Binary binary = BytesUtils.valueOf(generateRandomString(byteLength));
+        Binary binary = BytesUtils.valueOf(generateStringByLength(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
         anotherbinaryColumnBuilder.writeBinary(binary);
       }
     }
@@ -395,7 +392,7 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
     return columns;
   }
 
-  private String generateRandomString(int length) {
+  private String generateStringByLength(int length) {
     StringBuilder stringBuilder = new StringBuilder();
     for (int i = 0; i < length; ++i) {
       stringBuilder.append('.');

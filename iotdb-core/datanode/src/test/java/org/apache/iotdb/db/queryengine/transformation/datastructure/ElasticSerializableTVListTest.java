@@ -107,21 +107,21 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     int byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 8;
 
     try {
-      generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
+      generateColumnsWithRandomSizeBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
       TVListForwardIterator iterator = tvList.constructIterator();
       testBinaryLengthMatch(iterator, byteLengthMin, byteLengthMax);
 
       byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 16;
       byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 32;
-      generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
+      generateColumnsWithRandomSizeBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
       testBinaryLengthMatch(iterator, byteLengthMin, byteLengthMax);
 
       byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 256;
       byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 512;
-      generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
+      generateColumnsWithRandomSizeBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
       testBinaryLengthMatch(iterator, byteLengthMin, byteLengthMax);
 
-      generateColumnsWithRandomBinaries(ITERATION_TIMES * 2, byteLengthMin, byteLengthMax);
+      generateColumnsWithRandomSizeBinaries(ITERATION_TIMES * 2, byteLengthMin, byteLengthMax);
       testBinaryLengthMatch(iterator, byteLengthMin, byteLengthMax);
 
       assertEquals(ITERATION_TIMES * 5, tvList.size());
@@ -131,7 +131,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     }
   }
 
-  private void generateColumnsWithRandomBinaries(
+  private void generateColumnsWithRandomSizeBinaries(
       int iterTimes, int byteLengthMin, int byteLengthMax) throws IOException {
     Random random = new Random();
     TimeColumnBuilder timeColumnBuilder = new TimeColumnBuilder(null, iterTimes);
@@ -143,7 +143,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
         binaryColumnBuilder.appendNull();
       } else {
         String randomString =
-            generateRandomString(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin));
+            generateStringByLength(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin));
         Binary value = BytesUtils.valueOf(randomString);
         binaryColumnBuilder.writeBinary(value);
       }
@@ -174,7 +174,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     }
   }
 
-  private String generateRandomString(int length) {
+  private String generateStringByLength(int length) {
     StringBuilder stringBuilder = new StringBuilder();
     for (int i = 0; i < length; ++i) {
       stringBuilder.append('.');
