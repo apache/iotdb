@@ -24,10 +24,10 @@ import org.apache.iotdb.db.queryengine.transformation.datastructure.Serializable
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -40,13 +40,11 @@ import java.util.List;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.BinaryUtils.MIN_ARRAY_HEADER_SIZE;
 import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.BinaryUtils.MIN_OBJECT_HEADER_SIZE;
-import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.constructTimeColumnBuilder;
-import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.RowColumnConverter.constructValueColumnBuilder;
 
 public class SerializableTVList implements SerializableList {
   protected final SerializationRecorder serializationRecorder;
 
-  private final TSDataType dataType;
+  private final TsBlockSerde serde;
 
   private List<Column> valueColumns;
 
@@ -54,15 +52,15 @@ public class SerializableTVList implements SerializableList {
 
   private int size;
 
-  public static SerializableTVList construct(TSDataType dataType, String queryId) {
+  public static SerializableTVList construct(String queryId) {
     SerializationRecorder recorder = new SerializationRecorder(queryId);
-    return new SerializableTVList(dataType, recorder);
+    return new SerializableTVList(recorder);
   }
 
-  protected SerializableTVList(TSDataType dataType, SerializationRecorder serializationRecorder) {
-    this.dataType = dataType;
+  protected SerializableTVList(SerializationRecorder serializationRecorder) {
     this.serializationRecorder = serializationRecorder;
 
+    serde = new TsBlockSerde();
     size = 0;
 
     init();
@@ -116,7 +114,7 @@ public class SerializableTVList implements SerializableList {
     return timeColumns.size();
   }
 
-  // region single data method
+  // region single data methods
   public long getTime(int index) {
     assert index < size;
 
@@ -307,125 +305,6 @@ public class SerializableTVList implements SerializableList {
   }
 
   @Override
-  public void serialize(PublicBAOS outputStream) throws IOException {
-    serializationRecorder.setSerializedElementSize(size);
-
-    int totalByteLength = 0;
-    for (int i = 0; i < timeColumns.size(); i++) {
-      totalByteLength += serializeByDataType(timeColumns.get(i), valueColumns.get(i), outputStream);
-    }
-    serializationRecorder.setSerializedByteLength(totalByteLength);
-  }
-
-  private int serializeByDataType(Column times, Column values, PublicBAOS outputStream)
-      throws IOException {
-    assert times.getPositionCount() == values.getPositionCount();
-
-    int byteLength = 0;
-    int count = times.getPositionCount();
-    switch (dataType) {
-      case BOOLEAN:
-        for (int i = 0; i < count; i++) {
-          byteLength += ReadWriteIOUtils.write(times.getLong(i), outputStream);
-          byteLength += ReadWriteIOUtils.write(values.getBoolean(i), outputStream);
-        }
-        break;
-      case INT32:
-        for (int i = 0; i < count; i++) {
-          byteLength += ReadWriteIOUtils.write(times.getLong(i), outputStream);
-          byteLength += ReadWriteIOUtils.write(values.getInt(i), outputStream);
-        }
-        break;
-      case INT64:
-        for (int i = 0; i < count; i++) {
-          byteLength += ReadWriteIOUtils.write(times.getLong(i), outputStream);
-          byteLength += ReadWriteIOUtils.write(values.getLong(i), outputStream);
-        }
-        break;
-      case FLOAT:
-        for (int i = 0; i < count; i++) {
-          byteLength += ReadWriteIOUtils.write(times.getLong(i), outputStream);
-          byteLength += ReadWriteIOUtils.write(values.getFloat(i), outputStream);
-        }
-        break;
-      case DOUBLE:
-        for (int i = 0; i < count; i++) {
-          byteLength += ReadWriteIOUtils.write(times.getLong(i), outputStream);
-          byteLength += ReadWriteIOUtils.write(values.getDouble(i), outputStream);
-        }
-        break;
-      case TEXT:
-        for (int i = 0; i < count; i++) {
-          byteLength += ReadWriteIOUtils.write(times.getLong(i), outputStream);
-          byteLength += ReadWriteIOUtils.write(values.getBinary(i), outputStream);
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(dataType.toString());
-    }
-
-    return byteLength;
-  }
-
-  @Override
-  public void deserialize(ByteBuffer byteBuffer) {
-    size = serializationRecorder.getSerializedElementSize();
-
-    TimeColumnBuilder timeBuilder = constructTimeColumnBuilder(size);
-    ColumnBuilder valueBuilder = constructValueColumnBuilder(dataType, size);
-    deserializeByDataType(timeBuilder, valueBuilder, byteBuffer);
-
-    timeColumns = new ArrayList<>();
-    valueColumns = new ArrayList<>();
-    timeColumns.add((TimeColumn) timeBuilder.build());
-    valueColumns.add(valueBuilder.build());
-  }
-
-  private void deserializeByDataType(
-      ColumnBuilder timeBuilder, ColumnBuilder valueBuilder, ByteBuffer byteBuffer) {
-    switch (dataType) {
-      case BOOLEAN:
-        for (int i = 0; i < size; i++) {
-          timeBuilder.writeLong(ReadWriteIOUtils.readLong(byteBuffer));
-          valueBuilder.writeBoolean(ReadWriteIOUtils.readBool(byteBuffer));
-        }
-        break;
-      case INT32:
-        for (int i = 0; i < size; i++) {
-          timeBuilder.writeLong(ReadWriteIOUtils.readLong(byteBuffer));
-          valueBuilder.writeInt(ReadWriteIOUtils.readInt(byteBuffer));
-        }
-        break;
-      case INT64:
-        for (int i = 0; i < size; i++) {
-          timeBuilder.writeLong(ReadWriteIOUtils.readLong(byteBuffer));
-          valueBuilder.writeLong(ReadWriteIOUtils.readLong(byteBuffer));
-        }
-        break;
-      case FLOAT:
-        for (int i = 0; i < size; i++) {
-          timeBuilder.writeLong(ReadWriteIOUtils.readLong(byteBuffer));
-          valueBuilder.writeFloat(ReadWriteIOUtils.readFloat(byteBuffer));
-        }
-        break;
-      case DOUBLE:
-        for (int i = 0; i < size; i++) {
-          timeBuilder.writeLong(ReadWriteIOUtils.readLong(byteBuffer));
-          valueBuilder.writeDouble(ReadWriteIOUtils.readDouble(byteBuffer));
-        }
-        break;
-      case TEXT:
-        for (int i = 0; i < size; i++) {
-          timeBuilder.writeLong(ReadWriteIOUtils.readLong(byteBuffer));
-          valueBuilder.writeBinary(ReadWriteIOUtils.readBinary(byteBuffer));
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(dataType.toString());
-    }
-  }
-
-  @Override
   public void release() {
     timeColumns = null;
     valueColumns = null;
@@ -437,54 +316,56 @@ public class SerializableTVList implements SerializableList {
     valueColumns = new ArrayList<>();
   }
 
-  @TestOnly
-  public ForwardIterator getIterator() {
-    return new ForwardIterator();
+  @Override
+  public void serialize(PublicBAOS outputStream) throws IOException {
+    int bufferSize = 0;
+
+    // Write TsBlocks count
+    bufferSize += ReadWriteIOUtils.write(timeColumns.size(), outputStream);
+
+    for (int i = 0; i < timeColumns.size(); i++) {
+      // Construct TsBlock
+      TimeColumn timeColumn = timeColumns.get(i);
+      Column valueColumn = valueColumns.get(i);
+      TsBlock tsBlock = new TsBlock(timeColumn, valueColumn);
+
+      ByteBuffer buffer = serde.serialize(tsBlock);
+      byte[] byteArray = buffer.array();
+      // Write TsBlock data
+      outputStream.write(byteArray);
+      bufferSize += byteArray.length;
+    }
+
+    serializationRecorder.setSerializedByteLength(bufferSize);
   }
 
-  public class ForwardIterator {
-    int index;
-    int offset;
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    // Read TsBlocks count
+    int blockCount = ReadWriteIOUtils.readInt(byteBuffer);
+    timeColumns = new ArrayList<>(blockCount);
+    valueColumns = new ArrayList<>(blockCount);
 
-    public boolean hasNext() {
-      return index < timeColumns.size();
-    }
+    for (int i = 0; i < blockCount; i++) {
+      // Read TsBlocks data
+      TsBlock tsBlock = serde.deserialize(byteBuffer);
 
-    public long currentTime() {
-      return timeColumns.get(index).getLong(offset);
-    }
+      // Unpack columns
+      TimeColumn timeColumn = tsBlock.getTimeColumn();
+      Column valueColumn = tsBlock.getColumn(0);
 
-    public boolean currentBoolean() {
-      return valueColumns.get(index).getBoolean(offset);
+      timeColumns.add(timeColumn);
+      valueColumns.add(valueColumn);
     }
+  }
 
-    public int currentInt() {
-      return valueColumns.get(index).getInt(offset);
-    }
+  @TestOnly
+  public List<TimeColumn> getTimeColumns() {
+    return timeColumns;
+  }
 
-    public long currentLong() {
-      return valueColumns.get(index).getLong(offset);
-    }
-
-    public float currentFloat() {
-      return valueColumns.get(index).getFloat(offset);
-    }
-
-    public double currentDouble() {
-      return valueColumns.get(index).getDouble(offset);
-    }
-
-    public Binary currentBinary() {
-      return valueColumns.get(index).getBinary(offset);
-    }
-
-    public void next() {
-      if (offset == timeColumns.get(index).getPositionCount() - 1) {
-        offset = 0;
-        index++;
-      } else {
-        offset++;
-      }
-    }
+  @TestOnly
+  public List<Column> getValueColumns() {
+    return valueColumns;
   }
 }

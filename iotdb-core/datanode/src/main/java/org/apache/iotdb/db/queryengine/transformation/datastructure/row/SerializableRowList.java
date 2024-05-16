@@ -127,13 +127,32 @@ public class SerializableRowList implements SerializableList {
     return blocks.size() + additional_null_block;
   }
 
-  public void putColumns(Column[] columns) {
-    blocks.add(columns);
-    skipPrefixNullCount += columns[0].getPositionCount();
+  // region single data methods
+  public long getTime(int index) {
+    // Never access null row's time
+    assert index >= prefixNullCount;
+
+    return getTimeSkipPrefixNulls(index - prefixNullCount);
   }
 
-  public void putNulls(int count) {
-    prefixNullCount += count;
+  private long getTimeSkipPrefixNulls(int index) {
+    assert index < skipPrefixNullCount;
+
+    int total = 0;
+    long time = -1;
+    for (Column[] block : blocks) {
+      int length = block[0].getPositionCount();
+      if (index < total + length) {
+        int offset = index - total;
+
+        // Last column is always time column
+        time = block[valueColumnCount].getLong(offset);
+        break;
+      }
+      total += length;
+    }
+
+    return time;
   }
 
   public Object[] getRow(int index) {
@@ -193,6 +212,17 @@ public class SerializableRowList implements SerializableList {
 
     return row;
   }
+  // endregion
+
+  // region batch data methods
+  public void putColumns(Column[] columns) {
+    blocks.add(columns);
+    skipPrefixNullCount += columns[0].getPositionCount();
+  }
+
+  public void putNulls(int count) {
+    prefixNullCount += count;
+  }
 
   public Column[] getColumns(int index) {
     // Skip all null columns at first
@@ -203,33 +233,7 @@ public class SerializableRowList implements SerializableList {
     assert index >= 0;
     return blocks.get(index);
   }
-
-  public long getTime(int index) {
-    // Never access null row's time
-    assert index >= prefixNullCount;
-
-    return getTimeSkipPrefixNulls(index - prefixNullCount);
-  }
-
-  private long getTimeSkipPrefixNulls(int index) {
-    assert index < skipPrefixNullCount;
-
-    int total = 0;
-    long time = -1;
-    for (Column[] block : blocks) {
-      int length = block[0].getPositionCount();
-      if (index < total + length) {
-        int offset = index - total;
-
-        // Last column is always time column
-        time = block[valueColumnCount].getLong(offset);
-        break;
-      }
-      total += length;
-    }
-
-    return time;
-  }
+  // endregion
 
   public int getColumnIndex(int index) {
     assert index >= prefixNullCount;

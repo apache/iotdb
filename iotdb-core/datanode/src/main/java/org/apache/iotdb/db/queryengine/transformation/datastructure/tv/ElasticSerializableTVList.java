@@ -234,7 +234,7 @@ public class ElasticSerializableTVList {
   }
 
   private void doExpansion() {
-    internalTVList.add(SerializableTVList.construct(dataType, queryId));
+    internalTVList.add(SerializableTVList.construct(queryId));
   }
 
   /**

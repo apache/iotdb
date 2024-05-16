@@ -188,6 +188,7 @@ public class ElasticSerializableRowList {
       if (total + rowCount % internalRowListCapacity < internalRowListCapacity) {
         consumed = total;
         if (begin == 0 && consumed == columns[0].getPositionCount()) {
+          // No need to copy if the list do not split
           insertedColumns = columns;
         } else {
           insertedColumns = new Column[columns.length];

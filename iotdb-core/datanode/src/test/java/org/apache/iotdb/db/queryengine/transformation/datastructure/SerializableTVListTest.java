@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableTVList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -53,7 +52,7 @@ public class SerializableTVListTest extends SerializableListTest {
   @Test
   public void serializableBooleanTVListTest() {
     List<Boolean> compared = new ArrayList<>();
-    SerializableTVList target = SerializableTVList.construct(TSDataType.BOOLEAN, QUERY_ID);
+    SerializableTVList target = SerializableTVList.construct(QUERY_ID);
 
     serializeAndDeserializeBooleanTVListTest(compared, target);
   }
@@ -61,7 +60,7 @@ public class SerializableTVListTest extends SerializableListTest {
   @Test
   public void serializableIntTVListTest() {
     List<Integer> compared = new ArrayList<>();
-    SerializableTVList target = SerializableTVList.construct(TSDataType.INT32, QUERY_ID);
+    SerializableTVList target = SerializableTVList.construct(QUERY_ID);
 
     serializeAndDeserializeIntTVListTest(compared, target);
   }
@@ -69,7 +68,7 @@ public class SerializableTVListTest extends SerializableListTest {
   @Test
   public void serializableLongTVListTest() {
     List<Long> compared = new ArrayList<>();
-    SerializableTVList target = SerializableTVList.construct(TSDataType.INT64, QUERY_ID);
+    SerializableTVList target = SerializableTVList.construct(QUERY_ID);
 
     serializeAndDeserializeLongTVListTest(compared, target);
   }
@@ -77,7 +76,7 @@ public class SerializableTVListTest extends SerializableListTest {
   @Test
   public void serializableFloatTVListTest() {
     List<Float> compared = new ArrayList<>();
-    SerializableTVList target = SerializableTVList.construct(TSDataType.FLOAT, QUERY_ID);
+    SerializableTVList target = SerializableTVList.construct(QUERY_ID);
 
     serializeAndDeserializeFloatTVListTest(compared, target);
   }
@@ -85,7 +84,7 @@ public class SerializableTVListTest extends SerializableListTest {
   @Test
   public void serializableDoubleTVListTest() {
     List<Double> compared = new ArrayList<>();
-    SerializableTVList target = SerializableTVList.construct(TSDataType.DOUBLE, QUERY_ID);
+    SerializableTVList target = SerializableTVList.construct(QUERY_ID);
 
     serializeAndDeserializeDoubleTVListTest(compared, target);
   }
@@ -93,7 +92,7 @@ public class SerializableTVListTest extends SerializableListTest {
   @Test
   public void serializableBinaryTVListTest() {
     List<Binary> compared = new ArrayList<>();
-    SerializableTVList target = SerializableTVList.construct(TSDataType.TEXT, QUERY_ID);
+    SerializableTVList target = SerializableTVList.construct(QUERY_ID);
 
     serializeAndDeserializeBinaryTVListTest(compared, target);
   }
@@ -137,7 +136,8 @@ public class SerializableTVListTest extends SerializableListTest {
 
   private static void checkBooleanListEquality(List<Boolean> compared, SerializableTVList target) {
     int count = 0;
-    SerializableTVList.ForwardIterator iterator = target.getIterator();
+    ForwardIterator iterator = new ForwardIterator(target);
+
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       boolean value = iterator.currentBoolean();
@@ -190,7 +190,8 @@ public class SerializableTVListTest extends SerializableListTest {
 
   private static void checkIntListEquality(List<Integer> compared, SerializableTVList target) {
     int count = 0;
-    SerializableTVList.ForwardIterator iterator = target.getIterator();
+    ForwardIterator iterator = new ForwardIterator(target);
+
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       int value = iterator.currentInt();
@@ -243,7 +244,8 @@ public class SerializableTVListTest extends SerializableListTest {
 
   private static void checkLongListEquality(List<Long> compared, SerializableTVList target) {
     int count = 0;
-    SerializableTVList.ForwardIterator iterator = target.getIterator();
+    ForwardIterator iterator = new ForwardIterator(target);
+
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       long value = iterator.currentLong();
@@ -296,7 +298,8 @@ public class SerializableTVListTest extends SerializableListTest {
 
   private static void checkFloatListEquality(List<Float> compared, SerializableTVList target) {
     int count = 0;
-    SerializableTVList.ForwardIterator iterator = target.getIterator();
+    ForwardIterator iterator = new ForwardIterator(target);
+
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       float value = iterator.currentFloat();
@@ -349,7 +352,8 @@ public class SerializableTVListTest extends SerializableListTest {
 
   private static void checkDoubleListEquality(List<Double> compared, SerializableTVList target) {
     int count = 0;
-    SerializableTVList.ForwardIterator iterator = target.getIterator();
+    ForwardIterator iterator = new ForwardIterator(target);
+
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       double value = iterator.currentDouble();
@@ -403,7 +407,7 @@ public class SerializableTVListTest extends SerializableListTest {
 
   private static void checkBinaryListEquality(List<Binary> compared, SerializableTVList target) {
     int count = 0;
-    SerializableTVList.ForwardIterator iterator = target.getIterator();
+    ForwardIterator iterator = new ForwardIterator(target);
     while (iterator.hasNext()) {
       long time = iterator.currentTime();
       Binary value = iterator.currentBinary();
@@ -415,5 +419,58 @@ public class SerializableTVListTest extends SerializableListTest {
       count++;
     }
     assertEquals(ITERATION_TIMES, count);
+  }
+
+  private static class ForwardIterator {
+    int index;
+    int offset;
+    List<TimeColumn> timeColumns;
+    List<Column> valueColumns;
+
+    ForwardIterator(SerializableTVList tvList) {
+      timeColumns = tvList.getTimeColumns();
+      valueColumns = tvList.getValueColumns();
+    }
+
+    public boolean hasNext() {
+      return index < timeColumns.size();
+    }
+
+    public long currentTime() {
+      return timeColumns.get(index).getLong(offset);
+    }
+
+    public boolean currentBoolean() {
+      return valueColumns.get(index).getBoolean(offset);
+    }
+
+    public int currentInt() {
+      return valueColumns.get(index).getInt(offset);
+    }
+
+    public long currentLong() {
+      return valueColumns.get(index).getLong(offset);
+    }
+
+    public float currentFloat() {
+      return valueColumns.get(index).getFloat(offset);
+    }
+
+    public double currentDouble() {
+      return valueColumns.get(index).getDouble(offset);
+    }
+
+    public Binary currentBinary() {
+      return valueColumns.get(index).getBinary(offset);
+    }
+
+    public void next() {
+      if (offset == timeColumns.get(index).getPositionCount() - 1) {
+        offset = 0;
+        index++;
+      } else {
+        offset++;
+      }
+    }
   }
 }
