@@ -87,11 +87,13 @@
                 <executions>
                     <execution>
                         <id>generate-java-rest-codes-common</id>
+                        <phase>generate-sources</phase>
                         <goals>
                             <goal>generate</goal>
                         </goals>
-                        <phase>generate-sources</phase>
                         <configuration>
+                            <!-- For some reason code-generation is run twice, this prevents the second run -->
+                            <skipIfSpecIsUnchanged>true</skipIfSpecIsUnchanged>
                             <inputSpec>${project.basedir}/src/main/openapi3/iotdb_rest_common.yaml</inputSpec>
                             <output>${project.build.directory}/generated-sources/java</output>
                             <apiPackage>org.apache.iotdb.db.protocol.rest</apiPackage>
@@ -117,11 +119,13 @@
                     </execution>
                     <execution>
                         <id>generate-java-rest-codes-v1</id>
+                        <phase>generate-sources</phase>
                         <goals>
                             <goal>generate</goal>
                         </goals>
-                        <phase>generate-sources</phase>
                         <configuration>
+                            <!-- For some reason code-generation is run twice, this prevents the second run -->
+                            <skipIfSpecIsUnchanged>true</skipIfSpecIsUnchanged>
                             <inputSpec>${project.basedir}/src/main/openapi3/iotdb_rest_v1.yaml</inputSpec>
                             <output>${project.build.directory}/generated-sources/java</output>
                             <apiPackage>org.apache.iotdb.db.protocol.rest.v1</apiPackage>
@@ -147,11 +151,13 @@
                     </execution>
                     <execution>
                         <id>generate-java-rest-codes-v2</id>
+                        <phase>generate-sources</phase>
                         <goals>
                             <goal>generate</goal>
                         </goals>
-                        <phase>generate-sources</phase>
                         <configuration>
+                            <!-- For some reason code-generation is run twice, this prevents the second run -->
+                            <skipIfSpecIsUnchanged>true</skipIfSpecIsUnchanged>
                             <inputSpec>${project.basedir}/src/main/openapi3/iotdb_rest_v2.yaml</inputSpec>
                             <output>${project.build.directory}/generated-sources/java</output>
                             <apiPackage>org.apache.iotdb.db.protocol.rest.v2</apiPackage>
@@ -207,16 +213,17 @@
                         <goals>
                             <goal>apply</goal>
                         </goals>
+                        <configuration>
+                            <skip>false</skip>
+                            <java combine.children="override">
+                                <includes>
+                                    <include>target/generated-sources/java/src/gen/java/**/*.java</include>
+                                    <include>target/generated-sources/java/src/main/java/**/*.java</include>
+                                </includes>
+                            </java>
+                        </configuration>
                     </execution>
                 </executions>
-                <configuration>
-                    <java combine.children="override">
-                        <includes>
-                            <include>target/generated-sources/java/src/gen/java/**/*.java</include>
-                            <include>target/generated-sources/java/src/main/java/**/*.java</include>
-                        </includes>
-                    </java>
-                </configuration>
             </plugin>
             <!--
         TODO: For some reason I am unable to prevent the generation of the default implementations in the "impl"
