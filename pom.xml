@@ -1299,15 +1299,6 @@
                 <version>4.0</version>
             </dependency>
             <!-- Conflict:
-        hadoop-mapreduce-client-core (pulls in 9.4.51.v20230217)
-        hadoop-common (pulls in 9.4.52.v20230823)
-      -->
-            <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-io</artifactId>
-                <version>9.4.52.v20230823</version>
-            </dependency>
-            <!-- Conflict:
         hadoop-common (pulls in 1.2 and 1.1.3)
       -->
             <dependency>
