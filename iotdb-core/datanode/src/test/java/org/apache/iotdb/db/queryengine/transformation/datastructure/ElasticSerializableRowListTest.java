@@ -240,7 +240,8 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
     int byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 8;
 
     try {
-      Column[] columns = generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
+      Column[] columns =
+          generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
       rowList.put(columns);
       rowList.setEvictionUpperBound(rowList.size());
 
@@ -280,7 +281,8 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
         }
       }
 
-      columns = generateColumnsWithRandomBinaries(2 * ITERATION_TIMES, byteLengthMin, byteLengthMax);
+      columns =
+          generateColumnsWithRandomBinaries(2 * ITERATION_TIMES, byteLengthMin, byteLengthMax);
       rowList.put(columns);
       rowList.setEvictionUpperBound(rowList.size());
 
@@ -299,7 +301,8 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
     }
   }
 
-  private Column[] generateColumnsWithRandomBinaries(int iterTimes, int byteLengthMin, int byteLengthMax) {
+  private Column[] generateColumnsWithRandomBinaries(
+      int iterTimes, int byteLengthMin, int byteLengthMax) {
     Random random = new Random();
     Column[] columns = new Column[DATA_TYPES.length + 1];
 
@@ -364,7 +367,10 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
       if (i % 7 == 0) {
         binaryColumnBuilder.appendNull();
       } else {
-        Binary binary = BytesUtils.valueOf(generateStringByLength(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
+        Binary binary =
+            BytesUtils.valueOf(
+                generateStringByLength(
+                    byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
         binaryColumnBuilder.writeBinary(binary);
       }
     }
@@ -376,7 +382,10 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
       if (i % 7 == 0) {
         anotherbinaryColumnBuilder.appendNull();
       } else {
-        Binary binary = BytesUtils.valueOf(generateStringByLength(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
+        Binary binary =
+            BytesUtils.valueOf(
+                generateStringByLength(
+                    byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
         anotherbinaryColumnBuilder.writeBinary(binary);
       }
     }
