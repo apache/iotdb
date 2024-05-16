@@ -26,6 +26,7 @@ import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -64,31 +65,35 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
 
   @Override
   public SubscriptionEvent poll(final String consumerId) {
+    if (prefetchingQueue.isEmpty()) {
+      prefetchOnce();
+    }
+
     final long size = prefetchingQueue.size();
     long count = 0;
 
     SubscriptionEvent currentEvent;
     try {
-      while (Objects.nonNull(
-          currentEvent =
-              prefetchingQueue.poll(
-                  SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs(),
-                  TimeUnit.MILLISECONDS))) {
+      while (count++ < size // limit control
+          && Objects.nonNull(
+              currentEvent =
+                  prefetchingQueue.poll(
+                      SubscriptionConfig.getInstance().getSubscriptionPollMaxBlockingTimeMs(),
+                      TimeUnit.MILLISECONDS))) {
         if (currentEvent.isCommitted()) {
           continue;
         }
-        // Re-enqueue the uncommitted event at the end of the queue.
-        prefetchingQueue.add(currentEvent);
-        // limit control
-        if (count >= size) {
-          break;
-        }
-        count++;
         if (!currentEvent.pollable()) {
+          // Re-enqueue the uncommitted event at the end of the queue.
+          prefetchingQueue.add(currentEvent);
           continue;
         }
         currentEvent.recordLastPolledConsumerId(consumerId);
         currentEvent.recordLastPolledTimestamp();
+        // Re-enqueue the uncommitted event at the end of the queue.
+        // This operation should be performed after recordLastPolledTimestamp to prevent multiple
+        // consumers from consuming the same event.
+        prefetchingQueue.add(currentEvent);
         return currentEvent;
       }
     } catch (final InterruptedException e) {
@@ -108,7 +113,6 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
     serializeOnce();
   }
 
-  // TODO: use org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.calculateTabletSizeInBytes
   private void prefetchOnce() {
     final List<Tablet> tablets = new ArrayList<>();
     final List<EnrichedEvent> enrichedEvents = new ArrayList<>();
@@ -164,7 +168,12 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
               enrichedEvents,
               new SubscriptionPolledMessage(
                   SubscriptionPolledMessageType.TABLETS.getType(),
-                  new TabletsMessagePayload(tablets),
+                  new TabletsMessagePayload(
+                      tablets,
+                      tablets.stream()
+                          .map((PipeMemoryManager::calculateTabletSizeInBytes))
+                          .reduce(Long::sum)
+                          .orElse(0L)),
                   commitContext));
       uncommittedEvents.put(commitContext, subscriptionEvent); // before enqueuing the event
       prefetchingQueue.add(subscriptionEvent);
@@ -177,26 +186,22 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
 
     SubscriptionEvent currentEvent;
     try {
-      while (Objects.nonNull(
-          currentEvent =
-              prefetchingQueue.poll(
-                  SubscriptionConfig.getInstance().getSubscriptionSerializeMaxBlockingTimeMs(),
-                  TimeUnit.MILLISECONDS))) {
+      while (count++ < size // limit control
+          && Objects.nonNull(
+              currentEvent =
+                  prefetchingQueue.poll(
+                      SubscriptionConfig.getInstance().getSubscriptionSerializeMaxBlockingTimeMs(),
+                      TimeUnit.MILLISECONDS))) {
         if (currentEvent.isCommitted()) {
           continue;
         }
-        // Re-enqueue the uncommitted event at the end of the queue.
-        prefetchingQueue.add(currentEvent);
-        // limit control
-        if (count >= size) {
-          break;
-        }
-        count++;
         // Serialize the uncommitted and pollable event.
         if (currentEvent.pollable()) {
           // No need to concern whether serialization is successful.
           SubscriptionEventBinaryCache.getInstance().trySerialize(currentEvent);
         }
+        // Re-enqueue the uncommitted event at the end of the queue.
+        prefetchingQueue.add(currentEvent);
       }
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();

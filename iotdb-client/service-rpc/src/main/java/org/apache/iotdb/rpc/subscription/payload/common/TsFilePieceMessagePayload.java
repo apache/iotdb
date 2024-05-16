@@ -98,7 +98,25 @@ public class TsFilePieceMessagePayload implements SubscriptionMessagePayload {
         + ", nextWritingOffset="
         + nextWritingOffset
         + ", filePiece="
-        + Arrays.toString(filePiece).substring(0, 256)
+        + formatByteArray(filePiece, 64)
         + "}";
+  }
+
+  private static String formatByteArray(final byte[] filePiece, final int maxLength) {
+    final int length = filePiece.length;
+    final int displayLength = Math.min(length, maxLength);
+    final StringBuilder sb = new StringBuilder();
+    sb.append("[");
+    for (int i = 0; i < displayLength; i++) {
+      sb.append(String.format("%02x", filePiece[i]));
+      if (i < displayLength - 1) {
+        sb.append(", ");
+      }
+    }
+    if (length > maxLength) {
+      sb.append("...");
+    }
+    sb.append("]");
+    return sb.toString();
   }
 }

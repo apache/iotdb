@@ -209,8 +209,11 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
               }
               return t;
             });
-    autoCommitWorkerExecutor.scheduleAtFixedRate(
-        new AutoCommitWorker(), 0, autoCommitIntervalMs, TimeUnit.MILLISECONDS);
+    autoCommitWorkerExecutor.scheduleWithFixedDelay(
+        new AutoCommitWorker(),
+        generateRandomInitialDelayMs(autoCommitIntervalMs),
+        autoCommitIntervalMs,
+        TimeUnit.MILLISECONDS);
   }
 
   private void shutdownAutoCommitWorker() {

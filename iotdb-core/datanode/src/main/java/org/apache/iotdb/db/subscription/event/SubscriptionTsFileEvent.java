@@ -60,7 +60,8 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
     nextEventWithCommittableRef.getAndUpdate(
         (nextEventWithCommittable) -> {
           if (Objects.nonNull(nextEventWithCommittable)) {
-            // do nothing
+            // prefetch recursively
+            nextEventWithCommittable.getLeft().prefetchNext();
             return nextEventWithCommittable;
           }
 
@@ -110,6 +111,8 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
           if (Objects.nonNull(nextEventWithCommittable)) {
             SubscriptionEventBinaryCache.getInstance()
                 .trySerialize(nextEventWithCommittable.getLeft());
+            // serialize recursively
+            nextEventWithCommittable.getLeft().serializeNext();
             return nextEventWithCommittable;
           }
 
@@ -235,6 +238,7 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
             if (Objects.isNull(nextEventWithCommittable)) {
               return null;
             }
+            // reset recursively
             SubscriptionEventBinaryCache.getInstance()
                 .resetByteBuffer(nextEventWithCommittable.getLeft(), true);
             return nextEventWithCommittable;

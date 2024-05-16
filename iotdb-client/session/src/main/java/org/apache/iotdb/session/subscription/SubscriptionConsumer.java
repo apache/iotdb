@@ -284,8 +284,11 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
               }
               return t;
             });
-    heartbeatWorkerExecutor.scheduleAtFixedRate(
-        () -> subscriptionProviders.heartbeat(this), 0, heartbeatIntervalMs, TimeUnit.MILLISECONDS);
+    heartbeatWorkerExecutor.scheduleWithFixedDelay(
+        () -> subscriptionProviders.heartbeat(this),
+        generateRandomInitialDelayMs(heartbeatIntervalMs),
+        heartbeatIntervalMs,
+        TimeUnit.MILLISECONDS);
   }
 
   /**
@@ -320,8 +323,11 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
               }
               return t;
             });
-    endpointsSyncerExecutor.scheduleAtFixedRate(
-        () -> subscriptionProviders.sync(this), 0, endpointsSyncIntervalMs, TimeUnit.MILLISECONDS);
+    endpointsSyncerExecutor.scheduleWithFixedDelay(
+        () -> subscriptionProviders.sync(this),
+        generateRandomInitialDelayMs(endpointsSyncIntervalMs),
+        endpointsSyncIntervalMs,
+        TimeUnit.MILLISECONDS);
   }
 
   private void shutdownEndpointsSyncer() {
@@ -388,6 +394,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // update timer
       timer.update();
+      // TODO: associated with timeoutMs instead of hardcode
       LockSupport.parkNanos(SLEEP_NS); // wait some time
     } while (timer.notExpired());
 
@@ -976,5 +983,11 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         + ", consumerGroupId="
         + consumerGroupId
         + "}";
+  }
+
+  /////////////////////////////// utility ///////////////////////////////
+
+  protected long generateRandomInitialDelayMs(final long maxMs) {
+    return (long) (Math.random() * maxMs);
   }
 }

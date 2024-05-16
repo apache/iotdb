@@ -33,6 +33,7 @@ public class SubscriptionEvent {
 
   private static final long INVALID_TIMESTAMP = -1;
 
+  // the current length of enrichedEvents is always 1...
   protected final List<EnrichedEvent> enrichedEvents;
   protected final SubscriptionPolledMessage message;
 
@@ -47,6 +48,7 @@ public class SubscriptionEvent {
     this.enrichedEvents = enrichedEvents;
     this.message = message;
 
+    this.lastPolledConsumerId = null;
     this.lastPolledTimestamp = INVALID_TIMESTAMP;
     this.committedTimestamp = INVALID_TIMESTAMP;
   }
@@ -82,6 +84,9 @@ public class SubscriptionEvent {
   }
 
   public boolean pollable() {
+    if (isCommitted()) {
+      return false;
+    }
     if (lastPolledTimestamp == INVALID_TIMESTAMP) {
       return true;
     }
@@ -92,6 +97,7 @@ public class SubscriptionEvent {
   }
 
   public void nack() {
+    lastPolledConsumerId = null;
     lastPolledTimestamp = INVALID_TIMESTAMP;
   }
 

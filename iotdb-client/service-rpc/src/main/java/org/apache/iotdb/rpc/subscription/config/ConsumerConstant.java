@@ -34,13 +34,13 @@ public class ConsumerConstant {
   public static final String CONSUMER_GROUP_ID_KEY = "group-id";
 
   public static final String HEARTBEAT_INTERVAL_MS_KEY = "heartbeat-interval-ms"; // unit: ms
-  public static final long HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE = 5000;
-  public static final long HEARTBEAT_INTERVAL_MS_MIN_VALUE = 1000;
+  public static final long HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE = 30_000;
+  public static final long HEARTBEAT_INTERVAL_MS_MIN_VALUE = 1_000;
 
   public static final String ENDPOINTS_SYNC_INTERVAL_MS_KEY =
       "endpoints-sync-interval-ms"; // unit: ms
-  public static final long ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE = 30000;
-  public static final long ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE = 5000;
+  public static final long ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE = 120_000;
+  public static final long ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE = 5_000;
 
   public static final String TS_FILE_BASE_DIR_KEY = "ts-file-base-dir";
   public static final String TS_FILE_BASE_DIR_DEFAULT_VALUE = System.getProperty("user.dir");
@@ -51,7 +51,7 @@ public class ConsumerConstant {
   public static final boolean AUTO_COMMIT_DEFAULT_VALUE = true;
 
   public static final String AUTO_COMMIT_INTERVAL_MS_KEY = "auto-commit-interval-ms"; // unit: ms
-  public static final long AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE = 5000;
+  public static final long AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE = 5_000;
   public static final long AUTO_COMMIT_INTERVAL_MS_MIN_VALUE = 500;
 
   /////////////////////////////// push consumer ///////////////////////////////
@@ -59,9 +59,9 @@ public class ConsumerConstant {
   public static final String ACK_STRATEGY_KEY = "ack-strategy";
   public static final String CONSUME_LISTENER_KEY = "consume-listener";
 
-  // TODO: configure this parameter
-  public static final int PUSH_CONSUMER_AUTO_POLL_INTERVAL_MS = 1000;
-  public static final int PUSH_CONSUMER_AUTO_POLL_TIME_OUT_MS = 2000;
+  // TODO: configure those parameters
+  public static final int PUSH_CONSUMER_AUTO_POLL_INTERVAL_MS = 5_000;
+  public static final int PUSH_CONSUMER_AUTO_POLL_TIME_OUT_MS = 10_000;
 
   private ConsumerConstant() {
     throw new IllegalStateException("Utility class");

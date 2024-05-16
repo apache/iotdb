@@ -104,10 +104,14 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   @Override
   public void handleExit() {
-    LOGGER.info(
-        "Subscription: remove consumer config {} when handling exit",
-        consumerConfigThreadLocal.get());
-    consumerConfigThreadLocal.remove();
+    final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
+    if (Objects.nonNull(consumerConfig)) {
+      LOGGER.info(
+          "Subscription: close and remove consumer config {} when handling exit",
+          consumerConfigThreadLocal.get());
+      closeConsumer(consumerConfig);
+      consumerConfigThreadLocal.remove();
+    }
   }
 
   @Override
@@ -358,18 +362,19 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                                 byteBuffer.limit());
                         SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, false);
                         LOGGER.info(
-                            "Subscription: consumer {} poll message successfully with commit context: {}, req message: {}",
+                            "Subscription: consumer {} poll message {} successfully with req message: {}",
                             consumerConfig,
-                            commitContext,
+                            message,
                             req.getPollMessage());
                         return byteBuffer;
                       } catch (final Exception e) {
                         LOGGER.warn(
-                            "Subscription: consumer {} poll message failed with commit context: {}, req message: {}",
+                            "Subscription: consumer {} poll message {} failed with req message: {}",
                             consumerConfig,
-                            commitContext,
+                            message,
                             req.getPollMessage(),
                             e);
+                        // nack
                         SubscriptionAgent.broker()
                             .commit(
                                 consumerConfig,
@@ -490,6 +495,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
     }
 
+    closeConsumer(consumerConfig);
+    return PipeSubscribeCloseResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
+  }
+
+  private void closeConsumer(final ConsumerConfig consumerConfig) {
     // unsubscribe all subscribed topics
     final Set<String> topics =
         SubscriptionAgent.consumer()
@@ -514,7 +524,6 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     LOGGER.info("Subscription: consumer {} close successfully", consumerConfig);
-    return PipeSubscribeCloseResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
   //////////////////////////// consumer operations ////////////////////////////

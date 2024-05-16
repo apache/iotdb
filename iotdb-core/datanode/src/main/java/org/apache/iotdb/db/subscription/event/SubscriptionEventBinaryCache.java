@@ -132,6 +132,7 @@ public class SubscriptionEventBinaryCache {
                       // TODO: overflow
                       return (int) (buffer.limit() * memoryUsageCheatFactor.get());
                     })
+            .recordStats() // TODO: metrics
             .build(SubscriptionEvent::serialize);
   }
 }

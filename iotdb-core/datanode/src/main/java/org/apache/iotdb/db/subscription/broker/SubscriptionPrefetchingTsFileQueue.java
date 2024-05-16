@@ -230,6 +230,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
               event,
               writingOffset,
               consumerId);
+          // mark uncommittable
           uncommittedEvents.remove(polledMessage.getCommitContext());
           break;
         default:
@@ -273,6 +274,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     final SubscriptionTsFileEvent newEvent = newEventWithCommittable.getLeft();
     consumerIdToCurrentEventMap.put(consumerId, newEvent);
     if (newEventWithCommittable.getRight()) {
+      // mark committable
       uncommittedEvents.put(newEvent.getMessage().getCommitContext(), newEvent);
     }
 

@@ -57,7 +57,7 @@ public abstract class SubscriptionPrefetchingQueue {
     this.uncommittedEvents = new ConcurrentHashMap<>();
   }
 
-  public abstract SubscriptionEvent poll(String consumerId);
+  public abstract SubscriptionEvent poll(final String consumerId);
 
   public abstract void executePrefetch();
 
@@ -84,6 +84,7 @@ public abstract class SubscriptionPrefetchingQueue {
     }
     event.decreaseReferenceCount();
     event.recordCommittedTimestamp();
+    SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, true);
     uncommittedEvents.remove(commitContext);
     return true;
   }

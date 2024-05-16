@@ -125,9 +125,9 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
               }
               return t;
             });
-    autoPollWorkerExecutor.scheduleAtFixedRate(
+    autoPollWorkerExecutor.scheduleWithFixedDelay(
         new AutoPollWorker(),
-        0,
+        generateRandomInitialDelayMs(ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_INTERVAL_MS),
         ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_INTERVAL_MS,
         TimeUnit.MILLISECONDS);
   }
