@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 
@@ -59,6 +60,13 @@ public abstract class SubscriptionPrefetchingQueue {
   public abstract SubscriptionEvent poll(String consumerId);
 
   public abstract void executePrefetch();
+
+  /** clean up uncommitted events */
+  public void cleanup() {
+    for (final SubscriptionEvent event : uncommittedEvents.values()) {
+      SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, true);
+    }
+  }
 
   /////////////////////////////// commit ///////////////////////////////
 

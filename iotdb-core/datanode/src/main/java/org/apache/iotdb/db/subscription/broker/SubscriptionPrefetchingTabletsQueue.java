@@ -27,6 +27,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
@@ -63,11 +64,6 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
 
   @Override
   public SubscriptionEvent poll(final String consumerId) {
-    if (prefetchingQueue.isEmpty()) {
-      prefetchOnce(SubscriptionConfig.getInstance().getSubscriptionMaxTabletsPerPrefetching());
-      // without serializeOnce here
-    }
-
     final long size = prefetchingQueue.size();
     long count = 0;
 
@@ -108,13 +104,12 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
 
   @Override
   public void executePrefetch() {
-    prefetchOnce(SubscriptionConfig.getInstance().getSubscriptionMaxTabletsPerPrefetching());
+    prefetchOnce();
     serializeOnce();
   }
 
   // TODO: use org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager.calculateTabletSizeInBytes
-  // for limit control
-  private void prefetchOnce(final long limit) {
+  private void prefetchOnce() {
     final List<Tablet> tablets = new ArrayList<>();
     final List<EnrichedEvent> enrichedEvents = new ArrayList<>();
 
@@ -136,9 +131,6 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
         }
         tablets.addAll(currentTablets);
         enrichedEvents.add((EnrichedEvent) event);
-        if (tablets.size() >= limit) {
-          break;
-        }
       } else if (event instanceof PipeTsFileInsertionEvent) {
         for (final TabletInsertionEvent tabletInsertionEvent :
             ((PipeTsFileInsertionEvent) event).toTabletInsertionEvents()) {
@@ -149,9 +141,6 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
           tablets.addAll(currentTablets);
         }
         enrichedEvents.add((EnrichedEvent) event);
-        if (tablets.size() >= limit) {
-          break;
-        }
       } else {
         // TODO:
         //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
@@ -161,6 +150,10 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
             "Subscription: SubscriptionPrefetchingTabletsQueue {} ignore EnrichedEvent {} when prefetching.",
             this,
             event);
+      }
+
+      if (!tablets.isEmpty()) {
+        break;
       }
     }
 
@@ -202,8 +195,7 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
         // Serialize the uncommitted and pollable event.
         if (currentEvent.pollable()) {
           // No need to concern whether serialization is successful.
-          SubscriptionPolledMessageBinaryCache.getInstance()
-              .trySerialize(currentEvent.getMessage());
+          SubscriptionEventBinaryCache.getInstance().trySerialize(currentEvent);
         }
       }
     } catch (final InterruptedException e) {

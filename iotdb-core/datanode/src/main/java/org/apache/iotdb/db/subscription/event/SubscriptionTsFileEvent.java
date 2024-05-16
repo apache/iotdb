@@ -22,7 +22,6 @@ package org.apache.iotdb.db.subscription.event;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.subscription.broker.SubscriptionPolledMessageBinaryCache;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
@@ -109,8 +108,8 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
     nextEventWithCommittableRef.getAndUpdate(
         (nextEventWithCommittable) -> {
           if (Objects.nonNull(nextEventWithCommittable)) {
-            SubscriptionPolledMessageBinaryCache.getInstance()
-                .trySerialize(nextEventWithCommittable.getLeft().getMessage());
+            SubscriptionEventBinaryCache.getInstance()
+                .trySerialize(nextEventWithCommittable.getLeft());
             return nextEventWithCommittable;
           }
 
@@ -224,6 +223,22 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
                       tsFileInsertionEvent.getTsFile().length()),
                   commitContext)),
           true);
+    }
+  }
+
+  @Override
+  public void resetByteBuffer(final boolean recursive) {
+    super.resetByteBuffer(recursive);
+    if (recursive) {
+      nextEventWithCommittableRef.getAndUpdate(
+          (nextEventWithCommittable) -> {
+            if (Objects.isNull(nextEventWithCommittable)) {
+              return null;
+            }
+            SubscriptionEventBinaryCache.getInstance()
+                .resetByteBuffer(nextEventWithCommittable.getLeft(), true);
+            return nextEventWithCommittable;
+          });
     }
   }
 }

@@ -33,9 +33,9 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
-import org.apache.iotdb.db.subscription.broker.SubscriptionPolledMessageBinaryCache;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
 import org.apache.iotdb.db.subscription.metric.SubscriptionPrefetchingQueueMetrics;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -315,47 +315,48 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
     }
 
-    final List<SubscriptionPolledMessage> messages;
+    final List<SubscriptionEvent> events;
     try {
       final SubscriptionPollMessage pollMessage = req.getPollMessage();
       final short messageType = pollMessage.getMessageType();
       if (SubscriptionPollMessageType.isValidatedMessageType(messageType)) {
         switch (SubscriptionPollMessageType.valueOf(messageType)) {
           case POLL:
-            messages =
+            events =
                 handlePipeSubscribePollInternal(
                     consumerConfig, (PollMessagePayload) pollMessage.getMessagePayload());
             break;
           case POLL_TS_FILE:
-            messages =
+            events =
                 handlePipeSubscribePollTsFileInternal(
                     consumerConfig, (PollTsFileMessagePayload) pollMessage.getMessagePayload());
             break;
           default:
-            messages = null;
+            events = null;
             break;
         }
       } else {
-        messages = null;
+        events = null;
       }
-      if (Objects.nonNull(messages)) {
+      if (Objects.nonNull(events)) {
         // generate response
         return PipeSubscribePollResp.toTPipeSubscribeResp(
             RpcUtils.SUCCESS_STATUS,
-            messages.parallelStream()
+            events.parallelStream()
                 .map(
-                    (message) -> {
+                    (event) -> {
+                      final SubscriptionPolledMessage message = event.getMessage();
                       final SubscriptionCommitContext commitContext = message.getCommitContext();
                       try {
                         final ByteBuffer byteBuffer =
-                            SubscriptionPolledMessageBinaryCache.getInstance().serialize(message);
+                            SubscriptionEventBinaryCache.getInstance().serialize(event);
                         SubscriptionPrefetchingQueueMetrics.getInstance()
                             .mark(
                                 SubscriptionPrefetchingQueue.generatePrefetchingQueueId(
                                     commitContext.getConsumerGroupId(),
                                     commitContext.getTopicName()),
                                 byteBuffer.limit());
-                        SubscriptionPolledMessageBinaryCache.getInstance().resetByteBuffer(message);
+                        SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, false);
                         LOGGER.info(
                             "Subscription: consumer {} poll message successfully with commit context: {}, req message: {}",
                             consumerConfig,
@@ -392,7 +393,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
   }
 
-  private List<SubscriptionPolledMessage> handlePipeSubscribePollInternal(
+  private List<SubscriptionEvent> handlePipeSubscribePollInternal(
       final ConsumerConfig consumerConfig, final PollMessagePayload messagePayload) {
     final Set<String> topicNames;
     if (messagePayload.getTopicNames().isEmpty()) {
@@ -408,22 +409,17 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
               .collect(Collectors.toSet());
     }
 
-    return SubscriptionAgent.broker().poll(consumerConfig, topicNames).stream()
-        .map(SubscriptionEvent::getMessage)
-        .collect(Collectors.toList());
+    return SubscriptionAgent.broker().poll(consumerConfig, topicNames);
   }
 
-  private List<SubscriptionPolledMessage> handlePipeSubscribePollTsFileInternal(
+  private List<SubscriptionEvent> handlePipeSubscribePollTsFileInternal(
       final ConsumerConfig consumerConfig, final PollTsFileMessagePayload messagePayload) {
     return SubscriptionAgent.broker()
         .pollTsFile(
             consumerConfig,
             messagePayload.getTopicName(),
             messagePayload.getFileName(),
-            messagePayload.getWritingOffset())
-        .stream()
-        .map(SubscriptionEvent::getMessage)
-        .collect(Collectors.toList());
+            messagePayload.getWritingOffset());
   }
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(final PipeSubscribeCommitReq req) {

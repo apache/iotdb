@@ -23,7 +23,10 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class SubscriptionEvent {
@@ -36,6 +39,8 @@ public class SubscriptionEvent {
   private String lastPolledConsumerId;
   private long lastPolledTimestamp;
   private long committedTimestamp;
+
+  protected ByteBuffer byteBuffer; // serialized SubscriptionPolledMessage
 
   public SubscriptionEvent(
       final List<EnrichedEvent> enrichedEvents, final SubscriptionPolledMessage message) {
@@ -98,6 +103,24 @@ public class SubscriptionEvent {
     return lastPolledConsumerId;
   }
 
+  //////////////////////////// byte buffer ////////////////////////////
+
+  public ByteBuffer serialize() throws IOException {
+    if (Objects.nonNull(byteBuffer)) {
+      return byteBuffer;
+    }
+    return SubscriptionPolledMessage.serialize(message);
+  }
+
+  public ByteBuffer getByteBuffer() {
+    return byteBuffer;
+  }
+
+  public void resetByteBuffer(final boolean recursive) {
+    // maybe friendly for gc
+    byteBuffer = null;
+  }
+
   /////////////////////////////// object ///////////////////////////////
 
   @Override
@@ -112,6 +135,9 @@ public class SubscriptionEvent {
         + lastPolledTimestamp
         + ", committedTimestamp="
         + committedTimestamp
-        + "}";
+        + "}"
+        + "(message byte buffer size: "
+        + (Objects.nonNull(byteBuffer) ? byteBuffer.limit() : "<unknown>")
+        + ")";
   }
 }

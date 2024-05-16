@@ -161,7 +161,8 @@ public class SubscriptionBroker {
       LOGGER.warn("Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
       return;
     }
-    // TODO: do something for events on-the-fly
+    // clean up uncommitted events
+    prefetchingQueue.cleanup();
     topicNameToPrefetchingQueue.remove(topicName);
     SubscriptionPrefetchingQueueMetrics.getInstance()
         .deregister(prefetchingQueue.getPrefetchingQueueId());

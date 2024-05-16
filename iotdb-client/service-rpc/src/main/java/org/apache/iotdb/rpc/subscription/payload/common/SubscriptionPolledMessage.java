@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
 public class SubscriptionPolledMessage {
 
@@ -38,8 +37,6 @@ public class SubscriptionPolledMessage {
   private final transient SubscriptionMessagePayload messagePayload;
 
   private final transient SubscriptionCommitContext commitContext;
-
-  private ByteBuffer byteBuffer;
 
   public SubscriptionPolledMessage(
       short messageType,
@@ -65,14 +62,10 @@ public class SubscriptionPolledMessage {
   /////////////////////////////// de/ser ///////////////////////////////
 
   public static ByteBuffer serialize(SubscriptionPolledMessage message) throws IOException {
-    if (Objects.nonNull(message.byteBuffer)) {
-      return message.byteBuffer;
-    }
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       message.serialize(outputStream);
-      return message.byteBuffer =
-          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
   }
 
@@ -80,15 +73,6 @@ public class SubscriptionPolledMessage {
     ReadWriteIOUtils.write(messageType, stream);
     messagePayload.serialize(stream);
     commitContext.serialize(stream);
-  }
-
-  public ByteBuffer getByteBuffer() {
-    return byteBuffer;
-  }
-
-  public void resetByteBuffer() {
-    // maybe friendly for gc
-    byteBuffer = null;
   }
 
   public static SubscriptionPolledMessage deserialize(final ByteBuffer buffer) {
