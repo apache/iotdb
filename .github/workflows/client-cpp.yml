@@ -77,6 +77,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'corretto'
+          java-version: '11'
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:

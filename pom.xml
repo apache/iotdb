@@ -122,7 +122,7 @@
         <!-- This was the last version to support Java 8 -->
         <!--mockito.version>4.11.0</mockito.version-->
         <moquette.version>0.17</moquette.version>
-        <netty.version>4.1.97.Final</netty.version>
+        <netty.version>4.1.109.Final</netty.version>
         <nimbus-jose-jwt.version>9.37.2</nimbus-jose-jwt.version>
         <oauth2-oidc-sdk.version>10.15</oauth2-oidc-sdk.version>
         <openapi.generator.version>7.5.0</openapi.generator.version>
@@ -174,8 +174,6 @@
       we'll stay at 0.14.1.
     -->
         <thrift.version>0.14.1</thrift.version>
-        <!-- This was the last version to support Java 8 -->
-        <tomcat.version>9.0.86</tomcat.version>
         <xz.version>1.9</xz.version>
         <zeppelin.version>0.11.1</zeppelin.version>
         <zstd-jni.version>1.5.5-5</zstd-jni.version>
@@ -1114,15 +1112,6 @@
                 <groupId>org.awaitility</groupId>
                 <artifactId>awaitility</artifactId>
                 <version>${awaitility.version}</version>
-            </dependency>
-            <!--
-        TODO: This dependency is only needed to run one single test-case ... possibly refactor?
-        (org.apache.iotdb.db.conf.IoTDBDescriptorTest)
-      -->
-            <dependency>
-                <groupId>org.apache.tomcat.embed</groupId>
-                <artifactId>tomcat-embed-core</artifactId>
-                <version>${tomcat.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.projectreactor.netty</groupId>
@@ -2114,53 +2103,7 @@
                                 <requireJavaVersion>
                                     <version>1.8.0</version>
                                 </requireJavaVersion>
-                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies">
-                                    <excludeCoordinates>
-                                        <!-- TODO: For this CVE no fix exists yet (Keep an eye on it) -->
-                                        <exclude>
-                                            <groupId>io.netty</groupId>
-                                            <artifactId>netty-handler</artifactId>
-                                            <version>4.1.97.Final</version>
-                                        </exclude>
-                                        <!--
-                      CVE-2016-1000027 seems to effect the HTTP Invoker, which we are not using.
-                      These are marked deprecated anyway and are removed in Spring 6.x. Unfortunately,
-                      we are still stuck at 5.x due to the javax-namespace issues.
-                    -->
-                                        <exclude>
-                                            <groupId>org.springframework</groupId>
-                                            <artifactId>spring-web</artifactId>
-                                            <version>5.3.30</version>
-                                        </exclude>
-                                        <!--
-                      For this CVE no fix exists and will probably never exist
-                      (We should discuss dropping 2.11 anyway)
-                    -->
-                                        <exclude>
-                                            <groupId>org.apache.spark</groupId>
-                                            <artifactId>spark-core_2.11</artifactId>
-                                            <version>2.4.8</version>
-                                        </exclude>
-                                        <!--
-                      We can't update to a fixed version as we're stuck with this version
-                      as it was the last to support the javax namespace.
-                    -->
-                                        <exclude>
-                                            <groupId>org.glassfish.jersey.core</groupId>
-                                            <artifactId>jersey-common</artifactId>
-                                            <version>2.4.8</version>
-                                        </exclude>
-                                        <!--
-                      TODO: For this CVE no fix exists yet, however we should keep an eye on this:
-                      https://docs.google.com/presentation/d/1W5KU7ffh4dheR8iD54ulABImi6byAhSI-OhEKw2adRo/edit#slide=id.gaf11915f86_0_0
-                    -->
-                                        <exclude>
-                                            <groupId>io.atomix</groupId>
-                                            <artifactId>atomix-raft</artifactId>
-                                            <version>3.1.12</version>
-                                        </exclude>
-                                    </excludeCoordinates>
-                                </banVulnerable>
+                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies"/>
                             </rules>
                         </configuration>
                     </execution>
