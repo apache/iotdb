@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
@@ -103,7 +105,7 @@ public class PipeTransferTsFileInsertionEventHandler
     this.client = client;
 
     client.setShouldReturnSelf(false);
-    client.setTimeout(clientManager.getConnectionTimeout());
+    client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
     final int readLength = reader.read(readBuffer);
 
@@ -134,12 +136,19 @@ public class PipeTransferTsFileInsertionEventHandler
         readLength == readFileBufferSize
             ? readBuffer
             : Arrays.copyOfRange(readBuffer, 0, readLength);
+    final TPipeTransferReq uncompressedReq =
+        PipeTransferCompressedReq.toTPipeTransferReq(
+            transferMod
+                ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
+                    currentFile.getName(), position, payload)
+                : PipeTransferTsFilePieceReq.toTPipeTransferReq(
+                    currentFile.getName(), position, payload),
+            connector.getCompressors());
     client.pipeTransfer(
-        transferMod
-            ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
-                currentFile.getName(), position, payload)
-            : PipeTransferTsFilePieceReq.toTPipeTransferReq(
-                currentFile.getName(), position, payload),
+        connector.isRpcCompressionEnabled()
+            ? PipeTransferCompressedReq.toTPipeTransferReq(
+                uncompressedReq, connector.getCompressors())
+            : uncompressedReq,
         this);
     position += readLength;
   }
@@ -228,7 +237,9 @@ public class PipeTransferTsFileInsertionEventHandler
         exception);
 
     try {
-      clientManager.adjustTimeoutIfNecessary(exception);
+      if (Objects.nonNull(clientManager)) {
+        clientManager.adjustTimeoutIfNecessary(exception);
+      }
     } catch (Exception e) {
       LOGGER.warn("Failed to adjust timeout when failed to transfer file.", e);
     }
@@ -240,11 +251,13 @@ public class PipeTransferTsFileInsertionEventHandler
     } catch (final IOException e) {
       LOGGER.warn("Failed to close file reader when failed to transfer file.", e);
     } finally {
-      connector.addFailureEventToRetryQueue(event);
-
-      if (client != null) {
-        client.setShouldReturnSelf(true);
-        client.returnSelf();
+      try {
+        if (client != null) {
+          client.setShouldReturnSelf(true);
+          client.returnSelf();
+        }
+      } finally {
+        connector.addFailureEventToRetryQueue(event);
       }
     }
   }

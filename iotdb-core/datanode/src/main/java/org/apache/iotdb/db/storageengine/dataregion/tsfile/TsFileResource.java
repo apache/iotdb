@@ -645,6 +645,11 @@ public class TsFileResource {
     if (status == getStatus()) {
       return true;
     }
+    return transformStatus(status);
+  }
+
+  /** Return false if the status is not changed */
+  public boolean transformStatus(TsFileResourceStatus status) {
     switch (status) {
       case NORMAL:
         return compareAndSetStatus(TsFileResourceStatus.UNCLOSED, TsFileResourceStatus.NORMAL)

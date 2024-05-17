@@ -207,9 +207,11 @@ public class CommonConfig {
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
 
+  private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
   private int pipeMaxAllowedPinnedMemTableCount = 50;
   private long pipeMaxAllowedLinkedTsFileCount = 100;
+  private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
@@ -830,6 +832,16 @@ public class CommonConfig {
     return pipeAirGapReceiverPort;
   }
 
+  public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
+    return pipeMaxAllowedHistoricalTsFilePerDataRegion;
+  }
+
+  public void setPipeMaxAllowedHistoricalTsFilePerDataRegion(
+      int pipeMaxAllowedPendingTsFileEpochPerDataRegion) {
+    this.pipeMaxAllowedHistoricalTsFilePerDataRegion =
+        pipeMaxAllowedPendingTsFileEpochPerDataRegion;
+  }
+
   public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
     return pipeMaxAllowedPendingTsFileEpochPerDataRegion;
   }
@@ -853,6 +865,16 @@ public class CommonConfig {
 
   public void setPipeMaxAllowedLinkedTsFileCount(long pipeMaxAllowedLinkedTsFileCount) {
     this.pipeMaxAllowedLinkedTsFileCount = pipeMaxAllowedLinkedTsFileCount;
+  }
+
+  public float getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage() {
+    return pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage;
+  }
+
+  public void setPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage(
+      float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage) {
+    this.pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage =
+        pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage;
   }
 
   public long getPipeStuckRestartIntervalSeconds() {
