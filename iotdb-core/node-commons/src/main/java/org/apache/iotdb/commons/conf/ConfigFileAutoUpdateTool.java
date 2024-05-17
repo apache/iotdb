@@ -58,10 +58,12 @@ public class ConfigFileAutoUpdateTool {
     File dataNodeFile = new File(dataNodeUrl.getFile());
     File commonFile = new File(commonUrl.getFile());
 
+    boolean canUpdate = configNodeFile.exists() && dataNodeFile.exists() && commonFile.exists();
+    if (!canUpdate) {
+      return;
+    }
+
     if (!systemFile.exists()) {
-      if (!configNodeFile.exists() || !dataNodeFile.exists() || !commonFile.exists()) {
-        return;
-      }
       systemFile.createNewFile();
     }
 

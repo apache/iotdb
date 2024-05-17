@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -162,10 +163,10 @@ public class IoTDBDataBackTool {
     System.setProperty("IOTDB_HOME", System.getenv("IOTDB_HOME"));
     argsParse(args);
     File sourceDir = new File(sourcePath);
-    Properties dataProperties = getProperties(IoTDBConfig.CONFIG_NAME);
-    initDataNodeProperties(dataProperties);
-    Properties configProperties = getProperties(CONFIG_NODE_CONF_NAME);
-    initConfigNodeProperties(configProperties);
+
+    Properties properties = getProperties(CommonConfig.SYSTEM_CONFIG_NAME);
+    initDataNodeProperties(properties);
+    initConfigNodeProperties(properties);
 
     StringBuilder targetDirString = new StringBuilder();
     Map<String, String> copyMap = new HashMap<>();
@@ -429,10 +430,9 @@ public class IoTDBDataBackTool {
 
   private static void countNodeBack(String targetDirString, Map<String, String> copyMap) {
     File sourceDir = new File(sourcePath);
-    Properties dataProperties = getProperties(IoTDBConfig.CONFIG_NAME);
-    initDataNodeProperties(dataProperties);
-    Properties configProperties = getProperties(CONFIG_NODE_CONF_NAME);
-    initConfigNodeProperties(configProperties);
+    Properties properties = getProperties(CommonConfig.SYSTEM_CONFIG_NAME);
+    initDataNodeProperties(properties);
+    initConfigNodeProperties(properties);
 
     copyMap.put(
         sourceDir.getAbsolutePath() + File.separatorChar + ".env",
@@ -480,7 +480,7 @@ public class IoTDBDataBackTool {
       Map<String, String> copyMap,
       Map<String, String> dnDataDirsMap,
       Map<String, String> dnMapProperties) {
-    Properties dataProperties = getProperties(IoTDBConfig.CONFIG_NAME);
+    Properties dataProperties = getProperties(CommonConfig.SYSTEM_CONFIG_NAME);
     initDataNodeProperties(dataProperties);
 
     String dnSystemDir = dataProperties.getProperty("dn_system_dir");
@@ -553,7 +553,7 @@ public class IoTDBDataBackTool {
 
   private static void countConfigNodeFile(
       String targetDirString, Map<String, String> copyMap, Map<String, String> cnMapProperties) {
-    Properties configProperties = getProperties(CONFIG_NODE_CONF_NAME);
+    Properties configProperties = getProperties(CommonConfig.SYSTEM_CONFIG_NAME);
     initConfigNodeProperties(configProperties);
 
     String bakCnSystemDir = targetDirString + File.separatorChar + DEFAULT_CN_SYSTEM_DIR;
