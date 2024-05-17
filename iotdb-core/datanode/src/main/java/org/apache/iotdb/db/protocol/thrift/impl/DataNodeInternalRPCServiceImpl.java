@@ -53,11 +53,11 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
-import org.apache.iotdb.consensus.ratis.RatisConsensus;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -2155,18 +2155,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         regionId);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     try {
-
       if (regionId instanceof DataRegionId) {
         // RatisConsensus requires an empty peer list during region transition
         final List<Peer> createPeers =
-            DataRegionConsensusImpl.getInstance() instanceof RatisConsensus
+            ConsensusFactory.RATIS_CONSENSUS.equals(
+                    IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass())
                 ? Collections.emptyList()
                 : peers;
         DataRegionConsensusImpl.getInstance().createLocalPeer(regionId, createPeers);
       } else {
         // RatisConsensus requires an empty peer list during region transition
         final List<Peer> createPeers =
-            SchemaRegionConsensusImpl.getInstance() instanceof RatisConsensus
+            ConsensusFactory.RATIS_CONSENSUS.equals(
+                    IoTDBDescriptor.getInstance()
+                        .getConfig()
+                        .getSchemaRegionConsensusProtocolClass())
                 ? Collections.emptyList()
                 : peers;
         SchemaRegionConsensusImpl.getInstance().createLocalPeer(regionId, createPeers);
