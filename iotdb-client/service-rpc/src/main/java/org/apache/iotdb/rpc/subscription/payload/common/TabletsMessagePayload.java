@@ -34,13 +34,14 @@ public class TabletsMessagePayload implements SubscriptionMessagePayload {
   protected transient List<Tablet> tablets = new ArrayList<>();
 
   // Pure in-memory object, not involved in serialization and deserialization.
-  protected transient long calculatedTabletSizeInBytes;
+  protected transient long calculatedTabletsSizeInBytes;
 
   public TabletsMessagePayload() {}
 
-  public TabletsMessagePayload(final List<Tablet> tablets, final long calculatedTabletSizeInBytes) {
+  public TabletsMessagePayload(
+      final List<Tablet> tablets, final long calculatedTabletsSizeInBytes) {
     this.tablets = tablets;
-    this.calculatedTabletSizeInBytes = calculatedTabletSizeInBytes;
+    this.calculatedTabletsSizeInBytes = calculatedTabletsSizeInBytes;
   }
 
   public List<Tablet> getTablets() {
@@ -85,8 +86,8 @@ public class TabletsMessagePayload implements SubscriptionMessagePayload {
 
   @Override
   public String toString() {
-    return "TabletsMessagePayload{calculatedTabletSizeInBytes="
-        + (calculatedTabletSizeInBytes == 0 ? "<unknown>" : calculatedTabletSizeInBytes)
+    return "TabletsMessagePayload{calculatedTabletsSizeInBytes="
+        + (calculatedTabletsSizeInBytes == 0 ? "<unknown>" : calculatedTabletsSizeInBytes)
         + "}";
   }
 }

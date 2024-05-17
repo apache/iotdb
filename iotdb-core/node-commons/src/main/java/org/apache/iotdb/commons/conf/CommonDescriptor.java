@@ -571,6 +571,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_max_tablets_per_prefetching",
                 String.valueOf(config.getSubscriptionMaxTabletsPerPrefetching()))));
+    config.setSubscriptionMaxTabletsSizeInBytesPerPrefetching(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_max_tablets_size_in_bytes_per_prefetching",
+                String.valueOf(config.getSubscriptionMaxTabletsSizeInBytesPerPrefetching()))));
     config.setSubscriptionPollMaxBlockingTimeMs(
         Integer.parseInt(
             properties.getProperty(

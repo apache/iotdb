@@ -116,6 +116,7 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
   private void prefetchOnce() {
     final List<Tablet> tablets = new ArrayList<>();
     final List<EnrichedEvent> enrichedEvents = new ArrayList<>();
+    long calculatedTabletsSizeInBytes = 0;
 
     Event event;
     while (Objects.nonNull(
@@ -134,6 +135,11 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
           continue;
         }
         tablets.addAll(currentTablets);
+        calculatedTabletsSizeInBytes +=
+            currentTablets.stream()
+                .map((PipeMemoryManager::calculateTabletSizeInBytes))
+                .reduce(Long::sum)
+                .orElse(0L);
         enrichedEvents.add((EnrichedEvent) event);
       } else if (event instanceof PipeTsFileInsertionEvent) {
         for (final TabletInsertionEvent tabletInsertionEvent :
@@ -143,6 +149,11 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
             continue;
           }
           tablets.addAll(currentTablets);
+          calculatedTabletsSizeInBytes +=
+              currentTablets.stream()
+                  .map((PipeMemoryManager::calculateTabletSizeInBytes))
+                  .reduce(Long::sum)
+                  .orElse(0L);
         }
         enrichedEvents.add((EnrichedEvent) event);
       } else {
@@ -156,7 +167,14 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
             event);
       }
 
-      if (!tablets.isEmpty()) {
+      if (tablets.size()
+          >= SubscriptionConfig.getInstance().getSubscriptionMaxTabletsPerPrefetching()) {
+        break;
+      }
+
+      if (calculatedTabletsSizeInBytes
+          >= SubscriptionConfig.getInstance()
+              .getSubscriptionMaxTabletsSizeInBytesPerPrefetching()) {
         break;
       }
     }
@@ -168,12 +186,7 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
               enrichedEvents,
               new SubscriptionPolledMessage(
                   SubscriptionPolledMessageType.TABLETS.getType(),
-                  new TabletsMessagePayload(
-                      tablets,
-                      tablets.stream()
-                          .map((PipeMemoryManager::calculateTabletSizeInBytes))
-                          .reduce(Long::sum)
-                          .orElse(0L)),
+                  new TabletsMessagePayload(tablets, calculatedTabletsSizeInBytes),
                   commitContext));
       uncommittedEvents.put(commitContext, subscriptionEvent); // before enqueuing the event
       prefetchingQueue.add(subscriptionEvent);

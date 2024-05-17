@@ -239,12 +239,13 @@ public class CommonConfig {
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
-  private int subscriptionMaxTabletsPerPrefetching = 16;
+  private int subscriptionMaxTabletsPerPrefetching = 64;
+  private int subscriptionMaxTabletsSizeInBytesPerPrefetching = 8388608; // 8MB
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
   private int subscriptionRecycleUncommittedEventIntervalMs = 60000; // 60s
-  private int subscriptionReadFileBufferSize = 8388608;
+  private int subscriptionReadFileBufferSize = 8388608; // 8MB
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -1064,6 +1065,16 @@ public class CommonConfig {
 
   public void setSubscriptionMaxTabletsPerPrefetching(int subscriptionMaxTabletsPerPrefetching) {
     this.subscriptionMaxTabletsPerPrefetching = subscriptionMaxTabletsPerPrefetching;
+  }
+
+  public int getSubscriptionMaxTabletsSizeInBytesPerPrefetching() {
+    return subscriptionMaxTabletsSizeInBytesPerPrefetching;
+  }
+
+  public void setSubscriptionMaxTabletsSizeInBytesPerPrefetching(
+      int subscriptionMaxTabletsSizeInBytesPerPrefetching) {
+    this.subscriptionMaxTabletsSizeInBytesPerPrefetching =
+        subscriptionMaxTabletsSizeInBytesPerPrefetching;
   }
 
   public int getSubscriptionPollMaxBlockingTimeMs() {

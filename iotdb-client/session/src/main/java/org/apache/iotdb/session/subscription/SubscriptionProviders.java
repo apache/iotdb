@@ -261,7 +261,7 @@ final class SubscriptionProviders {
   }
 
   private void syncInternal(final SubscriptionConsumer consumer) {
-    if (hasNoProviders()) {
+    if (hasNoAvailableProviders()) {
       try {
         openProviders(consumer);
       } catch (final Exception e) {

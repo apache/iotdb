@@ -33,7 +33,6 @@ public class SubscriptionEvent {
 
   private static final long INVALID_TIMESTAMP = -1;
 
-  // the current length of enrichedEvents is always 1...
   protected final List<EnrichedEvent> enrichedEvents;
   protected final SubscriptionPolledMessage message;
 

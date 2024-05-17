@@ -39,6 +39,10 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionMaxTabletsPerPrefetching();
   }
 
+  public int getSubscriptionMaxTabletsSizeInBytesPerPrefetching() {
+    return COMMON_CONFIG.getSubscriptionMaxTabletsSizeInBytesPerPrefetching();
+  }
+
   public int getSubscriptionPollMaxBlockingTimeMs() {
     return COMMON_CONFIG.getSubscriptionPollMaxBlockingTimeMs();
   }
@@ -69,6 +73,9 @@ public class SubscriptionConfig {
         getSubscriptionSubtaskExecutorMaxThreadNum());
     LOGGER.info(
         "SubscriptionMaxTabletsPerPrefetching: {}", getSubscriptionMaxTabletsPerPrefetching());
+    LOGGER.info(
+        "SubscriptionMaxTabletsSizeInBytesPerPrefetching: {}",
+        getSubscriptionMaxTabletsSizeInBytesPerPrefetching());
     LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
     LOGGER.info(
         "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());
