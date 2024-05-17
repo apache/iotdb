@@ -2222,9 +2222,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       insertRowStatement.setTime(timeArray[0]);
       insertRowStatement.setMeasurements(measurementList);
       insertRowStatement.setDataTypes(new TSDataType[measurementList.length]);
-      Object[] values = new Object[measurementList.length];
-      System.arraycopy(insertStatement.getValuesList().get(0), 0, values, 0, values.length);
-      insertRowStatement.setValues(values);
+      insertRowStatement.setValues(insertStatement.getValuesList().get(0));
       insertRowStatement.setNeedInferType(true);
       insertRowStatement.setAligned(insertStatement.isAligned());
       return insertRowStatement.accept(this, context);
@@ -2256,9 +2254,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         statement.setTime(timeArray[i]);
         TSDataType[] dataTypes = new TSDataType[measurementList.length];
         statement.setDataTypes(dataTypes);
-        Object[] values = new Object[measurementList.length];
-        System.arraycopy(insertStatement.getValuesList().get(i), 0, values, 0, values.length);
-        statement.setValues(values);
+        statement.setValues(insertStatement.getValuesList().get(i));
         statement.setAligned(insertStatement.isAligned());
         statement.setNeedInferType(true);
         insertRowStatementList.add(statement);
