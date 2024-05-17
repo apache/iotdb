@@ -99,20 +99,24 @@ public class IoTDBSubscriptionRestartIT {
     }
 
     // Subscription
+    final SubscriptionPullConsumer consumer;
     try {
-      final SubscriptionPullConsumer consumer =
+      consumer =
           new SubscriptionPullConsumer.Builder()
               .host(host)
               .port(port)
               .consumerId("c1")
               .consumerGroupId("cg1")
-              .autoCommit(false)
+              .autoCommit(true)
+              .heartbeatIntervalMs(1000) // narrow heartbeat interval
+              .endpointsSyncIntervalMs(5000) // narrow endpoints sync interval
               .buildPullConsumer();
       consumer.open();
       consumer.subscribe(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+      return;
     }
 
     // Restart cluster
@@ -151,19 +155,17 @@ public class IoTDBSubscriptionRestartIT {
     final Thread thread =
         new Thread(
             () -> {
-              try (final SubscriptionPullConsumer consumer =
-                  new SubscriptionPullConsumer.Builder()
-                      .host(host)
-                      .port(port)
-                      .consumerId("c1")
-                      .consumerGroupId("cg1")
-                      .autoCommit(false)
-                      .buildPullConsumer()) {
-                consumer.open();
+              try (final SubscriptionPullConsumer consumerRef = consumer) {
                 while (!isClosed.get()) {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
-                  final List<SubscriptionMessage> messages =
-                      consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
+                  final List<SubscriptionMessage> messages;
+                  try {
+                    messages = consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
+                  } catch (final Exception e) {
+                    e.printStackTrace();
+                    // Avoid failure
+                    continue;
+                  }
                   for (final SubscriptionMessage message : messages) {
                     final SubscriptionSessionDataSets payload =
                         (SubscriptionSessionDataSets) message.getPayload();
@@ -174,9 +176,9 @@ public class IoTDBSubscriptionRestartIT {
                       }
                     }
                   }
-                  consumer.commitSync(messages);
+                  // Auto commit
                 }
-                consumer.unsubscribe(topicName);
+                consumerRef.unsubscribe(topicName);
               } catch (final Exception e) {
                 e.printStackTrace();
                 // Avoid failure
@@ -284,8 +286,8 @@ public class IoTDBSubscriptionRestartIT {
                         timestamps.put(timestamp, timestamp);
                       }
                     }
-                    // Auto commit
                   }
+                  // Auto commit
                 }
                 consumerRef.unsubscribe(topicName);
               } catch (final Exception e) {
@@ -408,8 +410,8 @@ public class IoTDBSubscriptionRestartIT {
                         timestamps.put(timestamp, timestamp);
                       }
                     }
-                    // Auto commit
                   }
+                  // Auto commit
                 }
                 consumerRef.unsubscribe(topicName);
               } catch (final Exception e) {
