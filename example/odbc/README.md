@@ -37,14 +37,19 @@ Then, you can see the output `iotdb-jdbc-1.3.2-SNAPSHOT-jar-with-dependencies.ja
 ### Preparing ODBC-JDBC Bridge
 *Note: Here we only provide one kind of ODBC-JDBC bridge as the instance. Readers can use other ODBC-JDBC bridges to access IoTDB with the IOTDB-JDBC.*
 1.  **Download Zappy-Sys ODBC-JDBC Bridge**:
-    Enter the https://zappysys.com/products/odbc-powerpack/odbc-jdbc-bridge-driver/ website, and click "download".![ZappySys_website.jpg](https://alioss.timecho.com/upload/ZappySys_website.jpg)
+    Enter the https://zappysys.com/products/odbc-powerpack/odbc-jdbc-bridge-driver/ website, and click "download".
+    ![ZappySys_website.jpg](https://alioss.timecho.com/upload/ZappySys_website.jpg)
 2. **Prepare IoTDB**: Set up IoTDB cluster, and write a row of data arbitrarily.
     ```sql
     IoTDB > insert into root.ln.wf02.wt02(timestamp,status) values(1,true)
     ```
 3. **Deploy and Test the Bridge**:
-    1. Open ODBC Data Sources(32/64 bit), depending on the bits of Windows. One possible position is `C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools`.![ODBC_ADD_EN.jpg](https://alioss.timecho.com/upload/ODBC_ADD_EN.jpg)
-    2. Click on "add" and select ZappySys JDBC Bridge.![ODBC_CREATE_EN.jpg](https://alioss.timecho.com/upload/ODBC_CREATE_EN.jpg)
+    1. Open ODBC Data Sources(32/64 bit), depending on the bits of Windows. One possible position is `C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Administrative Tools`.
+
+       ![ODBC_ADD_EN.jpg](https://alioss.timecho.com/upload/ODBC_ADD_EN.jpg)
+    2. Click on "add" and select ZappySys JDBC Bridge.
+       
+       ![ODBC_CREATE_EN.jpg](https://alioss.timecho.com/upload/ODBC_CREATE_EN.jpg)
     3. Fill in the following settings:
 
        | Property            | Content                                                   | Example                                                                                                            |
@@ -55,8 +60,12 @@ Then, you can see the output `iotdb-jdbc-1.3.2-SNAPSHOT-jar-with-dependencies.ja
        | User name           | IoTDB's user name                                         | root                                                                                                               |
        | User password       | IoTDB's password                                          | root                                                                                                               |
        ![ODBC_CONNECTION.png](https://alioss.timecho.com/upload/ODBC_CONNECTION.png)
-    4. Click on "Test Connection" button, and a "Test Connection: SUCCESSFUL" should appear.![ODBC_CONFIG_EN.jpg](https://alioss.timecho.com/upload/ODBC_CONFIG_EN.jpg)
-    5. Click the "Preview" button above, and replace the original query text with `select * from root.**`, then click "Preview Data", and the query result should correctly.![ODBC_TEST.jpg](https://alioss.timecho.com/upload/ODBC_TEST.jpg)
+    4. Click on "Test Connection" button, and a "Test Connection: SUCCESSFUL" should appear.
+   
+       ![ODBC_CONFIG_EN.jpg](https://alioss.timecho.com/upload/ODBC_CONFIG_EN.jpg)
+    5. Click the "Preview" button above, and replace the original query text with `select * from root.**`, then click "Preview Data", and the query result should correctly.
+   
+       ![ODBC_TEST.jpg](https://alioss.timecho.com/upload/ODBC_TEST.jpg)
 
 ## Operate IoTDB's data with ODBC example
 After correct deployment, you can use the example program to operate IoTDB's data. 
