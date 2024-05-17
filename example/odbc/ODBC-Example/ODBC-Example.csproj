@@ -18,8 +18,15 @@
 -->
 
 <Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
+    <RootNamespace>org.apache.iotdb</RootNamespace>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Authors>Apache IoTDB</Authors>
+        <Copyright>The Apache Software Foundation</Copyright>
+        <PackageProjectUrl>https://iotdb.apache.org</PackageProjectUrl>
+        <PackageVersion>1.3.2-SNAPSHOT</PackageVersion>
+        <Title>IoTDB: Example: ODBC</Title>
+        <PackageLicenseUrl>https://www.apache.org/licenses/LICENSE-2.0</PackageLicenseUrl>
         <OutputType>Exe</OutputType>
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
