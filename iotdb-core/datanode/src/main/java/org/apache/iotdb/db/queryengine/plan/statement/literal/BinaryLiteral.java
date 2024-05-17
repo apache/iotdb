@@ -6,8 +6,6 @@ import com.google.common.base.CharMatcher;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import javax.xml.bind.DatatypeConverter;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -37,7 +35,15 @@ public class BinaryLiteral extends Literal {
     if (hexString.length() % 2 != 0) {
       throw new SemanticException("Binary literal must contain an even number of digits");
     }
-    this.values = DatatypeConverter.parseHexBinary(hexString);
+    int len = hexString.length();
+    this.values = new byte[len / 2];
+
+    for (int i = 0; i < len; i += 2) {
+      this.values[i / 2] =
+          (byte)
+              ((Character.digit(hexString.charAt(i), 16) << 4)
+                  + Character.digit(hexString.charAt(i + 1), 16));
+    }
   }
 
   public byte[] getValues() {
