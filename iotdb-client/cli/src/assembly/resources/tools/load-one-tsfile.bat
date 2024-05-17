@@ -70,6 +70,7 @@ if %param%!== ! (
 	set h_parameter=%1 %2
 ) else if "%param%"=="-f" (
 	if "%2"=="" goto :load_err
+	if exist %2\NUL goto :load_folder_err
 	set load_dir_parameter=%load_dir_parameter%%2'
 ) else if "%param%"=="--sgLevel" (
 	set sg_level_parameter=sgLevel=%2
@@ -84,13 +85,19 @@ goto :loop
 
 :err
 echo JAVA_HOME environment variable must be set!
-set ret_code=1
+set ret_code=2
 ENDLOCAL
 EXIT /B %ret_code%
 
 :load_err
 echo -f option must be set!
-set ret_code=1
+set ret_code=2
+ENDLOCAL
+EXIT /B %ret_code%
+
+:load_folder_err
+echo -f can't be a folder.
+set ret_code=2
 ENDLOCAL
 EXIT /B %ret_code%
 

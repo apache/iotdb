@@ -82,14 +82,14 @@ while true; do
 done
 
 if [ -z "${load_dir_param}" ]; then
-    echo "A Loading file path is required."
+    echo "-f option must be set!"
     echo "${HELP}"
     exit 2
 fi
 
 
-if [[ $load_dir_param != *.tsfile ]]; then
-    echo "Loading file path is not a file ending in .tsfile"
+if [ -d "${load_dir_param}" ]; then
+    echo "-f can't be a folder."
     exit 2
 fi
 
