@@ -53,6 +53,8 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
   }
 
   public void transfer(AsyncPipeDataTransferServiceClient client) throws TException {
+    connector.rateLimitIfNeeded(client.getEndPoint(), req.getBody().length);
+
     doTransfer(client, req);
   }
 

@@ -122,12 +122,16 @@ public class PipeTransferTsFileInsertionEventHandler
         transfer(clientManager, client);
       } else if (currentFile == tsFile) {
         isSealSignalSent.set(true);
-        client.pipeTransfer(
+
+        TPipeTransferReq req =
             transferMod
                 ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
                     modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
-                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()),
-            this);
+                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
+
+        connector.rateLimitIfNeeded(client.getEndPoint(), req.getBody().length);
+
+        client.pipeTransfer(req, this);
       }
       return;
     }
@@ -144,12 +148,16 @@ public class PipeTransferTsFileInsertionEventHandler
                 : PipeTransferTsFilePieceReq.toTPipeTransferReq(
                     currentFile.getName(), position, payload),
             connector.getCompressors());
-    client.pipeTransfer(
+
+    TPipeTransferReq req =
         connector.isRpcCompressionEnabled()
             ? PipeTransferCompressedReq.toTPipeTransferReq(
                 uncompressedReq, connector.getCompressors())
-            : uncompressedReq,
-        this);
+            : uncompressedReq;
+
+    connector.rateLimitIfNeeded(client.getEndPoint(), req.getBody().length);
+
+    client.pipeTransfer(req, this);
     position += readLength;
   }
 

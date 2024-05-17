@@ -70,6 +70,8 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
   }
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
+    connector.rateLimitIfNeeded(client.getEndPoint(), req.getBody().length);
+
     client.pipeTransfer(req, this);
   }
 

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorFactory;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
+import org.apache.iotdb.commons.pipe.connector.rateLimiter.ConnectorRateLimiter;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -40,8 +41,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_KEY;
@@ -65,6 +68,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_SET;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_RATE_LIMIT_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_RATE_LIMIT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_COMPRESSOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY;
@@ -77,6 +82,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LOAD_BALANCE_STRATEGY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_RATE_LIMIT_KEY;
 
 public abstract class IoTDBConnector implements PipeConnector {
 
@@ -95,6 +101,10 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected final List<PipeCompressor> compressors = new ArrayList<>();
 
   protected boolean isTabletBatchModeEnabled = true;
+
+  protected boolean isRateLimitModeEnabled = false;
+  protected double rateLimitBytesPerSecond = 0;
+  protected Map<TEndPoint, ConnectorRateLimiter> endPointConnectorRateLimiterMap;
 
   protected PipeReceiverStatusHandler receiverStatusHandler;
 
@@ -168,6 +178,23 @@ public abstract class IoTDBConnector implements PipeConnector {
             Byte.MAX_VALUE, compressors.size()),
         compressors.size());
     isRpcCompressionEnabled = !compressors.isEmpty();
+
+    final double rateLimit =
+        parameters.getDoubleOrDefault(
+            Arrays.asList(CONNECTOR_RATE_LIMIT_KEY, SINK_RATE_LIMIT_KEY),
+            CONNECTOR_RATE_LIMIT_DEFAULT_VALUE);
+
+    validator.validate(
+        arg -> rateLimit >= 0 && rateLimit <= Double.MAX_VALUE,
+        String.format(
+            "Rate limit should be in the range [0, %f], but got %f.", Double.MAX_VALUE, rateLimit),
+        rateLimit);
+
+    if (rateLimit > 0) {
+      isRateLimitModeEnabled = true;
+      endPointConnectorRateLimiterMap = new ConcurrentHashMap<>();
+      rateLimitBytesPerSecond = rateLimit;
+    }
 
     validator.validate(
         arg -> arg.equals("retry") || arg.equals("ignore"),
@@ -324,5 +351,16 @@ public abstract class IoTDBConnector implements PipeConnector {
 
   public PipeReceiverStatusHandler statusHandler() {
     return receiverStatusHandler;
+  }
+
+  private ConnectorRateLimiter getRateLimiter(TEndPoint endPoint) {
+    return endPointConnectorRateLimiterMap.computeIfAbsent(
+        endPoint, endpoint -> new ConnectorRateLimiter(rateLimitBytesPerSecond));
+  }
+
+  public void rateLimitIfNeeded(TEndPoint endPoint, long bytesLength) {
+    if (isRateLimitModeEnabled) {
+      getRateLimiter(endPoint).acquire(bytesLength);
+    }
   }
 }

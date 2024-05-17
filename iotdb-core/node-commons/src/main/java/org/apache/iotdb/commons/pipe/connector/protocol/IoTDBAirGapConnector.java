@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.connector.protocol;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
@@ -265,6 +266,11 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     if (!socket.isConnected()) {
       return false;
     }
+
+    rateLimitIfNeeded(
+        new TEndPoint(
+            Arrays.toString(socket.getLocalAddress().getAddress()), socket.getLocalPort()),
+        bytes.length);
 
     final BufferedOutputStream outputStream = new BufferedOutputStream(socket.getOutputStream());
     bytes = enrichWithLengthAndChecksum(bytes);

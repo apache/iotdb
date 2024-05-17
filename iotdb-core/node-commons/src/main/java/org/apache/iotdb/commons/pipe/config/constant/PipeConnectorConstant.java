@@ -173,6 +173,10 @@ public class PipeConnectorConstant {
                   CONNECTOR_COMPRESSOR_ZSTD,
                   CONNECTOR_COMPRESSOR_LZMA2)));
 
+  public static final String CONNECTOR_RATE_LIMIT_KEY = "connector.rate-limit-bytes";
+  public static final String SINK_RATE_LIMIT_KEY = "sink.rate-limit-bytes";
+  public static final double CONNECTOR_RATE_LIMIT_DEFAULT_VALUE = 0;
+
   public static final String SINK_TOPIC_KEY = "sink.topic";
   public static final String SINK_CONSUMER_GROUP_KEY = "sink.consumer-group";
 

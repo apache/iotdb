@@ -165,6 +165,10 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     return endpoint.getPort();
   }
 
+  public TEndPoint getEndPoint() {
+    return endpoint;
+  }
+
   @Override
   public String toString() {
     return String.format("AsyncPipeDataTransferServiceClient{%s}, id = {%d}", endpoint, id);

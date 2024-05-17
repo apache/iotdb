@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.connector.client;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
@@ -69,6 +70,10 @@ public class IoTDBSyncClient extends IClientRPCService.Client
 
   public int getPort() {
     return port;
+  }
+
+  public TEndPoint getEndPoint() {
+    return new TEndPoint(ipAddress, port);
   }
 
   public void setTimeout(int timeout) {

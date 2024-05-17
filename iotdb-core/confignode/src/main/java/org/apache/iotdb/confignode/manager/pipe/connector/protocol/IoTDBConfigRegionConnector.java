@@ -38,6 +38,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.tsfile.utils.Pair;
@@ -123,13 +124,13 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
     final TPipeTransferResp resp;
     try {
-      resp =
-          clientAndStatus
-              .getLeft()
-              .pipeTransfer(
-                  compressIfNeeded(
-                      PipeTransferConfigPlanReq.toTPipeTransferReq(
-                          pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan())));
+      TPipeTransferReq req =
+          compressIfNeeded(
+              PipeTransferConfigPlanReq.toTPipeTransferReq(
+                  pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()));
+      rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
+
+      resp = clientAndStatus.getLeft().pipeTransfer(req);
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
@@ -189,18 +190,18 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     final TPipeTransferResp resp;
     try {
-      resp =
-          clientAndStatus
-              .getLeft()
-              .pipeTransfer(
-                  compressIfNeeded(
-                      PipeTransferConfigSnapshotSealReq.toTPipeTransferReq(
-                          snapshotFile.getName(),
-                          snapshotFile.length(),
-                          Objects.nonNull(templateFile) ? templateFile.getName() : null,
-                          Objects.nonNull(templateFile) ? templateFile.length() : 0,
-                          snapshotEvent.getFileType(),
-                          snapshotEvent.toSealTypeString())));
+      TPipeTransferReq req =
+          compressIfNeeded(
+              PipeTransferConfigSnapshotSealReq.toTPipeTransferReq(
+                  snapshotFile.getName(),
+                  snapshotFile.length(),
+                  Objects.nonNull(templateFile) ? templateFile.getName() : null,
+                  Objects.nonNull(templateFile) ? templateFile.length() : 0,
+                  snapshotEvent.getFileType(),
+                  snapshotEvent.toSealTypeString()));
+      rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
+
+      resp = clientAndStatus.getLeft().pipeTransfer(req);
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
