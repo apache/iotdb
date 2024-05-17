@@ -92,12 +92,13 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     Set<PartialPath> explicitDevicePatternList = new HashSet<>();
     int explicitDevicePatternCount = 0;
     for (PartialPath pattern : pathPatternList) {
-      if (!pattern.hasWildcard()) {
-        explicitPathList.add(pattern);
-      } else if (pattern.hasExplicitDevice()
+      if (withTemplate
+          && pattern.hasExplicitDevice()
           && templateManager.checkTemplateSetInfo(pattern) != null) {
         explicitDevicePatternList.add(pattern.getDevicePath());
         explicitDevicePatternCount++;
+      } else if (!pattern.hasWildcard()) {
+        explicitPathList.add(pattern);
       }
     }
 
