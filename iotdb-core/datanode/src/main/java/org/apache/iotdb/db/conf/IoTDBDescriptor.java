@@ -1720,30 +1720,21 @@ public class IoTDBDescriptor {
   }
 
   public void loadHotModifiedProps() throws QueryProcessException {
-    Properties commonProperties = new Properties();
-
     URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
-    if (url != null && new File(url.getFile()).exists()) {
-      loadHotModifiedPropertiesFromUrl(commonProperties, url);
-    } else {
-      url = getPropsUrl(CommonConfig.COMMON_CONFIG_NAME);
-      if (url == null) {
-        LOGGER.warn("Couldn't load the configuration from any of the known sources.");
-        return;
-      }
-      loadHotModifiedPropertiesFromUrl(commonProperties, url);
-
-      url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
-      if (url == null) {
-        LOGGER.warn("Couldn't load the configuration from any of the known sources.");
-        return;
-      }
-      loadHotModifiedPropertiesFromUrl(commonProperties, url);
+    if (url == null) {
+      LOGGER.warn("Couldn't load the configuration from any of the known sources.");
+      return;
     }
-    try {
+
+    Properties commonProperties = new Properties();
+    try (InputStream inputStream = url.openStream()) {
+      LOGGER.info("Start to reload config file {}", url);
+      commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
       loadHotModifiedProps(commonProperties);
     } catch (Exception e) {
-      LOGGER.error("Failed to reload configs because {}", e.getMessage());
+      LOGGER.warn("Fail to reload config file {}", url, e);
+      throw new QueryProcessException(
+          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
     ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(commonProperties);
     LOGGER.info("Reload metric service in level {}", reloadLevel);
