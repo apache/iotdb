@@ -19,7 +19,7 @@
 
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-    <RootNamespace>org.apache.iotdb</RootNamespace>
+        <RootNamespace>org.apache.iotdb.odbc</RootNamespace>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Authors>Apache IoTDB</Authors>
         <Copyright>The Apache Software Foundation</Copyright>
