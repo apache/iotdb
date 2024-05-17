@@ -214,8 +214,8 @@ public class IoTDBConfig {
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 32 * 1024 * 1024;
 
-  /** max total wal buffer off heap memory size proportion */
-  private double maxWalBufferOffHeapMemorySizeProportion = 0.5;
+  /** max total direct buffer off heap memory size proportion */
+  private double maxDirectBufferOffHeapMemorySizeProportion = 0.8;
 
   /** Blocking queue capacity of each wal buffer */
   private int walBufferQueueCapacity = 500;
@@ -1107,6 +1107,8 @@ public class IoTDBConfig {
 
   private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
 
+  private double loadWriteThroughputBytesPerSecond = Double.MAX_VALUE; // Bytes/s
+
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
   private String[] pipeReceiverFileDirs = new String[0];
@@ -1825,13 +1827,13 @@ public class IoTDBConfig {
     this.walBufferSize = walBufferSize;
   }
 
-  public double getMaxWalBufferOffHeapMemorySizeProportion() {
-    return maxWalBufferOffHeapMemorySizeProportion;
+  public double getMaxDirectBufferOffHeapMemorySizeProportion() {
+    return maxDirectBufferOffHeapMemorySizeProportion;
   }
 
-  public void setMaxWalBufferOffHeapMemorySizeProportion(
-      double maxWalBufferOffHeapMemorySizeProportion) {
-    this.maxWalBufferOffHeapMemorySizeProportion = maxWalBufferOffHeapMemorySizeProportion;
+  public void setMaxDirectBufferOffHeapMemorySizeProportion(
+      double maxDirectBufferOffHeapMemorySizeProportion) {
+    this.maxDirectBufferOffHeapMemorySizeProportion = maxDirectBufferOffHeapMemorySizeProportion;
   }
 
   public int getWalBufferQueueCapacity() {
@@ -3814,6 +3816,14 @@ public class IoTDBConfig {
   public void setLoadCleanupTaskExecutionDelayTimeSeconds(
       long loadCleanupTaskExecutionDelayTimeSeconds) {
     this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
+  }
+
+  public double getLoadWriteThroughputBytesPerSecond() {
+    return loadWriteThroughputBytesPerSecond;
+  }
+
+  public void setLoadWriteThroughputBytesPerSecond(double loadWriteThroughputBytesPerSecond) {
+    this.loadWriteThroughputBytesPerSecond = loadWriteThroughputBytesPerSecond;
   }
 
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {

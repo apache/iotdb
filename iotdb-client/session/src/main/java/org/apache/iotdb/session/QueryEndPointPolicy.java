@@ -17,20 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
+package org.apache.iotdb.session;
 
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public class IoTDBThriftAsyncPipeTransferBatchReqBuilder extends PipeTransferBatchReqBuilder {
+public interface QueryEndPointPolicy {
 
-  public IoTDBThriftAsyncPipeTransferBatchReqBuilder(PipeParameters parameters) {
-    super(parameters);
-  }
-
-  public List<Long> deepCopyRequestCommitIds() {
-    return new ArrayList<>(requestCommitIds);
-  }
+  TEndPoint chooseOne(List<TEndPoint> endPointList);
 }

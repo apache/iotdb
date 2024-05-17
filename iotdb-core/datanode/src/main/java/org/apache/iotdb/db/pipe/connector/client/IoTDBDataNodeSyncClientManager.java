@@ -79,6 +79,15 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         : getClient();
   }
 
+  public Pair<IoTDBSyncClient, Boolean> getClient(TEndPoint endPoint) {
+    return useLeaderCache
+            && endPoint != null
+            && endPoint2ClientAndStatus.containsKey(endPoint)
+            && Boolean.TRUE.equals(endPoint2ClientAndStatus.get(endPoint).getRight())
+        ? endPoint2ClientAndStatus.get(endPoint)
+        : getClient();
+  }
+
   public void updateLeaderCache(String deviceId, TEndPoint endPoint) {
     if (!useLeaderCache) {
       return;

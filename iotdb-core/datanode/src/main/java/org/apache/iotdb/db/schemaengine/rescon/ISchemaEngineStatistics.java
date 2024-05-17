@@ -31,6 +31,8 @@ public interface ISchemaEngineStatistics {
 
   long getTotalSeriesNumber();
 
+  long getTotalDevicesNumber();
+
   int getSchemaRegionNumber();
 
   long getTemplateSeriesNumber();

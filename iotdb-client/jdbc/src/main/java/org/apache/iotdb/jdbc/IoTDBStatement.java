@@ -577,8 +577,8 @@ public class IoTDBStatement implements Statement {
   @Override
   public void setMaxRows(int num) throws SQLException {
     checkConnection("setMaxRows");
-    if (num <= 0) {
-      throw new SQLException(String.format("maxRows %d must be > 0!", num));
+    if (num < 0) {
+      throw new SQLException(String.format("maxRows %d must be >= 0!", num));
     }
     this.maxRows = num;
   }

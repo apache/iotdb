@@ -177,6 +177,10 @@ public class PipeConfig {
 
   /////////////////////////////// Hybrid Mode ///////////////////////////////
 
+  public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
+    return COMMON_CONFIG.getPipeMaxAllowedHistoricalTsFilePerDataRegion();
+  }
+
   public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
     return COMMON_CONFIG.getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
   }
@@ -187,6 +191,10 @@ public class PipeConfig {
 
   public long getPipeMaxAllowedLinkedTsFileCount() {
     return COMMON_CONFIG.getPipeMaxAllowedLinkedTsFileCount();
+  }
+
+  public float getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage() {
+    return COMMON_CONFIG.getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage();
   }
 
   public long getPipeStuckRestartIntervalSeconds() {
@@ -330,10 +338,16 @@ public class PipeConfig {
     LOGGER.info("PipeAirGapReceiverPort: {}", getPipeAirGapReceiverPort());
 
     LOGGER.info(
+        "PipeMaxAllowedHistoricalTsFilePerDataRegion: {}",
+        getPipeMaxAllowedHistoricalTsFilePerDataRegion());
+    LOGGER.info(
         "PipeMaxAllowedPendingTsFileEpochPerDataRegion: {}",
         getPipeMaxAllowedPendingTsFileEpochPerDataRegion());
     LOGGER.info("PipeMaxAllowedPinnedMemTableCount: {}", getPipeMaxAllowedPinnedMemTableCount());
     LOGGER.info("PipeMaxAllowedLinkedTsFileCount: {}", getPipeMaxAllowedLinkedTsFileCount());
+    LOGGER.info(
+        "PipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage: {}",
+        getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage());
     LOGGER.info("PipeStuckRestartIntervalSeconds: {}", getPipeStuckRestartIntervalSeconds());
 
     LOGGER.info("PipeMetaReportMaxLogNumPerRound: {}", getPipeMetaReportMaxLogNumPerRound());

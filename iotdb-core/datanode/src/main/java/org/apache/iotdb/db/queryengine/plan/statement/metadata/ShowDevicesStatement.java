@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 
 import java.util.Collections;
 import java.util.List;
@@ -38,6 +39,7 @@ public class ShowDevicesStatement extends ShowStatement {
   private final PartialPath pathPattern;
   private boolean hasSgCol;
   private SchemaFilter schemaFilter;
+  private WhereCondition timeCondition;
 
   public ShowDevicesStatement(PartialPath pathPattern) {
     super();
@@ -62,6 +64,18 @@ public class ShowDevicesStatement extends ShowStatement {
 
   public boolean hasSgCol() {
     return hasSgCol;
+  }
+
+  public void setTimeCondition(WhereCondition timeCondition) {
+    this.timeCondition = timeCondition;
+  }
+
+  public WhereCondition getTimeCondition() {
+    return timeCondition;
+  }
+
+  public boolean hasTimeCondition() {
+    return timeCondition != null;
   }
 
   @Override
