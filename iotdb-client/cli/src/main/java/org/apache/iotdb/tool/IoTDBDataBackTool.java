@@ -60,6 +60,7 @@ public class IoTDBDataBackTool {
   static String targetDirParam = "";
   static String targetDataDirParam = "";
   static String targetWalDirParam = "";
+  static String remoteDnDataDir = "";
 
   static String DATA_NODE_CONF_NAME = IoTDBConfig.CONFIG_NAME;
   static String CONFIG_NODE_CONF_NAME = "iotdb-confignode.properties";
@@ -72,6 +73,7 @@ public class IoTDBDataBackTool {
 
   private static final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
   static String sourcePath = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+  static boolean IS_OBJECT_STORAGE = false;
   static String DEFAULT_DN_DATA_DIRS =
       "data"
           + File.separator
@@ -137,6 +139,11 @@ public class IoTDBDataBackTool {
       if (targetDirParam.isEmpty()) {
         LOGGER.error(" -targetdir cannot be empty， The backup folder must be specified");
         isVaild = false;
+      } else {
+        if (isRelativePath(targetDirParam)) {
+          LOGGER.error("-targetdir parameter exception, please use absolute path");
+          isVaild = false;
+        }
       }
 
       if (!targetDataDirParam.isEmpty()) {
@@ -145,12 +152,20 @@ public class IoTDBDataBackTool {
               "-targetdatadir parameter exception, the number of original paths does not match the number of specified paths");
           isVaild = false;
         }
+        if (targetPathVild(targetDataDirParam)) {
+          LOGGER.error("-targetdatadir parameter exception, please use absolute path");
+          isVaild = false;
+        }
       }
 
       if (!targetWalDirParam.isEmpty()) {
         if (!matchPattern(targetWalDirParam, dnWalDirs)) {
           LOGGER.error(
               "-targetwaldir parameter exception, the number of original paths does not match the number of specified paths");
+          isVaild = false;
+        }
+        if (targetPathVild(targetWalDirParam)) {
+          LOGGER.error("-targetwaldir parameter exception, please use absolute path");
           isVaild = false;
         }
       }
@@ -490,7 +505,9 @@ public class IoTDBDataBackTool {
 
     String dnWalDirs = dataProperties.getProperty("dn_wal_dirs");
     String dnDataDirs = dataProperties.getProperty("dn_data_dirs");
-
+    String dnDataDirAll = dnDataDirs;
+    dnDataDirs = isObjectStorage(dnDataDirs);
+    remoteDnDataDir = dnDataDirAll.replaceAll(dnDataDirs, "");
     dnSystemDir = pathHandler(dnSystemDir);
     dnConsensusDir = pathHandler(dnConsensusDir);
     dnTracingDir = pathHandler(dnTracingDir);
@@ -500,9 +517,8 @@ public class IoTDBDataBackTool {
     String bakDnConsensusDir = targetDirString + File.separatorChar + DEFAULT_DN_CONSENSUS_DIR;
     String bakDnTracingDir = targetDirString + File.separatorChar + DEFAULT_DN_TRACING_DIR;
     String bakDnWalDirs = targetDirString + File.separatorChar + DEFAULT_DN_WAL_DIRS;
-
     if (type.equals("quick")) {
-      targetDataDirParam = sourceDnDataDirsCoverTargetDnDataDirsHandler(dnDataDirs);
+      targetDirParam = targetDirString;
       targetWalDirParam = sourceWalCoverTargetWalDirsHandler(dnWalDirs, bakDnWalDirs);
     }
     if (targetWalDirParam.isEmpty()) {
@@ -510,7 +526,7 @@ public class IoTDBDataBackTool {
     } else {
       targetWalDirParam = getCreateDnDataPathString(dnWalDirs, targetWalDirParam, "wal");
     }
-    String targetDnDataDirs = "";
+    String targetDnDataDirs;
     if (targetDataDirParam.isEmpty()) {
       targetDataDirParam =
           targetDirParam
@@ -520,16 +536,11 @@ public class IoTDBDataBackTool {
               + "datanode"
               + File.separatorChar
               + "data";
-      targetDnDataDirs = getCreateDnDataPathString(dnDataDirs, targetDataDirParam, "data");
-      // targetDnDataDirs = sourceDnDataDirsCoverTargetDnDataDirsHandler(dnDataDirs);
-    } else {
-      targetDnDataDirs = getCreateDnDataPathString(dnDataDirs, targetDataDirParam, "data");
     }
-    // dnDataDirs = pathHandler(targetDataDirParam);
-    if (!vaildParam(targetDataDirParam, targetWalDirParam)) {
+    if (!vaildParam(dnDataDirs, dnWalDirs)) {
       System.exit(0);
     }
-
+    targetDnDataDirs = getCreateDnDataPathString(dnDataDirs, targetDataDirParam, "data");
     Map<String, String> dnSystemDirMap =
         getCreatePathMapping(Objects.requireNonNull(dnSystemDir), bakDnSystemDir, "system");
     dnDataDirsMap.putAll(getCreatePathMapping(dnDataDirs, targetDnDataDirs, "data"));
@@ -545,10 +556,39 @@ public class IoTDBDataBackTool {
     copyMap.putAll(dnTracingDirMap);
 
     dnMapProperties.put("dn_system_dir", bakDnSystemDir);
-    dnMapProperties.put("dn_data_dirs", targetDnDataDirs);
+    dnMapProperties.put("dn_data_dirs", targetDnDataDirs + remoteDnDataDir);
     dnMapProperties.put("dn_wal_dirs", targetWalDirParam);
     dnMapProperties.put("dn_tracing_dir", bakDnTracingDir);
     dnMapProperties.put("dn_consensus_dir", bakDnConsensusDir);
+  }
+
+  private static String isObjectStorage(String dnDataDirs) {
+    StringBuilder tmpDnDataDirs = new StringBuilder();
+    String[] patternDirs = dnDataDirs.split(";");
+    for (int i = 0; i < patternDirs.length; i++) {
+      String patternDir = patternDirs[i];
+      String[] subPatternDirs = patternDir.split(",");
+      for (int c = 0; c < subPatternDirs.length; c++) {
+        if (c == subPatternDirs.length - 1 && i == patternDirs.length - 1) {
+          if (subPatternDirs[c].equals("OBJECT_STORAGE")) {
+            IS_OBJECT_STORAGE = true;
+          } else {
+            tmpDnDataDirs.append(subPatternDirs[c]);
+          }
+        } else {
+          tmpDnDataDirs.append(subPatternDirs[c]);
+          if (subPatternDirs.length > 1 && c < subPatternDirs.length - 1) {
+            tmpDnDataDirs.append(",");
+          } else if (patternDirs.length > 1 && i < patternDirs.length - 1) {
+            tmpDnDataDirs.append(";");
+          }
+        }
+      }
+    }
+    if (IS_OBJECT_STORAGE) {
+      return tmpDnDataDirs.toString().substring(0, tmpDnDataDirs.toString().length() - 1);
+    }
+    return tmpDnDataDirs.toString();
   }
 
   private static void countConfigNodeFile(
@@ -559,9 +599,6 @@ public class IoTDBDataBackTool {
     String bakCnSystemDir = targetDirString + File.separatorChar + DEFAULT_CN_SYSTEM_DIR;
     String bakCnConsensusDir = targetDirString + File.separatorChar + DEFAULT_CN_CONSENSUS_DIR;
 
-    if (!vaildParam(targetDataDirParam, targetWalDirParam)) {
-      System.exit(0);
-    }
     String cnSystemDir = configProperties.getProperty("cn_system_dir");
     String cnConsensusDir = configProperties.getProperty("cn_consensus_dir");
     cnSystemDir = pathHandler(cnSystemDir);
@@ -612,31 +649,6 @@ public class IoTDBDataBackTool {
   private static boolean isRelativePath(String path) {
     Path p = Paths.get(path);
     return !p.isAbsolute();
-  }
-
-  public static String sourceDnDataDirsCoverTargetDnDataDirsHandler(String dnDirs) {
-    String[] sourcePathsList = dnDirs.split(";");
-    StringBuilder targetDataDirSb = new StringBuilder();
-    for (int t = 0; t < sourcePathsList.length; t++) {
-      String sourcePaths = sourcePathsList[t];
-      String[] sourcePathList = sourcePaths.split(",");
-      StringBuilder subTargetDataDir = new StringBuilder();
-      for (int i = 0; i < sourcePathList.length; i++) {
-        String path = sourcePathList[i];
-        path = path + "_backup";
-        if (i == sourcePathList.length - 1) {
-          subTargetDataDir.append(path);
-        } else {
-          subTargetDataDir.append(path).append(",");
-        }
-      }
-      if (t == sourcePathsList.length - 1) {
-        targetDataDirSb.append(subTargetDataDir);
-      } else {
-        targetDataDirSb.append(subTargetDataDir).append(";");
-      }
-    }
-    return targetDataDirSb.toString();
   }
 
   public static String sourceWalCoverTargetWalDirsHandler(String dnDirs, String targetDirs) {
@@ -710,7 +722,7 @@ public class IoTDBDataBackTool {
         if (sourcePathArray.length != targetPathArray.length) {
           if (targetPathArray.length == 1) {
             for (int j = 0; j < sourcePathArray.length; j++) {
-              String newPath = "";
+              String newPath;
               if (sourcePathsList.length == 1
                   && targetPathsList.length == 1
                   && sourcePathArray.length == 1) {
@@ -780,7 +792,7 @@ public class IoTDBDataBackTool {
         if (sourcePathArray.length != targetPathArray.length) {
           if (targetPathArray.length == 1) {
             for (int j = 0; j < sourcePathArray.length; j++) {
-              String newPath = "";
+              String newPath;
               if (sourcePathsList.length == 1
                   && targetPathsList.length == 1
                   && sourcePathArray.length == 1) {
@@ -831,10 +843,24 @@ public class IoTDBDataBackTool {
     return matchDirectory(input, pattern);
   }
 
+  public static boolean targetPathVild(String pattern) {
+    String[] patternDirs = pattern.split(";");
+    for (int i = 0; i < patternDirs.length; i++) {
+      String patternDir = patternDirs[i];
+      String[] subPatternDirs = patternDir.split(",");
+      for (String subPatternDir : subPatternDirs) {
+        if (isRelativePath(subPatternDir)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   private static boolean matchDirectory(String inputDir, String patternDir) {
     String[] inputLevels = inputDir.split(",");
     String[] patternLevels = patternDir.split(",");
-    return inputLevels.length == patternLevels.length || inputLevels.length == 1;
+    return inputLevels.length == patternLevels.length || patternLevels.length == 1;
   }
 
   private static void initDataNodeProperties(Properties properties) {
@@ -962,7 +988,7 @@ public class IoTDBDataBackTool {
                   try {
                     Files.createLink(targetFile, file);
                   } catch (UnsupportedOperationException | IOException e) {
-                    LOGGER.error("link file error {}", e);
+                    LOGGER.debug("link file error {}", e);
                     try {
                       Files.copy(file, targetFile, StandardCopyOption.REPLACE_EXISTING);
                     } catch (IOException ex) {

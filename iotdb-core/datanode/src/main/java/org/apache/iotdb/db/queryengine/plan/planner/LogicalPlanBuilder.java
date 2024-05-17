@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil;
@@ -78,9 +79,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQ
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
@@ -1333,6 +1336,24 @@ public class LogicalPlanBuilder {
             this.getRoot(),
             0,
             new SlidingTimeColumnGeneratorParameter(groupByTimeParameter, ascending));
+    return this;
+  }
+
+  public LogicalPlanBuilder planDeviceRegionScan(
+      Map<PartialPath, Boolean> devicePathToAlignedStatus, boolean outputCount) {
+    this.root =
+        new DeviceRegionScanNode(
+            context.getQueryId().genPlanNodeId(), devicePathToAlignedStatus, outputCount, null);
+    return this;
+  }
+
+  public LogicalPlanBuilder planTimeseriesRegionScan(
+      Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemaInfo,
+      boolean outputCount) {
+    TimeseriesRegionScanNode timeseriesRegionScanNode =
+        new TimeseriesRegionScanNode(context.getQueryId().genPlanNodeId(), outputCount, null);
+    timeseriesRegionScanNode.setDeviceToTimeseriesSchemaInfo(deviceToTimeseriesSchemaInfo);
+    this.root = timeseriesRegionScanNode;
     return this;
   }
 }

@@ -131,4 +131,4 @@ fi
 
 IOTDB_CLI_CONF=${IOTDB_HOME}/conf
 iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-backup.xml"
-exec nohup "$JAVA" -DIOTDB_HOME=${IOTDB_HOME} $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" "$@" 2>&1 > /dev/null  <&- &
+exec nohup "$JAVA" -DIOTDB_HOME=${IOTDB_HOME} $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" "$@" >/dev/null 2>&1 <&- &

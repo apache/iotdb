@@ -57,7 +57,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class LoadManager {
 
-  private final IManager configManager;
+  protected final IManager configManager;
 
   /** Balancers. */
   private final RegionBalancer regionBalancer;
@@ -66,9 +66,9 @@ public class LoadManager {
   private final RouteBalancer routeBalancer;
 
   /** Cluster load services. */
-  private final LoadCache loadCache;
+  protected final LoadCache loadCache;
 
-  private final HeartbeatService heartbeatService;
+  protected HeartbeatService heartbeatService;
   private final StatisticsService statisticsService;
   private final EventService eventService;
 
@@ -80,9 +80,13 @@ public class LoadManager {
     this.routeBalancer = new RouteBalancer(configManager);
 
     this.loadCache = new LoadCache();
-    this.heartbeatService = new HeartbeatService(configManager, loadCache);
+    setHeartbeatService(configManager, loadCache);
     this.statisticsService = new StatisticsService(loadCache);
     this.eventService = new EventService(configManager, loadCache, routeBalancer);
+  }
+
+  protected void setHeartbeatService(IManager configManager, LoadCache loadCache) {
+    this.heartbeatService = new HeartbeatService(configManager, loadCache);
   }
 
   /**

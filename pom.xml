@@ -35,7 +35,6 @@
     <modules>
         <module>iotdb-api</module>
         <module>iotdb-client</module>
-        <module>integration-test</module>
         <module>iotdb-core</module>
         <module>iotdb-protocol</module>
         <module>distribution</module>
@@ -169,7 +168,7 @@
         <!-- This is the matching version of spring-boot for spring 5.3.30 -->
         <spring-boot.version>2.7.18</spring-boot.version>
         <!-- This is the last version to support the javax namespace -->
-        <spring.version>5.3.33</spring.version>
+        <spring.version>5.3.34</spring.version>
         <!-- This was the last version to support Java 8 -->
         <swagger.version>1.6.11</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>

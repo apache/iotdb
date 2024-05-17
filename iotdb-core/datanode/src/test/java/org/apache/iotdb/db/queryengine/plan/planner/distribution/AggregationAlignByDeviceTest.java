@@ -209,17 +209,6 @@ public class AggregationAlignByDeviceTest {
         firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof RawDataAggregationNode);
     assertTrue(
         firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof ProjectNode);
-    assertTrue(
-        firstFiTopNode
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
             instanceof LeftOuterTimeJoinNode);
 
     secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree();
@@ -229,17 +218,6 @@ public class AggregationAlignByDeviceTest {
         secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof RawDataAggregationNode);
     assertTrue(
         secondFiRoot.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof ProjectNode);
-    assertTrue(
-        secondFiRoot
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
             instanceof LeftOuterTimeJoinNode);
 
     // two aggregation measurement, two devices, with filter
@@ -260,17 +238,6 @@ public class AggregationAlignByDeviceTest {
         firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof RawDataAggregationNode);
     assertTrue(
         firstFiTopNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof ProjectNode);
-    assertTrue(
-        firstFiTopNode
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
             instanceof LeftOuterTimeJoinNode);
 
     secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree();
@@ -280,17 +247,6 @@ public class AggregationAlignByDeviceTest {
         secondFiRoot.getChildren().get(0).getChildren().get(0) instanceof RawDataAggregationNode);
     assertTrue(
         secondFiRoot.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof ProjectNode);
-    assertTrue(
-        secondFiRoot
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
-                .getChildren()
-                .get(0)
             instanceof LeftOuterTimeJoinNode);
   }
 

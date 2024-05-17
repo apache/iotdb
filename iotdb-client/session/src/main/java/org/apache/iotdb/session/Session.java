@@ -89,6 +89,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -435,6 +436,7 @@ public class Session implements ISession {
     this.enableAutoFetch = builder.enableAutoFetch;
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
+    this.queryTimeoutInMs = builder.timeOut;
   }
 
   @Override
@@ -887,7 +889,7 @@ public class Session implements ISession {
   private SessionDataSet executeStatementMayRedirect(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      return defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
+      return getQuerySessionConnection().executeQueryStatement(sql, timeoutInMs);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
@@ -902,6 +904,25 @@ public class Session implements ISession {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
       }
     }
+  }
+
+  private SessionConnection getQuerySessionConnection() {
+    Optional<TEndPoint> endPoint =
+        availableNodes == null ? Optional.empty() : availableNodes.getQueryEndPoint();
+    if (!endPoint.isPresent() || endPointToSessionConnection == null) {
+      return defaultSessionConnection;
+    }
+    SessionConnection connection =
+        endPointToSessionConnection.computeIfAbsent(
+            endPoint.get(),
+            k -> {
+              try {
+                return constructSessionConnection(this, endPoint.get(), zoneId);
+              } catch (IoTDBConnectionException ex) {
+                return null;
+              }
+            });
+    return connection == null ? defaultSessionConnection : connection;
   }
 
   /**
