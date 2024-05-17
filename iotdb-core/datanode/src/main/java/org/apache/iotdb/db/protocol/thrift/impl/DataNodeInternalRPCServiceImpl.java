@@ -2155,8 +2155,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         regionId);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     try {
+
       if (regionId instanceof DataRegionId) {
-        DataRegionConsensusImpl.getInstance().createLocalPeer(regionId, peers);
+        // RatisConsensus requires an empty peer list during region transition
+        final List<Peer> createPeers =
+            DataRegionConsensusImpl.getInstance() instanceof RatisConsensus
+                ? Collections.emptyList()
+                : peers;
+        DataRegionConsensusImpl.getInstance().createLocalPeer(regionId, createPeers);
       } else {
         // RatisConsensus requires an empty peer list during region transition
         final List<Peer> createPeers =
