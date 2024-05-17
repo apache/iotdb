@@ -45,7 +45,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: sudo apt-get update && sudo apt-get install libboost-all-dev
-      - name: Install CPP Dependencies (Mac)`
+      - name: Install CPP Dependencies (Mac)
         if: matrix.os == 'macos-latest'
         shell: bash
         run: |
@@ -53,7 +53,6 @@ jobs:
           brew install bison
           echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.bash_profile
           source ~/.bash_profile && export LDFLAGS="-L/usr/local/opt/bison/lib"
-          brew install openssl
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
