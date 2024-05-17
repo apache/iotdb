@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigFileAutoUpdateTool;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -36,7 +37,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -54,6 +54,19 @@ public class ConfigNodeDescriptor {
 
   private final ConfigNodeConfig conf = new ConfigNodeConfig();
 
+  static {
+    ConfigFileAutoUpdateTool updateTool = new ConfigFileAutoUpdateTool();
+    URL systemConfigUrl = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
+    URL configNodeUrl = getPropsUrl(CommonConfig.CONFIG_NODE_CONFIG_NAME);
+    URL dataNodeUrl = getPropsUrl(CommonConfig.DATA_NODE_CONFIG_NAME);
+    URL commonConfigUrl = getPropsUrl(CommonConfig.COMMON_CONFIG_NAME);
+    try {
+      updateTool.checkAndMayUpdate(systemConfigUrl, configNodeUrl, dataNodeUrl, commonConfigUrl);
+    } catch (Exception e) {
+      LOGGER.error("Failed to update config file", e);
+    }
+  }
+
   private ConfigNodeDescriptor() {
     loadProps();
   }
@@ -67,7 +80,7 @@ public class ConfigNodeDescriptor {
    *
    * @return url object if location exit, otherwise null.
    */
-  public URL getPropsUrl(String configFileName) {
+  public static URL getPropsUrl(String configFileName) {
     // Check if a config-directory was specified first.
     String urlString = System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, null);
     // If it wasn't, check if a home directory was provided
@@ -102,37 +115,12 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProps() {
-    URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
     Properties commonProperties = new Properties();
-    if (url != null) {
-      try (InputStream inputStream = url.openStream()) {
-
-        LOGGER.info("Start to read config file {}", url);
-        commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-
-      } catch (FileNotFoundException e) {
-        LOGGER.error("Fail to find config file {}, reject ConfigNode startup.", url, e);
-        System.exit(-1);
-      } catch (IOException e) {
-        LOGGER.error("Cannot load config file, reject ConfigNode startup.", e);
-        System.exit(-1);
-      } catch (Exception e) {
-        LOGGER.error("Incorrect format in config file, reject ConfigNode startup.", e);
-        System.exit(-1);
-      }
-    } else {
-      LOGGER.warn(
-          "Couldn't load the configuration {} from any of the known sources.",
-          CommonConfig.CONFIG_NAME);
-    }
-
-    url = getPropsUrl(ConfigNodeConstant.CONF_FILE_NAME);
+    URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
         LOGGER.info("start reading ConfigNode conf file: {}", url);
-        Properties properties = new Properties();
-        properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-        commonProperties.putAll(properties);
+        commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
         loadProperties(commonProperties);
       } catch (IOException | BadNodeUrlException e) {
         LOGGER.error("Couldn't load ConfigNode conf file, reject ConfigNode startup.", e);
@@ -151,7 +139,7 @@ public class ConfigNodeDescriptor {
     } else {
       LOGGER.warn(
           "Couldn't load the configuration {} from any of the known sources.",
-          ConfigNodeConstant.CONF_FILE_NAME);
+          CommonConfig.SYSTEM_CONFIG_NAME);
     }
   }
 

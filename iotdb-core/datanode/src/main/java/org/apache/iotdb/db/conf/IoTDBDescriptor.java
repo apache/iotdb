@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigFileAutoUpdateTool;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -87,9 +88,9 @@ public class IoTDBDescriptor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDescriptor.class);
 
-  private final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
+  private static final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
 
-  private final IoTDBConfig conf = new IoTDBConfig();
+  private static final IoTDBConfig conf = new IoTDBConfig();
 
   private static final long MAX_THROTTLE_THRESHOLD = 600 * 1024 * 1024 * 1024L;
 
@@ -98,6 +99,19 @@ public class IoTDBDescriptor {
   private static final double MAX_DIR_USE_PROPORTION = 0.8;
 
   private static final double MIN_DIR_USE_PROPORTION = 0.5;
+
+  static {
+    ConfigFileAutoUpdateTool updateTool = new ConfigFileAutoUpdateTool();
+    URL systemConfigUrl = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
+    URL configNodeUrl = getPropsUrl(CommonConfig.CONFIG_NODE_CONFIG_NAME);
+    URL dataNodeUrl = getPropsUrl(CommonConfig.DATA_NODE_CONFIG_NAME);
+    URL commonConfigUrl = getPropsUrl(CommonConfig.COMMON_CONFIG_NAME);
+    try {
+      updateTool.checkAndMayUpdate(systemConfigUrl, configNodeUrl, dataNodeUrl, commonConfigUrl);
+    } catch (Exception e) {
+      LOGGER.error("Failed to update config file", e);
+    }
+  }
 
   protected IoTDBDescriptor() {
     loadProps();
@@ -136,7 +150,7 @@ public class IoTDBDescriptor {
    *
    * @return url object if location exit, otherwise null.
    */
-  public URL getPropsUrl(String configFileName) {
+  public static URL getPropsUrl(String configFileName) {
     String urlString = commonDescriptor.getConfDir();
     if (urlString == null) {
       // If urlString wasn't provided, try to find a default config in the root of the classpath.
@@ -174,28 +188,9 @@ public class IoTDBDescriptor {
   /** load a property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
     Properties commonProperties = new Properties();
-    if (url != null) {
-      try (InputStream inputStream = url.openStream()) {
-        LOGGER.info("Start to read config file {}", url);
-        commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-      } catch (FileNotFoundException e) {
-        LOGGER.error("Fail to find config file {}, reject DataNode startup.", url, e);
-        System.exit(-1);
-      } catch (IOException e) {
-        LOGGER.error("Cannot load config file, reject DataNode startup.", e);
-        System.exit(-1);
-      } catch (Exception e) {
-        LOGGER.error("Incorrect format in config file, reject DataNode startup.", e);
-        System.exit(-1);
-      }
-    } else {
-      LOGGER.warn(
-          "Couldn't load the configuration {} from any of the known sources.",
-          CommonConfig.CONFIG_NAME);
-    }
-    url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
+    // if new properties file exist, skip old properties files
+    URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
         LOGGER.info("Start to read config file {}", url);
@@ -225,7 +220,7 @@ public class IoTDBDescriptor {
     } else {
       LOGGER.warn(
           "Couldn't load the configuration {} from any of the known sources.",
-          IoTDBConfig.CONFIG_NAME);
+          CommonConfig.SYSTEM_CONFIG_NAME);
     }
   }
 
@@ -1725,37 +1720,30 @@ public class IoTDBDescriptor {
   }
 
   public void loadHotModifiedProps() throws QueryProcessException {
-    URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
-    if (url == null) {
-      LOGGER.warn("Couldn't load the configuration from any of the known sources.");
-      return;
-    }
-
     Properties commonProperties = new Properties();
-    try (InputStream inputStream = url.openStream()) {
-      LOGGER.info("Start to reload config file {}", url);
-      commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-    } catch (Exception e) {
-      LOGGER.warn("Fail to reload config file {}", url, e);
-      throw new QueryProcessException(
-          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
-    }
 
-    url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
-    if (url == null) {
-      LOGGER.warn("Couldn't load the configuration from any of the known sources.");
-      return;
+    URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
+    if (url != null && new File(url.getFile()).exists()) {
+      loadHotModifiedPropertiesFromUrl(commonProperties, url);
+    } else {
+      url = getPropsUrl(CommonConfig.COMMON_CONFIG_NAME);
+      if (url == null) {
+        LOGGER.warn("Couldn't load the configuration from any of the known sources.");
+        return;
+      }
+      loadHotModifiedPropertiesFromUrl(commonProperties, url);
+
+      url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
+      if (url == null) {
+        LOGGER.warn("Couldn't load the configuration from any of the known sources.");
+        return;
+      }
+      loadHotModifiedPropertiesFromUrl(commonProperties, url);
     }
-    try (InputStream inputStream = url.openStream()) {
-      LOGGER.info("Start to reload config file {}", url);
-      Properties properties = new Properties();
-      properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-      commonProperties.putAll(properties);
+    try {
       loadHotModifiedProps(commonProperties);
     } catch (Exception e) {
-      LOGGER.warn("Fail to reload config file {}", url, e);
-      throw new QueryProcessException(
-          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
+      LOGGER.error("Failed to reload configs because {}", e.getMessage());
     }
     ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(commonProperties);
     LOGGER.info("Reload metric service in level {}", reloadLevel);
@@ -1770,6 +1758,20 @@ public class IoTDBDescriptor {
       MetricService.getInstance().reloadInternalReporter(internalReporter);
     } else {
       MetricService.getInstance().reloadService(reloadLevel);
+    }
+  }
+
+  private void loadHotModifiedPropertiesFromUrl(Properties commonProperties, URL url)
+      throws QueryProcessException {
+    try (InputStream inputStream = url.openStream()) {
+      LOGGER.info("Start to reload config file {}", url);
+      Properties properties = new Properties();
+      properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+      commonProperties.putAll(properties);
+    } catch (Exception e) {
+      LOGGER.warn("Fail to reload config file {}", url, e);
+      throw new QueryProcessException(
+          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
   }
 
