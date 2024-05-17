@@ -22,8 +22,10 @@ package org.apache.iotdb.confignode.manager.pipe.extractor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBNonDataRegionExtractor;
+import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -87,6 +89,14 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   }
 
   @Override
+  public synchronized EnrichedEvent supply() throws Exception {
+    final EnrichedEvent event = super.supply();
+    PipeEventCommitManager.getInstance()
+        .enrichWithCommitterKeyAndCommitId(event, creationTime, regionId);
+    return event;
+  }
+
+  @Override
   protected long getMaxBlockingTimeMs() {
     // The connector continues to submit and relies on the queue to sleep if empty
     // Here we return with block to be consistent with the dataNode connector
@@ -102,5 +112,18 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
   @Override
   protected void confineHistoricalEventTransferTypes(final PipeSnapshotEvent event) {
     ((PipeConfigRegionSnapshotEvent) event).confineTransferredTypes(listenedTypeSet);
+  }
+
+  @Override
+  public synchronized void close() throws Exception {
+    if (hasBeenClosed.get()) {
+      return;
+    }
+    hasBeenClosed.set(true);
+
+    if (!hasBeenStarted.get()) {
+      return;
+    }
+    super.close();
   }
 }

@@ -224,6 +224,7 @@ public class CommonDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "time_partition_interval", String.valueOf(config.getTimePartitionInterval()))));
+
     config.setDatabaseLimitThreshold(
         Integer.parseInt(
             properties.getProperty(
@@ -424,6 +425,11 @@ public class CommonDescriptor {
                 "pipe_air_gap_receiver_port",
                 Integer.toString(config.getPipeAirGapReceiverPort()))));
 
+    config.setPipeMaxAllowedHistoricalTsFilePerDataRegion(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_historical_tsfile_per_data_region",
+                String.valueOf(config.getPipeMaxAllowedHistoricalTsFilePerDataRegion()))));
     config.setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
         Integer.parseInt(
             properties.getProperty(
@@ -439,6 +445,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_linked_tsfile_count",
                 String.valueOf(config.getPipeMaxAllowedLinkedTsFileCount()))));
+    config.setPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage(
+        Float.parseFloat(
+            properties.getProperty(
+                "pipe_max_allowed_linked_deleted_tsfile_disk_usage_percentage",
+                String.valueOf(config.getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage()))));
     config.setPipeStuckRestartIntervalSeconds(
         Long.parseLong(
             properties.getProperty(

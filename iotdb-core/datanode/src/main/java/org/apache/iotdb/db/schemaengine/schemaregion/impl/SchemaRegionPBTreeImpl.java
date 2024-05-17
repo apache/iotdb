@@ -85,6 +85,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWrite
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -187,13 +188,25 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       return;
     }
 
+    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      long memCost = config.getSchemaRatisConsensusLogAppenderBufferSizeMax();
+      if (!SystemInfo.getInstance()
+          .addDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax())) {
+        throw new MetadataException(
+            "Total allocated memory for direct buffer will be "
+                + (SystemInfo.getInstance().getDirectBufferMemoryCost() + memCost)
+                + ", which is greater than limit mem cost: "
+                + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
+      }
+    }
+
     initDir();
 
     try {
       // do not write log when recover
       isRecovering = true;
 
-      tagManager = new TagManager(schemaRegionDirPath);
+      tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mtree =
           new MTreeBelowSGCachedImpl(
               new PartialPath(storageGroupFullPath),
@@ -462,6 +475,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
     // delete all the schema region files
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
+
+    if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      SystemInfo.getInstance()
+          .decreaseDirectBufferMemoryCost(config.getSchemaRatisConsensusLogAppenderBufferSizeMax());
+    }
   }
 
   @Override
@@ -513,7 +531,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       isRecovering = true;
 
       long tagSnapshotStartTime = System.currentTimeMillis();
-      tagManager = TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath);
+      tagManager =
+          TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath, regionStatistics);
       logger.info(
           "Tag snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
@@ -1076,6 +1095,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       throws MetadataException, IOException {
     // upsert alias
     upsertAlias(alias, fullPath);
+    while (tagsMap != null && !regionStatistics.isAllowToCreateNewSeries()) {
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
+    }
     IMeasurementMNode<ICachedMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     try {
       if (tagsMap == null && attributesMap == null) {
@@ -1102,9 +1124,14 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   private void upsertAlias(String alias, PartialPath fullPath)
       throws MetadataException, IOException {
-    if (mtree.changeAlias(alias, fullPath)) {
-      // persist to WAL
-      writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(fullPath, alias));
+    if (alias != null) {
+      while (!regionStatistics.isAllowToCreateNewSeries()) {
+        ReleaseFlushMonitor.getInstance().waitIfReleasing();
+      }
+      if (mtree.changeAlias(alias, fullPath)) {
+        // persist to WAL
+        writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(fullPath, alias));
+      }
     }
   }
 
@@ -1144,6 +1171,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @Override
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
+    while (!regionStatistics.isAllowToCreateNewSeries()) {
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
+    }
     IMeasurementMNode<ICachedMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     try {
       // no tag or attribute, we need to add a new record in log
@@ -1198,6 +1228,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException {
+    while (!regionStatistics.isAllowToCreateNewSeries()) {
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
+    }
     IMeasurementMNode<ICachedMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     try {
       if (leafMNode.getOffset() < 0) {
@@ -1225,6 +1258,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException {
+    while (!regionStatistics.isAllowToCreateNewSeries()) {
+      ReleaseFlushMonitor.getInstance().waitIfReleasing();
+    }
     IMeasurementMNode<ICachedMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     try {
       if (leafMNode.getOffset() < 0) {

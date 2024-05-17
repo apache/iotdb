@@ -127,8 +127,9 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
           clientAndStatus
               .getLeft()
               .pipeTransfer(
-                  PipeTransferConfigPlanReq.toTPipeTransferReq(
-                      pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()));
+                  compressIfNeeded(
+                      PipeTransferConfigPlanReq.toTPipeTransferReq(
+                          pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan())));
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
@@ -192,13 +193,14 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
           clientAndStatus
               .getLeft()
               .pipeTransfer(
-                  PipeTransferConfigSnapshotSealReq.toTPipeTransferReq(
-                      snapshotFile.getName(),
-                      snapshotFile.length(),
-                      Objects.nonNull(templateFile) ? templateFile.getName() : null,
-                      Objects.nonNull(templateFile) ? templateFile.length() : 0,
-                      snapshotEvent.getFileType(),
-                      snapshotEvent.toSealTypeString()));
+                  compressIfNeeded(
+                      PipeTransferConfigSnapshotSealReq.toTPipeTransferReq(
+                          snapshotFile.getName(),
+                          snapshotFile.length(),
+                          Objects.nonNull(templateFile) ? templateFile.getName() : null,
+                          Objects.nonNull(templateFile) ? templateFile.length() : 0,
+                          snapshotEvent.getFileType(),
+                          snapshotEvent.toSealTypeString())));
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(

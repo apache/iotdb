@@ -27,6 +27,7 @@ import java.io.OutputStream;
 public enum TsFileResourceBlockType {
   EMPTY_BLOCK((byte) 0),
   PROGRESS_INDEX((byte) 1),
+  REMOTE_STORAGE_BLOCK((byte) 2),
   ;
 
   private final byte type;

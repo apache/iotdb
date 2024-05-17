@@ -31,6 +31,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +62,10 @@ public class LocalSourceHandle implements ISourceHandle {
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();
 
-  // For pipeline
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LocalSourceHandle.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class)
+          + +RamUsageEstimator.shallowSizeOfInstance(SharedTsBlockQueue.class);
 
   public LocalSourceHandle(
       SharedTsBlockQueue queue, SourceHandleListener sourceHandleListener, String threadName) {
@@ -264,5 +268,12 @@ public class LocalSourceHandle implements ISourceHandle {
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
     // do nothing, the maxBytesCanReserve of SharedTsBlockQueue should be set by corresponding
     // LocalSinkChannel
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + RamUsageEstimator.sizeOf(threadName)
+        + RamUsageEstimator.sizeOf(localPlanNodeId);
   }
 }
