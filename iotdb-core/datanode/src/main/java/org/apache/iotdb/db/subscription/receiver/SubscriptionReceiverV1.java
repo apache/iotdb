@@ -109,7 +109,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       LOGGER.info(
           "Subscription: close and remove consumer config {} when handling exit",
           consumerConfigThreadLocal.get());
-      closeConsumer(consumerConfig);
+      // closeConsumer(consumerConfig);
       consumerConfigThreadLocal.remove();
     }
   }
