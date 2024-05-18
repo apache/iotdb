@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -74,6 +75,18 @@ public class MPPQueryContext {
   private boolean isExplainAnalyze = false;
 
   QueryPlanStatistics queryPlanStatistics = null;
+
+  // To avoid query front-end from consuming too much memory, it needs to reserve memory when
+  // constructing some Expression and PlanNode.
+  private long reservedBytesInTotalForFrontEnd = 0;
+
+  private long bytesToBeReservedForFrontEnd = 0;
+
+  // To avoid reserving memory too frequently, we choose to do it in batches. This is upper limit
+  // for each batch.
+  private static final long MEMORY_BATCH_THRESHOLD = 1024L * 1024L;
+
+  private final LocalExecutionPlanner LOCAL_EXECUTION_PLANNER = LocalExecutionPlanner.getInstance();
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -289,5 +302,24 @@ public class MPPQueryContext {
       queryPlanStatistics = new QueryPlanStatistics();
     }
     queryPlanStatistics.setLogicalOptimizationCost(logicalOptimizeCost);
+  }
+
+  /**
+   * This method does not require concurrency control because the query plan is generated in a
+   * single-threaded manner.
+   */
+  public void reserveMemoryForFrontEnd(final long bytes) {
+    bytesToBeReservedForFrontEnd += bytes;
+    if (bytesToBeReservedForFrontEnd >= MEMORY_BATCH_THRESHOLD) {
+      LOCAL_EXECUTION_PLANNER.reserveMemoryForQueryFrontEnd(
+          bytesToBeReservedForFrontEnd, reservedBytesInTotalForFrontEnd, queryId.getId());
+      reservedBytesInTotalForFrontEnd += bytesToBeReservedForFrontEnd;
+      bytesToBeReservedForFrontEnd = 0;
+    }
+  }
+
+  public void releaseMemoryForFrontEnd() {
+    LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(reservedBytesInTotalForFrontEnd);
+    reservedBytesInTotalForFrontEnd = 0;
   }
 }

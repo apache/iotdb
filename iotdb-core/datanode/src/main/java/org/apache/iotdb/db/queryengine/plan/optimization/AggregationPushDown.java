@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -60,6 +61,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -407,19 +409,31 @@ public class AggregationPushDown implements PlanOptimizer {
         GroupByTimeParameter groupByTimeParameter,
         RewriterContext context) {
       if (selectPath instanceof MeasurementPath) { // non-aligned series
-        return new SeriesAggregationScanNode(
-            context.genPlanNodeId(),
-            (MeasurementPath) selectPath,
-            aggregationDescriptorList,
-            scanOrder,
-            groupByTimeParameter);
+        SeriesAggregationSourceNode node =
+            new SeriesAggregationScanNode(
+                context.genPlanNodeId(),
+                (MeasurementPath) selectPath,
+                aggregationDescriptorList,
+                scanOrder,
+                groupByTimeParameter);
+        context
+            .getContext()
+            .reserveMemoryForFrontEnd(
+                MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(node));
+        return node;
       } else if (selectPath instanceof AlignedPath) { // aligned series
-        return new AlignedSeriesAggregationScanNode(
-            context.genPlanNodeId(),
-            (AlignedPath) selectPath,
-            aggregationDescriptorList,
-            scanOrder,
-            groupByTimeParameter);
+        SeriesAggregationSourceNode node =
+            new AlignedSeriesAggregationScanNode(
+                context.genPlanNodeId(),
+                (AlignedPath) selectPath,
+                aggregationDescriptorList,
+                scanOrder,
+                groupByTimeParameter);
+        context
+            .getContext()
+            .reserveMemoryForFrontEnd(
+                MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(node));
+        return node;
       } else {
         throw new IllegalArgumentException("unexpected path type");
       }
@@ -457,6 +471,7 @@ public class AggregationPushDown implements PlanOptimizer {
 
     public RewriterContext(Analysis analysis, MPPQueryContext context, boolean isAlignByDevice) {
       this.analysis = analysis;
+      Validate.notNull(context, "Query context cannot be null.");
       this.context = context;
       this.isAlignByDevice = isAlignByDevice;
     }
@@ -471,6 +486,10 @@ public class AggregationPushDown implements PlanOptimizer {
 
     public void setCurDevice(String curDevice) {
       this.curDevice = curDevice;
+    }
+
+    public MPPQueryContext getContext() {
+      return context;
     }
 
     public Set<Expression> getAggregationExpressions() {

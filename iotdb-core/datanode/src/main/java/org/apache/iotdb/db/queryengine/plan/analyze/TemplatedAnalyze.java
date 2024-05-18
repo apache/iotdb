@@ -183,7 +183,7 @@ public class TemplatedAnalyze {
     }
     analysis.setDeviceList(deviceList);
 
-    analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceList);
+    analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceList, context);
     analyzeDeviceToSourceTransform(analysis);
     analyzeDeviceToSource(analysis);
 
@@ -272,7 +272,8 @@ public class TemplatedAnalyze {
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
-      List<PartialPath> deviceSet) {
+      List<PartialPath> deviceSet,
+      MPPQueryContext queryContext) {
     if (!queryStatement.hasOrderByExpression()) {
       return;
     }
@@ -285,7 +286,8 @@ public class TemplatedAnalyze {
       Set<Expression> orderByExpressionsForOneDevice = new LinkedHashSet<>();
       for (Expression expressionForItem : queryStatement.getExpressionSortItemList()) {
         List<Expression> expressions =
-            concatDeviceAndBindSchemaForExpression(expressionForItem, device, schemaTree);
+            concatDeviceAndBindSchemaForExpression(
+                expressionForItem, device, schemaTree, queryContext);
         if (expressions.isEmpty()) {
           throw new SemanticException(
               String.format(
