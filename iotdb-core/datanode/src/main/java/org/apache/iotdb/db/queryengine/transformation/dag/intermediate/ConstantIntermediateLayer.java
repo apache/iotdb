@@ -29,8 +29,6 @@ import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrat
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.StateWindowAccessStrategy;
 
-import java.io.IOException;
-
 /** IntermediateLayer for constants. */
 public class ConstantIntermediateLayer extends IntermediateLayer {
 
@@ -50,32 +48,28 @@ public class ConstantIntermediateLayer extends IntermediateLayer {
 
   @Override
   protected LayerRowWindowReader constructRowSlidingSizeWindowReader(
-      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB)
-      throws QueryProcessException {
+      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB) {
     // Not allowed since the timestamp of a constant row is not defined.
     throw new UnsupportedOperationException();
   }
 
   @Override
   protected LayerRowWindowReader constructRowSlidingTimeWindowReader(
-      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
-      throws QueryProcessException, IOException {
+      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
     // Not allowed since the timestamp of a constant row is not defined.
     throw new UnsupportedOperationException();
   }
 
   @Override
   protected LayerRowWindowReader constructRowSessionTimeWindowReader(
-      SessionTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
-      throws QueryProcessException, IOException {
+      SessionTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
     // Not allowed since the timestamp of a constant row is not defined.
     throw new UnsupportedOperationException();
   }
 
   @Override
   protected LayerRowWindowReader constructRowStateWindowReader(
-      StateWindowAccessStrategy strategy, float memoryBudgetInMB)
-      throws QueryProcessException, IOException {
+      StateWindowAccessStrategy strategy, float memoryBudgetInMB) {
     // Not allowed since the timestamp of a constant row is not defined.
     throw new UnsupportedOperationException(
         "StateWindowAccessStrategy does not support pure constant input.");

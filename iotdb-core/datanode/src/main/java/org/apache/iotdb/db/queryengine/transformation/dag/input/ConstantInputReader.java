@@ -33,23 +33,21 @@ import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.FloatColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Optional;
 
 public class ConstantInputReader implements LayerReader {
-  private int count = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
-  private final ConstantOperand expression;
-  private TSDataType dataType;
+  private final TSDataType dataType;
 
-  private Column cachedColumn;
+  private final Column cachedColumn;
 
   public ConstantInputReader(ConstantOperand expression) throws QueryProcessException {
-    this.expression = Validate.notNull(expression);
+    Validate.notNull(expression);
 
     Object value = CommonUtils.parseValue(expression.getDataType(), expression.getValueString());
     if (value == null) {
@@ -57,37 +55,39 @@ public class ConstantInputReader implements LayerReader {
           "Invalid constant operand: " + expression.getExpressionString());
     }
 
+    // Use RLEColumn to mimic column filled with same values
     dataType = expression.getDataType();
+    int count = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
     switch (dataType) {
       case INT32:
-        int[] intArray = new int[count];
-        Arrays.fill(intArray, (int) value);
-        cachedColumn = new IntColumn(count, Optional.empty(), intArray);
+        int[] intArray = {(int) value};
+        Column intColumn = new IntColumn(1, Optional.empty(), intArray);
+        cachedColumn = new RunLengthEncodedColumn(intColumn, count);
         break;
       case INT64:
-        long[] longArray = new long[count];
-        Arrays.fill(longArray, (long) value);
-        cachedColumn = new LongColumn(count, Optional.empty(), longArray);
+        long[] longArray = {(long) value};
+        Column longColumn = new LongColumn(1, Optional.empty(), longArray);
+        cachedColumn = new RunLengthEncodedColumn(longColumn, count);
         break;
       case FLOAT:
-        float[] floatArray = new float[count];
-        Arrays.fill(floatArray, (float) value);
-        cachedColumn = new FloatColumn(count, Optional.empty(), floatArray);
+        float[] floatArray = {(float) value};
+        Column floatColumn = new FloatColumn(1, Optional.empty(), floatArray);
+        cachedColumn = new RunLengthEncodedColumn(floatColumn, count);
         break;
       case DOUBLE:
-        double[] doubleArray = new double[count];
-        Arrays.fill(doubleArray, (double) value);
-        cachedColumn = new DoubleColumn(count, Optional.empty(), doubleArray);
+        double[] doubleArray = {(double) value};
+        Column doubleColumn = new DoubleColumn(1, Optional.empty(), doubleArray);
+        cachedColumn = new RunLengthEncodedColumn(doubleColumn, count);
         break;
       case TEXT:
-        Binary[] binaryArray = new Binary[count];
-        Arrays.fill(binaryArray, value);
-        cachedColumn = new BinaryColumn(count, Optional.empty(), binaryArray);
+        Binary[] binaryArray = {(Binary) value};
+        Column binaryColumn = new BinaryColumn(1, Optional.empty(), binaryArray);
+        cachedColumn = new RunLengthEncodedColumn(binaryColumn, count);
         break;
       case BOOLEAN:
-        boolean[] booleanArray = new boolean[count];
-        Arrays.fill(booleanArray, (boolean) value);
-        cachedColumn = new BooleanColumn(count, Optional.empty(), booleanArray);
+        boolean[] booleanArray = {(boolean) value};
+        Column booleanColumn = new BooleanColumn(1, Optional.empty(), booleanArray);
+        cachedColumn = new RunLengthEncodedColumn(booleanColumn, count);
         break;
       default:
         throw new QueryProcessException("Unsupported type: " + expression.getDataType());
