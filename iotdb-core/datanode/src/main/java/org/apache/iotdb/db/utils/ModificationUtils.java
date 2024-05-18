@@ -33,6 +33,7 @@ import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class ModificationUtils {
 
@@ -78,6 +79,19 @@ public class ModificationUtils {
           }
           return false;
         });
+  }
+
+  public static void modifyAlignedChunkMetaData(
+      List<AlignedChunkMetadata> chunkMetadata, Map<String, List<Modification>> modifications) {
+    if (chunkMetadata.isEmpty()) {
+      return;
+    }
+    List<List<Modification>> modificationList = new ArrayList<>();
+    for (int i = 0; i < chunkMetadata.get(0).getValueChunkMetadataList().size(); i++) {
+      IChunkMetadata valueChunkMetadata = chunkMetadata.get(0).getValueChunkMetadataList().get(i);
+      modificationList.add(modifications.get(valueChunkMetadata.getMeasurementUid()));
+    }
+    modifyAlignedChunkMetaData(chunkMetadata, modificationList);
   }
 
   public static void modifyAlignedChunkMetaData(

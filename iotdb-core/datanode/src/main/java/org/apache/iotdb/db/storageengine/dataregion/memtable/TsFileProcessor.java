@@ -70,6 +70,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -91,6 +92,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -1621,6 +1623,45 @@ public class TsFileProcessor {
     return storageGroupName;
   }
 
+  private void processAlignedChunkMetaDataFromFlushedMemTable(
+      AlignedChunkMetadata alignedChunkMetadata,
+      Map<String, List<IChunkMetadata>> measurementToChunkMetaMap,
+      Map<String, List<IChunkHandle>> measurementToChunkHandleMap,
+      TsFileSequenceReader tsFileReader) {
+    SharedTimeDataBuffer sharedTimeDataBuffer =
+        new SharedTimeDataBuffer(alignedChunkMetadata.getTimeChunkMetadata());
+    for (IChunkMetadata valueChunkMetaData : alignedChunkMetadata.getValueChunkMetadataList()) {
+      measurementToChunkMetaMap
+          .computeIfAbsent(valueChunkMetaData.getMeasurementUid(), k -> new ArrayList<>())
+          .add(valueChunkMetaData);
+      measurementToChunkHandleMap
+          .computeIfAbsent(valueChunkMetaData.getMeasurementUid(), k -> new ArrayList<>())
+          .add(
+              new DiskAlignedChunkHandleImpl(
+                  tsFileReader,
+                  valueChunkMetaData.getOffsetOfChunkHeader(),
+                  valueChunkMetaData.getStatistics(),
+                  sharedTimeDataBuffer));
+    }
+  }
+
+  private void processChunkMetaDataFromFlushedMemTable(
+      ChunkMetadata chunkMetadata,
+      Map<String, List<IChunkMetadata>> measurementToChunkMetaMap,
+      Map<String, List<IChunkHandle>> measurementToChunkHandleMap,
+      TsFileSequenceReader tsFileReader) {
+    measurementToChunkMetaMap
+        .computeIfAbsent(chunkMetadata.getMeasurementUid(), k -> new ArrayList<>())
+        .add(chunkMetadata);
+    measurementToChunkHandleMap
+        .computeIfAbsent(chunkMetadata.getMeasurementUid(), k -> new ArrayList<>())
+        .add(
+            new DiskChunkHandleImpl(
+                tsFileReader,
+                chunkMetadata.getOffsetOfChunkHeader(),
+                chunkMetadata.getStatistics()));
+  }
+
   private void buildChunkHandleForFlushedMemTable(
       List<IChunkMetadata> chunkMetadataList,
       Map<String, List<IChunkMetadata>> measurementToChunkMetaList,
@@ -1630,35 +1671,85 @@ public class TsFileProcessor {
         FileReaderManager.getInstance().get(this.tsFileResource.getTsFilePath(), true);
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       if (chunkMetadata instanceof AlignedChunkMetadata) {
-        SharedTimeDataBuffer sharedTimeDataBuffer =
-            new SharedTimeDataBuffer(((AlignedChunkMetadata) chunkMetadata).getTimeChunkMetadata());
-        for (IChunkMetadata valueChunkMetaData :
-            ((AlignedChunkMetadata) chunkMetadata).getValueChunkMetadataList()) {
-          measurementToChunkMetaList
-              .computeIfAbsent(chunkMetadata.getMeasurementUid(), k -> new ArrayList<>())
-              .add(valueChunkMetaData);
-          measurementToChunkHandleList
-              .computeIfAbsent(chunkMetadata.getMeasurementUid(), k -> new ArrayList<>())
-              .add(
-                  new DiskAlignedChunkHandleImpl(
-                      tsFileReader,
-                      valueChunkMetaData.getOffsetOfChunkHeader(),
-                      valueChunkMetaData.getStatistics(),
-                      sharedTimeDataBuffer));
-        }
+        processAlignedChunkMetaDataFromFlushedMemTable(
+            (AlignedChunkMetadata) chunkMetadata,
+            measurementToChunkMetaList,
+            measurementToChunkHandleList,
+            tsFileReader);
       } else {
-        measurementToChunkMetaList
-            .computeIfAbsent(chunkMetadata.getMeasurementUid(), k -> new ArrayList<>())
-            .add(chunkMetadata);
-        measurementToChunkHandleList
-            .computeIfAbsent(chunkMetadata.getMeasurementUid(), k -> new ArrayList<>())
-            .add(
-                new DiskChunkHandleImpl(
-                    tsFileReader,
-                    chunkMetadata.getOffsetOfChunkHeader(),
-                    chunkMetadata.getStatistics()));
+        processChunkMetaDataFromFlushedMemTable(
+            (ChunkMetadata) chunkMetadata,
+            measurementToChunkMetaList,
+            measurementToChunkHandleList,
+            tsFileReader);
       }
     }
+  }
+
+  private List<ChunkMetadata> searchTimeChunkMetaData(List<List<ChunkMetadata>> chunkMetaDataList) {
+    for (List<ChunkMetadata> chunkMetadata : chunkMetaDataList) {
+      if (chunkMetadata.isEmpty()) {
+        continue;
+      }
+      if (chunkMetadata.get(0).getMeasurementUid().isEmpty()) {
+        return chunkMetadata;
+      }
+    }
+    return Collections.emptyList();
+  }
+
+  private List<IChunkMetadata> getVisibleMetadataListFromWriterByDeviceID(
+      QueryContext queryContext, IDeviceID deviceID) {
+    Map<String, List<Modification>> modifications =
+        queryContext.getDeviceModifications(tsFileResource, deviceID);
+
+    List<List<ChunkMetadata>> chunkMetaDataListForDevice =
+        writer.getVisibleMetadataList(deviceID, null);
+    List<ChunkMetadata> processedChunkMetadataForOneDevice = new ArrayList<>();
+    for (List<ChunkMetadata> chunkMetadataList : chunkMetaDataListForDevice) {
+      if (chunkMetadataList.isEmpty()) {
+        continue;
+      }
+      ModificationUtils.modifyChunkMetaData(
+          chunkMetadataList, modifications.get(chunkMetadataList.get(0).getMeasurementUid()));
+      chunkMetadataList.removeIf(queryContext::chunkNotSatisfy);
+      processedChunkMetadataForOneDevice.addAll(chunkMetadataList);
+    }
+    return new ArrayList<>(processedChunkMetadataForOneDevice);
+  }
+
+  private List<IChunkMetadata> getAlignedVisibleMetadataListFromWriterByDeviceID(
+      QueryContext queryContext, IDeviceID deviceID) throws QueryProcessException {
+    List<AlignedChunkMetadata> alignedChunkMetadataForOneDevice = new ArrayList<>();
+    Map<String, List<Modification>> modifications =
+        queryContext.getDeviceModifications(tsFileResource, deviceID);
+
+    List<List<ChunkMetadata>> chunkMetaDataListForDevice =
+        writer.getVisibleMetadataList(deviceID, null);
+    List<ChunkMetadata> timeChunkMetadataList = searchTimeChunkMetaData(chunkMetaDataListForDevice);
+    if (timeChunkMetadataList.isEmpty()) {
+      throw new QueryProcessException("TimeChunkMetadata in aligned device should not be empty");
+    }
+    for (int i = 0; i < timeChunkMetadataList.size(); i++) {
+      List<IChunkMetadata> valuesChunkMetadata = new ArrayList<>();
+      boolean exits = false;
+      for (List<ChunkMetadata> chunkMetadataList : chunkMetaDataListForDevice) {
+        if (chunkMetadataList.isEmpty() || chunkMetadataList.equals(timeChunkMetadataList)) {
+          continue;
+        }
+        boolean currentExist = i < chunkMetadataList.size();
+        exits = (exits || currentExist);
+        valuesChunkMetadata.add(currentExist ? chunkMetadataList.get(i) : null);
+      }
+      if (exits) {
+        alignedChunkMetadataForOneDevice.add(
+            new AlignedChunkMetadata(timeChunkMetadataList.get(i), valuesChunkMetadata));
+      }
+    }
+
+    ModificationUtils.modifyAlignedChunkMetaData(alignedChunkMetadataForOneDevice, modifications);
+    alignedChunkMetadataForOneDevice.removeIf(queryContext::chunkNotSatisfy);
+    return new ArrayList<>(alignedChunkMetadataForOneDevice);
   }
 
   public void queryForSeriesRegionScan(
@@ -1782,7 +1873,12 @@ public class TsFileProcessor {
                 null);
           }
 
-          // TODO add method in RestorableTsFileIOWriter to get all visible metadata by device
+          buildChunkHandleForFlushedMemTable(
+              isAligned
+                  ? getAlignedVisibleMetadataListFromWriterByDeviceID(queryContext, devicePath)
+                  : getVisibleMetadataListFromWriterByDeviceID(queryContext, devicePath),
+              measurementToChunkMetadataList,
+              measurementToMemChunkHandleList);
 
           if (!measurementToMemChunkHandleList.isEmpty()
               || !measurementToChunkMetadataList.isEmpty()) {
