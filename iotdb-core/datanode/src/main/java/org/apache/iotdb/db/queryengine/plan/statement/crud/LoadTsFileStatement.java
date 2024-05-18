@@ -53,7 +53,7 @@ public class LoadTsFileStatement extends Statement {
     this.file = new File(filePath);
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.verifySchema = true;
-    this.deleteAfterLoad = true;
+    this.deleteAfterLoad = false;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
@@ -78,7 +78,7 @@ public class LoadTsFileStatement extends Statement {
     this.file = null;
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.verifySchema = true;
-    this.deleteAfterLoad = true;
+    this.deleteAfterLoad = false;
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();

@@ -285,7 +285,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private TSStatus loadTsFile(final String fileAbsolutePath) throws FileNotFoundException {
     final LoadTsFileStatement statement = new LoadTsFileStatement(fileAbsolutePath);
 
-    statement.setDeleteAfterLoad(true);
     statement.setVerifySchema(true);
     statement.setAutoCreateDatabase(false);
 
