@@ -22,11 +22,15 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.utils.SerializedSize;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -36,6 +40,7 @@ import java.util.Set;
  * entry and the number of entries.
  */
 public class WALMetaData implements SerializedSize {
+  private static final Logger logger = LoggerFactory.getLogger(WALMetaData.class);
   // search index 8 byte, wal entries' number 4 bytes
   private static final int FIXED_SERIALIZED_SIZE = Long.BYTES + Integer.BYTES;
 
@@ -79,12 +84,13 @@ public class WALMetaData implements SerializedSize {
         + (memTablesId.isEmpty() ? 0 : Integer.BYTES + memTablesId.size() * Long.BYTES);
   }
 
-  public void serialize(ByteBuffer buffer) {
+  public void serialize(File file, ByteBuffer buffer) {
     buffer.putLong(firstSearchIndex);
     buffer.putInt(buffersSize.size());
     for (int size : buffersSize) {
       buffer.putInt(size);
     }
+    logger.info("{} Buffer size is {}", file.getAbsolutePath(), buffersSize);
     if (!memTablesId.isEmpty()) {
       buffer.putInt(memTablesId.size());
       for (long memTableId : memTablesId) {
@@ -93,13 +99,14 @@ public class WALMetaData implements SerializedSize {
     }
   }
 
-  public static WALMetaData deserialize(ByteBuffer buffer) {
+  public static WALMetaData deserialize(File file, ByteBuffer buffer) {
     long firstSearchIndex = buffer.getLong();
     int entriesNum = buffer.getInt();
     List<Integer> buffersSize = new ArrayList<>(entriesNum);
     for (int i = 0; i < entriesNum; ++i) {
       buffersSize.add(buffer.getInt());
     }
+    logger.info("{} buffer size is {}", file.getAbsolutePath(), buffersSize);
     Set<Long> memTablesId = new HashSet<>();
     if (buffer.hasRemaining()) {
       int memTablesIdNum = buffer.getInt();
@@ -123,8 +130,12 @@ public class WALMetaData implements SerializedSize {
   }
 
   public static WALMetaData readFromWALFile(File logFile, FileChannel channel) throws IOException {
-    if (channel.size() < WALWriter.MAGIC_STRING_BYTES || !isValidMagicString(channel)) {
-      throw new IOException(String.format("Broken wal file %s", logFile));
+    if (channel.size() < WALWriter.MAGIC_STRING_BYTES) {
+      throw new IOException(
+          String.format("Broken wal file %s, size is %d", logFile, channel.size()));
+    }
+    if (!isValidMagicString(logFile, channel)) {
+      throw new IOException(String.format("Broken wal file %s, magic string invalid", logFile));
     }
     // load metadata size
     ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
@@ -133,10 +144,13 @@ public class WALMetaData implements SerializedSize {
     metadataSizeBuf.flip();
     // load metadata
     int metadataSize = metadataSizeBuf.getInt();
+    logger.error(
+        "{} metadataSize: {}, position {}", logFile.getAbsolutePath(), metadataSize, position);
     ByteBuffer metadataBuf = ByteBuffer.allocate(metadataSize);
     channel.read(metadataBuf, position - metadataSize);
     metadataBuf.flip();
-    WALMetaData metaData = WALMetaData.deserialize(metadataBuf);
+    logger.error("{} metadata {}", logFile.getAbsolutePath(), Arrays.toString(metadataBuf.array()));
+    WALMetaData metaData = WALMetaData.deserialize(logFile, metadataBuf);
     // versions before V1.3, should recover memTable ids from entries
     if (metaData.memTablesId.isEmpty()) {
       int offset = Byte.BYTES;
@@ -152,11 +166,12 @@ public class WALMetaData implements SerializedSize {
     return metaData;
   }
 
-  private static boolean isValidMagicString(FileChannel channel) throws IOException {
+  private static boolean isValidMagicString(File logFile, FileChannel channel) throws IOException {
     ByteBuffer magicStringBytes = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
     channel.read(magicStringBytes, channel.size() - WALWriter.MAGIC_STRING_BYTES);
     magicStringBytes.flip();
     String magicString = new String(magicStringBytes.array());
+    logger.error("{} Magic string {}", logFile.getAbsolutePath(), magicString);
     return magicString.equals(WALWriter.MAGIC_STRING)
         || magicString.startsWith(WALWriter.MAGIC_STRING_V1);
   }

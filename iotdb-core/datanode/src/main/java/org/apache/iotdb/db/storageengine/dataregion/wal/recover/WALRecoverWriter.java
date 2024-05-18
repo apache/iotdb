@@ -28,8 +28,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 
+import static org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter.MAGIC_STRING;
 import static org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter.MAGIC_STRING_BYTES;
-import static org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter.MAGIC_STRING_V1;
 
 /** Check whether the wal file is broken and recover it. */
 public class WALRecoverWriter {
@@ -45,7 +45,7 @@ public class WALRecoverWriter {
     if (logFile.length() < MAGIC_STRING_BYTES) { // file without magic string
       truncateSize = 0;
     } else {
-      if (readTailMagic().equals(MAGIC_STRING_V1)) { // complete file
+      if (readTailMagic().equals(MAGIC_STRING)) { // complete file
         return;
       } else { // file with broken magic string
         truncateSize = metaData.getBuffersSize().stream().mapToInt(Integer::intValue).sum();

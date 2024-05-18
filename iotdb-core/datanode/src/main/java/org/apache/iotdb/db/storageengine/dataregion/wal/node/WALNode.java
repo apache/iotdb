@@ -64,6 +64,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -107,13 +108,13 @@ public class WALNode implements IWALNode {
   // insert nodes whose search index are before this value can be deleted safely
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
 
-  public WALNode(String identifier, String logDirectory) throws FileNotFoundException {
+  public WALNode(String identifier, String logDirectory) throws IOException {
     this(identifier, logDirectory, 0, 0L);
   }
 
   public WALNode(
       String identifier, String logDirectory, long startFileVersion, long startSearchIndex)
-      throws FileNotFoundException {
+      throws IOException {
     this.identifier = identifier;
     this.logDirectory = SystemFileFactory.INSTANCE.getFile(logDirectory);
     if (!this.logDirectory.exists() && this.logDirectory.mkdirs()) {
@@ -221,7 +222,7 @@ public class WALNode implements IWALNode {
   /** Delete outdated .wal files. */
   public void deleteOutdatedFiles() {
     try {
-      new DeleteOutdatedFileTask().run();
+      //      new DeleteOutdatedFileTask().run();
     } catch (Exception e) {
       logger.error("Fail to delete wal node-{}'s outdated files.", identifier, e);
     }

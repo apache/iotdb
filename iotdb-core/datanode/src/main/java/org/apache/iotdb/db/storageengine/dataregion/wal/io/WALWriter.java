@@ -24,13 +24,17 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALSignalEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 /** WALWriter writes the binary {@link WALEntry} into .wal file. */
 public class WALWriter extends LogWriter {
+  private static final Logger logger = LoggerFactory.getLogger(WALWriter.class);
   public static final String MAGIC_STRING_V1 = "WAL";
   public static final String MAGIC_STRING = "V2-WAL";
   public static final int MAGIC_STRING_BYTES = MAGIC_STRING.getBytes().length;
@@ -39,7 +43,7 @@ public class WALWriter extends LogWriter {
   // wal files' metadata
   protected final WALMetaData metaData = new WALMetaData();
 
-  public WALWriter(File logFile) throws FileNotFoundException {
+  public WALWriter(File logFile) throws IOException {
     super(logFile);
   }
 
@@ -69,12 +73,24 @@ public class WALWriter extends LogWriter {
     // mark info part ends
     endMarker.serialize(buffer);
     // flush meta data
-    metaData.serialize(buffer);
+    metaData.serialize(logFile, buffer);
+    logger.info("{} metadata {}", logFile.getAbsolutePath(), Arrays.toString(buffer.array()));
     buffer.putInt(metaDataSize);
     // add magic string
     buffer.put(MAGIC_STRING.getBytes());
-    write(buffer);
+    logger.error(
+        "{} metadata size {}, position {}",
+        logFile.getAbsolutePath(),
+        metaDataSize,
+        logChannel.position());
+    writeMetadata(buffer);
     this.isEndFile = false;
+  }
+
+  private void writeMetadata(ByteBuffer buffer) throws IOException {
+    size += buffer.position();
+    buffer.flip();
+    logChannel.write(buffer);
   }
 
   @Override

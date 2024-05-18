@@ -34,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -78,7 +77,7 @@ public class CheckpointManager implements AutoCloseable {
 
   // endregion
 
-  public CheckpointManager(String identifier, String logDirectory) throws FileNotFoundException {
+  public CheckpointManager(String identifier, String logDirectory) throws IOException {
     this.identifier = identifier;
     this.logDirectory = logDirectory;
     File logDirFile = SystemFileFactory.INSTANCE.getFile(logDirectory);

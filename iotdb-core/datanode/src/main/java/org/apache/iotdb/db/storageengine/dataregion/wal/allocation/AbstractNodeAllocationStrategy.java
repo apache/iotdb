@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Arrays;
 
 public abstract class AbstractNodeAllocationStrategy implements NodeAllocationStrategy {
@@ -75,6 +76,9 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
     } catch (FileNotFoundException e) {
       logger.error("Fail to create wal node", e);
       return WALFakeNode.getFailureInstance(e);
+    } catch (IOException e) {
+      logger.error("Meet exception when creating wal node", e);
+      return WALFakeNode.getFailureInstance(e);
     }
   }
 
@@ -84,6 +88,9 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
       return new WALNode(identifier, folder, startFileVersion, startSearchIndex);
     } catch (FileNotFoundException e) {
       logger.error("Fail to create wal node", e);
+      return WALFakeNode.getFailureInstance(e);
+    } catch (IOException e) {
+      logger.error("Meet exception when creating wal node", e);
       return WALFakeNode.getFailureInstance(e);
     }
   }

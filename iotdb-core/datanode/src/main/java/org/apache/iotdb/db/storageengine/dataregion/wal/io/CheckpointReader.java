@@ -47,7 +47,7 @@ public class CheckpointReader {
   private void init() {
     checkpoints = new ArrayList<>();
     try (DataInputStream logStream =
-        new DataInputStream(new BufferedInputStream(new WALInputStream(logFile)))) {
+        new DataInputStream(new WALInputStream(logFile))) {
       maxMemTableId = logStream.readLong();
       while (logStream.available() > 0) {
         Checkpoint checkpoint = Checkpoint.deserialize(logStream);

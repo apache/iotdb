@@ -42,7 +42,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
@@ -119,7 +118,7 @@ public class WALBuffer extends AbstractWALBuffer {
   // manage wal files which have MemTableIds
   private final Map<Long, Set<Long>> memTableIdsOfWal = new ConcurrentHashMap<>();
 
-  public WALBuffer(String identifier, String logDirectory) throws FileNotFoundException {
+  public WALBuffer(String identifier, String logDirectory) throws IOException {
     this(identifier, logDirectory, new CheckpointManager(identifier, logDirectory), 0, 0L);
   }
 
@@ -129,7 +128,7 @@ public class WALBuffer extends AbstractWALBuffer {
       CheckpointManager checkpointManager,
       long startFileVersion,
       long startSearchIndex)
-      throws FileNotFoundException {
+      throws IOException {
     super(identifier, logDirectory, startFileVersion, startSearchIndex);
     this.checkpointManager = checkpointManager;
     currentFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;

@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Checkpoint is the basic element of .checkpoint file, including type, number of memTables, and
@@ -69,6 +70,8 @@ public class Checkpoint implements WALEntryValue {
     }
   }
 
+  private static AtomicInteger count = new AtomicInteger(0);
+
   public static Checkpoint deserialize(DataInputStream stream) throws IOException {
     byte typeNum = stream.readByte();
     CheckpointType type = CheckpointType.valueOf(typeNum);
@@ -76,6 +79,7 @@ public class Checkpoint implements WALEntryValue {
       throw new IOException("unrecognized checkpoint type " + typeNum);
     }
     int cnt = stream.readInt();
+    count.addAndGet(1);
     List<MemTableInfo> memTableInfos = new ArrayList<>(cnt);
     for (int i = 0; i < cnt; ++i) {
       MemTableInfo memTableInfo = MemTableInfo.deserialize(stream);

@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.slf4j.Logger;
@@ -30,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Arrays;
 import java.util.Objects;
 
 public class WALInputStream extends InputStream implements AutoCloseable {
@@ -38,9 +37,8 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   private final FileChannel channel;
   private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES + 1);
   private final ByteBuffer compressedHeader = ByteBuffer.allocate(Integer.BYTES);
-  private ByteBuffer dataBuffer =
-      ByteBuffer.allocate(
-          IoTDBDescriptor.getInstance().getConfig().getWalBufferSize()); // uncompressed data buffer
+  private ByteBuffer dataBuffer = null;
+  File logFile;
 
   enum FileVersion {
     V1,
@@ -53,28 +51,57 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   public WALInputStream(File logFile) throws IOException {
     channel = FileChannel.open(logFile.toPath());
     analyzeFileVersion();
+    this.logFile = logFile;
   }
 
   private void analyzeFileVersion() throws IOException {
-    ByteBuffer magicStringBytes = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
-    channel.read(magicStringBytes, channel.size() - WALWriter.MAGIC_STRING_BYTES);
-    magicStringBytes.flip();
-    String magicString = new String(magicStringBytes.array());
-    if (magicString.equals(WALWriter.MAGIC_STRING)) {
-      version = FileVersion.V2;
-    } else if (magicString.startsWith(WALWriter.MAGIC_STRING_V1)) {
-      version = FileVersion.V1;
-    } else {
+    if (channel.size() < WALWriter.MAGIC_STRING_BYTES) {
       version = FileVersion.UNKNOWN;
+      return;
     }
+    if (isCurrentVersion()) {
+      this.version = FileVersion.V2;
+      return;
+    }
+    this.version = FileVersion.V1;
+  }
+
+  private boolean isCurrentVersion() throws IOException {
+    channel.position(0);
+    ByteBuffer buffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
+    channel.read(buffer);
+    return new String(buffer.array()).equals(WALWriter.MAGIC_STRING);
   }
 
   @Override
   public int read() throws IOException {
-    if (Objects.isNull(dataBuffer) || dataBuffer.position() == dataBuffer.limit()) {
+    if (Objects.isNull(dataBuffer) || dataBuffer.position() >= dataBuffer.limit()) {
       loadNextSegment();
     }
     return dataBuffer.get() & 0xFF;
+  }
+
+  @Override
+  public int read(byte b[], int off, int len) throws IOException {
+    if (Objects.isNull(dataBuffer) || dataBuffer.position() >= dataBuffer.limit()) {
+      loadNextSegment();
+    }
+    if (dataBuffer.remaining() >= len) {
+      dataBuffer.get(b, off, len);
+      return len;
+    }
+    int toBeRead = len;
+    while (toBeRead > 0) {
+      int remaining = dataBuffer.remaining();
+      int bytesRead = Math.min(remaining, toBeRead);
+      dataBuffer.get(b, off, bytesRead);
+      off += bytesRead;
+      toBeRead -= bytesRead;
+      if (toBeRead > 0) {
+        loadNextSegment();
+      }
+    }
+    return len;
   }
 
   @Override
@@ -120,16 +147,13 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       }
       compressedHeader.flip();
       int uncompressedSize = compressedHeader.getInt();
-      if (uncompressedSize > dataBuffer.capacity()) {
-        // enlarge buffer
-        dataBuffer = ByteBuffer.allocateDirect(uncompressedSize);
-      }
-      ByteBuffer compressedData = ByteBuffer.allocate(dataBufferSize);
+      dataBuffer = ByteBuffer.allocateDirect(uncompressedSize);
+      ByteBuffer compressedData = ByteBuffer.allocateDirect(dataBufferSize);
       if (channel.read(compressedData) != dataBufferSize) {
         throw new IOException("Unexpected end of file");
       }
       compressedData.flip();
-      IUnCompressor unCompressor = IUnCompressor.getUnCompressor(CompressionType.GZIP);
+      IUnCompressor unCompressor = IUnCompressor.getUnCompressor(compressionType);
       dataBuffer.clear();
       unCompressor.uncompress(compressedData, dataBuffer);
     } else {

@@ -29,7 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -54,17 +53,20 @@ public abstract class LogWriter implements ILogWriter {
       IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm();
   private final ICompressor compressor = ICompressor.getCompressor(compressionAlg);
   private final ByteBuffer compressedByteBuffer;
-  private static final long MIN_COMPRESS_SIZE = 1024 * 512;
+  private static final long MIN_COMPRESS_SIZE = 0;
   private static AtomicLong WALTotalSize = new AtomicLong(0);
   private static AtomicLong lastReportTime = new AtomicLong(0);
 
-  protected LogWriter(File logFile) throws FileNotFoundException {
+  protected LogWriter(File logFile) throws IOException {
     this.logFile = logFile;
     this.logStream = new FileOutputStream(logFile, true);
     this.logChannel = this.logStream.getChannel();
+    if (!logFile.exists() || logFile.length() == 0) {
+      this.logChannel.write(ByteBuffer.wrap(WALWriter.MAGIC_STRING.getBytes()));
+    }
     if (compressionAlg != CompressionType.UNCOMPRESSED) {
       compressedByteBuffer =
-          ByteBuffer.allocateDirect(
+          ByteBuffer.allocate(
               compressor.getMaxBytesForCompression(
                   IoTDBDescriptor.getInstance().getConfig().getWalBufferSize()));
     } else {
