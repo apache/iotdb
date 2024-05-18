@@ -140,6 +140,9 @@ public abstract class BinaryTransformer extends Transformer {
         } else {
           transformAndCache(leftValues, leftConsumed, rightValues, rightConsumed, valueBuilder);
         }
+
+        leftConsumed++;
+        rightConsumed++;
       }
     }
 

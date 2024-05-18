@@ -19,23 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
-import java.io.IOException;
 import java.util.Optional;
 
 public abstract class LogicBinaryTransformer extends BinaryTransformer {
-  private int count = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+  private final int count = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
 
   private boolean isLeftDone;
   private boolean isRightDone;
@@ -53,6 +52,7 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
 
   @Override
   public YieldableState yieldValue() throws Exception {
+    // Generate data
     if (leftColumns == null) {
       YieldableState state = leftReader.yield();
 
@@ -63,14 +63,16 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
         if (isRightDone) {
           return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
         }
-
-        boolean[] allFalse = new boolean[count];
-        leftColumns = new Column[] {new BooleanColumn(count, Optional.empty(), allFalse)};
+        // When another column has no data
+        // Threat it as all false values
+        boolean[] allFalse = new boolean[1];
+        Column allFalseColumn =
+            new RunLengthEncodedColumn(new BooleanColumn(1, Optional.empty(), allFalse), count);
+        leftColumns = new Column[] {allFalseColumn};
       } else {
         return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
       }
     }
-
     if (rightColumns == null) {
       YieldableState state = rightReader.yield();
 
@@ -81,78 +83,46 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
         if (isLeftDone) {
           return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
         }
-
-        boolean[] allFalse = new boolean[count];
-        rightColumns = new Column[] {new BooleanColumn(count, Optional.empty(), allFalse)};
+        // When another column has no data
+        // Threat it as all false values
+        boolean[] allFalse = new boolean[1];
+        Column allFalseColumn =
+            new RunLengthEncodedColumn(new BooleanColumn(1, Optional.empty(), allFalse), count);
+        rightColumns = new Column[] {allFalseColumn};
       } else {
         return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
       }
     }
 
-    int leftCount = leftColumns[0].getPositionCount() - leftConsumed;
-    int rightCount = rightColumns[0].getPositionCount() - rightConsumed;
-    if (leftCount < rightCount) {
-      // Consume all left columns
-      cachedColumns = mergeAndTransformColumns(leftCount);
-      // No need to call rightReader.consume()
-
-      // Clean up
-      leftConsumed = 0;
-      if (!isLeftDone) {
-        leftColumns = null;
-        leftReader.consumedAll();
-      }
-    } else {
-      // Consume all right columns
-      cachedColumns = mergeAndTransformColumns(rightCount);
-      // No need to call rightReader.consume()
-
-      // Clean up right columns
-      rightConsumed = 0;
-      if (!isRightDone) {
-        rightColumns = null;
-        rightReader.consumedAll();
-      }
+    // Constant folding, or more precisely, constant caching
+    if (isCurrentConstant && cachedColumns != null) {
+      return YieldableState.YIELDABLE;
     }
+
+    // Merge and transform
+    int leftCount = leftColumns[0].getPositionCount();
+    int rightCount = rightColumns[0].getPositionCount();
+    int leftRemains = leftCount - leftConsumed;
+    int rightRemains = rightCount - rightConsumed;
+    int expectedEntries = Math.min(leftRemains, rightRemains);
+    cachedColumns = mergeAndTransformColumns(expectedEntries);
 
     return YieldableState.YIELDABLE;
   }
 
   @Override
-  protected Column[] mergeAndTransformColumns(int count) throws QueryProcessException, IOException {
-    // TODO: maybe we should choose more precise expectedEntries
-    TSDataType outputType = getDataTypes()[0];
+  protected Column[] mergeAndTransformColumns(int count) {
     ColumnBuilder timeBuilder = new TimeColumnBuilder(null, count);
-    ColumnBuilder valueBuilder = TypeUtils.initColumnBuilder(outputType, count);
+    ColumnBuilder valueBuilder = new BooleanColumnBuilder(null, count);
 
     if (isLeftReaderConstant || isRightReaderConstant) {
-      int leftOffset = leftConsumed;
-      int rightOffset = rightConsumed;
-      for (int i = 0; i < count; i++) {
-        boolean leftValue =
-            !leftColumns[0].isNull(leftConsumed) && leftColumns[0].getBoolean(leftConsumed);
-        boolean rightValue =
-            !rightColumns[0].isNull(rightConsumed) && rightColumns[0].getBoolean(rightConsumed);
-        boolean result = evaluate(leftValue, rightValue);
-        valueBuilder.writeBoolean(result);
-
-        leftConsumed++;
-        rightConsumed++;
-      }
-
-      Column values = valueBuilder.build();
-      if (isCurrentConstant) {
-        return new Column[] {values};
-      }
-      Column times;
-      if (isLeftReaderConstant) {
-        times = rightColumns[1].getRegion(rightOffset, count);
-      } else {
-        times = leftColumns[1].getRegion(leftOffset, count);
-      }
-      return new Column[] {values, times};
+      return handleConstantColumns(valueBuilder);
     }
 
+    return handleNonConstantColumns(timeBuilder, valueBuilder);
+  }
+
+  private Column[] handleNonConstantColumns(ColumnBuilder timeBuilder, ColumnBuilder valueBuilder) {
     Column leftTimes = leftColumns[1], leftValues = leftColumns[0];
     Column rightTimes = rightColumns[1], rightValues = rightColumns[0];
 
@@ -170,10 +140,9 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
           rightConsumed++;
         }
       } else {
-        boolean leftValue =
-            !leftColumns[0].isNull(leftConsumed) && leftColumns[0].getBoolean(leftConsumed);
+        boolean leftValue = !leftValues.isNull(leftConsumed) && leftValues.getBoolean(leftConsumed);
         boolean rightValue =
-            !rightColumns[0].isNull(rightConsumed) && rightColumns[0].getBoolean(rightConsumed);
+            !rightValues.isNull(rightConsumed) && rightValues.getBoolean(rightConsumed);
         boolean result = evaluate(leftValue, rightValue);
         valueBuilder.writeBoolean(result);
 
@@ -182,17 +151,76 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
       }
     }
 
+    // Clean up
+    if (leftConsumed == leftEnd) {
+      leftConsumed = 0;
+      if (!isLeftDone) {
+        leftColumns = null;
+        leftReader.consumedAll();
+      }
+    }
+    if (rightConsumed == rightEnd) {
+      rightConsumed = 0;
+      if (!isRightDone) {
+        rightColumns = null;
+        rightReader.consumedAll();
+      }
+    }
+
     Column times = timeBuilder.build();
     Column values = valueBuilder.build();
     return new Column[] {values, times};
+  }
+
+  private Column[] handleConstantColumns(ColumnBuilder valueBuilder) {
+    if (isLeftReaderConstant && isRightReaderConstant) {
+      boolean leftValue = leftColumns[0].getBoolean(0);
+      boolean rightValue = rightColumns[0].getBoolean(0);
+      boolean result = evaluate(leftValue, rightValue);
+      valueBuilder.writeBoolean(result);
+
+      return new Column[] {valueBuilder.build()};
+    } else if (isLeftReaderConstant) {
+      for (int i = 0; i < rightColumns[0].getPositionCount(); i++) {
+        boolean leftValue = leftColumns[0].getBoolean(0);
+        boolean rightValue = !rightColumns[0].isNull(i) && rightColumns[0].getBoolean(i);
+        boolean result = evaluate(leftValue, rightValue);
+        valueBuilder.writeBoolean(result);
+      }
+      Column times = rightColumns[1];
+      Column values = valueBuilder.build();
+
+      // Clean up
+      rightColumns = null;
+      rightReader.consumedAll();
+
+      return new Column[] {values, times};
+    } else if (isRightReaderConstant) {
+      for (int i = 0; i < leftColumns[0].getPositionCount(); i++) {
+        boolean leftValue = !leftColumns[0].isNull(0) && leftColumns[0].getBoolean(0);
+        boolean rightValue = rightColumns[0].getBoolean(0);
+        boolean result = evaluate(leftValue, rightValue);
+        valueBuilder.writeBoolean(result);
+      }
+      Column times = leftColumns[1];
+      Column values = valueBuilder.build();
+
+      // Clean up
+      leftColumns = null;
+      leftReader.consumedAll();
+
+      return new Column[] {values, times};
+    }
+
+    // Unreachable
+    return null;
   }
 
   protected abstract boolean evaluate(boolean leftOperand, boolean rightOperand);
 
   @Override
   protected void transformAndCache(
-      Column leftValues, int leftIndex, Column rightValues, int rightIndex, ColumnBuilder builder)
-      throws QueryProcessException, IOException {
+      Column leftValues, int leftIndex, Column rightValues, int rightIndex, ColumnBuilder builder) {
     throw new UnsupportedOperationException();
   }
 

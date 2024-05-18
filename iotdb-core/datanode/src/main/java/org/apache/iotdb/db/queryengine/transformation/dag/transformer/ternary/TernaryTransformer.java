@@ -22,7 +22,6 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.ternary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
@@ -75,6 +74,7 @@ public abstract class TernaryTransformer extends Transformer {
 
   @Override
   public YieldableState yieldValue() throws Exception {
+    // Generate data
     if (firstColumns == null) {
       YieldableState state = firstReader.yield();
       if (state != YieldableState.YIELDABLE) {
@@ -82,7 +82,6 @@ public abstract class TernaryTransformer extends Transformer {
       }
       firstColumns = firstReader.current();
     }
-
     if (secondColumns == null) {
       YieldableState state = secondReader.yield();
       if (state != YieldableState.YIELDABLE) {
@@ -90,7 +89,6 @@ public abstract class TernaryTransformer extends Transformer {
       }
       secondColumns = secondReader.current();
     }
-
     if (thirdColumns == null) {
       YieldableState state = thirdReader.yield();
       if (state != YieldableState.YIELDABLE) {
@@ -99,35 +97,15 @@ public abstract class TernaryTransformer extends Transformer {
       thirdColumns = thirdReader.current();
     }
 
-    int firstCount = firstColumns[0].getPositionCount() - firstConsumed;
-    int secondCount = secondColumns[0].getPositionCount() - secondConsumed;
-    int thirdCount = thirdColumns[0].getPositionCount() - thirdConsumed;
+    int firstCount = firstColumns[0].getPositionCount();
+    int secondCount = secondColumns[0].getPositionCount();
+    int thirdCount = thirdColumns[0].getPositionCount();
+    int firstRemains = firstCount - firstConsumed;
+    int secondRemains = secondCount - secondConsumed;
+    int thirdRemains = thirdCount - thirdConsumed;
 
-    if (firstCount < secondCount && firstCount < thirdCount) {
-      // Consume all first columns
-      cachedColumns = mergeAndTransformColumns(firstCount);
-
-      // Clean up
-      firstColumns = null;
-      firstConsumed = 0;
-      firstReader.consumedAll();
-    } else if (secondCount < thirdCount) {
-      // Consume all second columns
-      cachedColumns = mergeAndTransformColumns(secondCount);
-
-      // Clean up
-      secondColumns = null;
-      secondConsumed = 0;
-      secondReader.consumedAll();
-    } else {
-      // Consume all third columns
-      cachedColumns = mergeAndTransformColumns(thirdCount);
-
-      // Clean up
-      thirdColumns = null;
-      thirdConsumed = 0;
-      thirdReader.consumedAll();
-    }
+    int expectedEntries = Math.min(Math.min(firstRemains, secondRemains), thirdRemains);
+    cachedColumns = mergeAndTransformColumns(expectedEntries);
 
     return YieldableState.YIELDABLE;
   }
@@ -140,7 +118,6 @@ public abstract class TernaryTransformer extends Transformer {
   }
 
   protected Column[] mergeAndTransformColumns(int count) throws QueryProcessException, IOException {
-    // TODO: maybe we should choose more precise expectedEntries
     TSDataType outputType = getDataTypes()[0];
     ColumnBuilder timeBuilder = new TimeColumnBuilder(null, count);
     ColumnBuilder valueBuilder = TypeUtils.initColumnBuilder(outputType, count);
@@ -150,50 +127,11 @@ public abstract class TernaryTransformer extends Transformer {
     int thirdEnd = thirdColumns[0].getPositionCount();
 
     while (firstConsumed < firstEnd && secondConsumed < secondEnd && thirdConsumed < thirdEnd) {
-      long firstTime = getTime(firstReader, firstColumns, firstConsumed);
-      long secondTime = getTime(secondReader, secondColumns, secondConsumed);
-      long thirdTime = getTime(thirdReader, thirdColumns, thirdConsumed);
-
-      while (firstTime != secondTime || secondTime != thirdTime) {
-        if (firstTime < secondTime) {
-          if (isFirstReaderConstant) {
-            firstTime = secondTime;
-          } else {
-            firstConsumed++;
-            if (firstConsumed < firstEnd) {
-              firstTime = getTime(firstReader, firstColumns, firstConsumed);
-            } else {
-              break;
-            }
-          }
-        } else if (secondTime < thirdTime) {
-          if (isSecondReaderConstant) {
-            secondTime = thirdTime;
-          } else {
-            secondConsumed++;
-            if (secondConsumed < secondEnd) {
-              secondTime = getTime(secondReader, secondColumns, secondConsumed);
-            } else {
-              break;
-            }
-          }
-        } else {
-          if (isThirdReaderConstant) {
-            thirdTime = firstTime;
-          } else {
-            thirdConsumed++;
-            if (thirdConsumed < thirdEnd) {
-              thirdTime = getTime(thirdReader, thirdColumns, thirdConsumed);
-            } else {
-              break;
-            }
-          }
-        }
-      }
+      long time = findFirstSameTime();
 
       if (firstConsumed < firstEnd && secondConsumed < secondEnd && thirdConsumed < thirdEnd) {
-        if (firstTime != Long.MIN_VALUE) {
-          timeBuilder.writeLong(firstTime);
+        if (time != Long.MIN_VALUE) {
+          timeBuilder.writeLong(time);
           if (firstColumns[0].isNull(firstConsumed)
               || secondColumns[0].isNull(secondConsumed)
               || thirdColumns[0].isNull(thirdConsumed)) {
@@ -209,12 +147,82 @@ public abstract class TernaryTransformer extends Transformer {
                 valueBuilder);
           }
         }
+
+        firstConsumed++;
+        secondConsumed++;
+        thirdConsumed++;
       }
+    }
+
+    // Clean up
+    if (firstConsumed == firstEnd) {
+      firstColumns = null;
+      firstConsumed = 0;
+      firstReader.consumedAll();
+    }
+    if (secondConsumed == secondEnd) {
+      secondColumns = null;
+      secondConsumed = 0;
+      secondReader.consumedAll();
+    }
+    if (thirdConsumed == thirdEnd) {
+      thirdColumns = null;
+      thirdConsumed = 0;
+      thirdReader.consumedAll();
     }
 
     Column times = timeBuilder.build();
     Column values = valueBuilder.build();
     return new Column[] {values, times};
+  }
+
+  private long findFirstSameTime() {
+    int firstEnd = firstColumns[0].getPositionCount();
+    int secondEnd = secondColumns[0].getPositionCount();
+    int thirdEnd = thirdColumns[0].getPositionCount();
+
+    long firstTime = getTime(firstReader, firstColumns, firstConsumed);
+    long secondTime = getTime(secondReader, secondColumns, secondConsumed);
+    long thirdTime = getTime(thirdReader, thirdColumns, thirdConsumed);
+
+    while (firstTime != secondTime || secondTime != thirdTime) {
+      if (firstTime < secondTime) {
+        if (isFirstReaderConstant) {
+          firstTime = secondTime;
+        } else {
+          firstConsumed++;
+          if (firstConsumed < firstEnd) {
+            firstTime = getTime(firstReader, firstColumns, firstConsumed);
+          } else {
+            break;
+          }
+        }
+      } else if (secondTime < thirdTime) {
+        if (isSecondReaderConstant) {
+          secondTime = thirdTime;
+        } else {
+          secondConsumed++;
+          if (secondConsumed < secondEnd) {
+            secondTime = getTime(secondReader, secondColumns, secondConsumed);
+          } else {
+            break;
+          }
+        }
+      } else {
+        if (isThirdReaderConstant) {
+          thirdTime = firstTime;
+        } else {
+          thirdConsumed++;
+          if (thirdConsumed < thirdEnd) {
+            thirdTime = getTime(thirdReader, thirdColumns, thirdConsumed);
+          } else {
+            break;
+          }
+        }
+      }
+    }
+
+    return firstTime;
   }
 
   private long getTime(LayerReader reader, Column[] columns, int index) {
@@ -232,24 +240,4 @@ public abstract class TernaryTransformer extends Transformer {
       throws QueryProcessException, IOException;
 
   protected abstract void checkType();
-
-  protected static double castCurrentValueToDoubleOperand(
-      LayerPointReader layerPointReader, TSDataType layerPointReaderDataType)
-      throws IOException, QueryProcessException {
-    switch (layerPointReaderDataType) {
-      case INT32:
-        return layerPointReader.currentInt();
-      case INT64:
-        return layerPointReader.currentLong();
-      case FLOAT:
-        return layerPointReader.currentFloat();
-      case DOUBLE:
-        return layerPointReader.currentDouble();
-      case BOOLEAN:
-        return layerPointReader.currentBoolean() ? 1.0d : 0.0d;
-      default:
-        throw new QueryProcessException(
-            "Unsupported data type: " + layerPointReader.getDataType().toString());
-    }
-  }
 }
