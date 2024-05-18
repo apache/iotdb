@@ -70,6 +70,7 @@ public abstract class BinaryTransformer extends Transformer {
 
   @Override
   public YieldableState yieldValue() throws Exception {
+    // Generate data
     if (leftColumns == null) {
       YieldableState state = leftReader.yield();
       if (state != YieldableState.YIELDABLE) {
@@ -77,7 +78,6 @@ public abstract class BinaryTransformer extends Transformer {
       }
       leftColumns = leftReader.current();
     }
-
     if (rightColumns == null) {
       YieldableState state = rightReader.yield();
       if (state != YieldableState.YIELDABLE) {
@@ -86,71 +86,43 @@ public abstract class BinaryTransformer extends Transformer {
       rightColumns = rightReader.current();
     }
 
-    int leftCount = leftColumns[0].getPositionCount() - leftConsumed;
-    int rightCount = rightColumns[0].getPositionCount() - rightConsumed;
-    if (leftCount < rightCount) {
-      // Consume all left columns
-      cachedColumns = mergeAndTransformColumns(leftCount);
-      // No need to call rightReader.consume()
-
-      // Clean up
-      leftColumns = null;
-      leftConsumed = 0;
-      leftReader.consumedAll();
-    } else {
-      // Consume all right columns
-      cachedColumns = mergeAndTransformColumns(rightCount);
-      // No need to call rightReader.consume()
-
-      // Clean up right columns
-      rightColumns = null;
-      rightConsumed = 0;
-      rightReader.consumedAll();
+    // Constant folding, or more precisely, constant caching
+    if (isCurrentConstant && cachedColumns != null) {
+      return YieldableState.YIELDABLE;
     }
+
+    // Merge and transform
+    int leftCount = leftColumns[0].getPositionCount();
+    int rightCount = rightColumns[0].getPositionCount();
+    int leftRemains = leftCount - leftConsumed;
+    int rightRemains = rightCount - rightConsumed;
+    int expectedEntries = Math.min(leftRemains, rightRemains);
+    cachedColumns = mergeAndTransformColumns(expectedEntries);
 
     return YieldableState.YIELDABLE;
   }
 
   protected Column[] mergeAndTransformColumns(int count) throws QueryProcessException, IOException {
-    // TODO: maybe we should choose more precise expectedEntries
     TSDataType outputType = getDataTypes()[0];
     ColumnBuilder timeBuilder = new TimeColumnBuilder(null, count);
     ColumnBuilder valueBuilder = TypeUtils.initColumnBuilder(outputType, count);
 
     if (isLeftReaderConstant || isRightReaderConstant) {
-      int leftOffset = leftConsumed;
-      int rightOffset = rightConsumed;
-      for (int i = 0; i < count; i++) {
-        if (leftColumns[0].isNull(leftConsumed) || rightColumns[0].isNull(rightConsumed)) {
-          valueBuilder.appendNull();
-        } else {
-          transformAndCache(
-              leftColumns[0], leftConsumed, rightColumns[0], rightConsumed, valueBuilder);
-        }
-
-        leftConsumed++;
-        rightConsumed++;
-      }
-
-      Column values = valueBuilder.build();
-      if (isCurrentConstant) {
-        return new Column[] {values};
-      }
-      Column times;
-      if (isLeftReaderConstant) {
-        times = rightColumns[1].getRegion(rightOffset, count);
-      } else {
-        times = leftColumns[1].getRegion(leftOffset, count);
-      }
-      return new Column[] {values, times};
+      return handleConstantColumns(valueBuilder);
     }
 
+    return handleNonConstantColumns(timeBuilder, valueBuilder);
+  }
+
+  private Column[] handleNonConstantColumns(ColumnBuilder timeBuilder, ColumnBuilder valueBuilder)
+      throws QueryProcessException, IOException {
     Column leftTimes = leftColumns[1], leftValues = leftColumns[0];
     Column rightTimes = rightColumns[1], rightValues = rightColumns[0];
 
     int leftEnd = leftTimes.getPositionCount();
     int rightEnd = rightTimes.getPositionCount();
 
+    // Combine two columns by merge sort
     while (leftConsumed < leftEnd && rightConsumed < rightEnd) {
       long leftTime = leftTimes.getLong(leftConsumed);
       long rightTime = rightTimes.getLong(rightConsumed);
@@ -171,9 +143,65 @@ public abstract class BinaryTransformer extends Transformer {
       }
     }
 
+    // Clean up
+    if (leftConsumed == leftEnd) {
+      leftColumns = null;
+      leftConsumed = 0;
+      leftReader.consumedAll();
+    }
+    if (rightConsumed == rightEnd) {
+      rightColumns = null;
+      rightConsumed = 0;
+      rightReader.consumedAll();
+    }
+
     Column times = timeBuilder.build();
     Column values = valueBuilder.build();
     return new Column[] {values, times};
+  }
+
+  private Column[] handleConstantColumns(ColumnBuilder valueBuilder)
+      throws QueryProcessException, IOException {
+    if (isLeftReaderConstant && isRightReaderConstant) {
+      transformAndCache(leftColumns[0], 0, rightColumns[0], 0, valueBuilder);
+      Column constants = valueBuilder.build();
+      return new Column[] {constants};
+    } else if (isLeftReaderConstant) {
+      for (int i = 0; i < rightColumns[0].getPositionCount(); i++) {
+        if (rightColumns[0].isNull(i)) {
+          valueBuilder.appendNull();
+        } else {
+          transformAndCache(leftColumns[0], 0, rightColumns[0], i, valueBuilder);
+        }
+      }
+      Column times = rightColumns[1];
+      Column values = valueBuilder.build();
+
+      // Clean up
+      rightColumns = null;
+      rightReader.consumedAll();
+
+      return new Column[] {values, times};
+    } else if (isRightReaderConstant) {
+      for (int i = 0; i < leftColumns[0].getPositionCount(); i++) {
+        if (leftColumns[0].isNull(i)) {
+          valueBuilder.appendNull();
+        } else {
+          transformAndCache(leftColumns[0], i, rightColumns[0], 0, valueBuilder);
+        }
+      }
+      Column times = leftColumns[1];
+      Column values = valueBuilder.build();
+
+      // Clean up
+      leftColumns = null;
+      leftReader.consumedAll();
+
+      return new Column[] {values, times};
+    }
+
+    // Unreachable
+    return null;
   }
 
   protected abstract void transformAndCache(
