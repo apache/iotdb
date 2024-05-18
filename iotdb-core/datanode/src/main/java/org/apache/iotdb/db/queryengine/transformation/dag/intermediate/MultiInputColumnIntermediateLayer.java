@@ -60,11 +60,11 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
   private final TSDataType[] dataTypes;
   private final TimeSelector timeHeap;
 
-  private TVColumns[] inputTVColumnsList;
-  private int[] currentConsumedIndexes;
-  private int[] nextConsumedIndexes;
+  private final TVColumns[] inputTVColumnsList;
+  private final int[] currentConsumedIndexes;
+  private final int[] nextConsumedIndexes;
 
-  private TsBlockBuilder tsBlockBuilder;
+  private final TsBlockBuilder tsBlockBuilder;
   private TsBlock cachedTsBlock = null;
 
   public MultiInputColumnIntermediateLayer(
@@ -124,7 +124,6 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
 
       updateTimeHeap();
     }
-    timeHeap.clear();
 
     cachedTsBlock = tsBlockBuilder.build();
     return YieldableState.YIELDABLE;
