@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.input.IUDFInputDataSet
 import org.apache.iotdb.db.queryengine.transformation.dag.util.LayerCacheUtils;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.TVColumns;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.RowListForwardIterator;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -286,11 +287,10 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
           return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
         }
 
-        final int rowsToBeCollected = endIndex - rowRecordList.size();
-        if (rowsToBeCollected > 0) {
+        final int pointsToBeCollected = endIndex - rowRecordList.size();
+        if (pointsToBeCollected > 0) {
           final YieldableState yieldableState =
-              LayerCacheUtils.yieldRows(udfInputDataSet, rowRecordList, rowsToBeCollected);
-
+              LayerCacheUtils.yieldRows(udfInputDataSet, rowRecordList, pointsToBeCollected);
           if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
             beginIndex -= slidingStep;
             return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
@@ -357,23 +357,41 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       private boolean hasCached = false;
       private long nextWindowTimeBegin = strategy.getDisplayWindowBegin();
       private int nextIndexBegin = 0;
+      private int nextIndexEnd = 0;
+      private long currentEndTime = Long.MAX_VALUE;
+
+      private final RowListForwardIterator beginIterator = rowRecordList.constructIterator();
+      private TimeColumn cachedBeginTimeColumn;
+      private int cachedBeginConsumed;
+
+      private TimeColumn cachedEndTimeColumn;
+      private int cachedEndConsumed;
 
       @Override
       public YieldableState yield() throws Exception {
         if (isFirstIteration) {
           if (rowRecordList.size() == 0) {
-            final YieldableState yieldableState =
-                LayerCacheUtils.yieldRows(udfInputDataSet, rowRecordList);
-            if (yieldableState != YieldableState.YIELDABLE) {
-              return yieldableState;
+            final YieldableState state = udfInputDataSet.yield();
+            if (state != YieldableState.YIELDABLE) {
+              return state;
             }
-            if (nextWindowTimeBegin == Long.MIN_VALUE) {
-              // display window begin should be set to the same as the min timestamp of the query
-              // result set
-              nextWindowTimeBegin = rowRecordList.getTime(0);
-            }
+
+            Column[] columns = udfInputDataSet.currentBlock();
+            TimeColumn times = (TimeColumn) columns[columns.length - 1];
+
+            rowRecordList.put(columns);
+
+            cachedEndTimeColumn = times;
+          }
+          if (nextWindowTimeBegin == Long.MIN_VALUE) {
+            // display window begin should be set to the same as the min timestamp of the query
+            // result set
+            nextWindowTimeBegin = cachedEndTimeColumn.getStartTime();
           }
           hasAtLeastOneRow = rowRecordList.size() != 0;
+          if (hasAtLeastOneRow) {
+            currentEndTime = cachedEndTimeColumn.getEndTime();
+          }
           isFirstIteration = false;
         }
 
@@ -386,39 +404,70 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
         }
 
         long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
-        while (rowRecordList.getTime(rowRecordList.size() - 1) < nextWindowTimeEnd) {
-          final YieldableState yieldableState =
-              LayerCacheUtils.yieldRows(udfInputDataSet, rowRecordList);
-          if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+        while (currentEndTime < nextWindowTimeEnd) {
+          final YieldableState state = udfInputDataSet.yield();
+          if (state == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
             return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
           }
-          if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
+          if (state == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
             break;
+          }
+          // Generate data
+          Column[] columns = udfInputDataSet.currentBlock();
+          TimeColumn times = (TimeColumn) columns[columns.length - 1];
+          // Put data into container
+          rowRecordList.put(columns);
+          currentEndTime = times.getEndTime();
+          // Increase nextIndexEnd
+          nextIndexEnd += cachedEndTimeColumn.getPositionCount() - cachedEndConsumed;
+          // Update cache
+          cachedEndTimeColumn = times;
+          cachedEndConsumed = 0;
+        }
+
+        // Set nextIndexEnd field
+        while (cachedEndConsumed < cachedEndTimeColumn.getPositionCount()) {
+          if (cachedEndTimeColumn.getLong(cachedEndConsumed) >= nextWindowTimeEnd) {
+            break;
+          }
+          cachedEndConsumed++;
+          nextIndexEnd++;
+        }
+
+        // Set nextIndexBegin field
+        boolean findNextIndexBegin = false;
+        while (!findNextIndexBegin) {
+          while (cachedBeginTimeColumn != null
+              && cachedBeginConsumed < cachedBeginTimeColumn.getPositionCount()) {
+            if (cachedBeginTimeColumn.getLong(cachedBeginConsumed) >= nextWindowTimeBegin) {
+              findNextIndexBegin = true;
+              break;
+            }
+            cachedBeginConsumed++;
+            nextIndexBegin++;
+          }
+
+          if (!findNextIndexBegin) {
+            if (beginIterator.hasNext()) {
+              beginIterator.next();
+
+              cachedBeginConsumed = 0;
+              Column[] columns = beginIterator.currentBlock();
+              cachedBeginTimeColumn = (TimeColumn) columns[columns.length - 1];
+            } else {
+              // No more data
+              // Set nextIndexBegin to list's size
+              findNextIndexBegin = true;
+            }
           }
         }
 
-        for (int i = nextIndexBegin; i < rowRecordList.size(); ++i) {
-          if (rowRecordList.getTime(i) >= nextWindowTimeBegin) {
-            nextIndexBegin = i;
-            break;
-          }
-          if (i == rowRecordList.size() - 1) {
-            nextIndexBegin = rowRecordList.size();
-          }
-        }
-
-        int nextIndexEnd = rowRecordList.size();
-        for (int i = nextIndexBegin; i < rowRecordList.size(); ++i) {
-          if (nextWindowTimeEnd <= rowRecordList.getTime(i)) {
-            nextIndexEnd = i;
-            break;
-          }
-        }
         if ((nextIndexEnd == nextIndexBegin)
-            && nextWindowTimeEnd < rowRecordList.getTime(rowRecordList.size() - 1)) {
+            && nextWindowTimeEnd < cachedEndTimeColumn.getEndTime()) {
           window.setEmptyWindow(nextWindowTimeBegin, nextWindowTimeEnd);
           return YieldableState.YIELDABLE;
         }
+
         window.seek(
             nextIndexBegin,
             nextIndexEnd,
@@ -470,35 +519,35 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       private long nextWindowTimeBegin = displayWindowBegin;
       private long nextWindowTimeEnd = 0;
       private int nextIndexBegin = 0;
-      private int nextIndexEnd = 1;
+      private int nextIndexEnd = 0;
+
+      private TimeColumn cachedTimes;
+      private int cachedConsumed;
 
       @Override
       public YieldableState yield() throws Exception {
         if (isFirstIteration) {
-          if (rowRecordList.size() == 0) {
-            final YieldableState yieldableState =
-                LayerCacheUtils.yieldRows(udfInputDataSet, rowRecordList);
-            if (yieldableState != YieldableState.YIELDABLE) {
-              return yieldableState;
-            }
+          YieldableState state = yieldInFirstIteration();
+          if (state != YieldableState.YIELDABLE) {
+            return state;
           }
-          nextWindowTimeBegin = Math.max(displayWindowBegin, rowRecordList.getTime(0));
-          hasAtLeastOneRow = rowRecordList.size() != 0;
-          isFirstIteration = false;
         }
 
-        if (!hasAtLeastOneRow || displayWindowEnd <= nextWindowTimeBegin) {
+        if (!hasAtLeastOneRow || nextWindowTimeBegin >= displayWindowEnd) {
           return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
         }
 
         // Set nextIndexEnd
-        nextIndexEnd++;
+        long curTime = cachedTimes.getLong(cachedConsumed);
+        if (cachedConsumed < cachedTimes.getPositionCount()) {
+          nextIndexEnd++;
+          cachedConsumed++;
+        }
         boolean findWindow = false;
         // Find target window or no more data to exit
         while (!findWindow) {
-          while (nextIndexEnd < rowRecordList.size()) {
-            long curTime = rowRecordList.getTime(nextIndexEnd - 1);
-            long nextTime = rowRecordList.getTime(nextIndexEnd);
+          while (cachedConsumed < cachedTimes.getPositionCount()) {
+            long nextTime = cachedTimes.getLong(cachedConsumed);
 
             if (curTime >= displayWindowEnd) {
               nextIndexEnd--;
@@ -506,49 +555,90 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
               break;
             }
 
-            if (curTime >= displayWindowBegin && nextTime - curTime > sessionTimeGap) {
+            if (nextTime - curTime > sessionTimeGap) {
               findWindow = true;
               break;
             }
             nextIndexEnd++;
+            cachedConsumed++;
+            curTime = nextTime;
           }
 
           if (!findWindow) {
-            if (rowRecordList.getTime(rowRecordList.size() - 1) < displayWindowEnd) {
-              final YieldableState yieldableState =
-                  LayerCacheUtils.yieldRows(udfInputDataSet, rowRecordList);
-              if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+            if (cachedTimes.getEndTime() < displayWindowEnd) {
+              YieldableState state = yieldAndCache();
+              if (state == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
                 return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
-              } else if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
+              } else if (state == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
                 break;
               }
             }
           }
         }
-
+        // Set nextWindowTimeEnd
         nextWindowTimeEnd = rowRecordList.getTime(nextIndexEnd - 1);
 
         if (nextIndexBegin == nextIndexEnd) {
           return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
         }
+        window.seek(nextIndexBegin, nextIndexEnd, nextWindowTimeBegin, nextWindowTimeEnd);
+        return YieldableState.YIELDABLE;
+      }
 
-        // Only if encounter user set the strategy's displayWindowBegin, which will go into the for
-        // loop to find the true index of the first window begin.
-        // For other situation, we will only go into if (nextWindowTimeBegin <= tvList.getTime(i))
-        // once.
-        for (int i = nextIndexBegin; i < rowRecordList.size(); ++i) {
-          if (rowRecordList.getTime(i) >= nextWindowTimeBegin) {
-            nextIndexBegin = i;
-            break;
-          }
-          // The first window's beginning time is greater than all the timestamp of the query result
-          // set
-          if (i == rowRecordList.size() - 1) {
-            return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+      private YieldableState yieldInFirstIteration() throws Exception {
+        // Yield initial data in first iteration
+        if (rowRecordList.size() == 0) {
+          YieldableState state = yieldAndCache();
+          if (state != YieldableState.YIELDABLE) {
+            return state;
           }
         }
+        // Initialize essential information
+        nextWindowTimeBegin = Math.max(displayWindowBegin, cachedTimes.getStartTime());
+        hasAtLeastOneRow = rowRecordList.size() != 0;
+        isFirstIteration = false;
 
-        window.seek(nextIndexBegin, nextIndexEnd, nextWindowTimeBegin, nextWindowTimeEnd);
+        // Set initial nextIndexBegin
+        long currentEndTime = cachedTimes.getEndTime();
+        // Find corresponding block
+        while (currentEndTime < nextWindowTimeBegin) {
+          // Consume all data
+          cachedConsumed = cachedTimes.getPositionCount();
+          nextIndexBegin += cachedConsumed;
+
+          YieldableState state = yieldAndCache();
+          if (state != YieldableState.YIELDABLE) {
+            // Cannot find nextIndexBegin
+            // Set nextIndexEnd to nextIndexBegin and exit
+            nextIndexEnd = nextIndexBegin;
+            return state;
+          }
+        }
+        // Find nextIndexBegin in block
+        while (cachedConsumed < cachedTimes.getPositionCount()) {
+          if (cachedTimes.getLong(cachedConsumed) >= nextWindowTimeBegin) {
+            break;
+          }
+          cachedConsumed++;
+          nextIndexBegin++;
+        }
+        nextIndexEnd = nextIndexBegin;
+
+        return YieldableState.YIELDABLE;
+      }
+
+      private YieldableState yieldAndCache() throws Exception {
+        final YieldableState state = udfInputDataSet.yield();
+        if (state != YieldableState.YIELDABLE) {
+          return state;
+        }
+        Column[] columns = udfInputDataSet.currentBlock();
+        TimeColumn times = (TimeColumn) columns[columns.length - 1];
+
+        rowRecordList.put(columns);
+
+        cachedTimes = times;
+        cachedConsumed = 0;
 
         return YieldableState.YIELDABLE;
       }
