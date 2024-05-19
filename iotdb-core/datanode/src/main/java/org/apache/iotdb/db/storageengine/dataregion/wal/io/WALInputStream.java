@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.Arrays;
 import java.util.Objects;
 
 public class WALInputStream extends InputStream implements AutoCloseable {
@@ -82,23 +81,45 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   }
 
   @Override
-  public int read(byte b[], int off, int len) throws IOException {
+  public int read(byte[] b, int off, int len) throws IOException {
     if (Objects.isNull(dataBuffer) || dataBuffer.position() >= dataBuffer.limit()) {
       loadNextSegment();
     }
+    logger.error("Stack trace ", new Exception());
     if (dataBuffer.remaining() >= len) {
+      int remain = dataBuffer.remaining();
       dataBuffer.get(b, off, len);
+      logger.info(
+          "{} Read without loading, need {}, read {}",
+          logFile.getAbsolutePath(),
+          len,
+          remain - dataBuffer.remaining());
       return len;
     }
+    logger.info(
+        "{} Read with loading, need {}, remain {}",
+        logFile.getAbsolutePath(),
+        len,
+        dataBuffer.remaining());
     int toBeRead = len;
     while (toBeRead > 0) {
       int remaining = dataBuffer.remaining();
       int bytesRead = Math.min(remaining, toBeRead);
       dataBuffer.get(b, off, bytesRead);
+      logger.info(
+          "{} Want to read {} bytes, actually read {}, remain {} to be read",
+          logFile.getAbsolutePath(),
+          bytesRead,
+          remaining - dataBuffer.remaining(),
+          toBeRead);
       off += bytesRead;
       toBeRead -= bytesRead;
       if (toBeRead > 0) {
         loadNextSegment();
+        logger.info(
+            "{} Load next segment, segment size is {}",
+            logFile.getAbsolutePath(),
+            dataBuffer.limit());
       }
     }
     return len;

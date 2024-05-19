@@ -85,18 +85,29 @@ public class WALMetaData implements SerializedSize {
   }
 
   public void serialize(File file, ByteBuffer buffer) {
+    ByteBuffer tmpBuffer = ByteBuffer.allocate(serializedSize());
     buffer.putLong(firstSearchIndex);
+    tmpBuffer.putLong(firstSearchIndex);
     buffer.putInt(buffersSize.size());
+    tmpBuffer.putInt(buffersSize.size());
     for (int size : buffersSize) {
       buffer.putInt(size);
+      tmpBuffer.putInt(size);
     }
-    logger.info("{} Buffer size is {}", file.getAbsolutePath(), buffersSize);
     if (!memTablesId.isEmpty()) {
       buffer.putInt(memTablesId.size());
+      tmpBuffer.putInt(memTablesId.size());
       for (long memTableId : memTablesId) {
         buffer.putLong(memTableId);
+        tmpBuffer.putLong(memTableId);
       }
     }
+    tmpBuffer.flip();
+    logger.info(
+        "{} Buffer size is {}, serialize is {}",
+        file.getAbsolutePath(),
+        buffersSize,
+        Arrays.toString(tmpBuffer.array()));
   }
 
   public static WALMetaData deserialize(File file, ByteBuffer buffer) {
@@ -106,7 +117,11 @@ public class WALMetaData implements SerializedSize {
     for (int i = 0; i < entriesNum; ++i) {
       buffersSize.add(buffer.getInt());
     }
-    logger.info("{} buffer size is {}", file.getAbsolutePath(), buffersSize);
+    logger.info(
+        "{} recover buffer size is {}, buf is {}",
+        file.getAbsolutePath(),
+        buffersSize,
+        Arrays.toString(buffer.array()));
     Set<Long> memTablesId = new HashSet<>();
     if (buffer.hasRemaining()) {
       int memTablesIdNum = buffer.getInt();
@@ -144,12 +159,9 @@ public class WALMetaData implements SerializedSize {
     metadataSizeBuf.flip();
     // load metadata
     int metadataSize = metadataSizeBuf.getInt();
-    logger.error(
-        "{} metadataSize: {}, position {}", logFile.getAbsolutePath(), metadataSize, position);
     ByteBuffer metadataBuf = ByteBuffer.allocate(metadataSize);
     channel.read(metadataBuf, position - metadataSize);
     metadataBuf.flip();
-    logger.error("{} metadata {}", logFile.getAbsolutePath(), Arrays.toString(metadataBuf.array()));
     WALMetaData metaData = WALMetaData.deserialize(logFile, metadataBuf);
     // versions before V1.3, should recover memTable ids from entries
     if (metaData.memTablesId.isEmpty()) {

@@ -21,6 +21,9 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.File;
@@ -35,6 +38,7 @@ import java.util.Iterator;
  * {@link Iterator}.
  */
 public class WALByteBufReader implements Closeable {
+  private static final Logger logger = LoggerFactory.getLogger(WALByteBufReader.class);
   private final File logFile;
   private final FileChannel channel;
   private final WALMetaData metaData;
@@ -51,6 +55,7 @@ public class WALByteBufReader implements Closeable {
     this.logStream = new DataInputStream(new WALInputStream(logFile));
     this.metaData = WALMetaData.readFromWALFile(logFile, channel);
     this.sizeIterator = metaData.getBuffersSize().iterator();
+    logger.info("{} Buffer sizes is {}", logFile.getAbsolutePath(), metaData.getBuffersSize());
     channel.position(0);
   }
 
@@ -67,8 +72,12 @@ public class WALByteBufReader implements Closeable {
   public ByteBuffer next() throws IOException {
     int size = sizeIterator.next();
     ByteBuffer buffer = ByteBuffer.allocate(size);
+    /*
+     Notice, we don't need to flip the buffer after calling
+     logStream.readFully, since this function does not change
+     the position of the buffer.
+    */
     logStream.readFully(buffer.array(), 0, size);
-    buffer.flip();
     return buffer;
   }
 
