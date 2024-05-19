@@ -30,33 +30,33 @@ public class TsFileErrorMessagePayload implements SubscriptionMessagePayload {
 
   private transient String errorMessage;
 
-  private transient boolean retryable;
+  private transient boolean critical;
 
   public String getErrorMessage() {
     return errorMessage;
   }
 
-  public boolean isRetryable() {
-    return retryable;
+  public boolean isCritical() {
+    return critical;
   }
 
   public TsFileErrorMessagePayload() {}
 
-  public TsFileErrorMessagePayload(String errorMessage, boolean retryable) {
+  public TsFileErrorMessagePayload(String errorMessage, boolean critical) {
     this.errorMessage = errorMessage;
-    this.retryable = retryable;
+    this.critical = critical;
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(errorMessage, stream);
-    ReadWriteIOUtils.write(retryable, stream);
+    ReadWriteIOUtils.write(critical, stream);
   }
 
   @Override
   public SubscriptionMessagePayload deserialize(ByteBuffer buffer) {
     this.errorMessage = ReadWriteIOUtils.readString(buffer);
-    this.retryable = ReadWriteIOUtils.readBool(buffer);
+    this.critical = ReadWriteIOUtils.readBool(buffer);
     return this;
   }
 
@@ -70,20 +70,20 @@ public class TsFileErrorMessagePayload implements SubscriptionMessagePayload {
     }
     final TsFileErrorMessagePayload that = (TsFileErrorMessagePayload) obj;
     return Objects.equals(this.errorMessage, that.errorMessage)
-        && Objects.equals(this.retryable, that.retryable);
+        && Objects.equals(this.critical, that.critical);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(errorMessage, retryable);
+    return Objects.hash(errorMessage, critical);
   }
 
   @Override
   public String toString() {
     return "TsFileErrorMessagePayload{errorMessage="
         + errorMessage
-        + ", retryable="
-        + retryable
+        + ", critical="
+        + critical
         + "}";
   }
 }

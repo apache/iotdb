@@ -26,8 +26,8 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
-import org.apache.iotdb.rpc.subscription.exception.SubscriptionNonRetryableException;
-import org.apache.iotdb.rpc.subscription.exception.SubscriptionRetryableException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessage;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
@@ -145,7 +145,7 @@ final class SubscriptionProvider extends SubscriptionSession {
           this,
           consumerConfig,
           e);
-      throw new SubscriptionRetryableException(e.getMessage(), e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
     final TPipeSubscribeResp resp;
     try {
@@ -223,7 +223,7 @@ final class SubscriptionProvider extends SubscriptionSession {
           this,
           topicNames,
           e);
-      throw new SubscriptionRetryableException(e.getMessage(), e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
     final TPipeSubscribeResp resp;
     try {
@@ -251,7 +251,7 @@ final class SubscriptionProvider extends SubscriptionSession {
           this,
           topicNames,
           e);
-      throw new SubscriptionRetryableException(e.getMessage(), e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
     final TPipeSubscribeResp resp;
     try {
@@ -280,7 +280,7 @@ final class SubscriptionProvider extends SubscriptionSession {
           this,
           pollMessage,
           e);
-      throw new SubscriptionRetryableException(e.getMessage(), e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
     final TPipeSubscribeResp resp;
     try {
@@ -311,7 +311,7 @@ final class SubscriptionProvider extends SubscriptionSession {
           this,
           subscriptionCommitContexts,
           e);
-      throw new SubscriptionRetryableException(e.getMessage(), e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
     final TPipeSubscribeResp resp;
     try {
@@ -334,8 +334,6 @@ final class SubscriptionProvider extends SubscriptionSession {
     switch (status.code) {
       case 200: // SUCCESS_STATUS
         return;
-      case 1900: // SUBSCRIPTION_VERSION_ERROR
-      case 1901: // SUBSCRIPTION_TYPE_ERROR
       case 1902: // SUBSCRIPTION_HANDSHAKE_ERROR
       case 1903: // SUBSCRIPTION_HEARTBEAT_ERROR
       case 1904: // SUBSCRIPTION_POLL_ERROR
@@ -343,24 +341,20 @@ final class SubscriptionProvider extends SubscriptionSession {
       case 1906: // SUBSCRIPTION_CLOSE_ERROR
       case 1907: // SUBSCRIPTION_SUBSCRIBE_ERROR
       case 1908: // SUBSCRIPTION_UNSUBSCRIBE_ERROR
-      case 1909: // SUBSCRIPTION_MISSING_CUSTOMER
         LOGGER.warn(
             "Internal error occurred, status code {}, status message {}",
             status.code,
             status.message);
-        throw new SubscriptionNonRetryableException(status.message);
-      case 1911: // SUBSCRIPTION_SERIALIZATION_ERROR
-        LOGGER.warn(
-            "Internal error occurred when serialize response, status code {}, status message {}",
-            status.code,
-            status.message);
-        throw new SubscriptionRetryableException(status.message);
+        throw new SubscriptionRuntimeNonCriticalException(status.message);
+      case 1900: // SUBSCRIPTION_VERSION_ERROR
+      case 1901: // SUBSCRIPTION_TYPE_ERROR
+      case 1909: // SUBSCRIPTION_MISSING_CUSTOMER
       default:
         LOGGER.warn(
             "Internal error occurred, status code {}, status message {}",
             status.code,
             status.message);
-        throw new SubscriptionNonRetryableException(status.message);
+        throw new SubscriptionRuntimeCriticalException(status.message);
     }
   }
 

@@ -21,7 +21,7 @@ package org.apache.iotdb.rpc.subscription.exception;
 
 import java.util.Objects;
 
-public class SubscriptionParameterNotValidException extends SubscriptionNonRetryableException {
+public class SubscriptionParameterNotValidException extends SubscriptionException {
 
   public SubscriptionParameterNotValidException(String message) {
     super(message);

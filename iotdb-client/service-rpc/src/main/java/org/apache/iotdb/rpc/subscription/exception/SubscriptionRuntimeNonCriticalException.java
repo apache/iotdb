@@ -21,20 +21,22 @@ package org.apache.iotdb.rpc.subscription.exception;
 
 import java.util.Objects;
 
-public class SubscriptionConnectionException extends SubscriptionRuntimeCriticalException {
+public class SubscriptionRuntimeNonCriticalException extends SubscriptionRuntimeException {
 
-  public SubscriptionConnectionException(String message) {
+  public SubscriptionRuntimeNonCriticalException(String message) {
     super(message);
   }
 
-  public SubscriptionConnectionException(String message, Throwable cause) {
+  public SubscriptionRuntimeNonCriticalException(String message, Throwable cause) {
     super(message, cause);
   }
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof SubscriptionConnectionException
-        && Objects.equals(getMessage(), ((SubscriptionConnectionException) obj).getMessage())
-        && Objects.equals(getTimeStamp(), ((SubscriptionConnectionException) obj).getTimeStamp());
+    return obj instanceof SubscriptionRuntimeNonCriticalException
+        && Objects.equals(
+            getMessage(), ((SubscriptionRuntimeNonCriticalException) obj).getMessage())
+        && Objects.equals(
+            getTimeStamp(), ((SubscriptionRuntimeNonCriticalException) obj).getTimeStamp());
   }
 }

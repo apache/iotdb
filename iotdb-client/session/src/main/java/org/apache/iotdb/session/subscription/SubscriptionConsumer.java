@@ -25,8 +25,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
-import org.apache.iotdb.rpc.subscription.exception.SubscriptionNonRetryableException;
-import org.apache.iotdb.rpc.subscription.exception.SubscriptionRetryableException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
 import org.apache.iotdb.rpc.subscription.payload.common.PollMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.PollTsFileMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
@@ -41,6 +41,7 @@ import org.apache.iotdb.rpc.subscription.payload.common.TsFileInitMessagePayload
 import org.apache.iotdb.rpc.subscription.payload.common.TsFilePieceMessagePayload;
 import org.apache.iotdb.rpc.subscription.payload.common.TsFileSealMessagePayload;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.util.RandomStringGenerator;
 import org.apache.iotdb.session.subscription.util.SubscriptionPollTimer;
 import org.apache.iotdb.session.util.SessionUtils;
 
@@ -103,6 +104,25 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         Paths.get(tsFileBaseDir).resolve(consumerGroupId).resolve(consumerId).resolve(topicName);
     Files.createDirectories(dirPath);
     return dirPath;
+  }
+
+  private Path getTsFilePath(final String topicName, String fileName) throws SubscriptionException {
+    Path filePath;
+    try {
+      filePath = getTsFileDir(topicName).resolve(fileName);
+      Files.createFile(filePath);
+    } catch (final FileAlreadyExistsException fileAlreadyExistsException) {
+      fileName += "." + RandomStringGenerator.generate(16);
+      try {
+        filePath = getTsFileDir(topicName).resolve(fileName);
+        Files.createFile(filePath);
+      } catch (final IOException e) {
+        throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+      }
+    } catch (final IOException e) {
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    return filePath;
   }
 
   public String getConsumerId() {
@@ -364,10 +384,14 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         new SubscriptionPollTimer(System.currentTimeMillis(), timeoutMs);
 
     do {
-      // poll tablets or tsfile
-      for (final SubscriptionPolledMessage polledMessage : pollInternal(topicNames)) {
-        final short messageType = polledMessage.getMessageType();
-        if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
+      try {
+        // poll tablets or tsfile
+        for (final SubscriptionPolledMessage polledMessage : pollInternal(topicNames)) {
+          final short messageType = polledMessage.getMessageType();
+          if (!SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
+            LOGGER.warn("unexpected message type: {}", messageType);
+            continue;
+          }
           switch (SubscriptionPolledMessageType.valueOf(messageType)) {
             case TABLETS:
               messages.add(
@@ -385,16 +409,40 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
               LOGGER.warn("unexpected message type: {}", messageType);
               break;
           }
-        } else {
-          LOGGER.warn("unexpected message type: {}", messageType);
         }
+      } catch (final SubscriptionRuntimeNonCriticalException e) {
+        LOGGER.warn(
+            "SubscriptionRuntimeNonCriticalException occurred when SubscriptionConsumer {} polling topics {}",
+            this,
+            topicNames,
+            e);
+        // nack and clear messages
+        try {
+          nack(messages);
+          messages.clear();
+        } catch (final Exception ignored) {
+        }
+      } catch (final SubscriptionRuntimeCriticalException e) {
+        LOGGER.warn(
+            "SubscriptionRuntimeCriticalException occurred when SubscriptionConsumer {} polling topics {}",
+            this,
+            topicNames,
+            e);
+        // nack and clear messages
+        try {
+          nack(messages);
+          messages.clear();
+        } catch (final Exception ignored) {
+        }
+        // rethrow
+        throw e;
       }
       if (!messages.isEmpty()) {
         return messages;
       }
       // update timer
       timer.update();
-      // TODO: associated with timeoutMs instead of hardcode
+      // TODO: associated with timeoutMs instead of hardcoding
       LockSupport.parkNanos(SLEEP_NS); // wait some time
     } while (timer.notExpired());
 
@@ -404,68 +452,15 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private Optional<SubscriptionMessage> pollTsFile(
-      final SubscriptionCommitContext commitContext, String fileName) throws SubscriptionException {
+      final SubscriptionCommitContext commitContext, final String fileName)
+      throws SubscriptionException {
     final String topicName = commitContext.getTopicName();
-    Path filePath;
-
-    try {
-      filePath = getTsFileDir(topicName).resolve(fileName);
-      Files.createFile(filePath);
-    } catch (final FileAlreadyExistsException fileAlreadyExistsException) {
-      LOGGER.info(
-          "FileAlreadyExistsException occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}, append \".1\" to file name",
-          this,
-          fileName,
-          commitContext,
-          fileAlreadyExistsException);
-      fileName += ".1";
-      try {
-        filePath = getTsFileDir(topicName).resolve(fileName);
-        Files.createFile(filePath);
-      } catch (final IOException e) {
-        LOGGER.warn(
-            "IOException occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}",
-            this,
-            fileName,
-            commitContext,
-            e);
-        // TODO: Consider mid-process failures.
-        // rethrow
-        throw new SubscriptionNonRetryableException(e.getMessage(), e);
-      }
-    } catch (final IOException e) {
-      LOGGER.warn(
-          "IOException occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}",
-          this,
-          fileName,
-          commitContext,
-          e);
-      // TODO: Consider mid-process failures.
-      // rethrow
-      throw new SubscriptionNonRetryableException(e.getMessage(), e);
-    }
-
+    final Path filePath = getTsFilePath(topicName, fileName);
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
       return Optional.of(pollTsFileInternal(commitContext, file, fileWriter));
-    } catch (final IOException | SubscriptionRetryableException e) {
-      LOGGER.warn(
-          "IOException or SubscriptionRetryableException occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}",
-          this,
-          fileName,
-          commitContext,
-          e);
-      return Optional.empty();
-    } catch (final SubscriptionNonRetryableException e) {
-      LOGGER.warn(
-          "SubscriptionNonRetryableException occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}",
-          this,
-          fileName,
-          commitContext,
-          e);
-      // TODO: Consider mid-process failures.
-      // rethrow
-      throw e;
+    } catch (final IOException e) {
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
 
@@ -495,143 +490,142 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         final String errorMessage =
             String.format("SubscriptionConsumer %s poll empty tsfile message", this);
         LOGGER.warn(errorMessage);
-        throw new SubscriptionNonRetryableException(errorMessage);
+        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
       }
 
+      // Only one SubscriptionEvent polled currently...
       final SubscriptionPolledMessage polledMessage = polledMessages.get(0);
       final SubscriptionMessagePayload messagePayload = polledMessage.getMessagePayload();
-
       final short messageType = polledMessage.getMessageType();
-      if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
-        switch (SubscriptionPolledMessageType.valueOf(messageType)) {
-          case TS_FILE_PIECE:
-            {
-              // check commit context
-              final SubscriptionCommitContext incomingCommitContext =
-                  polledMessage.getCommitContext();
-              if (Objects.isNull(incomingCommitContext)
-                  || !Objects.equals(commitContext, incomingCommitContext)) {
-                final String errorMessage =
-                    String.format(
-                        "inconsistent commit context, current is %s, incoming is %s, consumer: %s",
-                        commitContext, incomingCommitContext, this);
-                LOGGER.warn(errorMessage);
-                throw new SubscriptionNonRetryableException(errorMessage);
-              }
-
-              // check file name
-              if (!fileName.startsWith(
-                  ((TsFilePieceMessagePayload) messagePayload).getFileName())) {
-                final String errorMessage =
-                    String.format(
-                        "inconsistent file name, current is %s, incoming is %s, consumer: %s",
-                        fileName, ((TsFilePieceMessagePayload) messagePayload).getFileName(), this);
-                LOGGER.warn(errorMessage);
-                throw new SubscriptionNonRetryableException(errorMessage);
-              }
-
-              // write file piece
-              fileWriter.write(((TsFilePieceMessagePayload) messagePayload).getFilePiece());
-              fileWriter.getFD().sync();
-
-              // check offset
-              if (!Objects.equals(
-                  fileWriter.length(),
-                  ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset())) {
-                final String errorMessage =
-                    String.format(
-                        "inconsistent file offset, current is %s, incoming is %s, consumer: %s",
-                        fileWriter.length(),
-                        ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset(),
-                        this);
-                LOGGER.warn(errorMessage);
-                throw new SubscriptionNonRetryableException(errorMessage);
-              }
-
-              // update offset
-              writingOffset = ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset();
-              break;
-            }
-          case TS_FILE_SEAL:
-            {
-              // check commit context
-              final SubscriptionCommitContext incomingCommitContext =
-                  polledMessage.getCommitContext();
-              if (Objects.isNull(incomingCommitContext)
-                  || !Objects.equals(commitContext, incomingCommitContext)) {
-                final String errorMessage =
-                    String.format(
-                        "inconsistent commit context, current is %s, incoming is %s, consumer: %s",
-                        commitContext, incomingCommitContext, this);
-                LOGGER.warn(errorMessage);
-                throw new SubscriptionNonRetryableException(errorMessage);
-              }
-
-              // check file name
-              if (!fileName.startsWith(((TsFileSealMessagePayload) messagePayload).getFileName())) {
-                final String errorMessage =
-                    String.format(
-                        "inconsistent file name, current is %s, incoming is %s, consumer: %s",
-                        fileName, ((TsFileSealMessagePayload) messagePayload).getFileName(), this);
-                LOGGER.warn(errorMessage);
-                throw new SubscriptionNonRetryableException(errorMessage);
-              }
-
-              // check file length
-              if (fileWriter.length()
-                  != ((TsFileSealMessagePayload) messagePayload).getFileLength()) {
-                final String errorMessage =
-                    String.format(
-                        "inconsistent file length, current is %s, incoming is %s, consumer: %s",
-                        fileWriter.length(),
-                        ((TsFileSealMessagePayload) messagePayload).getFileLength(),
-                        this);
-                LOGGER.warn(errorMessage);
-                throw new SubscriptionNonRetryableException(errorMessage);
-              }
-
-              // sync and close
-              fileWriter.getFD().sync();
-              fileWriter.close();
-
-              LOGGER.info(
-                  "SubscriptionConsumer {} successfully poll TsFile {} with commit context {}",
-                  this,
-                  file.getAbsolutePath(),
-                  commitContext);
-
-              // generate subscription message
-              return new SubscriptionMessage(commitContext, file.getAbsolutePath());
-            }
-          case TS_FILE_ERROR:
-            {
-              // no need to check commit context
-
-              final String errorMessage =
-                  ((TsFileErrorMessagePayload) messagePayload).getErrorMessage();
-              final boolean retryable = ((TsFileErrorMessagePayload) messagePayload).isRetryable();
-              LOGGER.warn(
-                  "Error occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}: {}, retryable: {}",
-                  this,
-                  file.getAbsolutePath(),
-                  commitContext,
-                  errorMessage,
-                  retryable);
-              if (retryable) {
-                throw new SubscriptionRetryableException(errorMessage);
-              } else {
-                throw new SubscriptionNonRetryableException(errorMessage);
-              }
-            }
-          default:
-            final String errorMessage = String.format("unexpected message type: %s", messageType);
-            LOGGER.warn(errorMessage);
-            throw new SubscriptionNonRetryableException(errorMessage);
-        }
-      } else {
+      if (!SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
         final String errorMessage = String.format("unexpected message type: %s", messageType);
         LOGGER.warn(errorMessage);
-        throw new SubscriptionNonRetryableException(errorMessage);
+        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+
+      switch (SubscriptionPolledMessageType.valueOf(messageType)) {
+        case TS_FILE_PIECE:
+          {
+            // check commit context
+            final SubscriptionCommitContext incomingCommitContext =
+                polledMessage.getCommitContext();
+            if (Objects.isNull(incomingCommitContext)
+                || !Objects.equals(commitContext, incomingCommitContext)) {
+              final String errorMessage =
+                  String.format(
+                      "inconsistent commit context, current is %s, incoming is %s, consumer: %s",
+                      commitContext, incomingCommitContext, this);
+              LOGGER.warn(errorMessage);
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+
+            // check file name
+            if (!fileName.startsWith(((TsFilePieceMessagePayload) messagePayload).getFileName())) {
+              final String errorMessage =
+                  String.format(
+                      "inconsistent file name, current is %s, incoming is %s, consumer: %s",
+                      fileName, ((TsFilePieceMessagePayload) messagePayload).getFileName(), this);
+              LOGGER.warn(errorMessage);
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+
+            // write file piece
+            fileWriter.write(((TsFilePieceMessagePayload) messagePayload).getFilePiece());
+            fileWriter.getFD().sync();
+
+            // check offset
+            if (!Objects.equals(
+                fileWriter.length(),
+                ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset())) {
+              final String errorMessage =
+                  String.format(
+                      "inconsistent file offset, current is %s, incoming is %s, consumer: %s",
+                      fileWriter.length(),
+                      ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset(),
+                      this);
+              LOGGER.warn(errorMessage);
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+
+            // update offset
+            writingOffset = ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset();
+            break;
+          }
+        case TS_FILE_SEAL:
+          {
+            // check commit context
+            final SubscriptionCommitContext incomingCommitContext =
+                polledMessage.getCommitContext();
+            if (Objects.isNull(incomingCommitContext)
+                || !Objects.equals(commitContext, incomingCommitContext)) {
+              final String errorMessage =
+                  String.format(
+                      "inconsistent commit context, current is %s, incoming is %s, consumer: %s",
+                      commitContext, incomingCommitContext, this);
+              LOGGER.warn(errorMessage);
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+
+            // check file name
+            if (!fileName.startsWith(((TsFileSealMessagePayload) messagePayload).getFileName())) {
+              final String errorMessage =
+                  String.format(
+                      "inconsistent file name, current is %s, incoming is %s, consumer: %s",
+                      fileName, ((TsFileSealMessagePayload) messagePayload).getFileName(), this);
+              LOGGER.warn(errorMessage);
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+
+            // check file length
+            if (fileWriter.length()
+                != ((TsFileSealMessagePayload) messagePayload).getFileLength()) {
+              final String errorMessage =
+                  String.format(
+                      "inconsistent file length, current is %s, incoming is %s, consumer: %s",
+                      fileWriter.length(),
+                      ((TsFileSealMessagePayload) messagePayload).getFileLength(),
+                      this);
+              LOGGER.warn(errorMessage);
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+
+            // sync and close
+            fileWriter.getFD().sync();
+            fileWriter.close();
+
+            LOGGER.info(
+                "SubscriptionConsumer {} successfully poll TsFile {} with commit context {}",
+                this,
+                file.getAbsolutePath(),
+                commitContext);
+
+            // generate subscription message
+            return new SubscriptionMessage(commitContext, file.getAbsolutePath());
+          }
+        case TS_FILE_ERROR:
+          {
+            // no need to check commit context
+
+            final String errorMessage =
+                ((TsFileErrorMessagePayload) messagePayload).getErrorMessage();
+            final boolean critical = ((TsFileErrorMessagePayload) messagePayload).isCritical();
+            LOGGER.warn(
+                "Error occurred when SubscriptionConsumer {} polling TsFile {} with commit context {}: {}, critical: {}",
+                this,
+                file.getAbsolutePath(),
+                commitContext,
+                errorMessage,
+                critical);
+            if (critical) {
+              throw new SubscriptionRuntimeCriticalException(errorMessage);
+            } else {
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+          }
+        default:
+          final String errorMessage = String.format("unexpected message type: %s", messageType);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionRuntimeNonCriticalException(errorMessage);
       }
     }
   }
@@ -641,8 +635,11 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     subscriptionProviders.acquireReadLock();
     try {
       final SubscriptionProvider provider = subscriptionProviders.getNextAvailableProvider();
-      if (Objects.isNull(provider)) {
-        return Collections.emptyList();
+      if (Objects.isNull(provider) || !provider.isAvailable()) {
+        throw new SubscriptionConnectionException(
+            String.format(
+                "Cluster has no available subscription providers when %s poll topic %s",
+                this, topicNames));
       }
       try {
         return provider.poll(
@@ -650,27 +647,12 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
                 SubscriptionPollMessageType.POLL.getType(),
                 new PollMessagePayload(topicNames),
                 0L));
-      } catch (final SubscriptionRetryableException e) {
-        LOGGER.warn(
-            "SubscriptionRetryableException occurred when SubscriptionConsumer {} polling from SubscriptionProvider {}",
-            this,
-            provider,
-            e);
-        // ignore
-      } catch (final SubscriptionNonRetryableException e) {
-        LOGGER.warn(
-            "SubscriptionNonRetryableException occurred when SubscriptionConsumer {} polling from SubscriptionProvider {}",
-            this,
-            provider,
-            e);
-        // rethrow
-        throw e;
+      } catch (final SubscriptionConnectionException ignored) {
+        return Collections.emptyList();
       }
     } finally {
       subscriptionProviders.releaseReadLock();
     }
-
-    return Collections.emptyList();
   }
 
   private List<SubscriptionPolledMessage> pollTsFileInternal(
@@ -682,14 +664,18 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       if (Objects.isNull(provider) || !provider.isAvailable()) {
         throw new SubscriptionConnectionException(
             String.format(
-                "something unexpected happened when poll TsFile from subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
-                dataNodeId));
+                "something unexpected happened when %s poll TsFile from subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                this, dataNodeId));
       }
-      return provider.poll(
-          new SubscriptionPollMessage(
-              SubscriptionPollMessageType.POLL_TS_FILE.getType(),
-              new PollTsFileMessagePayload(topicName, fileName, writingOffset),
-              0L));
+      try {
+        return provider.poll(
+            new SubscriptionPollMessage(
+                SubscriptionPollMessageType.POLL_TS_FILE.getType(),
+                new PollTsFileMessagePayload(topicName, fileName, writingOffset),
+                0L));
+      } catch (final SubscriptionConnectionException ignored) {
+        return Collections.emptyList();
+      }
     } finally {
       subscriptionProviders.releaseReadLock();
     }
@@ -711,7 +697,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  protected void nack(final Iterable<SubscriptionMessage> messages) {
+  protected void nack(final Iterable<SubscriptionMessage> messages) throws SubscriptionException {
     final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
         new HashMap<>();
     for (final SubscriptionMessage message : messages) {
@@ -736,8 +722,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       if (Objects.isNull(provider) || !provider.isAvailable()) {
         throw new SubscriptionConnectionException(
             String.format(
-                "something unexpected happened when commit messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
-                dataNodeId));
+                "something unexpected happened when %s commit (nack: %s) messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                this, nack, dataNodeId));
       }
       provider.commit(subscriptionCommitContexts, nack);
     } finally {
@@ -811,7 +797,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
             "%s failed to subscribe topics %s from all available subscription providers %s",
             this, topicNames, providers);
     LOGGER.warn(errorMessage);
-    throw new SubscriptionNonRetryableException(errorMessage);
+    throw new SubscriptionRuntimeCriticalException(errorMessage);
   }
 
   private void unsubscribeWithRedirection(final Set<String> topicNames)
@@ -841,7 +827,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
             "%s failed to unsubscribe topics %s from all available subscription providers %s",
             this, topicNames, providers);
     LOGGER.warn(errorMessage);
-    throw new SubscriptionNonRetryableException(errorMessage);
+    throw new SubscriptionRuntimeCriticalException(errorMessage);
   }
 
   Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection() throws SubscriptionException {
@@ -867,7 +853,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
             "%s failed to fetch all endpoints from all available subscription providers %s",
             this, providers);
     LOGGER.warn(errorMessage);
-    throw new SubscriptionNonRetryableException(errorMessage);
+    throw new SubscriptionRuntimeCriticalException(errorMessage);
   }
 
   /////////////////////////////// builder ///////////////////////////////

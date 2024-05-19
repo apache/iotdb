@@ -98,6 +98,7 @@ public class SubscriptionBroker {
     final SubscriptionEvent event =
         ((SubscriptionPrefetchingTsFileQueue) prefetchingQueue)
             .pollTsFile(consumerId, fileName, writingOffset);
+    // Only one SubscriptionEvent polled currently...
     return Collections.singletonList(event);
   }
 

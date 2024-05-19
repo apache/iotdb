@@ -80,8 +80,7 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
           Collections.singletonList(
               ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
     } catch (IOException e) {
-      resp.status =
-          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_SERIALIZATION_ERROR, e.getMessage());
+      resp.status = RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, e.getMessage());
       return resp;
     }
 

@@ -342,51 +342,51 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       } else {
         events = null;
       }
-      if (Objects.nonNull(events)) {
-        // generate response
-        return PipeSubscribePollResp.toTPipeSubscribeResp(
-            RpcUtils.SUCCESS_STATUS,
-            events.parallelStream()
-                .map(
-                    (event) -> {
-                      final SubscriptionPolledMessage message = event.getMessage();
-                      final SubscriptionCommitContext commitContext = message.getCommitContext();
-                      try {
-                        final ByteBuffer byteBuffer =
-                            SubscriptionEventBinaryCache.getInstance().serialize(event);
-                        SubscriptionPrefetchingQueueMetrics.getInstance()
-                            .mark(
-                                SubscriptionPrefetchingQueue.generatePrefetchingQueueId(
-                                    commitContext.getConsumerGroupId(),
-                                    commitContext.getTopicName()),
-                                byteBuffer.limit());
-                        SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, false);
-                        LOGGER.info(
-                            "Subscription: consumer {} poll message {} successfully with req message: {}",
-                            consumerConfig,
-                            message,
-                            req.getPollMessage());
-                        return byteBuffer;
-                      } catch (final Exception e) {
-                        LOGGER.warn(
-                            "Subscription: consumer {} poll message {} failed with req message: {}",
-                            consumerConfig,
-                            message,
-                            req.getPollMessage(),
-                            e);
-                        // nack
-                        SubscriptionAgent.broker()
-                            .commit(
-                                consumerConfig,
-                                Collections.singletonList(message.getCommitContext()),
-                                true);
-                        return null;
-                      }
-                    })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList()));
+      if (Objects.isNull(events)) {
+        throw new SubscriptionException(String.format("unexpected message type: %s", messageType));
       }
-      throw new SubscriptionException(String.format("unexpected message type: %s", messageType));
+
+      // generate response
+      return PipeSubscribePollResp.toTPipeSubscribeResp(
+          RpcUtils.SUCCESS_STATUS,
+          events.parallelStream()
+              .map(
+                  (event) -> {
+                    final SubscriptionPolledMessage message = event.getMessage();
+                    final SubscriptionCommitContext commitContext = message.getCommitContext();
+                    try {
+                      final ByteBuffer byteBuffer =
+                          SubscriptionEventBinaryCache.getInstance().serialize(event);
+                      SubscriptionPrefetchingQueueMetrics.getInstance()
+                          .mark(
+                              SubscriptionPrefetchingQueue.generatePrefetchingQueueId(
+                                  commitContext.getConsumerGroupId(), commitContext.getTopicName()),
+                              byteBuffer.limit());
+                      SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, false);
+                      LOGGER.info(
+                          "Subscription: consumer {} poll message {} successfully with req message: {}",
+                          consumerConfig,
+                          message,
+                          req.getPollMessage());
+                      return byteBuffer;
+                    } catch (final Exception e) {
+                      LOGGER.warn(
+                          "Subscription: consumer {} poll message {} failed with req message: {}",
+                          consumerConfig,
+                          message,
+                          req.getPollMessage(),
+                          e);
+                      // nack
+                      SubscriptionAgent.broker()
+                          .commit(
+                              consumerConfig,
+                              Collections.singletonList(message.getCommitContext()),
+                              true);
+                      return null;
+                    }
+                  })
+              .filter(Objects::nonNull)
+              .collect(Collectors.toList()));
     } catch (final SubscriptionException e) {
       final String exceptionMessage =
           String.format(

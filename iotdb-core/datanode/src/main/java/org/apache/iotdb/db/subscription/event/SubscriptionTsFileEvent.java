@@ -68,39 +68,39 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
           final SubscriptionPolledMessage polledMessage = this.getMessage();
           final short messageType = polledMessage.getMessageType();
           final SubscriptionMessagePayload messagePayload = polledMessage.getMessagePayload();
-          if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
-            switch (SubscriptionPolledMessageType.valueOf(messageType)) {
-              case TS_FILE_INIT:
-                try {
-                  return generateSubscriptionTsFileEventWithPieceOrSealPayload(0);
-                } catch (final IOException e) {
-                  LOGGER.warn(
-                      "IOException occurred when prefetching next SubscriptionTsFileEvent, current SubscriptionTsFileEvent: {}",
-                      this,
-                      e);
-                  return null;
-                }
-              case TS_FILE_PIECE:
-                try {
-                  return generateSubscriptionTsFileEventWithPieceOrSealPayload(
-                      ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset());
-                } catch (final IOException e) {
-                  LOGGER.warn(
-                      "IOException occurred when prefetching next SubscriptionTsFileEvent, current SubscriptionTsFileEvent: {}",
-                      this,
-                      e);
-                  return null;
-                }
-              case TS_FILE_SEAL:
-                // not need to prefetch
-                return null;
-              default:
-                LOGGER.warn("unexpected message type: {}", messageType);
-                return null;
-            }
-          } else {
+          if (!SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
             LOGGER.warn("unexpected message type: {}", messageType);
             return null;
+          }
+
+          switch (SubscriptionPolledMessageType.valueOf(messageType)) {
+            case TS_FILE_INIT:
+              try {
+                return generateSubscriptionTsFileEventWithPieceOrSealPayload(0);
+              } catch (final IOException e) {
+                LOGGER.warn(
+                    "IOException occurred when prefetching next SubscriptionTsFileEvent, current SubscriptionTsFileEvent: {}",
+                    this,
+                    e);
+                return null;
+              }
+            case TS_FILE_PIECE:
+              try {
+                return generateSubscriptionTsFileEventWithPieceOrSealPayload(
+                    ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset());
+              } catch (final IOException e) {
+                LOGGER.warn(
+                    "IOException occurred when prefetching next SubscriptionTsFileEvent, current SubscriptionTsFileEvent: {}",
+                    this,
+                    e);
+                return null;
+              }
+            case TS_FILE_SEAL:
+              // not need to prefetch
+              return null;
+            default:
+              LOGGER.warn("unexpected message type: {}", messageType);
+              return null;
           }
         });
   }
@@ -131,31 +131,31 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
           final SubscriptionPolledMessage polledMessage = this.getMessage();
           final short messageType = polledMessage.getMessageType();
           final SubscriptionMessagePayload messagePayload = polledMessage.getMessagePayload();
-          if (SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
-            switch (SubscriptionPolledMessageType.valueOf(messageType)) {
-              case TS_FILE_INIT:
-                if (Objects.equals(writingOffset, 0)) {
-                  return nextEventWithCommittable;
-                }
-                // reset next SubscriptionTsFileEvent
-                return null;
-              case TS_FILE_PIECE:
-                if (Objects.equals(
-                    writingOffset,
-                    ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset())) {
-                  return nextEventWithCommittable;
-                }
-                // reset next SubscriptionTsFileEvent
-                return null;
-              case TS_FILE_SEAL:
-                return null;
-              default:
-                LOGGER.warn("unexpected message type: {}", messageType);
-                return null;
-            }
-          } else {
+          if (!SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
             LOGGER.warn("unexpected message type: {}", messageType);
             return null;
+          }
+
+          switch (SubscriptionPolledMessageType.valueOf(messageType)) {
+            case TS_FILE_INIT:
+              if (Objects.equals(writingOffset, 0)) {
+                return nextEventWithCommittable;
+              }
+              // reset next SubscriptionTsFileEvent
+              return null;
+            case TS_FILE_PIECE:
+              if (Objects.equals(
+                  writingOffset,
+                  ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset())) {
+                return nextEventWithCommittable;
+              }
+              // reset next SubscriptionTsFileEvent
+              return null;
+            case TS_FILE_SEAL:
+              return null;
+            default:
+              LOGGER.warn("unexpected message type: {}", messageType);
+              return null;
           }
         });
   }

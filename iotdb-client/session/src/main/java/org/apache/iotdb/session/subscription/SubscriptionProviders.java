@@ -118,7 +118,7 @@ final class SubscriptionProviders {
       break;
     }
 
-    if (hasNoProviders()) {
+    if (hasNoAvailableProviders()) {
       throw new SubscriptionConnectionException(
           String.format(
               "Cluster has no available subscription providers to connect with initial endpoints %s",
