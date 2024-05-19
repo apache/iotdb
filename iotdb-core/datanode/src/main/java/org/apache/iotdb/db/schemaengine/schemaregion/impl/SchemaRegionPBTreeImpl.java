@@ -1324,6 +1324,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
+  public void deleteTableDevice(String table) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
       throws MetadataException {
     return mtree.getDeviceReader(showDevicesPlan);

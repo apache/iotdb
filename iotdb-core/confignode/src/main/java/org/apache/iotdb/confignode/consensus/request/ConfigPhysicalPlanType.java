@@ -151,6 +151,9 @@ public enum ConfigPhysicalPlanType {
   PreCreateTable((short) 850),
   RollbackCreateTable((short) 851),
   CommitCreateTable((short) 852),
+  PreDropTable((short) 853),
+  RollbackPreDropTable((short) 854),
+  CommitDropTable((short) 855),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated

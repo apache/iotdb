@@ -261,4 +261,6 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> describeTable(String database, String tableName);
 
   SettableFuture<ConfigTaskResult> showTables(String database);
+
+  SettableFuture<ConfigTaskResult> dropTable(String database, String tableName, String queryId);
 }

@@ -77,6 +77,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedu
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
@@ -1247,6 +1248,49 @@ public class ProcedureManager {
               "Some other task is creating table with same name.");
         }
         procedureId = this.executor.submitProcedure(new CreateTableProcedure(database, table));
+      }
+    }
+    List<TSStatus> procedureStatus = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
+    if (isSucceed) {
+      return StatusUtils.OK;
+    } else {
+      return procedureStatus.get(0);
+    }
+  }
+
+  public TSStatus dropTable(String database, String tableName, String queryId) {
+    long procedureId = -1;
+    synchronized (this) {
+      boolean hasOverlappedTask = false;
+      ProcedureType type;
+      DropTableProcedure dropTableProcedure;
+      for (Procedure<?> procedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(procedure);
+        if (type == null || !type.equals(ProcedureType.DROP_TABLE_PROCEDURE)) {
+          continue;
+        }
+        dropTableProcedure = (DropTableProcedure) procedure;
+        if (queryId.equals(dropTableProcedure.getQueryId())) {
+          procedureId = dropTableProcedure.getProcId();
+          break;
+        }
+        if (database.equals(dropTableProcedure.getDatabase())
+            && tableName.equals(dropTableProcedure.getTableName())) {
+          hasOverlappedTask = true;
+          break;
+        }
+      }
+
+      if (procedureId == -1) {
+        if (hasOverlappedTask) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              "Some other task dropping table with same name.");
+        }
+        procedureId =
+            this.executor.submitProcedure(new DropTableProcedure(database, tableName, queryId));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();

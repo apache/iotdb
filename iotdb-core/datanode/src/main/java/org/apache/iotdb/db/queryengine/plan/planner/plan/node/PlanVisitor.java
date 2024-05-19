@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Cre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
@@ -566,6 +567,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitTableDeviceFetch(TableDeviceFetchNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDeleteTableDevice(DeleteTableDeviceNode node, C context) {
     return visitPlan(node, context);
   }
 }

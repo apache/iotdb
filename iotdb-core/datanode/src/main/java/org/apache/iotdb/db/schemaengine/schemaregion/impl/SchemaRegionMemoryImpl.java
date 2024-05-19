@@ -1251,6 +1251,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
+  public void deleteTableDevice(String table) throws MetadataException {
+    mtree.deleteTableDevice(table);
+  }
+
+  @Override
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
       throws MetadataException {
     return mtree.getDeviceReader(

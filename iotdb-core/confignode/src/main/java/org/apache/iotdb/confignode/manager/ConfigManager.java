@@ -141,6 +141,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
@@ -2281,6 +2282,15 @@ public class ConfigManager implements IManager {
       Pair<String, TsTable> pair =
           TsTableInternalRPCUtil.deserializeSingleTsTable(tableInfo.array());
       return procedureManager.createTable(pair.left, pair.right);
+    } else {
+      return status;
+    }
+  }
+
+  public TSStatus dropTable(TDropTableReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.dropTable(req.getDatabase(), req.getTableName(), req.getQueryId());
     } else {
       return status;
     }

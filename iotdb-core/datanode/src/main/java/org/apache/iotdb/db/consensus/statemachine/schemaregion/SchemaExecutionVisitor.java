@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Cre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
@@ -531,6 +532,17 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     try {
       schemaRegion.createTableDevice(
           node.getDevicePathList(), node.getAttributeNameList(), node.getAttributeValueList());
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (MetadataException e) {
+      logger.error(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  @Override
+  public TSStatus visitDeleteTableDevice(DeleteTableDeviceNode node, ISchemaRegion schemaRegion) {
+    try {
+      schemaRegion.deleteTableDevice(node.getTable());
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (MetadataException e) {
       logger.error(e.getMessage(), e);

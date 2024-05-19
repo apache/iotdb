@@ -63,6 +63,7 @@ public enum ProcedureType {
   SET_TEMPLATE_PROCEDURE((short) 702),
 
   CREATE_TABLE_PROCEDURE((short) 750),
+  DROP_TABLE_PROCEDURE((short) 751),
 
   // ProcedureId 800-899 is used by IoTDB-Ml
 

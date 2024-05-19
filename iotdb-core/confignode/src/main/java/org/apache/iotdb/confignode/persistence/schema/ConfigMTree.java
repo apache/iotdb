@@ -705,6 +705,55 @@ public class ConfigMTree {
     return result;
   }
 
+  public TsTable getTable(PartialPath database, String tableName) throws MetadataException {
+    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    return tableNode.getTable();
+  }
+
+  public void preDropTable(PartialPath database, String tableName) throws MetadataException {
+    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    if (!tableNode.getStatus().equals(TableNodeStatus.USING)) {
+      throw new IllegalStateException();
+    }
+    tableNode.setStatus(TableNodeStatus.PRE_DELETE);
+  }
+
+  public void rollbackDropTable(PartialPath database, String tableName) throws MetadataException {
+    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    if (!tableNode.getStatus().equals(TableNodeStatus.PRE_DELETE)) {
+      throw new IllegalStateException();
+    }
+    tableNode.setStatus(TableNodeStatus.USING);
+  }
+
+  public void commitDropTable(PartialPath database, String tableName) throws MetadataException {
+    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    if (!tableNode.getStatus().equals(TableNodeStatus.PRE_DELETE)) {
+      throw new IllegalStateException();
+    }
+    databaseNode.deleteChild(tableName);
+  }
+
   // endregion
 
   // region Serialization and Deserialization

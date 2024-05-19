@@ -46,8 +46,11 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitDropTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreDropTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackDropTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -1109,6 +1112,60 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       throw new RuntimeException(e);
     } finally {
       databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public TsTable getTsTable(String database, String tableName) {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return mTree.getTable(new PartialPath(new String[] {ROOT, database}), tableName);
+    } catch (MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      throw new RuntimeException(e);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public TSStatus preDropTable(PreDropTablePlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.preDropTable(
+          new PartialPath(new String[] {ROOT, plan.getDatabase()}), plan.getTableName());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus rollbackDropTable(RollbackDropTablePlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.rollbackDropTable(
+          new PartialPath(new String[] {ROOT, plan.getDatabase()}), plan.getTableName());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus dropTable(CommitDropTablePlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.commitDropTable(
+          new PartialPath(new String[] {ROOT, plan.getDatabase()}), plan.getTableName());
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
     }
   }
 

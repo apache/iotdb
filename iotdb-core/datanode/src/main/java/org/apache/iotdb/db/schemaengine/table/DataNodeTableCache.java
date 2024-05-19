@@ -146,6 +146,40 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  @Override
+  public void invalidateTable(String database, String tableName) {
+    readWriteLock.writeLock().lock();
+    try {
+      databaseTableMap.compute(
+          database,
+          (db, map) -> {
+            if (map == null) {
+              return null;
+            }
+            map.remove(tableName);
+            if (map.isEmpty()) {
+              return null;
+            } else {
+              return map;
+            }
+          });
+      LOGGER.info("Invalidate table {}.{} successfully", database, tableName);
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public void invalidateTable(String database) {
+    readWriteLock.writeLock().lock();
+    try {
+      databaseTableMap.remove(database);
+      preCreateTableMap.remove(database);
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
   public TsTable getTable(String database, String tableName) {
     readWriteLock.readLock().lock();
     try {

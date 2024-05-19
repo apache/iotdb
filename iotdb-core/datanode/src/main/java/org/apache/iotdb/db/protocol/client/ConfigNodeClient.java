@@ -77,6 +77,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
@@ -1071,6 +1072,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus createTable(ByteBuffer tableInfo) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.createTable(tableInfo), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus dropTable(TDropTableReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.dropTable(req), status -> !updateConfigNodeLeader(status));
   }
 
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {

@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -1168,6 +1169,10 @@ public class ClusterSchemaManager {
   public void updateSchemaQuotaConfiguration(long seriesThreshold, long deviceThreshold) {
     schemaQuotaStatistics.setDeviceThreshold(deviceThreshold);
     schemaQuotaStatistics.setSeriesThreshold(seriesThreshold);
+  }
+
+  public TsTable getTable(String database, String tableName) {
+    return clusterSchemaInfo.getTsTable(database, tableName);
   }
 
   public void clearSchemaQuotaCache() {

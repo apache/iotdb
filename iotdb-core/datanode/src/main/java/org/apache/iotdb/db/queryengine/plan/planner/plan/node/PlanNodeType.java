@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Cre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeactivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeleteTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
@@ -216,7 +217,8 @@ public enum PlanNodeType {
 
   CREATE_TABLE_DEVICE((short) 92),
   TABLE_DEVICE_SCAN((short) 93),
-  TABLE_DEVICE_FETCH((short) 94);
+  TABLE_DEVICE_FETCH((short) 94),
+  DELETE_TABLE_DEVICE((short) 95);
 
   public static final int BYTES = Short.BYTES;
 
@@ -453,6 +455,8 @@ public enum PlanNodeType {
         return TableDeviceScanNode.deserialize(buffer);
       case 94:
         return TableDeviceFetchNode.deserialize(buffer);
+      case 95:
+        return DeleteTableDeviceNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

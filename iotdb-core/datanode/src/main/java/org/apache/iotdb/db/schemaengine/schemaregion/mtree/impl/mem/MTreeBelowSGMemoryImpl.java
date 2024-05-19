@@ -1371,5 +1371,9 @@ public class MTreeBelowSGMemoryImpl {
     }
   }
 
+  public void deleteTableDevice(String tableName) {
+    storageGroupMNode.deleteChild(tableName);
+  }
+
   // endregion
 }

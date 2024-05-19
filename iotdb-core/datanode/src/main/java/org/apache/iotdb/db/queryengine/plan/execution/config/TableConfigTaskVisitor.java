@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DropTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.UseDBTask;
@@ -151,7 +152,16 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   @Override
   protected IConfigTask visitDropTable(DropTable node, MPPQueryContext context) {
-    return super.visitDropTable(node, context);
+    context.setQueryType(QueryType.WRITE);
+    String database = clientSession.getDatabaseName();
+    if (node.getTableName().getPrefix().isPresent()) {
+      database = node.getTableName().getPrefix().get().toString();
+    }
+    if (database == null) {
+      throw new SemanticException("unknown database");
+    }
+    return new DropTableTask(
+        database, node.getTableName().getSuffix(), context.getQueryId().toString());
   }
 
   @Override

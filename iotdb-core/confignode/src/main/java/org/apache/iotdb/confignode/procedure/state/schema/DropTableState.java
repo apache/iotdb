@@ -17,21 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.table;
+package org.apache.iotdb.confignode.procedure.state.schema;
 
-import org.apache.iotdb.commons.schema.table.TsTable;
-
-public interface ITableCache {
-
-  void init(byte[] tableInitializationBytes);
-
-  void preCreateTable(String database, TsTable table);
-
-  void rollbackCreateTable(String database, String tableName);
-
-  void commitCreateTable(String database, String tableName);
-
-  void invalidateTable(String database, String tableName);
-
-  void invalidateTable(String database);
+public enum DropTableState {
+  PRE_DROP,
+  INVALIDATE_CACHE,
+  DELETE_DATA,
+  DROP_TABLE
 }

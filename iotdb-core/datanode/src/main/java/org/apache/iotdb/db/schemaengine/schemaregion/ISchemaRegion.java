@@ -302,6 +302,8 @@ public interface ISchemaRegion {
       List<List<String>> attributeValueList)
       throws MetadataException;
 
+  void deleteTableDevice(String table) throws MetadataException;
+
   // endregion
 
   // region Interfaces for SchemaReader
