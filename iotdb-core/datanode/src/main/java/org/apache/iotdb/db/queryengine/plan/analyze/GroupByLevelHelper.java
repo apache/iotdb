@@ -103,8 +103,6 @@ public class GroupByLevelHelper {
               path -> transformPathByLevels(isCountStar, path));
       groupedOutputAggregationExpression = normalizeExpression(groupedOutputAggregationExpression);
       analyzeExpressionType(analysis, groupedOutputAggregationExpression);
-
-      rawAggregationExpression = ExpressionAnalyzer.normalizeExpression(rawAggregationExpression);
       analyzeExpressionType(analysis, rawAggregationExpression);
 
       groupedAggregationExpressionToRawExpressionsMap

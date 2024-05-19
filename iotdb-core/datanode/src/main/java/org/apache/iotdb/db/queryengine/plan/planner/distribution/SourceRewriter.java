@@ -1556,12 +1556,14 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           descriptorExpressions.addAll(originalDescriptor.getOutputExpressions());
         }
 
-        for (String groupedInputExpressionString :
-            originalDescriptor.getGroupedInputExpressionStrings()) {
+        for (List<Expression> groupedInputExpressions :
+            originalDescriptor.getGroupedInputExpressions()) {
+          String groupedInputExpressionsString =
+              originalDescriptor.getInputString(groupedInputExpressions);
           List<Expression> inputExpressions =
-              childrenExpressionMap.get(groupedInputExpressionString);
+              childrenExpressionMap.get(groupedInputExpressionsString);
           if (inputExpressions != null && !inputExpressions.isEmpty()) {
-            descriptorExpressions.addAll(inputExpressions);
+            descriptorExpressions.addAll(groupedInputExpressions);
           }
         }
 
