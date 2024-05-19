@@ -192,11 +192,11 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
           if (nextWindowTimeBegin == Long.MIN_VALUE) {
             // display window begin should be set to the same as the min timestamp of the query
             // result set
-            nextWindowTimeBegin = tvList.getTime(0);
+            nextWindowTimeBegin = cachedEndTimeColumn.getStartTime();
           }
           hasAtLeastOneRow = tvList.size() != 0;
           if (hasAtLeastOneRow) {
-            currentEndTime = tvList.getTime(tvList.size() - 1);
+            currentEndTime = cachedEndTimeColumn.getEndTime();
           }
           isFirstIteration = false;
         }
@@ -270,7 +270,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         }
 
         if ((nextIndexEnd == nextIndexBegin)
-            && nextWindowTimeEnd < tvList.getTime(tvList.size() - 1)) {
+            && nextWindowTimeEnd < cachedEndTimeColumn.getEndTime()) {
           window.setEmptyWindow(nextWindowTimeBegin, nextWindowTimeEnd);
           return YieldableState.YIELDABLE;
         }
