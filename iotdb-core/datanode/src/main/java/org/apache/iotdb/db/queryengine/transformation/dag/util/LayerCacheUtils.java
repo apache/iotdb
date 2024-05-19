@@ -67,19 +67,6 @@ public class LayerCacheUtils {
     return YieldableState.YIELDABLE;
   }
 
-  public static YieldableState yieldRows(IUDFInputDataSet source, ElasticSerializableRowList target)
-      throws Exception {
-    final YieldableState yieldableState = source.yield();
-    if (yieldableState != YieldableState.YIELDABLE) {
-      return yieldableState;
-    }
-
-    Column[] columns = source.currentBlock();
-    target.put(columns);
-
-    return YieldableState.YIELDABLE;
-  }
-
   public static YieldableState yieldRows(
       IUDFInputDataSet source, ElasticSerializableRowList target, int count) throws Exception {
     while (count > 0) {
