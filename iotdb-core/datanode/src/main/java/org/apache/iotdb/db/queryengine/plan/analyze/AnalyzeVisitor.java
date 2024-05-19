@@ -3659,9 +3659,27 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       InsertTableStatement insertTableStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
+
+    try {
+      insertTableStatement.setTableSchema(
+          TableModelSchemaFetcher.getInstance()
+              .validateTableHeaderSchema(
+                  insertTableStatement.getDatabase(),
+                  insertTableStatement.getTableSchema(),
+                  context));
+    } catch (SemanticException e) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      if (e.getCause() instanceof IoTDBException) {
+        IoTDBException exception = (IoTDBException) e.getCause();
+        analysis.setFailStatus(
+            RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
+      } else {
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
+      }
+    }
+
     InsertRowStatement insertRowStatement = insertTableStatement.getInsertRowStatement();
 
-    final long startTime = System.nanoTime();
     try {
       TableModelSchemaFetcher.getInstance().validateDeviceSchema(insertTableStatement, context);
     } catch (SemanticException e) {
@@ -3673,8 +3691,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       } else {
         analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
       }
-    } finally {
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleSchemaValidateCost(System.nanoTime() - startTime);
     }
 
     if (analysis.isFinishQueryAfterAnalyze()) {

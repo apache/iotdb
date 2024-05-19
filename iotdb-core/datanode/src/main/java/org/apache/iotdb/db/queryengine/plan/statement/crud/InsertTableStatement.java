@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.ITableDeviceSchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
@@ -39,6 +41,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.UnknownType;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
@@ -53,9 +56,9 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 
 public class InsertTableStatement extends Statement implements ITableDeviceSchemaValidation {
 
-  private final String database;
+  private final Insert insert;
 
-  private final String table;
+  private final String database;
 
   private List<String[]> deviceIdList;
 
@@ -63,15 +66,17 @@ public class InsertTableStatement extends Statement implements ITableDeviceSchem
 
   private List<List<String>> attributeValueList;
 
-  private final InsertRowStatement insertRowStatement;
+  private InsertRowStatement insertRowStatement;
+
+  private TableSchema tableSchema;
 
   public InsertTableStatement(IClientSession clientSession, Insert insert) {
-    this.database = parseDatabase(clientSession, insert);
-    this.table = parseTable(insert);
-    insertRowStatement = parseInsert(insert);
+    this.insert = insert;
+    this.database = parseDatabase(clientSession);
+    this.tableSchema = parseTable();
   }
 
-  private String parseDatabase(IClientSession clientSession, Insert insert) {
+  private String parseDatabase(IClientSession clientSession) {
     String database = clientSession.getDatabaseName();
     if (database == null) {
       database = insert.getTable().getName().getPrefix().get().getSuffix();
@@ -79,13 +84,28 @@ public class InsertTableStatement extends Statement implements ITableDeviceSchem
     return database;
   }
 
-  private String parseTable(Insert insert) {
-    return insert.getTable().getName().getSuffix().toString();
+  private TableSchema parseTable() {
+    String tableName = insert.getTable().getName().getSuffix().toString();
+    List<ColumnSchema> columnSchemaList = new ArrayList<>();
+    boolean hasColumn = insert.getColumns().isPresent();
+    if (!hasColumn) {
+      return new TableSchema(tableName, null);
+    }
+    int size = insert.getColumns().get().size();
+    List<Identifier> columnNameList = insert.getColumns().get();
+    for (int i = 0; i < size; i++) {
+      String columnName = columnNameList.get(i).getValue();
+      if (columnName.equalsIgnoreCase("time")) {
+        continue;
+      }
+      columnSchemaList.add(new ColumnSchema(columnName, UnknownType.UNKNOWN, false, null));
+    }
+    return new TableSchema(tableName, columnSchemaList);
   }
 
-  private InsertRowStatement parseInsert(Insert insert) {
+  private InsertRowStatement parseInsert() {
     InsertRowStatement insertStatement = new InsertRowStatement();
-    String tableName = table;
+    String tableName = tableSchema.getTableName();
     TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
     List<Expression> values =
         ((Row) (((Values) (insert.getQuery().getQueryBody())).getRows().get(0))).getItems();
@@ -173,7 +193,18 @@ public class InsertTableStatement extends Statement implements ITableDeviceSchem
     return insertStatement;
   }
 
+  public TableSchema getTableSchema() {
+    return tableSchema;
+  }
+
+  public void setTableSchema(TableSchema tableSchema) {
+    this.tableSchema = tableSchema;
+  }
+
   public InsertRowStatement getInsertRowStatement() {
+    if (insertRowStatement == null) {
+      insertRowStatement = parseInsert();
+    }
     return insertRowStatement;
   }
 
@@ -194,7 +225,7 @@ public class InsertTableStatement extends Statement implements ITableDeviceSchem
 
   @Override
   public String getTableName() {
-    return table;
+    return tableSchema.getTableName();
   }
 
   @Override

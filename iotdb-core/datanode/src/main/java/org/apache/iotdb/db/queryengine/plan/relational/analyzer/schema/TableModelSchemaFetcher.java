@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.table.TableNotExistsException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -40,7 +42,9 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertSchemaPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.cache.TableDeviceId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.cache.TableDeviceSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.statement.table.CreateTableDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.table.FetchTableDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.table.ShowTableDevicesStatement;
@@ -52,6 +56,8 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.type.TypeFactory;
+import org.apache.tsfile.read.common.type.UnknownType;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -83,6 +89,106 @@ public class TableModelSchemaFetcher {
 
   private TableModelSchemaFetcher() {
     // do nothing
+  }
+
+  // This method return all the existing column schemas in the target table.
+  // When table or column is missing, this method will execute auto creation.
+  // When using SQL, the columnSchemaList could be null and there won't be any validation.
+  // All input column schemas will be validated and auto created when necessary.
+  // When the input dataType or category of one column is null, the column cannot be auto created.
+  public TableSchema validateTableHeaderSchema(
+      String database, TableSchema tableSchema, MPPQueryContext context) {
+    List<ColumnSchema> inputColumnList = tableSchema.getColumns();
+    TsTable table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
+    List<ColumnSchema> missingColumnList = new ArrayList<>();
+    List<ColumnSchema> resultColumnList = new ArrayList<>();
+
+    // first round validate, check existing schema
+    if (table == null) {
+      if (inputColumnList == null) {
+        throw new SemanticException("Unknown column names. Cannot auto create table.");
+      }
+      // check arguments for table auto creation
+      for (ColumnSchema columnSchema : inputColumnList) {
+        if (columnSchema.getColumnCategory() == null) {
+          throw new SemanticException("Unknown column category. Cannot auto create table.");
+        }
+        if (columnSchema.getType() == null) {
+          throw new IllegalArgumentException("Unknown column data type. Cannot auto create table.");
+        }
+        missingColumnList.add(columnSchema);
+      }
+    } else if (inputColumnList == null) {
+      // SQL insert without columnName, nothing to check
+    } else {
+      for (int i = 0; i < inputColumnList.size(); i++) {
+        ColumnSchema columnSchema = inputColumnList.get(i);
+        TsTableColumnSchema existingColumn = table.getColumnSchema(columnSchema.getName());
+        if (existingColumn == null) {
+          // check arguments for column auto creation
+          if (columnSchema.getColumnCategory() == null) {
+            throw new IllegalArgumentException(
+                "Unknown column category. Cannot auto create column.");
+          }
+          if (columnSchema.getType() == null) {
+            throw new IllegalArgumentException(
+                "Unknown column data type. Cannot auto create column.");
+          }
+          missingColumnList.add(columnSchema);
+        } else {
+          // check and validate column data type and category
+          if (!columnSchema.getType().equals(UnknownType.UNKNOWN)
+              && !TypeFactory.getType(existingColumn.getDataType())
+                  .equals(columnSchema.getType())) {
+            throw new SemanticException(
+                String.format("Wrong data type at column %s.", columnSchema.getName()));
+          }
+          if (columnSchema.getColumnCategory() != null
+              && !existingColumn.getColumnCategory().equals(columnSchema.getColumnCategory())) {
+            throw new SemanticException(
+                String.format("Wrong category at column %s.", columnSchema.getName()));
+          }
+        }
+      }
+    }
+
+    // auto create missing table or columns
+    if (table == null) {
+      autoCreateTable(database, tableSchema, context);
+      table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
+    } else if (inputColumnList == null) {
+      // do nothing
+    } else {
+      if (!missingColumnList.isEmpty()) {
+        autoCreateColumn(database, tableSchema.getTableName(), missingColumnList, context);
+      }
+    }
+    table
+        .getColumnList()
+        .forEach(
+            o ->
+                resultColumnList.add(
+                    new ColumnSchema(
+                        o.getColumnName(),
+                        TypeFactory.getType(o.getDataType()),
+                        false,
+                        o.getColumnCategory())));
+    return new TableSchema(tableSchema.getTableName(), resultColumnList);
+  }
+
+  public void autoCreateTable(String database, TableSchema tableSchema, MPPQueryContext context) {
+    throw new SemanticException(new TableNotExistsException(database, tableSchema.getTableName()));
+  }
+
+  private void autoCreateColumn(
+      String database,
+      String tableName,
+      List<ColumnSchema> columnSchemaList,
+      MPPQueryContext context) {
+    throw new SemanticException(
+        String.format(
+            "Unknown columns %s",
+            columnSchemaList.stream().map(ColumnSchema::getName).collect(Collectors.toList())));
   }
 
   public void validateDeviceSchema(
