@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 
 // The value in this map shall not be null.
 // Therefore, when using compute method, use v==null to judge if there's existing value.
-public class NullableConcurrentHashMap<K, V> implements Map<K, V> {
+public class KeyNullableConcurrentHashMap<K, V> implements Map<K, V> {
 
   private final Map<Optional<K>, V> map = new ConcurrentHashMap<>();
 

@@ -31,7 +31,7 @@ import java.util.Set;
 
 import static java.util.Collections.emptySet;
 
-public class MemMNodeContainer extends NullableConcurrentHashMap<String, IMemMNode>
+public class MemMNodeContainer extends KeyNullableConcurrentHashMap<String, IMemMNode>
     implements IMNodeContainer<IMemMNode> {
 
   private static final IMNodeContainer<IMemMNode> EMPTY_CONTAINER =

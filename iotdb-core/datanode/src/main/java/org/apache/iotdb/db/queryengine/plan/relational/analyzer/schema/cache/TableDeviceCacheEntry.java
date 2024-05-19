@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.cache;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -33,11 +34,7 @@ public class TableDeviceCacheEntry {
   }
 
   public TableDeviceCacheEntry(Map<String, String> attributeMap) {
-    this.attributeMap = new ConcurrentHashMap<>(attributeMap);
-  }
-
-  public void putAttribute(String key, String value) {
-    attributeMap.put(key, value);
+    this.attributeMap = new HashMap<>(attributeMap);
   }
 
   public String getAttribute(String key) {

@@ -57,7 +57,17 @@ public class ConvertSchemaPredicateToFilterVisitor
 
   @Override
   protected SchemaFilter visitIsNullPredicate(IsNullPredicate node, Context context) {
-    return visitExpression(node, context);
+    String columnName = ((SymbolReference) node.getValue()).getName();
+    if (context
+        .table
+        .getColumnSchema(columnName)
+        .getColumnCategory()
+        .equals(TsTableColumnCategory.ID)) {
+      return new DeviceIdFilter(context.idColumeIndexMap.get(columnName), null);
+    } else {
+      context.hasAttribute = true;
+      return new DeviceAttributeFilter(columnName, null);
+    }
   }
 
   @Override

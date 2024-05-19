@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
+import java.util.Objects;
+
 public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> {
   @Override
   public boolean visitNode(SchemaFilter filter, IDeviceSchemaInfo info) {
@@ -74,6 +76,6 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
 
   @Override
   public boolean visitDeviceAttributeFilter(DeviceAttributeFilter filter, IDeviceSchemaInfo info) {
-    return filter.getValue().equals(info.getAttributeValue(filter.getKey()));
+    return Objects.equals(filter.getValue(), info.getAttributeValue(filter.getKey()));
   }
 }
