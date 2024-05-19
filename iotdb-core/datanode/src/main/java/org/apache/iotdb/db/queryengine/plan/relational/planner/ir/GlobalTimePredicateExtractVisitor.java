@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
+import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeException;
 import org.apache.iotdb.db.relational.sql.tree.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.relational.sql.tree.BetweenPredicate;
 import org.apache.iotdb.db.relational.sql.tree.ComparisonExpression;
@@ -54,6 +55,13 @@ public class GlobalTimePredicateExtractVisitor
   private static final String NOT_SUPPORTED =
       "visit() not implemented for %s in GlobalTimePredicateExtract.";
 
+  /**
+   * Extract global time predicate from query predicate.
+   *
+   * @param predicate raw query predicate
+   * @return Pair, left is globalTimePredicate, right is if hasValueFilter.
+   * @throws UnknownExpressionTypeException unknown expression type
+   */
   public static Pair<Expression, Boolean> extractGlobalTimeFilter(Expression predicate) {
     return new GlobalTimePredicateExtractVisitor()
         .process(predicate, new GlobalTimePredicateExtractVisitor.Context(true, true));
@@ -178,21 +186,30 @@ public class GlobalTimePredicateExtractVisitor
     return new Pair<>(null, true);
   }
 
+  @Override
+  protected Pair<Expression, Boolean> visitInPredicate(InPredicate node, Context context) {
+    if (isTimeIdentifier(node.getValue())) {
+      return new Pair<>(node, false);
+    }
+
+    return new Pair<>(null, true);
+  }
+
+  @Override
+  protected Pair<Expression, Boolean> visitNotExpression(NotExpression node, Context context) {
+    Pair<Expression, Boolean> result =
+        process(node.getValue(), new Context(context.canRewrite, context.isFirstOr));
+    if (result.left != null) {
+      return new Pair<>(new NotExpression(result.left), result.right);
+    }
+    return new Pair<>(null, true);
+  }
+
   // ============================ not implemented =======================================
 
   @Override
   protected Pair<Expression, Boolean> visitArithmeticBinary(
       ArithmeticBinaryExpression node, Context context) {
-    throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass()));
-  }
-
-  @Override
-  protected Pair<Expression, Boolean> visitInPredicate(InPredicate node, Context context) {
-    throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass()));
-  }
-
-  @Override
-  protected Pair<Expression, Boolean> visitNotExpression(NotExpression node, Context context) {
     throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass()));
   }
 
