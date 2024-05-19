@@ -157,31 +157,32 @@ public class IndexScan implements RelationalPlanOptimizer {
 
   private static List<Expression> getConjunctionExpressions(
       Expression predicate, TableScanNode node) {
-    if (predicate != null) {
+    if (predicate == null) {
+      return Collections.emptyList();
+    }
+
+    Set<String> idOrAttributeColumnNames =
+        node.getIdAndAttributeIndexMap().keySet().stream()
+            .map(Symbol::getName)
+            .collect(Collectors.toSet());
+    if (predicate instanceof LogicalExpression
+        && ((LogicalExpression) predicate).getOperator() == LogicalExpression.Operator.AND) {
       List<Expression> resultExpressions = new ArrayList<>();
-      Set<String> idOrAttributeColumnNames =
-          node.getIdAndAttributeIndexMap().keySet().stream()
-              .map(Symbol::getName)
-              .collect(Collectors.toSet());
-      if (predicate instanceof LogicalExpression) {
-        for (Expression subExpression : ((LogicalExpression) predicate).getTerms()) {
-          if (Boolean.TRUE.equals(
-              new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames)
-                  .process(subExpression))) {
-            resultExpressions.add(subExpression);
-          }
-        }
-      } else {
-        if (Boolean.FALSE.equals(
-            new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames).process(predicate))) {
-          resultExpressions = Collections.emptyList();
-        } else {
-          resultExpressions = Collections.singletonList(predicate);
+      for (Expression subExpression : ((LogicalExpression) predicate).getTerms()) {
+        if (Boolean.TRUE.equals(
+            new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames)
+                .process(subExpression))) {
+          resultExpressions.add(subExpression);
         }
       }
       return resultExpressions;
-    } else {
+    }
+
+    if (Boolean.FALSE.equals(
+        new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames).process(predicate))) {
       return Collections.emptyList();
+    } else {
+      return Collections.singletonList(predicate);
     }
   }
 
