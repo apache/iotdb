@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -85,43 +84,26 @@ public class WALMetaData implements SerializedSize {
   }
 
   public void serialize(File file, ByteBuffer buffer) {
-    ByteBuffer tmpBuffer = ByteBuffer.allocate(serializedSize());
     buffer.putLong(firstSearchIndex);
-    tmpBuffer.putLong(firstSearchIndex);
     buffer.putInt(buffersSize.size());
-    tmpBuffer.putInt(buffersSize.size());
     for (int size : buffersSize) {
       buffer.putInt(size);
-      tmpBuffer.putInt(size);
     }
     if (!memTablesId.isEmpty()) {
       buffer.putInt(memTablesId.size());
-      tmpBuffer.putInt(memTablesId.size());
       for (long memTableId : memTablesId) {
         buffer.putLong(memTableId);
-        tmpBuffer.putLong(memTableId);
       }
     }
-    tmpBuffer.flip();
-    logger.info(
-        "{} Buffer size is {}, serialize is {}",
-        file.getAbsolutePath(),
-        buffersSize,
-        Arrays.toString(tmpBuffer.array()));
   }
 
-  public static WALMetaData deserialize(File file, ByteBuffer buffer) {
+  public static WALMetaData deserialize(ByteBuffer buffer) {
     long firstSearchIndex = buffer.getLong();
     int entriesNum = buffer.getInt();
     List<Integer> buffersSize = new ArrayList<>(entriesNum);
     for (int i = 0; i < entriesNum; ++i) {
       buffersSize.add(buffer.getInt());
     }
-    logger.info(
-        "{} recover buffer size is {}, buf is {}",
-        file.getAbsolutePath(),
-        buffersSize,
-        Arrays.toString(buffer.array()));
     Set<Long> memTablesId = new HashSet<>();
     if (buffer.hasRemaining()) {
       int memTablesIdNum = buffer.getInt();
@@ -145,12 +127,8 @@ public class WALMetaData implements SerializedSize {
   }
 
   public static WALMetaData readFromWALFile(File logFile, FileChannel channel) throws IOException {
-    if (channel.size() < WALWriter.MAGIC_STRING_BYTES) {
-      throw new IOException(
-          String.format("Broken wal file %s, size is %d", logFile, channel.size()));
-    }
-    if (!isValidMagicString(logFile, channel)) {
-      throw new IOException(String.format("Broken wal file %s, magic string invalid", logFile));
+    if (channel.size() < WALWriter.MAGIC_STRING_BYTES || !isValidMagicString(channel)) {
+      throw new IOException(String.format("Broken wal file %s", logFile));
     }
     // load metadata size
     ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
@@ -162,7 +140,7 @@ public class WALMetaData implements SerializedSize {
     ByteBuffer metadataBuf = ByteBuffer.allocate(metadataSize);
     channel.read(metadataBuf, position - metadataSize);
     metadataBuf.flip();
-    WALMetaData metaData = WALMetaData.deserialize(logFile, metadataBuf);
+    WALMetaData metaData = WALMetaData.deserialize(metadataBuf);
     // versions before V1.3, should recover memTable ids from entries
     if (metaData.memTablesId.isEmpty()) {
       int offset = Byte.BYTES;
@@ -178,12 +156,11 @@ public class WALMetaData implements SerializedSize {
     return metaData;
   }
 
-  private static boolean isValidMagicString(File logFile, FileChannel channel) throws IOException {
+  private static boolean isValidMagicString(FileChannel channel) throws IOException {
     ByteBuffer magicStringBytes = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
     channel.read(magicStringBytes, channel.size() - WALWriter.MAGIC_STRING_BYTES);
     magicStringBytes.flip();
     String magicString = new String(magicStringBytes.array());
-    logger.error("{} Magic string {}", logFile.getAbsolutePath(), magicString);
     return magicString.equals(WALWriter.MAGIC_STRING)
         || magicString.startsWith(WALWriter.MAGIC_STRING_V1);
   }

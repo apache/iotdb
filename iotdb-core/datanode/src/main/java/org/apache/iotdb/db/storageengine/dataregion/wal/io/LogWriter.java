@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * LogWriter writes the binary logs into a file, including writing {@link WALEntry} into .wal file
@@ -47,15 +46,13 @@ public abstract class LogWriter implements ILogWriter {
   protected final FileOutputStream logStream;
   protected final FileChannel logChannel;
   protected long size;
-  protected boolean isEndFile = false;
   private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES * 2 + 1);
   private static final CompressionType compressionAlg =
       IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm();
   private final ICompressor compressor = ICompressor.getCompressor(compressionAlg);
   private final ByteBuffer compressedByteBuffer;
-  private static final long MIN_COMPRESS_SIZE = 0;
-  private static AtomicLong WALTotalSize = new AtomicLong(0);
-  private static AtomicLong lastReportTime = new AtomicLong(0);
+  // Minimum size to compress, default is 32 KB
+  private static final long MIN_COMPRESS_SIZE = 32 * 1024;
 
   protected LogWriter(File logFile) throws IOException {
     this.logFile = logFile;
@@ -80,8 +77,7 @@ public abstract class LogWriter implements ILogWriter {
     buffer.flip();
     boolean compressed = false;
     int uncompressedSize = bufferSize;
-    if (!isEndFile
-        && compressionAlg != CompressionType.UNCOMPRESSED
+    if (compressionAlg != CompressionType.UNCOMPRESSED
         && bufferSize > MIN_COMPRESS_SIZE /* Do not compress buffer that is less than 512KB */) {
       compressedByteBuffer.clear();
       compressor.compress(buffer, compressedByteBuffer);
@@ -110,13 +106,8 @@ public abstract class LogWriter implements ILogWriter {
       long before = logChannel.position();
       logChannel.write(headerBuffer);
       logChannel.write(buffer);
-      WALTotalSize.addAndGet(logChannel.position() - before);
     } catch (ClosedChannelException e) {
       logger.warn("Cannot write to {}", logFile, e);
-    }
-    if (System.currentTimeMillis() - lastReportTime.get() > 10_000L) {
-      lastReportTime.set(System.currentTimeMillis());
-      logger.info("WAL total size is {} GB", WALTotalSize.doubleValue() / 1024 / 1024 / 1024);
     }
   }
 

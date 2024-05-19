@@ -258,7 +258,6 @@ public class WALNodeRecoverTask implements Runnable {
         }
         while (reader.hasNext()) {
           ByteBuffer buffer = reader.next();
-          logger.info("{} buffer size {}", walFile.getAbsolutePath(), buffer.limit());
           // see WALInfoEntry#serialize, entry type
           buffer.position(Byte.BYTES);
           long memTableId = buffer.getLong();

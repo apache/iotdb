@@ -215,7 +215,7 @@ public class IoTDBConfig {
   private volatile long walSyncModeFsyncDelayInMs = 3;
 
   /** Buffer size of each wal node. Unit: byte */
-  private int walBufferSize = 4 * 1024;
+  private int walBufferSize = 32 * 1024 * 1024;
 
   /** max total direct buffer off heap memory size proportion */
   private double maxDirectBufferOffHeapMemorySizeProportion = 0.8;
@@ -224,7 +224,7 @@ public class IoTDBConfig {
   private int walBufferQueueCapacity = 500;
 
   /** Size threshold of each wal file. Unit: byte */
-  private volatile long walFileSizeThresholdInByte = 4 * 1024L;
+  private volatile long walFileSizeThresholdInByte = 30 * 1024 * 1024L;
 
   /** Size threshold of each checkpoint file. Unit: byte */
   private volatile long checkpointFileSizeThresholdInByte = 3 * 1024 * 1024L;
