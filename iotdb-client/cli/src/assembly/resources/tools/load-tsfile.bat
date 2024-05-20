@@ -49,6 +49,7 @@ set pw_parameter=-pw root
 set u_parameter=-u root
 set p_parameter=-p 6667
 set h_parameter=-h 127.0.0.1
+set cli_load_file_parameter=-e "load '
 set sg_level_parameter=
 set verify_parameter=
 set on_success_parameter=
@@ -71,14 +72,14 @@ if %param%!== ! (
 ) else if "%param%"=="-f" (
 	if "%2"=="" goto :load_err
 	set load_dir_parameter=%2
-) else if "%param%"=="--sgLevel" (
-	set sg_level_parameter=%1 %2
 ) else if "%param%"=="-cfd" (
  	set fail_dir_parameter=%2
- ) else if "%param%"=="--verify" (
-	set verify_parameter=%1 %2
+) else if "%param%"=="--sgLevel" (
+	set sg_level_parameter=sgLevel=%2
+) else if "%param%"=="--verify" (
+	set verify_parameter=verify=%2
 ) else if "%param%"=="--onSuccess" (
-	set on_success_parameter=%1 %2
+	set on_success_parameter=onSuccess=%2
 )
 shift
 goto :loop
@@ -97,28 +98,44 @@ EXIT /B %ret_code%
 
 @REM -----------------------------------------------------------------------------
 :finally
-set PARAMETERS_PART=%h_parameter% %p_parameter% %u_parameter% %pw_parameter% %sg_level_parameter% %verify_parameter% %on_success_parameter%
 echo start loading TsFiles, please wait...
-call :recursiveFunction %load_dir_parameter%
-set ret_code=%ERRORLEVEL%
+
+if exist "%load_dir_parameter%" (
+    if not exist "%load_dir_parameter%\" (
+        call :load %load_dir_parameter%
+    ) else (
+        call :recursiveFunction %load_dir_parameter%
+    )
+) else (
+    echo %load_dir_parameter% is not valid.
+    exit /b 1
+)
+
+set ret_code=0
 echo end loading TsFiles
 ENDLOCAL
 EXIT /B %ret_code%
 
 :recursiveFunction
 for /r "%1" %%F in (*.tsfile) do (
-	set "PARAMETERS=%PARAMETERS_PART% -f %%F"
-	call %IOTDB_HOME%\tools\load-one-tsfile.bat !PARAMETERS!
+	call :load %%F
+)
+goto :eof
 
-	if !errorlevel! equ 1 (
-        if not "%fail_dir_parameter%"=="" (
-                REM 校验文件夹是否存在，不存在则创建文件夹
-                if not exist "%fail_dir_parameter%\." (
-                    md "%fail_dir_parameter%"
-                )
-                REM 拷贝文件a到此文件夹
-                copy "%%F" "%fail_dir_parameter%"
-        )
-   )
+:load
+set cli_load_one_file_parameter=%cli_load_file_parameter%%1'
+set PARAMETERS=%h_parameter% %p_parameter% %u_parameter% %pw_parameter% %cli_load_one_file_parameter% %sg_level_parameter% %verify_parameter% %on_success_parameter%"
+
+"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% !PARAMETERS!
+
+if !errorlevel! neq 0 (
+    if not "%fail_dir_parameter%"=="" (
+         REM 校验文件夹是否存在，不存在则创建文件夹
+         if not exist "%fail_dir_parameter%\." (
+             md "%fail_dir_parameter%"
+         )
+         REM 拷贝文件a到此文件夹
+         copy "%1" "%fail_dir_parameter%"
+    )
 )
 goto :eof
