@@ -51,7 +51,7 @@ public class ConsensusPipeManager {
   }
 
   public void createConsensusPipe(Peer senderPeer, Peer receiverPeer) throws Exception {
-    ConsensusPipeName consensusPipeName = getConsensusPipeName(senderPeer, receiverPeer);
+    ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
     dispatcher.createPipe(
         consensusPipeName.toString(),
         ImmutableMap.<String, String>builder()
@@ -81,17 +81,17 @@ public class ConsensusPipeManager {
   }
 
   public void startConsensusPipe(Peer senderPeer, Peer receiverPeer) throws Exception {
-    ConsensusPipeName consensusPipeName = getConsensusPipeName(senderPeer, receiverPeer);
+    ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
     dispatcher.startPipe(consensusPipeName.toString());
   }
 
   public void stopConsensusPipe(Peer senderPeer, Peer receiverPeer) throws Exception {
-    ConsensusPipeName consensusPipeName = getConsensusPipeName(senderPeer, receiverPeer);
+    ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
     dispatcher.stopPipe(consensusPipeName.toString());
   }
 
   public void dropConsensusPipe(Peer senderPeer, Peer receiverPeer) throws Exception {
-    ConsensusPipeName consensusPipeName = getConsensusPipeName(senderPeer, receiverPeer);
+    ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
     dispatcher.dropPipe(consensusPipeName.toString());
   }
 
@@ -110,10 +110,5 @@ public class ConsensusPipeManager {
 
   public Map<ConsensusPipeName, PipeStatus> getAllConsensusPipe() {
     return selector.getAllConsensusPipe();
-  }
-
-  public static ConsensusPipeName getConsensusPipeName(Peer senderPeer, Peer receiverPeer) {
-    return new ConsensusPipeName(
-        senderPeer.getGroupId(), senderPeer.getNodeId(), receiverPeer.getNodeId());
   }
 }

@@ -27,8 +27,8 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensusServerImpl;
 import org.apache.iotdb.consensus.pipe.thrift.PipeConsensusIService;
-import org.apache.iotdb.consensus.pipe.thrift.TCheckTransferCompletedReq;
-import org.apache.iotdb.consensus.pipe.thrift.TCheckTransferCompletedResp;
+import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompleteddReq;
+import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompleteddResp;
 import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToCreateConsensusPipeReq;
 import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToCreateConsensusPipeResp;
 import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToDropConsensusPipeReq;
@@ -128,6 +128,7 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
     } catch (ConsensusGroupModifyPeerException e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       responseStatus.setMessage(e.getMessage());
+      LOGGER.warn("Failed to create consensus pipe to target peer with req {}", req, e);
     }
     resultHandler.onComplete(new TNotifyPeerToCreateConsensusPipeResp(responseStatus));
   }
@@ -161,14 +162,15 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
     } catch (ConsensusGroupModifyPeerException e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       responseStatus.setMessage(e.getMessage());
+      LOGGER.warn("Failed to drop consensus pipe to target peer with req {}", req, e);
     }
     resultHandler.onComplete(new TNotifyPeerToDropConsensusPipeResp(responseStatus));
   }
 
   @Override
-  public void checkTransferCompleted(
-      TCheckTransferCompletedReq req,
-      AsyncMethodCallback<TCheckTransferCompletedResp> resultHandler)
+  public void checkConsensusPipeCompleted(
+      TCheckConsensusPipeCompleteddReq req,
+      AsyncMethodCallback<TCheckConsensusPipeCompleteddResp> resultHandler)
       throws TException {
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
@@ -181,22 +183,27 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
-      resultHandler.onComplete(new TCheckTransferCompletedResp(status, true));
+      resultHandler.onComplete(new TCheckConsensusPipeCompleteddResp(status, true));
       return;
     }
     TSStatus responseStatus;
     boolean isCompleted;
     try {
       isCompleted =
-          impl.isConsensusPipesTransferCompleted(
+          impl.isConsensusPipesTransmissionCompleted(
               req.consensusPipeNames, req.refreshCachedProgressIndex);
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (Exception e) {
       responseStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       responseStatus.setMessage(e.getMessage());
       isCompleted = true;
+      LOGGER.warn(
+          "Failed to check consensus pipe completed with req {}, set is completed to {}",
+          req,
+          true,
+          e);
     }
-    resultHandler.onComplete(new TCheckTransferCompletedResp(responseStatus, isCompleted));
+    resultHandler.onComplete(new TCheckConsensusPipeCompleteddResp(responseStatus, isCompleted));
   }
 
   // TODO：添加发送端重启后，释放资源逻辑

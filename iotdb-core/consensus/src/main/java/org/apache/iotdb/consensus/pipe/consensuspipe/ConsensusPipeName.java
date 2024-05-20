@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.pipe.consensuspipe;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.consensus.common.Peer;
 
 import java.util.Objects;
 
@@ -30,11 +31,10 @@ public class ConsensusPipeName {
   private final int senderDataNodeId;
   private final int receiverDataNodeId;
 
-  public ConsensusPipeName(
-      ConsensusGroupId consensusGroupId, int senderDataNodeId, int receiverDataNodeId) {
-    this.consensusGroupId = consensusGroupId;
-    this.senderDataNodeId = senderDataNodeId;
-    this.receiverDataNodeId = receiverDataNodeId;
+  public ConsensusPipeName(Peer senderPeer, Peer recieverPeer) {
+    this.consensusGroupId = senderPeer.getGroupId();
+    this.senderDataNodeId = senderPeer.getNodeId();
+    this.receiverDataNodeId = recieverPeer.getNodeId();
   }
 
   public ConsensusPipeName(String pipeName) throws IllegalArgumentException {

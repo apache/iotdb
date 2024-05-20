@@ -420,13 +420,17 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   public ProgressIndex getPipeTaskProgressIndex(String pipeName, int consensusGroupId) {
     if (!tryReadLockWithTimeOut(10)) {
-      throw new RuntimeException(
+      throw new PipeException(
           String.format(
               "Failed to get pipe task progress index with pipe name: %s, consensus group id %s.",
               pipeName, consensusGroupId));
     }
 
     try {
+      if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
+        throw new PipeException("Pipe meta not found: " + pipeName);
+      }
+
       return pipeMetaKeeper
           .getPipeMeta(pipeName)
           .getRuntimeMeta()
@@ -440,7 +444,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   public Map<ConsensusPipeName, PipeStatus> getAllConsensusPipe() {
     if (!tryReadLockWithTimeOut(10)) {
-      throw new RuntimeException("Failed to get all consensus pipe.");
+      throw new PipeException("Failed to get all consensus pipe.");
     }
 
     try {
