@@ -61,7 +61,7 @@ public class ConfigFileAutoUpdateTool {
     if (systemFile.exists()) {
       return;
     }
-    boolean canUpdate = configNodeFile.exists() && dataNodeFile.exists() && commonFile.exists();
+    boolean canUpdate = (configNodeFile.exists() || dataNodeFile.exists()) && commonFile.exists();
     if (!canUpdate) {
       return;
     }
@@ -89,6 +89,9 @@ public class ConfigFileAutoUpdateTool {
   }
 
   private String readConfigLines(File file) throws IOException {
+    if (!file.exists()) {
+      return "";
+    }
     byte[] bytes = Files.readAllBytes(file.toPath());
     String content = new String(bytes);
     return content.replace(license, "");
