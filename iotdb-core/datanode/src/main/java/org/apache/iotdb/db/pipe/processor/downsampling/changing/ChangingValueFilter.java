@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.processor.downsampling.cv;
+package org.apache.iotdb.db.pipe.processor.downsampling.changing;
 
 import org.apache.iotdb.pipe.api.type.Binary;
 

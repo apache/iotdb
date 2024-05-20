@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.processor.downsampling.cv;
+package org.apache.iotdb.db.pipe.processor.downsampling.changing;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRemarkableRow;
