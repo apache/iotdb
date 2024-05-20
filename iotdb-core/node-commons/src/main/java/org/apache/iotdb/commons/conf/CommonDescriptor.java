@@ -354,13 +354,6 @@ public class CommonDescriptor {
                     properties.getProperty(
                         "pipe_connector_retry_interval_ms",
                         String.valueOf(config.getPipeConnectorRetryIntervalMs())))));
-    config.setPipeConnectorPendingQueueSize(
-        Integer.parseInt(
-            Optional.ofNullable(properties.getProperty("pipe_sink_pending_queue_size"))
-                .orElse(
-                    properties.getProperty(
-                        "pipe_connector_pending_queue_size",
-                        String.valueOf(config.getPipeConnectorPendingQueueSize())))));
     config.setPipeConnectorRPCThriftCompressionEnabled(
         Boolean.parseBoolean(
             Optional.ofNullable(properties.getProperty("pipe_sink_rpc_thrift_compression_enabled"))

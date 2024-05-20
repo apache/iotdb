@@ -23,13 +23,12 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.connection.BlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.metric.PipeHeartbeatEventMetrics;
-import org.apache.iotdb.db.pipe.task.connection.EnrichedDeque;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -57,10 +56,6 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private int extractorQueueTabletSize;
   private int extractorQueueTsFileSize;
   private int extractorQueueSize;
-
-  private int bufferQueueTabletSize;
-  private int bufferQueueTsFileSize;
-  private int bufferQueueSize;
 
   private int connectorQueueTabletSize;
   private int connectorQueueTsFileSize;
@@ -195,20 +190,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     }
   }
 
-  public void recordBufferQueueSize(EnrichedDeque<Event> bufferQueue) {
-    if (shouldPrintMessage) {
-      bufferQueueTabletSize = bufferQueue.getTabletInsertionEventCount();
-      bufferQueueTsFileSize = bufferQueue.getTsFileInsertionEventCount();
-      bufferQueueSize = bufferQueue.size();
-    }
-
-    if (extractor instanceof PipeRealtimeDataRegionHybridExtractor) {
-      ((PipeRealtimeDataRegionHybridExtractor) extractor)
-          .informProcessorEventCollectorQueueTsFileSize(bufferQueue.getTsFileInsertionEventCount());
-    }
-  }
-
-  public void recordConnectorQueueSize(BoundedBlockingPendingQueue<Event> pendingQueue) {
+  public void recordConnectorQueueSize(BlockingPendingQueue<Event> pendingQueue) {
     if (shouldPrintMessage) {
       connectorQueueTabletSize = pendingQueue.getTabletInsertionEventCount();
       connectorQueueTsFileSize = pendingQueue.getTsFileInsertionEventCount();
@@ -271,13 +253,6 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     final String extractorQueueSizeMessage =
         timeAssigned != 0 ? Integer.toString(extractorQueueSize) : unknownMessage;
 
-    final String bufferQueueTabletSizeMessage =
-        timeProcessed != 0 ? Integer.toString(bufferQueueTabletSize) : unknownMessage;
-    final String bufferQueueTsFileSizeMessage =
-        timeProcessed != 0 ? Integer.toString(bufferQueueTsFileSize) : unknownMessage;
-    final String bufferQueueSizeMessage =
-        timeProcessed != 0 ? Integer.toString(bufferQueueSize) : unknownMessage;
-
     final String connectorQueueTabletSizeMessage =
         timeProcessed != 0 ? Integer.toString(connectorQueueTabletSize) : unknownMessage;
     final String connectorQueueTsFileSizeMessage =
@@ -308,12 +283,6 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         + extractorQueueTsFileSizeMessage
         + ", extractorQueueSize="
         + extractorQueueSizeMessage
-        + ", bufferQueueTabletSize="
-        + bufferQueueTabletSizeMessage
-        + ", bufferQueueTsFileSize="
-        + bufferQueueTsFileSizeMessage
-        + ", bufferQueueSize="
-        + bufferQueueSizeMessage
         + ", connectorQueueTabletSize="
         + connectorQueueTabletSizeMessage
         + ", connectorQueueTsFileSize="

@@ -191,7 +191,6 @@ public class CommonConfig {
   private long pipeConnectorRetryIntervalMs = 1000L;
   // recommend to set this value to 3 * pipeSubtaskExecutorMaxThreadNum *
   // pipeAsyncConnectorCoreClientNumber
-  private int pipeConnectorPendingQueueSize = 256;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
   private int pipeAsyncConnectorSelectorNumber = 4;
@@ -755,14 +754,6 @@ public class CommonConfig {
 
   public void setPipeConnectorRetryIntervalMs(long pipeConnectorRetryIntervalMs) {
     this.pipeConnectorRetryIntervalMs = pipeConnectorRetryIntervalMs;
-  }
-
-  public int getPipeConnectorPendingQueueSize() {
-    return pipeConnectorPendingQueueSize;
-  }
-
-  public void setPipeConnectorPendingQueueSize(int pipeConnectorPendingQueueSize) {
-    this.pipeConnectorPendingQueueSize = pipeConnectorPendingQueueSize;
   }
 
   public int getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount() {

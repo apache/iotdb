@@ -116,17 +116,6 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // Record the last event for retry when exception occurs
     setLastEvent(event);
 
-    if (
-    // Though there is no event to process, there may still be some buffered events
-    // in the outputEventCollector. Return true if there are still buffered events,
-    // false otherwise.
-    event == null
-        // If there are still buffered events, process them first, the newly supplied
-        // event will be processed in the next round.
-        || !outputEventCollector.isBufferQueueEmpty()) {
-      return outputEventCollector.tryCollectBufferedEvents();
-    }
-
     outputEventCollector.resetCollectInvocationCount();
     try {
       // event can be supplied after the subtask is closed, so we need to check isClosed here
@@ -208,8 +197,6 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
           ErrorHandlingUtils.getRootCause(e).getMessage(),
           e);
     } finally {
-      outputEventCollector.close();
-
       // should be called after pipeProcessor.close()
       super.close();
     }
@@ -245,18 +232,6 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   public int getRegionId() {
     return regionId;
-  }
-
-  public int getTabletInsertionEventCount() {
-    return outputEventCollector.getTabletInsertionEventCount();
-  }
-
-  public int getTsFileInsertionEventCount() {
-    return outputEventCollector.getTsFileInsertionEventCount();
-  }
-
-  public int getPipeHeartbeatEventCount() {
-    return outputEventCollector.getPipeHeartbeatEventCount();
   }
 
   //////////////////////////// Error report ////////////////////////////
