@@ -312,7 +312,7 @@ public class PipeConsensus implements IConsensus {
 
       // step 3: wait until all the other Peers finish transferring
       LOGGER.info("[{}] wait until all the other peers finish transferring...", CLASS_NAME);
-      impl.waitPeersToTargetPeerTransferCompleted(peer);
+      impl.waitPeersToTargetPeerTransmissionCompleted(peer);
 
       // step 4: active new Peer
       LOGGER.info("[{}] activate new peer...", CLASS_NAME);
@@ -347,7 +347,7 @@ public class PipeConsensus implements IConsensus {
       // let target peer reject new write
       impl.setRemotePeerActive(peer, false);
       // wait its consensus pipes to complete
-      impl.waitTargetPeerToPeersTransferCompleted(peer);
+      impl.waitTargetPeerToPeersTransmissionCompleted(peer);
     } catch (ConsensusGroupModifyPeerException e) {
       throw new ConsensusException(e.getMessage());
     }
