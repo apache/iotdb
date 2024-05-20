@@ -17,7 +17,6 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.db.relational.sql.tree.ArithmeticBinaryExpression;
