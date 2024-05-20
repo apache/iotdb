@@ -77,18 +77,17 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private boolean shouldParsePattern = false;
 
   public TsFileInsertionDataContainer(
-      final File tsFile, final PipePattern pattern, final long startTime, final long endTime)
-      throws IOException {
+      File tsFile, PipePattern pattern, long startTime, long endTime) throws IOException {
     this(tsFile, pattern, startTime, endTime, null, null);
   }
 
   public TsFileInsertionDataContainer(
-      final File tsFile,
-      final PipePattern pattern,
-      final long startTime,
-      final long endTime,
-      final PipeTaskMeta pipeTaskMeta,
-      final EnrichedEvent sourceEvent)
+      File tsFile,
+      PipePattern pattern,
+      long startTime,
+      long endTime,
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent)
       throws IOException {
     this.pattern = pattern;
     timeFilterExpression =
@@ -135,14 +134,14 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
       // No longer need this. Help GC.
       tsFileSequenceReader.clearCachedDeviceMetadata();
-    } catch (final Exception e) {
+    } catch (Exception e) {
       close();
       throw e;
     }
   }
 
   private Map<IDeviceID, List<String>> filterDeviceMeasurementsMapByPattern(
-      final Map<IDeviceID, List<String>> originalDeviceMeasurementsMap) {
+      Map<IDeviceID, List<String>> originalDeviceMeasurementsMap) {
     final Map<IDeviceID, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
     for (Map.Entry<IDeviceID, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
       final IDeviceID deviceId = entry.getKey();
@@ -221,7 +220,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
                         entry.getKey().toString(),
                         entry.getValue(),
                         timeFilterExpression);
-              } catch (final IOException e) {
+              } catch (IOException e) {
                 close();
                 throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);
               }
@@ -278,7 +277,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       if (tsFileReader != null) {
         tsFileReader.close();
       }
-    } catch (final IOException e) {
+    } catch (IOException e) {
       LOGGER.warn("Failed to close TsFileReader", e);
     }
 
@@ -286,7 +285,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       if (tsFileSequenceReader != null) {
         tsFileSequenceReader.close();
       }
-    } catch (final IOException e) {
+    } catch (IOException e) {
       LOGGER.warn("Failed to close TsFileSequenceReader", e);
     }
 

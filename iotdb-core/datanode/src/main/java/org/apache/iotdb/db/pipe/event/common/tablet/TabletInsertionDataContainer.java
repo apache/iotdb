@@ -92,10 +92,10 @@ public class TabletInsertionDataContainer {
   }
 
   public TabletInsertionDataContainer(
-      final PipeTaskMeta pipeTaskMeta,
-      final EnrichedEvent sourceEvent,
-      final InsertNode insertNode,
-      final PipePattern pattern) {
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent,
+      InsertNode insertNode,
+      PipePattern pattern) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
 
@@ -110,11 +110,11 @@ public class TabletInsertionDataContainer {
   }
 
   public TabletInsertionDataContainer(
-      final PipeTaskMeta pipeTaskMeta,
-      final EnrichedEvent sourceEvent,
-      final Tablet tablet,
-      final boolean isAligned,
-      final PipePattern pattern) {
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent,
+      Tablet tablet,
+      boolean isAligned,
+      PipePattern pattern) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
 
@@ -122,7 +122,7 @@ public class TabletInsertionDataContainer {
   }
 
   @TestOnly
-  public TabletInsertionDataContainer(final InsertNode insertNode, final PipePattern pattern) {
+  public TabletInsertionDataContainer(InsertNode insertNode, PipePattern pattern) {
     this(null, null, insertNode, pattern);
   }
 
@@ -136,7 +136,7 @@ public class TabletInsertionDataContainer {
 
   //////////////////////////// parse ////////////////////////////
 
-  private void parse(final InsertRowNode insertRowNode, final PipePattern pattern) {
+  private void parse(InsertRowNode insertRowNode, PipePattern pattern) {
     final int originColumnSize = insertRowNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -144,7 +144,7 @@ public class TabletInsertionDataContainer {
     this.isAligned = insertRowNode.isAligned();
 
     final long[] originTimestampColumn = new long[] {insertRowNode.getTime()};
-    final List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
+    List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
 
     generateColumnIndexMapper(
@@ -173,7 +173,7 @@ public class TabletInsertionDataContainer {
         this.measurementSchemaList[filteredColumnIndex] = originMeasurementSchemaList[i];
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
         this.valueColumnTypes[filteredColumnIndex] = originValueColumnTypes[i];
-        final BitMap bitMap = new BitMap(this.timestampColumn.length);
+        BitMap bitMap = new BitMap(this.timestampColumn.length);
         if (Objects.isNull(originValueColumns[i]) || Objects.isNull(originValueColumnTypes[i])) {
           this.valueColumns[filteredColumnIndex] = null;
           bitMap.markAll();
@@ -203,7 +203,7 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  private void parse(final InsertTabletNode insertTabletNode, final PipePattern pattern) {
+  private void parse(InsertTabletNode insertTabletNode, PipePattern pattern) {
     final int originColumnSize = insertTabletNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -212,7 +212,7 @@ public class TabletInsertionDataContainer {
 
     final long[] originTimestampColumn = insertTabletNode.getTimes();
     final int originRowSize = originTimestampColumn.length;
-    final List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
+    List<Integer> rowIndexList = generateRowIndexList(originTimestampColumn);
     this.timestampColumn = rowIndexList.stream().mapToLong(i -> originTimestampColumn[i]).toArray();
 
     generateColumnIndexMapper(
@@ -256,7 +256,7 @@ public class TabletInsertionDataContainer {
         this.measurementSchemaList[filteredColumnIndex] = originMeasurementSchemaList[i];
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
         this.valueColumnTypes[filteredColumnIndex] = originValueColumnTypes[i];
-        final BitMap bitMap = new BitMap(this.timestampColumn.length);
+        BitMap bitMap = new BitMap(this.timestampColumn.length);
         if (Objects.isNull(originValueColumns[i]) || Objects.isNull(originValueColumnTypes[i])) {
           this.valueColumns[filteredColumnIndex] = null;
           bitMap.markAll();
@@ -286,7 +286,7 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  private void parse(final Tablet tablet, final boolean isAligned, final PipePattern pattern) {
+  private void parse(Tablet tablet, boolean isAligned, PipePattern pattern) {
     final int originColumnSize = tablet.getSchemas().size();
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -348,7 +348,7 @@ public class TabletInsertionDataContainer {
         this.measurementSchemaList[filteredColumnIndex] = originMeasurementSchemaList.get(i);
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
         this.valueColumnTypes[filteredColumnIndex] = originValueColumnTypes[i];
-        final BitMap bitMap = new BitMap(this.timestampColumn.length);
+        BitMap bitMap = new BitMap(this.timestampColumn.length);
         if (Objects.isNull(originValueColumns[i]) || Objects.isNull(originValueColumnTypes[i])) {
           this.valueColumns[filteredColumnIndex] = null;
           bitMap.markAll();
@@ -379,9 +379,9 @@ public class TabletInsertionDataContainer {
   }
 
   private void generateColumnIndexMapper(
-      final String[] originMeasurementList,
-      final PipePattern pattern,
-      final Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
+      String[] originMeasurementList,
+      PipePattern pattern,
+      Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
     final int originColumnSize = originMeasurementList.length;
 
     // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
@@ -418,7 +418,7 @@ public class TabletInsertionDataContainer {
       return generateFullRowIndexList(rowCount);
     }
 
-    final List<Integer> rowIndexList = new ArrayList<>();
+    List<Integer> rowIndexList = new ArrayList<>();
     // We assume that `originTimestampColumn` is ordered.
     if (originTimestampColumn[originTimestampColumn.length - 1] < sourceEvent.getStartTime()
         || originTimestampColumn[0] > sourceEvent.getEndTime()) {
@@ -435,7 +435,7 @@ public class TabletInsertionDataContainer {
     return rowIndexList;
   }
 
-  private static List<Integer> generateFullRowIndexList(final int rowCount) {
+  private static List<Integer> generateFullRowIndexList(int rowCount) {
     if (rowCount <= CACHED_FULL_ROW_INDEX_LIST_ROW_COUNT_UPPER) {
       return cachedFullRowIndexList.get(rowCount);
     }
@@ -443,20 +443,20 @@ public class TabletInsertionDataContainer {
   }
 
   private static Object filterValueColumnsByRowIndexList(
-      @NonNull final TSDataType type,
-      @NonNull final Object originValueColumn,
-      @NonNull final List<Integer> rowIndexList,
-      final boolean isSingleOriginValueColumn,
-      @NonNull final BitMap originNullValueColumnBitmap,
-      @NonNull final BitMap nullValueColumnBitmap /* output parameters */) {
+      @NonNull TSDataType type,
+      @NonNull Object originValueColumn,
+      @NonNull List<Integer> rowIndexList,
+      boolean isSingleOriginValueColumn,
+      @NonNull BitMap originNullValueColumnBitmap,
+      @NonNull BitMap nullValueColumnBitmap /* output parameters */) {
     switch (type) {
       case INT32:
         {
-          final int[] intValueColumns =
+          int[] intValueColumns =
               isSingleOriginValueColumn
                   ? new int[] {(int) originValueColumn}
                   : (int[]) originValueColumn;
-          final int[] valueColumns = new int[rowIndexList.size()];
+          int[] valueColumns = new int[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
             if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
               valueColumns[i] = 0;
@@ -469,11 +469,11 @@ public class TabletInsertionDataContainer {
         }
       case INT64:
         {
-          final long[] longValueColumns =
+          long[] longValueColumns =
               isSingleOriginValueColumn
                   ? new long[] {(long) originValueColumn}
                   : (long[]) originValueColumn;
-          final long[] valueColumns = new long[rowIndexList.size()];
+          long[] valueColumns = new long[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
             if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
               valueColumns[i] = 0L;
@@ -486,11 +486,11 @@ public class TabletInsertionDataContainer {
         }
       case FLOAT:
         {
-          final float[] floatValueColumns =
+          float[] floatValueColumns =
               isSingleOriginValueColumn
                   ? new float[] {(float) originValueColumn}
                   : (float[]) originValueColumn;
-          final float[] valueColumns = new float[rowIndexList.size()];
+          float[] valueColumns = new float[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
             if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
               valueColumns[i] = 0F;
@@ -503,11 +503,11 @@ public class TabletInsertionDataContainer {
         }
       case DOUBLE:
         {
-          final double[] doubleValueColumns =
+          double[] doubleValueColumns =
               isSingleOriginValueColumn
                   ? new double[] {(double) originValueColumn}
                   : (double[]) originValueColumn;
-          final double[] valueColumns = new double[rowIndexList.size()];
+          double[] valueColumns = new double[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
             if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
               valueColumns[i] = 0D;
@@ -520,11 +520,11 @@ public class TabletInsertionDataContainer {
         }
       case BOOLEAN:
         {
-          final boolean[] booleanValueColumns =
+          boolean[] booleanValueColumns =
               isSingleOriginValueColumn
                   ? new boolean[] {(boolean) originValueColumn}
                   : (boolean[]) originValueColumn;
-          final boolean[] valueColumns = new boolean[rowIndexList.size()];
+          boolean[] valueColumns = new boolean[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
             if (originNullValueColumnBitmap.isMarked(rowIndexList.get(i))) {
               valueColumns[i] = false;
@@ -537,11 +537,11 @@ public class TabletInsertionDataContainer {
         }
       case TEXT:
         {
-          final Binary[] binaryValueColumns =
+          Binary[] binaryValueColumns =
               isSingleOriginValueColumn
                   ? new Binary[] {(Binary) originValueColumn}
                   : (Binary[]) originValueColumn;
-          final Binary[] valueColumns = new Binary[rowIndexList.size()];
+          Binary[] valueColumns = new Binary[rowIndexList.size()];
           for (int i = 0; i < rowIndexList.size(); ++i) {
             if (Objects.isNull(binaryValueColumns[rowIndexList.get(i)])
                 || Objects.isNull(binaryValueColumns[rowIndexList.get(i)].getValues())
@@ -562,7 +562,7 @@ public class TabletInsertionDataContainer {
 
   ////////////////////////////  process  ////////////////////////////
 
-  public List<TabletInsertionEvent> processRowByRow(final BiConsumer<Row, RowCollector> consumer) {
+  public List<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     if (valueColumns.length == 0 || timestampColumn.length == 0) {
       return Collections.emptyList();
     }
@@ -585,7 +585,7 @@ public class TabletInsertionDataContainer {
     return rowCollector.convertToTabletInsertionEvents(shouldReport);
   }
 
-  public List<TabletInsertionEvent> processTablet(final BiConsumer<Tablet, RowCollector> consumer) {
+  public List<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, sourceEvent);
     consumer.accept(convertToTablet(), rowCollector);
     return rowCollector.convertToTabletInsertionEvents(shouldReport);

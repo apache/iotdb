@@ -43,7 +43,7 @@ public class TsFileEpochManager {
   private final ConcurrentMap<String, TsFileEpoch> filePath2Epoch = new ConcurrentHashMap<>();
 
   public PipeRealtimeEvent bindPipeTsFileInsertionEvent(
-      final PipeTsFileInsertionEvent event, final TsFileResource resource) {
+      PipeTsFileInsertionEvent event, TsFileResource resource) {
     final String filePath = resource.getTsFilePath();
 
     // This would not happen, but just in case
@@ -69,9 +69,7 @@ public class TsFileEpochManager {
   }
 
   public PipeRealtimeEvent bindPipeInsertNodeTabletInsertionEvent(
-      final PipeInsertNodeTabletInsertionEvent event,
-      final InsertNode node,
-      final TsFileResource resource) {
+      PipeInsertNodeTabletInsertionEvent event, InsertNode node, TsFileResource resource) {
     final TsFileEpoch epoch =
         filePath2Epoch.computeIfAbsent(resource.getTsFilePath(), TsFileEpoch::new);
     epoch.updateInsertNodeMinTime(node.getMinTime());
