@@ -156,6 +156,21 @@ public class TransformOperator implements ProcessOperator {
   }
 
   protected YieldableState iterateAllColumnsToNextValid() throws Exception {
+    if (transformers.length == 1) {
+      if (outputColumns[0] == null) {
+        YieldableState state = transformers[0].yield();
+        if (state != YieldableState.YIELDABLE) {
+          return state;
+        }
+
+        Column[] columns = transformers[0].current();
+        TsBlock block = new TsBlock((TimeColumn) columns[1], columns[0]);
+        outputColumns[0] = block;
+      }
+
+      return YieldableState.YIELDABLE;
+    }
+
     for (int i = 0, n = shouldIterateReadersToNextValid.length; i < n; ++i) {
       if (shouldIterateReadersToNextValid[i]) {
         final YieldableState yieldableState = iterateReaderToNextValid(i);
@@ -213,7 +228,10 @@ public class TransformOperator implements ProcessOperator {
       return true;
     }
     try {
-      if (iterateAllColumnsToNextValid() == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+      YieldableState state = iterateAllColumnsToNextValid();
+      if (transformers.length == 1) {
+        return state != YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+      } else if (state == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
         return true;
       }
     } catch (Exception e) {
@@ -230,6 +248,14 @@ public class TransformOperator implements ProcessOperator {
       YieldableState yieldableState = iterateAllColumnsToNextValid();
       if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
         return null;
+      }
+
+      if (transformers.length == 1) {
+        TsBlock ret = outputColumns[0];
+        transformers[0].consumedAll();
+        outputColumns[0] = null;
+
+        return ret;
       }
 
       final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
