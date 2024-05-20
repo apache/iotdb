@@ -82,10 +82,11 @@ public class ConfigNodeRemoveCheck {
                   .filter(e -> e.getInternalEndPoint().equals(endPoint))
                   .findFirst()
                   .orElse(null);
-        } catch (BadNodeUrlException e2) {
+        } catch (BadNodeUrlException e) {
           LOGGER.info(
               "Usage: remove-confignode.sh <confignode-id> "
-                  + "or remove-confignode.sh <internal_address>:<internal_port>");
+                  + "or remove-confignode.sh <internal_address>:<internal_port>",
+              e);
           return nodeLocation;
         }
       }

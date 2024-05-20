@@ -2086,8 +2086,12 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
    */
   @Test
   public void testSelectingFilesWhenSomeFilesBeingDeleted()
-      throws MetadataException, IOException, WriteProcessException, StorageEngineException,
-          InterruptedException, MergeException {
+      throws MetadataException,
+          IOException,
+          WriteProcessException,
+          StorageEngineException,
+          InterruptedException,
+          MergeException {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 10, 4500, 500, 500, 0, 100, false, false);

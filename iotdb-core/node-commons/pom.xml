@@ -190,10 +190,10 @@
                 <executions>
                     <execution>
                         <id>bundle-manifest</id>
+                        <phase>process-classes</phase>
                         <goals>
                             <goal>manifest</goal>
                         </goals>
-                        <phase>process-classes</phase>
                     </execution>
                 </executions>
             </plugin>
@@ -209,6 +209,7 @@
                     </includeOnlyProperties>
                     <commitIdGenerationMode>full</commitIdGenerationMode>
                     <failOnNoGitDirectory>false</failOnNoGitDirectory>
+                    <failOnUnableToExtractRepoInfo>false</failOnUnableToExtractRepoInfo>
                     <offline>true</offline>
                     <gitDescribe>
                         <dirty>-dev</dirty>
@@ -217,10 +218,10 @@
                 <executions>
                     <execution>
                         <id>get-the-git-infos</id>
+                        <phase>generate-resources</phase>
                         <goals>
                             <goal>revision</goal>
                         </goals>
-                        <phase>initialize</phase>
                     </execution>
                 </executions>
             </plugin>
@@ -263,11 +264,11 @@
                 <executions>
                     <execution>
                         <id>run-integration-tests</id>
+                        <phase>integration-test</phase>
                         <goals>
                             <goal>integration-test</goal>
                             <goal>verify</goal>
                         </goals>
-                        <phase>integration-test</phase>
                     </execution>
                 </executions>
             </plugin>

@@ -117,8 +117,9 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
           clientAndStatus
               .getLeft()
               .pipeTransfer(
-                  PipeTransferPlanNodeReq.toTPipeTransferReq(
-                      pipeSchemaRegionWritePlanEvent.getPlanNode()));
+                  compressIfNeeded(
+                      PipeTransferPlanNodeReq.toTPipeTransferReq(
+                          pipeSchemaRegionWritePlanEvent.getPlanNode())));
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(

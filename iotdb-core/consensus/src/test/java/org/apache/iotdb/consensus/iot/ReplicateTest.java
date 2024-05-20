@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class ReplicateTest {
 
@@ -113,6 +114,13 @@ public class ReplicateTest {
           Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
       Path configurationPath =
           Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
+      if (!Files.exists(configurationPath) && !Files.exists(tmpConfigurationPath)) {
+        return;
+      }
+      if (!Files.exists(tmpConfigurationPath)) {
+        Files.createDirectories(tmpConfigurationPath.getParent());
+        Files.createFile(tmpConfigurationPath);
+      }
       Files.write(tmpConfigurationPath, publicBAOS.getBuf());
       if (Files.exists(configurationPath)) {
         Files.delete(configurationPath);
@@ -204,9 +212,23 @@ public class ReplicateTest {
       stopServer();
       initServer();
 
-      Assert.assertEquals(peers, servers.get(0).getImpl(gid).getConfiguration());
-      Assert.assertEquals(peers, servers.get(1).getImpl(gid).getConfiguration());
-      Assert.assertEquals(peers, servers.get(2).getImpl(gid).getConfiguration());
+      Assert.assertEquals(
+          peers.stream().map(Peer::getNodeId).collect(Collectors.toSet()),
+          servers.get(0).getImpl(gid).getConfiguration().stream()
+              .map(Peer::getNodeId)
+              .collect(Collectors.toSet()));
+
+      Assert.assertEquals(
+          peers.stream().map(Peer::getNodeId).collect(Collectors.toSet()),
+          servers.get(1).getImpl(gid).getConfiguration().stream()
+              .map(Peer::getNodeId)
+              .collect(Collectors.toSet()));
+
+      Assert.assertEquals(
+          peers.stream().map(Peer::getNodeId).collect(Collectors.toSet()),
+          servers.get(2).getImpl(gid).getConfiguration().stream()
+              .map(Peer::getNodeId)
+              .collect(Collectors.toSet()));
 
       Assert.assertEquals(CHECK_POINT_GAP, servers.get(0).getImpl(gid).getSearchIndex());
       Assert.assertEquals(CHECK_POINT_GAP, servers.get(1).getImpl(gid).getSearchIndex());
@@ -267,10 +289,23 @@ public class ReplicateTest {
       initServer();
 
       servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
+      Assert.assertEquals(
+          peers.stream().map(Peer::getNodeId).collect(Collectors.toSet()),
+          servers.get(0).getImpl(gid).getConfiguration().stream()
+              .map(Peer::getNodeId)
+              .collect(Collectors.toSet()));
 
-      Assert.assertEquals(peers, servers.get(0).getImpl(gid).getConfiguration());
-      Assert.assertEquals(peers, servers.get(1).getImpl(gid).getConfiguration());
-      Assert.assertEquals(peers, servers.get(2).getImpl(gid).getConfiguration());
+      Assert.assertEquals(
+          peers.stream().map(Peer::getNodeId).collect(Collectors.toSet()),
+          servers.get(1).getImpl(gid).getConfiguration().stream()
+              .map(Peer::getNodeId)
+              .collect(Collectors.toSet()));
+
+      Assert.assertEquals(
+          peers.stream().map(Peer::getNodeId).collect(Collectors.toSet()),
+          servers.get(2).getImpl(gid).getConfiguration().stream()
+              .map(Peer::getNodeId)
+              .collect(Collectors.toSet()));
 
       Assert.assertEquals(CHECK_POINT_GAP, servers.get(0).getImpl(gid).getSearchIndex());
       Assert.assertEquals(CHECK_POINT_GAP, servers.get(1).getImpl(gid).getSearchIndex());

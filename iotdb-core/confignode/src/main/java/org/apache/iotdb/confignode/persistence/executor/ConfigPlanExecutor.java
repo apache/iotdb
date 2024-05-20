@@ -382,6 +382,7 @@ public class ConfigPlanExecutor {
       case RevokeRole:
       case RevokeRoleFromUser:
       case UpdateUser:
+      case CreateUserWithRawPassword:
       case CreateUserDep:
       case CreateRoleDep:
       case DropUserDep:
@@ -579,8 +580,7 @@ public class ConfigPlanExecutor {
     }
 
     AtomicBoolean result = new AtomicBoolean(true);
-    snapshotProcessorList
-        .parallelStream()
+    snapshotProcessorList.parallelStream()
         .forEach(
             x -> {
               try {

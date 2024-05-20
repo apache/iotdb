@@ -63,6 +63,7 @@ public class TsFileValidationCorrectnessTests {
 
     FileUtils.forceDelete(new File(dir));
   }
+
   // 1. empty tsfile
   @Test
   public void testTsFileHasNoData() throws IOException {

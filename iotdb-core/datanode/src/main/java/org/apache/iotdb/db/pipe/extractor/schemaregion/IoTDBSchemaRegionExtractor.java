@@ -31,11 +31,12 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -49,9 +50,11 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   private Set<PlanNodeType> listenedTypeSet = new HashSet<>();
 
-  // TODO: Delete this
   @Override
-  public void validate(final PipeParameterValidator validator) throws Exception {
+  public void customize(
+      final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
+      throws Exception {
+    // TODO: Delete this
     if (IoTDBDescriptor.getInstance()
         .getConfig()
         .getSchemaRegionConsensusProtocolClass()
@@ -59,13 +62,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
       throw new PipeException(
           "IoTDBSchemaRegionExtractor does not transferring events under simple consensus");
     }
-    super.validate(validator);
-  }
 
-  @Override
-  public void customize(
-      final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
-      throws Exception {
     super.customize(parameters, configuration);
 
     schemaRegionId = new SchemaRegionId(regionId);
@@ -124,8 +121,12 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   @Override
   protected boolean isTypeListened(final Event event) {
+    final PlanNode planNode = ((PipeSchemaRegionWritePlanEvent) event).getPlanNode();
     return listenedTypeSet.contains(
-        ((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType());
+        (planNode.getType() == PlanNodeType.ALTER_TIME_SERIES
+                && ((AlterTimeSeriesNode) planNode).isAlterView())
+            ? PlanNodeType.ALTER_LOGICAL_VIEW
+            : planNode.getType());
   }
 
   @Override

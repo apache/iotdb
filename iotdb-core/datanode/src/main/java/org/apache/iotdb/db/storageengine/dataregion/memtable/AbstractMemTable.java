@@ -73,8 +73,10 @@ public abstract class AbstractMemTable implements IMemTable {
   private volatile FlushStatus flushStatus = FlushStatus.WORKING;
   private final int avgSeriesPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+
   /** Memory size of data points, including TEXT values. */
   private long memSize = 0;
+
   /**
    * Memory usage of all TVLists memory usage regardless of whether these TVLists are full,
    * including TEXT values.
@@ -97,6 +99,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   /** this time is updated by the timed flush, same as createdTime when the feature is disabled. */
   private long updateTime = createdTime;
+
   /**
    * check whether this memTable has been updated since last timed flush check, update updateTime
    * when changed
@@ -396,6 +399,9 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public long getCurrentTVListSize(IDeviceID deviceId, String measurement) {
     IWritableMemChunkGroup memChunkGroup = memTableMap.get(deviceId);
+    if (null == memChunkGroup) {
+      return 0;
+    }
     return memChunkGroup.getCurrentTVListSize(measurement);
   }
 

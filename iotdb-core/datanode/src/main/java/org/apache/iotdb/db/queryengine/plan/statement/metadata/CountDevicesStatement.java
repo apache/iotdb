@@ -21,10 +21,26 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 
 public class CountDevicesStatement extends CountStatement {
+
+  WhereCondition timeCondition;
+
   public CountDevicesStatement(PartialPath partialPath) {
     super(partialPath);
+  }
+
+  public void setTimeCondition(WhereCondition timeCondition) {
+    this.timeCondition = timeCondition;
+  }
+
+  public WhereCondition getTimeCondition() {
+    return timeCondition;
+  }
+
+  public boolean hasTimeCondition() {
+    return timeCondition != null;
   }
 
   @Override

@@ -84,7 +84,8 @@ public class AlignedSeriesAggregationScanOperatorTest {
   private static final List<TsFileResource> unSeqResources = new ArrayList<>();
 
   private ExecutorService instanceNotificationExecutor =
-      IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");;
+      IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+  ;
   private static final double DELTA = 0.000001;
 
   @BeforeClass

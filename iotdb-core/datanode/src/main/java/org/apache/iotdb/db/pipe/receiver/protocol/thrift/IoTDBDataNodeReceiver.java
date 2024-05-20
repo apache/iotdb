@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
@@ -50,6 +51,7 @@ import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEven
 import org.apache.iotdb.db.pipe.receiver.visitor.PipePlanToStatementVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementExceptionVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTSStatusVisitor;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementToBatchVisitor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -89,6 +91,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -103,9 +106,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private static final String[] RECEIVER_FILE_BASE_DIRS = IOTDB_CONFIG.getPipeReceiverFileDirs();
   private static FolderManager folderManager = null;
 
-  private final PipeStatementTSStatusVisitor statusVisitor = new PipeStatementTSStatusVisitor();
-  private final PipeStatementExceptionVisitor exceptionVisitor =
+  public static final PipePlanToStatementVisitor PLAN_TO_STATEMENT_VISITOR =
+      new PipePlanToStatementVisitor();
+  private static final PipeStatementTSStatusVisitor STATEMENT_STATUS_VISITOR =
+      new PipeStatementTSStatusVisitor();
+  private static final PipeStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
       new PipeStatementExceptionVisitor();
+  private final PipeStatementToBatchVisitor batchVisitor = new PipeStatementToBatchVisitor();
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
   // B).
@@ -120,7 +127,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       folderManager =
           new FolderManager(
               Arrays.asList(RECEIVER_FILE_BASE_DIRS), DirectoryStrategyType.SEQUENCE_STRATEGY);
-    } catch (DiskSpaceInsufficientException e) {
+    } catch (final DiskSpaceInsufficientException e) {
       LOGGER.error(
           "Fail to create pipe receiver file folders allocation strategy because all disks of folders are full.",
           e);
@@ -182,6 +189,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             // Config requests will first be received by the DataNode receiver,
             // then transferred to ConfigNode receiver to execute.
             return handleTransferConfigPlan(req);
+          case TRANSFER_COMPRESSED:
+            return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
           default:
             break;
         }
@@ -198,14 +207,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           receiverId.get(),
           status);
       return new TPipeTransferResp(status);
-    } catch (IOException e) {
-      final String error = String.format("Serialization error during pipe receiving, %s", e);
+    } catch (Exception e) {
+      final String error =
+          String.format("Exception %s encountered while handling request %s.", e.getMessage(), req);
       LOGGER.warn("Receiver id = {}: {}", receiverId.get(), error, e);
       return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
   }
 
-  private TPipeTransferResp handleTransferTabletInsertNode(PipeTransferTabletInsertNodeReq req) {
+  private TPipeTransferResp handleTransferTabletInsertNode(
+      final PipeTransferTabletInsertNodeReq req) {
     final InsertBaseStatement statement = req.constructStatement();
     return new TPipeTransferResp(
         statement.isEmpty()
@@ -213,7 +224,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             : executeStatementAndClassifyExceptions(statement));
   }
 
-  private TPipeTransferResp handleTransferTabletBinary(PipeTransferTabletBinaryReq req) {
+  private TPipeTransferResp handleTransferTabletBinary(final PipeTransferTabletBinaryReq req) {
     final InsertBaseStatement statement = req.constructStatement();
     return new TPipeTransferResp(
         statement.isEmpty()
@@ -221,7 +232,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             : executeStatementAndClassifyExceptions(statement));
   }
 
-  private TPipeTransferResp handleTransferTabletRaw(PipeTransferTabletRawReq req) {
+  private TPipeTransferResp handleTransferTabletRaw(final PipeTransferTabletRawReq req) {
     final InsertTabletStatement statement = req.constructStatement();
     return new TPipeTransferResp(
         statement.isEmpty()
@@ -229,7 +240,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             : executeStatementAndClassifyExceptions(statement));
   }
 
-  private TPipeTransferResp handleTransferTabletBatch(PipeTransferTabletBatchReq req) {
+  private TPipeTransferResp handleTransferTabletBatch(final PipeTransferTabletBatchReq req) {
     final Pair<InsertRowsStatement, InsertMultiTabletsStatement> statementPair =
         req.constructStatements();
     return new TPipeTransferResp(
@@ -237,10 +248,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             Stream.of(
                     statementPair.getLeft().isEmpty()
                         ? RpcUtils.SUCCESS_STATUS
-                        : executeStatementAndClassifyExceptions(statementPair.getLeft()),
+                        : executeStatementAndAddRedirectInfo(statementPair.getLeft()),
                     statementPair.getRight().isEmpty()
                         ? RpcUtils.SUCCESS_STATUS
-                        : executeStatementAndClassifyExceptions(statementPair.getRight()))
+                        : executeStatementAndAddRedirectInfo(statementPair.getRight()))
                 .collect(Collectors.toList())));
   }
 
@@ -256,13 +267,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected TSStatus loadFileV1(PipeTransferFileSealReqV1 req, String fileAbsolutePath)
+  protected TSStatus loadFileV1(final PipeTransferFileSealReqV1 req, final String fileAbsolutePath)
       throws FileNotFoundException {
     return loadTsFile(fileAbsolutePath);
   }
 
   @Override
-  protected TSStatus loadFileV2(PipeTransferFileSealReqV2 req, List<String> fileAbsolutePaths)
+  protected TSStatus loadFileV2(
+      final PipeTransferFileSealReqV2 req, final List<String> fileAbsolutePaths)
       throws IOException, IllegalPathException {
     return req instanceof PipeTransferTsFileSealWithModReq
         // TsFile's absolute path will be the second element
@@ -270,7 +282,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         : loadSchemaSnapShot(req.getParameters(), fileAbsolutePaths);
   }
 
-  private TSStatus loadTsFile(String fileAbsolutePath) throws FileNotFoundException {
+  private TSStatus loadTsFile(final String fileAbsolutePath) throws FileNotFoundException {
     final LoadTsFileStatement statement = new LoadTsFileStatement(fileAbsolutePath);
 
     statement.setDeleteAfterLoad(true);
@@ -281,7 +293,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus loadSchemaSnapShot(
-      Map<String, String> parameters, List<String> fileAbsolutePaths)
+      final Map<String, String> parameters, final List<String> fileAbsolutePaths)
       throws IllegalPathException, IOException {
     final SRStatementGenerator generator =
         SchemaRegionSnapshotParser.translate2Statements(
@@ -291,19 +303,30 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final Set<StatementType> executionTypes =
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
+
+    // Clear to avoid previous exceptions
+    batchVisitor.clear();
     final List<TSStatus> results = new ArrayList<>();
     while (generator.hasNext()) {
-      final Statement statement = generator.next();
-      if (executionTypes.contains(statement.getType())) {
-        // The statements do not contain AlterLogicalViewStatements
-        // Here we apply the statements as many as possible
-        results.add(executeStatementAndClassifyExceptions(statement));
+      final Statement originalStatement = generator.next();
+      if (!executionTypes.contains(originalStatement.getType())) {
+        continue;
       }
+
+      // The statements do not contain AlterLogicalViewStatements
+      // Here we apply the statements as many as possible
+      // Even if there are failed statements
+      batchVisitor
+          .process(originalStatement, null)
+          .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
     }
+    batchVisitor.getRemainBatches().stream()
+        .filter(Optional::isPresent)
+        .forEach(statement -> results.add(executeStatementAndClassifyExceptions(statement.get())));
     return PipeReceiverStatusHandler.getPriorStatus(results);
   }
 
-  private TPipeTransferResp handleTransferSchemaPlan(PipeTransferPlanNodeReq req) {
+  private TPipeTransferResp handleTransferSchemaPlan(final PipeTransferPlanNodeReq req) {
     // We may be able to skip the alter logical view's exception parsing because
     // the "AlterLogicalViewNode" is itself idempotent
     return req.getPlanNode() instanceof AlterLogicalViewNode
@@ -312,10 +335,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                 .alterLogicalViewByPipe((AlterLogicalViewNode) req.getPlanNode()))
         : new TPipeTransferResp(
             executeStatementAndClassifyExceptions(
-                new PipePlanToStatementVisitor().process(req.getPlanNode(), null)));
+                PLAN_TO_STATEMENT_VISITOR.process(req.getPlanNode(), null)));
   }
 
-  private TPipeTransferResp handleTransferConfigPlan(TPipeTransferReq req) {
+  private TPipeTransferResp handleTransferConfigPlan(final TPipeTransferReq req) {
     return ClusterConfigTaskExecutor.getInstance()
         .handleTransferConfigPlan(getConfigReceiverId(), req);
   }
@@ -333,10 +356,55 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return configReceiverId.get();
   }
 
-  private TSStatus executeStatementAndClassifyExceptions(Statement statement) {
+  /**
+   * For {@link InsertRowsStatement} and {@link InsertMultiTabletsStatement}, the returned {@link
+   * TSStatus} will use sub-status to record the endpoint for redirection. Each sub-status records
+   * the redirection endpoint for one device path, and the order is the same as the order of the
+   * device paths in the statement. However, this order is not guaranteed to be the same as in the
+   * request. So for each sub-status which needs to redirect, we record the device path using the
+   * message field.
+   */
+  private TSStatus executeStatementAndAddRedirectInfo(final InsertBaseStatement statement) {
+    final TSStatus result = executeStatementAndClassifyExceptions(statement);
+
+    if (result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+        && result.getSubStatusSize() > 0) {
+      final List<PartialPath> devicePaths;
+      if (statement instanceof InsertRowsStatement) {
+        devicePaths = ((InsertRowsStatement) statement).getDevicePaths();
+      } else if (statement instanceof InsertMultiTabletsStatement) {
+        devicePaths = ((InsertMultiTabletsStatement) statement).getDevicePaths();
+      } else {
+        LOGGER.warn(
+            "Receiver id = {}: Unsupported statement type {} for redirection.",
+            receiverId.get(),
+            statement);
+        return result;
+      }
+
+      if (devicePaths.size() == result.getSubStatusSize()) {
+        for (int i = 0; i < devicePaths.size(); ++i) {
+          if (result.getSubStatus().get(i).isSetRedirectNode()) {
+            result.getSubStatus().get(i).setMessage(devicePaths.get(i).getFullPath());
+          }
+        }
+      } else {
+        LOGGER.warn(
+            "Receiver id = {}: The number of device paths is not equal to sub-status in statement {}: {}.",
+            receiverId.get(),
+            statement,
+            result);
+      }
+    }
+
+    return result;
+  }
+
+  private TSStatus executeStatementAndClassifyExceptions(final Statement statement) {
     try {
       final TSStatus result = executeStatement(statement);
-      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return result;
       } else {
         LOGGER.warn(
@@ -344,15 +412,15 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             receiverId.get(),
             statement,
             result);
-        return statement.accept(statusVisitor, result);
+        return statement.accept(STATEMENT_STATUS_VISITOR, result);
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Receiver id = {}: Exception encountered while executing statement {}: ",
           receiverId.get(),
           statement,
           e);
-      return statement.accept(exceptionVisitor, e);
+      return statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
     }
   }
 
@@ -382,7 +450,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     if (Objects.nonNull(configReceiverId.get())) {
       try {
         ClusterConfigTaskExecutor.getInstance().handlePipeConfigClientExit(configReceiverId.get());
-      } catch (Exception e) {
+      } catch (final Exception e) {
         LOGGER.warn("Failed to handle config client (id = {}) exit", configReceiverId.get(), e);
       }
     }

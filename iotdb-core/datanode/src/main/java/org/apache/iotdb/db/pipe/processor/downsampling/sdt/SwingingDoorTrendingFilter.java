@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.processor.downsampling.sdt;
 
+import org.apache.iotdb.pipe.api.type.Binary;
+
 import java.util.Objects;
 
 public class SwingingDoorTrendingFilter<T> {
@@ -30,6 +32,7 @@ public class SwingingDoorTrendingFilter<T> {
    * open up
    */
   private double upperDoor;
+
   /**
    * The minimum curLowerSlope between the lastStoredPoint to the current point lowerDoor can only
    * open downward
@@ -92,7 +95,7 @@ public class SwingingDoorTrendingFilter<T> {
     }
 
     // For boolean and string type, we only compare the value
-    if (value instanceof Boolean || value instanceof String) {
+    if (value instanceof Boolean || value instanceof String || value instanceof Binary) {
       if (Objects.equals(lastStoredValue, value)) {
         return false;
       }

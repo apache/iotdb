@@ -60,7 +60,9 @@ public class SerializedEnrichedEvent {
     return enrichedTablets;
   }
 
-  /** @return true -> byte buffer is not null */
+  /**
+   * @return true -> byte buffer is not null
+   */
   public boolean serialize() {
     if (Objects.isNull(byteBuffer)) {
       try {

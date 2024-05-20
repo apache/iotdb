@@ -100,6 +100,10 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = schema;
   }
 
+  public MeasurementPath(String[] nodes) {
+    super(nodes);
+  }
+
   @Override
   public IMeasurementSchema getMeasurementSchema() {
     return measurementSchema;

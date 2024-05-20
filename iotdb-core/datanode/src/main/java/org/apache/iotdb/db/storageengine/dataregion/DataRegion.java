@@ -47,6 +47,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -97,6 +98,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionInfo;
 import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
@@ -201,18 +203,24 @@ public class DataRegion implements IDataRegionForQuery {
    * partitionLatestFlushedTimeForEachDevice)
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
+
   /** Condition to safely delete data region. */
   private final Condition deletedCondition = insertLock.writeLock().newCondition();
+
   /** Data region has been deleted or not. */
   private volatile boolean deleted = false;
+
   /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
   private final Object closeStorageGroupCondition = new Object();
+
   /**
    * Avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a read is executed.
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
+
   /** time partition id in the database -> {@link TsFileProcessor} for this time partition. */
   private final TreeMap<Long, TsFileProcessor> workSequenceTsFileProcessors = new TreeMap<>();
+
   /** time partition id in the database -> {@link TsFileProcessor} for this time partition. */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
 
@@ -225,10 +233,13 @@ public class DataRegion implements IDataRegionForQuery {
 
   /** data region id. */
   private final String dataRegionId;
+
   /** database name. */
   private final String databaseName;
+
   /** database system directory. */
   private File storageGroupSysDir;
+
   /** manage seqFileList and unSeqFileList. */
   private final TsFileManager tsFileManager;
 
@@ -242,15 +253,19 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private final HashMap<Long, VersionController> timePartitionIdVersionControllerMap =
       new HashMap<>();
+
   /**
    * When the data in a database is older than dataTTL, it is considered invalid and will be
    * eventually removed.
    */
   private long dataTTL = Long.MAX_VALUE;
+
   /** File system factory (local or hdfs). */
   private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+
   /** File flush policy. */
   private TsFileFlushPolicy fileFlushPolicy;
+
   /**
    * The max file versions in each partition. By recording this, if several IoTDB instances have the
    * same policy of closing file and their ingestion is identical, then files of the same version in
@@ -258,12 +273,16 @@ public class DataRegion implements IDataRegionForQuery {
    * across different instances. partition number -> max version number
    */
   private Map<Long, Long> partitionMaxFileVersions = new ConcurrentHashMap<>();
+
   /** database info for mem control. */
   private final DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
+
   /** whether it's ready from recovery. */
   private boolean isReady = false;
+
   /** close file listeners. */
   private List<CloseFileListener> customCloseFileListeners = Collections.emptyList();
+
   /** flush listeners. */
   private List<FlushListener> customFlushListeners = Collections.emptyList();
 
@@ -274,6 +293,8 @@ public class DataRegion implements IDataRegionForQuery {
    * one holds the insertWriteLock.
    */
   private String insertWriteLockHolder = "";
+
+  private volatile long directBufferMemoryCost = 0;
 
   private final AtomicBoolean isCompactionSelecting = new AtomicBoolean(false);
 
@@ -297,6 +318,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = dataRegionId;
     this.databaseName = databaseName;
     this.fileFlushPolicy = fileFlushPolicy;
+    acquireDirectBufferMemory();
 
     storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
     this.tsFileManager =
@@ -378,6 +400,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     /** number of already recovered files. */
     private long recoveredFilesNum;
+
     /** last recovery log time. */
     private long lastLogTime;
 
@@ -885,17 +908,13 @@ public class DataRegion implements IDataRegionForQuery {
               && insertRowNode.getTime()
                   > lastFlushTimeMap.getFlushedTime(timePartitionId, insertRowNode.getDeviceID());
 
-      Map<TsFileProcessor, Boolean> tsFileProcessorMapForFlushing = new HashMap<>();
-
       // insert to sequence or unSequence file
-      insertToTsFileProcessor(
-          insertRowNode, isSequence, timePartitionId, tsFileProcessorMapForFlushing);
+      TsFileProcessor tsFileProcessor =
+          insertToTsFileProcessor(insertRowNode, isSequence, timePartitionId);
 
       // check memtable size and may asyncTryToFlush the work memtable
-      for (Map.Entry<TsFileProcessor, Boolean> entry : tsFileProcessorMapForFlushing.entrySet()) {
-        if (entry.getKey().shouldFlush()) {
-          fileFlushPolicy.apply(this, entry.getKey(), entry.getValue());
-        }
+      if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
+        fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
     } finally {
       writeUnlock();
@@ -1105,18 +1124,12 @@ public class DataRegion implements IDataRegionForQuery {
             latestFlushedTime);
   }
 
-  private void insertToTsFileProcessor(
-      InsertRowNode insertRowNode,
-      boolean sequence,
-      long timePartitionId,
-      Map<TsFileProcessor, Boolean> tsFileProcessorMapForFlushing)
+  private TsFileProcessor insertToTsFileProcessor(
+      InsertRowNode insertRowNode, boolean sequence, long timePartitionId)
       throws WriteProcessException {
-    if (insertRowNode.allMeasurementFailed()) {
-      return;
-    }
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
-    if (tsFileProcessor == null) {
-      return;
+    if (tsFileProcessor == null || insertRowNode.allMeasurementFailed()) {
+      return null;
     }
     long[] costsForMetrics = new long[4];
     tsFileProcessor.insert(insertRowNode, costsForMetrics);
@@ -1125,18 +1138,17 @@ public class DataRegion implements IDataRegionForQuery {
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
 
-    tsFileProcessorMapForFlushing.put(tsFileProcessor, sequence);
-
     if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
           && insertRowNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
-        return;
+        return tsFileProcessor;
       }
       // disable updating last cache on follower
       long startTime = System.nanoTime();
       tryToUpdateInsertRowLastCache(insertRowNode);
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
     }
+    return tsFileProcessor;
   }
 
   private void tryToUpdateInsertRowLastCache(InsertRowNode node) {
@@ -1167,9 +1179,8 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void insertToTsFileProcessors(
       InsertRowsNode insertRowsNode, boolean[] areSequence, long[] timePartitionIds) {
-    List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
     long[] costsForMetrics = new long[4];
-    Map<TsFileProcessor, Boolean> tsFileProcessorMapForFlushing = new HashMap<>();
+    Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
     for (int i = 0; i < areSequence.length; i++) {
       InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
       if (insertRowNode.allMeasurementFailed()) {
@@ -1180,19 +1191,38 @@ public class DataRegion implements IDataRegionForQuery {
       if (tsFileProcessor == null) {
         continue;
       }
-      tsFileProcessorMapForFlushing.put(tsFileProcessor, areSequence[i]);
-      try {
-        tsFileProcessor.insert(insertRowNode, costsForMetrics);
-      } catch (WriteProcessException e) {
-        insertRowsNode.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-      }
-      executedInsertRowNodeList.add(insertRowNode);
+      int finalI = i;
+      tsFileProcessorMap.compute(
+          tsFileProcessor,
+          (k, v) -> {
+            if (v == null) {
+              v = new InsertRowsNode(insertRowsNode.getPlanNodeId());
+              v.setSearchIndex(insertRowNode.getSearchIndex());
+              v.setAligned(insertRowNode.isAligned());
+            }
+            v.addOneInsertRowNode(insertRowNode, finalI);
+            return v;
+          });
     }
 
-    // check memtable size and may asyncTryToFlush the work memtable
-    for (Map.Entry<TsFileProcessor, Boolean> entry : tsFileProcessorMapForFlushing.entrySet()) {
+    List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
+    for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
+      TsFileProcessor tsFileProcessor = entry.getKey();
+      InsertRowsNode subInsertRowsNode = entry.getValue();
+      try {
+        tsFileProcessor.insert(subInsertRowsNode, costsForMetrics);
+      } catch (WriteProcessException e) {
+        insertRowsNode
+            .getResults()
+            .put(
+                subInsertRowsNode.getInsertRowNodeIndexList().get(0),
+                RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      }
+      executedInsertRowNodeList.addAll(subInsertRowsNode.getInsertRowNodeList());
+
+      // check memtable size and may asyncTryToFlush the work memtable
       if (entry.getKey().shouldFlush()) {
-        fileFlushPolicy.apply(this, entry.getKey(), entry.getValue());
+        fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
     }
 
@@ -1548,13 +1578,13 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** delete tsfile */
-  public void syncDeleteDataFiles() {
+  public void syncDeleteDataFiles() throws TsFileProcessorException {
     logger.info(
         "{} will close all files for deleting data files", databaseName + "-" + dataRegionId);
     writeLock("syncDeleteDataFiles");
     try {
-
-      syncCloseAllWorkingTsFileProcessors();
+      forceCloseAllWorkingTsFileProcessors();
+      waitClosingTsFileProcessorFinished();
       // normally, mergingModification is just need to be closed by after a merge task is finished.
       // we close it here just for IT test.
       closeAllResources();
@@ -1574,6 +1604,14 @@ public class DataRegion implements IDataRegionForQuery {
       this.tsFileManager.clear();
       lastFlushTimeMap.clearFlushedTime();
       lastFlushTimeMap.clearGlobalFlushedTime();
+      TimePartitionManager.getInstance()
+          .removeTimePartitionInfo(new DataRegionId(Integer.parseInt(dataRegionId)));
+    } catch (InterruptedException e) {
+      logger.error(
+          "CloseFileNodeCondition error occurs while waiting for closing the storage " + "group {}",
+          databaseName + "-" + dataRegionId,
+          e);
+      Thread.currentThread().interrupt();
     } finally {
       writeUnlock();
     }
@@ -1703,23 +1741,7 @@ public class DataRegion implements IDataRegionForQuery {
   public void syncCloseAllWorkingTsFileProcessors() {
     try {
       List<Future<?>> tsFileProcessorsClosingFutures = asyncCloseAllWorkingTsFileProcessors();
-      long startTime = System.currentTimeMillis();
-      while (!closingSequenceTsFileProcessor.isEmpty()
-          || !closingUnSequenceTsFileProcessor.isEmpty()) {
-        synchronized (closeStorageGroupCondition) {
-          // double check to avoid unnecessary waiting
-          if (!closingSequenceTsFileProcessor.isEmpty()
-              || !closingUnSequenceTsFileProcessor.isEmpty()) {
-            closeStorageGroupCondition.wait(60_000);
-          }
-        }
-        if (System.currentTimeMillis() - startTime > 60_000) {
-          logger.warn(
-              "{} has spent {}s to wait for closing all TsFiles.",
-              databaseName + "-" + this.dataRegionId,
-              (System.currentTimeMillis() - startTime) / 1000);
-        }
-      }
+      waitClosingTsFileProcessorFinished();
       for (Future<?> f : tsFileProcessorsClosingFutures) {
         if (f != null) {
           f.get();
@@ -1734,8 +1756,28 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  private void waitClosingTsFileProcessorFinished() throws InterruptedException {
+    long startTime = System.currentTimeMillis();
+    while (!closingSequenceTsFileProcessor.isEmpty()
+        || !closingUnSequenceTsFileProcessor.isEmpty()) {
+      synchronized (closeStorageGroupCondition) {
+        // double check to avoid unnecessary waiting
+        if (!closingSequenceTsFileProcessor.isEmpty()
+            || !closingUnSequenceTsFileProcessor.isEmpty()) {
+          closeStorageGroupCondition.wait(60_000);
+        }
+      }
+      if (System.currentTimeMillis() - startTime > 60_000) {
+        logger.warn(
+            "{} has spent {}s to wait for closing all TsFiles.",
+            databaseName + "-" + this.dataRegionId,
+            (System.currentTimeMillis() - startTime) / 1000);
+      }
+    }
+  }
+
   /** close all working tsfile processors */
-  public List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
+  List<Future<?>> asyncCloseAllWorkingTsFileProcessors() {
     writeLock("asyncCloseAllWorkingTsFileProcessors");
     List<Future<?>> futures = new ArrayList<>();
     try {
@@ -1771,6 +1813,7 @@ public class DataRegion implements IDataRegionForQuery {
           new ArrayList<>(workUnsequenceTsFileProcessors.values())) {
         tsFileProcessor.putMemTableBackAndClose();
       }
+      WritingMetrics.getInstance().recordActiveTimePartitionCount(-1);
     } finally {
       writeUnlock();
     }
@@ -2766,6 +2809,8 @@ public class DataRegion implements IDataRegionForQuery {
         tsFileToLoad.getAbsolutePath(),
         targetFile.getAbsolutePath());
 
+    LoadTsFileRateLimiter.getInstance().acquire(tsFileResource.getTsFile().length());
+
     // move file from sync dir to data dir
     if (!targetFile.getParentFile().exists()) {
       targetFile.getParentFile().mkdirs();
@@ -2846,7 +2891,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     // help tsfile resource degrade
-    TsFileResourceManager.getInstance().registerSealedTsFileResource(tsFileResource);
+    tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
 
     tsFileManager.add(tsFileResource, false);
 
@@ -3078,7 +3123,8 @@ public class DataRegion implements IDataRegionForQuery {
       if (deleted) {
         return;
       }
-      Map<TsFileProcessor, Boolean> tsFileProcessorMapForFlushing = new HashMap<>();
+      long[] costsForMetrics = new long[4];
+      Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
         if (!isAlive(insertRowNode.getTime())) {
@@ -3116,22 +3162,58 @@ public class DataRegion implements IDataRegionForQuery {
             config.isEnableSeparateData()
                 && insertRowNode.getTime()
                     > lastFlushTimeMap.getFlushedTime(timePartitionId, insertRowNode.getDeviceID());
-
-        // insert to sequence or unSequence file
+        TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, isSequence);
+        if (tsFileProcessor == null) {
+          continue;
+        }
+        int finalI = i;
+        tsFileProcessorMap.compute(
+            tsFileProcessor,
+            (k, v) -> {
+              if (v == null) {
+                v = new InsertRowsNode(insertRowsOfOneDeviceNode.getPlanNodeId());
+                v.setSearchIndex(insertRowNode.getSearchIndex());
+                v.setAligned(insertRowNode.isAligned());
+              }
+              v.addOneInsertRowNode(insertRowNode, finalI);
+              return v;
+            });
+      }
+      List<InsertRowNode> executedInsertRowNodeList = new ArrayList<>();
+      for (Map.Entry<TsFileProcessor, InsertRowsNode> entry : tsFileProcessorMap.entrySet()) {
+        TsFileProcessor tsFileProcessor = entry.getKey();
+        InsertRowsNode subInsertRowsNode = entry.getValue();
         try {
-          insertToTsFileProcessor(
-              insertRowNode, isSequence, timePartitionId, tsFileProcessorMapForFlushing);
+          tsFileProcessor.insert(subInsertRowsNode, costsForMetrics);
         } catch (WriteProcessException e) {
           insertRowsOfOneDeviceNode
               .getResults()
-              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+              .put(
+                  subInsertRowsNode.getInsertRowNodeIndexList().get(0),
+                  RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
+        executedInsertRowNodeList.addAll(subInsertRowsNode.getInsertRowNodeList());
+
+        // check memtable size and may asyncTryToFlush the work memtable
+        if (tsFileProcessor.shouldFlush()) {
+          fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
         }
       }
-      // check memtable size and may asyncTryToFlush the work memtable
-      for (Map.Entry<TsFileProcessor, Boolean> entry : tsFileProcessorMapForFlushing.entrySet()) {
-        if (entry.getKey().shouldFlush()) {
-          fileFlushPolicy.apply(this, entry.getKey(), entry.getValue());
+
+      PERFORMANCE_OVERVIEW_METRICS.recordCreateMemtableBlockCost(costsForMetrics[0]);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
+        if ((config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+            && insertRowsOfOneDeviceNode.isSyncFromLeaderWhenUsingIoTConsensus())) {
+          return;
         }
+        // disable updating last cache on follower
+        startTime = System.nanoTime();
+        tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
+        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+            System.nanoTime() - startTime);
       }
     } finally {
       writeUnlock();
@@ -3235,7 +3317,9 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /** @return the disk space occupied by this data region, unit is MB */
+  /**
+   * @return the disk space occupied by this data region, unit is MB
+   */
   public long countRegionDiskSize() {
     AtomicLong diskSize = new AtomicLong(0);
     TierManager.getInstance()
@@ -3390,10 +3474,36 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("markDeleted");
     try {
       deleted = true;
+      releaseDirectBufferMemory();
       deletedCondition.signalAll();
     } finally {
       writeUnlock();
     }
+  }
+
+  private void acquireDirectBufferMemory() throws DataRegionException {
+    long acquireDirectBufferMemCost = 0;
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+      acquireDirectBufferMemCost = config.getWalBufferSize();
+    } else if (config
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      acquireDirectBufferMemCost = config.getDataRatisConsensusLogAppenderBufferSizeMax();
+    }
+    if (!SystemInfo.getInstance().addDirectBufferMemoryCost(acquireDirectBufferMemCost)) {
+      throw new DataRegionException(
+          "Total allocated memory for direct buffer will be "
+              + (SystemInfo.getInstance().getDirectBufferMemoryCost() + acquireDirectBufferMemCost)
+              + ", which is greater than limit mem cost: "
+              + SystemInfo.getInstance().getTotalDirectBufferMemorySizeLimit());
+    }
+    this.directBufferMemoryCost = acquireDirectBufferMemCost;
+  }
+
+  private void releaseDirectBufferMemory() {
+    SystemInfo.getInstance().decreaseDirectBufferMemoryCost(directBufferMemoryCost);
+    // avoid repeated deletion
+    this.directBufferMemoryCost = 0;
   }
 
   /* Be careful, the thread that calls this method may not hold the write lock!!*/

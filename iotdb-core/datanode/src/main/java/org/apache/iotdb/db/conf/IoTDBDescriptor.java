@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -45,6 +46,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -164,11 +166,12 @@ public class IoTDBDescriptor {
     try {
       return new URL(urlString);
     } catch (MalformedURLException e) {
+      LOGGER.warn("get url failed", e);
       return null;
     }
   }
 
-  /** load an property file and set TsfileDBConfig variables. */
+  /** load a property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
     URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
@@ -416,6 +419,9 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "max_waiting_time_when_insert_blocked",
                 Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
+
+    String offHeapMemoryStr = System.getProperty("OFF_HEAP_MEMORY");
+    conf.setMaxOffHeapMemoryBytes(MemUtils.strToBytesCnt(offHeapMemoryStr));
 
     conf.setIoTaskQueueSizeForFlushing(
         Integer.parseInt(
@@ -913,6 +919,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_clean_up_task_execution_delay_time_seconds",
                 String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
+    conf.setLoadWriteThroughputBytesPerSecond(
+        Double.parseDouble(
+            properties.getProperty(
+                "load_write_throughput_bytes_per_sec",
+                String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
@@ -1051,6 +1062,11 @@ public class IoTDBDescriptor {
     loadIoTConsensusProps(properties);
   }
 
+  private void reloadConsensusProps(Properties properties) {
+    loadIoTConsensusProps(properties);
+    DataRegionConsensusImpl.reloadConsensusConfig();
+  }
+
   private void loadIoTConsensusProps(Properties properties) {
     conf.setMaxLogEntriesNumPerBatch(
         Integer.parseInt(
@@ -1155,7 +1171,7 @@ public class IoTDBDescriptor {
     conf.setCompactionWriteThroughputMbPerSec(
         Integer.parseInt(
             properties.getProperty(
-                "merge_write_throughput_mb_per_sec",
+                "compaction_write_throughput_mb_per_sec",
                 Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
     // update compaction_read_operation_per_sec
@@ -1699,6 +1715,12 @@ public class IoTDBDescriptor {
                   "load_clean_up_task_execution_delay_time_seconds",
                   String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
 
+      conf.setLoadWriteThroughputBytesPerSecond(
+          Double.parseDouble(
+              properties.getProperty(
+                  "load_write_throughput_bytes_per_sec",
+                  String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
+
       // update merge_threshold_of_explain_analyze
       conf.setMergeThresholdOfExplainAnalyze(
           Integer.parseInt(
@@ -1706,6 +1728,8 @@ public class IoTDBDescriptor {
                   "merge_threshold_of_explain_analyze",
                   String.valueOf(conf.getMergeThresholdOfExplainAnalyze()))));
 
+      // update Consensus config
+      reloadConsensusProps(properties);
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
@@ -1848,7 +1872,8 @@ public class IoTDBDescriptor {
           throw new RuntimeException(
               "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
                   + " should be an integer, which is "
-                  + queryMemoryAllocateProportion);
+                  + queryMemoryAllocateProportion,
+              e);
         }
       }
     }
@@ -2020,7 +2045,8 @@ public class IoTDBDescriptor {
         throw new RuntimeException(
             "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion"
                 + " should be an integer, which is "
-                + readerTransformerCollectorMemoryProportion);
+                + readerTransformerCollectorMemoryProportion,
+            e);
       }
     }
   }
@@ -2125,7 +2151,8 @@ public class IoTDBDescriptor {
         configNodeUrls = configNodeUrls.trim();
         conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(configNodeUrls).get(0));
       } catch (BadNodeUrlException e) {
-        LOGGER.error("ConfigNodes are set in wrong format, please set them like 127.0.0.1:10710");
+        LOGGER.error(
+            "ConfigNodes are set in wrong format, please set them like 127.0.0.1:10710", e);
       }
     } else {
       throw new IOException(

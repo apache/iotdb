@@ -40,8 +40,10 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class SnapshotLoader {
@@ -288,8 +290,16 @@ public class SnapshotLoader {
   private void createLinksFromSnapshotToSourceDir(
       String targetSuffix, File[] files, FolderManager folderManager)
       throws DiskSpaceInsufficientException, IOException {
+    Map<String, String> fileTarget = new HashMap<>();
     for (File file : files) {
-      String dataDir = folderManager.getNextFolder();
+      String fileKey = file.getName().split("\\.")[0];
+      String dataDir;
+      if (fileTarget.containsKey(fileKey)) {
+        dataDir = fileTarget.get(fileKey);
+      } else {
+        dataDir = folderManager.getNextFolder();
+        fileTarget.put(fileKey, dataDir);
+      }
       File targetFile =
           new File(dataDir + File.separator + targetSuffix + File.separator + file.getName());
       if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs()) {

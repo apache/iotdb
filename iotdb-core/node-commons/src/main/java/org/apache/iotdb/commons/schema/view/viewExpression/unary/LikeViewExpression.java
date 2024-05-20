@@ -71,6 +71,7 @@ public class LikeViewExpression extends UnaryViewExpression {
       throw new RuntimeException(e);
     }
   }
+
   // endregion
 
   // region common interfaces that have to be implemented
@@ -107,6 +108,7 @@ public class LikeViewExpression extends UnaryViewExpression {
     ReadWriteIOUtils.write(patternString, stream);
     ReadWriteIOUtils.write(isNot, stream);
   }
+
   // endregion
 
   public String getPatternString() {

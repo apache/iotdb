@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeE
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeAbstractConnectorSubtask;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -48,10 +49,12 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeSubtask.class);
 
+  private final String pipeName;
   private final PipeTaskMeta pipeTaskMeta;
 
   // Pipe plugins for this subtask
   private PipeExtractor extractor;
+
   // TODO: currently unused
   @SuppressWarnings("unused")
   private PipeProcessor processor;
@@ -66,11 +69,15 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
       throws Exception {
     // We initialize outputPipeConnector by initConnector()
     super(pipeName, creationTime, null);
+    this.pipeName = pipeName;
     this.pipeTaskMeta = pipeTaskMeta;
 
     initExtractor(extractorAttributes);
     initProcessor(processorAttributes);
     initConnector(connectorAttributes);
+
+    PipeEventCommitManager.getInstance()
+        .register(pipeName, creationTime, CONFIG_REGION_ID.getId(), pipeName + "_" + creationTime);
   }
 
   private void initExtractor(Map<String, String> extractorAttributes) throws Exception {
@@ -79,15 +86,27 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     // 1. Construct extractor
     extractor = PipeConfigNodeAgent.plugin().reflectExtractor(extractorParameters);
 
-    // 2. Validate extractor parameters
-    extractor.validate(new PipeParameterValidator(extractorParameters));
+    try {
+      // 2. Validate extractor parameters
+      extractor.validate(new PipeParameterValidator(extractorParameters));
 
-    // 3. Customize extractor
-    final PipeTaskRuntimeConfiguration runtimeConfiguration =
-        new PipeTaskRuntimeConfiguration(
-            new PipeTaskExtractorRuntimeEnvironment(
-                taskID, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
-    extractor.customize(extractorParameters, runtimeConfiguration);
+      // 3. Customize extractor
+      final PipeTaskRuntimeConfiguration runtimeConfiguration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskExtractorRuntimeEnvironment(
+                  taskID, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
+      extractor.customize(extractorParameters, runtimeConfiguration);
+    } catch (final Exception e) {
+      try {
+        extractor.close();
+      } catch (Exception closeException) {
+        LOGGER.warn(
+            "Failed to close extractor after failed to initialize extractor. "
+                + "Ignore this exception.",
+            closeException);
+      }
+      throw e;
+    }
   }
 
   private void initProcessor(Map<String, String> processorAttributes) {
@@ -113,17 +132,29 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     // 1. Construct connector
     outputPipeConnector = PipeConfigNodeAgent.plugin().reflectConnector(connectorParameters);
 
-    // 2. Validate connector parameters
-    outputPipeConnector.validate(new PipeParameterValidator(connectorParameters));
+    try {
+      // 2. Validate connector parameters
+      outputPipeConnector.validate(new PipeParameterValidator(connectorParameters));
 
-    // 3. Customize connector
-    final PipeTaskRuntimeConfiguration runtimeConfiguration =
-        new PipeTaskRuntimeConfiguration(
-            new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
-    outputPipeConnector.customize(connectorParameters, runtimeConfiguration);
+      // 3. Customize connector
+      final PipeTaskRuntimeConfiguration runtimeConfiguration =
+          new PipeTaskRuntimeConfiguration(
+              new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
+      outputPipeConnector.customize(connectorParameters, runtimeConfiguration);
 
-    // 4. Handshake
-    outputPipeConnector.handshake();
+      // 4. Handshake
+      outputPipeConnector.handshake();
+    } catch (final Exception e) {
+      try {
+        outputPipeConnector.close();
+      } catch (final Exception closeException) {
+        LOGGER.warn(
+            "Failed to close connector after failed to initialize connector. "
+                + "Ignore this exception.",
+            closeException);
+      }
+      throw e;
+    }
   }
 
   /**
@@ -179,6 +210,9 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
   @Override
   public void close() {
     isClosed.set(true);
+
+    PipeEventCommitManager.getInstance()
+        .deregister(pipeName, creationTime, CONFIG_REGION_ID.getId());
 
     try {
       extractor.close();
