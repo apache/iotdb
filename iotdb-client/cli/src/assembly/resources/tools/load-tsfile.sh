@@ -90,7 +90,7 @@ while true; do
 done
 
 if [ -z "${load_dir_param}" ]; then
-    echo "A Loading file path/directory path is required."
+    echo "-f option must be set!"
     echo "${HELP}"
 fi
 
