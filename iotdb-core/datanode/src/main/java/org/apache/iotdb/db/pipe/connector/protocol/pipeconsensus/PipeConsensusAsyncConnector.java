@@ -20,14 +20,16 @@
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.client.AsyncPipeConsensusServiceClient;
-import org.apache.iotdb.consensus.pipe.client.manager.PipeConsensusAsyncClientManager;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTabletBatchEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTabletInsertNodeEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTabletRawEventHandler;
@@ -101,7 +103,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
 
   private PipeConsensusSyncConnector retryConnector;
 
-  private PipeConsensusAsyncClientManager asyncTransferClientManager;
+  private IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> asyncTransferClientManager;
 
   private PipeConsensusAsyncBatchReqBuilder tabletBatchBuilder;
 
@@ -115,7 +117,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     // retain the implementation of list to cope with possible future expansion
     retryConnector = new PipeConsensusSyncConnector(nodeUrls);
     retryConnector.customize(parameters, configuration);
-    asyncTransferClientManager = PipeConsensusAsyncClientManager.getInstance();
+    asyncTransferClientManager =
+        ((PipeConsensus) DataRegionConsensusImpl.getInstance()).getAsyncClientManager();
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeConsensusAsyncBatchReqBuilder(parameters);

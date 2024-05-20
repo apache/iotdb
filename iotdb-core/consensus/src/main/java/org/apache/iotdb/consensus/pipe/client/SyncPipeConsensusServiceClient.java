@@ -75,7 +75,7 @@ public class SyncPipeConsensusServiceClient extends PipeConsensusIService.Client
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     clientManager.returnClient(endpoint, this);
   }
 

@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.consensus.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
@@ -30,9 +33,15 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
+import org.apache.iotdb.consensus.pipe.client.SyncPipeConsensusServiceClient;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeManager;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ProgressIndexManager;
+import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToCreateConsensusPipeReq;
+import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToCreateConsensusPipeResp;
+import org.apache.iotdb.consensus.pipe.thrift.TSetActiveReq;
+import org.apache.iotdb.consensus.pipe.thrift.TSetActiveResp;
+import org.apache.iotdb.rpc.RpcUtils;
 
 import com.google.common.collect.ImmutableMap;
 import org.slf4j.Logger;
@@ -47,8 +56,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeManager.getConsensusPipeName;
-
 /** PipeConsensusServerImpl is a consensus server implementation for pipe consensus. */
 public class PipeConsensusServerImpl {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusServerImpl.class);
@@ -57,12 +64,12 @@ public class PipeConsensusServerImpl {
   private final IStateMachine stateMachine;
   private final Lock stateMachineLock = new ReentrantLock();
   private final PipeConsensusPeerManager peerManager;
-  private final PipeConsensusConfig config;
   private final AtomicBoolean active;
   private final AtomicBoolean isStarted;
   private final String consensusGroupId;
   private final ConsensusPipeManager consensusPipeManager;
   private final ProgressIndexManager progressIndexManager;
+  private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncClientManager;
 
   private ProgressIndex cachedProgressIndex = MinimumProgressIndex.INSTANCE;
 
@@ -72,17 +79,18 @@ public class PipeConsensusServerImpl {
       String storageDir,
       List<Peer> configuration,
       PipeConsensusConfig config,
-      ConsensusPipeManager consensusPipeManager)
+      ConsensusPipeManager consensusPipeManager,
+      IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncClientManager)
       throws IOException {
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
     this.peerManager = new PipeConsensusPeerManager(storageDir, configuration);
-    this.config = config;
     this.active = new AtomicBoolean(true);
     this.isStarted = new AtomicBoolean(false);
     this.consensusGroupId = thisNode.getGroupId().toString();
     this.consensusPipeManager = consensusPipeManager;
     this.progressIndexManager = config.getPipe().getProgressIndexManager();
+    this.syncClientManager = syncClientManager;
 
     if (configuration.isEmpty()) {
       peerManager.recover();
@@ -276,17 +284,55 @@ public class PipeConsensusServerImpl {
     return stateMachine.read(request);
   }
 
-  public void inactivatePeer(Peer peer) throws ConsensusGroupModifyPeerException {
-    // TODO: thrift inactive peer
-  }
-
-  public void activatePeer(Peer peer) throws ConsensusGroupModifyPeerException {
-    // TODO: thrift activate peer
+  public void setRemotePeerActive(Peer peer, boolean isActive)
+      throws ConsensusGroupModifyPeerException {
+    try (SyncPipeConsensusServiceClient client =
+        syncClientManager.borrowClient(peer.getEndpoint())) {
+      try {
+        TSetActiveResp res =
+            client.setActive(
+                new TSetActiveReq(peer.getGroupId().convertToTConsensusGroupId(), isActive));
+        if (!RpcUtils.SUCCESS_STATUS.equals(res.getStatus())) {
+          throw new ConsensusGroupModifyPeerException(
+              String.format(
+                  "error when set peer %s to active %s. result status: %s",
+                  peer, isActive, res.getStatus()));
+        }
+      } catch (Exception e) {
+        throw new ConsensusGroupModifyPeerException(
+            String.format("error when set peer %s to active %s", peer, isActive), e);
+      }
+    } catch (ClientManagerException e) {
+      throw new ConsensusGroupModifyPeerException(e);
+    }
   }
 
   public void notifyPeersToCreateConsensusPipes(Peer targetPeer)
       throws ConsensusGroupModifyPeerException {
-    // TODO: thrift notify peers to create consensus pipes
+    final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
+    for (Peer peer : otherPeers) {
+      try (SyncPipeConsensusServiceClient client =
+          syncClientManager.borrowClient(peer.getEndpoint())) {
+        try {
+          TNotifyPeerToCreateConsensusPipeResp resp =
+              client.notifyPeerToCreateConsensusPipe(
+                  new TNotifyPeerToCreateConsensusPipeReq(
+                      thisNode.getGroupId().convertToTConsensusGroupId(),
+                      targetPeer.getGroupId().convertToTConsensusGroupId(),
+                      targetPeer.getEndpoint(),
+                      targetPeer.getNodeId()));
+          if (!RpcUtils.SUCCESS_STATUS.equals(resp.getStatus())) {
+            throw new ConsensusGroupModifyPeerException(
+                String.format("error when notify peer %s to create consensus pipe", peer));
+          }
+        } catch (Exception e) {
+          throw new ConsensusGroupModifyPeerException(
+              String.format("error when notify peer %s to create consensus pipe", peer), e);
+        }
+      } catch (ClientManagerException e) {
+        throw new ConsensusGroupModifyPeerException(e);
+      }
+    }
 
     createConsensusPipeToTargetPeer(targetPeer);
   }
@@ -341,17 +387,18 @@ public class PipeConsensusServerImpl {
   }
 
   public boolean isConsensusPipesTransferCompleted(
-      List<Peer> targetPeer, boolean refreshCachedProgressIndex) {
+      List<String> consensusPipeNames, boolean refreshCachedProgressIndex) {
     if (refreshCachedProgressIndex) {
-      cachedProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
-          progressIndexManager.getMaxAssignedProgressIndex(thisNode.getGroupId()));
+      cachedProgressIndex =
+          cachedProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+              progressIndexManager.getMaxAssignedProgressIndex(thisNode.getGroupId()));
     }
 
-    return targetPeer.stream()
+    return consensusPipeNames.stream()
         .noneMatch(
-            peer ->
+            name ->
                 cachedProgressIndex.isAfter(
-                    progressIndexManager.getProgressIndex(getConsensusPipeName(thisNode, peer))));
+                    progressIndexManager.getProgressIndex(new ConsensusPipeName(name))));
   }
 
   public boolean isReadOnly() {
