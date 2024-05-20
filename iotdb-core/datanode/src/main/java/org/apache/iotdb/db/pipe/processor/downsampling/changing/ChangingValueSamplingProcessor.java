@@ -44,8 +44,7 @@ public class ChangingValueSamplingProcessor extends DownSamplingProcessor {
 
   /**
    * The maximum absolute difference the user set if the data's value is within
-   * compressionDeviation, it will be compressed and discarded after compression, it will only store
-   * out of range (time, data) to form the trend
+   * compressionDeviation, it will be compressed and discarded after compression
    */
   private double compressionDeviation;
 
@@ -72,54 +71,45 @@ public class ChangingValueSamplingProcessor extends DownSamplingProcessor {
     final PipeParameters parameters = validator.getParameters();
     compressionDeviation =
         parameters.getDoubleOrDefault(
-            PipeProcessorConstant.PROCESSOR_CV_COMPRESSION_DEVIATION_KEY,
-            PipeProcessorConstant.PROCESSOR_CV_COMPRESSION_DEVIATION_DEFAULT_VALUE);
+            PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_COMPRESSION_DEVIATION,
+            PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_COMPRESSION_DEVIATION_DEFAULT_VALUE);
     compressionMinTimeInterval =
         parameters.getLongOrDefault(
-            PipeProcessorConstant.PROCESSOR_CV_MIN_TIME_INTERVAL_KEY,
-            PipeProcessorConstant.PROCESSOR_CV_MIN_TIME_INTERVAL_DEFAULT_VALUE);
+            PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MIN_TIME_INTERVAL_KEY,
+            PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MIN_TIME_INTERVAL_DEFAULT_VALUE);
     compressionMaxTimeInterval =
         parameters.getLongOrDefault(
-            PipeProcessorConstant.PROCESSOR_CV_MAX_TIME_INTERVAL_KEY,
-            PipeProcessorConstant.PROCESSOR_CV_MAX_TIME_INTERVAL_DEFAULT_VALUE);
-
-    if (compressionMinTimeInterval == -1) {
-      compressionMinTimeInterval =
-          PipeProcessorConstant.PROCESSOR_CV_MIN_TIME_INTERVAL_DEFAULT_VALUE;
-    }
-
-    if (compressionMaxTimeInterval == -1) {
-      compressionMaxTimeInterval =
-          PipeProcessorConstant.PROCESSOR_CV_MAX_TIME_INTERVAL_DEFAULT_VALUE;
-    }
+            PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MAX_TIME_INTERVAL_KEY,
+            PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MAX_TIME_INTERVAL_DEFAULT_VALUE);
 
     validator
         .validate(
             compressionDeviation -> (Double) compressionDeviation >= 0,
             String.format(
                 "%s must be >= 0, but got %s",
-                PipeProcessorConstant.PROCESSOR_CV_COMPRESSION_DEVIATION_KEY, compressionDeviation),
+                PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_COMPRESSION_DEVIATION,
+                compressionDeviation),
             compressionDeviation)
         .validate(
             compressionMinTimeInterval -> (Long) compressionMinTimeInterval >= 0,
             String.format(
                 "%s must be >= 0, but got %s",
-                PipeProcessorConstant.PROCESSOR_CV_MIN_TIME_INTERVAL_KEY,
+                PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MIN_TIME_INTERVAL_KEY,
                 compressionMinTimeInterval),
             compressionMinTimeInterval)
         .validate(
             compressionMaxTimeInterval -> (Long) compressionMaxTimeInterval >= 0,
             String.format(
                 "%s must be >= 0, but got %s",
-                PipeProcessorConstant.PROCESSOR_CV_MAX_TIME_INTERVAL_KEY,
+                PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MAX_TIME_INTERVAL_KEY,
                 compressionMaxTimeInterval),
             compressionMaxTimeInterval)
         .validate(
             minMaxPair -> (Long) minMaxPair[0] <= (Long) minMaxPair[1],
             String.format(
                 "%s must be <= %s, but got %s and %s",
-                PipeProcessorConstant.PROCESSOR_CV_MIN_TIME_INTERVAL_KEY,
-                PipeProcessorConstant.PROCESSOR_CV_MAX_TIME_INTERVAL_KEY,
+                PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MIN_TIME_INTERVAL_KEY,
+                PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MAX_TIME_INTERVAL_KEY,
                 compressionMinTimeInterval,
                 compressionMaxTimeInterval),
             compressionMinTimeInterval,
@@ -130,14 +120,15 @@ public class ChangingValueSamplingProcessor extends DownSamplingProcessor {
   public void customize(
       PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {
     super.customize(parameters, configuration);
+
     LOGGER.info(
         "ChangingValueSamplingProcessor in {} is initialized with {}: {}, {}: {}, {}: {}.",
         dataBaseNameWithPathSeparator,
-        PipeProcessorConstant.PROCESSOR_CV_COMPRESSION_DEVIATION_KEY,
+        PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_COMPRESSION_DEVIATION,
         compressionDeviation,
-        PipeProcessorConstant.PROCESSOR_CV_MIN_TIME_INTERVAL_KEY,
+        PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MIN_TIME_INTERVAL_KEY,
         compressionMinTimeInterval,
-        PipeProcessorConstant.PROCESSOR_CV_MAX_TIME_INTERVAL_KEY,
+        PipeProcessorConstant.PROCESSOR_CHANGING_VALUE_MAX_TIME_INTERVAL_KEY,
         compressionMaxTimeInterval);
   }
 

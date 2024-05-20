@@ -42,7 +42,6 @@ public class ChangingValueFilter<T> {
   }
 
   private void init(long firstTimestamp, T firstValue) {
-
     lastStoredTimestamp = firstTimestamp;
     lastStoredValue = firstValue;
   }
@@ -57,10 +56,7 @@ public class ChangingValueFilter<T> {
   }
 
   private boolean tryFilter(long timestamp, T value) {
-    final long timeDiff = timestamp - lastStoredTimestamp;
-    if (timeDiff < 0) {
-      return false;
-    }
+    final long timeDiff = Math.abs(timestamp - lastStoredTimestamp);
 
     if (timeDiff <= processor.getCompressionMinTimeInterval()) {
       return false;
@@ -81,15 +77,11 @@ public class ChangingValueFilter<T> {
       return true;
     }
 
-    // For other numerical types, we compare the value and the time difference
-    final double doubleValue = Double.parseDouble(value.toString());
-    final double lastStoredDoubleValue = Double.parseDouble(lastStoredValue.toString());
-    final double valueDiff = doubleValue - lastStoredDoubleValue;
-
-    if (Math.abs(valueDiff) > processor.getCompressionDeviation()) {
-      lastStoredTimestamp = timestamp;
-      lastStoredValue = value;
-
+    // For other numerical types, we compare the value difference
+    if (Math.abs(
+            Double.parseDouble(lastStoredValue.toString()) - Double.parseDouble(value.toString()))
+        > processor.getCompressionDeviation()) {
+      reset(timestamp, value);
       return true;
     }
 
