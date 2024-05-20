@@ -65,12 +65,4 @@ public class TVColumns {
   public boolean isConstant() {
     return isConstant;
   }
-
-  public Column[] getAllColumns() {
-    if (isConstant) {
-      return new Column[] {valueColumn};
-    } else {
-      return new Column[] {valueColumn, timeColumn};
-    }
-  }
 }
