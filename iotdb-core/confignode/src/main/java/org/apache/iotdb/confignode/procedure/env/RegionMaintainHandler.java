@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
@@ -411,10 +412,12 @@ public class RegionMaintainHandler {
       }
     }
     LOGGER.warn(
-        "{} task {} cannot contact to DataNode {}",
+        "{} task {} cannot get task report from DataNode {}, last report time is {} ago",
         REGION_MIGRATE_PROCESS,
         taskId,
-        dataNodeLocation);
+        dataNodeLocation,
+        CommonDateTimeUtils.convertMillisecondToDurationStr(
+            (System.nanoTime() - lastReportTime) / 1000));
     TRegionMigrateResult report = new TRegionMigrateResult();
     report.setTaskStatus(TRegionMaintainTaskStatus.FAIL);
     report.setFailedNodeAndReason(new HashMap<>());
