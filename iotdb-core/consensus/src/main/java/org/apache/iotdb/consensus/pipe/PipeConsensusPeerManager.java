@@ -112,7 +112,7 @@ public class PipeConsensusPeerManager {
   }
 
   public void removeAndPersist(Peer peer) throws IOException {
-    Files.delete(Paths.get(storageDir, generateConfigurationFileName(peer)));
+    Files.deleteIfExists(Paths.get(storageDir, generateConfigurationFileName(peer)));
     peers.remove(peer);
   }
 

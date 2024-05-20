@@ -45,6 +45,48 @@ struct TPipeConsensusBatchTransferResp {
   1:required list<TPipeConsensusTransferResp> batchResps
 }
 
+struct TSetActiveReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required bool isActive
+}
+
+struct TSetActiveResp {
+  1: required common.TSStatus status
+}
+
+struct TNotifyPeerToCreateConsensusPipeReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required common.TConsensusGroupId targetPeerConsensusGroupId
+  3: required common.TEndPoint targetPeerEndPoint
+  4: required i32 targetPeerNodeId
+}
+
+struct TNotifyPeerToCreateConsensusPipeResp {
+  1: required common.TSStatus status
+}
+
+struct TNotifyPeerToDropConsensusPipeReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required common.TConsensusGroupId targetPeerConsensusGroupId
+  3: required common.TEndPoint targetPeerEndPoint
+  4: required i32 targetPeerNodeId
+}
+
+struct TNotifyPeerToDropConsensusPipeResp {
+  1: required common.TSStatus status
+}
+
+struct TCheckTransferCompletedReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required list<string> consensusPipeNames;
+  3: required bool refreshCachedProgressIndex
+}
+
+struct TCheckTransferCompletedResp {
+  1: required common.TSStatus status
+  2: required bool isCompleted
+}
+
 service PipeConsensusIService {
   /**
   * Transfer stream data in a given ConsensusGroup, used by PipeConsensus
@@ -55,4 +97,12 @@ service PipeConsensusIService {
   * Transfer batch data in a given ConsensusGroup, used by PipeConsensus
   **/
   TPipeConsensusBatchTransferResp pipeConsensusBatchTransfer(TPipeConsensusBatchTransferReq req)
+
+  TSetActiveResp setActive(TSetActiveReq req)
+
+  TNotifyPeerToCreateConsensusPipeResp notifyPeerToCreateConsensusPipe(TNotifyPeerToCreateConsensusPipeReq req)
+
+  TNotifyPeerToDropConsensusPipeResp notifyPeerToDropConsensusPipe(TNotifyPeerToDropConsensusPipeReq req)
+
+  TCheckTransferCompletedResp checkTransferCompleted(TCheckTransferCompletedReq req)
 }

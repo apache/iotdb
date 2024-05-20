@@ -25,11 +25,12 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.response.PipeConsensusTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
+import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.client.SyncPipeConsensusServiceClient;
-import org.apache.iotdb.consensus.pipe.client.manager.PipeConsensusSyncClientManager;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder.PipeConsensusSyncBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
@@ -90,7 +91,8 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     // `peers` here actually is a singletonList that contains one peer's TEndPoint. But here we
     // retain the implementation of list to cope with possible future expansion
     this.peers = peers;
-    this.syncRetryAndHandshakeClientManager = PipeConsensusSyncClientManager.getInstance();
+    this.syncRetryAndHandshakeClientManager =
+        ((PipeConsensus) DataRegionConsensusImpl.getInstance()).getSyncClientManager();
   }
 
   @Override

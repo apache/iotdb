@@ -149,7 +149,8 @@ public class PipeConsensus implements IConsensus {
                   path.toString(),
                   new ArrayList<>(),
                   config,
-                  consensusPipeManager);
+                  consensusPipeManager,
+                  syncClientManager);
           stateMachineMap.put(consensusGroupId, consensus);
           consensus.start(true);
         }
@@ -272,7 +273,8 @@ public class PipeConsensus implements IConsensus {
               path,
               peers,
               config,
-              consensusPipeManager);
+              consensusPipeManager,
+              syncClientManager);
       stateMachineMap.put(groupId, consensus);
       consensus.start(false); // pipe will start after creating
     } catch (IOException e) {
@@ -312,12 +314,10 @@ public class PipeConsensus implements IConsensus {
     if (impl.containsPeer(peer)) {
       throw new PeerAlreadyInConsensusGroupException(groupId, peer);
     }
-    boolean inactivateTargetPeer = false;
     try {
       // step 1: inactive new Peer to prepare for following steps
       LOGGER.info("[{}] inactivate new peer: {}", CLASS_NAME, peer);
-      impl.inactivatePeer(peer);
-      inactivateTargetPeer = true;
+      impl.setRemotePeerActive(peer, false);
 
       // step 2: notify all the other Peers to create consensus pipes to newPeer
       LOGGER.info("[{}] notify current peers to create consensus pipes...", CLASS_NAME);
@@ -329,16 +329,13 @@ public class PipeConsensus implements IConsensus {
 
       // step 4: active new Peer
       LOGGER.info("[{}] activate new peer...", CLASS_NAME);
-      impl.activatePeer(peer);
+      impl.setRemotePeerActive(peer, true);
     } catch (ConsensusGroupModifyPeerException e) {
       try {
         LOGGER.info("[{}] add remote peer failed, automatic cleanup side effects...", CLASS_NAME);
 
         // roll back
         impl.notifyPeersToDropConsensusPipe(peer);
-        if (inactivateTargetPeer) {
-          impl.activatePeer(peer);
-        }
 
       } catch (ConsensusGroupModifyPeerException mpe) {
         LOGGER.error(
@@ -358,11 +355,11 @@ public class PipeConsensus implements IConsensus {
     }
 
     try {
-      // let other peers remove the sync channel with target peer
+      // let other peers remove the consensus pipe to target peer
       impl.notifyPeersToDropConsensusPipe(peer);
       // let target peer reject new write
-      impl.inactivatePeer(peer);
-      // wait its SyncLog to complete
+      impl.setRemotePeerActive(peer, false);
+      // wait its consensus pipes to complete
       impl.waitTargetPeerToPeersTransferCompleted(peer);
     } catch (ConsensusGroupModifyPeerException e) {
       throw new ConsensusException(e.getMessage());
@@ -464,5 +461,9 @@ public class PipeConsensus implements IConsensus {
 
   public IClientManager<TEndPoint, SyncPipeConsensusServiceClient> getSyncClientManager() {
     return syncClientManager;
+  }
+
+  public PipeConsensusServerImpl getImpl(ConsensusGroupId groupId) {
+    return stateMachineMap.get(groupId);
   }
 }

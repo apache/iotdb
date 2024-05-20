@@ -33,9 +33,8 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig;
-import org.apache.iotdb.consensus.pipe.client.manager.PipeConsensusAsyncClientManager;
+import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCService;
-import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCServiceProcessor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.PipeConsensusAsyncConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletRawReq;
@@ -175,7 +174,7 @@ public class PipeConsensusReplicateTest {
     followerRPCServer =
         new PipeConsensusRPCService(
             peers.get(1).getEndpoint(), PipeConsensusConfig.newBuilder().build());
-    followerRPCServer.initAsyncedServiceImpl(new PipeConsensusRPCServiceProcessor());
+    followerRPCServer.initAsyncedServiceImpl(PowerMockito.mock(PipeConsensus.class));
     registerManager.register(followerRPCServer);
 
     // mock static methods
@@ -214,7 +213,7 @@ public class PipeConsensusReplicateTest {
   public void tearDown() throws Exception {
     leaderSink.close();
     registerManager.deregisterAll();
-    PipeConsensusAsyncClientManager.getInstance().clear(peers.get(1).getEndpoint());
+    // TODO: PipeConsensusAsyncClientManager.getInstance().clear(peers.get(1).getEndpoint());
   }
 
   @Test
