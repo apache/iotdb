@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.processor.PlaceHolderProcess
 
 /**
  * This class is a placeholder and should not be initialized. It represents the
- * cv-sampling-processor. There is a real implementation in the server module but cannot be imported
- * here. The pipe agent in the server module will replace this class with the real implementation
- * when initializing the cv-sampling-processor.
+ * changing-value-sampling-processor. There is a real implementation in the server module but cannot
+ * be imported here. The pipe agent in the server module will replace this class with the real
+ * implementation when initializing the changing-value-sampling-processor.
  */
 public class ChangingValueSamplingProcessor extends PlaceHolderProcessor {}

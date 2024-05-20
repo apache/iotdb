@@ -49,7 +49,7 @@ class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
         BuiltinPipePlugin.SDT_SAMPLING_PROCESSOR.getPipePluginName(),
         SwingingDoorTrendingSamplingProcessor::new);
     pluginConstructors.put(
-        BuiltinPipePlugin.CV_SAMPLING_PROCESSOR.getPipePluginName(),
+        BuiltinPipePlugin.CHANGING_VALUE_SAMPLING_PROCESSOR.getPipePluginName(),
         ChangingValueSamplingProcessor::new);
     pluginConstructors.put(
         BuiltinPipePlugin.THROWING_EXCEPTION_PROCESSOR.getPipePluginName(),

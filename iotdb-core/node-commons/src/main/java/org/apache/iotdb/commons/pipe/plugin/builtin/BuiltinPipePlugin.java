@@ -60,7 +60,8 @@ public enum BuiltinPipePlugin {
   TUMBLING_TIME_SAMPLING_PROCESSOR(
       "tumbling-time-sampling-processor", TumblingTimeSamplingProcessor.class),
   SDT_SAMPLING_PROCESSOR("sdt-sampling-processor", SwingingDoorTrendingSamplingProcessor.class),
-  CV_SAMPLING_PROCESSOR("cv-sampling-processor", ChangingValueSamplingProcessor.class),
+  CHANGING_VALUE_SAMPLING_PROCESSOR(
+      "changing-value-sampling-processor", ChangingValueSamplingProcessor.class),
   THROWING_EXCEPTION_PROCESSOR("throwing-exception-processor", ThrowingExceptionProcessor.class),
   AGGREGATE_PROCESSOR("aggregate-processor", AggregateProcessor.class),
   COUNT_POINT_PROCESSOR("count-point-processor", TwoStageCountProcessor.class),
