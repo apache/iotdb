@@ -606,7 +606,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
+  public TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.setDatabase(databaseSchemaPlan, false);
