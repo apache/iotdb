@@ -457,6 +457,11 @@ public class PipeConsensus implements IConsensus {
     return buildPeerDir(groupId);
   }
 
+  @Override
+  public void reloadConsensusConfig(ConsensusConfig consensusConfig) {
+    // TODO: impl for hot config loading
+  }
+
   public IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> getAsyncClientManager() {
     return asyncClientManager;
   }
