@@ -74,6 +74,10 @@ public class DeviceSchemaInfo {
         .collect(Collectors.toList());
   }
 
+  public List<IMeasurementSchemaInfo> getMeasurementSchemaInfoList() {
+    return measurementSchemaInfoList;
+  }
+
   public List<MeasurementPath> getMeasurementSchemaPathList() {
     return measurementSchemaInfoList.stream()
         .map(

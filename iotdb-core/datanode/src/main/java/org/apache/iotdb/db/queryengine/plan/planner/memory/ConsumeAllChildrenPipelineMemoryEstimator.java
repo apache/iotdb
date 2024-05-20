@@ -17,13 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
+package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 
-public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatchReqBuilder {
+public class ConsumeAllChildrenPipelineMemoryEstimator extends PipelineMemoryEstimator {
 
-  public IoTDBThriftSyncPipeTransferBatchReqBuilder(final PipeParameters parameters) {
-    super(parameters);
+  public ConsumeAllChildrenPipelineMemoryEstimator(
+      final Operator root, final int dependencyPipelineIndex) {
+    super(root, dependencyPipelineIndex);
+  }
+
+  @Override
+  public long calculateEstimatedRunningMemorySize() {
+    return root.calculateMaxPeekMemoryWithCounter()
+        + children.stream()
+            .map(PipelineMemoryEstimator::calculateEstimatedRunningMemorySize)
+            .reduce(0L, Long::sum);
   }
 }

@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 public class LastCacheScanOperator implements SourceOperator {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LastCacheScanOperator.class);
 
   private final OperatorContext operatorContext;
   private final PlanNodeId sourceId;
@@ -82,5 +86,13 @@ public class LastCacheScanOperator implements SourceOperator {
   @Override
   public PlanNodeId getSourceId() {
     return sourceId;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
+        + (tsBlock == null ? 0 : tsBlock.getRetainedSizeInBytes());
   }
 }

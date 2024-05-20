@@ -390,6 +390,7 @@ if [ -n "$operate" ]; then
         exit 1
     fi
 else
+    system_settings_pre_check
     local_jdk_check
     local_mem_check
     local_dirs_check

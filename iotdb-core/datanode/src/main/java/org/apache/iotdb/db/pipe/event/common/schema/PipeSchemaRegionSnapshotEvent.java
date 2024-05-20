@@ -68,7 +68,7 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent {
         PlanNodeType.CREATE_LOGICAL_VIEW.getNodeType(), StatementType.CREATE_LOGICAL_VIEW);
     // For logical view
     PLAN_NODE_2_STATEMENT_TYPE_MAP.put(
-        PlanNodeType.ALTER_TIME_SERIES.getNodeType(), StatementType.ALTER_TIME_SERIES);
+        PlanNodeType.ALTER_LOGICAL_VIEW.getNodeType(), StatementType.ALTER_LOGICAL_VIEW);
   }
 
   public PipeSchemaRegionSnapshotEvent() {

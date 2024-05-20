@@ -137,8 +137,4 @@ public interface CommonConfig {
   CommonConfig setWalMode(String walMode);
 
   CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize);
-
-  CommonConfig setTagAttributeMaxNum(int tagAttributeMaxNum);
-
-  CommonConfig setTagAttributeEntryMaxSize(int tagAttributeEntryMaxSize);
 }

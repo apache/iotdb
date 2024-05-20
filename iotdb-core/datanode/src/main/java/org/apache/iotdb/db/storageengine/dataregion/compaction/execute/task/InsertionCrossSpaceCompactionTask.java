@@ -85,6 +85,8 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     super(databaseName, dataRegionId, 0L, tsFileManager, 0L, CompactionTaskPriorityType.NORMAL);
     this.logFile = logFile;
     this.needRecoverTaskInfoFromLogFile = true;
+    this.selectedSeqFiles = Collections.emptyList();
+    this.selectedUnseqFiles = new ArrayList<>(1);
   }
 
   private TsFileResource unseqFileToInsert;
@@ -242,6 +244,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     File sourceTsFile = sourceFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists();
     if (sourceTsFile != null) {
       unseqFileToInsert = new TsFileResource(sourceTsFile);
+      selectedUnseqFiles.add(unseqFileToInsert);
     }
     File targetTsFile = targetFileIdentifiers.get(0).getFileFromDataDirsIfAnyAdjuvantFileExists();
     if (targetTsFile != null) {
@@ -288,7 +291,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     return targetFile == null
         || !targetFile.tsFileExists()
         || !targetFile.resourceFileExists()
-        || (unseqFileToInsert.modFileExists() && !targetFile.modFileExists());
+        || (unseqFileToInsert != null
+            && unseqFileToInsert.modFileExists()
+            && !targetFile.modFileExists());
   }
 
   private void rollback() throws IOException {
@@ -298,6 +303,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           Collections.singletonList(targetFile), Collections.singletonList(unseqFileToInsert));
     }
     deleteCompactionModsFile(Collections.singletonList(unseqFileToInsert));
+    if (targetFile == null) {
+      return;
+    }
     if (targetFile.tsFileExists()) {
       FileMetrics.getInstance().deleteTsFile(true, Collections.singletonList(targetFile));
     }
@@ -309,6 +317,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   private void finishTask() throws IOException {
+    if (unseqFileToInsert == null) {
+      return;
+    }
     if (recoverMemoryStatus && unseqFileToInsert.tsFileExists()) {
       FileMetrics.getInstance().deleteTsFile(false, Collections.singletonList(unseqFileToInsert));
     }

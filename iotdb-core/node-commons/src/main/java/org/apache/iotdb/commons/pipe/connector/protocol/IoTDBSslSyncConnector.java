@@ -166,9 +166,11 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
                   clientAndStatus
                       .getLeft()
                       .pipeTransfer(
-                          isMultiFile
-                              ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
-                              : getTransferSingleFilePieceReq(file.getName(), position, payLoad)));
+                          compressIfNeeded(
+                              isMultiFile
+                                  ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
+                                  : getTransferSingleFilePieceReq(
+                                      file.getName(), position, payLoad))));
         } catch (Exception e) {
           clientAndStatus.setRight(false);
           throw new PipeConnectionException(
