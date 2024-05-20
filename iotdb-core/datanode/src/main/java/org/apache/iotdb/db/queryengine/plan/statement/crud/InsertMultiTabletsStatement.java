@@ -102,6 +102,13 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   }
 
   @Override
+  public void semanticCheck() {
+    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
+      insertTabletStatement.semanticCheck();
+    }
+  }
+
+  @Override
   public long getMinTime() {
     throw new NotImplementedException();
   }

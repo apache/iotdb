@@ -255,6 +255,17 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     values[index] = null;
   }
 
+  @Override
+  public void semanticCheck() {
+    super.semanticCheck();
+    if (measurements.length != values.length) {
+      throw new SemanticException(
+          String.format(
+              "the measurementList's size %d is not consistent with the valueList's size %d",
+              measurements.length, values.length));
+    }
+  }
+
   public boolean isNeedSplit() {
     return hasLogicalViewNeedProcess();
   }
