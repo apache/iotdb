@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Executors;
@@ -170,12 +171,12 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     super.ack(messages);
   }
 
-  public void commitAsync(final SubscriptionMessage message) {
-    super.commitAsync(Collections.singletonList(message));
+  public CompletableFuture<Void> commitAsync(final SubscriptionMessage message) {
+    return super.commitAsync(Collections.singletonList(message));
   }
 
-  public void commitAsync(final Iterable<SubscriptionMessage> messages) {
-    super.commitAsync(messages);
+  public CompletableFuture<Void> commitAsync(final Iterable<SubscriptionMessage> messages) {
+    return super.commitAsync(messages);
   }
 
   public void commitAsync(final SubscriptionMessage message, final AsyncCommitCallback callback) {

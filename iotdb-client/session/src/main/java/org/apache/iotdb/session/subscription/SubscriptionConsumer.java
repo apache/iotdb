@@ -66,6 +66,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -88,7 +89,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private final long heartbeatIntervalMs;
   private final long endpointsSyncIntervalMs;
 
-  private SubscriptionProviders subscriptionProviders;
+  private final SubscriptionProviders subscriptionProviders;
 
   private ScheduledExecutorService heartbeatWorkerExecutor;
   private ScheduledExecutorService endpointsSyncerExecutor;
@@ -230,8 +231,11 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       // shutdown endpoints syncer
       shutdownEndpointsSyncer();
 
-      // shutdown workers: heartbeat worker and async commit executor
-      shutdownWorkers();
+      // shutdown heartbeat worker
+      shutdownHeartbeatWorker();
+
+      // shutdown async commit worker if needed
+      shutdownAsyncCommitWorkerIfNeeded();
 
       // close subscription providers
       subscriptionProviders.acquireWriteLock();
@@ -311,18 +315,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         TimeUnit.MILLISECONDS);
   }
 
-  /**
-   * Shut down workers upon close. There are currently two workers: heartbeat worker and async
-   * commit executor.
-   */
-  private void shutdownWorkers() {
+  private void shutdownHeartbeatWorker() {
     heartbeatWorkerExecutor.shutdown();
     heartbeatWorkerExecutor = null;
-
-    if (asyncCommitExecutor != null) {
-      asyncCommitExecutor.shutdown();
-      asyncCommitExecutor = null;
-    }
   }
 
   /////////////////////////////// sync endpoints ///////////////////////////////
@@ -735,40 +730,29 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// commit async ///////////////////////////////
 
-  protected void commitAsync(final Iterable<SubscriptionMessage> messages) {
-    commitAsync(messages, new AsyncCommitCallback() {});
-  }
-
   protected void commitAsync(
       final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
-    // Initiate executor if needed
-    if (asyncCommitExecutor == null) {
-      synchronized (this) {
-        if (asyncCommitExecutor != null) {
-          return;
-        }
-
-        asyncCommitExecutor =
-            Executors.newSingleThreadExecutor(
-                r -> {
-                  final Thread t =
-                      new Thread(
-                          Thread.currentThread().getThreadGroup(),
-                          r,
-                          "SubscriptionConsumerAsyncCommitWorker",
-                          0);
-                  if (!t.isDaemon()) {
-                    t.setDaemon(true);
-                  }
-                  if (t.getPriority() != Thread.NORM_PRIORITY) {
-                    t.setPriority(Thread.NORM_PRIORITY);
-                  }
-                  return t;
-                });
-      }
-    }
+    // launch async commit worker if needed
+    launchAsyncCommitWorkerIfNeeded();
 
     asyncCommitExecutor.submit(new AsyncCommitWorker(messages, callback));
+  }
+
+  protected CompletableFuture<Void> commitAsync(final Iterable<SubscriptionMessage> messages) {
+    // launch async commit worker if needed
+    launchAsyncCommitWorkerIfNeeded();
+
+    final CompletableFuture<Void> future = new CompletableFuture<>();
+    asyncCommitExecutor.submit(
+        () -> {
+          try {
+            ack(messages);
+            future.complete(null);
+          } catch (final Throwable e) {
+            future.completeExceptionally(e);
+          }
+        });
+    return future;
   }
 
   /////////////////////////////// redirection ///////////////////////////////
@@ -936,6 +920,41 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   /////////////////////////////// commit async worker ///////////////////////////////
+
+  private void launchAsyncCommitWorkerIfNeeded() {
+    if (asyncCommitExecutor == null) {
+      synchronized (this) {
+        if (asyncCommitExecutor != null) {
+          return;
+        }
+
+        asyncCommitExecutor =
+            Executors.newSingleThreadExecutor(
+                r -> {
+                  final Thread t =
+                      new Thread(
+                          Thread.currentThread().getThreadGroup(),
+                          r,
+                          "SubscriptionConsumerAsyncCommitWorker",
+                          0);
+                  if (!t.isDaemon()) {
+                    t.setDaemon(true);
+                  }
+                  if (t.getPriority() != Thread.NORM_PRIORITY) {
+                    t.setPriority(Thread.NORM_PRIORITY);
+                  }
+                  return t;
+                });
+      }
+    }
+  }
+
+  private void shutdownAsyncCommitWorkerIfNeeded() {
+    if (asyncCommitExecutor != null) {
+      asyncCommitExecutor.shutdown();
+      asyncCommitExecutor = null;
+    }
+  }
 
   class AsyncCommitWorker implements Runnable {
     private final Iterable<SubscriptionMessage> messages;
