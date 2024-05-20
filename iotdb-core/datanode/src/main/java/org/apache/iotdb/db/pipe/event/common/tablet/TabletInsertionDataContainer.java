@@ -577,6 +577,7 @@ public class TabletInsertionDataContainer {
     final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, sourceEvent);
     for (int i = 0; i < rowCount; i++) {
       consumer.accept(
+          // Used for tree model
           new PipeRow(
               i,
               getDeviceStr(),
