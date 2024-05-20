@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 import java.util.Objects;
 
 public class IoTDBPipePattern extends PipePattern {
@@ -72,7 +74,7 @@ public class IoTDBPipePattern extends PipePattern {
   }
 
   @Override
-  public boolean coversDevice(String device) {
+  public boolean coversDevice(IDeviceID device) {
     try {
       return patternPartialPath.include(
           new PartialPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
@@ -82,7 +84,7 @@ public class IoTDBPipePattern extends PipePattern {
   }
 
   @Override
-  public boolean mayOverlapWithDevice(String device) {
+  public boolean mayOverlapWithDevice(IDeviceID device) {
     try {
       // Another way is to use patternPath.overlapWith("device.*"),
       // there will be no false positives but time cost may be higher.
@@ -93,7 +95,7 @@ public class IoTDBPipePattern extends PipePattern {
   }
 
   @Override
-  public boolean matchesMeasurement(String device, String measurement) {
+  public boolean matchesMeasurement(IDeviceID device, String measurement) {
     // For aligned timeseries, empty measurement is an alias of the time column.
     if (Objects.isNull(measurement) || measurement.isEmpty()) {
       return false;
