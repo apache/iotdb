@@ -35,6 +35,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -121,6 +122,18 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
           String.format("Unsupported pipeConsensus request version %d", reqVersion));
     }
     return receiverReference.get();
+  }
+
+  public final void handleClientExit() {
+    final Collection<AtomicReference<PipeConsensusReceiver>> allReceiver =
+        replicaReceiverMap.values();
+    allReceiver.forEach(
+        receiver -> {
+          if (receiver.get() != null) {
+            receiver.get().handleExit();
+            receiver.set(null);
+          }
+        });
   }
 
   @TestOnly

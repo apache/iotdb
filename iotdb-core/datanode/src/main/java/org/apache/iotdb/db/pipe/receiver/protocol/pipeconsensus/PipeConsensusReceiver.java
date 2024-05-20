@@ -131,6 +131,91 @@ public class PipeConsensusReceiver {
     return new TPipeConsensusTransferResp(status);
   }
 
+  public synchronized void handleExit() {
+    {
+      if (writingFileWriter != null) {
+        try {
+          writingFileWriter.close();
+          LOGGER.info(
+              "PipeConsensus-ConsensusGroupId-{}: Handling exit: Writing file writer was closed.",
+              consensusGroupId.getId());
+        } catch (Exception e) {
+          LOGGER.warn(
+              "PipeConsensus-ConsensusGroupId-{}: Handling exit: Close writing file writer error.",
+              consensusGroupId.getId(),
+              e);
+        }
+        writingFileWriter = null;
+      } else {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "PipeConsensus-ConsensusGroupId-{}: Handling exit: Writing file writer is null. No need to close.",
+              consensusGroupId.getId());
+        }
+      }
+
+      if (writingFile != null) {
+        try {
+          FileUtils.delete(writingFile);
+          LOGGER.info(
+              "PipeConsensus-ConsensusGroupId-{}: Handling exit: Writing file {} was deleted.",
+              consensusGroupId.getId(),
+              writingFile.getPath());
+        } catch (Exception e) {
+          LOGGER.warn(
+              "PipeConsensus-ConsensusGroupId-{}: Handling exit: Delete writing file {} error.",
+              consensusGroupId.getId(),
+              writingFile.getPath(),
+              e);
+        }
+        writingFile = null;
+      } else {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "PipeConsensus-ConsensusGroupId-{}: Handling exit: Writing file is null. No need to delete.",
+              consensusGroupId.getId());
+        }
+      }
+
+      // Clear the original receiver file dir if exists
+      if (receiverFileDirWithIdSuffix.get() != null) {
+        if (receiverFileDirWithIdSuffix.get().exists()) {
+          try {
+            FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
+            LOGGER.info(
+                "PipeConsensus-ConsensusGroupId-{}: Handling exit: Original receiver file dir {} was deleted.",
+                consensusGroupId.getId(),
+                receiverFileDirWithIdSuffix.get().getPath());
+          } catch (IOException e) {
+            LOGGER.warn(
+                "PipeConsensus-ConsensusGroupId-{}: Handling exit: Delete original receiver file dir {} error.",
+                consensusGroupId.getId(),
+                receiverFileDirWithIdSuffix.get().getPath(),
+                e);
+          }
+        } else {
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "PipeConsensus-ConsensusGroupId-{}: Handling exit: Original receiver file dir {} does not exist. No need to delete.",
+                consensusGroupId.getId(),
+                receiverFileDirWithIdSuffix.get().getPath());
+          }
+        }
+        receiverFileDirWithIdSuffix.set(null);
+      } else {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "PipeConsensus-ConsensusGroupId-{}: Handling exit: Original receiver file dir is null. No need to delete.",
+              consensusGroupId.getId());
+        }
+      }
+
+      LOGGER.info(
+          "PipeConsensus-ConsensusGroupId-{}: Handling exit: Receiver exited.",
+          consensusGroupId.getId());
+    }
+  }
+
   private TPipeConsensusTransferResp loadEvent(final TPipeConsensusTransferReq req) {
     // synchronized load event, ensured by upper caller's lock.
     try {
@@ -579,7 +664,7 @@ public class PipeConsensusReceiver {
     }
   }
 
-  protected final void updateWritingFileIfNeeded(final String fileName, final boolean isSingleFile)
+  private void updateWritingFileIfNeeded(final String fileName, final boolean isSingleFile)
       throws IOException {
     if (isFileExistedAndNameCorrect(fileName)) {
       return;
