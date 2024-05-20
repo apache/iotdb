@@ -73,8 +73,11 @@ public class PipeConsensusRPCService extends ThriftService implements PipeConsen
 
   @Override
   public void initTProcessor()
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException,
-          NoSuchMethodException, InvocationTargetException {
+      throws ClassNotFoundException,
+          IllegalAccessException,
+          InstantiationException,
+          NoSuchMethodException,
+          InvocationTargetException {
     processor = new PipeConsensusIService.AsyncProcessor<>(pipeConsensusRPCServiceProcessor);
   }
 

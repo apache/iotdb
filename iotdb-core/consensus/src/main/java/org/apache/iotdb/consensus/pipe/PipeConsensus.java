@@ -177,9 +177,7 @@ public class PipeConsensus implements IConsensus {
                     Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
     try {
       stateMachineMapLock.lock();
-      stateMachineMap
-          .entrySet()
-          .parallelStream()
+      stateMachineMap.entrySet().parallelStream()
           .forEach(
               entry ->
                   entry

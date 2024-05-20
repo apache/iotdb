@@ -80,6 +80,7 @@ public class DataRegionConsensusImpl {
     // Make sure both statics are initialized.
     static {
       reinitializeStatics();
+      PipeAgent.receiver().pipeConsensus().initConsensusInRuntime();
     }
 
     private static void reinitializeStatics() {

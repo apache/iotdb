@@ -39,6 +39,7 @@ public class PipeConsensusTsFileSealWithModReq extends PipeConsensusTransferFile
   protected PipeConsensusRequestType getPlanType() {
     return PipeConsensusRequestType.TRANSFER_TS_FILE_SEAL_WITH_MOD;
   }
+
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeConsensusTsFileSealWithModReq toTPipeConsensusTransferReq(

@@ -52,9 +52,14 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
   private final Map<ConsensusGroupId, AtomicReference<PipeConsensusReceiver>> replicaReceiverMap =
       new ConcurrentHashMap<>();
 
-  private final PipeConsensus pipeConsensus;
+  private PipeConsensus pipeConsensus;
 
   public PipeConsensusReceiverAgent() {
+    RECEIVER_CONSTRUCTORS.put(
+        PipeConsensusRequestVersion.VERSION_1.getVersion(), PipeConsensusReceiver::new);
+  }
+
+  public void initConsensusInRuntime() {
     IConsensus consensus = DataRegionConsensusImpl.getInstance();
     // If DataRegion uses PipeConsensus
     if (consensus instanceof PipeConsensus) {
@@ -64,9 +69,6 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     else {
       this.pipeConsensus = null;
     }
-
-    RECEIVER_CONSTRUCTORS.put(
-        PipeConsensusRequestVersion.VERSION_1.getVersion(), PipeConsensusReceiver::new);
   }
 
   @Override

@@ -181,7 +181,7 @@ public class PipeConsensusReplicateTest {
     PowerMockito.mockStatic(PipeConsensusTabletRawReq.class);
     PowerMockito.when(
             PipeConsensusTabletRawReq.toTPipeConsensusTransferReq(
-                Mockito.any(), Mockito.anyBoolean(), Mockito.any()))
+                Mockito.any(), Mockito.anyBoolean(), Mockito.any(), Mockito.any()))
         .thenAnswer(
             invocation -> {
               PipeConsensusTabletRawReq pipeConsensusRawReq = new PipeConsensusTabletRawReq();

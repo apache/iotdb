@@ -58,6 +58,7 @@ public class PipeConsensusTsFilePieceReq extends PipeConsensusTransferFilePieceR
     return (PipeConsensusTsFilePieceReq)
         new PipeConsensusTsFilePieceReq().translateFromTPipeConsensusTransferReq(transferReq);
   }
+
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
