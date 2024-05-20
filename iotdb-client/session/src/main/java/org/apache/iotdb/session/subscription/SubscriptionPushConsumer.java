@@ -185,8 +185,8 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder tsFileBaseDir(final String tsFileBaseDir) {
-      this.tsFileBaseDir = tsFileBaseDir;
+    public SubscriptionPushConsumer.Builder fileSaveDir(final String fileSaveDir) {
+      this.fileSaveDir = fileSaveDir;
       return this;
     }
 

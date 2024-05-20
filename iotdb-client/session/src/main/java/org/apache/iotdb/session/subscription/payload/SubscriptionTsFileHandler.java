@@ -24,20 +24,18 @@ import org.apache.tsfile.read.TsFileSequenceReader;
 
 import java.io.IOException;
 
-public class SubscriptionTsFileReader implements SubscriptionMessagePayload {
+public class SubscriptionTsFileHandler extends SubscriptionFileHandler {
 
-  private final String filePath;
-
-  public SubscriptionTsFileReader(final String filePath) {
-    this.filePath = filePath;
+  public SubscriptionTsFileHandler(final String filePath) {
+    super(filePath);
   }
 
-  public TsFileReader open() throws IOException {
+  public TsFileReader openReader() throws IOException {
     return new TsFileReader(new TsFileSequenceReader(filePath));
   }
 
   @Override
-  public String toString() {
-    return "SubscriptionTsFileReader{" + "filePath='" + filePath + '\'' + '}';
+  public SubscriptionTsFileHandler getTsFileHandler() {
+    return this;
   }
 }

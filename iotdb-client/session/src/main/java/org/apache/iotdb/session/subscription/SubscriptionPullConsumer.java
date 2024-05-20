@@ -284,8 +284,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       return this;
     }
 
-    public Builder tsFileBaseDir(final String tsFileBaseDir) {
-      super.tsFileBaseDir(tsFileBaseDir);
+    public Builder fileSaveDir(final String fileSaveDir) {
+      super.fileSaveDir(fileSaveDir);
       return this;
     }
 

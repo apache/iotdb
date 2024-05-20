@@ -24,13 +24,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum SubscriptionMessageType {
-  SESSION_DATA_SET((short) 0),
-  TS_FILE_READER((short) 1),
+  SUBSCRIPTION_SESSION_DATA_SETS_HANDLER((short) 0),
+  SUBSCRIPTION_TS_FILE_HANDLER((short) 1),
   ;
 
   private final short type;
 
-  SubscriptionMessageType(short type) {
+  SubscriptionMessageType(final short type) {
     this.type = type;
   }
 
@@ -45,11 +45,11 @@ public enum SubscriptionMessageType {
               (typeMap, messageType) -> typeMap.put(messageType.getType(), messageType),
               HashMap::putAll);
 
-  public static boolean isValidatedMessageType(short type) {
+  public static boolean isValidatedMessageType(final short type) {
     return TYPE_MAP.containsKey(type);
   }
 
-  public static SubscriptionMessageType valueOf(short type) {
+  public static SubscriptionMessageType valueOf(final short type) {
     return TYPE_MAP.get(type);
   }
 }

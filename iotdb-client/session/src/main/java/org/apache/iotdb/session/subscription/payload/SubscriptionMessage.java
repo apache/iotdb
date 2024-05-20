@@ -19,31 +19,33 @@
 
 package org.apache.iotdb.session.subscription.payload;
 
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.List;
 import java.util.Objects;
 
-public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
+public class SubscriptionMessage
+    implements Comparable<SubscriptionMessage>, SubscriptionMessageHandler {
 
   private final SubscriptionCommitContext commitContext;
 
   private final short messageType;
 
-  private final SubscriptionMessagePayload payload;
+  private final SubscriptionMessageHandler handler;
 
-  public SubscriptionMessage(SubscriptionCommitContext commitContext, List<Tablet> tablets) {
+  public SubscriptionMessage(
+      final SubscriptionCommitContext commitContext, final List<Tablet> tablets) {
     this.commitContext = commitContext;
-    this.messageType = SubscriptionMessageType.SESSION_DATA_SET.getType();
-    this.payload = new SubscriptionSessionDataSets(tablets);
+    this.messageType = SubscriptionMessageType.SUBSCRIPTION_SESSION_DATA_SETS_HANDLER.getType();
+    this.handler = new SubscriptionSessionDataSetsHandler(tablets);
   }
 
-  public SubscriptionMessage(SubscriptionCommitContext commitContext, String filePath) {
+  public SubscriptionMessage(final SubscriptionCommitContext commitContext, final String filePath) {
     this.commitContext = commitContext;
-    this.messageType = SubscriptionMessageType.TS_FILE_READER.getType();
-    this.payload = new SubscriptionTsFileReader(filePath);
+    this.messageType = SubscriptionMessageType.SUBSCRIPTION_TS_FILE_HANDLER.getType();
+    this.handler = new SubscriptionTsFileHandler(filePath);
   }
 
   public SubscriptionCommitContext getCommitContext() {
@@ -54,33 +56,29 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     return messageType;
   }
 
-  public SubscriptionMessagePayload getPayload() {
-    return payload;
-  }
-
   /////////////////////////////// override ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    SubscriptionMessage that = (SubscriptionMessage) obj;
+    final SubscriptionMessage that = (SubscriptionMessage) obj;
     return Objects.equals(this.commitContext, that.commitContext)
         && Objects.equals(this.messageType, that.messageType)
-        && Objects.equals(this.payload, that.payload);
+        && Objects.equals(this.handler, that.handler);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(commitContext, messageType, payload);
+    return Objects.hash(commitContext, messageType, handler);
   }
 
   @Override
-  public int compareTo(SubscriptionMessage that) {
+  public int compareTo(final SubscriptionMessage that) {
     return this.commitContext.compareTo(that.commitContext);
   }
 
@@ -91,5 +89,17 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
         + ", messageType="
         + SubscriptionMessageType.valueOf(messageType).toString()
         + "}";
+  }
+
+  /////////////////////////////// handlers ///////////////////////////////
+
+  @Override
+  public SubscriptionSessionDataSetsHandler getSessionDataSetsHandler() {
+    return handler.getSessionDataSetsHandler();
+  }
+
+  @Override
+  public SubscriptionTsFileHandler getTsFileHandler() {
+    return handler.getTsFileHandler();
   }
 }

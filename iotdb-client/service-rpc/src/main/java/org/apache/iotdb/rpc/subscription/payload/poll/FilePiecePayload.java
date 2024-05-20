@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.common;
+package org.apache.iotdb.rpc.subscription.payload.poll;
 
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
-public class TsFilePieceMessagePayload implements SubscriptionMessagePayload {
+public class FilePiecePayload implements SubscriptionPollPayload {
 
   private transient String fileName;
 
@@ -48,23 +48,24 @@ public class TsFilePieceMessagePayload implements SubscriptionMessagePayload {
     return filePiece;
   }
 
-  public TsFilePieceMessagePayload() {}
+  public FilePiecePayload() {}
 
-  public TsFilePieceMessagePayload(String fileName, long nextWritingOffset, byte[] filePiece) {
+  public FilePiecePayload(
+      final String fileName, final long nextWritingOffset, final byte[] filePiece) {
     this.fileName = fileName;
     this.nextWritingOffset = nextWritingOffset;
     this.filePiece = filePiece;
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(fileName, stream);
     ReadWriteIOUtils.write(nextWritingOffset, stream);
     ReadWriteIOUtils.write(new Binary(filePiece), stream);
   }
 
   @Override
-  public SubscriptionMessagePayload deserialize(ByteBuffer buffer) {
+  public SubscriptionPollPayload deserialize(final ByteBuffer buffer) {
     this.fileName = ReadWriteIOUtils.readString(buffer);
     this.nextWritingOffset = ReadWriteIOUtils.readLong(buffer);
     final int size = ReadWriteIOUtils.readInt(buffer);
@@ -80,7 +81,7 @@ public class TsFilePieceMessagePayload implements SubscriptionMessagePayload {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final TsFilePieceMessagePayload that = (TsFilePieceMessagePayload) obj;
+    final FilePiecePayload that = (FilePiecePayload) obj;
     return Objects.equals(this.fileName, that.fileName)
         && Objects.equals(this.nextWritingOffset, that.nextWritingOffset)
         && Arrays.equals(this.filePiece, that.filePiece);
@@ -93,7 +94,7 @@ public class TsFilePieceMessagePayload implements SubscriptionMessagePayload {
 
   @Override
   public String toString() {
-    return "TsFilePieceMessagePayload{fileName="
+    return "FilePiecePayload{fileName="
         + fileName
         + ", nextWritingOffset="
         + nextWritingOffset

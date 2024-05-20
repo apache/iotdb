@@ -31,10 +31,10 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessageType;
-import org.apache.iotdb.rpc.subscription.payload.common.TabletsMessagePayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -184,9 +184,9 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
       final SubscriptionEvent subscriptionEvent =
           new SubscriptionEvent(
               enrichedEvents,
-              new SubscriptionPolledMessage(
-                  SubscriptionPolledMessageType.TABLETS.getType(),
-                  new TabletsMessagePayload(tablets, calculatedTabletsSizeInBytes),
+              new SubscriptionPollResponse(
+                  SubscriptionPollResponseType.TABLETS.getType(),
+                  new TabletsPayload(tablets, calculatedTabletsSizeInBytes),
                   commitContext));
       uncommittedEvents.put(commitContext, subscriptionEvent); // before enqueuing the event
       prefetchingQueue.add(subscriptionEvent);

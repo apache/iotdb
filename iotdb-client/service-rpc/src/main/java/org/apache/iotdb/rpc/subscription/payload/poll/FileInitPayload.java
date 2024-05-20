@@ -17,43 +17,39 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.common;
+package org.apache.iotdb.rpc.subscription.payload.poll;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
 import java.util.Objects;
-import java.util.Set;
 
-public class PollMessagePayload implements SubscriptionMessagePayload {
+public class FileInitPayload implements SubscriptionPollPayload {
 
-  private transient Set<String> topicNames = new HashSet<>();
+  private transient String fileName;
 
-  public PollMessagePayload() {}
-
-  public PollMessagePayload(Set<String> topicNames) {
-    this.topicNames = topicNames;
+  public String getFileName() {
+    return fileName;
   }
 
-  public Set<String> getTopicNames() {
-    return topicNames;
-  }
+  public FileInitPayload() {}
 
-  @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.writeObjectSet(topicNames, stream);
+  public FileInitPayload(final String fileName) {
+    this.fileName = fileName;
   }
 
   @Override
-  public SubscriptionMessagePayload deserialize(ByteBuffer buffer) {
-    topicNames = ReadWriteIOUtils.readObjectSet(buffer);
+  public void serialize(final DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(fileName, stream);
+  }
+
+  @Override
+  public SubscriptionPollPayload deserialize(final ByteBuffer buffer) {
+    this.fileName = ReadWriteIOUtils.readString(buffer);
     return this;
   }
-
-  /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(final Object obj) {
@@ -63,17 +59,17 @@ public class PollMessagePayload implements SubscriptionMessagePayload {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final PollMessagePayload that = (PollMessagePayload) obj;
-    return Objects.equals(this.topicNames, that.topicNames);
+    final FileInitPayload that = (FileInitPayload) obj;
+    return Objects.equals(this.fileName, that.fileName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicNames);
+    return Objects.hash(fileName);
   }
 
   @Override
   public String toString() {
-    return "PollMessagePayload{topicNames=" + topicNames + "}";
+    return "FileInitPayload{fileName=" + fileName + "}";
   }
 }

@@ -22,13 +22,13 @@ package org.apache.iotdb.db.subscription.event;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionMessagePayload;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessageType;
-import org.apache.iotdb.rpc.subscription.payload.common.TsFileInitMessagePayload;
-import org.apache.iotdb.rpc.subscription.payload.common.TsFilePieceMessagePayload;
-import org.apache.iotdb.rpc.subscription.payload.common.TsFileSealMessagePayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
 import org.apache.tsfile.utils.Pair;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -50,8 +50,8 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
   private final AtomicReference<Pair<SubscriptionTsFileEvent, Boolean>> nextEventWithCommittableRef;
 
   public SubscriptionTsFileEvent(
-      final List<EnrichedEvent> enrichedEvents, final SubscriptionPolledMessage message) {
-    super(enrichedEvents, message);
+      final List<EnrichedEvent> enrichedEvents, final SubscriptionPollResponse response) {
+    super(enrichedEvents, response);
 
     this.nextEventWithCommittableRef = new AtomicReference<>();
   }
@@ -65,16 +65,16 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
             return nextEventWithCommittable;
           }
 
-          final SubscriptionPolledMessage polledMessage = this.getMessage();
-          final short messageType = polledMessage.getMessageType();
-          final SubscriptionMessagePayload messagePayload = polledMessage.getMessagePayload();
-          if (!SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
-            LOGGER.warn("unexpected message type: {}", messageType);
+          final SubscriptionPollResponse polledMessage = this.getResponse();
+          final short responseType = polledMessage.getResponseType();
+          final SubscriptionPollPayload eventPayload = polledMessage.getPayload();
+          if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+            LOGGER.warn("unexpected response type: {}", responseType);
             return null;
           }
 
-          switch (SubscriptionPolledMessageType.valueOf(messageType)) {
-            case TS_FILE_INIT:
+          switch (SubscriptionPollResponseType.valueOf(responseType)) {
+            case FILE_INIT:
               try {
                 return generateSubscriptionTsFileEventWithPieceOrSealPayload(0);
               } catch (final IOException e) {
@@ -84,10 +84,10 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
                     e);
                 return null;
               }
-            case TS_FILE_PIECE:
+            case FILE_PIECE:
               try {
                 return generateSubscriptionTsFileEventWithPieceOrSealPayload(
-                    ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset());
+                    ((FilePiecePayload) eventPayload).getNextWritingOffset());
               } catch (final IOException e) {
                 LOGGER.warn(
                     "IOException occurred when prefetching next SubscriptionTsFileEvent, current SubscriptionTsFileEvent: {}",
@@ -95,11 +95,11 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
                     e);
                 return null;
               }
-            case TS_FILE_SEAL:
+            case FILE_SEAL:
               // not need to prefetch
               return null;
             default:
-              LOGGER.warn("unexpected message type: {}", messageType);
+              LOGGER.warn("unexpected message type: {}", responseType);
               return null;
           }
         });
@@ -128,33 +128,32 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
             return null;
           }
 
-          final SubscriptionPolledMessage polledMessage = this.getMessage();
-          final short messageType = polledMessage.getMessageType();
-          final SubscriptionMessagePayload messagePayload = polledMessage.getMessagePayload();
-          if (!SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
-            LOGGER.warn("unexpected message type: {}", messageType);
+          final SubscriptionPollResponse polledMessage = this.getResponse();
+          final short responseType = polledMessage.getResponseType();
+          final SubscriptionPollPayload eventPayload = polledMessage.getPayload();
+          if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+            LOGGER.warn("unexpected response type: {}", responseType);
             return null;
           }
 
-          switch (SubscriptionPolledMessageType.valueOf(messageType)) {
-            case TS_FILE_INIT:
+          switch (SubscriptionPollResponseType.valueOf(responseType)) {
+            case FILE_INIT:
               if (Objects.equals(writingOffset, 0)) {
                 return nextEventWithCommittable;
               }
               // reset next SubscriptionTsFileEvent
               return null;
-            case TS_FILE_PIECE:
+            case FILE_PIECE:
               if (Objects.equals(
-                  writingOffset,
-                  ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset())) {
+                  writingOffset, ((FilePiecePayload) eventPayload).getNextWritingOffset())) {
                 return nextEventWithCommittable;
               }
               // reset next SubscriptionTsFileEvent
               return null;
-            case TS_FILE_SEAL:
+            case FILE_SEAL:
               return null;
             default:
-              LOGGER.warn("unexpected message type: {}", messageType);
+              LOGGER.warn("unexpected message type: {}", responseType);
               return null;
           }
         });
@@ -165,16 +164,16 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
       final SubscriptionCommitContext commitContext) {
     return new SubscriptionTsFileEvent(
         Collections.singletonList(tsFileInsertionEvent),
-        new SubscriptionPolledMessage(
-            SubscriptionPolledMessageType.TS_FILE_INIT.getType(),
-            new TsFileInitMessagePayload(tsFileInsertionEvent.getTsFile().getName()),
+        new SubscriptionPollResponse(
+            SubscriptionPollResponseType.FILE_INIT.getType(),
+            new FileInitPayload(tsFileInsertionEvent.getTsFile().getName()),
             commitContext));
   }
 
   public SubscriptionTsFileEvent generateSubscriptionTsFileEventWithInitPayload() {
     return generateSubscriptionTsFileEventWithInitPayload(
         (PipeTsFileInsertionEvent) this.getEnrichedEvents().get(0),
-        this.getMessage().getCommitContext());
+        this.getResponse().getCommitContext());
   }
 
   public @NonNull Pair<@NonNull SubscriptionTsFileEvent, Boolean>
@@ -182,7 +181,7 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
           throws IOException {
     final PipeTsFileInsertionEvent tsFileInsertionEvent =
         (PipeTsFileInsertionEvent) this.getEnrichedEvents().get(0);
-    final SubscriptionCommitContext commitContext = this.getMessage().getCommitContext();
+    final SubscriptionCommitContext commitContext = this.getResponse().getCommitContext();
 
     final int readFileBufferSize =
         SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
@@ -205,9 +204,9 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
         return new Pair<>(
             new SubscriptionTsFileEvent(
                 Collections.singletonList(tsFileInsertionEvent),
-                new SubscriptionPolledMessage(
-                    SubscriptionPolledMessageType.TS_FILE_PIECE.getType(),
-                    new TsFilePieceMessagePayload(
+                new SubscriptionPollResponse(
+                    SubscriptionPollResponseType.FILE_PIECE.getType(),
+                    new FilePiecePayload(
                         tsFileInsertionEvent.getTsFile().getName(),
                         writingOffset + readLength,
                         filePiece),
@@ -219,9 +218,9 @@ public class SubscriptionTsFileEvent extends SubscriptionEvent {
       return new Pair<>(
           new SubscriptionTsFileEvent(
               Collections.singletonList(tsFileInsertionEvent),
-              new SubscriptionPolledMessage(
-                  SubscriptionPolledMessageType.TS_FILE_SEAL.getType(),
-                  new TsFileSealMessagePayload(
+              new SubscriptionPollResponse(
+                  SubscriptionPollResponseType.FILE_SEAL.getType(),
+                  new FileSealPayload(
                       tsFileInsertionEvent.getTsFile().getName(),
                       tsFileInsertionEvent.getTsFile().length()),
                   commitContext)),

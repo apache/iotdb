@@ -29,7 +29,7 @@ public enum PipeSubscribeResponseType {
 
   private final short type;
 
-  PipeSubscribeResponseType(short type) {
+  PipeSubscribeResponseType(final short type) {
     this.type = type;
   }
 
@@ -44,11 +44,11 @@ public enum PipeSubscribeResponseType {
               (typeMap, responseType) -> typeMap.put(responseType.getType(), responseType),
               HashMap::putAll);
 
-  public static boolean isValidatedResponseType(short type) {
+  public static boolean isValidatedResponseType(final short type) {
     return TYPE_MAP.containsKey(type);
   }
 
-  public static PipeSubscribeResponseType valueOf(short type) {
+  public static PipeSubscribeResponseType valueOf(final short type) {
     return TYPE_MAP.get(type);
   }
 }

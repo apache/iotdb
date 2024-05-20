@@ -23,16 +23,16 @@ import java.util.Objects;
 
 public class SubscriptionConnectionException extends SubscriptionRuntimeCriticalException {
 
-  public SubscriptionConnectionException(String message) {
+  public SubscriptionConnectionException(final String message) {
     super(message);
   }
 
-  public SubscriptionConnectionException(String message, Throwable cause) {
+  public SubscriptionConnectionException(final String message, final Throwable cause) {
     super(message, cause);
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     return obj instanceof SubscriptionConnectionException
         && Objects.equals(getMessage(), ((SubscriptionConnectionException) obj).getMessage())
         && Objects.equals(getTimeStamp(), ((SubscriptionConnectionException) obj).getTimeStamp());

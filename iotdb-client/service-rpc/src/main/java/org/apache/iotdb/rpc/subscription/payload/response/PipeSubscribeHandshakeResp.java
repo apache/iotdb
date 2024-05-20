@@ -60,7 +60,10 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
    * server.
    */
   public static PipeSubscribeHandshakeResp toTPipeSubscribeResp(
-      TSStatus status, int dataNodeId, String consumerId, String consumerGroupId) {
+      final TSStatus status,
+      final int dataNodeId,
+      final String consumerId,
+      final String consumerGroupId) {
     final PipeSubscribeHandshakeResp resp = new PipeSubscribeHandshakeResp();
 
     resp.dataNodeId = dataNodeId;
@@ -79,7 +82,7 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
       resp.body =
           Collections.singletonList(
               ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
-    } catch (IOException e) {
+    } catch (final IOException e) {
       resp.status = RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, e.getMessage());
       return resp;
     }
@@ -89,7 +92,7 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
 
   /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
   public static PipeSubscribeHandshakeResp fromTPipeSubscribeResp(
-      TPipeSubscribeResp handshakeResp) {
+      final TPipeSubscribeResp handshakeResp) {
     final PipeSubscribeHandshakeResp resp = new PipeSubscribeHandshakeResp();
 
     if (Objects.nonNull(handshakeResp.body)) {
@@ -114,14 +117,14 @@ public class PipeSubscribeHandshakeResp extends TPipeSubscribeResp {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribeHandshakeResp that = (PipeSubscribeHandshakeResp) obj;
+    final PipeSubscribeHandshakeResp that = (PipeSubscribeHandshakeResp) obj;
     return Objects.equals(this.dataNodeId, that.dataNodeId)
         && Objects.equals(this.status, that.status)
         && this.version == that.version

@@ -25,14 +25,14 @@ import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionTsFileEvent;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionMessagePayload;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessageType;
-import org.apache.iotdb.rpc.subscription.payload.common.TsFileErrorMessagePayload;
-import org.apache.iotdb.rpc.subscription.payload.common.TsFileInitMessagePayload;
-import org.apache.iotdb.rpc.subscription.payload.common.TsFilePieceMessagePayload;
-import org.apache.iotdb.rpc.subscription.payload.common.TsFileSealMessagePayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
 import org.apache.tsfile.utils.Pair;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -112,7 +112,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
               "SubscriptionPrefetchingTsFileQueue %s is currently not transferring any TsFile to consumer %s, file name: %s, writing offset: %s",
               this, consumerId, fileName, writingOffset);
       LOGGER.warn(errorMessage);
-      return generateSubscriptionTsFileEventWithErrorMessage(errorMessage);
+      return generateSubscriptionPollErrorResponse(errorMessage);
     }
 
     if (event.isCommitted()) {
@@ -122,7 +122,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
               "SubscriptionEvent %s related to TsFile is committed, consumer: %s, writing offset: %s, prefetching queue: %s",
               event, consumerId, writingOffset, this);
       LOGGER.warn(errorMessage);
-      return generateSubscriptionTsFileEventWithErrorMessage(errorMessage);
+      return generateSubscriptionPollErrorResponse(errorMessage);
     }
 
     // check consumer id
@@ -132,7 +132,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
               "inconsistent polled consumer id, current: %s, incoming: %s, file name: %s, writing offset: %s, prefetching queue: %s",
               event.getLastPolledConsumerId(), consumerId, fileName, writingOffset, this);
       LOGGER.warn(errorMessage);
-      return generateSubscriptionTsFileEventWithErrorMessage(errorMessage);
+      return generateSubscriptionPollErrorResponse(errorMessage);
     }
 
     final List<EnrichedEvent> enrichedEvents = event.getEnrichedEvents();
@@ -150,34 +150,34 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
               writingOffset,
               this);
       LOGGER.warn(errorMessage);
-      return generateSubscriptionTsFileEventWithErrorMessage(errorMessage);
+      return generateSubscriptionPollErrorResponse(errorMessage);
     }
 
-    final SubscriptionPolledMessage polledMessage = event.getMessage();
-    final SubscriptionMessagePayload messagePayload = polledMessage.getMessagePayload();
+    final SubscriptionPollResponse response = event.getResponse();
+    final SubscriptionPollPayload payload = response.getPayload();
 
-    // 2. Check message type, file name and offset
-    final short messageType = polledMessage.getMessageType();
-    if (!SubscriptionPolledMessageType.isValidatedMessageType(messageType)) {
-      final String errorMessage = String.format("unexpected message type: %s", messageType);
+    // 2. Check previous response type, file name and offset
+    final short responseType = response.getResponseType();
+    if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+      final String errorMessage = String.format("unexpected response type: %s", responseType);
       LOGGER.warn(errorMessage);
-      return generateSubscriptionTsFileEventWithErrorMessage(errorMessage);
+      return generateSubscriptionPollErrorResponse(errorMessage);
     }
 
-    switch (SubscriptionPolledMessageType.valueOf(messageType)) {
-      case TS_FILE_INIT:
+    switch (SubscriptionPollResponseType.valueOf(responseType)) {
+      case FILE_INIT:
         // check file name
-        if (!fileName.startsWith(((TsFileInitMessagePayload) messagePayload).getFileName())) {
+        if (!fileName.startsWith(((FileInitPayload) payload).getFileName())) {
           final String errorMessage =
               String.format(
                   "inconsistent file name, current: %s, incoming: %s, consumer: %s, writing offset: %s, prefetching queue: %s",
-                  ((TsFileInitMessagePayload) messagePayload).getFileName(),
+                  ((FileInitPayload) payload).getFileName(),
                   fileName,
                   consumerId,
                   writingOffset,
                   this);
           LOGGER.warn(errorMessage);
-          return generateSubscriptionTsFileEventWithErrorMessage(errorMessage);
+          return generateSubscriptionPollErrorResponse(errorMessage);
         }
         // check offset
         if (writingOffset != 0) {
@@ -189,22 +189,22 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
               consumerId);
         }
         break;
-      case TS_FILE_PIECE:
+      case FILE_PIECE:
         // check file name
-        if (!fileName.startsWith(((TsFilePieceMessagePayload) messagePayload).getFileName())) {
+        if (!fileName.startsWith(((FilePiecePayload) payload).getFileName())) {
           final String errorMessage =
               String.format(
                   "inconsistent file name, current: %s, incoming: %s, consumer: %s, writing offset: %s, prefetching queue: %s",
-                  ((TsFilePieceMessagePayload) messagePayload).getFileName(),
+                  ((FilePiecePayload) payload).getFileName(),
                   fileName,
                   consumerId,
                   writingOffset,
                   this);
           LOGGER.warn(errorMessage);
-          return generateSubscriptionTsFileEventWithErrorMessage(errorMessage);
+          return generateSubscriptionPollErrorResponse(errorMessage);
         }
         // check offset
-        if (writingOffset != ((TsFilePieceMessagePayload) messagePayload).getNextWritingOffset()) {
+        if (writingOffset != ((FilePiecePayload) payload).getNextWritingOffset()) {
           LOGGER.warn(
               "SubscriptionPrefetchingTsFileQueue {} set TsFile (with event {}) writing offset to {} for consumer {}",
               this,
@@ -213,19 +213,19 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
               consumerId);
         }
         break;
-      case TS_FILE_SEAL:
+      case FILE_SEAL:
         // check file name
-        if (!fileName.startsWith(((TsFileSealMessagePayload) messagePayload).getFileName())) {
+        if (!fileName.startsWith(((FileSealPayload) payload).getFileName())) {
           final String errorMessage =
               String.format(
                   "inconsistent file name, current: %s, incoming: %s, consumer: %s, writing offset: %s, prefetching queue: %s",
-                  ((TsFileSealMessagePayload) messagePayload).getFileName(),
+                  ((FileSealPayload) payload).getFileName(),
                   fileName,
                   consumerId,
                   writingOffset,
                   this);
           LOGGER.warn(errorMessage);
-          return generateSubscriptionTsFileEventWithErrorMessage(errorMessage);
+          return generateSubscriptionPollErrorResponse(errorMessage);
         }
 
         LOGGER.warn(
@@ -235,12 +235,12 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
             writingOffset,
             consumerId);
         // mark uncommittable
-        uncommittedEvents.remove(polledMessage.getCommitContext());
+        uncommittedEvents.remove(response.getCommitContext());
         break;
       default:
-        final String errorMessage = String.format("unexpected message type: %s", messageType);
+        final String errorMessage = String.format("unexpected response type: %s", responseType);
         LOGGER.warn(errorMessage);
-        return generateSubscriptionTsFileEventWithErrorMessage(errorMessage);
+        return generateSubscriptionPollErrorResponse(errorMessage);
     }
 
     // 3. Poll tsfile piece or tsfile seal
@@ -261,7 +261,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
                 "IOException occurred when SubscriptionPrefetchingTsFileQueue %s transferring TsFile (with event %s) to consumer %s: %s",
                 this, event, consumerId, e);
         LOGGER.warn(errorMessage);
-        return generateSubscriptionTsFileEventWithErrorMessage(errorMessage);
+        return generateSubscriptionPollErrorResponse(errorMessage);
       }
     }
 
@@ -273,7 +273,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     consumerIdToCurrentEventMap.put(consumerId, newEvent);
     if (newEventWithCommittable.getRight()) {
       // mark committable
-      uncommittedEvents.put(newEvent.getMessage().getCommitContext(), newEvent);
+      uncommittedEvents.put(newEvent.getResponse().getCommitContext(), newEvent);
     }
 
     newEvent.recordLastPolledConsumerId(consumerId);
@@ -350,19 +350,18 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     return null;
   }
 
-  private SubscriptionTsFileEvent generateSubscriptionTsFileEventWithErrorMessage(
+  private SubscriptionTsFileEvent generateSubscriptionPollErrorResponse(
       final String errorMessage, final boolean critical) {
     return new SubscriptionTsFileEvent(
         Collections.emptyList(),
-        new SubscriptionPolledMessage(
-            SubscriptionPolledMessageType.TS_FILE_ERROR.getType(),
-            new TsFileErrorMessagePayload(errorMessage, critical),
+        new SubscriptionPollResponse(
+            SubscriptionPollResponseType.ERROR.getType(),
+            new ErrorPayload(errorMessage, critical),
             super.generateInvalidSubscriptionCommitContext()));
   }
 
-  private SubscriptionTsFileEvent generateSubscriptionTsFileEventWithErrorMessage(
-      final String errorMessage) {
+  private SubscriptionTsFileEvent generateSubscriptionPollErrorResponse(final String errorMessage) {
     // consider non-critical by default, meaning the client can retry
-    return generateSubscriptionTsFileEventWithErrorMessage(errorMessage, false);
+    return generateSubscriptionPollErrorResponse(errorMessage, false);
   }
 }

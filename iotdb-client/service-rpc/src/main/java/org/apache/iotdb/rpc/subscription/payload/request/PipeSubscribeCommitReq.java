@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.rpc.subscription.payload.request;
 
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -53,7 +53,7 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
    * client.
    */
   public static PipeSubscribeCommitReq toTPipeSubscribeReq(
-      List<SubscriptionCommitContext> commitContexts, boolean nack) throws IOException {
+      final List<SubscriptionCommitContext> commitContexts, final boolean nack) throws IOException {
     final PipeSubscribeCommitReq req = new PipeSubscribeCommitReq();
 
     req.commitContexts = commitContexts;
@@ -75,11 +75,11 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
   }
 
   /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
-  public static PipeSubscribeCommitReq fromTPipeSubscribeReq(TPipeSubscribeReq commitReq) {
+  public static PipeSubscribeCommitReq fromTPipeSubscribeReq(final TPipeSubscribeReq commitReq) {
     final PipeSubscribeCommitReq req = new PipeSubscribeCommitReq();
 
     if (Objects.nonNull(commitReq.body) && commitReq.body.hasRemaining()) {
-      int size = ReadWriteIOUtils.readInt(commitReq.body);
+      final int size = ReadWriteIOUtils.readInt(commitReq.body);
       for (int i = 0; i < size; ++i) {
         req.commitContexts.add(SubscriptionCommitContext.deserialize(commitReq.body));
       }
@@ -96,14 +96,14 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribeCommitReq that = (PipeSubscribeCommitReq) obj;
+    final PipeSubscribeCommitReq that = (PipeSubscribeCommitReq) obj;
     return Objects.equals(this.commitContexts, that.commitContexts)
         && Objects.equals(this.nack, that.nack)
         && this.version == that.version

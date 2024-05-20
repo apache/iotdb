@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.common;
+package org.apache.iotdb.rpc.subscription.payload.poll;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -28,29 +28,29 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class SubscriptionPollMessage {
+public class SubscriptionPollRequest {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPolledMessage.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPollResponse.class);
 
-  private final transient short messageType;
+  private final transient short requestType;
 
-  private final transient SubscriptionMessagePayload messagePayload;
+  private final transient SubscriptionPollPayload payload;
 
   private final transient long timeoutMs; // unused now
 
-  public SubscriptionPollMessage(
-      short messageType, SubscriptionMessagePayload messagePayload, long timeoutMs) {
-    this.messageType = messageType;
-    this.messagePayload = messagePayload;
+  public SubscriptionPollRequest(
+      final short requestType, final SubscriptionPollPayload payload, final long timeoutMs) {
+    this.requestType = requestType;
+    this.payload = payload;
     this.timeoutMs = timeoutMs;
   }
 
-  public short getMessageType() {
-    return messageType;
+  public short getRequestType() {
+    return requestType;
   }
 
-  public SubscriptionMessagePayload getMessagePayload() {
-    return messagePayload;
+  public SubscriptionPollPayload getPayload() {
+    return payload;
   }
 
   public long getTimeoutMs() {
@@ -59,51 +59,51 @@ public class SubscriptionPollMessage {
 
   //////////////////////////// serialization ////////////////////////////
 
-  public static ByteBuffer serialize(SubscriptionPollMessage message) throws IOException {
+  public static ByteBuffer serialize(final SubscriptionPollRequest request) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      message.serialize(outputStream);
+      request.serialize(outputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
   }
 
   private void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(messageType, stream);
-    messagePayload.serialize(stream);
+    ReadWriteIOUtils.write(requestType, stream);
+    payload.serialize(stream);
     ReadWriteIOUtils.write(timeoutMs, stream);
   }
 
-  public static SubscriptionPollMessage deserialize(final ByteBuffer buffer) {
-    final short messageType = ReadWriteIOUtils.readShort(buffer);
-    SubscriptionMessagePayload messagePayload = null;
-    if (SubscriptionPollMessageType.isValidatedMessageType(messageType)) {
-      switch (SubscriptionPollMessageType.valueOf(messageType)) {
+  public static SubscriptionPollRequest deserialize(final ByteBuffer buffer) {
+    final short requestType = ReadWriteIOUtils.readShort(buffer);
+    SubscriptionPollPayload payload = null;
+    if (SubscriptionPollRequestType.isValidatedRequestType(requestType)) {
+      switch (SubscriptionPollRequestType.valueOf(requestType)) {
         case POLL:
-          messagePayload = new PollMessagePayload().deserialize(buffer);
+          payload = new PollPayload().deserialize(buffer);
           break;
-        case POLL_TS_FILE:
-          messagePayload = new PollTsFileMessagePayload().deserialize(buffer);
+        case POLL_FILE:
+          payload = new PollFilePayload().deserialize(buffer);
           break;
         default:
-          LOGGER.warn("unexpected message type: {}, message payload will be null", messageType);
+          LOGGER.warn("unexpected request type: {}, payload will be null", requestType);
           break;
       }
     } else {
-      LOGGER.warn("unexpected message type: {}, message payload will be null", messageType);
+      LOGGER.warn("unexpected request type: {}, payload will be null", requestType);
     }
 
     final long timeoutMs = ReadWriteIOUtils.readLong(buffer);
-    return new SubscriptionPollMessage(messageType, messagePayload, timeoutMs);
+    return new SubscriptionPollRequest(requestType, payload, timeoutMs);
   }
 
   /////////////////////////////// object ///////////////////////////////
 
   @Override
   public String toString() {
-    return "SubscriptionPollMessage{messageType="
-        + SubscriptionPollMessageType.valueOf(messageType).toString()
-        + ", messagePayload="
-        + messagePayload
+    return "SubscriptionPollRequest{requestType="
+        + SubscriptionPollRequestType.valueOf(requestType).toString()
+        + ", payload="
+        + payload
         + ", timeoutMs="
         + timeoutMs
         + "}";

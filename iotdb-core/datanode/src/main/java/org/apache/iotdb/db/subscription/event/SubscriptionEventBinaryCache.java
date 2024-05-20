@@ -43,13 +43,13 @@ public class SubscriptionEventBinaryCache {
 
   private final LoadingCache<SubscriptionEvent, ByteBuffer> cache;
 
-  public ByteBuffer serialize(final SubscriptionEvent message) throws IOException {
+  public ByteBuffer serialize(final SubscriptionEvent event) throws IOException {
     try {
-      return this.cache.get(message);
+      return this.cache.get(event);
     } catch (final Exception e) {
       LOGGER.warn(
-          "SubscriptionMessageBinaryCache raised an exception while serializing message: {}",
-          message,
+          "SubscriptionEventBinaryCache raised an exception while serializing SubscriptionEvent: {}",
+          event,
           e);
       throw new IOException(e);
     }
@@ -58,13 +58,15 @@ public class SubscriptionEventBinaryCache {
   /**
    * @return true -> byte buffer is not null
    */
-  public boolean trySerialize(final SubscriptionEvent message) {
+  public boolean trySerialize(final SubscriptionEvent event) {
     try {
-      serialize(message);
+      serialize(event);
       return true;
     } catch (final IOException e) {
       LOGGER.warn(
-          "Subscription: something unexpected happened when serializing SubscriptionEvent", e);
+          "Subscription: something unexpected happened when serializing SubscriptionEvent: {}",
+          event,
+          e);
       return false;
     }
   }
@@ -76,17 +78,17 @@ public class SubscriptionEventBinaryCache {
 
   //////////////////////////// singleton ////////////////////////////
 
-  private static class SubscriptionMessageBinaryCacheHolder {
+  private static class SubscriptionEventBinaryCacheHolder {
 
     private static final SubscriptionEventBinaryCache INSTANCE = new SubscriptionEventBinaryCache();
 
-    private SubscriptionMessageBinaryCacheHolder() {
+    private SubscriptionEventBinaryCacheHolder() {
       // empty constructor
     }
   }
 
   public static SubscriptionEventBinaryCache getInstance() {
-    return SubscriptionEventBinaryCache.SubscriptionMessageBinaryCacheHolder.INSTANCE;
+    return SubscriptionEventBinaryCache.SubscriptionEventBinaryCacheHolder.INSTANCE;
   }
 
   private SubscriptionEventBinaryCache() {
@@ -107,7 +109,7 @@ public class SubscriptionEventBinaryCache {
                   memoryUsageCheatFactor.set(
                       memoryUsageCheatFactor.get() * ((double) oldMemory / newMemory));
                   LOGGER.info(
-                      "SubscriptionMessageBinaryCache.allocatedMemoryBlock has shrunk from {} to {}.",
+                      "SubscriptionEventBinaryCache.allocatedMemoryBlock has shrunk from {} to {}.",
                       oldMemory,
                       newMemory);
                 })
@@ -118,7 +120,7 @@ public class SubscriptionEventBinaryCache {
                   memoryUsageCheatFactor.set(
                       memoryUsageCheatFactor.get() / ((double) newMemory / oldMemory));
                   LOGGER.info(
-                      "SubscriptionMessageBinaryCache.allocatedMemoryBlock has expanded from {} to {}.",
+                      "SubscriptionEventBinaryCache.allocatedMemoryBlock has expanded from {} to {}.",
                       oldMemory,
                       newMemory);
                 });

@@ -17,48 +17,43 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.common;
+package org.apache.iotdb.rpc.subscription.payload.poll;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
-public class TsFileErrorMessagePayload implements SubscriptionMessagePayload {
+public class PollPayload implements SubscriptionPollPayload {
 
-  private transient String errorMessage;
+  private transient Set<String> topicNames = new HashSet<>();
 
-  private transient boolean critical;
+  public PollPayload() {}
 
-  public String getErrorMessage() {
-    return errorMessage;
+  public PollPayload(final Set<String> topicNames) {
+    this.topicNames = topicNames;
   }
 
-  public boolean isCritical() {
-    return critical;
-  }
-
-  public TsFileErrorMessagePayload() {}
-
-  public TsFileErrorMessagePayload(String errorMessage, boolean critical) {
-    this.errorMessage = errorMessage;
-    this.critical = critical;
+  public Set<String> getTopicNames() {
+    return topicNames;
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(errorMessage, stream);
-    ReadWriteIOUtils.write(critical, stream);
+  public void serialize(final DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.writeObjectSet(topicNames, stream);
   }
 
   @Override
-  public SubscriptionMessagePayload deserialize(ByteBuffer buffer) {
-    this.errorMessage = ReadWriteIOUtils.readString(buffer);
-    this.critical = ReadWriteIOUtils.readBool(buffer);
+  public SubscriptionPollPayload deserialize(final ByteBuffer buffer) {
+    topicNames = ReadWriteIOUtils.readObjectSet(buffer);
     return this;
   }
+
+  /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(final Object obj) {
@@ -68,22 +63,17 @@ public class TsFileErrorMessagePayload implements SubscriptionMessagePayload {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final TsFileErrorMessagePayload that = (TsFileErrorMessagePayload) obj;
-    return Objects.equals(this.errorMessage, that.errorMessage)
-        && Objects.equals(this.critical, that.critical);
+    final PollPayload that = (PollPayload) obj;
+    return Objects.equals(this.topicNames, that.topicNames);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(errorMessage, critical);
+    return Objects.hash(topicNames);
   }
 
   @Override
   public String toString() {
-    return "TsFileErrorMessagePayload{errorMessage="
-        + errorMessage
-        + ", critical="
-        + critical
-        + "}";
+    return "PollPayload{topicNames=" + topicNames + "}";
   }
 }

@@ -23,16 +23,16 @@ import java.util.Objects;
 
 public class SubscriptionParameterNotValidException extends SubscriptionException {
 
-  public SubscriptionParameterNotValidException(String message) {
+  public SubscriptionParameterNotValidException(final String message) {
     super(message);
   }
 
-  public SubscriptionParameterNotValidException(String message, Throwable cause) {
+  public SubscriptionParameterNotValidException(final String message, final Throwable cause) {
     super(message, cause);
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     return obj instanceof SubscriptionParameterNotValidException
         && Objects.equals(getMessage(), ((SubscriptionParameterNotValidException) obj).getMessage())
         && Objects.equals(

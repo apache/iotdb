@@ -19,4 +19,19 @@
 
 package org.apache.iotdb.session.subscription.payload;
 
-public interface SubscriptionMessagePayload {}
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
+
+public abstract class SubscriptionFileHandler implements SubscriptionMessageHandler {
+
+  protected final String filePath;
+
+  public SubscriptionFileHandler(final String filePath) {
+    this.filePath = filePath;
+  }
+
+  @Override
+  public SubscriptionSessionDataSetsHandler getSessionDataSetsHandler() {
+    throw new SubscriptionIncompatibleHandlerException(
+        "SubscriptionFileHandler do not support getSessionDataSetsHandler().");
+  }
+}

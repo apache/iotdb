@@ -17,15 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.common;
+package org.apache.iotdb.rpc.subscription.payload.poll;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public interface SubscriptionMessagePayload {
+public interface SubscriptionPollPayload {
 
   void serialize(final DataOutputStream stream) throws IOException;
 
-  SubscriptionMessagePayload deserialize(final ByteBuffer buffer);
+  SubscriptionPollPayload deserialize(final ByteBuffer buffer);
 }

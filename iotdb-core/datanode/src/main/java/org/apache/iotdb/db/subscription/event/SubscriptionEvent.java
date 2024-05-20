@@ -21,7 +21,7 @@ package org.apache.iotdb.db.subscription.event;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -34,18 +34,18 @@ public class SubscriptionEvent {
   private static final long INVALID_TIMESTAMP = -1;
 
   protected final List<EnrichedEvent> enrichedEvents;
-  protected final SubscriptionPolledMessage message;
+  protected final SubscriptionPollResponse response;
 
   private String lastPolledConsumerId;
   private long lastPolledTimestamp;
   private long committedTimestamp;
 
-  protected ByteBuffer byteBuffer; // serialized SubscriptionPolledMessage
+  protected ByteBuffer byteBuffer; // serialized SubscriptionPollResponse
 
   public SubscriptionEvent(
-      final List<EnrichedEvent> enrichedEvents, final SubscriptionPolledMessage message) {
+      final List<EnrichedEvent> enrichedEvents, final SubscriptionPollResponse response) {
     this.enrichedEvents = enrichedEvents;
-    this.message = message;
+    this.response = response;
 
     this.lastPolledConsumerId = null;
     this.lastPolledTimestamp = INVALID_TIMESTAMP;
@@ -56,8 +56,8 @@ public class SubscriptionEvent {
     return enrichedEvents;
   }
 
-  public SubscriptionPolledMessage getMessage() {
-    return message;
+  public SubscriptionPollResponse getResponse() {
+    return response;
   }
 
   //////////////////////////// commit ////////////////////////////
@@ -114,7 +114,7 @@ public class SubscriptionEvent {
     if (Objects.nonNull(byteBuffer)) {
       return byteBuffer;
     }
-    return SubscriptionPolledMessage.serialize(message);
+    return SubscriptionPollResponse.serialize(response);
   }
 
   public ByteBuffer getByteBuffer() {
@@ -132,8 +132,8 @@ public class SubscriptionEvent {
   public String toString() {
     return "SubscriptionEvent{enrichedEvents="
         + enrichedEvents.stream().map(EnrichedEvent::coreReportMessage).collect(Collectors.toList())
-        + ", message="
-        + message
+        + ", response="
+        + response
         + ", lastPolledConsumerId="
         + lastPolledConsumerId
         + ", lastPolledTimestamp="
@@ -141,7 +141,7 @@ public class SubscriptionEvent {
         + ", committedTimestamp="
         + committedTimestamp
         + "}"
-        + "(message byte buffer size: "
+        + "(response event byte buffer size: "
         + (Objects.nonNull(byteBuffer) ? byteBuffer.limit() : "<unknown>")
         + ")";
   }

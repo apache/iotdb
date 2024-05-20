@@ -30,7 +30,6 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSets;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.write.record.Tablet;
@@ -119,9 +118,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-                    final SubscriptionSessionDataSets payload =
-                        (SubscriptionSessionDataSets) message.getPayload();
-                    for (final Iterator<Tablet> it = payload.tabletIterator(); it.hasNext(); ) {
+                    for (final Iterator<Tablet> it =
+                            message.getSessionDataSetsHandler().tabletIterator();
+                        it.hasNext(); ) {
                       final Tablet tablet = it.next();
                       session.insertTablet(tablet);
                     }
@@ -221,9 +220,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-                    final SubscriptionSessionDataSets payload =
-                        (SubscriptionSessionDataSets) message.getPayload();
-                    for (final Iterator<Tablet> it = payload.tabletIterator(); it.hasNext(); ) {
+                    for (final Iterator<Tablet> it =
+                            message.getSessionDataSetsHandler().tabletIterator();
+                        it.hasNext(); ) {
                       final Tablet tablet = it.next();
                       session.insertTablet(tablet);
                     }
@@ -319,9 +318,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-                    final SubscriptionSessionDataSets payload =
-                        (SubscriptionSessionDataSets) message.getPayload();
-                    for (final Iterator<Tablet> it = payload.tabletIterator(); it.hasNext(); ) {
+                    for (final Iterator<Tablet> it =
+                            message.getSessionDataSetsHandler().tabletIterator();
+                        it.hasNext(); ) {
                       final Tablet tablet = it.next();
                       session.insertTablet(tablet);
                     }
@@ -447,9 +446,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-                    final SubscriptionSessionDataSets payload =
-                        (SubscriptionSessionDataSets) message.getPayload();
-                    for (final Iterator<Tablet> it = payload.tabletIterator(); it.hasNext(); ) {
+                    for (final Iterator<Tablet> it =
+                            message.getSessionDataSetsHandler().tabletIterator();
+                        it.hasNext(); ) {
                       final Tablet tablet = it.next();
                       session.insertTablet(tablet);
                     }

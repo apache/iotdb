@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.rpc.subscription.payload.request;
 
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessage;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 
 import java.io.IOException;
@@ -27,10 +27,10 @@ import java.util.Objects;
 
 public class PipeSubscribePollReq extends TPipeSubscribeReq {
 
-  private transient SubscriptionPollMessage pollMessage;
+  private transient SubscriptionPollRequest request;
 
-  public SubscriptionPollMessage getPollMessage() {
-    return pollMessage;
+  public SubscriptionPollRequest getRequest() {
+    return request;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -39,25 +39,25 @@ public class PipeSubscribePollReq extends TPipeSubscribeReq {
    * Serialize the incoming parameters into `PipeSubscribePollReq`, called by the subscription
    * client.
    */
-  public static PipeSubscribePollReq toTPipeSubscribeReq(SubscriptionPollMessage pollMessage)
+  public static PipeSubscribePollReq toTPipeSubscribeReq(final SubscriptionPollRequest request)
       throws IOException {
     final PipeSubscribePollReq req = new PipeSubscribePollReq();
 
-    req.pollMessage = pollMessage;
+    req.request = request;
 
     req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();
     req.type = PipeSubscribeRequestType.POLL.getType();
-    req.body = SubscriptionPollMessage.serialize(pollMessage);
+    req.body = SubscriptionPollRequest.serialize(request);
 
     return req;
   }
 
   /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
-  public static PipeSubscribePollReq fromTPipeSubscribeReq(TPipeSubscribeReq pollReq) {
+  public static PipeSubscribePollReq fromTPipeSubscribeReq(final TPipeSubscribeReq pollReq) {
     final PipeSubscribePollReq req = new PipeSubscribePollReq();
 
     if (Objects.nonNull(pollReq.body) && pollReq.body.hasRemaining()) {
-      req.pollMessage = SubscriptionPollMessage.deserialize(pollReq.body);
+      req.request = SubscriptionPollRequest.deserialize(pollReq.body);
     }
 
     req.version = pollReq.version;
@@ -70,15 +70,15 @@ public class PipeSubscribePollReq extends TPipeSubscribeReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribePollReq that = (PipeSubscribePollReq) obj;
-    return Objects.equals(this.pollMessage, that.pollMessage)
+    final PipeSubscribePollReq that = (PipeSubscribePollReq) obj;
+    return Objects.equals(this.request, that.request)
         && this.version == that.version
         && this.type == that.type
         && Objects.equals(this.body, that.body);
@@ -86,6 +86,6 @@ public class PipeSubscribePollReq extends TPipeSubscribeReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(pollMessage, pollMessage, version, type, body);
+    return Objects.hash(request, request, version, type, body);
   }
 }

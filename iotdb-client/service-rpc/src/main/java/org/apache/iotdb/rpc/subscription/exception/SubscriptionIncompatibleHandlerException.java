@@ -17,33 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription.payload;
+package org.apache.iotdb.rpc.subscription.exception;
 
-import org.apache.tsfile.write.record.Tablet;
+import java.util.Objects;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+public class SubscriptionIncompatibleHandlerException extends SubscriptionException {
 
-public class SubscriptionSessionDataSets
-    implements Iterable<SubscriptionSessionDataSet>, SubscriptionMessagePayload {
+  public SubscriptionIncompatibleHandlerException(final String message) {
+    super(message);
+  }
 
-  private final List<SubscriptionSessionDataSet> dataSetList;
-
-  private final List<Tablet> tablets;
-
-  public SubscriptionSessionDataSets(final List<Tablet> tablets) {
-    this.dataSetList = new ArrayList<>();
-    this.tablets = tablets;
-    tablets.forEach((tablet -> this.dataSetList.add(new SubscriptionSessionDataSet(tablet))));
+  public SubscriptionIncompatibleHandlerException(final String message, final Throwable cause) {
+    super(message, cause);
   }
 
   @Override
-  public Iterator<SubscriptionSessionDataSet> iterator() {
-    return dataSetList.iterator();
-  }
-
-  public Iterator<Tablet> tabletIterator() {
-    return tablets.iterator();
+  public boolean equals(final Object obj) {
+    return obj instanceof SubscriptionIncompatibleHandlerException
+        && Objects.equals(
+            getMessage(), ((SubscriptionIncompatibleHandlerException) obj).getMessage())
+        && Objects.equals(
+            getTimeStamp(), ((SubscriptionIncompatibleHandlerException) obj).getTimeStamp());
   }
 }

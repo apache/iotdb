@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.common;
+package org.apache.iotdb.rpc.subscription.payload.poll;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -26,28 +26,37 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class TsFileInitMessagePayload implements SubscriptionMessagePayload {
+public class ErrorPayload implements SubscriptionPollPayload {
 
-  private transient String fileName;
+  private transient String errorMessage;
 
-  public String getFileName() {
-    return fileName;
+  private transient boolean critical;
+
+  public String getErrorMessage() {
+    return errorMessage;
   }
 
-  public TsFileInitMessagePayload() {}
+  public boolean isCritical() {
+    return critical;
+  }
 
-  public TsFileInitMessagePayload(String fileName) {
-    this.fileName = fileName;
+  public ErrorPayload() {}
+
+  public ErrorPayload(final String errorMessage, final boolean critical) {
+    this.errorMessage = errorMessage;
+    this.critical = critical;
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(fileName, stream);
+  public void serialize(final DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(errorMessage, stream);
+    ReadWriteIOUtils.write(critical, stream);
   }
 
   @Override
-  public SubscriptionMessagePayload deserialize(ByteBuffer buffer) {
-    this.fileName = ReadWriteIOUtils.readString(buffer);
+  public SubscriptionPollPayload deserialize(final ByteBuffer buffer) {
+    this.errorMessage = ReadWriteIOUtils.readString(buffer);
+    this.critical = ReadWriteIOUtils.readBool(buffer);
     return this;
   }
 
@@ -59,17 +68,18 @@ public class TsFileInitMessagePayload implements SubscriptionMessagePayload {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final TsFileInitMessagePayload that = (TsFileInitMessagePayload) obj;
-    return Objects.equals(this.fileName, that.fileName);
+    final ErrorPayload that = (ErrorPayload) obj;
+    return Objects.equals(this.errorMessage, that.errorMessage)
+        && Objects.equals(this.critical, that.critical);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(fileName);
+    return Objects.hash(errorMessage, critical);
   }
 
   @Override
   public String toString() {
-    return "TsFileInitMessagePayload{fileName=" + fileName + "}";
+    return "ErrorPayload{errorMessage=" + errorMessage + ", critical=" + critical + "}";
   }
 }

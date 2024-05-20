@@ -41,12 +41,12 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
-import org.apache.iotdb.rpc.subscription.payload.common.PollMessagePayload;
-import org.apache.iotdb.rpc.subscription.payload.common.PollTsFileMessagePayload;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessage;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessageType;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -321,19 +321,18 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     final List<SubscriptionEvent> events;
     try {
-      final SubscriptionPollMessage pollMessage = req.getPollMessage();
-      final short messageType = pollMessage.getMessageType();
-      if (SubscriptionPollMessageType.isValidatedMessageType(messageType)) {
-        switch (SubscriptionPollMessageType.valueOf(messageType)) {
+      final SubscriptionPollRequest request = req.getRequest();
+      final short requestType = request.getRequestType();
+      if (SubscriptionPollRequestType.isValidatedRequestType(requestType)) {
+        switch (SubscriptionPollRequestType.valueOf(requestType)) {
           case POLL:
             events =
-                handlePipeSubscribePollInternal(
-                    consumerConfig, (PollMessagePayload) pollMessage.getMessagePayload());
+                handlePipeSubscribePollInternal(consumerConfig, (PollPayload) request.getPayload());
             break;
-          case POLL_TS_FILE:
+          case POLL_FILE:
             events =
                 handlePipeSubscribePollTsFileInternal(
-                    consumerConfig, (PollTsFileMessagePayload) pollMessage.getMessagePayload());
+                    consumerConfig, (PollFilePayload) request.getPayload());
             break;
           default:
             events = null;
@@ -343,7 +342,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         events = null;
       }
       if (Objects.isNull(events)) {
-        throw new SubscriptionException(String.format("unexpected message type: %s", messageType));
+        throw new SubscriptionException(String.format("unexpected request type: %s", requestType));
       }
 
       // generate response
@@ -352,8 +351,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           events.parallelStream()
               .map(
                   (event) -> {
-                    final SubscriptionPolledMessage message = event.getMessage();
-                    final SubscriptionCommitContext commitContext = message.getCommitContext();
+                    final SubscriptionPollResponse response = event.getResponse();
+                    final SubscriptionCommitContext commitContext = response.getCommitContext();
                     try {
                       final ByteBuffer byteBuffer =
                           SubscriptionEventBinaryCache.getInstance().serialize(event);
@@ -364,23 +363,23 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                               byteBuffer.limit());
                       SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, false);
                       LOGGER.info(
-                          "Subscription: consumer {} poll message {} successfully with req message: {}",
+                          "Subscription: consumer {} poll {} successfully with request: {}",
                           consumerConfig,
-                          message,
-                          req.getPollMessage());
+                          response,
+                          req.getRequest());
                       return byteBuffer;
                     } catch (final Exception e) {
                       LOGGER.warn(
-                          "Subscription: consumer {} poll message {} failed with req message: {}",
+                          "Subscription: consumer {} poll {} failed with request: {}",
                           consumerConfig,
-                          message,
-                          req.getPollMessage(),
+                          response,
+                          req.getRequest(),
                           e);
                       // nack
                       SubscriptionAgent.broker()
                           .commit(
                               consumerConfig,
-                              Collections.singletonList(message.getCommitContext()),
+                              Collections.singletonList(response.getCommitContext()),
                               true);
                       return null;
                     }
@@ -399,7 +398,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollInternal(
-      final ConsumerConfig consumerConfig, final PollMessagePayload messagePayload) {
+      final ConsumerConfig consumerConfig, final PollPayload messagePayload) {
     final Set<String> topicNames;
     if (messagePayload.getTopicNames().isEmpty()) {
       // poll all subscribed topics
@@ -418,7 +417,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollTsFileInternal(
-      final ConsumerConfig consumerConfig, final PollTsFileMessagePayload messagePayload) {
+      final ConsumerConfig consumerConfig, final PollFilePayload messagePayload) {
     return SubscriptionAgent.broker()
         .pollTsFile(
             consumerConfig,

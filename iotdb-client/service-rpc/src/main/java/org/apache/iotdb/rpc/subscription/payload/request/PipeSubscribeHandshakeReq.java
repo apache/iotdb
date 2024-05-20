@@ -39,7 +39,7 @@ public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
    * Serialize the incoming parameters into `PipeSubscribeHandshakeReq`, called by the subscription
    * client.
    */
-  public static PipeSubscribeHandshakeReq toTPipeSubscribeReq(ConsumerConfig consumerConfig)
+  public static PipeSubscribeHandshakeReq toTPipeSubscribeReq(final ConsumerConfig consumerConfig)
       throws IOException {
     final PipeSubscribeHandshakeReq req = new PipeSubscribeHandshakeReq();
 
@@ -53,7 +53,8 @@ public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
   }
 
   /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
-  public static PipeSubscribeHandshakeReq fromTPipeSubscribeReq(TPipeSubscribeReq handshakeReq) {
+  public static PipeSubscribeHandshakeReq fromTPipeSubscribeReq(
+      final TPipeSubscribeReq handshakeReq) {
     final PipeSubscribeHandshakeReq req = new PipeSubscribeHandshakeReq();
 
     if (Objects.nonNull(handshakeReq.body) && handshakeReq.body.hasRemaining()) {
@@ -70,14 +71,14 @@ public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribeHandshakeReq that = (PipeSubscribeHandshakeReq) obj;
+    final PipeSubscribeHandshakeReq that = (PipeSubscribeHandshakeReq) obj;
     return Objects.equals(this.consumerConfig, that.consumerConfig)
         && this.version == that.version
         && this.type == that.type

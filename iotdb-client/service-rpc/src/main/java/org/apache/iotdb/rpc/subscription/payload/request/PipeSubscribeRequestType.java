@@ -35,7 +35,7 @@ public enum PipeSubscribeRequestType {
 
   private final short type;
 
-  PipeSubscribeRequestType(short type) {
+  PipeSubscribeRequestType(final short type) {
     this.type = type;
   }
 
@@ -50,11 +50,11 @@ public enum PipeSubscribeRequestType {
               (typeMap, requestType) -> typeMap.put(requestType.getType(), requestType),
               HashMap::putAll);
 
-  public static boolean isValidatedRequestType(short type) {
+  public static boolean isValidatedRequestType(final short type) {
     return TYPE_MAP.containsKey(type);
   }
 
-  public static PipeSubscribeRequestType valueOf(short type) {
+  public static PipeSubscribeRequestType valueOf(final short type) {
     return TYPE_MAP.get(type);
   }
 }

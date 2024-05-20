@@ -29,9 +29,10 @@ import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSets;
-import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileReader;
 
+import org.apache.tsfile.read.TsFileReader;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -129,9 +130,7 @@ public class SubscriptionSessionExample {
         }
       }
       for (final SubscriptionMessage message : messages) {
-        final SubscriptionSessionDataSets dataSets =
-            (SubscriptionSessionDataSets) message.getPayload();
-        for (final SubscriptionSessionDataSet dataSet : dataSets) {
+        for (final SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler()) {
           System.out.println(dataSet.getColumnNames());
           System.out.println(dataSet.getColumnTypes());
           while (dataSet.hasNext()) {
@@ -188,14 +187,14 @@ public class SubscriptionSessionExample {
                       }
                     }
                     for (final SubscriptionMessage message : messages) {
-                      final SubscriptionTsFileReader reader =
-                          (SubscriptionTsFileReader) message.getPayload();
-                      System.out.println(reader.toString());
+                      try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
+                        // do something...
+                      }
                     }
                     consumer2.commitSync(messages);
                   }
                   consumer2.unsubscribe(TOPIC_2);
-                } catch (IoTDBConnectionException e) {
+                } catch (IOException | IoTDBConnectionException e) {
                   throw new RuntimeException(e);
                 }
               });

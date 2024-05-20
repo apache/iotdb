@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.common;
+package org.apache.iotdb.rpc.subscription.payload.poll;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PollTsFileMessagePayload implements SubscriptionMessagePayload {
+public class PollFilePayload implements SubscriptionPollPayload {
 
   private transient String topicName;
 
@@ -46,23 +46,23 @@ public class PollTsFileMessagePayload implements SubscriptionMessagePayload {
     return writingOffset;
   }
 
-  public PollTsFileMessagePayload() {}
+  public PollFilePayload() {}
 
-  public PollTsFileMessagePayload(String topicName, String fileName, long writingOffset) {
+  public PollFilePayload(final String topicName, final String fileName, final long writingOffset) {
     this.topicName = topicName;
     this.fileName = fileName;
     this.writingOffset = writingOffset;
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(topicName, stream);
     ReadWriteIOUtils.write(fileName, stream);
     ReadWriteIOUtils.write(writingOffset, stream);
   }
 
   @Override
-  public SubscriptionMessagePayload deserialize(ByteBuffer buffer) {
+  public SubscriptionPollPayload deserialize(final ByteBuffer buffer) {
     topicName = ReadWriteIOUtils.readString(buffer);
     fileName = ReadWriteIOUtils.readString(buffer);
     writingOffset = ReadWriteIOUtils.readLong(buffer);
@@ -79,7 +79,7 @@ public class PollTsFileMessagePayload implements SubscriptionMessagePayload {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final PollTsFileMessagePayload that = (PollTsFileMessagePayload) obj;
+    final PollFilePayload that = (PollFilePayload) obj;
     return Objects.equals(this.topicName, that.topicName)
         && Objects.equals(this.fileName, that.fileName)
         && Objects.equals(this.writingOffset, that.writingOffset);
@@ -92,7 +92,7 @@ public class PollTsFileMessagePayload implements SubscriptionMessagePayload {
 
   @Override
   public String toString() {
-    return "PollTsFileMessagePayload{topicName="
+    return "PollFilePayload{topicName="
         + topicName
         + ", fileName="
         + fileName

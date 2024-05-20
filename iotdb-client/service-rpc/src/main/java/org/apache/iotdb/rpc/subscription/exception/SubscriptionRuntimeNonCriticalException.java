@@ -23,16 +23,16 @@ import java.util.Objects;
 
 public class SubscriptionRuntimeNonCriticalException extends SubscriptionRuntimeException {
 
-  public SubscriptionRuntimeNonCriticalException(String message) {
+  public SubscriptionRuntimeNonCriticalException(final String message) {
     super(message);
   }
 
-  public SubscriptionRuntimeNonCriticalException(String message, Throwable cause) {
+  public SubscriptionRuntimeNonCriticalException(final String message, final Throwable cause) {
     super(message, cause);
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     return obj instanceof SubscriptionRuntimeNonCriticalException
         && Objects.equals(
             getMessage(), ((SubscriptionRuntimeNonCriticalException) obj).getMessage())

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.common;
+package org.apache.iotdb.rpc.subscription.payload.poll;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
@@ -29,17 +29,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class TabletsMessagePayload implements SubscriptionMessagePayload {
+public class TabletsPayload implements SubscriptionPollPayload {
 
   protected transient List<Tablet> tablets = new ArrayList<>();
 
   // Pure in-memory object, not involved in serialization and deserialization.
   protected transient long calculatedTabletsSizeInBytes;
 
-  public TabletsMessagePayload() {}
+  public TabletsPayload() {}
 
-  public TabletsMessagePayload(
-      final List<Tablet> tablets, final long calculatedTabletsSizeInBytes) {
+  public TabletsPayload(final List<Tablet> tablets, final long calculatedTabletsSizeInBytes) {
     this.tablets = tablets;
     this.calculatedTabletsSizeInBytes = calculatedTabletsSizeInBytes;
   }
@@ -49,7 +48,7 @@ public class TabletsMessagePayload implements SubscriptionMessagePayload {
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(tablets.size(), stream);
     for (final Tablet tablet : tablets) {
       tablet.serialize(stream);
@@ -57,7 +56,7 @@ public class TabletsMessagePayload implements SubscriptionMessagePayload {
   }
 
   @Override
-  public SubscriptionMessagePayload deserialize(ByteBuffer buffer) {
+  public SubscriptionPollPayload deserialize(final ByteBuffer buffer) {
     final List<Tablet> tablets = new ArrayList<>();
     final int size = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < size; ++i) {
@@ -75,7 +74,7 @@ public class TabletsMessagePayload implements SubscriptionMessagePayload {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final TabletsMessagePayload that = (TabletsMessagePayload) obj;
+    final TabletsPayload that = (TabletsPayload) obj;
     return Objects.equals(this.tablets, that.tablets);
   }
 
@@ -86,7 +85,7 @@ public class TabletsMessagePayload implements SubscriptionMessagePayload {
 
   @Override
   public String toString() {
-    return "TabletsMessagePayload{calculatedTabletsSizeInBytes="
+    return "TabletsPayload{calculatedTabletsSizeInBytes="
         + (calculatedTabletsSizeInBytes == 0 ? "<unknown>" : calculatedTabletsSizeInBytes)
         + "}";
   }

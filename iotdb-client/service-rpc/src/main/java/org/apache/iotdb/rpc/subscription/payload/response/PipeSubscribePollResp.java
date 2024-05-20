@@ -20,7 +20,7 @@
 package org.apache.iotdb.rpc.subscription.payload.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
 import java.nio.ByteBuffer;
@@ -30,10 +30,10 @@ import java.util.Objects;
 
 public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
-  private transient List<SubscriptionPolledMessage> messages = new ArrayList<>();
+  private final transient List<SubscriptionPollResponse> responses = new ArrayList<>();
 
-  public List<SubscriptionPolledMessage> getMessages() {
-    return messages;
+  public List<SubscriptionPollResponse> getResponses() {
+    return responses;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -43,10 +43,10 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
    * server.
    */
   public static PipeSubscribePollResp toTPipeSubscribeResp(
-      TSStatus status, List<ByteBuffer> byteBuffers) {
+      final TSStatus status, final List<ByteBuffer> byteBuffers) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
-    // resp.messages = messages;
+    // resp.events = events;
 
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
@@ -57,13 +57,13 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
   }
 
   /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
-  public static PipeSubscribePollResp fromTPipeSubscribeResp(TPipeSubscribeResp pollResp) {
+  public static PipeSubscribePollResp fromTPipeSubscribeResp(final TPipeSubscribeResp pollResp) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
     if (Objects.nonNull(pollResp.body)) {
       for (final ByteBuffer byteBuffer : pollResp.body) {
         if (Objects.nonNull(byteBuffer) && byteBuffer.hasRemaining()) {
-          resp.messages.add(SubscriptionPolledMessage.deserialize(byteBuffer));
+          resp.responses.add(SubscriptionPollResponse.deserialize(byteBuffer));
         }
       }
     }
@@ -79,15 +79,15 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribePollResp that = (PipeSubscribePollResp) obj;
-    return Objects.equals(this.messages, that.messages)
+    final PipeSubscribePollResp that = (PipeSubscribePollResp) obj;
+    return Objects.equals(this.responses, that.responses)
         && Objects.equals(this.status, that.status)
         && this.version == that.version
         && this.type == that.type
@@ -96,6 +96,6 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
   @Override
   public int hashCode() {
-    return Objects.hash(messages, status, version, type, body);
+    return Objects.hash(responses, status, version, type, body);
   }
 }

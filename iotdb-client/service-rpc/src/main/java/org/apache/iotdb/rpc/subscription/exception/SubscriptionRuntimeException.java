@@ -23,16 +23,16 @@ import java.util.Objects;
 
 public class SubscriptionRuntimeException extends SubscriptionException {
 
-  public SubscriptionRuntimeException(String message) {
+  public SubscriptionRuntimeException(final String message) {
     super(message);
   }
 
-  public SubscriptionRuntimeException(String message, Throwable cause) {
+  public SubscriptionRuntimeException(final String message, final Throwable cause) {
     super(message, cause);
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     return obj instanceof SubscriptionRuntimeException
         && Objects.equals(getMessage(), ((SubscriptionRuntimeException) obj).getMessage())
         && Objects.equals(getTimeStamp(), ((SubscriptionRuntimeException) obj).getTimeStamp());

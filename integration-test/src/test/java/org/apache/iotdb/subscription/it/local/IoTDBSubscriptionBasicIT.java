@@ -32,8 +32,6 @@ import org.apache.iotdb.session.subscription.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSets;
-import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileReader;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.read.TsFileReader;
@@ -125,9 +123,8 @@ public class IoTDBSubscriptionBasicIT {
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-                    final SubscriptionSessionDataSets payload =
-                        (SubscriptionSessionDataSets) message.getPayload();
-                    for (final SubscriptionSessionDataSet dataSet : payload) {
+                    for (final SubscriptionSessionDataSet dataSet :
+                        message.getSessionDataSetsHandler()) {
                       while (dataSet.hasNext()) {
                         dataSet.next();
                         rowCount.addAndGet(1);
@@ -213,9 +210,8 @@ public class IoTDBSubscriptionBasicIT {
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-                    final SubscriptionTsFileReader reader =
-                        (SubscriptionTsFileReader) message.getPayload();
-                    try (final TsFileReader tsFileReader = reader.open()) {
+                    try (final TsFileReader tsFileReader =
+                        message.getTsFileHandler().openReader()) {
                       final Path path = new Path("root.db.d1", "s1", true);
                       final QueryDataSet dataSet =
                           tsFileReader.query(
@@ -308,10 +304,9 @@ public class IoTDBSubscriptionBasicIT {
                     continue;
                   }
                   for (final SubscriptionMessage message : messages) {
-                    final SubscriptionSessionDataSets payload =
-                        (SubscriptionSessionDataSets) message.getPayload();
                     int rowCountInOneMessage = 0;
-                    for (final SubscriptionSessionDataSet dataSet : payload) {
+                    for (final SubscriptionSessionDataSet dataSet :
+                        message.getSessionDataSetsHandler()) {
                       while (dataSet.hasNext()) {
                         dataSet.next();
                         rowCount.addAndGet(1);
@@ -446,9 +441,8 @@ public class IoTDBSubscriptionBasicIT {
             .consumeListener(
                 message -> {
                   onReceiveCount.getAndIncrement();
-                  SubscriptionSessionDataSets dataSets =
-                      (SubscriptionSessionDataSets) message.getPayload();
-                  dataSets
+                  message
+                      .getSessionDataSetsHandler()
                       .tabletIterator()
                       .forEachRemaining(tablet -> rowCount.addAndGet(tablet.rowSize));
                   return ConsumeResult.SUCCESS;

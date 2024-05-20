@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.common;
+package org.apache.iotdb.rpc.subscription.payload.poll;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class TsFileSealMessagePayload implements SubscriptionMessagePayload {
+public class FileSealPayload implements SubscriptionPollPayload {
 
   private transient String fileName;
 
@@ -40,21 +40,21 @@ public class TsFileSealMessagePayload implements SubscriptionMessagePayload {
     return fileLength;
   }
 
-  public TsFileSealMessagePayload() {}
+  public FileSealPayload() {}
 
-  public TsFileSealMessagePayload(String fileName, long fileLength) {
+  public FileSealPayload(final String fileName, final long fileLength) {
     this.fileName = fileName;
     this.fileLength = fileLength;
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(fileName, stream);
     ReadWriteIOUtils.write(fileLength, stream);
   }
 
   @Override
-  public SubscriptionMessagePayload deserialize(ByteBuffer buffer) {
+  public SubscriptionPollPayload deserialize(final ByteBuffer buffer) {
     this.fileName = ReadWriteIOUtils.readString(buffer);
     this.fileLength = ReadWriteIOUtils.readLong(buffer);
     return this;
@@ -68,7 +68,7 @@ public class TsFileSealMessagePayload implements SubscriptionMessagePayload {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    final TsFileSealMessagePayload that = (TsFileSealMessagePayload) obj;
+    final FileSealPayload that = (FileSealPayload) obj;
     return Objects.equals(this.fileName, that.fileName)
         && Objects.equals(this.fileLength, that.fileLength);
   }
@@ -80,6 +80,6 @@ public class TsFileSealMessagePayload implements SubscriptionMessagePayload {
 
   @Override
   public String toString() {
-    return "TsFileSealMessagePayload{fileName=" + fileName + ", fileLength=" + fileLength + "}";
+    return "FileSealPayload{fileName=" + fileName + ", fileLength=" + fileLength + "}";
   }
 }

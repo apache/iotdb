@@ -34,8 +34,6 @@ import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSets;
-import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileReader;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.read.TsFileReader;
@@ -940,11 +938,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                       final short messageType = message.getMessageType();
                       if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                         switch (SubscriptionMessageType.valueOf(messageType)) {
-                          case SESSION_DATA_SET:
+                          case SUBSCRIPTION_SESSION_DATA_SETS_HANDLER:
                             {
-                              final SubscriptionSessionDataSets payload =
-                                  (SubscriptionSessionDataSets) message.getPayload();
-                              for (final SubscriptionSessionDataSet dataSet : payload) {
+                              for (final SubscriptionSessionDataSet dataSet :
+                                  message.getSessionDataSetsHandler()) {
                                 final List<String> columnNameList = dataSet.getColumnNames();
                                 while (dataSet.hasNext()) {
                                   final RowRecord record = dataSet.next();
@@ -957,11 +954,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                               }
                               break;
                             }
-                          case TS_FILE_READER:
+                          case SUBSCRIPTION_TS_FILE_HANDLER:
                             {
-                              final SubscriptionTsFileReader reader =
-                                  (SubscriptionTsFileReader) message.getPayload();
-                              try (final TsFileReader tsFileReader = reader.open()) {
+                              try (final TsFileReader tsFileReader =
+                                  message.getTsFileHandler().openReader()) {
                                 final QueryDataSet dataSet =
                                     tsFileReader.query(
                                         QueryExpression.create(

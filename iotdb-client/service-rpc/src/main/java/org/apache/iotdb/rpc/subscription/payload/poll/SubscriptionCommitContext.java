@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.common;
+package org.apache.iotdb.rpc.subscription.payload.poll;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -75,7 +75,8 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
 
   /////////////////////////////// de/ser ///////////////////////////////
 
-  public static ByteBuffer serialize(SubscriptionCommitContext commitContext) throws IOException {
+  public static ByteBuffer serialize(final SubscriptionCommitContext commitContext)
+      throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       commitContext.serialize(outputStream);
@@ -140,7 +141,7 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
   }
 
   @Override
-  public int compareTo(SubscriptionCommitContext that) {
+  public int compareTo(final SubscriptionCommitContext that) {
     return Comparator.comparingInt(SubscriptionCommitContext::getDataNodeId)
         .thenComparingInt(SubscriptionCommitContext::getRebootTimes)
         .thenComparing(SubscriptionCommitContext::getTopicName)

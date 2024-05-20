@@ -17,20 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.payload.common;
+package org.apache.iotdb.rpc.subscription.payload.poll;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public enum SubscriptionPollMessageType {
+public enum SubscriptionPollRequestType {
   POLL((short) 0),
-  POLL_TS_FILE((short) 1),
+  POLL_FILE((short) 1),
   ;
 
   private final short type;
 
-  SubscriptionPollMessageType(short type) {
+  SubscriptionPollRequestType(final short type) {
     this.type = type;
   }
 
@@ -38,18 +38,18 @@ public enum SubscriptionPollMessageType {
     return type;
   }
 
-  private static final Map<Short, SubscriptionPollMessageType> TYPE_MAP =
-      Arrays.stream(SubscriptionPollMessageType.values())
+  private static final Map<Short, SubscriptionPollRequestType> TYPE_MAP =
+      Arrays.stream(SubscriptionPollRequestType.values())
           .collect(
               HashMap::new,
               (typeMap, messageType) -> typeMap.put(messageType.getType(), messageType),
               HashMap::putAll);
 
-  public static boolean isValidatedMessageType(short type) {
+  public static boolean isValidatedRequestType(final short type) {
     return TYPE_MAP.containsKey(type);
   }
 
-  public static SubscriptionPollMessageType valueOf(short type) {
+  public static SubscriptionPollRequestType valueOf(final short type) {
     return TYPE_MAP.get(type);
   }
 }

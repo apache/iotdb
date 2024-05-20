@@ -36,7 +36,6 @@ import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSets;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.awaitility.Awaitility;
@@ -167,9 +166,8 @@ public class IoTDBSubscriptionRestartIT {
                     continue;
                   }
                   for (final SubscriptionMessage message : messages) {
-                    final SubscriptionSessionDataSets payload =
-                        (SubscriptionSessionDataSets) message.getPayload();
-                    for (final SubscriptionSessionDataSet dataSet : payload) {
+                    for (final SubscriptionSessionDataSet dataSet :
+                        message.getSessionDataSetsHandler()) {
                       while (dataSet.hasNext()) {
                         final long timestamp = dataSet.next().getTimestamp();
                         timestamps.put(timestamp, timestamp);
@@ -278,9 +276,8 @@ public class IoTDBSubscriptionRestartIT {
                     continue;
                   }
                   for (final SubscriptionMessage message : messages) {
-                    final SubscriptionSessionDataSets payload =
-                        (SubscriptionSessionDataSets) message.getPayload();
-                    for (final SubscriptionSessionDataSet dataSet : payload) {
+                    for (final SubscriptionSessionDataSet dataSet :
+                        message.getSessionDataSetsHandler()) {
                       while (dataSet.hasNext()) {
                         final long timestamp = dataSet.next().getTimestamp();
                         timestamps.put(timestamp, timestamp);
@@ -402,9 +399,8 @@ public class IoTDBSubscriptionRestartIT {
                     continue;
                   }
                   for (final SubscriptionMessage message : messages) {
-                    final SubscriptionSessionDataSets payload =
-                        (SubscriptionSessionDataSets) message.getPayload();
-                    for (final SubscriptionSessionDataSet dataSet : payload) {
+                    for (final SubscriptionSessionDataSet dataSet :
+                        message.getSessionDataSetsHandler()) {
                       while (dataSet.hasNext()) {
                         final long timestamp = dataSet.next().getTimestamp();
                         timestamps.put(timestamp, timestamp);

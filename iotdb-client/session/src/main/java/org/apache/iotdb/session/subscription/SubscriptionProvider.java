@@ -28,9 +28,9 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionExcepti
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPollMessage;
-import org.apache.iotdb.rpc.subscription.payload.common.SubscriptionPolledMessage;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -269,7 +269,7 @@ final class SubscriptionProvider extends SubscriptionSession {
     verifyPipeSubscribeSuccess(resp.status);
   }
 
-  List<SubscriptionPolledMessage> poll(final SubscriptionPollMessage pollMessage)
+  List<SubscriptionPollResponse> poll(final SubscriptionPollRequest pollMessage)
       throws SubscriptionException {
     final PipeSubscribePollReq req;
     try {
@@ -297,7 +297,7 @@ final class SubscriptionProvider extends SubscriptionSession {
     }
     verifyPipeSubscribeSuccess(resp.status);
     final PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
-    return pollResp.getMessages();
+    return pollResp.getResponses();
   }
 
   void commit(final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack)
