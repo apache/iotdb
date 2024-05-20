@@ -129,6 +129,7 @@ public enum BuiltinPipePlugin {
                   // Processors
                   TUMBLING_TIME_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   SDT_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
+                  CHANGING_VALUE_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   THROWING_EXCEPTION_PROCESSOR.getPipePluginName().toUpperCase(),
                   AGGREGATE_PROCESSOR.getPipePluginName().toUpperCase(),
                   STANDARD_STATISTICS_PROCESSOR.getPipePluginName().toUpperCase(),
