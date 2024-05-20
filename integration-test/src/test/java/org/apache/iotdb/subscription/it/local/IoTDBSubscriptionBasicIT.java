@@ -30,8 +30,10 @@ import org.apache.iotdb.session.subscription.ConsumeResult;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.payload.SubscriptionFileHandler;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.read.TsFileReader;
@@ -48,7 +50,10 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
@@ -189,6 +194,9 @@ public class IoTDBSubscriptionBasicIT {
       fail(e.getMessage());
     }
 
+    // Record file handlers
+    final List<SubscriptionFileHandler> fileHandlers = new ArrayList<>();
+
     // Subscription
     final AtomicInteger rowCount = new AtomicInteger();
     final AtomicBoolean isClosed = new AtomicBoolean(false);
@@ -210,8 +218,9 @@ public class IoTDBSubscriptionBasicIT {
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-                    try (final TsFileReader tsFileReader =
-                        message.getTsFileHandler().openReader()) {
+                    final SubscriptionTsFileHandler tsFileHandler = message.getTsFileHandler();
+                    fileHandlers.add(tsFileHandler);
+                    try (final TsFileReader tsFileReader = tsFileHandler.openReader()) {
                       final Path path = new Path("root.db.d1", "s1", true);
                       final QueryDataSet dataSet =
                           tsFileReader.query(
@@ -250,6 +259,26 @@ public class IoTDBSubscriptionBasicIT {
       isClosed.set(true);
       thread.join();
     }
+
+    // Do something for file handlers
+    Assert.assertFalse(fileHandlers.isEmpty());
+    final SubscriptionFileHandler fileHandler = fileHandlers.get(0);
+    final java.nio.file.Path filePath = fileHandler.getPath();
+    Assert.assertTrue(Files.exists(filePath));
+
+    // Copy file
+    java.nio.file.Path tmpFilePath;
+    tmpFilePath = fileHandler.copyFile(Files.createTempFile(null, null).toAbsolutePath());
+    Assert.assertTrue(Files.exists(filePath));
+    Assert.assertTrue(Files.exists(tmpFilePath));
+
+    // Move file
+    tmpFilePath = fileHandler.moveFile(Files.createTempFile(null, null).toAbsolutePath());
+    Assert.assertFalse(Files.exists(filePath));
+    Assert.assertTrue(Files.exists(tmpFilePath));
+
+    // Delete file
+    Assert.assertThrows(NoSuchFileException.class, fileHandler::deleteFile);
   }
 
   @Test

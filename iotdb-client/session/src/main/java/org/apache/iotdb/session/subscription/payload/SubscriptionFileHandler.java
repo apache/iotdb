@@ -21,12 +21,84 @@ package org.apache.iotdb.session.subscription.payload;
 
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+
 public abstract class SubscriptionFileHandler implements SubscriptionMessageHandler {
 
   protected final String filePath;
 
   public SubscriptionFileHandler(final String filePath) {
     this.filePath = filePath;
+  }
+
+  /**
+   * @return a new File instance of the corresponding file
+   */
+  public File getFile() {
+    return new File(filePath);
+  }
+
+  /**
+   * @return a new Path instance of the corresponding file
+   */
+  public Path getPath() {
+    return Paths.get(filePath);
+  }
+
+  /**
+   * @throws IOException if an I/O error occurs
+   */
+  public void deleteFile() throws IOException {
+    Files.delete(getPath());
+  }
+
+  /**
+   * @param targetFilePath the path to the target file
+   * @return the path to the target file
+   * @throws IOException if an I/O error occurs
+   */
+  public Path moveFile(final String targetFilePath) throws IOException {
+    return this.moveFile(Paths.get(targetFilePath));
+  }
+
+  /**
+   * @param targetFilePath the path to the target file
+   * @return the path to the target file
+   * @throws IOException if an I/O error occurs
+   */
+  public Path moveFile(final Path targetFilePath) throws IOException {
+    return Files.move(
+        getPath(),
+        targetFilePath,
+        StandardCopyOption.REPLACE_EXISTING,
+        StandardCopyOption.ATOMIC_MOVE);
+  }
+
+  /**
+   * @param targetFilePath the path to the target file
+   * @return the path to the target file
+   * @throws IOException if an I/O error occurs
+   */
+  public Path copyFile(final String targetFilePath) throws IOException {
+    return this.copyFile(Paths.get(targetFilePath));
+  }
+
+  /**
+   * @param targetFilePath the path to the target file
+   * @return the path to the target file
+   * @throws IOException if an I/O error occurs
+   */
+  public Path copyFile(final Path targetFilePath) throws IOException {
+    return Files.copy(
+        getPath(),
+        targetFilePath,
+        StandardCopyOption.REPLACE_EXISTING,
+        StandardCopyOption.COPY_ATTRIBUTES);
   }
 
   @Override
