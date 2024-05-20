@@ -21,10 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.read.control;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.UnClosedTsFileReader;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.UnClosedTsFileReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,8 +35,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * FileReaderManager is a singleton, which is used to manage all file readers(opened file streams)
- * to ensure that each file is opened at most once.
+ * {@link FileReaderManager} is a singleton, which is used to manage all file readers(opened file
+ * streams) to ensure that each file is opened at most once.
  */
 public class FileReaderManager {
 
@@ -58,6 +58,7 @@ public class FileReaderManager {
    * corresponding reader.
    */
   private Map<String, TsFileSequenceReader> closedFileReaderMap;
+
   /**
    * the key of unclosedFileReaderMap is the file path and the value of unclosedFileReaderMap is the
    * corresponding reader.
@@ -69,6 +70,7 @@ public class FileReaderManager {
    * file's reference count.
    */
   private Map<String, AtomicInteger> closedReferenceMap;
+
   /**
    * the key of unclosedFileReaderMap is the file path and the value of unclosedFileReaderMap is the
    * file's reference count.

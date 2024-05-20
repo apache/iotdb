@@ -21,10 +21,12 @@ package org.apache.iotdb.db.queryengine.transformation.datastructure.tv;
 
 import org.apache.iotdb.db.queryengine.transformation.datastructure.Cache;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.TVListForwardIterator;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.utils.Binary;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -144,7 +146,7 @@ public class ElasticSerializableTVList {
     return cache.get(index / internalTVListCapacity).getBoolean(index % internalTVListCapacity);
   }
 
-  public org.apache.iotdb.tsfile.utils.Binary getBinary(int index) throws IOException {
+  public Binary getBinary(int index) throws IOException {
     return cache.get(index / internalTVListCapacity).getBinary(index % internalTVListCapacity);
   }
 
@@ -154,6 +156,7 @@ public class ElasticSerializableTVList {
         .getBinary(index % internalTVListCapacity)
         .getStringValue(TSFileConfig.STRING_CHARSET);
   }
+
   // endregion
 
   // region batch data points methods
@@ -207,6 +210,7 @@ public class ElasticSerializableTVList {
       }
     }
   }
+
   // endregion
 
   public TVListForwardIterator constructIterator() {

@@ -34,10 +34,10 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.im
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.DataNodeLastCacheManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -391,6 +391,38 @@ public class TimeSeriesSchemaCache {
 
   public void invalidate(String database) {
     dualKeyCache.invalidate(database);
+  }
+
+  public void invalidateLastCache(PartialPath path) {
+    if (!path.hasWildcard()) {
+      SchemaCacheEntry entry = dualKeyCache.get(path.getDevicePath(), path.getMeasurement());
+      if (null == entry) {
+        return;
+      }
+      dualKeyCache.update(
+          new IDualKeyCacheUpdating<PartialPath, String, SchemaCacheEntry>() {
+            @Override
+            public PartialPath getFirstKey() {
+              return path.getDevicePath();
+            }
+
+            @Override
+            public String[] getSecondKeyList() {
+              return new String[] {path.getMeasurement()};
+            }
+
+            @Override
+            public int updateValue(int index, SchemaCacheEntry value) {
+              return DataNodeLastCacheManager.invalidateLastCache(value);
+            }
+          });
+    } else {
+      dualKeyCache.invalidateLastCache(path);
+    }
+  }
+
+  public void invalidateDataRegionLastCache(String database) {
+    dualKeyCache.invalidateDataRegionLastCache(database);
   }
 
   public void invalidate(List<PartialPath> partialPathList) {

@@ -36,6 +36,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -134,6 +136,8 @@ public class SyncDataNodeClientPool {
         return client.removeRegionPeer((TMaintainPeerReq) req);
       case DELETE_OLD_REGION_PEER:
         return client.deleteOldRegionPeer((TMaintainPeerReq) req);
+      case RESET_PEER_LIST:
+        return client.resetPeerList((TResetPeerListReq) req);
       default:
         return RpcUtils.getStatus(
             TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
@@ -150,7 +154,7 @@ public class SyncDataNodeClientPool {
         TimeUnit.MILLISECONDS.sleep(3200L);
       }
     } catch (InterruptedException e) {
-      LOGGER.error("Retry wait failed.", e);
+      LOGGER.warn("Retry wait failed.", e);
       Thread.currentThread().interrupt();
     }
   }
@@ -162,15 +166,15 @@ public class SyncDataNodeClientPool {
    * @param regionId the region which will changer leader
    * @param dataNode data node server, change regions leader from it
    * @param newLeaderNode target data node, change regions leader to it
-   * @return TSStatus
+   * @return the result of the change leader operation
    */
-  public TSStatus changeRegionLeader(
+  public TRegionLeaderChangeResp changeRegionLeader(
       TConsensusGroupId regionId, TEndPoint dataNode, TDataNodeLocation newLeaderNode) {
     LOGGER.info("Send RPC to data node: {} for changing regions leader on it", dataNode);
     TSStatus status;
     try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(dataNode)) {
       TRegionLeaderChangeReq req = new TRegionLeaderChangeReq(regionId, newLeaderNode);
-      status = client.changeRegionLeader(req);
+      return client.changeRegionLeader(req);
     } catch (ClientManagerException e) {
       LOGGER.error("Can't connect to Data node: {}", dataNode, e);
       status = new TSStatus(TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode());
@@ -180,7 +184,7 @@ public class SyncDataNodeClientPool {
       status = new TSStatus(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
-    return status;
+    return new TRegionLeaderChangeResp(status, -1L);
   }
 
   // TODO: Is the ClientPool must be a singleton?

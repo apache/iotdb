@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
@@ -39,10 +40,11 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.exception.StopReadTsFileByInterruptException;
-import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
-import org.apache.iotdb.tsfile.utils.TsFileUtils;
+
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
+import org.apache.tsfile.exception.write.TsFileNotCompleteException;
+import org.apache.tsfile.utils.TsFileUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -148,7 +150,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     createSummary();
   }
 
-  protected void prepare() throws IOException {
+  protected void prepare() throws IOException, DiskSpaceInsufficientException {
     targetTsFileResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(
             selectedTsFileResourceList, sequence);
@@ -164,12 +166,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   @SuppressWarnings({"squid:S6541", "squid:S3776", "squid:S2142"})
   protected boolean doCompaction() {
+    if (!tsFileManager.isAllowCompaction()) {
+      return true;
+    }
     long startTime = System.currentTimeMillis();
     // get resource of target file
     recoverMemoryStatus = true;
     LOGGER.info(
         "{}-{} [Compaction] {} InnerSpaceCompaction task starts with {} files, "
-            + "total file size is {} MB, memory cost is {} MB",
+            + "total file size is {} MB, estimated memory cost is {} MB",
         storageGroupName,
         dataRegionId,
         sequence ? "Sequence" : "Unsequence",
@@ -492,6 +497,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           return -1;
         }
         innerSpaceEstimator.cleanup();
+        // This exception may be caused by drop database
+        if (!tsFileManager.isAllowCompaction()) {
+          return -1;
+        }
         LOGGER.error("Meet error when estimate inner compaction memory", e);
         return -1;
       }

@@ -29,8 +29,8 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransf
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +40,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY;
 
 public abstract class IoTDBSyncClientManager extends IoTDBClientManager implements Closeable {
 
@@ -54,12 +58,15 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   protected final Map<TEndPoint, Pair<IoTDBSyncClient, Boolean>> endPoint2ClientAndStatus =
       new ConcurrentHashMap<>();
 
+  private final LoadBalancer loadBalancer;
+
   protected IoTDBSyncClientManager(
       List<TEndPoint> endPoints,
       boolean useSSL,
       String trustStorePath,
       String trustStorePwd,
-      boolean useLeaderCache) {
+      boolean useLeaderCache,
+      String loadBalanceStrategy) {
     super(endPoints, useLeaderCache);
 
     this.useSSL = useSSL;
@@ -69,10 +76,27 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     for (final TEndPoint endPoint : endPoints) {
       endPoint2ClientAndStatus.put(endPoint, new Pair<>(null, false));
     }
+
+    switch (loadBalanceStrategy) {
+      case CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY:
+        loadBalancer = new RoundRobinLoadBalancer();
+        break;
+      case CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY:
+        loadBalancer = new RandomLoadBalancer();
+        break;
+      case CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY:
+        loadBalancer = new PriorityLoadBalancer();
+        break;
+      default:
+        LOGGER.warn(
+            "Unknown load balance strategy: {}, use round-robin strategy instead.",
+            loadBalanceStrategy);
+        loadBalancer = new RoundRobinLoadBalancer();
+    }
   }
 
   public void checkClientStatusAndTryReconstructIfNecessary() {
-    // reconstruct all dead clients
+    // Reconstruct all dead clients
     for (final Map.Entry<TEndPoint, Pair<IoTDBSyncClient, Boolean>> entry :
         endPoint2ClientAndStatus.entrySet()) {
       if (Boolean.TRUE.equals(entry.getValue().getRight())) {
@@ -82,7 +106,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       reconstructClient(entry.getKey());
     }
 
-    // check whether any clients are available
+    // Check whether any clients are available
     for (final Pair<IoTDBSyncClient, Boolean> clientAndStatus : endPoint2ClientAndStatus.values()) {
       if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
         return;
@@ -109,16 +133,16 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     }
 
     initClientAndStatus(clientAndStatus, endPoint);
-    sendHandshakeReq(clientAndStatus, endPoint);
+    sendHandshakeReq(clientAndStatus);
   }
 
   private void initClientAndStatus(
-      Pair<IoTDBSyncClient, Boolean> clientAndStatus, TEndPoint endPoint) {
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus, final TEndPoint endPoint) {
     try {
       clientAndStatus.setLeft(
           new IoTDBSyncClient(
               new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
+                  .setConnectionTimeoutMs(PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
                   .setRpcThriftCompressionEnabled(
                       PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
                   .build(),
@@ -137,7 +161,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     }
   }
 
-  public void sendHandshakeReq(Pair<IoTDBSyncClient, Boolean> clientAndStatus, TEndPoint endPoint) {
+  public void sendHandshakeReq(final Pair<IoTDBSyncClient, Boolean> clientAndStatus) {
+    final IoTDBSyncClient client = clientAndStatus.getLeft();
     try {
       final HashMap<String, String> params = new HashMap<>();
       params.put(
@@ -146,40 +171,39 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, getClusterId());
 
       // Try to handshake by PipeTransferHandshakeV2Req.
-      TPipeTransferResp resp = clientAndStatus.getLeft().pipeTransfer(buildHandshakeV2Req(params));
+      TPipeTransferResp resp = client.pipeTransfer(buildHandshakeV2Req(params));
       // Receiver may be an old version, so we need to retry to handshake by
       // PipeTransferHandshakeV1Req.
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_TYPE_ERROR.getStatusCode()) {
         LOGGER.info(
             "Handshake error with target server ip: {}, port: {}, because: {}. "
                 + "Retry to handshake by PipeTransferHandshakeV1Req.",
-            endPoint.getIp(),
-            endPoint.getPort(),
+            client.getIpAddress(),
+            client.getPort(),
             resp.getStatus());
-        resp = clientAndStatus.getLeft().pipeTransfer(buildHandshakeV1Req());
+        supportModsIfIsDataNodeReceiver = false;
+        resp = client.pipeTransfer(buildHandshakeV1Req());
       }
 
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.warn(
             "Handshake error with target server ip: {}, port: {}, because: {}.",
-            endPoint.getIp(),
-            endPoint.getPort(),
+            client.getIpAddress(),
+            client.getPort(),
             resp.getStatus());
       } else {
         clientAndStatus.setRight(true);
-        clientAndStatus
-            .getLeft()
-            .setTimeout((int) PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
+        client.setTimeout(CONNECTION_TIMEOUT_MS.get());
         LOGGER.info(
             "Handshake success. Target server ip: {}, port: {}",
-            endPoint.getIp(),
-            endPoint.getPort());
+            client.getIpAddress(),
+            client.getPort());
       }
     } catch (Exception e) {
       LOGGER.warn(
           "Handshake error with target server ip: {}, port: {}, because: {}.",
-          endPoint.getIp(),
-          endPoint.getPort(),
+          client.getIpAddress(),
+          client.getPort(),
           e.getMessage(),
           e);
     }
@@ -193,18 +217,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
   protected abstract String getClusterId();
 
   public Pair<IoTDBSyncClient, Boolean> getClient() {
-    final int clientSize = endPointList.size();
-    // Round-robin, find the next alive client
-    for (int tryCount = 0; tryCount < clientSize; ++tryCount) {
-      final int clientIndex = (int) (currentClientIndex++ % clientSize);
-      final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
-          endPoint2ClientAndStatus.get(endPointList.get(clientIndex));
-      if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
-        return clientAndStatus;
-      }
-    }
-    throw new PipeConnectionException(
-        "All clients are dead, please check the connection to the receiver.");
+    return loadBalancer.getClient();
   }
 
   @Override
@@ -234,6 +247,74 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       } finally {
         clientAndStatus.setRight(false);
       }
+    }
+  }
+
+  /////////////////////// Strategies for load balance //////////////////////////
+
+  private interface LoadBalancer {
+    Pair<IoTDBSyncClient, Boolean> getClient();
+  }
+
+  private class RoundRobinLoadBalancer implements LoadBalancer {
+    @Override
+    public Pair<IoTDBSyncClient, Boolean> getClient() {
+      final int clientSize = endPointList.size();
+      // Round-robin, find the next alive client
+      for (int tryCount = 0; tryCount < clientSize; ++tryCount) {
+        final int clientIndex = (int) (currentClientIndex++ % clientSize);
+        final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
+            endPoint2ClientAndStatus.get(endPointList.get(clientIndex));
+        if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+          return clientAndStatus;
+        }
+      }
+
+      throw new PipeConnectionException(
+          "All clients are dead, please check the connection to the receiver.");
+    }
+  }
+
+  private class RandomLoadBalancer implements LoadBalancer {
+    @Override
+    public Pair<IoTDBSyncClient, Boolean> getClient() {
+      final int clientSize = endPointList.size();
+      final int clientIndex = (int) (Math.random() * clientSize);
+      final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
+          endPoint2ClientAndStatus.get(endPointList.get(clientIndex));
+      if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+        return clientAndStatus;
+      }
+
+      // Random, find the next alive client
+      for (int tryCount = 0; tryCount < clientSize - 1; ++tryCount) {
+        final int nextClientIndex = (clientIndex + tryCount + 1) % clientSize;
+        final Pair<IoTDBSyncClient, Boolean> nextClientAndStatus =
+            endPoint2ClientAndStatus.get(endPointList.get(nextClientIndex));
+        if (Boolean.TRUE.equals(nextClientAndStatus.getRight())) {
+          return nextClientAndStatus;
+        }
+      }
+
+      throw new PipeConnectionException(
+          "All clients are dead, please check the connection to the receiver.");
+    }
+  }
+
+  private class PriorityLoadBalancer implements LoadBalancer {
+    @Override
+    public Pair<IoTDBSyncClient, Boolean> getClient() {
+      // Priority, find the first alive client
+      for (final TEndPoint endPoint : endPointList) {
+        final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
+            endPoint2ClientAndStatus.get(endPoint);
+        if (Boolean.TRUE.equals(clientAndStatus.getRight())) {
+          return clientAndStatus;
+        }
+      }
+
+      throw new PipeConnectionException(
+          "All clients are dead, please check the connection to the receiver.");
     }
   }
 }

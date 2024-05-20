@@ -38,7 +38,7 @@ public class DeleteTimeSeriesStatement extends Statement implements IConfigState
 
   public DeleteTimeSeriesStatement() {
     super();
-    statementType = StatementType.DELETE_TIMESERIES;
+    statementType = StatementType.DELETE_TIME_SERIES;
   }
 
   public DeleteTimeSeriesStatement(List<PartialPath> pathPatternList) {

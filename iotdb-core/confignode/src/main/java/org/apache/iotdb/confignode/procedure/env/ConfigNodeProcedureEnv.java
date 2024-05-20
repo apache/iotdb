@@ -71,18 +71,21 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushMultiPipeMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushMultiTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
-import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,6 +97,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -111,14 +115,14 @@ public class ConfigNodeProcedureEnv {
 
   private final ProcedureScheduler scheduler;
 
-  private final DataNodeRemoveHandler dataNodeRemoveHandler;
+  private final RegionMaintainHandler regionMaintainHandler;
 
   private final ReentrantLock removeConfigNodeLock;
 
   public ConfigNodeProcedureEnv(ConfigManager configManager, ProcedureScheduler scheduler) {
     this.configManager = configManager;
     this.scheduler = scheduler;
-    this.dataNodeRemoveHandler = new DataNodeRemoveHandler(configManager);
+    this.regionMaintainHandler = new RegionMaintainHandler(configManager);
     this.removeConfigNodeLock = new ReentrantLock();
   }
 
@@ -212,15 +216,19 @@ public class ConfigNodeProcedureEnv {
         .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public boolean doubleCheckReplica(TDataNodeLocation removedDatanode) {
-    return getNodeManager()
-                .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
-                .size()
-            - Boolean.compare(
-                getLoadManager().getNodeStatus(removedDatanode.getDataNodeId())
-                    != NodeStatus.Unknown,
-                false)
-        >= NodeInfo.getMinimumDataNode();
+  public boolean checkEnoughDataNodeAfterRemoving(TDataNodeLocation removedDatanode) {
+    final int existedDataNodeNum =
+        getNodeManager()
+            .filterDataNodeThroughStatus(
+                NodeStatus.Running, NodeStatus.ReadOnly, NodeStatus.Removing)
+            .size();
+    int dataNodeNumAfterRemoving;
+    if (getLoadManager().getNodeStatus(removedDatanode.getDataNodeId()) != NodeStatus.Unknown) {
+      dataNodeNumAfterRemoving = existedDataNodeNum - 1;
+    } else {
+      dataNodeNumAfterRemoving = existedDataNodeNum;
+    }
+    return dataNodeNumAfterRemoving >= NodeInfo.getMinimumDataNode();
   }
 
   /**
@@ -346,12 +354,6 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Leader will record the new Confignode's information.
-   *
-   * @param dataNodeConfiguration The new DataNode
-   */
-
-  /**
    * Leader will notify the new ConfigNode that registration success.
    *
    * @param configNodeLocation The new ConfigNode
@@ -364,26 +366,14 @@ public class ConfigNodeProcedureEnv {
             ConfigNodeRequestType.NOTIFY_REGISTER_SUCCESS);
   }
 
-  /** Notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced. */
-  public void broadCastTheLatestConfigNodeGroup() {
-    List<TConfigNodeLocation> registeredConfigNodes =
-        configManager.getNodeManager().getRegisteredConfigNodes();
-    Map<Integer, TDataNodeLocation> registeredDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodeLocations();
-    AsyncClientHandler<TUpdateConfigNodeGroupReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.BROADCAST_LATEST_CONFIG_NODE_GROUP,
-            new TUpdateConfigNodeGroupReq(registeredConfigNodes),
-            registeredDataNodes);
-
-    if (!registeredDataNodes.isEmpty()) {
-      LOG.info(
-          "Begin to broadcast the latest configNodeGroup to DataNodes, ConfigNodeGroups: {}, DataNodes: {}",
-          registeredConfigNodes,
-          registeredDataNodes.values());
-      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-      LOG.info("Broadcast the latest configNodeGroup to DataNodes finished.");
-    }
+  /**
+   * Create a new ConfigNodeHeartbeatCache
+   *
+   * @param nodeId the index of the new ConfigNode
+   */
+  public void createConfigNodeHeartbeatCache(int nodeId) {
+    getLoadManager().getLoadCache().createNodeHeartbeatCache(NodeType.ConfigNode, nodeId);
+    // TODO: invoke a force heartbeat to update new ConfigNode's status immediately
   }
 
   /**
@@ -408,23 +398,26 @@ public class ConfigNodeProcedureEnv {
               DataNodeRequestType.SET_SYSTEM_STATUS);
     }
 
+    long currentTime = System.nanoTime();
     // Force updating NodeStatus to Removing
     getLoadManager()
         .forceUpdateNodeCache(
             NodeType.DataNode,
             dataNodeLocation.getDataNodeId(),
-            NodeHeartbeatSample.generateDefaultSample(NodeStatus.Removing));
+            new NodeHeartbeatSample(currentTime, NodeStatus.Removing));
+    Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> removingHeartbeatSampleMap =
+        new TreeMap<>();
     // Force update RegionStatus to Removing
     getPartitionManager()
         .getAllReplicaSets(dataNodeLocation.getDataNodeId())
         .forEach(
             replicaSet ->
-                getLoadManager()
-                    .forceUpdateRegionGroupCache(
-                        replicaSet.getRegionId(),
-                        Collections.singletonMap(
-                            dataNodeLocation.getDataNodeId(),
-                            RegionHeartbeatSample.generateDefaultSample(RegionStatus.Removing))));
+                removingHeartbeatSampleMap.put(
+                    replicaSet.getRegionId(),
+                    Collections.singletonMap(
+                        dataNodeLocation.getDataNodeId(),
+                        new RegionHeartbeatSample(currentTime, RegionStatus.Removing))));
+    getLoadManager().forceUpdateRegionGroupCache(removingHeartbeatSampleMap);
   }
 
   /**
@@ -569,24 +562,35 @@ public class ConfigNodeProcedureEnv {
 
   /**
    * Force activating RegionGroup by setting status to Running, therefore the ConfigNode-leader can
-   * use this RegionGroup to allocate new Partitions
+   * select leader for it and use it to allocate new Partitions
    *
-   * @param regionGroupId Specified RegionGroup
-   * @param regionStatusMap Map<DataNodeId, RegionStatus>
+   * @param activateRegionGroupMap Map<Database, Map<RegionGroupId, Map<DataNodeId, activate
+   *     heartbeat sample>>>
    */
   public void activateRegionGroup(
-      TConsensusGroupId regionGroupId, Map<Integer, RegionStatus> regionStatusMap) {
-    long currentTime = System.nanoTime();
-    Map<Integer, RegionHeartbeatSample> heartbeatSampleMap = new HashMap<>();
-    regionStatusMap.forEach(
-        (dataNodeId, regionStatus) ->
-            heartbeatSampleMap.put(
-                dataNodeId, new RegionHeartbeatSample(currentTime, currentTime, regionStatus)));
-    getLoadManager().forceUpdateRegionGroupCache(regionGroupId, heartbeatSampleMap);
-    // force balance region leader to skip waiting for leader election
-    getLoadManager().forceBalanceRegionLeader();
-    // Wait for leader election
-    getLoadManager().waitForLeaderElection(Collections.singletonList(regionGroupId));
+      Map<String, Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>>>
+          activateRegionGroupMap) {
+    // Create RegionGroup heartbeat Caches
+    activateRegionGroupMap.forEach(
+        (database, regionGroupSampleMap) ->
+            regionGroupSampleMap.forEach(
+                (regionGroupId, regionSampleMap) ->
+                    getLoadManager()
+                        .getLoadCache()
+                        .createRegionGroupHeartbeatCache(
+                            database, regionGroupId, regionSampleMap.keySet())));
+    // Force update first heartbeat samples
+    getLoadManager()
+        .forceUpdateRegionGroupCache(
+            activateRegionGroupMap.values().stream()
+                .flatMap(innerMap -> innerMap.entrySet().stream())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> b)));
+    // Wait for leader and priority redistribution
+    getLoadManager()
+        .waitForRegionGroupReady(
+            activateRegionGroupMap.values().stream()
+                .flatMap(innterMap -> innterMap.keySet().stream())
+                .collect(Collectors.toList()));
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {
@@ -706,7 +710,7 @@ public class ConfigNodeProcedureEnv {
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
-            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2);
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
     return clientHandler.getResponseMap();
   }
 
@@ -722,7 +726,56 @@ public class ConfigNodeProcedureEnv {
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
-            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2);
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
+    return clientHandler.getResponseMap();
+  }
+
+  public Map<Integer, TPushPipeMetaResp> pushMultiPipeMetaToDataNodes(
+      List<ByteBuffer> pipeMetaBinaryList) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushMultiPipeMetaReq request =
+        new TPushMultiPipeMetaReq().setPipeMetas(pipeMetaBinaryList);
+
+    final AsyncClientHandler<TPushMultiPipeMetaReq, TPushPipeMetaResp> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.PIPE_PUSH_MULTI_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
+            clientHandler,
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
+    return clientHandler.getResponseMap();
+  }
+
+  public Map<Integer, TPushPipeMetaResp> dropMultiPipeOnDataNodes(List<String> pipeNamesToDrop) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushMultiPipeMetaReq request =
+        new TPushMultiPipeMetaReq().setPipeNamesToDrop(pipeNamesToDrop);
+
+    final AsyncClientHandler<TPushMultiPipeMetaReq, TPushPipeMetaResp> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.PIPE_PUSH_MULTI_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
+            clientHandler,
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
+    return clientHandler.getResponseMap();
+  }
+
+  public Map<Integer, TPushTopicMetaResp> pushAllTopicMetaToDataNodes(
+      List<ByteBuffer> topicMetaBinaryList) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushTopicMetaReq request = new TPushTopicMetaReq().setTopicMetas(topicMetaBinaryList);
+
+    final AsyncClientHandler<TPushTopicMetaReq, TPushTopicMetaResp> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.TOPIC_PUSH_ALL_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
+            clientHandler,
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
     return clientHandler.getResponseMap();
   }
 
@@ -753,6 +806,56 @@ public class ConfigNodeProcedureEnv {
     return clientHandler.getResponseList().stream()
         .map(TPushTopicMetaResp::getStatus)
         .collect(Collectors.toList());
+  }
+
+  public Map<Integer, TPushTopicMetaResp> pushMultiTopicMetaToDataNodes(
+      List<ByteBuffer> topicMetaBinaryList) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushMultiTopicMetaReq request =
+        new TPushMultiTopicMetaReq().setTopicMetas(topicMetaBinaryList);
+
+    final AsyncClientHandler<TPushMultiTopicMetaReq, TPushTopicMetaResp> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.TOPIC_PUSH_MULTI_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
+            clientHandler,
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
+    return clientHandler.getResponseMap();
+  }
+
+  public Map<Integer, TPushTopicMetaResp> dropMultiTopicOnDataNodes(List<String> topicNamesToDrop) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushMultiTopicMetaReq request =
+        new TPushMultiTopicMetaReq().setTopicNamesToDrop(topicNamesToDrop);
+
+    final AsyncClientHandler<TPushMultiTopicMetaReq, TPushTopicMetaResp> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.TOPIC_PUSH_MULTI_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
+            clientHandler,
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
+    return clientHandler.getResponseMap();
+  }
+
+  public Map<Integer, TPushConsumerGroupMetaResp> pushAllConsumerGroupMetaToDataNodes(
+      List<ByteBuffer> consumerGroupMetaBinaryList) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushConsumerGroupMetaReq request =
+        new TPushConsumerGroupMetaReq().setConsumerGroupMetas(consumerGroupMetaBinaryList);
+
+    final AsyncClientHandler<TPushConsumerGroupMetaReq, TPushConsumerGroupMetaResp> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.CONSUMER_GROUP_PUSH_ALL_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
+            clientHandler,
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
+    return clientHandler.getResponseMap();
   }
 
   public List<TSStatus> pushSingleConsumerGroupOnDataNode(ByteBuffer consumerGroupMeta) {
@@ -796,15 +899,15 @@ public class ConfigNodeProcedureEnv {
   }
 
   public LockQueue getRegionMigrateLock() {
-    return dataNodeRemoveHandler.getRegionMigrateLock();
+    return regionMaintainHandler.getRegionMigrateLock();
   }
 
   public ReentrantLock getSchedulerLock() {
     return schedulerLock;
   }
 
-  public DataNodeRemoveHandler getDataNodeRemoveHandler() {
-    return dataNodeRemoveHandler;
+  public RegionMaintainHandler getRegionMaintainHandler() {
+    return regionMaintainHandler;
   }
 
   private ConsensusManager getConsensusManager() {

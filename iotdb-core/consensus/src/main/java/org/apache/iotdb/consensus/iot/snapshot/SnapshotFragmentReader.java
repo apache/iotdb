@@ -66,4 +66,8 @@ public class SnapshotFragmentReader {
       fileChannel.close();
     }
   }
+
+  public long getTotalReadSize() {
+    return totalReadSize;
+  }
 }

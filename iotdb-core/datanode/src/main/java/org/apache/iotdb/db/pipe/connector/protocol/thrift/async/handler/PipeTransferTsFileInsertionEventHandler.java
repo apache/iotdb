@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
@@ -39,6 +45,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeTransferTsFileInsertionEventHandler
@@ -51,70 +58,118 @@ public class PipeTransferTsFileInsertionEventHandler
   private final IoTDBDataRegionAsyncConnector connector;
 
   private final File tsFile;
+  private final File modFile;
+  private File currentFile;
+
+  private final boolean transferMod;
+
   private final int readFileBufferSize;
   private final byte[] readBuffer;
   private long position;
 
-  private final RandomAccessFile reader;
+  private RandomAccessFile reader;
 
   private final AtomicBoolean isSealSignalSent;
 
+  private IoTDBDataNodeAsyncClientManager clientManager;
   private AsyncPipeDataTransferServiceClient client;
 
   public PipeTransferTsFileInsertionEventHandler(
-      PipeTsFileInsertionEvent event, IoTDBDataRegionAsyncConnector connector)
+      final PipeTsFileInsertionEvent event, final IoTDBDataRegionAsyncConnector connector)
       throws FileNotFoundException {
     this.event = event;
     this.connector = connector;
 
     tsFile = event.getTsFile();
+    modFile = event.getModFile();
+    transferMod = event.isWithMod() && connector.supportModsIfIsDataNodeReceiver();
+    currentFile = transferMod ? modFile : tsFile;
+
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     readBuffer = new byte[readFileBufferSize];
     position = 0;
 
-    reader = new RandomAccessFile(tsFile, "r");
+    reader =
+        Objects.nonNull(modFile)
+            ? new RandomAccessFile(modFile, "r")
+            : new RandomAccessFile(tsFile, "r");
 
     isSealSignalSent = new AtomicBoolean(false);
-
-    event.increaseReferenceCount(PipeTransferTsFileInsertionEventHandler.class.getName());
   }
 
-  public void transfer(AsyncPipeDataTransferServiceClient client) throws TException, IOException {
+  public void transfer(
+      IoTDBDataNodeAsyncClientManager clientManager,
+      final AsyncPipeDataTransferServiceClient client)
+      throws TException, IOException {
+    this.clientManager = clientManager;
     this.client = client;
+
     client.setShouldReturnSelf(false);
+    client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
     final int readLength = reader.read(readBuffer);
 
     if (readLength == -1) {
-      isSealSignalSent.set(true);
-      client.pipeTransfer(
-          PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()), this);
+      if (currentFile == modFile) {
+        currentFile = tsFile;
+        position = 0;
+        try {
+          reader.close();
+        } catch (final IOException e) {
+          LOGGER.warn("Failed to close file reader when successfully transferred mod file.", e);
+        }
+        reader = new RandomAccessFile(tsFile, "r");
+        transfer(clientManager, client);
+      } else if (currentFile == tsFile) {
+        isSealSignalSent.set(true);
+        client.pipeTransfer(
+            transferMod
+                ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                    modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
+                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()),
+            this);
+      }
       return;
     }
 
+    final byte[] payload =
+        readLength == readFileBufferSize
+            ? readBuffer
+            : Arrays.copyOfRange(readBuffer, 0, readLength);
+    final TPipeTransferReq uncompressedReq =
+        PipeTransferCompressedReq.toTPipeTransferReq(
+            transferMod
+                ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
+                    currentFile.getName(), position, payload)
+                : PipeTransferTsFilePieceReq.toTPipeTransferReq(
+                    currentFile.getName(), position, payload),
+            connector.getCompressors());
     client.pipeTransfer(
-        PipeTransferTsFilePieceReq.toTPipeTransferReq(
-            tsFile.getName(),
-            position,
-            readLength == readFileBufferSize
-                ? readBuffer
-                : Arrays.copyOfRange(readBuffer, 0, readLength)),
+        connector.isRpcCompressionEnabled()
+            ? PipeTransferCompressedReq.toTPipeTransferReq(
+                uncompressedReq, connector.getCompressors())
+            : uncompressedReq,
         this);
     position += readLength;
   }
 
   @Override
-  public void onComplete(TPipeTransferResp response) {
+  public void onComplete(final TPipeTransferResp response) {
     if (isSealSignalSent.get()) {
       try {
-        connector
-            .statusHandler()
-            .handle(
-                response.getStatus(),
-                String.format(
-                    "Seal file %s error, result status %s.", tsFile, response.getStatus()),
-                tsFile.getName());
-      } catch (Exception e) {
+        final TSStatus status = response.getStatus();
+        // Only handle the failed statuses to avoid string format performance overhead
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          connector
+              .statusHandler()
+              .handle(
+                  status,
+                  String.format(
+                      "Seal file %s error, result status %s.", tsFile, response.getStatus()),
+                  tsFile.getName());
+        }
+      } catch (final Exception e) {
         onError(e);
         return;
       }
@@ -123,7 +178,7 @@ public class PipeTransferTsFileInsertionEventHandler
         if (reader != null) {
           reader.close();
         }
-      } catch (IOException e) {
+      } catch (final IOException e) {
         LOGGER.warn("Failed to close file reader when successfully transferred file.", e);
       } finally {
         event.decreaseReferenceCount(PipeTransferTsFileInsertionEventHandler.class.getName(), true);
@@ -142,12 +197,12 @@ public class PipeTransferTsFileInsertionEventHandler
       return;
     }
 
-    // if the isSealSignalSent is false, then the response must be a PipeTransferFilePieceResp
+    // If the isSealSignalSent is false, then the response must be a PipeTransferFilePieceResp
     try {
       final PipeTransferFilePieceResp resp =
           PipeTransferFilePieceResp.fromTPipeTransferResp(response);
 
-      // this case only happens when the connection is broken, and the connector is reconnected
+      // This case only happens when the connection is broken, and the connector is reconnected
       // to the receiver, then the receiver will redirect the file position to the last position
       final long code = resp.getStatus().getCode();
 
@@ -156,19 +211,24 @@ public class PipeTransferTsFileInsertionEventHandler
         reader.seek(position);
         LOGGER.info("Redirect file position to {}.", position);
       } else {
-        connector
-            .statusHandler()
-            .handle(response.getStatus(), response.getStatus().getMessage(), tsFile.getName());
+        final TSStatus status = response.getStatus();
+        // Only handle the failed statuses to avoid string format performance overhead
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+          connector
+              .statusHandler()
+              .handle(status, response.getStatus().getMessage(), tsFile.getName());
+        }
       }
 
-      transfer(client);
-    } catch (Exception e) {
+      transfer(clientManager, client);
+    } catch (final Exception e) {
       onError(e);
     }
   }
 
   @Override
-  public void onError(Exception exception) {
+  public void onError(final Exception exception) {
     LOGGER.warn(
         "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
         tsFile,
@@ -177,17 +237,27 @@ public class PipeTransferTsFileInsertionEventHandler
         exception);
 
     try {
+      if (Objects.nonNull(clientManager)) {
+        clientManager.adjustTimeoutIfNecessary(exception);
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Failed to adjust timeout when failed to transfer file.", e);
+    }
+
+    try {
       if (reader != null) {
         reader.close();
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.warn("Failed to close file reader when failed to transfer file.", e);
     } finally {
-      connector.addFailureEventToRetryQueue(event);
-
-      if (client != null) {
-        client.setShouldReturnSelf(true);
-        client.returnSelf();
+      try {
+        if (client != null) {
+          client.setShouldReturnSelf(true);
+          client.returnSelf();
+        }
+      } finally {
+        connector.addFailureEventToRetryQueue(event);
       }
     }
   }

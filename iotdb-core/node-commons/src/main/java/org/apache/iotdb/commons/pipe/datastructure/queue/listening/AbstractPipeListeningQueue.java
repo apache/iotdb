@@ -19,23 +19,18 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.queue.listening;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.queue.serializer.QueueSerializerType;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,10 +44,10 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractPipeListeningQueue.class);
 
-  private static final String SNAPSHOT_SUFFIX = ".snapshot";
-
   // The cache of the snapshot events list and the tail index of the queue
   // when the snapshot events are generated.
+  // The snapshot path won't be taken snapshot itself and will be re-assigned when
+  // the node has been set up
   private final Pair<Long, List<PipeSnapshotEvent>> queueTailIndex2SnapshotsCache =
       new Pair<>(Long.MIN_VALUE, new ArrayList<>());
 
@@ -77,15 +72,27 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
       events.forEach(
           event -> event.increaseReferenceCount(AbstractPipeListeningQueue.class.getName()));
       queueTailIndex2SnapshotsCache.setRight(events);
+      LOGGER.info(
+          "Pipe listening queue snapshot cache is updated: {}", queueTailIndex2SnapshotsCache);
     }
   }
 
   public synchronized Pair<Long, List<PipeSnapshotEvent>> findAvailableSnapshots() {
-    // TODO: configure maximum number of events from snapshot to queue tail
-    if (queueTailIndex2SnapshotsCache.getLeft() < queue.getTailIndex() - 1000) {
+    if (queueTailIndex2SnapshotsCache.getLeft()
+        < queue.getTailIndex()
+            - PipeConfig.getInstance().getPipeListeningQueueTransferSnapshotThreshold()) {
       clearSnapshots();
     }
     return queueTailIndex2SnapshotsCache;
+  }
+
+  @Override
+  public synchronized long removeBefore(long newFirstIndex) {
+    final long result = super.removeBefore(newFirstIndex);
+    if (queueTailIndex2SnapshotsCache.getLeft() < result) {
+      clearSnapshots();
+    }
+    return result;
   }
 
   private synchronized void clearSnapshots() {
@@ -96,63 +103,6 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
             event ->
                 event.decreaseReferenceCount(AbstractPipeListeningQueue.class.getName(), false));
     queueTailIndex2SnapshotsCache.setRight(new ArrayList<>());
-  }
-
-  /////////////////////////////// Snapshot ///////////////////////////////
-
-  @Override
-  public final synchronized boolean serializeToFile(File snapshotName) throws IOException {
-    final File snapshotFile = new File(snapshotName + SNAPSHOT_SUFFIX);
-    if (snapshotFile.exists() && snapshotFile.isFile()) {
-      LOGGER.error(
-          "Failed to take snapshot, because snapshot file {} is already exist.",
-          snapshotFile.getAbsolutePath());
-      return false;
-    }
-
-    try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
-      ReadWriteIOUtils.write(queueTailIndex2SnapshotsCache.getLeft(), fileOutputStream);
-      ReadWriteIOUtils.write(queueTailIndex2SnapshotsCache.getRight().size(), fileOutputStream);
-      for (PipeSnapshotEvent event : queueTailIndex2SnapshotsCache.getRight()) {
-        ByteBuffer planBuffer = serializeToByteBuffer(event);
-        ReadWriteIOUtils.write(planBuffer, fileOutputStream);
-      }
-    }
-
-    return super.serializeToFile(snapshotName);
-  }
-
-  @Override
-  public final synchronized void deserializeFromFile(File snapshotName) throws IOException {
-    final File snapshotFile = new File(snapshotName + SNAPSHOT_SUFFIX);
-    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
-      LOGGER.error(
-          "Failed to load snapshot, snapshot file {} is not exist.",
-          snapshotFile.getAbsolutePath());
-      return;
-    }
-
-    try (final FileInputStream inputStream = new FileInputStream(snapshotFile)) {
-      try (FileChannel channel = inputStream.getChannel()) {
-        queueTailIndex2SnapshotsCache.setLeft(ReadWriteIOUtils.readLong(inputStream));
-        queueTailIndex2SnapshotsCache.setRight(new ArrayList<>());
-        int size = ReadWriteIOUtils.readInt(inputStream);
-        for (int i = 0; i < size; ++i) {
-          int capacity = ReadWriteIOUtils.readInt(inputStream);
-          if (capacity == -1) {
-            // EOF
-            return;
-          }
-          ByteBuffer buffer = ByteBuffer.allocate(capacity);
-          channel.read(buffer);
-          queueTailIndex2SnapshotsCache
-              .getRight()
-              .add((PipeSnapshotEvent) deserializeFromByteBuffer(buffer));
-        }
-      }
-    }
-
-    super.deserializeFromFile(snapshotName);
   }
 
   /////////////////////////////// Close ///////////////////////////////

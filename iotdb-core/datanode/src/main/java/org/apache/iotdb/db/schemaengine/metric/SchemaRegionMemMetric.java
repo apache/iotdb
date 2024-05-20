@@ -34,6 +34,7 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
 
   private static final String MEM_USAGE = "schema_region_mem_usage";
   private static final String SERIES_CNT = "schema_region_series_cnt";
+  private static final String DEVICE_NUMBER = "schema_region_device_cnt";
   private static final String TEMPLATE_CNT = "activated_template_cnt";
   private static final String TEMPLATE_SERIES_CNT = "template_series_cnt";
   private static final String TRAVERSER_TIMER = "schema_region_traverser_timer";
@@ -56,6 +57,17 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
         regionStatistics,
+        MemSchemaRegionStatistics::getDevicesNumber,
+        Tag.NAME.toString(),
+        DEVICE_NUMBER,
+        Tag.REGION.toString(),
+        regionTagValue,
+        Tag.DATABASE.toString(),
+        database);
+    metricService.createAutoGauge(
+        Metric.SCHEMA_REGION.toString(),
+        MetricLevel.IMPORTANT,
+        regionStatistics,
         MemSchemaRegionStatistics::getRegionMemoryUsage,
         Tag.NAME.toString(),
         MEM_USAGE,
@@ -67,7 +79,7 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
         Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
         regionStatistics,
-        MemSchemaRegionStatistics::getSeriesNumber,
+        i -> i.getSeriesNumber(true),
         Tag.NAME.toString(),
         SERIES_CNT,
         Tag.REGION.toString(),
@@ -111,6 +123,15 @@ public class SchemaRegionMemMetric implements ISchemaRegionMetric {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     traverserTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.SCHEMA_REGION.toString(),
+        Tag.NAME.toString(),
+        DEVICE_NUMBER,
+        Tag.REGION.toString(),
+        regionTagValue,
+        Tag.DATABASE.toString(),
+        database);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SCHEMA_REGION.toString(),

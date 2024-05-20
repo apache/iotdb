@@ -30,8 +30,11 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackLis
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.TransferLeaderRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
+import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
@@ -39,6 +42,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -198,6 +202,14 @@ public class AsyncClientHandler<Q, R> {
             dataNodeLocationMap,
             (Map<Integer, TCountPathsUsingTemplateResp>) responseMap,
             countDownLatch);
+      case CHECK_SCHEMA_REGION_USING_TEMPLATE:
+        return new CheckSchemaRegionUsingTemplateRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TCheckSchemaRegionUsingTemplateResp>) responseMap,
+            countDownLatch);
       case CHECK_TIMESERIES_EXISTENCE:
         return new CheckTimeSeriesExistenceRPCHandler(
             requestType,
@@ -216,6 +228,7 @@ public class AsyncClientHandler<Q, R> {
             countDownLatch);
       case PIPE_PUSH_ALL_META:
       case PIPE_PUSH_SINGLE_META:
+      case PIPE_PUSH_MULTI_META:
         return new PipePushMetaRPCHandler(
             requestType,
             requestId,
@@ -223,7 +236,9 @@ public class AsyncClientHandler<Q, R> {
             dataNodeLocationMap,
             (Map<Integer, TPushPipeMetaResp>) responseMap,
             countDownLatch);
+      case TOPIC_PUSH_ALL_META:
       case TOPIC_PUSH_SINGLE_META:
+      case TOPIC_PUSH_MULTI_META:
         return new TopicPushMetaRPCHandler(
             requestType,
             requestId,
@@ -231,6 +246,7 @@ public class AsyncClientHandler<Q, R> {
             dataNodeLocationMap,
             (Map<Integer, TPushTopicMetaResp>) responseMap,
             countDownLatch);
+      case CONSUMER_GROUP_PUSH_ALL_META:
       case CONSUMER_GROUP_PUSH_SINGLE_META:
         return new ConsumerGroupPushMetaRPCHandler(
             requestType,
@@ -238,6 +254,14 @@ public class AsyncClientHandler<Q, R> {
             targetDataNode,
             dataNodeLocationMap,
             (Map<Integer, TPushConsumerGroupMetaResp>) responseMap,
+            countDownLatch);
+      case CHANGE_REGION_LEADER:
+        return new TransferLeaderRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TRegionLeaderChangeResp>) responseMap,
             countDownLatch);
       case SET_TTL:
       case CREATE_DATA_REGION:
@@ -258,11 +282,10 @@ public class AsyncClientHandler<Q, R> {
       case LOAD_CONFIGURATION:
       case SET_SYSTEM_STATUS:
       case UPDATE_REGION_ROUTE_MAP:
-      case BROADCAST_LATEST_CONFIG_NODE_GROUP:
       case INVALIDATE_MATCHED_SCHEMA_CACHE:
       case UPDATE_TEMPLATE:
-      case CHANGE_REGION_LEADER:
       case KILL_QUERY_INSTANCE:
+      case RESET_PEER_LIST:
       default:
         return new AsyncTSStatusRPCHandler(
             requestType,

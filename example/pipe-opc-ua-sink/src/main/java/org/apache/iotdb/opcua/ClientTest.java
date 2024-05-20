@@ -47,7 +47,7 @@ import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.
 public class ClientTest implements ClientExample {
 
   public static void main(String[] args) {
-    ClientTest example = new ClientTest();
+    final ClientTest example = new ClientTest();
 
     new ClientExampleRunner(example).run();
   }
@@ -60,16 +60,17 @@ public class ClientTest implements ClientExample {
     client.connect().get();
 
     // create a subscription and a monitored item
-    UaSubscription subscription = client.getSubscriptionManager().createSubscription(200.0).get();
+    final UaSubscription subscription =
+        client.getSubscriptionManager().createSubscription(200.0).get();
 
-    ReadValueId readValueId =
+    final ReadValueId readValueId =
         new ReadValueId(
             Identifiers.Server, AttributeId.EventNotifier.uid(), null, QualifiedName.NULL_VALUE);
 
     // client handle must be unique per item
-    UInteger clientHandle = uint(clientHandles.getAndIncrement());
+    final UInteger clientHandle = uint(clientHandles.getAndIncrement());
 
-    EventFilter eventFilter =
+    final EventFilter eventFilter =
         new EventFilter(
             new SimpleAttributeOperand[] {
               new SimpleAttributeOperand(
@@ -95,7 +96,7 @@ public class ClientTest implements ClientExample {
             },
             new ContentFilter(null));
 
-    MonitoringParameters parameters =
+    final MonitoringParameters parameters =
         new MonitoringParameters(
             clientHandle,
             0.0,
@@ -103,16 +104,16 @@ public class ClientTest implements ClientExample {
             uint(10000),
             true);
 
-    MonitoredItemCreateRequest request =
+    final MonitoredItemCreateRequest request =
         new MonitoredItemCreateRequest(readValueId, MonitoringMode.Reporting, parameters);
 
-    List<UaMonitoredItem> items =
+    final List<UaMonitoredItem> items =
         subscription
             .createMonitoredItems(TimestampsToReturn.Both, Collections.singletonList(request))
             .get();
 
     // do something with the value updates
-    UaMonitoredItem monitoredItem = items.get(0);
+    final UaMonitoredItem monitoredItem = items.get(0);
 
     final AtomicInteger eventCount = new AtomicInteger(0);
 

@@ -74,7 +74,7 @@ public abstract class ConsensusGroupId {
   public static class Factory {
 
     private Factory() {
-      // empty constructor
+      // Empty constructor
     }
 
     public static ConsensusGroupId create(int type, int id) {

@@ -103,8 +103,10 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
@@ -117,6 +119,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHand
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
@@ -127,9 +130,12 @@ import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMai
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlanV1;
@@ -162,13 +168,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -1189,6 +1195,55 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void OperateMultiplePipesPlanV2Test() throws IOException {
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    pipeTasks.put(1, pipeTaskMeta);
+    PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            "testCreate",
+            5,
+            Collections.singletonMap("k1", "v1"),
+            Collections.singletonMap("k2", "v2"),
+            Collections.singletonMap("k3", "v3"));
+    PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
+
+    PipeTaskMeta pipeTaskMeta1 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 2);
+    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks1 = new ConcurrentHashMap<>();
+    pipeTasks.put(2, pipeTaskMeta1);
+    PipeStaticMeta pipeStaticMeta1 =
+        new PipeStaticMeta(
+            "testAlter",
+            6,
+            Collections.singletonMap("k4", "v4"),
+            Collections.singletonMap("k5", "v5"),
+            Collections.singletonMap("k6", "v6"));
+    PipeRuntimeMeta pipeRuntimeMeta1 = new PipeRuntimeMeta(pipeTasks1);
+    AlterPipePlanV2 alterPipePlanV2 = new AlterPipePlanV2(pipeStaticMeta1, pipeRuntimeMeta1);
+
+    DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2("testDrop");
+
+    SetPipeStatusPlanV2 setPipeStatusPlanV2 =
+        new SetPipeStatusPlanV2(
+            "testSet", org.apache.iotdb.commons.pipe.task.meta.PipeStatus.RUNNING);
+
+    List<ConfigPhysicalPlan> subPlans = new ArrayList<>();
+    subPlans.add(createPipePlanV2);
+    subPlans.add(alterPipePlanV2);
+    subPlans.add(dropPipePlanV2);
+    subPlans.add(setPipeStatusPlanV2);
+
+    OperateMultiplePipesPlanV2 operateMultiplePipesPlanV2 =
+        new OperateMultiplePipesPlanV2(subPlans);
+    OperateMultiplePipesPlanV2 operateMultiplePipesPlanV21 =
+        (OperateMultiplePipesPlanV2)
+            ConfigPhysicalPlan.Factory.create(operateMultiplePipesPlanV2.serializeToByteBuffer());
+    Assert.assertEquals(
+        operateMultiplePipesPlanV2.getSubPlans(), operateMultiplePipesPlanV21.getSubPlans());
+  }
+
+  @Test
   public void ShowPipePlanTest() throws IOException {
     ShowPipePlanV1 showPipePlan = new ShowPipePlanV1("demo");
     ShowPipePlanV1 showPipePlan1 =
@@ -1313,7 +1368,36 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void AlterConsumerGroupPlan() throws IOException {
+  public void AlterMultipleTopicsTopicPlanTest() throws IOException {
+    List<AlterTopicPlan> subPlans = new ArrayList<>();
+    subPlans.add(
+        new AlterTopicPlan(new TopicMeta("test_topic1", 1, Collections.singletonMap("k1", "v1"))));
+    subPlans.add(
+        new AlterTopicPlan(new TopicMeta("test_topic2", 2, Collections.singletonMap("k2", "v2"))));
+    AlterMultipleTopicsPlan alterMultipleTopicsPlan = new AlterMultipleTopicsPlan(subPlans);
+    AlterMultipleTopicsPlan alterMultipleTopicsPlan1 =
+        (AlterMultipleTopicsPlan)
+            ConfigPhysicalPlan.Factory.create(alterMultipleTopicsPlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        alterMultipleTopicsPlan.getSubPlans(), alterMultipleTopicsPlan1.getSubPlans());
+  }
+
+  @Test
+  public void TopicHandleMetaChangePlanTest() throws IOException {
+    List<TopicMeta> topicMetas = new ArrayList<>();
+    topicMetas.add(new TopicMeta("topic1", 1, Collections.singletonMap("k1", "v1")));
+    topicMetas.add(new TopicMeta("topic2", 2, Collections.singletonMap("k2", "v2")));
+    TopicHandleMetaChangePlan topicHandleMetaChangePlan = new TopicHandleMetaChangePlan(topicMetas);
+    TopicHandleMetaChangePlan topicHandleMetaChangePlan1 =
+        (TopicHandleMetaChangePlan)
+            ConfigPhysicalPlan.Factory.create(topicHandleMetaChangePlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        topicHandleMetaChangePlan.getTopicMetaList(),
+        topicHandleMetaChangePlan1.getTopicMetaList());
+  }
+
+  @Test
+  public void AlterConsumerGroupPlanTest() throws IOException {
     Map<String, String> attributes = new HashMap<>();
     attributes.put("k1", "v1");
     attributes.put("k2", "v2");
@@ -1327,6 +1411,26 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         alterConsumerGroupPlan.getConsumerGroupMeta(),
         alterConsumerGroupPlan1.getConsumerGroupMeta());
+  }
+
+  @Test
+  public void ConsumerGroupHandleMetaChangePlanTest() throws IOException {
+    List<ConsumerGroupMeta> consumerGroupMetas = new ArrayList<>();
+    consumerGroupMetas.add(
+        new ConsumerGroupMeta(
+            "cg1", 1, new ConsumerMeta("c1", 11, Collections.singletonMap("k1", "v1"))));
+    consumerGroupMetas.add(
+        new ConsumerGroupMeta(
+            "cg2", 2, new ConsumerMeta("c2", 22, Collections.singletonMap("k2", "v2"))));
+    ConsumerGroupHandleMetaChangePlan consumerGroupHandleMetaChangePlan =
+        new ConsumerGroupHandleMetaChangePlan(consumerGroupMetas);
+    ConsumerGroupHandleMetaChangePlan consumerGroupHandleMetaChangePlan1 =
+        (ConsumerGroupHandleMetaChangePlan)
+            ConfigPhysicalPlan.Factory.create(
+                consumerGroupHandleMetaChangePlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        consumerGroupHandleMetaChangePlan.getConsumerGroupMetaList(),
+        consumerGroupHandleMetaChangePlan1.getConsumerGroupMetaList());
   }
 
   @Test
@@ -1831,5 +1935,39 @@ public class ConfigPhysicalPlanSerDeTest {
         (PipeDeactivateTemplatePlan)
             ConfigPhysicalPlan.Factory.create(pipeDeactivateTemplatePlan.serializeToByteBuffer());
     Assert.assertEquals(pipeDeactivateTemplatePlan, deserializedPlan);
+  }
+
+  @Test
+  public void addRegionLocationPlanTest() throws IOException {
+    AddRegionLocationPlan plan =
+        new AddRegionLocationPlan(
+            new TConsensusGroupId(DataRegion, 1),
+            new TDataNodeLocation(
+                10000,
+                new TEndPoint("127.0.0.1", 6600),
+                new TEndPoint("127.0.0.1", 7700),
+                new TEndPoint("127.0.0.1", 8800),
+                new TEndPoint("127.0.0.1", 9900),
+                new TEndPoint("127.0.0.1", 11000)));
+    AddRegionLocationPlan dePlan =
+        (AddRegionLocationPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan, dePlan);
+  }
+
+  @Test
+  public void removeRegionLocationPlanTest() throws IOException {
+    RemoveRegionLocationPlan plan =
+        new RemoveRegionLocationPlan(
+            new TConsensusGroupId(DataRegion, 1),
+            new TDataNodeLocation(
+                10000,
+                new TEndPoint("127.0.0.1", 6600),
+                new TEndPoint("127.0.0.1", 7700),
+                new TEndPoint("127.0.0.1", 8800),
+                new TEndPoint("127.0.0.1", 9900),
+                new TEndPoint("127.0.0.1", 11000)));
+    RemoveRegionLocationPlan dePlan =
+        (RemoveRegionLocationPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
+    Assert.assertEquals(plan, dePlan);
   }
 }

@@ -31,13 +31,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,6 +74,9 @@ public class TabletInsertionDataContainer {
   private int rowCount;
 
   private Tablet tablet;
+
+  // Whether the container shall report progress
+  private boolean shouldReport = false;
 
   private static final Integer CACHED_FULL_ROW_INDEX_LIST_ROW_COUNT_UPPER = 16;
   private static final Map<Integer, List<Integer>> cachedFullRowIndexList = new HashMap<>();
@@ -122,6 +125,10 @@ public class TabletInsertionDataContainer {
 
   public boolean isAligned() {
     return isAligned;
+  }
+
+  public void markAsNeedToReport() {
+    shouldReport = true;
   }
 
   //////////////////////////// parse ////////////////////////////
@@ -324,7 +331,7 @@ public class TabletInsertionDataContainer {
                 .boxed()
                 .map(o -> new BitMap(tablet.getMaxRowNumber()))
                 .toArray(BitMap[]::new)
-            : tablet.bitMaps; // we do not reduce bitmaps here by origin row size
+            : tablet.bitMaps; // We do not reduce bitmaps here by origin row size
     for (int i = 0; i < originBitMapList.length; i++) {
       if (originBitMapList[i] == null) {
         originBitMapList[i] = new BitMap(tablet.getMaxRowNumber());
@@ -551,7 +558,7 @@ public class TabletInsertionDataContainer {
 
   ////////////////////////////  process  ////////////////////////////
 
-  public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
+  public List<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     if (valueColumns.length == 0 || timestampColumn.length == 0) {
       return Collections.emptyList();
     }
@@ -571,13 +578,13 @@ public class TabletInsertionDataContainer {
               columnNameStringList),
           rowCollector);
     }
-    return rowCollector.convertToTabletInsertionEvents();
+    return rowCollector.convertToTabletInsertionEvents(shouldReport);
   }
 
-  public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
+  public List<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, sourceEvent);
     consumer.accept(convertToTablet(), rowCollector);
-    return rowCollector.convertToTabletInsertionEvents();
+    return rowCollector.convertToTabletInsertionEvents(shouldReport);
   }
 
   ////////////////////////////  convertToTablet  ////////////////////////////

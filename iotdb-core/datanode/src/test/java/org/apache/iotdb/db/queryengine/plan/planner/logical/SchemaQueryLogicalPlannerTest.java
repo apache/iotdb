@@ -46,18 +46,17 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Cre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -740,12 +739,8 @@ public class SchemaQueryLogicalPlannerTest {
 
       Assert.assertEquals(Ordering.ASC, root.getScanOrder());
 
-      Assert.assertEquals(3, root.getChildren().size());
-      for (PlanNode child : root.getChildren()) {
-        Assert.assertTrue(
-            child instanceof AlignedSeriesAggregationScanNode
-                || child instanceof SeriesAggregationScanNode);
-      }
+      Assert.assertEquals(1, root.getChildren().size());
+      Assert.assertTrue(root.getChildren().get(0) instanceof RawDataAggregationNode);
     } catch (Exception e) {
       e.printStackTrace();
       fail();

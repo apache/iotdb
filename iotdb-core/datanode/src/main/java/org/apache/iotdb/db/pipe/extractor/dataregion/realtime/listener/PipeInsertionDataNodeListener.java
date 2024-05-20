@@ -85,9 +85,9 @@ public class PipeInsertionDataNodeListener {
     }
 
     if (assigner.notMoreExtractorNeededToBeAssigned()) {
-      // the removed assigner will is the same as the one referenced by the variable `assigner`
+      // The removed assigner will is the same as the one referenced by the variable `assigner`
       dataRegionId2Assigner.remove(dataRegionId);
-      // this will help to release the memory occupied by the assigner
+      // This will help to release the memory occupied by the assigner
       assigner.close();
     }
   }

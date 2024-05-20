@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySource;
@@ -53,11 +54,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -298,6 +300,28 @@ public class Analysis implements IAnalysis {
   private List<String> measurementList;
   private List<IMeasurementSchema> measurementSchemaList;
 
+  // Used for regionScan
+  private Map<PartialPath, Boolean> devicePathToAlignedStatus;
+  private Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemas;
+
+  public void setDevicePathToAlignedStatus(Map<PartialPath, Boolean> devicePathToAlignedStatus) {
+    this.devicePathToAlignedStatus = devicePathToAlignedStatus;
+  }
+
+  public Map<PartialPath, Boolean> getDevicePathToAlignedStatus() {
+    return devicePathToAlignedStatus;
+  }
+
+  public void setDeviceToTimeseriesSchemas(
+      Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemas) {
+    this.deviceToTimeseriesSchemas = deviceToTimeseriesSchemas;
+  }
+
+  public Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>>
+      getDeviceToTimeseriesSchemas() {
+    return deviceToTimeseriesSchemas;
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Used in optimizer
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -310,6 +334,12 @@ public class Analysis implements IAnalysis {
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     return dataPartition.getDataRegionReplicaSetWithTimeFilter(seriesPath.getDevice(), timefilter);
+  }
+
+  public List<TRegionReplicaSet> getPartitionInfoByDevice(
+      PartialPath devicePath, Filter timefilter) {
+    return dataPartition.getDataRegionReplicaSetWithTimeFilter(
+        devicePath.getFullPath(), timefilter);
   }
 
   public TRegionReplicaSet getPartitionInfo(

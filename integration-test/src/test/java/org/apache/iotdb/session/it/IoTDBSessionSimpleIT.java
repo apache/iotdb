@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.session.it;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.isession.ISession;
@@ -30,19 +31,19 @@ import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -406,6 +407,7 @@ public class IoTDBSessionSimpleIT {
       SessionDataSet dataSet = session.executeQueryStatement("select * from root.存储组1.*");
       int count = 0;
       while (dataSet.hasNext()) {
+        dataSet.next();
         count++;
       }
       assertEquals(10, count);
@@ -1019,11 +1021,11 @@ public class IoTDBSessionSimpleIT {
         dataSet.getColumnTypes().toArray(new String[0]),
         new String[] {
           String.valueOf(TSDataType.INT64),
-          String.valueOf(TSDataType.FLOAT),
-          String.valueOf(TSDataType.FLOAT),
+          String.valueOf(TSDataType.DOUBLE),
+          String.valueOf(TSDataType.DOUBLE),
           String.valueOf(TSDataType.BOOLEAN),
           String.valueOf(TSDataType.BOOLEAN),
-          String.valueOf(TSDataType.FLOAT)
+          String.valueOf(TSDataType.DOUBLE)
         });
     long time = 1L;
 
@@ -1033,7 +1035,7 @@ public class IoTDBSessionSimpleIT {
     time++;
 
     assertNulls(record, new int[] {0, 3, 4});
-    assertEquals(5.0f, record.getFields().get(1).getFloatV(), 0.01);
+    assertEquals(5.0f, record.getFields().get(1).getDoubleV(), 0.01);
     assertEquals(Boolean.TRUE, record.getFields().get(2).getBoolV());
 
     assertTrue(dataSet.hasNext());
@@ -1042,8 +1044,8 @@ public class IoTDBSessionSimpleIT {
     time++;
 
     assertNulls(record, new int[] {1, 2, 3});
-    assertEquals(4, record.getFields().get(0).getFloatV(), 0.01);
-    assertEquals(3, record.getFields().get(4).getFloatV(), 0.01);
+    assertEquals(4, record.getFields().get(0).getDoubleV(), 0.01);
+    assertEquals(3, record.getFields().get(4).getDoubleV(), 0.01);
 
     assertTrue(dataSet.hasNext());
     record = dataSet.next();
@@ -1051,7 +1053,7 @@ public class IoTDBSessionSimpleIT {
 
     assertNulls(record, new int[] {0, 1, 2});
     assertFalse(record.getFields().get(3).getBoolV());
-    assertEquals(6, record.getFields().get(4).getFloatV(), 0.01);
+    assertEquals(6, record.getFields().get(4).getDoubleV(), 0.01);
 
     assertFalse(dataSet.hasNext());
     dataSet.closeOperationHandle();
@@ -1633,6 +1635,42 @@ public class IoTDBSessionSimpleIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void convertRecordsToTabletsTest() {
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
+    List<Object> value = new ArrayList<>();
+    for (int measurement = 0; measurement < 100; measurement++) {
+      types.add(TSDataType.INT64);
+      measurements.add("s" + measurement);
+      value.add((long) measurement);
+    }
+    List<String> devices = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<TSDataType>> typeList = new ArrayList<>();
+    List<List<Object>> values = new ArrayList<>();
+    List<Long> timestamps = new ArrayList<>();
+    for (long row = 0; row < 1000; row++) {
+      devices.add("root.sg1.d1");
+      measurementsList.add(measurements);
+      typeList.add(types);
+      values.add(value);
+      timestamps.add(row);
+    }
+    List<String> queryMeasurement = new ArrayList<>();
+    queryMeasurement.add("root.sg1.d1.s1");
+    List<TAggregationType> queryType = new ArrayList<>();
+    queryType.add(TAggregationType.COUNT);
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.insertRecords(devices, timestamps, measurementsList, typeList, values);
+      SessionDataSet dataSet = session.executeAggregationQuery(queryMeasurement, queryType);
+      assertEquals(1000, dataSet.next().getFields().get(0).getLongV());
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
     }
   }
 }

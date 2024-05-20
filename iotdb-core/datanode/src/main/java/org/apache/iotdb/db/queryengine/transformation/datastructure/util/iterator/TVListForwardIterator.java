@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator;
 
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 import java.io.IOException;
 

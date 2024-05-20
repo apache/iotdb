@@ -33,9 +33,10 @@ import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEve
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +52,7 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
   protected IoTDBDataNodeSyncClientManager clientManager;
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
 
     final IoTDBConfig iotdbConfig = IoTDBDescriptor.getInstance().getConfig();
@@ -66,7 +67,7 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
                     .filter(tEndPoint -> tEndPoint.getPort() == iotdbConfig.getRpcPort())
                     .map(TEndPoint::getIp)
                     .collect(Collectors.toList()));
-          } catch (UnknownHostException e) {
+          } catch (final UnknownHostException e) {
             LOGGER.warn("Unknown host when checking pipe sink IP.", e);
             return false;
           }
@@ -79,18 +80,34 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
 
   @Override
   protected IoTDBSyncClientManager constructClient(
-      List<TEndPoint> nodeUrls,
-      boolean useSSL,
-      String trustStorePath,
-      String trustStorePwd,
-      boolean useLeaderCache) {
+      final List<TEndPoint> nodeUrls,
+      final boolean useSSL,
+      final String trustStorePath,
+      final String trustStorePwd,
+      final boolean useLeaderCache,
+      final String loadBalanceStrategy) {
     clientManager =
         new IoTDBDataNodeSyncClientManager(
-            nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
+            nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache, loadBalanceStrategy);
     return clientManager;
   }
 
-  protected void doTransfer(PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+  protected void doTransferWrapper(
+      final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent) throws PipeException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
+          IoTDBDataNodeSyncConnector.class.getName())) {
+        return;
+      }
+      doTransfer(pipeSchemaRegionWritePlanEvent);
+    } finally {
+      pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
+          IoTDBDataNodeSyncConnector.class.getName(), false);
+    }
+  }
+
+  protected void doTransfer(final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException {
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
 
@@ -100,9 +117,10 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
           clientAndStatus
               .getLeft()
               .pipeTransfer(
-                  PipeTransferPlanNodeReq.toTPipeTransferReq(
-                      pipeSchemaRegionWritePlanEvent.getPlanNode()));
-    } catch (Exception e) {
+                  compressIfNeeded(
+                      PipeTransferPlanNodeReq.toTPipeTransferReq(
+                          pipeSchemaRegionWritePlanEvent.getPlanNode())));
+    } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(
           String.format(
@@ -112,11 +130,19 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
     }
 
     final TSStatus status = resp.getStatus();
-    receiverStatusHandler.handle(
-        status,
-        String.format(
-            "Transfer data node write plan %s error, result status %s.",
-            pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), status),
-        pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
+    // Only handle the failed statuses to avoid string format performance overhead
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && resp.getStatus().getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+      receiverStatusHandler.handle(
+          status,
+          String.format(
+              "Transfer data node write plan %s error, result status %s.",
+              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), status),
+          pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
+    }
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Successfully transferred schema event {}.", pipeSchemaRegionWritePlanEvent);
+    }
   }
 }

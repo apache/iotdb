@@ -31,42 +31,42 @@ public class DoNothingConnector implements PipeConnector {
 
   @Override
   public void validate(PipeParameterValidator validator) {
-    // do nothing
+    // Do nothing
   }
 
   @Override
   public void customize(
       PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration) {
-    // do nothing
+    // Do nothing
   }
 
   @Override
   public void handshake() {
-    // do nothing
+    // Do nothing
   }
 
   @Override
   public void heartbeat() {
-    // do nothing
+    // Do nothing
   }
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) {
-    // do nothing
+    // Do nothing
   }
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) {
-    // do nothing
+    // Do nothing
   }
 
   @Override
   public void transfer(Event event) {
-    // do nothing
+    // Do nothing
   }
 
   @Override
   public void close() {
-    // do nothing
+    // Do nothing
   }
 }

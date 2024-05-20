@@ -27,7 +27,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -40,20 +40,20 @@ import java.util.List;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2.class})
+@Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualAutoIT {
   @Test
   public void testPipeSwitchStatus() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -123,16 +123,16 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testPipeIllegallySwitchStatus() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -184,21 +184,21 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testDropPipeAndCreateAgain() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -239,23 +239,23 @@ public class IoTDBPipeSwitchStatusIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testWrongPipeName() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)

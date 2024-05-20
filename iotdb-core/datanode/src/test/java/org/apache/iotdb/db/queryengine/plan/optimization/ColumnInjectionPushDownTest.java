@@ -19,16 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.optimization;
 
-import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
-import org.apache.iotdb.tsfile.utils.TimeDuration;
 
+import org.apache.tsfile.utils.TimeDuration;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -38,16 +36,26 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.getAggregationDescriptor;
 import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.schemaMap;
 
 public class ColumnInjectionPushDownTest {
 
   private void checkPushDown(String sql, PlanNode rawPlan, PlanNode optPlan) {
-    OptimizationTestUtil.checkPushDown(new ColumnInjectionPushDown(), sql, rawPlan, optPlan);
+    OptimizationTestUtil.checkPushDown(
+        Arrays.asList(new PredicatePushDown(), new AggregationPushDown()),
+        new ColumnInjectionPushDown(),
+        sql,
+        rawPlan,
+        optPlan);
   }
 
   private void checkCannotPushDown(String sql, PlanNode rawPlan) {
-    OptimizationTestUtil.checkCannotPushDown(new ColumnInjectionPushDown(), sql, rawPlan);
+    OptimizationTestUtil.checkCannotPushDown(
+        Arrays.asList(new PredicatePushDown(), new AggregationPushDown()),
+        new ColumnInjectionPushDown(),
+        sql,
+        rawPlan);
   }
 
   @Test
@@ -62,16 +70,16 @@ public class ColumnInjectionPushDownTest {
         "select __endTime, count(s1) from root.sg.d1 group by ([0, 100), 10ms);",
         new TestPlanBuilder()
             .aggregationScan(
-                "0",
+                "3",
                 schemaMap.get("root.sg.d1.s1"),
                 aggregationDescriptorList,
                 groupByTimeParameter,
                 false)
-            .columnInject("1", groupByTimeParameter)
+            .columnInject("2", groupByTimeParameter)
             .getRoot(),
         new TestPlanBuilder()
             .aggregationScan(
-                "0",
+                "3",
                 schemaMap.get("root.sg.d1.s1"),
                 aggregationDescriptorList,
                 groupByTimeParameter,
@@ -81,22 +89,22 @@ public class ColumnInjectionPushDownTest {
         "select __endTime, count(s1) from root.sg.d1 group by ([0, 100), 10ms) fill(previous);",
         new TestPlanBuilder()
             .aggregationScan(
-                "0",
+                "4",
                 schemaMap.get("root.sg.d1.s1"),
                 aggregationDescriptorList,
                 groupByTimeParameter,
                 false)
-            .columnInject("1", groupByTimeParameter)
-            .fill("2", FillPolicy.PREVIOUS)
+            .columnInject("2", groupByTimeParameter)
+            .fill("3", FillPolicy.PREVIOUS)
             .getRoot(),
         new TestPlanBuilder()
             .aggregationScan(
-                "0",
+                "4",
                 schemaMap.get("root.sg.d1.s1"),
                 aggregationDescriptorList,
                 groupByTimeParameter,
                 true)
-            .fill("2", FillPolicy.PREVIOUS)
+            .fill("3", FillPolicy.PREVIOUS)
             .getRoot());
   }
 
@@ -112,16 +120,16 @@ public class ColumnInjectionPushDownTest {
         "select __endTime, count(s1) from root.sg.d2.a group by ([0, 100), 10ms);",
         new TestPlanBuilder()
             .alignedAggregationScan(
-                "0",
+                "3",
                 schemaMap.get("aligned_root.sg.d2.a.s1"),
                 aggregationDescriptorList,
                 groupByTimeParameter,
                 false)
-            .columnInject("1", groupByTimeParameter)
+            .columnInject("2", groupByTimeParameter)
             .getRoot(),
         new TestPlanBuilder()
             .alignedAggregationScan(
-                "0",
+                "3",
                 schemaMap.get("aligned_root.sg.d2.a.s1"),
                 aggregationDescriptorList,
                 groupByTimeParameter,
@@ -131,22 +139,22 @@ public class ColumnInjectionPushDownTest {
         "select __endTime, count(s1) from root.sg.d2.a group by ([0, 100), 10ms) fill(previous);",
         new TestPlanBuilder()
             .alignedAggregationScan(
-                "0",
+                "4",
                 schemaMap.get("aligned_root.sg.d2.a.s1"),
                 aggregationDescriptorList,
                 groupByTimeParameter,
                 false)
-            .columnInject("1", groupByTimeParameter)
-            .fill("2", FillPolicy.PREVIOUS)
+            .columnInject("2", groupByTimeParameter)
+            .fill("3", FillPolicy.PREVIOUS)
             .getRoot(),
         new TestPlanBuilder()
             .alignedAggregationScan(
-                "0",
+                "4",
                 schemaMap.get("aligned_root.sg.d2.a.s1"),
                 aggregationDescriptorList,
                 groupByTimeParameter,
                 true)
-            .fill("2", FillPolicy.PREVIOUS)
+            .fill("3", FillPolicy.PREVIOUS)
             .getRoot());
   }
 
@@ -163,45 +171,45 @@ public class ColumnInjectionPushDownTest {
         "select __endTime, count(s1) from root.sg.d1 group by ([0, 100), 10ms, 5ms);",
         new TestPlanBuilder()
             .aggregationScan(
-                "0",
+                "4",
                 schemaMap.get("root.sg.d1.s1"),
                 aggregationDescriptorList1,
                 groupByTimeParameter,
                 false)
-            .slidingWindow("1", aggregationDescriptorList2, groupByTimeParameter, false)
-            .columnInject("2", groupByTimeParameter)
+            .slidingWindow("2", aggregationDescriptorList2, groupByTimeParameter, false)
+            .columnInject("3", groupByTimeParameter)
             .getRoot(),
         new TestPlanBuilder()
             .aggregationScan(
-                "0",
+                "4",
                 schemaMap.get("root.sg.d1.s1"),
                 aggregationDescriptorList1,
                 groupByTimeParameter,
                 false)
-            .slidingWindow("1", aggregationDescriptorList2, groupByTimeParameter, true)
+            .slidingWindow("2", aggregationDescriptorList2, groupByTimeParameter, true)
             .getRoot());
     checkPushDown(
         "select __endTime, count(s1) from root.sg.d1 group by ([0, 100), 10ms, 5ms) fill(previous);",
         new TestPlanBuilder()
             .aggregationScan(
-                "0",
+                "5",
                 schemaMap.get("root.sg.d1.s1"),
                 aggregationDescriptorList1,
                 groupByTimeParameter,
                 false)
-            .slidingWindow("1", aggregationDescriptorList2, groupByTimeParameter, false)
-            .columnInject("2", groupByTimeParameter)
-            .fill("3", FillPolicy.PREVIOUS)
+            .slidingWindow("2", aggregationDescriptorList2, groupByTimeParameter, false)
+            .columnInject("3", groupByTimeParameter)
+            .fill("4", FillPolicy.PREVIOUS)
             .getRoot(),
         new TestPlanBuilder()
             .aggregationScan(
-                "0",
+                "5",
                 schemaMap.get("root.sg.d1.s1"),
                 aggregationDescriptorList1,
                 groupByTimeParameter,
                 false)
-            .slidingWindow("1", aggregationDescriptorList2, groupByTimeParameter, true)
-            .fill("3", FillPolicy.PREVIOUS)
+            .slidingWindow("2", aggregationDescriptorList2, groupByTimeParameter, true)
+            .fill("4", FillPolicy.PREVIOUS)
             .getRoot());
   }
 
@@ -216,29 +224,27 @@ public class ColumnInjectionPushDownTest {
     checkPushDown(
         "select __endTime, count(s1) from root.sg.d1 where s1 > 10 group by ([0, 100), 10ms);",
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
-            .filter(
-                "1",
-                Collections.singletonList(
-                    ExpressionFactory.timeSeries(schemaMap.get("root.sg.d1.s1"))),
+            .aggregationScan(
+                "4",
+                schemaMap.get("root.sg.d1.s1"),
+                aggregationDescriptorList,
+                groupByTimeParameter,
+                false,
                 ExpressionFactory.gt(
                     ExpressionFactory.timeSeries(schemaMap.get("root.sg.d1.s1")),
-                    ExpressionFactory.intValue("10")),
-                true)
-            .rawDataAggregation("2", aggregationDescriptorList, groupByTimeParameter, true)
+                    ExpressionFactory.intValue("10")))
             .columnInject("3", groupByTimeParameter)
             .getRoot(),
         new TestPlanBuilder()
-            .scan("0", schemaMap.get("root.sg.d1.s1"))
-            .filter(
-                "1",
-                Collections.singletonList(
-                    ExpressionFactory.timeSeries(schemaMap.get("root.sg.d1.s1"))),
+            .aggregationScan(
+                "4",
+                schemaMap.get("root.sg.d1.s1"),
+                aggregationDescriptorList,
+                groupByTimeParameter,
+                true,
                 ExpressionFactory.gt(
                     ExpressionFactory.timeSeries(schemaMap.get("root.sg.d1.s1")),
-                    ExpressionFactory.intValue("10")),
-                true)
-            .rawDataAggregation("2", aggregationDescriptorList, groupByTimeParameter, true)
+                    ExpressionFactory.intValue("10")))
             .getRoot());
   }
 
@@ -257,22 +263,22 @@ public class ColumnInjectionPushDownTest {
         "select __endTime, count(s1), count(s2) from root.sg.d1 group by ([0, 100), 10ms);",
         new TestPlanBuilder()
             .aggregationTimeJoin(
-                0,
+                5,
                 Arrays.asList(schemaMap.get("root.sg.d1.s2"), schemaMap.get("root.sg.d1.s1")),
                 Arrays.asList(aggregationDescriptorList2, aggregationDescriptorList1),
                 groupByTimeParameter)
-            .columnInject("3", groupByTimeParameter)
+            .columnInject("4", groupByTimeParameter)
             .getRoot());
     checkCannotPushDown(
         "select __endTime, count(s1), count(s2) from root.sg.d1 group by ([0, 100), 10ms) fill(previous);",
         new TestPlanBuilder()
             .aggregationTimeJoin(
-                0,
+                6,
                 Arrays.asList(schemaMap.get("root.sg.d1.s2"), schemaMap.get("root.sg.d1.s1")),
                 Arrays.asList(aggregationDescriptorList2, aggregationDescriptorList1),
                 groupByTimeParameter)
-            .columnInject("3", groupByTimeParameter)
-            .fill("4", FillPolicy.PREVIOUS)
+            .columnInject("4", groupByTimeParameter)
+            .fill("5", FillPolicy.PREVIOUS)
             .getRoot());
   }
 
@@ -297,40 +303,40 @@ public class ColumnInjectionPushDownTest {
         "select __endTime, count(s1) from root.sg.d1, root.sg.d2.a group by ([0, 100), 10ms) align by device;",
         new TestPlanBuilder()
             .deviceView(
-                "4",
+                "6",
                 outputColumnNames,
                 devices,
                 deviceToMeasurementIndexesMap,
                 Arrays.asList(
                     new TestPlanBuilder()
                         .aggregationScan(
-                            "0",
+                            "7",
                             schemaMap.get("root.sg.d1.s1"),
                             aggregationDescriptorList1,
                             groupByTimeParameter,
                             false)
-                        .columnInject("1", groupByTimeParameter)
+                        .columnInject("2", groupByTimeParameter)
                         .getRoot(),
                     new TestPlanBuilder()
                         .alignedAggregationScan(
-                            "2",
+                            "8",
                             schemaMap.get("aligned_root.sg.d2.a.s1"),
                             aggregationDescriptorList2,
                             groupByTimeParameter,
                             false)
-                        .columnInject("3", groupByTimeParameter)
+                        .columnInject("5", groupByTimeParameter)
                         .getRoot()))
             .getRoot(),
         new TestPlanBuilder()
             .deviceView(
-                "4",
+                "6",
                 outputColumnNames,
                 devices,
                 deviceToMeasurementIndexesMap,
                 Arrays.asList(
                     new TestPlanBuilder()
                         .aggregationScan(
-                            "0",
+                            "7",
                             schemaMap.get("root.sg.d1.s1"),
                             aggregationDescriptorList1,
                             groupByTimeParameter,
@@ -338,7 +344,7 @@ public class ColumnInjectionPushDownTest {
                         .getRoot(),
                     new TestPlanBuilder()
                         .alignedAggregationScan(
-                            "2",
+                            "8",
                             schemaMap.get("aligned_root.sg.d2.a.s1"),
                             aggregationDescriptorList2,
                             groupByTimeParameter,
@@ -375,60 +381,60 @@ public class ColumnInjectionPushDownTest {
         "select __endTime, count(s1) from root.sg.d1, root.sg.d2.a group by ([0, 100), 10ms, 5ms) align by device;",
         new TestPlanBuilder()
             .deviceView(
-                "6",
+                "8",
                 outputColumnNames,
                 devices,
                 deviceToMeasurementIndexesMap,
                 Arrays.asList(
                     new TestPlanBuilder()
                         .aggregationScan(
-                            "0",
+                            "9",
                             schemaMap.get("root.sg.d1.s1"),
                             aggregationDescriptorList1_1,
                             groupByTimeParameter,
                             false)
                         .slidingWindow(
-                            "1", aggregationDescriptorList2_1, groupByTimeParameter, false)
-                        .columnInject("2", groupByTimeParameter)
+                            "2", aggregationDescriptorList2_1, groupByTimeParameter, false)
+                        .columnInject("3", groupByTimeParameter)
                         .getRoot(),
                     new TestPlanBuilder()
                         .alignedAggregationScan(
-                            "3",
+                            "10",
                             schemaMap.get("aligned_root.sg.d2.a.s1"),
                             aggregationDescriptorList1_2,
                             groupByTimeParameter,
                             false)
                         .slidingWindow(
-                            "4", aggregationDescriptorList2_2, groupByTimeParameter, false)
-                        .columnInject("5", groupByTimeParameter)
+                            "6", aggregationDescriptorList2_2, groupByTimeParameter, false)
+                        .columnInject("7", groupByTimeParameter)
                         .getRoot()))
             .getRoot(),
         new TestPlanBuilder()
             .deviceView(
-                "6",
+                "8",
                 outputColumnNames,
                 devices,
                 deviceToMeasurementIndexesMap,
                 Arrays.asList(
                     new TestPlanBuilder()
                         .aggregationScan(
-                            "0",
+                            "9",
                             schemaMap.get("root.sg.d1.s1"),
                             aggregationDescriptorList1_1,
                             groupByTimeParameter,
                             false)
                         .slidingWindow(
-                            "1", aggregationDescriptorList2_1, groupByTimeParameter, true)
+                            "2", aggregationDescriptorList2_1, groupByTimeParameter, true)
                         .getRoot(),
                     new TestPlanBuilder()
                         .alignedAggregationScan(
-                            "3",
+                            "10",
                             schemaMap.get("aligned_root.sg.d2.a.s1"),
                             aggregationDescriptorList1_2,
                             groupByTimeParameter,
                             false)
                         .slidingWindow(
-                            "4", aggregationDescriptorList2_2, groupByTimeParameter, true)
+                            "6", aggregationDescriptorList2_2, groupByTimeParameter, true)
                         .getRoot()))
             .getRoot());
   }
@@ -452,7 +458,7 @@ public class ColumnInjectionPushDownTest {
     deviceToMeasurementIndexesMap.put("root.sg.d2.a", Arrays.asList(1, 2));
 
     checkPushDown(
-        "select __endTime, count(s1) from root.sg.d1, root.sg.d2.a where s1 > 10 group by ([0, 100), 10ms) align by device;",
+        "select __endTime, count(s1) from root.sg.d1, root.sg.d2.a where s1 is null group by ([0, 100), 10ms) align by device;",
         new TestPlanBuilder()
             .deviceView(
                 "8",
@@ -466,9 +472,8 @@ public class ColumnInjectionPushDownTest {
                             "1",
                             Collections.singletonList(
                                 ExpressionFactory.timeSeries(schemaMap.get("root.sg.d1.s1"))),
-                            ExpressionFactory.gt(
-                                ExpressionFactory.timeSeries(schemaMap.get("root.sg.d1.s1")),
-                                ExpressionFactory.intValue("10")),
+                            ExpressionFactory.isNull(
+                                ExpressionFactory.timeSeries(schemaMap.get("root.sg.d1.s1"))),
                             true)
                         .rawDataAggregation(
                             "2", aggregationDescriptorList1, groupByTimeParameter, true)
@@ -480,9 +485,8 @@ public class ColumnInjectionPushDownTest {
                             "5",
                             Collections.singletonList(
                                 ExpressionFactory.timeSeries(schemaMap.get("root.sg.d2.a.s1"))),
-                            ExpressionFactory.gt(
-                                ExpressionFactory.timeSeries(schemaMap.get("root.sg.d2.a.s1")),
-                                ExpressionFactory.intValue("10")),
+                            ExpressionFactory.isNull(
+                                ExpressionFactory.timeSeries(schemaMap.get("root.sg.d2.a.s1"))),
                             true)
                         .rawDataAggregation(
                             "6", aggregationDescriptorList2, groupByTimeParameter, true)
@@ -502,9 +506,8 @@ public class ColumnInjectionPushDownTest {
                             "1",
                             Collections.singletonList(
                                 ExpressionFactory.timeSeries(schemaMap.get("root.sg.d1.s1"))),
-                            ExpressionFactory.gt(
-                                ExpressionFactory.timeSeries(schemaMap.get("root.sg.d1.s1")),
-                                ExpressionFactory.intValue("10")),
+                            ExpressionFactory.isNull(
+                                ExpressionFactory.timeSeries(schemaMap.get("root.sg.d1.s1"))),
                             true)
                         .rawDataAggregation(
                             "2", aggregationDescriptorList1, groupByTimeParameter, true)
@@ -515,9 +518,8 @@ public class ColumnInjectionPushDownTest {
                             "5",
                             Collections.singletonList(
                                 ExpressionFactory.timeSeries(schemaMap.get("root.sg.d2.a.s1"))),
-                            ExpressionFactory.gt(
-                                ExpressionFactory.timeSeries(schemaMap.get("root.sg.d2.a.s1")),
-                                ExpressionFactory.intValue("10")),
+                            ExpressionFactory.isNull(
+                                ExpressionFactory.timeSeries(schemaMap.get("root.sg.d2.a.s1"))),
                             true)
                         .rawDataAggregation(
                             "6", aggregationDescriptorList2, groupByTimeParameter, true)
@@ -544,71 +546,73 @@ public class ColumnInjectionPushDownTest {
     List<String> outputColumnNames = Arrays.asList("Device", "__endTime", "count(s1)", "count(s2)");
     List<String> devices = Arrays.asList("root.sg.d1", "root.sg.d2.a");
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new LinkedHashMap<>();
-    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 3, 2));
-    deviceToMeasurementIndexesMap.put("root.sg.d2.a", Arrays.asList(1, 3, 2));
+    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));
+    deviceToMeasurementIndexesMap.put("root.sg.d2.a", Arrays.asList(1, 2, 3));
 
     checkPushDown(
         "select __endTime, count(s1), count(s2) from root.sg.d1, root.sg.d2.a group by ([0, 100), 10ms) align by device;",
         new TestPlanBuilder()
             .deviceView(
-                "6",
+                "8",
                 outputColumnNames,
                 devices,
                 deviceToMeasurementIndexesMap,
                 Arrays.asList(
                     new TestPlanBuilder()
                         .aggregationTimeJoin(
-                            0,
+                            9,
                             Arrays.asList(
                                 schemaMap.get("root.sg.d1.s2"), schemaMap.get("root.sg.d1.s1")),
                             Arrays.asList(
                                 aggregationDescriptorList1_2, aggregationDescriptorList1_1),
                             groupByTimeParameter)
-                        .columnInject("3", groupByTimeParameter)
+                        .project(
+                            "12", Arrays.asList("count(root.sg.d1.s1)", "count(root.sg.d1.s2)"))
+                        .columnInject("4", groupByTimeParameter)
                         .getRoot(),
                     new TestPlanBuilder()
                         .alignedAggregationScan(
-                            "4",
+                            "13",
                             schemaMap.get("desc_root.sg.d2.a"),
                             aggregationDescriptorList2,
                             groupByTimeParameter,
                             false)
-                        .columnInject("5", groupByTimeParameter)
+                        .project(
+                            "14", Arrays.asList("count(root.sg.d2.a.s1)", "count(root.sg.d2.a.s2)"))
+                        .columnInject("7", groupByTimeParameter)
                         .getRoot()))
             .getRoot(),
         new TestPlanBuilder()
             .deviceView(
-                "6",
+                "8",
                 outputColumnNames,
                 devices,
                 deviceToMeasurementIndexesMap,
                 Arrays.asList(
                     new TestPlanBuilder()
                         .aggregationTimeJoin(
-                            0,
+                            9,
                             Arrays.asList(
                                 schemaMap.get("root.sg.d1.s2"), schemaMap.get("root.sg.d1.s1")),
                             Arrays.asList(
                                 aggregationDescriptorList1_2, aggregationDescriptorList1_1),
                             groupByTimeParameter)
-                        .columnInject("3", groupByTimeParameter)
+                        .project(
+                            "12", Arrays.asList("count(root.sg.d1.s1)", "count(root.sg.d1.s2)"))
+                        .columnInject("4", groupByTimeParameter)
                         .getRoot(),
                     new TestPlanBuilder()
                         .alignedAggregationScan(
-                            "4",
+                            "13",
                             schemaMap.get("desc_root.sg.d2.a"),
                             aggregationDescriptorList2,
                             groupByTimeParameter,
                             true)
+                        .project(
+                            "14",
+                            Arrays.asList(
+                                "__endTime", "count(root.sg.d2.a.s1)", "count(root.sg.d2.a.s2)"))
                         .getRoot()))
             .getRoot());
-  }
-
-  private AggregationDescriptor getAggregationDescriptor(AggregationStep step, String path) {
-    return new AggregationDescriptor(
-        TAggregationType.COUNT.name().toLowerCase(),
-        step,
-        Collections.singletonList(new TimeSeriesOperand(schemaMap.get(path))),
-        new HashMap<>());
   }
 }

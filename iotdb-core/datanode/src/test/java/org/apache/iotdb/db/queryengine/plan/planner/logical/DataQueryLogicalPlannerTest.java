@@ -20,10 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.planner.logical;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -32,19 +30,17 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
@@ -53,8 +49,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParame
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -65,42 +61,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.queryengine.plan.optimization.OptimizationTestUtil.schemaMap;
 import static org.apache.iotdb.db.queryengine.plan.planner.logical.LogicalPlannerTestUtil.parseSQLToPlanNode;
 import static org.junit.Assert.fail;
 
 public class DataQueryLogicalPlannerTest {
-
-  private static final Map<String, PartialPath> schemaMap = new HashMap<>();
-
-  static {
-    try {
-      schemaMap.put("root.sg.d1.s1", new MeasurementPath("root.sg.d1.s1", TSDataType.INT32));
-      schemaMap.put("root.sg.d1.s2", new MeasurementPath("root.sg.d1.s2", TSDataType.DOUBLE));
-      schemaMap.put("root.sg.d1.s3", new MeasurementPath("root.sg.d1.s3", TSDataType.BOOLEAN));
-      schemaMap.put("root.sg.d2.s1", new MeasurementPath("root.sg.d2.s1", TSDataType.INT32));
-      schemaMap.put("root.sg.d2.s2", new MeasurementPath("root.sg.d2.s2", TSDataType.DOUBLE));
-      schemaMap.put("root.sg.d2.s4", new MeasurementPath("root.sg.d2.s4", TSDataType.TEXT));
-      schemaMap.put("root.sg.*.s1", new MeasurementPath("root.sg.*.s1", TSDataType.INT32));
-      schemaMap.put("root.sg.*.s2", new MeasurementPath("root.sg.*.s2", TSDataType.DOUBLE));
-      schemaMap.put("root.sg.*.*.s1", new MeasurementPath("root.sg.*.*.s1", TSDataType.INT32));
-      schemaMap.put("root.sg.*.*.s2", new MeasurementPath("root.sg.*.*.s2", TSDataType.DOUBLE));
-
-      MeasurementPath aS1 = new MeasurementPath("root.sg.d2.a.s1", TSDataType.INT32);
-      MeasurementPath aS2 = new MeasurementPath("root.sg.d2.a.s2", TSDataType.DOUBLE);
-      AlignedPath alignedPath =
-          new AlignedPath(
-              "root.sg.d2.a",
-              Arrays.asList("s1", "s2"),
-              Arrays.asList(aS1.getMeasurementSchema(), aS2.getMeasurementSchema()));
-      aS1.setUnderAlignedEntity(true);
-      aS2.setUnderAlignedEntity(true);
-      schemaMap.put("root.sg.d2.a.s1", aS1);
-      schemaMap.put("root.sg.d2.a.s2", aS2);
-      schemaMap.put("root.sg.d2.a", alignedPath);
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-    }
-  }
 
   @Test
   public void testLastQuery() {
@@ -356,118 +321,90 @@ public class DataQueryLogicalPlannerTest {
     queryId.genPlanNodeId();
 
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    try {
-      sourceNodeList.add(
-          new AlignedSeriesAggregationScanNode(
-              queryId.genPlanNodeId(),
-              new AlignedPath(
-                  "root.sg.d2.a",
-                  Arrays.asList("s2", "s1"),
-                  ((AlignedPath) schemaMap.get("root.sg.d2.a")).getSchemaList()),
-              Arrays.asList(
-                  new AggregationDescriptor(
-                      TAggregationType.SUM.name().toLowerCase(),
-                      AggregationStep.SINGLE,
-                      Collections.singletonList(
-                          new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2")))),
-                  new AggregationDescriptor(
-                      TAggregationType.FIRST_VALUE.name().toLowerCase(),
-                      AggregationStep.SINGLE,
-                      Collections.singletonList(
-                          new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))))),
-              Ordering.ASC,
-              null));
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-    }
     sourceNodeList.add(
-        new SeriesAggregationScanNode(
+        new SeriesScanNode(
             queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
-            Collections.singletonList(
-                new AggregationDescriptor(
-                    TAggregationType.SUM.name().toLowerCase(),
-                    AggregationStep.SINGLE,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))))),
-            Ordering.ASC,
-            null));
+            (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
+            Ordering.ASC));
     sourceNodeList.add(
-        new SeriesAggregationScanNode(
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
+            Ordering.ASC));
+    sourceNodeList.add(
+        new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
-            Collections.singletonList(
-                new AggregationDescriptor(
-                    TAggregationType.SUM.name().toLowerCase(),
-                    AggregationStep.SINGLE,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))))),
+            Ordering.ASC));
+    sourceNodeList.add(
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
+            Ordering.ASC));
+    sourceNodeList.add(
+        new AlignedSeriesScanNode(
+            queryId.genPlanNodeId(),
+            ((AlignedPath) schemaMap.get("root.sg.d2.a")),
             Ordering.ASC,
-            null));
-    sourceNodeList.add(
-        new SeriesAggregationScanNode(
-            queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
-            Collections.singletonList(
-                new AggregationDescriptor(
-                    TAggregationType.FIRST_VALUE.name().toLowerCase(),
-                    AggregationStep.SINGLE,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
-            Ordering.ASC,
-            null));
-    sourceNodeList.add(
-        new SeriesAggregationScanNode(
-            queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
-            Collections.singletonList(
-                new AggregationDescriptor(
-                    TAggregationType.FIRST_VALUE.name().toLowerCase(),
-                    AggregationStep.SINGLE,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
-            Ordering.ASC,
-            null));
-    sourceNodeList.add(
-        new AlignedSeriesAggregationScanNode(
-            queryId.genPlanNodeId(),
-            new AlignedPath((MeasurementPath) schemaMap.get("root.sg.d2.a.s1")),
-            Collections.singletonList(
-                new AggregationDescriptor(
-                    TAggregationType.LAST_VALUE.name().toLowerCase(),
-                    AggregationStep.SINGLE,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))))),
-            Ordering.DESC,
-            null));
-    sourceNodeList.add(
-        new SeriesAggregationScanNode(
-            queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
-            Collections.singletonList(
-                new AggregationDescriptor(
-                    TAggregationType.LAST_VALUE.name().toLowerCase(),
-                    AggregationStep.SINGLE,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
-            Ordering.DESC,
-            null));
-    sourceNodeList.add(
-        new SeriesAggregationScanNode(
-            queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
-            Collections.singletonList(
-                new AggregationDescriptor(
-                    TAggregationType.LAST_VALUE.name().toLowerCase(),
-                    AggregationStep.SINGLE,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
-            Ordering.DESC,
-            null));
+            false));
 
     FullOuterTimeJoinNode fullOuterTimeJoinNode =
         new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC, sourceNodeList);
-    OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), fullOuterTimeJoinNode, 10);
+
+    RawDataAggregationNode rawDataAggregationNode =
+        new RawDataAggregationNode(
+            queryId.genPlanNodeId(),
+            fullOuterTimeJoinNode,
+            Arrays.asList(
+                new AggregationDescriptor(
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
+                    AggregationStep.SINGLE,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1")))),
+                new AggregationDescriptor(
+                    TAggregationType.FIRST_VALUE.name().toLowerCase(),
+                    AggregationStep.SINGLE,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1")))),
+                new AggregationDescriptor(
+                    TAggregationType.SUM.name().toLowerCase(),
+                    AggregationStep.SINGLE,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")))),
+                new AggregationDescriptor(
+                    TAggregationType.FIRST_VALUE.name().toLowerCase(),
+                    AggregationStep.SINGLE,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))),
+                new AggregationDescriptor(
+                    TAggregationType.FIRST_VALUE.name().toLowerCase(),
+                    AggregationStep.SINGLE,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
+                new AggregationDescriptor(
+                    TAggregationType.SUM.name().toLowerCase(),
+                    AggregationStep.SINGLE,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")))),
+                new AggregationDescriptor(
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
+                    AggregationStep.SINGLE,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
+                new AggregationDescriptor(
+                    TAggregationType.SUM.name().toLowerCase(),
+                    AggregationStep.SINGLE,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2")))),
+                new AggregationDescriptor(
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
+                    AggregationStep.SINGLE,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
+            null,
+            Ordering.ASC);
+
+    OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), rawDataAggregationNode, 10);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 10);
 
     PlanNode actualPlan = parseSQLToPlanNode(sql);
@@ -485,66 +422,78 @@ public class DataQueryLogicalPlannerTest {
     queryId.genPlanNodeId();
 
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    try {
-      sourceNodeList.add(
-          new AlignedSeriesAggregationScanNode(
-              queryId.genPlanNodeId(),
-              new AlignedPath(
-                  "root.sg.d2.a",
-                  Arrays.asList("s2", "s1"),
-                  ((AlignedPath) schemaMap.get("root.sg.d2.a")).getSchemaList()),
-              Arrays.asList(
-                  new AggregationDescriptor(
-                      TAggregationType.MAX_VALUE.name().toLowerCase(),
-                      AggregationStep.PARTIAL,
-                      Collections.singletonList(
-                          new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2")))),
-                  new AggregationDescriptor(
-                      TAggregationType.LAST_VALUE.name().toLowerCase(),
-                      AggregationStep.PARTIAL,
-                      Collections.singletonList(
-                          new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1")))),
-                  new AggregationDescriptor(
-                      TAggregationType.COUNT.name().toLowerCase(),
-                      AggregationStep.PARTIAL,
-                      Collections.singletonList(
-                          new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))))),
-              Ordering.DESC,
-              null));
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-    }
     sourceNodeList.add(
-        new SeriesAggregationScanNode(
-            queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
-            Collections.singletonList(
-                new AggregationDescriptor(
-                    TAggregationType.MAX_VALUE.name().toLowerCase(),
-                    AggregationStep.PARTIAL,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))))),
-            Ordering.DESC,
-            null));
-    sourceNodeList.add(
-        new SeriesAggregationScanNode(
-            queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
-            Collections.singletonList(
-                new AggregationDescriptor(
-                    TAggregationType.MAX_VALUE.name().toLowerCase(),
-                    AggregationStep.PARTIAL,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))))),
-            Ordering.DESC,
-            null));
-    sourceNodeList.add(
-        new SeriesAggregationScanNode(
+        new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
+            Ordering.DESC));
+    sourceNodeList.add(
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
+            Ordering.DESC));
+    sourceNodeList.add(
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
+            Ordering.DESC));
+    sourceNodeList.add(
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
+            Ordering.DESC));
+    sourceNodeList.add(
+        new AlignedSeriesScanNode(
+            queryId.genPlanNodeId(),
+            (AlignedPath) schemaMap.get("root.sg.d2.a"),
+            Ordering.DESC,
+            false));
+
+    FullOuterTimeJoinNode fullOuterTimeJoinNode =
+        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList);
+
+    RawDataAggregationNode rawDataAggregationNode =
+        new RawDataAggregationNode(
+            queryId.genPlanNodeId(),
+            fullOuterTimeJoinNode,
             Arrays.asList(
                 new AggregationDescriptor(
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
+                    AggregationStep.PARTIAL,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1")))),
+                new AggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
+                    AggregationStep.PARTIAL,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
+                new AggregationDescriptor(
+                    TAggregationType.COUNT.name().toLowerCase(),
+                    AggregationStep.PARTIAL,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1")))),
+                new AggregationDescriptor(
+                    TAggregationType.COUNT.name().toLowerCase(),
+                    AggregationStep.PARTIAL,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))),
+                new AggregationDescriptor(
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
+                    AggregationStep.PARTIAL,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2")))),
+                new AggregationDescriptor(
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
+                    AggregationStep.PARTIAL,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")))),
+                new AggregationDescriptor(
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
+                    AggregationStep.PARTIAL,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")))),
+                new AggregationDescriptor(
+                    TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
@@ -552,31 +501,14 @@ public class DataQueryLogicalPlannerTest {
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
-            Ordering.DESC,
-            null));
-    sourceNodeList.add(
-        new SeriesAggregationScanNode(
-            queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
-            Arrays.asList(
-                new AggregationDescriptor(
-                    TAggregationType.COUNT.name().toLowerCase(),
-                    AggregationStep.PARTIAL,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))),
-                new AggregationDescriptor(
-                    TAggregationType.LAST_VALUE.name().toLowerCase(),
-                    AggregationStep.PARTIAL,
-                    Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
-            Ordering.DESC,
-            null));
+            null,
+            Ordering.DESC);
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
             queryId.genPlanNodeId(),
-            sourceNodeList,
+            Collections.singletonList(rawDataAggregationNode),
             Arrays.asList(
                 new CrossSeriesAggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
@@ -657,21 +589,23 @@ public class DataQueryLogicalPlannerTest {
 
     List<PlanNode> sourceNodeList1 = new ArrayList<>();
     sourceNodeList1.add(
-        new SeriesAggregationScanNode(
-            queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
-            Collections.singletonList(
-                new AggregationDescriptor(
-                    TAggregationType.MAX_VALUE.name().toLowerCase(),
-                    AggregationStep.SINGLE,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))))),
-            Ordering.DESC,
-            null));
-    sourceNodeList1.add(
-        new SeriesAggregationScanNode(
+        new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
+            Ordering.DESC));
+    sourceNodeList1.add(
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
+            Ordering.DESC));
+
+    FullOuterTimeJoinNode fullOuterTimeJoinNode1 =
+        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
+
+    RawDataAggregationNode rawDataAggregationNode1 =
+        new RawDataAggregationNode(
+            queryId.genPlanNodeId(),
+            fullOuterTimeJoinNode1,
             Arrays.asList(
                 new AggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
@@ -679,33 +613,37 @@ public class DataQueryLogicalPlannerTest {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))),
                 new AggregationDescriptor(
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
+                    AggregationStep.SINGLE,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")))),
+                new AggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
-            Ordering.DESC,
-            null));
-
-    FullOuterTimeJoinNode fullOuterTimeJoinNode1 =
-        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
+            null,
+            Ordering.DESC);
 
     List<PlanNode> sourceNodeList2 = new ArrayList<>();
     sourceNodeList2.add(
-        new SeriesAggregationScanNode(
-            queryId.genPlanNodeId(),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
-            Collections.singletonList(
-                new AggregationDescriptor(
-                    TAggregationType.MAX_VALUE.name().toLowerCase(),
-                    AggregationStep.SINGLE,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))))),
-            Ordering.DESC,
-            null));
-    sourceNodeList2.add(
-        new SeriesAggregationScanNode(
+        new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
+            Ordering.DESC));
+    sourceNodeList2.add(
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
+            Ordering.DESC));
+
+    FullOuterTimeJoinNode fullOuterTimeJoinNode2 =
+        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);
+
+    RawDataAggregationNode rawDataAggregationNode2 =
+        new RawDataAggregationNode(
+            queryId.genPlanNodeId(),
+            fullOuterTimeJoinNode2,
             Arrays.asList(
                 new AggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
@@ -713,19 +651,21 @@ public class DataQueryLogicalPlannerTest {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
                 new AggregationDescriptor(
+                    TAggregationType.MAX_VALUE.name().toLowerCase(),
+                    AggregationStep.SINGLE,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")))),
+                new AggregationDescriptor(
                     TAggregationType.LAST_VALUE.name().toLowerCase(),
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
-            Ordering.DESC,
-            null));
-
-    FullOuterTimeJoinNode fullOuterTimeJoinNode2 =
-        new FullOuterTimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);
+            null,
+            Ordering.DESC);
 
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
-    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(2, 1, 3));
-    deviceToMeasurementIndexesMap.put("root.sg.d2", Arrays.asList(2, 1, 3));
+    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));
+    deviceToMeasurementIndexesMap.put("root.sg.d2", Arrays.asList(1, 2, 3));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             queryId.genPlanNodeId(),
@@ -736,8 +676,8 @@ public class DataQueryLogicalPlannerTest {
             Arrays.asList(
                 ColumnHeaderConstant.DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"),
             deviceToMeasurementIndexesMap);
-    deviceViewNode.addChildDeviceNode("root.sg.d1", fullOuterTimeJoinNode1);
-    deviceViewNode.addChildDeviceNode("root.sg.d2", fullOuterTimeJoinNode2);
+    deviceViewNode.addChildDeviceNode("root.sg.d1", rawDataAggregationNode1);
+    deviceViewNode.addChildDeviceNode("root.sg.d2", rawDataAggregationNode2);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), deviceViewNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -804,10 +744,10 @@ public class DataQueryLogicalPlannerTest {
             false,
             Ordering.DESC);
 
-    AggregationNode aggregationNode =
-        new AggregationNode(
+    RawDataAggregationNode aggregationNode =
+        new RawDataAggregationNode(
             queryId.genPlanNodeId(),
-            Collections.singletonList(filterNode),
+            filterNode,
             Arrays.asList(
                 new AggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
@@ -929,10 +869,10 @@ public class DataQueryLogicalPlannerTest {
             false,
             Ordering.DESC);
 
-    AggregationNode aggregationNode1 =
-        new AggregationNode(
+    RawDataAggregationNode aggregationNode1 =
+        new RawDataAggregationNode(
             queryId.genPlanNodeId(),
-            Collections.singletonList(filterNode1),
+            filterNode1,
             Arrays.asList(
                 new AggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),
@@ -984,10 +924,10 @@ public class DataQueryLogicalPlannerTest {
             false,
             Ordering.DESC);
 
-    AggregationNode aggregationNode2 =
-        new AggregationNode(
+    RawDataAggregationNode aggregationNode2 =
+        new RawDataAggregationNode(
             queryId.genPlanNodeId(),
-            Collections.singletonList(filterNode2),
+            filterNode2,
             Arrays.asList(
                 new AggregationDescriptor(
                     TAggregationType.COUNT.name().toLowerCase(),

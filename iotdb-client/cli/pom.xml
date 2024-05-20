@@ -70,14 +70,14 @@
             <version>1.3.2-SNAPSHOT</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>common-api</artifactId>
-            <version>1.3.2-SNAPSHOT</version>
+            <groupId>org.apache.tsfile</groupId>
+            <artifactId>common</artifactId>
+            <version>${tsfile.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
+            <groupId>org.apache.tsfile</groupId>
             <artifactId>tsfile</artifactId>
-            <version>1.3.2-SNAPSHOT</version>
+            <version>${tsfile.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -91,6 +91,10 @@
         <dependency>
             <groupId>org.antlr</groupId>
             <artifactId>antlr4-runtime</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.thrift</groupId>

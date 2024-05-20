@@ -26,9 +26,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
-import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.utils.TsFileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,23 +102,19 @@ public class CompactionExceptionHandler {
       if (!handleSuccess) {
         LOGGER.error(
             "[Compaction][ExceptionHandler] Fail to handle {} space compaction exception, "
-                + "set allowCompaction to false in {}",
+                + "storage group is {}",
             compactionType,
             fullStorageGroupName);
-        tsFileManager.setAllowCompaction(false);
       } else {
         FileUtils.delete(logFile);
       }
     } catch (IOException e) {
       // catch throwable when handling exception
-      // set the allowCompaction to false
       LOGGER.error(
           "[Compaction][ExceptionHandler] exception occurs when handling exception in {} space compaction. "
-              + "Set allowCompaction to false in {}",
+              + "storage group is {}",
           compactionType,
-          fullStorageGroupName,
-          e);
-      tsFileManager.setAllowCompaction(false);
+          fullStorageGroupName);
     }
   }
 
@@ -209,7 +205,7 @@ public class CompactionExceptionHandler {
   /**
    * Some source files are lost, check if all target files are complete. If all target files are
    * complete, delete the remaining source files and compaction mods files. If some target files are
-   * not complete, set the allowCompaction in tsFileManager to false and print some error logs.
+   * not complete, print some error logs.
    *
    * @throws IOException if the io operations on file fails
    */
@@ -252,8 +248,7 @@ public class CompactionExceptionHandler {
       if (!TsFileUtils.isTsFileComplete(targetResource.getTsFile())) {
         LOGGER.error(
             "{} [Compaction][ExceptionHandler] target file {} is not complete, "
-                + "and some source files {} is lost, do nothing. "
-                + "Set allowCompaction to false",
+                + "and some source files {} is lost, do nothing.",
             fullStorageGroupName,
             targetResource,
             lostSourceResources);

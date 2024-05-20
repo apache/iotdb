@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeType;
-import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.execution.executor.PipeProcessorSubtaskExecutor;
-import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
+import org.apache.iotdb.db.pipe.execution.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.execution.PipeProcessorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.execution.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskConnectorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskExtractorStage;
@@ -106,7 +106,8 @@ public class PipeDataNodeTaskBuilder {
             regionId,
             extractorStage.getEventSupplier(),
             connectorStage.getPipeConnectorPendingQueue(),
-            PROCESSOR_EXECUTOR);
+            PROCESSOR_EXECUTOR,
+            pipeTaskMeta);
 
     return new PipeDataNodeTask(
         pipeStaticMeta.getPipeName(), regionId, extractorStage, processorStage, connectorStage);

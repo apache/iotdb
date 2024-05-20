@@ -60,7 +60,7 @@ public class UDFEnvelopeAnalysis implements UDTF {
         .validate(
             x -> (double) x > 0,
             "The param 'frequency' must > 0.",
-            validator.getParameters().getDoubleOrDefault(FREQUENCY, 0))
+            validator.getParameters().getDoubleOrDefault(FREQUENCY, Double.MAX_VALUE))
         .validate(
             x -> (int) x >= 1,
             "The param 'amplification' must >= 1.",
@@ -71,7 +71,7 @@ public class UDFEnvelopeAnalysis implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
-    frequency = parameters.getDoubleOrDefault(FREQUENCY, Double.MIN_VALUE);
+    frequency = parameters.getDoubleOrDefault(FREQUENCY, Double.MAX_VALUE);
     amplification = parameters.getIntOrDefault(AMPLIFICATION, 1);
     timestampPrecision = parameters.getSystemStringOrDefault(TIMESTAMP_PRECISION, MS_PRECISION);
   }
@@ -87,7 +87,7 @@ public class UDFEnvelopeAnalysis implements UDTF {
   @Override
   public void terminate(PointCollector collector) throws Exception {
     double[] envelopeValues = envelopeAnalyze(signals.toArray());
-    frequency = frequency != Double.MIN_VALUE ? frequency : calculateFrequency(timestamps);
+    frequency = frequency != Double.MAX_VALUE ? frequency : calculateFrequency(timestamps);
     int signalSize = signals.size();
     double[] frequencies = new double[signalSize / 2];
     for (int i = 0; i < signalSize / 2; i++) {

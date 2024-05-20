@@ -64,7 +64,7 @@ public class IoTDBLastQueryWithLimitOffsetIT {
   public void testWithLimit() {
     String[] retArray =
         new String[] {
-          "1,root.sg.d1.s1,1.0,FLOAT",
+          "1,root.sg.d1.s1,1.0,DOUBLE",
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -95,7 +95,7 @@ public class IoTDBLastQueryWithLimitOffsetIT {
 
   @Test
   public void testWithOffset() {
-    String[] retArray = new String[] {"2,root.sg.d2.s2,1.0,FLOAT"};
+    String[] retArray = new String[] {"2,root.sg.d2.s2,1.0,DOUBLE"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -127,7 +127,7 @@ public class IoTDBLastQueryWithLimitOffsetIT {
   public void testWithLimitAndOffset() {
     String[] retArray =
         new String[] {
-          "1,root.sg.d1.s2,1.0,FLOAT", "2,root.sg.d2.s1,1.0,FLOAT",
+          "1,root.sg.d1.s2,1.0,DOUBLE", "2,root.sg.d2.s1,1.0,DOUBLE",
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();

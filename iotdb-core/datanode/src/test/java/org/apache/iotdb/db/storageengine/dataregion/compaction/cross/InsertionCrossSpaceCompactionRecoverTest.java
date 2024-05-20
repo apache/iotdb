@@ -34,18 +34,18 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFil
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -343,6 +343,88 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     Assert.assertTrue(targetFile.tsFileExists());
     Assert.assertTrue(targetFile.resourceFileExists());
     Assert.assertTrue(targetFile.modFileExists());
+  }
+
+  @Test
+  public void testRecoverWithTargetFileNotExist()
+      throws IllegalPathException, IOException, MergeException {
+    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+
+    TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
+    seqResource1.updateStartTime(d1, 10);
+    seqResource1.updateEndTime(d1, 20);
+    seqResource1.updateStartTime(d2, 20);
+    seqResource1.updateEndTime(d2, 30);
+    createTsFileByResource(seqResource1);
+    seqResource1.serialize();
+
+    TsFileResource seqResource2 = createTsFileResource("3-3-0-0.tsfile", true);
+    seqResource2.updateStartTime(d1, 30);
+    seqResource2.updateEndTime(d1, 40);
+    seqResource2.updateStartTime(d2, 40);
+    seqResource2.updateEndTime(d2, 50);
+    createTsFileByResource(seqResource2);
+    seqResource2.serialize();
+
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+
+    TsFileResource unseqResource1 = createTsFileResource("9-9-0-0.tsfile", false);
+    unseqResource1.updateStartTime(d1, 22);
+    unseqResource1.updateEndTime(d1, 25);
+    unseqResource1.updateStartTime(d2, 31);
+    unseqResource1.updateEndTime(d2, 37);
+    createTsFileByResource(unseqResource1);
+    unseqResource1.serialize();
+
+    Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
+    deleteMap.put(((PlainDeviceID) d1).toStringID() + ".s1", new Pair<>(0L, 300L));
+    CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResource1, false);
+
+    unseqResources.add(unseqResource1);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+    InsertionCrossCompactionTaskResource taskResource =
+        selector.selectOneInsertionTask(
+            new CrossSpaceCompactionCandidate(seqResources, unseqResources));
+    Assert.assertEquals(unseqResource1, taskResource.toInsertUnSeqFile);
+    Assert.assertEquals(seqResource1, taskResource.prevSeqFile);
+    Assert.assertEquals(seqResource2, taskResource.nextSeqFile);
+    Assert.assertEquals(unseqResource1, taskResource.firstUnSeqFileInParitition);
+
+    InsertionCrossSpaceCompactionTask task =
+        new InsertionCrossSpaceCompactionTask(new Phaser(), 0, tsFileManager, taskResource, 0);
+    TsFileResource targetFile = new TsFileResource(task.generateTargetFile());
+    File logFile =
+        new File(
+            targetFile.getTsFilePath() + CompactionLogger.INSERTION_COMPACTION_LOG_NAME_SUFFIX);
+
+    CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResource1, true);
+
+    try (SimpleCompactionLogger logger = new SimpleCompactionLogger(logFile)) {
+      logger.logSourceFile(taskResource.toInsertUnSeqFile);
+      logger.logTargetFile(targetFile);
+      logger.force();
+    }
+
+    // recover compaction, all target file and compaction.mods file should be deleted and source
+    // file should be existed
+    new InsertionCrossSpaceCompactionTask("root.testsg", "0", tsFileManager, logFile).recover();
+
+    Assert.assertTrue(unseqResource1.getTsFile().exists());
+    Assert.assertTrue(
+        new File(unseqResource1.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
+    Assert.assertTrue(unseqResource1.getModFile().exists());
+    Assert.assertFalse(unseqResource1.getCompactionModFile().exists());
+
+    Assert.assertFalse(targetFile.tsFileExists());
+    Assert.assertFalse(targetFile.resourceFileExists());
+    Assert.assertFalse(targetFile.modFileExists());
   }
 
   private TsFileResource createTsFileResource(String name, boolean seq) {

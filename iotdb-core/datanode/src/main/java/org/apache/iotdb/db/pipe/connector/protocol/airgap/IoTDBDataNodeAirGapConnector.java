@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,11 +50,11 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDataNodeAirGapConnector.class);
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
 
     final PipeConfig pipeConfig = PipeConfig.getInstance();
-    Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
+    final Set<TEndPoint> givenNodeUrls = parseNodeUrls(validator.getParameters());
 
     validator.validate(
         empty -> {
@@ -66,7 +68,7 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
                                 tEndPoint.getPort() == pipeConfig.getPipeAirGapReceiverPort())
                         .map(TEndPoint::getIp)
                         .collect(Collectors.toList())));
-          } catch (UnknownHostException e) {
+          } catch (final UnknownHostException e) {
             LOGGER.warn("Unknown host when checking pipe sink IP.", e);
             return false;
           }
@@ -80,9 +82,15 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
   }
 
   @Override
+  protected boolean mayNeedHandshakeWhenFail() {
+    return false;
+  }
+
+  @Override
   protected byte[] generateHandShakeV1Payload() throws IOException {
-    return PipeTransferDataNodeHandshakeV1Req.toTPipeTransferBytes(
-        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    return compressIfNeeded(
+        PipeTransferDataNodeHandshakeV1Req.toTPipeTransferBytes(
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
   }
 
   @Override
@@ -95,20 +103,42 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
-    return PipeTransferDataNodeHandshakeV2Req.toTPipeTransferBytes(params);
+    return compressIfNeeded(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferBytes(params));
   }
 
-  protected void doTransfer(
-      Socket socket, PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+  protected void doTransferWrapper(
+      final Socket socket, final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+      throws PipeException, IOException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
+          IoTDBDataNodeAirGapConnector.class.getName())) {
+        return;
+      }
+      doTransfer(socket, pipeSchemaRegionWritePlanEvent);
+    } finally {
+      pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(
+          IoTDBDataNodeAirGapConnector.class.getName(), false);
+    }
+  }
+
+  private void doTransfer(
+      final Socket socket, final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException, IOException {
     if (!send(
         socket,
-        PipeTransferPlanNodeReq.toTPipeTransferBytes(
-            pipeSchemaRegionWritePlanEvent.getPlanNode()))) {
-      throw new PipeException(
+        compressIfNeeded(
+            PipeTransferPlanNodeReq.toTPipeTransferBytes(
+                pipeSchemaRegionWritePlanEvent.getPlanNode())))) {
+      final String errorMessage =
           String.format(
               "Transfer data node write plan %s error. Socket: %s.",
-              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), socket));
+              pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), socket);
+      receiverStatusHandler.handle(
+          new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+              .setMessage(errorMessage),
+          errorMessage,
+          pipeSchemaRegionWritePlanEvent.toString());
     }
   }
 }

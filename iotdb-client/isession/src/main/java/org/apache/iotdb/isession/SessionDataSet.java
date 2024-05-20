@@ -23,12 +23,12 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
@@ -38,7 +38,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
 
-public class SessionDataSet implements AutoCloseable {
+public class SessionDataSet implements ISessionDataSet {
 
   private final IoTDBRpcDataSet ioTDBRpcDataSet;
 
@@ -143,16 +143,23 @@ public class SessionDataSet implements AutoCloseable {
     ioTDBRpcDataSet.fetchSize = fetchSize;
   }
 
+  @Override
   public List<String> getColumnNames() {
     return new ArrayList<>(ioTDBRpcDataSet.columnNameList);
   }
 
+  @Override
   public List<String> getColumnTypes() {
     return new ArrayList<>(ioTDBRpcDataSet.columnTypeList);
   }
 
+  @Override
   public boolean hasNext() throws StatementExecutionException, IoTDBConnectionException {
-    return ioTDBRpcDataSet.next();
+    if (ioTDBRpcDataSet.hasCachedRecord) {
+      return true;
+    } else {
+      return ioTDBRpcDataSet.next();
+    }
   }
 
   private RowRecord constructRowRecordFromValueArray() throws StatementExecutionException {
@@ -220,6 +227,7 @@ public class SessionDataSet implements AutoCloseable {
    *
    * @return One complete row saved in RowRecord
    */
+  @Override
   public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {
     if (!ioTDBRpcDataSet.hasCachedRecord && !hasNext()) {
       return null;

@@ -19,10 +19,35 @@
 
 package org.apache.iotdb.confignode.persistence.schema;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public enum CNSnapshotFileType {
-  INVALID,
-  USER,
-  ROLE,
-  USER_ROLE,
-  SCHEMA_TEMPLATE
+  INVALID((byte) 0),
+  USER((byte) 1),
+  ROLE((byte) 2),
+  USER_ROLE((byte) 3),
+  SCHEMA((byte) 4);
+
+  private static final Map<Byte, CNSnapshotFileType> TYPE_SNAPSHOT_MAP = new HashMap<>();
+
+  static {
+    for (final CNSnapshotFileType type : CNSnapshotFileType.values()) {
+      TYPE_SNAPSHOT_MAP.put(type.getType(), type);
+    }
+  }
+
+  private final byte type;
+
+  CNSnapshotFileType(byte type) {
+    this.type = type;
+  }
+
+  public byte getType() {
+    return type;
+  }
+
+  public static CNSnapshotFileType deserialize(byte type) {
+    return TYPE_SNAPSHOT_MAP.get(type);
+  }
 }

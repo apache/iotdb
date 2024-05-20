@@ -22,11 +22,12 @@ package org.apache.iotdb.pipe.it.autocreate;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -42,7 +43,7 @@ import java.util.Map;
 import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2.class})
+@Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
   @Before
   public void setUp() {
@@ -50,12 +51,24 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
+    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
-        .setTimestampPrecision("ms");
-    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+        .setTimestampPrecision("ms")
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+    receiverEnv
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+
+    // 10 min, assert that the operations will not time out
+    senderEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
@@ -63,12 +76,12 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testTumblingTimeSamplingProcessor() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // Test empty tsFile parsing
       // Assert that an empty tsFile will not be parsed by the processor then block
@@ -82,9 +95,9 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("source.realtime.mode", "log");
 
@@ -97,7 +110,7 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("sink.ip", receiverIp);
       connectorAttributes.put("sink.port", Integer.toString(receiverPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -121,7 +134,7 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      Set<String> expectedResSet = new HashSet<>();
+      final Set<String> expectedResSet = new HashSet<>();
 
       expectedResSet.add("0,1.0,");
       expectedResSet.add("20000,4.0,");

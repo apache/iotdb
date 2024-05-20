@@ -20,9 +20,9 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.topic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
+import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
@@ -30,8 +30,9 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +41,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
 
@@ -56,6 +58,24 @@ public class AlterTopicProcedure extends AbstractOperateSubscriptionProcedure {
   public AlterTopicProcedure(TopicMeta updatedTopicMeta) {
     super();
     this.updatedTopicMeta = updatedTopicMeta;
+  }
+
+  /** This is only used when the subscription info lock is held by another procedure. */
+  public AlterTopicProcedure(
+      TopicMeta updatedTopicMeta, AtomicReference<SubscriptionInfo> subscriptionInfo) {
+    super();
+    this.updatedTopicMeta = updatedTopicMeta;
+    this.subscriptionInfo = subscriptionInfo;
+  }
+
+  /** This should be called after {@link #executeFromValidate}. */
+  public TopicMeta getExistedTopicMeta() {
+    return existedTopicMeta;
+  }
+
+  /** This should be called after {@link #executeFromValidate}. */
+  public TopicMeta getUpdatedTopicMeta() {
+    return updatedTopicMeta;
   }
 
   @Override

@@ -21,15 +21,15 @@ package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.TVListForwardIterator;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.block.column.IntColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

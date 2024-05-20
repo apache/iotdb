@@ -22,6 +22,10 @@ package org.apache.iotdb.db.exception;
 public class PartitionViolationException extends LoadFileException {
 
   public PartitionViolationException(String file) {
-    super(String.format("The data of file %s cross partitions", file));
+    super(String.format("The data of file %s crosses partitions", file));
+  }
+
+  public PartitionViolationException() {
+    super("The data of file crosses partitions");
   }
 }

@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -67,12 +66,6 @@ public class SubscriptionRuntimeAgent implements IService {
 
     SubscriptionAgentLauncher.launchSubscriptionTopicAgent();
     SubscriptionAgentLauncher.launchSubscriptionConsumerAgent();
-
-    PipeAgent.runtime()
-        .registerPeriodicalJob(
-            "SubscriptionBrokerAgent::clearCommittedEvents()",
-            brokerAgent::clearCommittedEvents,
-            SubscriptionConfig.getInstance().getSubscriptionClearCommittedEventIntervalSeconds());
 
     isShutdown.set(false);
   }

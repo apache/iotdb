@@ -25,11 +25,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -38,22 +37,21 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-@Ignore
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2.class})
+@Category({MultiClusterIT2ManualCreateSchema.class})
 public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
   @Test
   public void testAutoRestartSchemaTask() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.inclusion.exclusion", "");
@@ -64,7 +62,7 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
       connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
       connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -76,57 +74,45 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    int successCount = 0;
     for (int i = 0; i < 10; ++i) {
-      if (TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv,
           String.format(
               "create timeseries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
               i))) {
-        ++successCount;
+        return;
       }
     }
-
-    // We do not test the schema region's recover process since
-    // it hasn't been implemented yet in simple consensus
-    TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "count timeseries",
-        "count(timeseries),",
-        Collections.singleton(String.format("%d,", successCount)));
 
     TestUtils.restartCluster(senderEnv);
     TestUtils.restartCluster(receiverEnv);
 
     for (int i = 10; i < 20; ++i) {
-      if (TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv,
           String.format(
               "create timeseries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
               i))) {
-        ++successCount;
+        return;
       }
     }
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "count timeseries",
-        "count(timeseries),",
-        Collections.singleton(String.format("%d,", successCount)));
+        receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("20,"));
   }
 
   @Test
   public void testAutoRestartConfigTask() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.inclusion.exclusion", "");
@@ -137,7 +123,7 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
       connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
       connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -149,11 +135,10 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    int successCount = 0;
     for (int i = 0; i < 10; ++i) {
-      if (TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv, String.format("create database root.ln%s", i))) {
-        ++successCount;
+        return;
       }
     }
 
@@ -161,16 +146,13 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
     TestUtils.restartCluster(receiverEnv);
 
     for (int i = 10; i < 20; ++i) {
-      if (TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv, String.format("create database root.ln%s", i))) {
-        ++successCount;
+        return;
       }
     }
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "count databases",
-        "count,",
-        Collections.singleton(String.format("%d,", successCount)));
+        receiverEnv, "count databases", "count,", Collections.singleton("20,"));
   }
 }

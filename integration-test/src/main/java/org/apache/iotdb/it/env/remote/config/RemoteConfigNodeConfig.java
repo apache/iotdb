@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.it.env.remote.config;
 
 import org.apache.iotdb.itbase.env.ConfigNodeConfig;
@@ -25,6 +26,11 @@ import java.util.List;
 public class RemoteConfigNodeConfig implements ConfigNodeConfig {
   @Override
   public ConfigNodeConfig setMetricReporterType(List<String> metricReporterTypes) {
+    return this;
+  }
+
+  @Override
+  public ConfigNodeConfig setConnectionTimeoutMs(long connectionTimeoutMs) {
     return this;
   }
 }

@@ -20,20 +20,20 @@
 package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
 import org.apache.iotdb.db.queryengine.transformation.datastructure.row.SerializableRowList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.FloatColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.Field;
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.block.column.BooleanColumnBuilder;
+import org.apache.tsfile.read.common.block.column.DoubleColumnBuilder;
+import org.apache.tsfile.read.common.block.column.FloatColumnBuilder;
+import org.apache.tsfile.read.common.block.column.IntColumnBuilder;
+import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
+import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

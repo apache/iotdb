@@ -21,15 +21,18 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -43,6 +46,9 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static java.util.Objects.requireNonNull;
 
 public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SchemaQueryOrderByHeatOperator.class);
 
   private final OperatorContext operatorContext;
   private final List<Operator> operators;
@@ -244,5 +250,13 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
       retainedSize += child.calculateRetainedSizeAfterCallingNext();
     }
     return retainedSize;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + operators.stream().mapToLong(Accountable::ramBytesUsed).sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + RamUsageEstimator.sizeOf(noMoreTsBlocks);
   }
 }

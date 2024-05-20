@@ -39,6 +39,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+/**
+ * Assign an allocator than run this test manually. This test will show the scatter width
+ * distribution of the specified allocator
+ */
 public class AllocatorScatterWidthManualTest {
 
   private static final Logger LOGGER =
@@ -79,6 +83,7 @@ public class AllocatorScatterWidthManualTest {
           ALLOCATOR.generateOptimalRegionReplicasDistribution(
               AVAILABLE_DATA_NODE_MAP,
               FREE_SPACE_MAP,
+              allocateResult,
               allocateResult,
               DATA_REPLICATION_FACTOR,
               new TConsensusGroupId(TConsensusGroupType.DataRegion, index)));

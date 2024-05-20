@@ -25,15 +25,21 @@ import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeMetaDeSerTest {
@@ -65,6 +71,15 @@ public class PipeMetaDeSerTest {
     hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(new SimpleProgressIndex(2, 4));
     hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(new IoTProgressIndex(3, 6L));
 
+    Map<String, Pair<Long, ByteBuffer>> timeSeries2TimestampWindowBufferPairMap = new HashMap<>();
+    ByteBuffer buffer;
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write("123", outputStream);
+      buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+    timeSeries2TimestampWindowBufferPairMap.put("root.test.a1", new Pair<>(123L, buffer));
+
     PipeRuntimeMeta pipeRuntimeMeta =
         new PipeRuntimeMeta(
             new ConcurrentHashMap<Integer, PipeTaskMeta>() {
@@ -77,6 +92,11 @@ public class PipeMetaDeSerTest {
                     567,
                     new PipeTaskMeta(
                         new RecoverProgressIndex(1, new SimpleProgressIndex(1, 9)), 123));
+                put(
+                    678,
+                    new PipeTaskMeta(
+                        new TimeWindowStateProgressIndex(timeSeries2TimestampWindowBufferPairMap),
+                        789));
                 put(Integer.MIN_VALUE, new PipeTaskMeta(new MetaProgressIndex(987), 0));
               }
             });

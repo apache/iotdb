@@ -26,9 +26,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.exception.write.WriteProcessException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

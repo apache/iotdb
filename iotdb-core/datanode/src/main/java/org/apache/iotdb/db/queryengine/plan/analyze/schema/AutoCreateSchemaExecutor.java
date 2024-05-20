@@ -49,12 +49,13 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -402,10 +403,10 @@ class AutoCreateSchemaExecutor {
     }
 
     if (!templateExtendInfoMap.isEmpty()) {
-      for (TemplateExtendInfo templateExtendInfo : templateExtendInfoMap.values()) {
-        templateExtendInfo = templateExtendInfo.deduplicate();
+      for (Map.Entry<String, TemplateExtendInfo> entry : templateExtendInfoMap.entrySet()) {
+        TemplateExtendInfo templateExtendInfo = entry.getValue().deduplicate();
         internalExtendTemplate(
-            templateExtendInfo.getTemplateName(),
+            entry.getKey(),
             templateExtendInfo.getMeasurements(),
             templateExtendInfo.getDataTypes(),
             templateExtendInfo.getEncodings(),

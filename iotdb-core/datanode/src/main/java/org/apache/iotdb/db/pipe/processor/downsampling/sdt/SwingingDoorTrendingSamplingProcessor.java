@@ -29,8 +29,8 @@ import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,21 +43,21 @@ public class SwingingDoorTrendingSamplingProcessor extends DownSamplingProcessor
       LoggerFactory.getLogger(SwingingDoorTrendingSamplingProcessor.class);
 
   /**
-   * the maximum absolute difference the user set if the data's value is within
+   * The maximum absolute difference the user set if the data's value is within
    * compressionDeviation, it will be compressed and discarded after compression, it will only store
    * out of range (time, data) to form the trend
    */
   private double compressionDeviation;
 
   /**
-   * the minimum time distance between two stored data points if current point time to the last
+   * The minimum time distance between two stored data points if current point time to the last
    * stored point time distance <= compressionMinTimeInterval, current point will NOT be stored
    * regardless of compression deviation
    */
   private long compressionMinTimeInterval;
 
   /**
-   * the maximum time distance between two stored data points if current point time to the last
+   * The maximum time distance between two stored data points if current point time to the last
    * stored point time distance >= compressionMaxTimeInterval, current point will be stored
    * regardless of compression deviation
    */

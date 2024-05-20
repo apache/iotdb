@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -65,14 +66,14 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   protected N startNode;
   protected String[] nodes;
 
-  // measurement in template should be processed only if templateMap is not null
+  // Measurement in template should be processed only if templateMap is not null
   protected Map<Integer, Template> templateMap;
   protected IMNodeFactory<N> nodeFactory;
 
-  // if true, the pre deleted measurement or pre deactivated template won't be processed
+  // If true, the pre deleted measurement or pre deactivated template won't be processed
   protected boolean skipPreDeletedSchema = false;
 
-  // default false means fullPath pattern match
+  // Default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
   private IDeviceMNode<N> skipTemplateDevice;
   private ReleaseFlushMonitor.RecordNode timeRecorder;
@@ -155,17 +156,17 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
     } else {
       if (templateMap != null
           && !skipTemplateChildren
-          && !templateMap.isEmpty() // this task will cover some timeseries represented by template
+          && !templateMap.isEmpty() // This task will cover some timeseries represented by template
           && (parent.isDevice()
               && parent.getAsDeviceMNode().getSchemaTemplateId()
-                  != NON_TEMPLATE) // the device is using template
+                  != NON_TEMPLATE) // The device is using template
           && !(skipPreDeletedSchema
               && parent
                   .getAsDeviceMNode()
                   .isPreDeactivateTemplate())) { // the template should not skip
         int templateId = parent.getAsDeviceMNode().getSchemaTemplateId();
         Template template = templateMap.get(templateId);
-        // if null, it means the template on this device is not covered in this query, refer to the
+        // If null, it means the template on this device is not covered in this query, refer to the
         // mpp analyzing stage
         if (template != null && nodeFactory != null) {
           child = MNodeUtils.getChild(templateMap.get(templateId), childName, nodeFactory);

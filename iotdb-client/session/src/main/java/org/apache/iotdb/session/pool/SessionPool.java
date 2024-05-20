@@ -37,12 +37,12 @@ import org.apache.iotdb.session.DummyNodesSupplier;
 import org.apache.iotdb.session.NodesSupplier;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.util.SessionUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,6 +112,7 @@ public class SessionPool implements ISessionPool {
   private String trustStorePwd;
   private ZoneId zoneId;
   private boolean enableRedirection;
+  private boolean enableRecordsAutoConvertTablet;
   private boolean enableQueryRedirection = false;
 
   private Map<String, TEndPoint> deviceIdToEndpoint;
@@ -475,6 +476,7 @@ public class SessionPool implements ISessionPool {
     if (this.enableRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
     }
+    this.enableRecordsAutoConvertTablet = builder.enableRecordsAutoConvertTablet;
     this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
     this.version = builder.version;
     this.thriftDefaultBufferSize = builder.thriftDefaultBufferSize;
@@ -485,6 +487,7 @@ public class SessionPool implements ISessionPool {
     this.trustStorePwd = builder.trustStorePwd;
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
+    this.queryTimeoutInMs = builder.queryTimeoutInMs;
 
     if (enableAutoFetch) {
       initThreadPool();
@@ -532,12 +535,14 @@ public class SessionPool implements ISessionPool {
               .thriftDefaultBufferSize(thriftDefaultBufferSize)
               .thriftMaxFrameSize(thriftMaxFrameSize)
               .enableRedirection(enableRedirection)
+              .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
               .version(version)
               .useSSL(useSSL)
               .trustStore(trustStore)
               .trustStorePwd(trustStorePwd)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
+              .timeOut(queryTimeoutInMs)
               .build();
     } else {
       // Construct redirect-able Session
@@ -551,12 +556,14 @@ public class SessionPool implements ISessionPool {
               .thriftDefaultBufferSize(thriftDefaultBufferSize)
               .thriftMaxFrameSize(thriftMaxFrameSize)
               .enableRedirection(enableRedirection)
+              .enableRecordsAutoConvertTablet(enableRecordsAutoConvertTablet)
               .version(version)
               .useSSL(useSSL)
               .trustStore(trustStore)
               .trustStorePwd(trustStorePwd)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
+              .timeOut(queryTimeoutInMs)
               .build();
     }
     session.setEnableQueryRedirection(enableQueryRedirection);
@@ -2017,7 +2024,9 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  /** @deprecated Use {@link #createDatabase(String)} instead. */
+  /**
+   * @deprecated Use {@link #createDatabase(String)} instead.
+   */
   @Deprecated
   @Override
   public void setStorageGroup(String storageGroupId)
@@ -2043,7 +2052,9 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  /** @deprecated Use {@link #deleteDatabase(String)} instead. */
+  /**
+   * @deprecated Use {@link #deleteDatabase(String)} instead.
+   */
   @Deprecated
   @Override
   public void deleteStorageGroup(String storageGroup)
@@ -2069,7 +2080,9 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  /** @deprecated Use {@link #deleteDatabases(List)} instead. */
+  /**
+   * @deprecated Use {@link #deleteDatabases(List)} instead.
+   */
   @Deprecated
   @Override
   public void deleteStorageGroups(List<String> storageGroup)
@@ -3505,6 +3518,8 @@ public class SessionPool implements ISessionPool {
     private boolean enableCompression = false;
     private ZoneId zoneId = null;
     private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
+    private boolean enableRecordsAutoConvertTablet =
+        SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
     private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
     private Version version = SessionConfig.DEFAULT_VERSION;
 
@@ -3517,6 +3532,8 @@ public class SessionPool implements ISessionPool {
     private int maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
 
     private long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
+
+    private long queryTimeoutInMs = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
@@ -3598,6 +3615,11 @@ public class SessionPool implements ISessionPool {
       return this;
     }
 
+    public Builder enableRecordsAutoConvertTablet(boolean enableRecordsAutoConvertTablet) {
+      this.enableRecordsAutoConvertTablet = enableRecordsAutoConvertTablet;
+      return this;
+    }
+
     public Builder connectionTimeoutInMs(int connectionTimeoutInMs) {
       this.connectionTimeoutInMs = connectionTimeoutInMs;
       return this;
@@ -3620,6 +3642,11 @@ public class SessionPool implements ISessionPool {
 
     public Builder retryIntervalInMs(long retryIntervalInMs) {
       this.retryIntervalInMs = retryIntervalInMs;
+      return this;
+    }
+
+    public Builder queryTimeoutInMs(long queryTimeoutInMs) {
+      this.queryTimeoutInMs = queryTimeoutInMs;
       return this;
     }
 

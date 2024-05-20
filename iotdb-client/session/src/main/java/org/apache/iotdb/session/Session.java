@@ -32,8 +32,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
@@ -62,18 +60,18 @@ import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.session.util.ThreadUtils;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,10 +84,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -97,6 +97,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -126,6 +127,7 @@ public class Session implements ISession {
   protected boolean useSSL;
   protected String trustStore;
   protected String trustStorePwd;
+
   /**
    * Timeout of query can be set by users. A negative number means using the default configuration
    * of server. And value 0 will disable the function of query timeout.
@@ -135,16 +137,19 @@ public class Session implements ISession {
   protected boolean enableRPCCompression;
   protected int connectionTimeoutInMs;
   protected ZoneId zoneId;
-
   protected int thriftDefaultBufferSize;
   protected int thriftMaxFrameSize;
-
   protected TEndPoint defaultEndPoint;
   protected SessionConnection defaultSessionConnection;
   private boolean isClosed = true;
 
   // Cluster version cache
   protected boolean enableRedirection;
+  protected boolean enableRecordsAutoConvertTablet =
+      SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
+  private static final double CONVERT_THRESHOLD = 0.5;
+  private static final double SAMPLE_PROPORTION = 0.05;
+  private static final int MIN_RECORDS_SIZE = 40;
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
@@ -417,6 +422,7 @@ public class Session implements ISession {
       this.enableQueryRedirection = builder.enableRedirection;
     }
     this.enableRedirection = builder.enableRedirection;
+    this.enableRecordsAutoConvertTablet = builder.enableRecordsAutoConvertTablet;
     this.username = builder.username;
     this.password = builder.pw;
     this.fetchSize = builder.fetchSize;
@@ -430,6 +436,7 @@ public class Session implements ISession {
     this.enableAutoFetch = builder.enableAutoFetch;
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
+    this.queryTimeoutInMs = builder.timeOut;
   }
 
   @Override
@@ -882,7 +889,7 @@ public class Session implements ISession {
   private SessionDataSet executeStatementMayRedirect(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      return defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
+      return getQuerySessionConnection().executeQueryStatement(sql, timeoutInMs);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
@@ -897,6 +904,25 @@ public class Session implements ISession {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
       }
     }
+  }
+
+  private SessionConnection getQuerySessionConnection() {
+    Optional<TEndPoint> endPoint =
+        availableNodes == null ? Optional.empty() : availableNodes.getQueryEndPoint();
+    if (!endPoint.isPresent() || endPointToSessionConnection == null) {
+      return defaultSessionConnection;
+    }
+    SessionConnection connection =
+        endPointToSessionConnection.computeIfAbsent(
+            endPoint.get(),
+            k -> {
+              try {
+                return constructSessionConnection(this, endPoint.get(), zoneId);
+              } catch (IoTDBConnectionException ex) {
+                return null;
+              }
+            });
+    return connection == null ? defaultSessionConnection : connection;
   }
 
   /**
@@ -1908,6 +1934,17 @@ public class Session implements ISession {
       throw new IllegalArgumentException(
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
+    // judge if convert records to tablets.
+    if (enableRecordsAutoConvertTablet && len >= MIN_RECORDS_SIZE) {
+      Set<String> deviceSet = new HashSet<>(deviceIds);
+      if ((double) deviceSet.size() / deviceIds.size() <= CONVERT_THRESHOLD
+          && judgeConvertOfMultiDevice(deviceIds, measurementsList)) {
+        convertToTabletsAndInsert(
+            deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), false);
+        return;
+      }
+    }
+    // insert records
     if (enableRedirection) {
       insertRecordsWithLeaderCache(
           deviceIds, times, measurementsList, typesList, valuesList, false);
@@ -1950,6 +1987,17 @@ public class Session implements ISession {
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
           "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
+    }
+    // judge if convert records to tablets.
+    if (enableRecordsAutoConvertTablet && len >= MIN_RECORDS_SIZE) {
+      Set<String> deviceSet = new HashSet<>(deviceIds);
+      if ((double) deviceSet.size() / deviceIds.size() <= CONVERT_THRESHOLD
+          && judgeConvertOfMultiDevice(deviceIds, measurementsList)) {
+
+        convertToTabletsAndInsert(
+            deviceIds, times, measurementsList, typesList, valuesList, deviceSet.size(), true);
+        return;
+      }
     }
     if (enableRedirection) {
       insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList, true);
@@ -2012,6 +2060,12 @@ public class Session implements ISession {
     int len = times.size();
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
+    }
+    if (enableRecordsAutoConvertTablet
+        && len >= MIN_RECORDS_SIZE
+        && judgeConvertOfOneDevice(measurementsList)) {
+      convertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, false);
+      return;
     }
     TSInsertRecordsOfOneDeviceReq request;
     try {
@@ -2159,6 +2213,12 @@ public class Session implements ISession {
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
           "times, subMeasurementsList and valuesList's size should be equal");
+    }
+    if (enableRecordsAutoConvertTablet
+        && len >= MIN_RECORDS_SIZE
+        && judgeConvertOfOneDevice(measurementsList)) {
+      convertToTabletAndInsert(deviceId, times, measurementsList, typesList, valuesList, true);
+      return;
     }
     TSInsertRecordsOfOneDeviceReq request;
     try {
@@ -2744,6 +2804,203 @@ public class Session implements ISession {
     request.addToSizeList(tablet.rowSize);
   }
 
+  // sample some records and judge weather need to add too many null values to convert to tablet.
+  private boolean judgeConvertOfOneDevice(List<List<String>> measurementsList) {
+    int size = measurementsList.size();
+    int sampleNum = (int) (size * SAMPLE_PROPORTION);
+    List<Integer> indexList =
+        ThreadLocalRandom.current()
+            .ints(0, size)
+            .distinct()
+            .limit(sampleNum)
+            .boxed()
+            .collect(Collectors.toList());
+    Set<String> allMeasurement =
+        new HashSet<>(measurementsList.get(indexList.get(0)).size() + 1, 1);
+    for (int i = 0; i < sampleNum; i++) {
+      allMeasurement.addAll(measurementsList.get(indexList.get(i)));
+    }
+    for (int i = 0; i < sampleNum; i++) {
+      if ((double) measurementsList.get(indexList.get(i)).size() / allMeasurement.size()
+          < CONVERT_THRESHOLD) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // convert records of one device to tablet and insert
+  private void convertToTabletAndInsert(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      boolean isAligned)
+      throws IoTDBConnectionException, StatementExecutionException {
+    // measurement -> <type,if null>
+    Map<String, Pair<TSDataType, Boolean>> measuremenMap =
+        new HashMap<>(measurementsList.get(0).size() + 1, 1);
+    // build measurementType
+    for (int rowIndex = 0; rowIndex < measurementsList.size(); rowIndex++) {
+      List<String> measurements = measurementsList.get(rowIndex);
+      List<TSDataType> types = typesList.get(rowIndex);
+      for (int colIndex = 0; colIndex < measurements.size(); colIndex++) {
+        String measurement = measurements.get(colIndex);
+        if (!measuremenMap.containsKey(measurement)) {
+          measuremenMap.put(measurement, new Pair<>(types.get(colIndex), true));
+        }
+      }
+    }
+    List<MeasurementSchema> schemaList = new ArrayList<>(measuremenMap.size());
+    // use measurementType to build schemaList
+    for (Entry<String, Pair<TSDataType, Boolean>> entry : measuremenMap.entrySet()) {
+      schemaList.add(new MeasurementSchema(entry.getKey(), entry.getValue().getLeft()));
+    }
+    // build tablet and insert
+    Tablet tablet = new Tablet(deviceId, schemaList, times.size());
+    for (int rowIndex = 0; rowIndex < times.size(); rowIndex++) {
+      addRecordToTablet(
+          tablet,
+          times.get(rowIndex),
+          measurementsList.get(rowIndex),
+          valuesList.get(rowIndex),
+          measuremenMap);
+    }
+    if (isAligned) {
+      insertAlignedTablet(tablet);
+    } else {
+      insertTablet(tablet);
+    }
+  }
+
+  // sample some records and judge weather need to add too many null values to convert to tablet.
+  private boolean judgeConvertOfMultiDevice(
+      List<String> deviceIds, List<List<String>> measurementsList) {
+    int size = deviceIds.size();
+    int sampleNum = (int) (size * SAMPLE_PROPORTION);
+    Map<String, Set<String>> measurementMap = new HashMap<>(sampleNum + 1, 1);
+    List<Integer> indexList =
+        ThreadLocalRandom.current()
+            .ints(0, size)
+            .distinct()
+            .limit(sampleNum)
+            .boxed()
+            .collect(Collectors.toList());
+    for (int i = 0; i < sampleNum; i++) {
+      int index = indexList.get(i);
+      List<String> measurements = measurementsList.get(index);
+      Set<String> allMeasurement =
+          measurementMap.computeIfAbsent(
+              deviceIds.get(index), k -> new HashSet<>(measurements.size() + 1, 1));
+      allMeasurement.addAll(measurements);
+    }
+    for (int i = 0; i < sampleNum; i++) {
+      int index = indexList.get(i);
+      Set<String> allMeasurement = measurementMap.get(deviceIds.get(index));
+      if ((double) measurementsList.get(index).size() / allMeasurement.size() < CONVERT_THRESHOLD) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // convert records of multiple devices to tablets and insert
+  private void convertToTabletsAndInsert(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      int deviceSize,
+      boolean isAligned)
+      throws IoTDBConnectionException, StatementExecutionException {
+    // device -> measurement -> <type,if null>
+    Map<String, Map<String, Pair<TSDataType, Boolean>>> deviceMeasuremenMap =
+        new HashMap<>(deviceSize + 1, 1);
+    // device -> row count
+    Map<String, Integer> rowMap = new HashMap<>(deviceSize + 1, 1);
+    // first build measurementTypeMap and rowMap
+    for (int rowIndex = 0; rowIndex < deviceIds.size(); rowIndex++) {
+      String device = deviceIds.get(rowIndex);
+      List<String> measurements = measurementsList.get(rowIndex);
+      List<TSDataType> types = typesList.get(rowIndex);
+      Map<String, Pair<TSDataType, Boolean>> measurementMap =
+          deviceMeasuremenMap.computeIfAbsent(
+              device, k -> new HashMap<>(measurements.size() + 1, 1));
+      for (int colIndex = 0; colIndex < measurements.size(); colIndex++) {
+        String measurement = measurements.get(colIndex);
+        if (!measurementMap.containsKey(measurement)) {
+          measurementMap.put(measurement, new Pair<>(types.get(colIndex), true));
+        }
+      }
+      rowMap.merge(device, 1, Integer::sum);
+    }
+    // device -> schema
+    Map<String, List<MeasurementSchema>> schemaMap = new HashMap<>(deviceSize + 1, 1);
+    // use measurementTypeMap to build schemaMap
+    for (Map.Entry<String, Map<String, Pair<TSDataType, Boolean>>> entry :
+        deviceMeasuremenMap.entrySet()) {
+      List<MeasurementSchema> schemaList = new ArrayList<>(entry.getValue().size() + 1);
+      for (Map.Entry<String, Pair<TSDataType, Boolean>> schemaEntry : entry.getValue().entrySet()) {
+        schemaList.add(
+            new MeasurementSchema(schemaEntry.getKey(), schemaEntry.getValue().getLeft()));
+      }
+      schemaMap.put(entry.getKey(), schemaList);
+    }
+    // device -> tablet
+    Map<String, Tablet> tablets = new HashMap<>(deviceSize + 1, 1);
+    // use schemaMap and rowMap to build tablets and insert
+    for (int rowIndex = 0; rowIndex < deviceIds.size(); rowIndex++) {
+      String device = deviceIds.get(rowIndex);
+      Tablet tablet =
+          tablets.computeIfAbsent(
+              device, k -> new Tablet(device, schemaMap.get(device), rowMap.get(device)));
+      addRecordToTablet(
+          tablet,
+          times.get(rowIndex),
+          measurementsList.get(rowIndex),
+          valuesList.get(rowIndex),
+          deviceMeasuremenMap.get(device));
+    }
+    if (isAligned) {
+      insertAlignedTablets(tablets);
+    } else {
+      insertTablets(tablets);
+    }
+  }
+
+  // add one record to  tablet.
+  private void addRecordToTablet(
+      Tablet tablet,
+      Long timestamp,
+      List<String> measurements,
+      List<Object> values,
+      Map<String, Pair<TSDataType, Boolean>> allMeasurementMap) {
+    int row = tablet.rowSize++;
+    tablet.addTimestamp(row, timestamp);
+    // tablet without null value
+    if (measurements.size() == allMeasurementMap.size()) {
+      for (int i = 0; i < measurements.size(); i++) {
+        tablet.addValue(measurements.get(i), row, values.get(i));
+      }
+      return;
+    }
+    // tablet with null value
+    for (int i = 0; i < measurements.size(); i++) {
+      String measurement = measurements.get(i);
+      tablet.addValue(measurement, row, values.get(i));
+      allMeasurementMap.get(measurement).setRight(false);
+    }
+    for (Entry<String, Pair<TSDataType, Boolean>> entry : allMeasurementMap.entrySet()) {
+      if (entry.getValue().getRight()) {
+        tablet.addValue(entry.getKey(), row, null);
+      } else {
+        entry.getValue().setRight(true);
+      }
+    }
+  }
+
   /**
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
@@ -3304,7 +3561,9 @@ public class Session implements ISession {
     defaultSessionConnection.pruneSchemaTemplate(req);
   }
 
-  /** @return Amount of measurements in the template */
+  /**
+   * @return Amount of measurements in the template
+   */
   @Override
   public int countMeasurementsInTemplate(String name)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3315,7 +3574,9 @@ public class Session implements ISession {
     return resp.getCount();
   }
 
-  /** @return If the node specified by the path is a measurement. */
+  /**
+   * @return If the node specified by the path is a measurement.
+   */
   @Override
   public boolean isMeasurementInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3327,7 +3588,9 @@ public class Session implements ISession {
     return resp.result;
   }
 
-  /** @return if there is a node correspond to the path in the template. */
+  /**
+   * @return if there is a node correspond to the path in the template.
+   */
   @Override
   public boolean isPathExistInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3339,7 +3602,9 @@ public class Session implements ISession {
     return resp.result;
   }
 
-  /** @return All paths of measurements in the template. */
+  /**
+   * @return All paths of measurements in the template.
+   */
   @Override
   public List<String> showMeasurementsInTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3351,7 +3616,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All paths of measurements under the pattern in the template. */
+  /**
+   * @return All paths of measurements under the pattern in the template.
+   */
   @Override
   public List<String> showMeasurementsInTemplate(String templateName, String pattern)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3363,7 +3630,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All template names. */
+  /**
+   * @return All template names.
+   */
   @Override
   public List<String> showAllTemplates()
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3374,7 +3643,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All paths have been set to designated template. */
+  /**
+   * @return All paths have been set to designated template.
+   */
   @Override
   public List<String> showPathsTemplateSetOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3385,7 +3656,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All paths are using designated template. */
+  /**
+   * @return All paths are using designated template.
+   */
   @Override
   public List<String> showPathsTemplateUsingOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3556,9 +3829,10 @@ public class Session implements ISession {
     private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
     private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
     private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
+    private boolean enableRecordsAutoConvertTablet =
+        SessionConfig.DEFAULT_RECORDS_AUTO_CONVERT_TABLET;
     private Version version = SessionConfig.DEFAULT_VERSION;
     private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
-
     private boolean enableAutoFetch = SessionConfig.DEFAULT_ENABLE_AUTO_FETCH;
 
     private boolean useSSL = false;
@@ -3631,6 +3905,11 @@ public class Session implements ISession {
       return this;
     }
 
+    public Builder enableRecordsAutoConvertTablet(boolean enableRecordsAutoConvertTablet) {
+      this.enableRecordsAutoConvertTablet = enableRecordsAutoConvertTablet;
+      return this;
+    }
+
     public Builder nodeUrls(List<String> nodeUrls) {
       this.nodeUrls = nodeUrls;
       return this;
@@ -3670,39 +3949,5 @@ public class Session implements ISession {
       Session newSession = new Session(this);
       return newSession;
     }
-  }
-
-  // -------------------------------------------------------------- //
-  // provided for IoTDBSubscriptionSimpleIT (will be removed later) //
-  // -------------------------------------------------------------- //
-
-  @Override
-  public void createConsumer(ConsumerConfig consumerConfig) throws Exception {
-    defaultSessionConnection.createConsumer(consumerConfig);
-  }
-
-  @Override
-  public void dropConsumer() throws Exception {
-    defaultSessionConnection.dropConsumer();
-  }
-
-  @Override
-  public void subscribe(Set<String> topicNames) throws Exception {
-    defaultSessionConnection.subscribe(topicNames);
-  }
-
-  @Override
-  public void unsubscribe(Set<String> topicNames) throws Exception {
-    defaultSessionConnection.unsubscribe(topicNames);
-  }
-
-  @Override
-  public List<EnrichedTablets> poll(Set<String> topicNames) throws Exception {
-    return defaultSessionConnection.poll(topicNames);
-  }
-
-  @Override
-  public void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) throws Exception {
-    defaultSessionConnection.commit(topicNameToSubscriptionCommitIds);
   }
 }

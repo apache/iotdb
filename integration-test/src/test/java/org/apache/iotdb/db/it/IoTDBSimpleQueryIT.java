@@ -1116,7 +1116,7 @@ public class IoTDBSimpleQueryIT {
 
       try (ResultSet r1 = statement.executeQuery("select s1 from root.sg1.*a*")) {
         while (r1.next()) {
-          Assert.assertEquals(1.1234f, r1.getFloat(2), 0);
+          Assert.assertEquals(1.1234f, r1.getDouble(2), 0.001);
         }
         Assert.assertEquals(3, r1.getMetaData().getColumnCount());
       }

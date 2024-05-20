@@ -753,8 +753,8 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
           new HashSet<>(
               Arrays.asList(
                   "root.sg1.d.s1,INT32,TS_2DIFF,LZ4",
-                  "root.sg1.d.s2,FLOAT,GORILLA,LZ4",
-                  "root.sg1.d.s3,FLOAT,GORILLA,LZ4"));
+                  "root.sg1.d.s2,DOUBLE,GORILLA,LZ4",
+                  "root.sg1.d.s3,DOUBLE,GORILLA,LZ4"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg*.*.s*")) {
         while (resultSet.next()) {

@@ -73,8 +73,10 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
@@ -88,6 +90,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHand
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
@@ -98,9 +101,12 @@ import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMai
 import org.apache.iotdb.confignode.consensus.request.write.region.PollRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.CreatePipeSinkPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.DropPipeSinkPlanV1;
@@ -124,8 +130,8 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
+import org.apache.tsfile.utils.PublicBAOS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -224,6 +230,15 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case CreateRegionGroups:
           plan = new CreateRegionGroupsPlan();
           break;
+        case UpdateRegionLocation:
+          plan = new UpdateRegionLocationPlan();
+          break;
+        case AddRegionLocation:
+          plan = new AddRegionLocationPlan();
+          break;
+        case RemoveRegionLocation:
+          plan = new RemoveRegionLocationPlan();
+          break;
         case OfferRegionMaintainTasks:
           plan = new OfferRegionMaintainTasksPlan();
           break;
@@ -297,6 +312,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RevokeRole:
         case RevokeRoleFromUser:
         case UpdateUser:
+        case CreateUserWithRawPassword:
           plan = new AuthorPlan(configPhysicalPlanType);
           break;
         case ApplyConfigNode:
@@ -386,9 +402,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case GetRegionInfoList:
           plan = new GetRegionInfoListPlan();
           break;
-        case UpdateRegionLocation:
-          plan = new UpdateRegionLocationPlan();
-          break;
         case CreatePipeSinkV1:
           plan = new CreatePipeSinkPlanV1();
           break;
@@ -428,6 +441,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case ShowPipeV2:
           plan = new ShowPipePlanV2();
           break;
+        case OperateMultiplePipesV2:
+          plan = new OperateMultiplePipesPlanV2();
+          break;
         case PipeHandleLeaderChange:
           plan = new PipeHandleLeaderChangePlan();
           break;
@@ -449,8 +465,17 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case AlterTopic:
           plan = new AlterTopicPlan();
           break;
+        case AlterMultipleTopics:
+          plan = new AlterMultipleTopicsPlan();
+          break;
+        case TopicHandleMetaChange:
+          plan = new TopicHandleMetaChangePlan();
+          break;
         case AlterConsumerGroup:
           plan = new AlterConsumerGroupPlan();
+          break;
+        case ConsumerGroupHandleMetaChange:
+          plan = new ConsumerGroupHandleMetaChangePlan();
           break;
         case ShowSubscription:
           plan = new ShowSubscriptionPlan();

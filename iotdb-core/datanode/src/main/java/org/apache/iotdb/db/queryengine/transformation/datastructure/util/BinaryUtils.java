@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.transformation.datastructure.util;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 

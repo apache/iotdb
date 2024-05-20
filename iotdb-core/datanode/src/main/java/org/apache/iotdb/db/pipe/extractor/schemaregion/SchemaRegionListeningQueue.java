@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.extractor.schemaregion;
 
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.event.SerializableEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
@@ -37,8 +36,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collections;
+import java.util.Objects;
 
 public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
 
@@ -69,12 +68,13 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
     }
   }
 
-  public synchronized void tryListenToSnapshot(List<String> snapshotPaths) {
-    List<PipeSnapshotEvent> events = new ArrayList<>();
-    for (String snapshotPath : snapshotPaths) {
-      events.add(new PipeSchemaRegionSnapshotEvent(snapshotPath));
-    }
-    tryListen(events);
+  public synchronized void tryListenToSnapshot(
+      String mTreeSnapshotPath, String tLogPath, String databaseName) {
+    tryListen(
+        Objects.nonNull(mTreeSnapshotPath)
+            ? Collections.singletonList(
+                new PipeSchemaRegionSnapshotEvent(mTreeSnapshotPath, tLogPath, databaseName))
+            : Collections.emptyList());
   }
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////

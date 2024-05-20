@@ -29,8 +29,8 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,7 +99,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info("StartPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    String exceptionMessage =
+    final String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
@@ -151,7 +151,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info("StartPipeProcedureV2: rollbackFromOperateOnDataNodes({})", pipeName);
 
     // Push all pipe metas to datanode, may be time-consuming
-    String exceptionMessage =
+    final String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(

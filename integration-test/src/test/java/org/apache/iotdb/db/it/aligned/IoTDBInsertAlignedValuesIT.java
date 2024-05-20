@@ -84,17 +84,17 @@ public class IoTDBInsertAlignedValuesIT {
         assertTrue(resultSet.next());
         assertEquals(4000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(17.1, resultSet.getFloat(3), 0.1);
+        assertEquals(17.1, resultSet.getDouble(3), 0.1);
 
         assertTrue(resultSet.next());
         assertEquals(5000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(20.1, resultSet.getFloat(3), 0.1);
+        assertEquals(20.1, resultSet.getDouble(3), 0.1);
 
         assertTrue(resultSet.next());
         assertEquals(6000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(22, resultSet.getFloat(3), 0.1);
+        assertEquals(22, resultSet.getDouble(3), 0.1);
 
         assertFalse(resultSet.next());
       }
@@ -126,7 +126,7 @@ public class IoTDBInsertAlignedValuesIT {
         assertTrue(resultSet.next());
         assertEquals(4000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(17.1, resultSet.getFloat(3), 0.1);
+        assertEquals(17.1, resultSet.getDouble(3), 0.1);
 
         assertTrue(resultSet.next());
         assertEquals(5000, resultSet.getLong(1));
@@ -136,7 +136,7 @@ public class IoTDBInsertAlignedValuesIT {
         assertTrue(resultSet.next());
         assertEquals(6000, resultSet.getLong(1));
         assertNull(resultSet.getObject(2));
-        assertEquals(22.0f, resultSet.getObject(3));
+        assertEquals(22.0d, resultSet.getObject(3));
 
         assertFalse(resultSet.next());
       }
@@ -170,17 +170,17 @@ public class IoTDBInsertAlignedValuesIT {
         assertTrue(resultSet.next());
         assertEquals(4000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(17.1, resultSet.getFloat(3), 0.1);
+        assertEquals(17.1, resultSet.getDouble(3), 0.1);
 
         assertTrue(resultSet.next());
         assertEquals(5000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(20.1, resultSet.getFloat(3), 0.1);
+        assertEquals(20.1, resultSet.getDouble(3), 0.1);
 
         assertTrue(resultSet.next());
         assertEquals(6000, resultSet.getLong(1));
         assertNull(resultSet.getObject(2));
-        assertEquals(22.0f, resultSet.getObject(3));
+        assertEquals(22.0d, resultSet.getObject(3));
 
         assertFalse(resultSet.next());
       }
@@ -200,17 +200,17 @@ public class IoTDBInsertAlignedValuesIT {
         assertTrue(resultSet.next());
         assertEquals(4000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(17.1, resultSet.getFloat(3), 0.1);
+        assertEquals(17.1, resultSet.getDouble(3), 0.1);
 
         assertTrue(resultSet.next());
         assertEquals(5000, resultSet.getLong(1));
         assertTrue(resultSet.getBoolean(2));
-        assertEquals(20.1, resultSet.getFloat(3), 0.1);
+        assertEquals(20.1, resultSet.getDouble(3), 0.1);
 
         assertTrue(resultSet.next());
         assertEquals(6000, resultSet.getLong(1));
         assertNull(resultSet.getObject(2));
-        assertEquals(22.0f, resultSet.getObject(3));
+        assertEquals(22.0d, resultSet.getObject(3));
 
         assertFalse(resultSet.next());
       }
@@ -229,8 +229,8 @@ public class IoTDBInsertAlignedValuesIT {
 
         assertTrue(resultSet.next());
         assertEquals(1, resultSet.getLong(1));
-        assertEquals(2.0F, resultSet.getObject(2));
-        assertEquals(2.0F, resultSet.getObject(3));
+        assertEquals(2.0d, resultSet.getObject(2));
+        assertEquals(2.0d, resultSet.getObject(3));
 
         assertFalse(resultSet.next());
       }
@@ -240,8 +240,8 @@ public class IoTDBInsertAlignedValuesIT {
 
         assertTrue(resultSet.next());
         assertEquals(1, resultSet.getLong(1));
-        assertEquals(2.0F, resultSet.getObject(2));
-        assertEquals(2.0F, resultSet.getObject(3));
+        assertEquals(2.0d, resultSet.getObject(2));
+        assertEquals(2.0d, resultSet.getObject(3));
 
         assertFalse(resultSet.next());
       }

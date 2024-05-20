@@ -136,7 +136,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
-import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -193,7 +192,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   private static final ConfigNodeConfig CONFIG_NODE_CONFIG =
       ConfigNodeDescriptor.getInstance().getConf();
 
-  private final ConfigManager configManager;
+  protected ConfigManager configManager;
+
+  protected ConfigNodeRPCServiceProcessor() {}
 
   public ConfigNodeRPCServiceProcessor(ConfigManager configManager) {
     this.configManager = configManager;
@@ -282,11 +283,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TDataNodeConfigurationResp resp = new TDataNodeConfigurationResp();
     queryResp.convertToRpcDataNodeLocationResp(resp);
     return resp;
-  }
-
-  @Override
-  public TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
-    return configManager.reportRegionMigrateResult(req);
   }
 
   @Override
@@ -987,9 +983,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req)
-      throws TException {
+  public TPipeConfigTransferResp handleTransferConfigPlan(TPipeConfigTransferReq req) {
     return configManager.handleTransferConfigPlan(req);
+  }
+
+  @Override
+  public TSStatus handlePipeConfigClientExit(String clientId) {
+    return configManager.handleClientExit(clientId);
   }
 
   @Override

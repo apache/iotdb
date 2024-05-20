@@ -90,11 +90,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -107,8 +111,10 @@ class RatisConsensus implements IConsensus {
 
   private static final Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
 
-  /** the unique net communication endpoint */
+  /** The unique net communication endpoint */
   private final RaftPeer myself;
+
+  private final File storageDir;
 
   private final RaftServer server;
 
@@ -143,9 +149,9 @@ class RatisConsensus implements IConsensus {
     myself =
         Utils.fromNodeInfoAndPriorityToRaftPeer(
             config.getThisNodeId(), config.getThisNodeEndPoint(), DEFAULT_PRIORITY);
+    this.storageDir = new File(config.getStorageDir());
 
-    RaftServerConfigKeys.setStorageDir(
-        properties, Collections.singletonList(new File(config.getStorageDir())));
+    RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(storageDir));
     GrpcConfigKeys.Server.setPort(properties, config.getThisNodeEndPoint().getPort());
 
     Utils.initRatisConfig(properties, config.getRatisConfig());
@@ -224,7 +230,7 @@ class RatisConsensus implements IConsensus {
     }
   }
 
-  /** launch a consensus write with retry mechanism */
+  /** Launch a consensus write with retry mechanism */
   private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
       throws IOException {
     RaftClientReply reply = null;
@@ -286,7 +292,8 @@ class RatisConsensus implements IConsensus {
         buildRawRequest(raftGroupId, message, RaftClientRequest.writeRequestType());
 
     RaftPeer suggestedLeader = null;
-    if (isLeader(groupId) && waitUntilLeaderReady(raftGroupId)) {
+    if ((isLeader(groupId) || raftGroup.getPeers().size() == 1)
+        && waitUntilLeaderReady(raftGroupId)) {
       try (AutoCloseable ignored =
           RatisMetricsManager.getInstance().startWriteLocallyTimer(consensusGroupType)) {
         RaftClientReply localServerReply = writeLocallyWithRetry(clientRequest);
@@ -537,6 +544,23 @@ class RatisConsensus implements IConsensus {
     sendReconfiguration(RaftGroup.valueOf(raftGroupId, newConfig));
   }
 
+  @Override
+  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
+    final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    final RaftGroup group = getGroupInfo(raftGroupId);
+
+    // pre-conditions: group exists and myself in this group
+    if (group == null || !group.getPeers().contains(myself)) {
+      throw new ConsensusGroupNotExistException(groupId);
+    }
+
+    final List<RaftPeer> newGroupPeers =
+        Utils.fromPeersAndPriorityToRaftPeers(peers, DEFAULT_PRIORITY);
+    final RaftGroup newGroup = RaftGroup.valueOf(raftGroupId, newGroupPeers);
+
+    sendReconfiguration(newGroup);
+  }
+
   /** NOTICE: transferLeader *does not guarantee* the leader be transferred to newLeader. */
   @Override
   public void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException {
@@ -598,6 +622,18 @@ class RatisConsensus implements IConsensus {
     }
   }
 
+  @Override
+  public long getLogicalClock(ConsensusGroupId groupId) {
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    try {
+      return server.getDivision(raftGroupId).getInfo().getCurrentTerm();
+    } catch (IOException exception) {
+      // if the read fails, simply return 0
+      logger.info("getLogicalClock request failed with exception: ", exception);
+      return 0;
+    }
+  }
+
   private boolean waitUntilLeaderReady(RaftGroupId groupId) {
     DivisionInfo divisionInfo;
     try {
@@ -613,7 +649,7 @@ class RatisConsensus implements IConsensus {
         () ->
             Utils.anyOf(
                 // this peer is not a leader
-                () -> !divisionInfo.isLeader(),
+                () -> getGroupInfo(groupId).getPeers().size() > 1 && !divisionInfo.isLeader(),
                 // this peer is a ready leader
                 () -> divisionInfo.isLeader() && divisionInfo.isLeaderReady(),
                 // reaches max retry timeout
@@ -671,18 +707,55 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
-  public void triggerSnapshot(ConsensusGroupId groupId) throws ConsensusException {
-    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
-    RaftGroup groupInfo = getGroupInfo(raftGroupId);
+  public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
+    List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
+    try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
+      for (Path path : stream) {
+        try {
+          RaftGroupId raftGroupId =
+              RaftGroupId.valueOf(UUID.fromString(path.getFileName().toString()));
+          consensusGroupIds.add(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
+        } catch (Exception e) {
+          logger.info(
+              "The directory {} is not a group directory;" + " ignoring it. ",
+              path.getFileName().toString());
+        }
+      }
+    } catch (IOException e) {
+      logger.error("Failed to get all consensus group ids from disk", e);
+    }
+    return consensusGroupIds;
+  }
+
+  @Override
+  public String getRegionDirFromConsensusGroupId(ConsensusGroupId consensusGroupId) {
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(consensusGroupId);
+    return storageDir + File.separator + raftGroupId.getUuid().toString();
+  }
+
+  @Override
+  public void reloadConsensusConfig(ConsensusConfig consensusConfig) {
+    // do not support reload consensus config for now
+  }
+
+  @Override
+  public void triggerSnapshot(ConsensusGroupId groupId, boolean force) throws ConsensusException {
+    final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    final RaftGroup groupInfo = getGroupInfo(raftGroupId);
     if (groupInfo == null || !groupInfo.getPeers().contains(myself)) {
       throw new ConsensusGroupNotExistException(groupId);
     }
 
-    SnapshotManagementRequest request =
+    final SnapshotManagementRequest request =
         SnapshotManagementRequest.newCreate(
-            localFakeId, myself.getId(), raftGroupId, localFakeCallId.incrementAndGet(), 300000);
+            localFakeId,
+            myself.getId(),
+            raftGroupId,
+            localFakeCallId.incrementAndGet(),
+            300000,
+            force ? 1 : 0);
 
-    RaftClientReply reply;
+    final RaftClientReply reply;
     try {
       reply = server.snapshotManagement(request);
       if (!reply.isSuccess()) {

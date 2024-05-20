@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.read;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -41,7 +43,23 @@ public class QueryDataSource {
    */
   private final List<TsFileResource> seqResources;
 
+  private int curSeqIndex = -1;
+
+  // asc: startTime; desc: endTime
+  private long curSeqOrderTime = 0;
+
+  private Boolean curSeqSatisfied = null;
+
   private final List<TsFileResource> unseqResources;
+
+  private int curUnSeqIndex = -1;
+
+  // asc: startTime; desc: endTime
+  private long curUnSeqOrderTime = 0;
+
+  private Boolean curUnSeqSatisfied = null;
+
+  private boolean isSingleDevice;
 
   /* The traversal order of unseqResources (different for each device) */
   private int[] unSeqFileOrderIndex;
@@ -54,6 +72,14 @@ public class QueryDataSource {
   public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seqResources = seqResources;
     this.unseqResources = unseqResources;
+  }
+
+  // used for compaction, because in compaction task(unlike query, each QueryDataSource only serve
+  // for one series), we will reuse this object for multi series
+  public QueryDataSource(QueryDataSource other) {
+    this.seqResources = other.seqResources;
+    this.unseqResources = other.unseqResources;
+    this.unSeqFileOrderIndex = other.unSeqFileOrderIndex;
   }
 
   public List<TsFileResource> getSeqResources() {
@@ -72,11 +98,82 @@ public class QueryDataSource {
     this.dataTTL = dataTTL;
   }
 
+  public boolean hasNextSeqResource(int curIndex, boolean ascending, IDeviceID deviceID) {
+    boolean res = ascending ? curIndex < seqResources.size() : curIndex >= 0;
+    if (res && curIndex != this.curSeqIndex) {
+      this.curSeqIndex = curIndex;
+      this.curSeqOrderTime = seqResources.get(curIndex).getOrderTime(deviceID, ascending);
+      this.curSeqSatisfied = null;
+    }
+    return res;
+  }
+
+  public boolean isSeqSatisfied(
+      IDeviceID deviceID, int curIndex, Filter timeFilter, boolean debug) {
+    if (curIndex != this.curSeqIndex) {
+      throw new IllegalArgumentException(
+          String.format("curIndex %d is not equal to curSeqIndex %d", curIndex, this.curSeqIndex));
+    }
+    if (curSeqSatisfied == null) {
+      TsFileResource tsFileResource = seqResources.get(curSeqIndex);
+      curSeqSatisfied =
+          tsFileResource != null
+              && (isSingleDevice || tsFileResource.isSatisfied(deviceID, timeFilter, true, debug));
+    }
+
+    return curSeqSatisfied;
+  }
+
+  public long getCurrentSeqOrderTime(int curIndex) {
+    if (curIndex != this.curSeqIndex) {
+      throw new IllegalArgumentException(
+          String.format("curIndex %d is not equal to curSeqIndex %d", curIndex, this.curSeqIndex));
+    }
+    return this.curSeqOrderTime;
+  }
+
   public TsFileResource getSeqResourceByIndex(int curIndex) {
     if (curIndex < seqResources.size()) {
       return seqResources.get(curIndex);
     }
     return null;
+  }
+
+  public boolean hasNextUnseqResource(int curIndex, boolean ascending, IDeviceID deviceID) {
+    boolean res = curIndex < unseqResources.size();
+    if (res && curIndex != this.curUnSeqIndex) {
+      this.curUnSeqIndex = curIndex;
+      this.curUnSeqOrderTime =
+          unseqResources.get(unSeqFileOrderIndex[curIndex]).getOrderTime(deviceID, ascending);
+      this.curUnSeqSatisfied = null;
+    }
+    return res;
+  }
+
+  public boolean isUnSeqSatisfied(
+      IDeviceID deviceID, int curIndex, Filter timeFilter, boolean debug) {
+    if (curIndex != this.curUnSeqIndex) {
+      throw new IllegalArgumentException(
+          String.format(
+              "curIndex %d is not equal to curUnSeqIndex %d", curIndex, this.curUnSeqIndex));
+    }
+    if (curUnSeqSatisfied == null) {
+      TsFileResource tsFileResource = unseqResources.get(unSeqFileOrderIndex[curIndex]);
+      curUnSeqSatisfied =
+          tsFileResource != null
+              && (isSingleDevice || tsFileResource.isSatisfied(deviceID, timeFilter, false, debug));
+    }
+
+    return curUnSeqSatisfied;
+  }
+
+  public long getCurrentUnSeqOrderTime(int curIndex) {
+    if (curIndex != this.curUnSeqIndex) {
+      throw new IllegalArgumentException(
+          String.format(
+              "curIndex %d is not equal to curSeqIndex %d", curIndex, this.curUnSeqIndex));
+    }
+    return this.curUnSeqOrderTime;
   }
 
   public TsFileResource getUnseqResourceByIndex(int curIndex) {
@@ -87,14 +184,6 @@ public class QueryDataSource {
     return null;
   }
 
-  public boolean hasNextSeqResource(int curIndex, boolean ascending) {
-    return ascending ? curIndex < seqResources.size() : curIndex >= 0;
-  }
-
-  public boolean hasNextUnseqResource(int curIndex) {
-    return curIndex < unseqResources.size();
-  }
-
   public int getSeqResourcesSize() {
     return seqResources.size();
   }
@@ -103,15 +192,13 @@ public class QueryDataSource {
     return unseqResources.size();
   }
 
-  public void fillOrderIndexes(String deviceId, boolean ascending) {
+  public void fillOrderIndexes(IDeviceID deviceId, boolean ascending) {
     TreeMap<Long, List<Integer>> orderTimeToIndexMap =
         ascending ? new TreeMap<>() : new TreeMap<>(descendingComparator);
     int index = 0;
     for (TsFileResource resource : unseqResources) {
       orderTimeToIndexMap
-          .computeIfAbsent(
-              resource.getOrderTime(new PlainDeviceID(deviceId), ascending),
-              key -> new ArrayList<>())
+          .computeIfAbsent(resource.getOrderTime(deviceId, ascending), key -> new ArrayList<>())
           .add(index++);
     }
 
@@ -123,5 +210,13 @@ public class QueryDataSource {
       }
     }
     this.unSeqFileOrderIndex = unSeqFileOrderIndexArray;
+  }
+
+  public boolean isSingleDevice() {
+    return isSingleDevice;
+  }
+
+  public void setSingleDevice(boolean singleDevice) {
+    isSingleDevice = singleDevice;
   }
 }

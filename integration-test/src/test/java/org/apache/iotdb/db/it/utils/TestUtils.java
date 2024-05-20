@@ -28,9 +28,11 @@ import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 
+import org.apache.tsfile.read.common.RowRecord;
 import org.junit.Assert;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -44,6 +46,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
@@ -52,9 +55,13 @@ import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class TestUtils {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(TestUtils.class);
 
   public static void prepareData(String[] sqls) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -339,6 +346,27 @@ public class TestUtils {
         actualRetSet.add(builder.toString());
       }
       assertEquals(expectedRetSet, actualRetSet);
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail(String.valueOf(e));
+    }
+  }
+
+  public static void assertSingleResultSetEqual(
+      ResultSet actualResultSet, Map<String, String> expectedHeaderWithResult) {
+    try {
+      ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+      assertTrue(actualResultSet.next());
+      Map<String, String> actualHeaderWithResult = new HashMap<>();
+      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+        actualHeaderWithResult.put(
+            resultSetMetaData.getColumnName(i), actualResultSet.getString(i));
+      }
+      String expected = new TreeMap<>(expectedHeaderWithResult).toString();
+      String actual = new TreeMap<>(actualHeaderWithResult).toString();
+      LOGGER.info("[AssertSingleResultSetEqual] expected {}, actual {}", expected, actual);
+      assertEquals(expected, actual);
+      assertFalse(actualResultSet.next());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail(String.valueOf(e));

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -38,13 +39,13 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
@@ -77,13 +78,16 @@ public class WALNodeTest {
   private static final String devicePath = databasePath + ".test_d";
   private static final String dataRegionId = "1";
   private WALMode prevMode;
+  private String prevConsensus;
   private WALNode walNode;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(logDirectory);
     prevMode = config.getWalMode();
+    prevConsensus = config.getDataRegionConsensusProtocolClass();
     config.setWalMode(WALMode.SYNC);
+    config.setDataRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     walNode = new WALNode(identifier, logDirectory);
   }
 
@@ -91,6 +95,7 @@ public class WALNodeTest {
   public void tearDown() throws Exception {
     walNode.close();
     config.setWalMode(prevMode);
+    config.setDataRegionConsensusProtocolClass(prevConsensus);
     EnvironmentUtils.cleanDir(logDirectory);
     StorageEngine.getInstance().reset();
   }

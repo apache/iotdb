@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.CaseWhenThenColumnTransformer;
@@ -29,22 +30,26 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumn
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.MappableUDFColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.TernaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class FilterAndProjectOperator implements ProcessOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(FilterAndProjectOperator.class);
 
   private final Operator inputOperator;
 
@@ -360,5 +365,13 @@ public class FilterAndProjectOperator implements ProcessOperator {
     } else {
       throw new UnsupportedOperationException("Unsupported ColumnTransformer");
     }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + filterTsBlockBuilder.getRetainedSizeInBytes();
   }
 }

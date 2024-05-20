@@ -26,11 +26,11 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -148,7 +148,7 @@ public class IoTDBSessionAlignedInsertIT {
       long time = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
-        assertEquals(time * 10 + 3, rowRecord.getFields().get(0).getFloatV(), DELTA_DOUBLE);
+        assertEquals(time * 10 + 3, rowRecord.getFields().get(0).getDoubleV(), DELTA_DOUBLE);
         time += 1;
       }
       assertEquals(100, time);
@@ -172,7 +172,7 @@ public class IoTDBSessionAlignedInsertIT {
       long time = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
-        assertEquals(time * 10 + 3, rowRecord.getFields().get(0).getFloatV(), DELTA_DOUBLE);
+        assertEquals(time * 10 + 3, rowRecord.getFields().get(0).getDoubleV(), DELTA_DOUBLE);
         time += 1;
       }
       assertEquals(100, time);

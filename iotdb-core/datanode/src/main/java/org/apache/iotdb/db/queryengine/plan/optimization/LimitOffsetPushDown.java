@@ -26,13 +26,11 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
@@ -45,9 +43,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeCompo
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.tsfile.utils.TimeDuration;
+
+import org.apache.tsfile.utils.TimeDuration;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -83,55 +83,43 @@ public class LimitOffsetPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
+      PlanNode newNode = node.clone();
       for (PlanNode child : node.getChildren()) {
         context.setParent(node);
-        child.accept(this, context);
+        newNode.addChild(child.accept(this, context));
       }
-      return node;
+      return newNode;
     }
 
     @Override
     public PlanNode visitLimit(LimitNode node, RewriterContext context) {
-      PlanNode parent = context.getParent();
-
       context.setParent(node);
       context.setLimit(node.getLimit());
-      node.getChild().accept(this, context);
+      node.setChild(node.getChild().accept(this, context));
 
       if (context.isEnablePushDown()) {
-        return concatParentWithChild(parent, node.getChild());
+        return node.getChild();
       }
       return node;
     }
 
     @Override
     public PlanNode visitOffset(OffsetNode node, RewriterContext context) {
-      PlanNode parent = context.getParent();
-
       context.setParent(node);
       context.setOffset(node.getOffset());
-      node.getChild().accept(this, context);
+      node.setChild(node.getChild().accept(this, context));
 
       if (context.isEnablePushDown()) {
-        return concatParentWithChild(parent, node.getChild());
+        return node.getChild();
       }
       return node;
-    }
-
-    private PlanNode concatParentWithChild(PlanNode parent, PlanNode child) {
-      if (parent != null) {
-        ((SingleChildProcessNode) parent).setChild(child);
-        return parent;
-      } else {
-        return child;
-      }
     }
 
     @Override
     public PlanNode visitFill(FillNode node, RewriterContext context) {
       FillPolicy fillPolicy = node.getFillDescriptor().getFillPolicy();
       if (fillPolicy == FillPolicy.VALUE) {
-        node.getChild().accept(this, context);
+        node.setChild(node.getChild().accept(this, context));
       } else {
         context.setEnablePushDown(false);
       }
@@ -166,7 +154,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
       }
 
       if (enablePushDown) {
-        node.getChild().accept(this, context);
+        node.setChild(node.getChild().accept(this, context));
       } else {
         context.setEnablePushDown(false);
       }
@@ -175,6 +163,11 @@ public class LimitOffsetPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitMultiChildProcess(MultiChildProcessNode node, RewriterContext context) {
+      if (node.getChildren().size() == 1) {
+        PlanNode child = node.getChildren().get(0).accept(this, context);
+        node.setChildren(Collections.singletonList(child));
+        return node;
+      }
       context.setEnablePushDown(false);
       return node;
     }
@@ -190,16 +183,6 @@ public class LimitOffsetPushDown implements PlanOptimizer {
       // TODO we may need to push limit and offset to left child
       context.setEnablePushDown(false);
       return node;
-    }
-
-    @Override
-    public PlanNode visitDeviceView(DeviceViewNode node, RewriterContext context) {
-      if (node.getChildren().size() == 1) {
-        node.getChildren().get(0).accept(this, context);
-        return node;
-      } else {
-        return visitMultiChildProcess(node, context);
-      }
     }
 
     @Override

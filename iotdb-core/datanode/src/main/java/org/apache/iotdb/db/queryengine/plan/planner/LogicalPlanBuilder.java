@@ -23,13 +23,13 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil;
@@ -56,7 +56,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
@@ -69,6 +68,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -78,13 +78,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullO
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryTransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
@@ -102,11 +101,9 @@ import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.columngenerator.parameter.SlidingTimeColumnGeneratorParameter;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -123,14 +120,12 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TopKNode.LIMIT_VALUE_USE_TOP_K;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy.LINEAR;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_VALUE;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX_TIME;
 
@@ -378,7 +373,7 @@ public class LogicalPlanBuilder {
               .planRawDataSource(
                   sourceExpressions, Ordering.DESC, 0, 0, analysis.isLastLevelUseWildcard())
               .planWhereAndSourceTransform(null, sourceTransformExpressions, false, Ordering.DESC)
-              .planAggregation(
+              .planRawDataAggregation(
                   new LinkedHashSet<>(Arrays.asList(maxTimeAgg, lastValueAgg)),
                   null,
                   analysis.getGroupByTimeParameter(),
@@ -395,304 +390,6 @@ public class LogicalPlanBuilder {
               analysis.getType(expression).toString());
       sourceNodeList.add(transformNode);
     }
-  }
-
-  public LogicalPlanBuilder planAggregationSource(
-      AggregationStep curStep,
-      Ordering scanOrder,
-      GroupByTimeParameter groupByTimeParameter,
-      Set<Expression> aggregationExpressions,
-      Set<Expression> sourceTransformExpressions,
-      Map<Expression, Set<Expression>> crossGroupByAggregations,
-      List<String> tagKeys,
-      Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
-          tagValuesToGroupedTimeseriesOperands) {
-    boolean needCheckAscending = groupByTimeParameter == null;
-    Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
-    Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
-    Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations = new HashMap<>();
-    for (Expression aggregationExpression : aggregationExpressions) {
-      createAggregationDescriptor(
-          (FunctionExpression) aggregationExpression,
-          curStep,
-          scanOrder,
-          needCheckAscending,
-          ascendingAggregations,
-          descendingAggregations,
-          countTimeAggregations);
-    }
-
-    List<PlanNode> sourceNodeList =
-        constructSourceNodeFromAggregationDescriptors(
-            ascendingAggregations,
-            descendingAggregations,
-            countTimeAggregations,
-            scanOrder,
-            groupByTimeParameter);
-    updateTypeProvider(aggregationExpressions);
-    updateTypeProvider(sourceTransformExpressions);
-
-    return convergeAggregationSource(
-        sourceNodeList,
-        curStep,
-        scanOrder,
-        groupByTimeParameter,
-        aggregationExpressions,
-        crossGroupByAggregations,
-        tagKeys,
-        tagValuesToGroupedTimeseriesOperands);
-  }
-
-  public LogicalPlanBuilder planAggregationSourceWithIndexAdjust(
-      AggregationStep curStep,
-      Ordering scanOrder,
-      GroupByTimeParameter groupByTimeParameter,
-      Set<Expression> aggregationExpressions,
-      Set<Expression> sourceTransformExpressions,
-      Map<Expression, Set<Expression>> crossGroupByExpressions,
-      List<Integer> deviceViewInputIndexes,
-      boolean outputEndTime) {
-    checkArgument(
-        aggregationExpressions.size() <= deviceViewInputIndexes.size(),
-        "Each aggregate should correspond to a column of output.");
-
-    boolean needCheckAscending = groupByTimeParameter == null;
-    Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
-    Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
-    Map<AggregationDescriptor, Integer> aggregationToIndexMap = new HashMap<>();
-    Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations = new HashMap<>();
-
-    // If need output endTime, the first index is used by __endTime
-    int index = outputEndTime ? 1 : 0;
-    for (Expression aggregationExpression : aggregationExpressions) {
-      AggregationDescriptor aggregationDescriptor =
-          createAggregationDescriptor(
-              (FunctionExpression) aggregationExpression,
-              curStep,
-              scanOrder,
-              needCheckAscending,
-              ascendingAggregations,
-              descendingAggregations,
-              countTimeAggregations);
-      aggregationToIndexMap.put(aggregationDescriptor, deviceViewInputIndexes.get(index));
-      index++;
-    }
-
-    List<PlanNode> sourceNodeList =
-        constructSourceNodeFromAggregationDescriptors(
-            ascendingAggregations,
-            descendingAggregations,
-            countTimeAggregations,
-            scanOrder,
-            groupByTimeParameter);
-    updateTypeProvider(aggregationExpressions);
-    updateTypeProvider(sourceTransformExpressions);
-
-    if (!curStep.isOutputPartial()) {
-      // update measurementIndexes
-      deviceViewInputIndexes.clear();
-      if (outputEndTime) {
-        deviceViewInputIndexes.add(1);
-      }
-      deviceViewInputIndexes.addAll(
-          sourceNodeList.stream()
-              .map(
-                  planNode ->
-                      ((SeriesAggregationSourceNode) planNode).getAggregationDescriptorList())
-              .flatMap(List::stream)
-              .map(aggregationToIndexMap::get)
-              .collect(Collectors.toList()));
-    }
-
-    return convergeAggregationSource(
-        sourceNodeList,
-        curStep,
-        scanOrder,
-        groupByTimeParameter,
-        aggregationExpressions,
-        crossGroupByExpressions,
-        null,
-        null);
-  }
-
-  private AggregationDescriptor createAggregationDescriptor(
-      FunctionExpression sourceExpression,
-      AggregationStep curStep,
-      Ordering scanOrder,
-      boolean needCheckAscending,
-      Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations,
-      Map<PartialPath, List<AggregationDescriptor>> descendingAggregations,
-      Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations) {
-    AggregationDescriptor aggregationDescriptor =
-        new AggregationDescriptor(
-            sourceExpression.getFunctionName(),
-            curStep,
-            sourceExpression.getExpressions(),
-            sourceExpression.getFunctionAttributes());
-    if (curStep.isOutputPartial()) {
-      updateTypeProviderByPartialAggregation(aggregationDescriptor, context.getTypeProvider());
-    }
-
-    if (COUNT_TIME.equalsIgnoreCase(sourceExpression.getFunctionName())) {
-      Map<String, Pair<List<String>, List<IMeasurementSchema>>> map = new HashMap<>();
-      for (Expression expression : sourceExpression.getCountTimeExpressions()) {
-        TimeSeriesOperand ts = (TimeSeriesOperand) expression;
-        PartialPath path = ts.getPath();
-        Pair<List<String>, List<IMeasurementSchema>> pair =
-            map.computeIfAbsent(
-                path.getDevice(), k -> new Pair<>(new ArrayList<>(), new ArrayList<>()));
-        pair.left.add(path.getMeasurement());
-        try {
-          pair.right.add(path.getMeasurementSchema());
-        } catch (MetadataException ex) {
-          throw new RuntimeException(ex);
-        }
-      }
-
-      for (Map.Entry<String, Pair<List<String>, List<IMeasurementSchema>>> entry : map.entrySet()) {
-        String device = entry.getKey();
-        Pair<List<String>, List<IMeasurementSchema>> pair = entry.getValue();
-        AlignedPath alignedPath = null;
-        try {
-          alignedPath = new AlignedPath(device, pair.left, pair.right);
-        } catch (IllegalPathException e) {
-          throw new RuntimeException(e);
-        }
-        countTimeAggregations.put(alignedPath, Collections.singletonList(aggregationDescriptor));
-      }
-
-      return aggregationDescriptor;
-    }
-
-    PartialPath selectPath =
-        ((TimeSeriesOperand) sourceExpression.getExpressions().get(0)).getPath();
-    if (!needCheckAscending
-        || SchemaUtils.isConsistentWithScanOrder(
-            aggregationDescriptor.getAggregationType(), scanOrder)) {
-      ascendingAggregations
-          .computeIfAbsent(selectPath, key -> new ArrayList<>())
-          .add(aggregationDescriptor);
-    } else {
-      descendingAggregations
-          .computeIfAbsent(selectPath, key -> new ArrayList<>())
-          .add(aggregationDescriptor);
-    }
-    return aggregationDescriptor;
-  }
-
-  private List<PlanNode> constructSourceNodeFromAggregationDescriptors(
-      Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations,
-      Map<PartialPath, List<AggregationDescriptor>> descendingAggregations,
-      Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations,
-      Ordering scanOrder,
-      GroupByTimeParameter groupByTimeParameter) {
-
-    List<PlanNode> sourceNodeList = new ArrayList<>();
-    boolean needCheckAscending = groupByTimeParameter == null;
-    Map<PartialPath, List<AggregationDescriptor>> groupedAscendingAggregations = null;
-    if (!countTimeAggregations.isEmpty()) {
-      groupedAscendingAggregations = countTimeAggregations;
-    } else {
-      groupedAscendingAggregations = MetaUtils.groupAlignedAggregations(ascendingAggregations);
-    }
-
-    for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
-        groupedAscendingAggregations.entrySet()) {
-      sourceNodeList.add(
-          createAggregationScanNode(
-              pathAggregationsEntry.getKey(),
-              pathAggregationsEntry.getValue(),
-              scanOrder,
-              groupByTimeParameter));
-    }
-
-    if (needCheckAscending) {
-      Map<PartialPath, List<AggregationDescriptor>> groupedDescendingAggregations =
-          MetaUtils.groupAlignedAggregations(descendingAggregations);
-      for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
-          groupedDescendingAggregations.entrySet()) {
-        sourceNodeList.add(
-            createAggregationScanNode(
-                pathAggregationsEntry.getKey(),
-                pathAggregationsEntry.getValue(),
-                scanOrder.reverse(),
-                null));
-      }
-    }
-    return sourceNodeList;
-  }
-
-  private LogicalPlanBuilder convergeAggregationSource(
-      List<PlanNode> sourceNodeList,
-      AggregationStep curStep,
-      Ordering scanOrder,
-      GroupByTimeParameter groupByTimeParameter,
-      Set<Expression> aggregationExpressions,
-      Map<Expression, Set<Expression>> crossGroupByExpressions,
-      List<String> tagKeys,
-      Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
-          tagValuesToGroupedTimeseriesOperands) {
-    if (curStep.isOutputPartial()) {
-      if (groupByTimeParameter != null && groupByTimeParameter.hasOverlap()) {
-        curStep =
-            crossGroupByExpressions != null ? AggregationStep.INTERMEDIATE : AggregationStep.FINAL;
-
-        this.root = convergeWithTimeJoin(sourceNodeList, scanOrder);
-
-        this.root =
-            createSlidingWindowAggregationNode(
-                this.getRoot(), aggregationExpressions, groupByTimeParameter, curStep, scanOrder);
-
-        if (crossGroupByExpressions != null) {
-          curStep = AggregationStep.FINAL;
-          if (tagKeys != null) {
-            this.root =
-                createGroupByTagNode(
-                    tagKeys,
-                    tagValuesToGroupedTimeseriesOperands,
-                    crossGroupByExpressions.keySet(),
-                    Collections.singletonList(this.getRoot()),
-                    curStep,
-                    groupByTimeParameter,
-                    scanOrder);
-          } else {
-            this.root =
-                createGroupByTLevelNode(
-                    Collections.singletonList(this.getRoot()),
-                    crossGroupByExpressions,
-                    curStep,
-                    groupByTimeParameter,
-                    scanOrder);
-          }
-        }
-      } else {
-        if (tagKeys != null) {
-          curStep = AggregationStep.FINAL;
-          this.root =
-              createGroupByTagNode(
-                  tagKeys,
-                  tagValuesToGroupedTimeseriesOperands,
-                  crossGroupByExpressions.keySet(),
-                  sourceNodeList,
-                  curStep,
-                  groupByTimeParameter,
-                  scanOrder);
-        } else if (crossGroupByExpressions != null) {
-          curStep = AggregationStep.FINAL;
-          this.root =
-              createGroupByTLevelNode(
-                  sourceNodeList,
-                  crossGroupByExpressions,
-                  curStep,
-                  groupByTimeParameter,
-                  scanOrder);
-        }
-      }
-    } else {
-      this.root = convergeWithTimeJoin(sourceNodeList, scanOrder);
-    }
-
-    return this;
   }
 
   public static void updateTypeProviderByPartialAggregation(
@@ -977,7 +674,30 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planAggregation(
+  public LogicalPlanBuilder planGroupByTag(
+      Map<Expression, Set<Expression>> crossGroupByExpressions,
+      List<String> tagKeys,
+      Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+          tagValuesToGroupedTimeseriesOperands,
+      GroupByTimeParameter groupByTimeParameter,
+      Ordering scanOrder) {
+    if (tagKeys == null) {
+      return this;
+    }
+
+    this.root =
+        createGroupByTagNode(
+            tagKeys,
+            tagValuesToGroupedTimeseriesOperands,
+            crossGroupByExpressions.keySet(),
+            Collections.singletonList(this.getRoot()),
+            AggregationStep.FINAL,
+            groupByTimeParameter,
+            scanOrder);
+    return this;
+  }
+
+  public LogicalPlanBuilder planRawDataAggregation(
       Set<Expression> aggregationExpressions,
       Expression groupByExpression,
       GroupByTimeParameter groupByTimeParameter,
@@ -999,9 +719,9 @@ public class LogicalPlanBuilder {
                   aggregationDescriptor, context.getTypeProvider()));
     }
     this.root =
-        new AggregationNode(
+        new RawDataAggregationNode(
             context.getQueryId().genPlanNodeId(),
-            Collections.singletonList(this.getRoot()),
+            this.getRoot(),
             aggregationDescriptorList,
             groupByTimeParameter,
             groupByParameter,
@@ -1129,30 +849,6 @@ public class LogicalPlanBuilder {
         groupByTagOutputExpressions.stream()
             .map(Expression::getExpressionString)
             .collect(Collectors.toList()));
-  }
-
-  private SeriesAggregationSourceNode createAggregationScanNode(
-      PartialPath selectPath,
-      List<AggregationDescriptor> aggregationDescriptorList,
-      Ordering scanOrder,
-      GroupByTimeParameter groupByTimeParameter) {
-    if (selectPath instanceof MeasurementPath) { // non-aligned series
-      return new SeriesAggregationScanNode(
-          context.getQueryId().genPlanNodeId(),
-          (MeasurementPath) selectPath,
-          aggregationDescriptorList,
-          scanOrder,
-          groupByTimeParameter);
-    } else if (selectPath instanceof AlignedPath) { // aligned series
-      return new AlignedSeriesAggregationScanNode(
-          context.getQueryId().genPlanNodeId(),
-          (AlignedPath) selectPath,
-          aggregationDescriptorList,
-          scanOrder,
-          groupByTimeParameter);
-    } else {
-      throw new IllegalArgumentException("unexpected path type");
-    }
   }
 
   private List<AggregationDescriptor> constructAggregationDescriptorList(
@@ -1640,6 +1336,24 @@ public class LogicalPlanBuilder {
             this.getRoot(),
             0,
             new SlidingTimeColumnGeneratorParameter(groupByTimeParameter, ascending));
+    return this;
+  }
+
+  public LogicalPlanBuilder planDeviceRegionScan(
+      Map<PartialPath, Boolean> devicePathToAlignedStatus, boolean outputCount) {
+    this.root =
+        new DeviceRegionScanNode(
+            context.getQueryId().genPlanNodeId(), devicePathToAlignedStatus, outputCount, null);
+    return this;
+  }
+
+  public LogicalPlanBuilder planTimeseriesRegionScan(
+      Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemaInfo,
+      boolean outputCount) {
+    TimeseriesRegionScanNode timeseriesRegionScanNode =
+        new TimeseriesRegionScanNode(context.getQueryId().genPlanNodeId(), outputCount, null);
+    timeseriesRegionScanNode.setDeviceToTimeseriesSchemaInfo(deviceToTimeseriesSchemaInfo);
+    this.root = timeseriesRegionScanNode;
     return this;
   }
 }

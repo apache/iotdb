@@ -47,20 +47,20 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionSerializeMaxBlockingTimeMs();
   }
 
-  public int getSubscriptionClearMaxBlockingTimeMs() {
-    return COMMON_CONFIG.getSubscriptionClearMaxBlockingTimeMs();
-  }
-
   public long getSubscriptionLaunchRetryIntervalMs() {
     return COMMON_CONFIG.getSubscriptionLaunchRetryIntervalMs();
   }
 
-  public int getSubscriptionClearCommittedEventIntervalSeconds() {
-    return COMMON_CONFIG.getSubscriptionClearCommittedEventIntervalSeconds();
+  public int getSubscriptionRecycleUncommittedEventIntervalMs() {
+    return COMMON_CONFIG.getSubscriptionRecycleUncommittedEventIntervalMs();
   }
 
-  public int getSubscriptionRecycleUncommittedEventIntervalSeconds() {
-    return COMMON_CONFIG.getSubscriptionRecycleUncommittedEventIntervalSeconds();
+  public long getSubscriptionDefaultPollTimeoutMs() {
+    return COMMON_CONFIG.getSubscriptionDefaultPollTimeoutMs();
+  }
+
+  public long getSubscriptionMinPollTimeoutMs() {
+    return COMMON_CONFIG.getSubscriptionMinPollTimeoutMs();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -76,14 +76,12 @@ public class SubscriptionConfig {
     LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
     LOGGER.info(
         "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());
-    LOGGER.info("SubscriptionClearMaxBlockingTimeMs: {}", getSubscriptionClearMaxBlockingTimeMs());
     LOGGER.info("SubscriptionLaunchRetryIntervalMs: {}", getSubscriptionLaunchRetryIntervalMs());
     LOGGER.info(
-        "SubscriptionClearCommittedEventIntervalSeconds: {}",
-        getSubscriptionClearCommittedEventIntervalSeconds());
-    LOGGER.info(
-        "SubscriptionRecycleUncommittedEventIntervalSeconds: {}",
-        getSubscriptionRecycleUncommittedEventIntervalSeconds());
+        "SubscriptionRecycleUncommittedEventIntervalMs: {}",
+        getSubscriptionRecycleUncommittedEventIntervalMs());
+    LOGGER.info("SubscriptionDefaultPollTimeoutMs: {}", getSubscriptionDefaultPollTimeoutMs());
+    LOGGER.info("SubscriptionMinPollTimeoutMs: {}", getSubscriptionMinPollTimeoutMs());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

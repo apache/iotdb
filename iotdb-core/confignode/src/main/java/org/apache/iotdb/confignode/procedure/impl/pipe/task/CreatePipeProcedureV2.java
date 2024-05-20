@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
@@ -38,8 +39,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +52,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -68,6 +70,31 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   public CreatePipeProcedureV2(TCreatePipeReq createPipeRequest) throws PipeException {
     super();
     this.createPipeRequest = createPipeRequest;
+  }
+
+  /** This is only used when the pipe task info lock is held by another procedure. */
+  public CreatePipeProcedureV2(
+      TCreatePipeReq createPipeRequest, AtomicReference<PipeTaskInfo> pipeTaskInfo)
+      throws PipeException {
+    super();
+    this.pipeTaskInfo = pipeTaskInfo;
+    this.createPipeRequest = createPipeRequest;
+  }
+
+  /**
+   * This should be called after {@link #executeFromValidateTask} and {@link
+   * #executeFromCalculateInfoForTask}.
+   */
+  public String getPipeName() {
+    return createPipeRequest.getPipeName();
+  }
+
+  /**
+   * This should be called after {@link #executeFromValidateTask} and {@link
+   * #executeFromCalculateInfoForTask}.
+   */
+  public CreatePipePlanV2 constructPlan() {
+    return new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
   }
 
   @Override
@@ -167,7 +194,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     final String pipeName = createPipeRequest.getPipeName();
     LOGGER.info("CreatePipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    String exceptionMessage =
+    final String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
       LOGGER.warn(
@@ -220,7 +247,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         createPipeRequest.getPipeName());
 
     // Push all pipe metas to datanode, may be time-consuming
-    String exceptionMessage =
+    final String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(
             createPipeRequest.getPipeName(), pushPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {

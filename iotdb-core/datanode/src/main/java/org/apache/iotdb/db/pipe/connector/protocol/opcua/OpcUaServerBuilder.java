@@ -119,36 +119,36 @@ public class OpcUaServerBuilder {
       throw new PipeException("Unable to create security dir: " + securityDir);
     }
 
-    File pkiDir = securityDir.resolve("pki").toFile();
+    final File pkiDir = securityDir.resolve("pki").toFile();
 
     LoggerFactory.getLogger(OpcUaServerBuilder.class)
         .info("Security dir: {}", securityDir.toAbsolutePath());
     LoggerFactory.getLogger(OpcUaServerBuilder.class)
         .info("Security pki dir: {}", pkiDir.getAbsolutePath());
 
-    OpcUaKeyStoreLoader loader =
+    final OpcUaKeyStoreLoader loader =
         new OpcUaKeyStoreLoader().load(securityDir, password.toCharArray());
 
-    DefaultCertificateManager certificateManager =
+    final DefaultCertificateManager certificateManager =
         new DefaultCertificateManager(loader.getServerKeyPair(), loader.getServerCertificate());
 
-    DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
+    final DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
     LOGGER.info(
         "Certificate directory is: {}, Please move certificates from the reject dir to the trusted directory to allow encrypted access",
         pkiDir.getAbsolutePath());
 
-    KeyPair httpsKeyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
+    final KeyPair httpsKeyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
 
-    SelfSignedHttpsCertificateBuilder httpsCertificateBuilder =
+    final SelfSignedHttpsCertificateBuilder httpsCertificateBuilder =
         new SelfSignedHttpsCertificateBuilder(httpsKeyPair);
     httpsCertificateBuilder.setCommonName(HostnameUtil.getHostname());
     HostnameUtil.getHostnames(WILD_CARD_ADDRESS).forEach(httpsCertificateBuilder::addDnsName);
-    X509Certificate httpsCertificate = httpsCertificateBuilder.build();
+    final X509Certificate httpsCertificate = httpsCertificateBuilder.build();
 
-    DefaultServerCertificateValidator certificateValidator =
+    final DefaultServerCertificateValidator certificateValidator =
         new DefaultServerCertificateValidator(trustListManager);
 
-    UsernameIdentityValidator identityValidator =
+    final UsernameIdentityValidator identityValidator =
         new UsernameIdentityValidator(
             true,
             authChallenge -> {
@@ -158,9 +158,9 @@ public class OpcUaServerBuilder {
               return inputUsername.equals(user) && inputPassword.equals(password);
             });
 
-    X509IdentityValidator x509IdentityValidator = new X509IdentityValidator(c -> true);
+    final X509IdentityValidator x509IdentityValidator = new X509IdentityValidator(c -> true);
 
-    X509Certificate certificate =
+    final X509Certificate certificate =
         certificateManager.getCertificates().stream()
             .findFirst()
             .orElseThrow(
@@ -168,7 +168,7 @@ public class OpcUaServerBuilder {
                     new UaRuntimeException(
                         StatusCodes.Bad_ConfigurationError, "No certificate found"));
 
-    String applicationUri =
+    final String applicationUri =
         CertificateUtil.getSanUri(certificate)
             .orElseThrow(
                 () ->
@@ -176,10 +176,10 @@ public class OpcUaServerBuilder {
                         StatusCodes.Bad_ConfigurationError,
                         "Certificate is missing the application URI"));
 
-    Set<EndpointConfiguration> endpointConfigurations =
+    final Set<EndpointConfiguration> endpointConfigurations =
         createEndpointConfigurations(certificate, tcpBindPort, httpsBindPort);
 
-    OpcUaServerConfig serverConfig =
+    final OpcUaServerConfig serverConfig =
         OpcUaServerConfig.builder()
             .setApplicationUri(applicationUri)
             .setApplicationName(LocalizedText.english("Apache IoTDB OPC UA server"))
@@ -202,8 +202,8 @@ public class OpcUaServerBuilder {
             .build();
 
     // Setup server to enable event posting
-    OpcUaServer server = new OpcUaServer(serverConfig);
-    UaNode serverNode =
+    final OpcUaServer server = new OpcUaServer(serverConfig);
+    final UaNode serverNode =
         server.getAddressSpaceManager().getManagedNode(Identifiers.Server).orElse(null);
     if (serverNode instanceof ServerTypeNode) {
       ((ServerTypeNode) serverNode).setEventNotifier(ubyte(1));
@@ -213,18 +213,18 @@ public class OpcUaServerBuilder {
 
   private Set<EndpointConfiguration> createEndpointConfigurations(
       X509Certificate certificate, int tcpBindPort, int httpsBindPort) {
-    Set<EndpointConfiguration> endpointConfigurations = new LinkedHashSet<>();
+    final Set<EndpointConfiguration> endpointConfigurations = new LinkedHashSet<>();
 
-    List<String> bindAddresses = newArrayList();
+    final List<String> bindAddresses = newArrayList();
     bindAddresses.add(WILD_CARD_ADDRESS);
 
-    Set<String> hostnames = new LinkedHashSet<>();
+    final Set<String> hostnames = new LinkedHashSet<>();
     hostnames.add(HostnameUtil.getHostname());
     hostnames.addAll(HostnameUtil.getHostnames(WILD_CARD_ADDRESS));
 
     for (String bindAddress : bindAddresses) {
       for (String hostname : hostnames) {
-        EndpointConfiguration.Builder builder =
+        final EndpointConfiguration.Builder builder =
             EndpointConfiguration.newBuilder()
                 .setBindAddress(bindAddress)
                 .setHostname(hostname)
@@ -235,7 +235,7 @@ public class OpcUaServerBuilder {
                     USER_TOKEN_POLICY_USERNAME,
                     USER_TOKEN_POLICY_X509);
 
-        EndpointConfiguration.Builder noSecurityBuilder =
+        final EndpointConfiguration.Builder noSecurityBuilder =
             builder
                 .copy()
                 .setSecurityPolicy(SecurityPolicy.None)
@@ -260,7 +260,7 @@ public class OpcUaServerBuilder {
                     .setSecurityMode(MessageSecurityMode.Sign),
                 httpsBindPort));
 
-        EndpointConfiguration.Builder discoveryBuilder =
+        final EndpointConfiguration.Builder discoveryBuilder =
             builder
                 .copy()
                 .setPath("/iotdb/discovery")

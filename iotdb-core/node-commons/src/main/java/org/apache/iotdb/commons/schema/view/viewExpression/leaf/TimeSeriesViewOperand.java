@@ -21,7 +21,8 @@ package org.apache.iotdb.commons.schema.view.viewExpression.leaf;
 
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpressionType;
 import org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,6 +50,7 @@ public class TimeSeriesViewOperand extends LeafViewOperand {
       throw new RuntimeException(e);
     }
   }
+
   // endregion
 
   // region common interfaces that have to be implemented
@@ -76,6 +78,7 @@ public class TimeSeriesViewOperand extends LeafViewOperand {
   protected void serialize(OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(pathString, stream);
   }
+
   // endregion
 
   public String getPathString() {

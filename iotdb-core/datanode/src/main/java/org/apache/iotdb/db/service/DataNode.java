@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -29,6 +30,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -44,6 +46,7 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
@@ -450,6 +453,32 @@ public class DataNode implements DataNodeMBean {
     }
   }
 
+  private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
+    List<ConsensusGroupId> invalidConsensusGroupIds =
+        DataRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
+            .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
+            .collect(Collectors.toList());
+    if (!invalidConsensusGroupIds.isEmpty()) {
+      logger.info("Remove invalid region directories... {}", invalidConsensusGroupIds);
+      for (ConsensusGroupId consensusGroupId : invalidConsensusGroupIds) {
+        File oldDir =
+            new File(
+                DataRegionConsensusImpl.getInstance()
+                    .getRegionDirFromConsensusGroupId(consensusGroupId));
+        if (oldDir.exists()) {
+          try {
+            FileUtils.recursivelyDeleteFolder(oldDir.getPath());
+            logger.info("delete {} succeed.", oldDir.getAbsolutePath());
+          } catch (IOException e) {
+            logger.error("delete {} failed.", oldDir.getAbsolutePath());
+          }
+        } else {
+          logger.info("delete {} failed, because it does not exist.", oldDir.getAbsolutePath());
+        }
+      }
+    }
+  }
+
   private void sendRestartRequestToConfigNode() throws StartupException {
     logger.info("Sending restart request to ConfigNode-leader...");
     long startTime = System.currentTimeMillis();
@@ -473,7 +502,7 @@ public class DataNode implements DataNodeMBean {
       }
 
       try {
-        // wait to start the next try
+        // Wait to start the next try
         Thread.sleep(DEFAULT_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -500,6 +529,14 @@ public class DataNode implements DataNodeMBean {
           "Restart request to cluster: {} is accepted, which takes {} ms.",
           config.getClusterName(),
           (endTime - startTime));
+
+      List<TConsensusGroupId> consensusGroupIds = dataNodeRestartResp.getConsensusGroupIds();
+      List<ConsensusGroupId> dataNodeConsensusGroupIds =
+          consensusGroupIds.stream()
+              .map(ConsensusGroupId.Factory::createFromTConsensusGroupId)
+              .collect(Collectors.toList());
+
+      removeInvalidRegions(dataNodeConsensusGroupIds);
     } else {
       /* Throw exception when restart is rejected */
       throw new StartupException(dataNodeRestartResp.getStatus().getMessage());

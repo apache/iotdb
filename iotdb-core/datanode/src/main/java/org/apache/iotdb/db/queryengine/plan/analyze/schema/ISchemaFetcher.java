@@ -24,10 +24,11 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.Map;
@@ -45,6 +46,22 @@ public interface ISchemaFetcher {
    */
   ISchemaTree fetchSchema(
       PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context);
+
+  /**
+   * TODO need to be implemented in schema engine
+   *
+   * <p>Fetch all the schema by the given patternTree in device level
+   *
+   * @return schemaTree without measurement nodes
+   */
+  default ISchemaTree fetchSchemaInDeviceLevel(
+      PathPatternTree patternTree, MPPQueryContext context) {
+    ISchemaTree schemaTree = fetchSchema(patternTree, false, context);
+    if (schemaTree.hasLogicalViewMeasurement()) {
+      schemaTree.removeLogicalView();
+    }
+    return schemaTree;
+  }
 
   /**
    * Fetch all the schema with tags of existing timeseries matched by the given patternTree

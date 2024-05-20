@@ -86,6 +86,7 @@ public enum ThreadName {
   ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL("AsyncDataNodeHeartbeatServiceClientPool"),
   // -------------------------- ConfigNode-LoadBalance --------------------------
   CONFIG_NODE_LOAD_STATISTIC("Cluster-LoadStatistics-Service"),
+  CONFIG_NODE_EVENT_SERVICE("Cluster-Event-Service"),
   CONFIG_NODE_LOAD_PUBLISHER("Cluster-LoadStatistics-Publisher"),
   // -------------------------- ConfigNode-RegionManagement --------------------------
   CONFIG_NODE_REGION_MAINTAINER("IoTDB-Region-Maintainer"),
@@ -135,6 +136,7 @@ public enum ThreadName {
   PIPE_ASYNC_CONNECTOR_CLIENT_POOL("Pipe-Async-Connector-Client-Pool"),
   PIPE_RECEIVER_AIR_GAP_AGENT("Pipe-Receiver-Air-Gap-Agent"),
   SUBSCRIPTION_EXECUTOR_POOL("Subscription-Executor-Pool"),
+  SUBSCRIPTION_RUNTIME_META_SYNCER("Subscription-Runtime-Meta-Syncer"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   STATEFUL_TRIGGER_INFORMATION_UPDATER("Stateful-Trigger-Information-Updater"),
   // -------------------------- JVM --------------------------

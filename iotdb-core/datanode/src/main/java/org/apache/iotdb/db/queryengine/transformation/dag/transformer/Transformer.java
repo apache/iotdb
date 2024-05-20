@@ -21,7 +21,8 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer;
 
 import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
+
+import org.apache.tsfile.block.column.Column;
 
 public abstract class Transformer implements LayerReader {
 

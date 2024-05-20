@@ -271,7 +271,7 @@ public class SnapshotTaker {
                   + snapshotId);
       if (dataDirForThisSnapshot.exists()) {
         try {
-          FileUtils.recursiveDeleteFolder(dataDirForThisSnapshot.getAbsolutePath());
+          FileUtils.recursivelyDeleteFolder(dataDirForThisSnapshot.getAbsolutePath());
         } catch (IOException e) {
           LOGGER.error(
               "Failed to delete folder {} when cleaning up",

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
@@ -29,14 +30,15 @@ import org.apache.iotdb.db.utils.sort.DiskSpiller;
 import org.apache.iotdb.db.utils.sort.MemoryReader;
 import org.apache.iotdb.db.utils.sort.SortBufferManager;
 import org.apache.iotdb.db.utils.sort.SortReader;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +51,9 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.utils.sort.SortBufferManager.SORT_BUFFER_SIZE;
 
 public class SortOperator implements ProcessOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SortOperator.class);
   private final OperatorContext operatorContext;
   private final Operator inputOperator;
   private final TsBlockBuilder tsBlockBuilder;
@@ -362,5 +367,14 @@ public class SortOperator implements ProcessOperator {
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     return inputOperator.calculateRetainedSizeAfterCallingNext() + SORT_BUFFER_SIZE;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + RamUsageEstimator.sizeOf(noMoreData)
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 }

@@ -21,15 +21,15 @@ package org.apache.iotdb.commons.path;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchemaType;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchemaType;
+import org.apache.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,6 +98,10 @@ public class MeasurementPath extends PartialPath {
   public MeasurementPath(String[] nodes, IMeasurementSchema schema) {
     super(nodes);
     this.measurementSchema = schema;
+  }
+
+  public MeasurementPath(String[] nodes) {
+    super(nodes);
   }
 
   @Override

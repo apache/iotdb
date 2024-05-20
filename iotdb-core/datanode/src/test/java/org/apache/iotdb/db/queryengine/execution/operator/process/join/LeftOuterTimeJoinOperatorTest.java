@@ -23,13 +23,13 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -164,6 +164,11 @@ public class LeftOuterTimeJoinOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long ramBytesUsed() {
+            return 0;
+          }
         };
 
     Operator rightChild =
@@ -244,6 +249,11 @@ public class LeftOuterTimeJoinOperatorTest {
 
           @Override
           public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long ramBytesUsed() {
             return 0;
           }
         };
@@ -444,6 +454,11 @@ public class LeftOuterTimeJoinOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long ramBytesUsed() {
+            return 0;
+          }
         };
 
     Operator rightChild =
@@ -564,6 +579,11 @@ public class LeftOuterTimeJoinOperatorTest {
 
           @Override
           public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long ramBytesUsed() {
             return 0;
           }
         };
@@ -767,6 +787,11 @@ public class LeftOuterTimeJoinOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long ramBytesUsed() {
+            return 0;
+          }
         };
 
     Operator rightChild =
@@ -847,6 +872,11 @@ public class LeftOuterTimeJoinOperatorTest {
 
           @Override
           public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long ramBytesUsed() {
             return 0;
           }
         };

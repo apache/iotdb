@@ -23,8 +23,9 @@ import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 
 public class MappableUDFQueryRowTransformer extends UDFQueryTransformer {
 

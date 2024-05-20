@@ -22,7 +22,8 @@ package org.apache.iotdb.db.queryengine.common.schematree;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -71,6 +72,10 @@ public class DeviceSchemaInfo {
                     ? null
                     : measurementSchemaInfo.getSchemaAsMeasurementSchema())
         .collect(Collectors.toList());
+  }
+
+  public List<IMeasurementSchemaInfo> getMeasurementSchemaInfoList() {
+    return measurementSchemaInfoList;
   }
 
   public List<MeasurementPath> getMeasurementSchemaPathList() {

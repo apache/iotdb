@@ -44,8 +44,8 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +57,12 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
@@ -90,6 +95,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   protected boolean isForwardingPipeRequests;
 
+  private boolean shouldTransferModFile; // Whether to transfer mods
+
   // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
   protected final UnboundedBlockingPendingQueue<Event> pendingQueue =
@@ -105,24 +112,27 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    PipeParameters parameters = validator.getParameters();
+    final PipeParameters parameters = validator.getParameters();
 
     try {
       realtimeDataExtractionStartTime =
-          parameters.hasAnyAttributes(SOURCE_START_TIME_KEY)
+          parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY)
               ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
-                  parameters.getStringByKeys(SOURCE_START_TIME_KEY))
+                  parameters.getStringByKeys(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY))
               : Long.MIN_VALUE;
       realtimeDataExtractionEndTime =
-          parameters.hasAnyAttributes(SOURCE_END_TIME_KEY)
+          parameters.hasAnyAttributes(SOURCE_END_TIME_KEY, EXTRACTOR_END_TIME_KEY)
               ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
-                  parameters.getStringByKeys(SOURCE_END_TIME_KEY))
+                  parameters.getStringByKeys(SOURCE_END_TIME_KEY, EXTRACTOR_END_TIME_KEY))
               : Long.MAX_VALUE;
       if (realtimeDataExtractionStartTime > realtimeDataExtractionEndTime) {
         throw new PipeParameterNotValidException(
             String.format(
-                "%s should be less than or equal to %s.",
-                SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY));
+                "%s or %s should be less than or equal to %s or %s.",
+                SOURCE_START_TIME_KEY,
+                EXTRACTOR_START_TIME_KEY,
+                SOURCE_END_TIME_KEY,
+                EXTRACTOR_END_TIME_KEY));
       }
     } catch (Exception e) {
       // compatible with the current validation framework
@@ -149,7 +159,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     // indexed by the taskID of IoTDBDataRegionExtractor. To avoid PipeRealtimeDataRegionExtractor
     // holding a reference to IoTDBDataRegionExtractor, the taskID should be constructed to
     // match that of IoTDBDataRegionExtractor.
-    long creationTime = environment.getCreationTime();
+    final long creationTime = environment.getCreationTime();
     taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
 
     pipePattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
@@ -178,6 +188,11 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
                 PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
                 PipeExtractorConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
             PipeExtractorConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
+
+    shouldTransferModFile =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
+            EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE || shouldExtractDeletion);
   }
 
   @Override
@@ -217,7 +232,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         });
   }
 
-  /** @param event the {@link Event} from the {@link StorageEngine} */
+  /**
+   * @param event the {@link Event} from the {@link StorageEngine}
+   */
   public final void extract(PipeRealtimeEvent event) {
     if (isDbNameCoveredByPattern) {
       event.skipParsingPattern();
@@ -227,7 +244,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       if (isDataRegionTimePartitionCoveredByTimeRange()) {
         event.skipParsingTime();
       } else {
-        // Since we only record the upper and lower bounds that time partition have ever reached, if
+        // Since we only record the upper and lower bounds that time partition has ever reached, if
         // the time partition cannot be covered by the time range during query, it will not be
         // possible later.
         disableSkippingTimeParse = true;
@@ -275,7 +292,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
 
     if (!pendingQueue.waitedOffer(event)) {
-      // this would not happen, but just in case.
+      // This would not happen, but just in case.
       // pendingQueue is unbounded, so it should never reach capacity.
       LOGGER.error(
           "extract: pending queue of PipeRealtimeDataRegionHybridExtractor {} "
@@ -286,7 +303,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       // Do not report exception since the PipeHeartbeatEvent doesn't affect
       // the correction of pipe progress.
 
-      // ignore this event.
+      // Ignore this event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
     }
   }
@@ -329,7 +346,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName())) {
       return event.getEvent();
     } else {
-      // if the event's reference count can not be increased, it means the data represented by
+      // If the event's reference count can not be increased, it means the data represented by
       // this event is not reliable anymore. the data has been lost. we simply discard this
       // event and report the exception to PipeRuntimeAgent.
       final String errorMessage =
@@ -386,7 +403,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   }
 
   private boolean isDataRegionTimePartitionCoveredByTimeRange() {
-    Pair<Long, Long> timePartitionIdBound = dataRegionTimePartitionIdBound.get();
+    final Pair<Long, Long> timePartitionIdBound = dataRegionTimePartitionIdBound.get();
     return startTimePartitionIdLowerBound <= timePartitionIdBound.left
         && timePartitionIdBound.right <= endTimePartitionIdUpperBound;
   }
@@ -398,6 +415,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   public abstract boolean isNeedListenToTsFile();
 
   public abstract boolean isNeedListenToInsertNode();
+
+  public final boolean isShouldTransferModFile() {
+    return shouldTransferModFile;
+  }
 
   @Override
   public String toString() {

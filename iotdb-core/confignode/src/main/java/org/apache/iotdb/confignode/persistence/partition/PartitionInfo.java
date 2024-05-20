@@ -40,8 +40,10 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
@@ -62,13 +64,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,6 +90,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
@@ -116,6 +119,7 @@ public class PartitionInfo implements SnapshotProcessor {
   /** For Cluster Partition. */
   // For allocating Regions
   private final AtomicInteger nextRegionGroupId;
+
   // Map<DatabaseName, DatabasePartitionInfo>
   private final Map<String, DatabasePartitionTable> databasePartitionTables;
 
@@ -559,24 +563,37 @@ public class PartitionInfo implements SnapshotProcessor {
             databasePartitionTable -> databasePartitionTable.containRegionGroup(regionGroupId));
   }
 
-  /**
-   * Update the location info of given regionId.
-   *
-   * @param req UpdateRegionLocationReq
-   * @return {@link TSStatus}
-   */
   public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    TConsensusGroupId regionId = req.getRegionId();
-    TDataNodeLocation oldNode = req.getOldNode();
-    TDataNodeLocation newNode = req.getNewNode();
+    TSStatus addStatus =
+        addRegionLocation(new AddRegionLocationPlan(req.getRegionId(), req.getNewNode()));
+    if (addStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return addStatus;
+    }
+    return removeRegionLocation(new RemoveRegionLocationPlan(req.getRegionId(), req.getOldNode()));
+  }
+
+  /** The region has expanded to a new DataNode, now update the databasePartitionTable. */
+  public TSStatus addRegionLocation(AddRegionLocationPlan req) {
     databasePartitionTables.values().stream()
-        .filter(databasePartitionTable -> databasePartitionTable.containRegionGroup(regionId))
+        .filter(
+            databasePartitionTable -> databasePartitionTable.containRegionGroup(req.getRegionId()))
         .forEach(
             databasePartitionTable ->
-                databasePartitionTable.updateRegionLocation(regionId, oldNode, newNode));
+                databasePartitionTable.addRegionNewLocation(
+                    req.getRegionId(), req.getNewLocation()));
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
 
-    return status;
+  /** The region is no longer located on a DataNode, now update the databasePartitionTable. */
+  public TSStatus removeRegionLocation(RemoveRegionLocationPlan req) {
+    databasePartitionTables.values().stream()
+        .filter(
+            databasePartitionTable -> databasePartitionTable.containRegionGroup(req.getRegionId()))
+        .forEach(
+            databasePartitionTable ->
+                databasePartitionTable.removeRegionLocation(
+                    req.getRegionId(), req.getDeprecatedLocation()));
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   /**
@@ -653,12 +670,9 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return Deep copy of all Regions' RegionReplicaSet
    */
   public List<TRegionReplicaSet> getAllReplicaSets() {
-    List<TRegionReplicaSet> result = new ArrayList<>();
-    databasePartitionTables
-        .values()
-        .forEach(
-            databasePartitionTable -> result.addAll(databasePartitionTable.getAllReplicaSets()));
-    return result;
+    return databasePartitionTables.values().stream()
+        .flatMap(DatabasePartitionTable::getAllReplicaSets)
+        .collect(Collectors.toList());
   }
 
   /**
@@ -672,8 +686,11 @@ public class PartitionInfo implements SnapshotProcessor {
     databasePartitionTables
         .values()
         .forEach(
-            databasePartitionTable ->
-                result.addAll(databasePartitionTable.getAllReplicaSets(type)));
+            databasePartitionTable -> {
+              if (databasePartitionTable.isNotPreDeleted()) {
+                result.addAll(databasePartitionTable.getAllReplicaSets(type));
+              }
+            });
     return result;
   }
 
@@ -685,9 +702,25 @@ public class PartitionInfo implements SnapshotProcessor {
    */
   public List<TRegionReplicaSet> getAllReplicaSets(String database) {
     if (databasePartitionTables.containsKey(database)) {
-      return databasePartitionTables.get(database).getAllReplicaSets();
+      return databasePartitionTables.get(database).getAllReplicaSets().collect(Collectors.toList());
     } else {
-      return new ArrayList<>();
+      return Collections.emptyList();
+    }
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param database The specified Database
+   * @param type SchemaRegion or DataRegion
+   * @return Deep copy of all Regions' RegionReplicaSet with the specified Database and
+   *     TConsensusGroupType
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(String database, TConsensusGroupType type) {
+    if (databasePartitionTables.containsKey(database)) {
+      return databasePartitionTables.get(database).getAllReplicaSets(type);
+    } else {
+      return Collections.emptyList();
     }
   }
 
@@ -719,7 +752,7 @@ public class PartitionInfo implements SnapshotProcessor {
     if (databasePartitionTables.containsKey(database)) {
       return databasePartitionTables.get(database).getReplicaSets(regionGroupIds);
     } else {
-      return new ArrayList<>();
+      return Collections.emptyList();
     }
   }
 
@@ -783,6 +816,25 @@ public class PartitionInfo implements SnapshotProcessor {
     }
 
     return databasePartitionTables.get(database).getRegionGroupCount(type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * <p>Get the all RegionGroups currently in the cluster
+   *
+   * @param type SchemaRegion or DataRegion
+   * @return Map<Database, List<RegionGroupIds>>
+   */
+  public Map<String, List<TConsensusGroupId>> getAllRegionGroupIdMap(TConsensusGroupType type) {
+    Map<String, List<TConsensusGroupId>> result = new TreeMap<>();
+    databasePartitionTables.forEach(
+        (database, databasePartitionTable) -> {
+          if (databasePartitionTable.isNotPreDeleted()) {
+            result.put(database, databasePartitionTable.getAllRegionGroupIds(type));
+          }
+        });
+    return result;
   }
 
   /**

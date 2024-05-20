@@ -22,11 +22,14 @@ package org.apache.iotdb.db.queryengine.execution.operator;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import io.airlift.units.Duration;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -38,12 +41,15 @@ import java.util.concurrent.TimeUnit;
  *
  * <p>Not thread-safe.
  */
-public class OperatorContext {
+public class OperatorContext implements Accountable {
 
   private static Duration maxRunTime =
       new Duration(
           IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
           TimeUnit.MILLISECONDS);
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(OperatorContext.class);
 
   private final int operatorId;
   // It seems it's never used.
@@ -183,5 +189,12 @@ public class OperatorContext {
   @Override
   public int hashCode() {
     return Objects.hash(operatorId);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + RamUsageEstimator.sizeOf(operatorType)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(planNodeId);
   }
 }

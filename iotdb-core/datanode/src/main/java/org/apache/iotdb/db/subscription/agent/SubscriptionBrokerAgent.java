@@ -22,7 +22,8 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.db.subscription.broker.SerializedEnrichedEvent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtask;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
+import org.apache.iotdb.db.subscription.timer.SubscriptionPollTimer;
+import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +44,8 @@ public class SubscriptionBrokerAgent {
 
   //////////////////////////// provided for subscription agent ////////////////////////////
 
-  public List<SerializedEnrichedEvent> poll(ConsumerConfig consumerConfig, Set<String> topicNames) {
+  public List<SerializedEnrichedEvent> poll(
+      ConsumerConfig consumerConfig, Set<String> topicNames, SubscriptionPollTimer timer) {
     String consumerGroupId = consumerConfig.getConsumerGroupId();
     SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
@@ -52,7 +54,7 @@ public class SubscriptionBrokerAgent {
       return Collections.emptyList();
     }
     // TODO: currently we fetch messages from all topics
-    return broker.poll(topicNames);
+    return broker.poll(topicNames, timer);
   }
 
   public void commit(
@@ -78,7 +80,9 @@ public class SubscriptionBrokerAgent {
     consumerGroupIdToSubscriptionBroker.put(consumerGroupId, broker);
   }
 
-  /** @return true -> if drop broker success */
+  /**
+   * @return true -> if drop broker success
+   */
   public synchronized boolean dropBroker(String consumerGroupId) {
     SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
@@ -127,9 +131,5 @@ public class SubscriptionBrokerAgent {
       return;
     }
     broker.executePrefetch(subtask.getTopicName());
-  }
-
-  public void clearCommittedEvents() {
-    consumerGroupIdToSubscriptionBroker.values().forEach(SubscriptionBroker::clearCommittedEvents);
   }
 }

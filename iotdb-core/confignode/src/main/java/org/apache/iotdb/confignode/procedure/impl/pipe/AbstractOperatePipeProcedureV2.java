@@ -33,8 +33,8 @@ import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskStat
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -385,13 +385,31 @@ public abstract class AbstractOperatePipeProcedureV2
   }
 
   /**
+   * Pushing all the pipeMeta's to all the dataNodes, forcing an update to the pipe's runtime state.
+   *
+   * @param env ConfigNodeProcedureEnv
+   * @param pipeTaskInfo PipeTaskInfo managed outside this procedure
+   * @return The responseMap after pushing pipe meta
+   * @throws IOException Exception when Serializing to byte buffer
+   */
+  public static Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(
+      ConfigNodeProcedureEnv env, AtomicReference<PipeTaskInfo> pipeTaskInfo) throws IOException {
+    final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    for (PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
+      pipeMetaBinaryList.add(pipeMeta.serialize());
+    }
+
+    return env.pushAllPipeMetaToDataNodes(pipeMetaBinaryList);
+  }
+
+  /**
    * Parsing the given pipe's or all pipes' pushPipeMeta exceptions to string.
    *
    * @param pipeName The given pipe's pipe name, {@code null} if report all pipes' exceptions.
    * @param respMap The responseMap after pushing pipe meta
    * @return Error messages for the given pipe after pushing pipe meta
    */
-  protected String parsePushPipeMetaExceptionForPipe(
+  public static String parsePushPipeMetaExceptionForPipe(
       String pipeName, Map<Integer, TPushPipeMetaResp> respMap) {
     final StringBuilder exceptionMessageBuilder = new StringBuilder();
 
@@ -482,13 +500,5 @@ public abstract class AbstractOperatePipeProcedureV2
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     isRollbackFromOperateOnDataNodesSuccessful = ReadWriteIOUtils.readBool(byteBuffer);
-  }
-
-  public void setPipeTaskInfo(AtomicReference<PipeTaskInfo> pipeTaskInfo) {
-    this.pipeTaskInfo = pipeTaskInfo;
-  }
-
-  public void unsetPipeTaskInfo() {
-    this.pipeTaskInfo = null;
   }
 }

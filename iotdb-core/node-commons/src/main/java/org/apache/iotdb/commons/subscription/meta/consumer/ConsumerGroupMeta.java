@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.commons.subscription.meta.consumer;
 
-import org.apache.iotdb.commons.exception.SubscriptionException;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -135,7 +136,9 @@ public class ConsumerGroupMeta {
     }
   }
 
-  /** @return topics subscribed by no consumers in this group after this removal. */
+  /**
+   * @return topics subscribed by no consumers in this group after this removal.
+   */
   public Set<String> removeSubscription(String consumerId, Set<String> topics) {
     if (!consumerIdToConsumerMeta.containsKey(consumerId)) {
       throw new SubscriptionException(

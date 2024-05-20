@@ -193,7 +193,7 @@ public class TsFileIdentifierUT {
     } finally {
       dataDirsField.set(config, originDataDirs);
       Files.deleteIfExists(testFile.toPath());
-      FileUtils.deleteDirectory(new File("target" + File.separator + "data2"));
+      FileUtils.deleteFileOrDirectory(new File("target" + File.separator + "data2"));
     }
   }
 }

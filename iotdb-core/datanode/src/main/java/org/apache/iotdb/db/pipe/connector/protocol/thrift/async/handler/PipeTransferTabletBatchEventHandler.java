@@ -19,17 +19,23 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeEventBatch;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
+import org.apache.iotdb.db.pipe.connector.util.LeaderCacheUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,23 +55,26 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
   private final IoTDBDataRegionAsyncConnector connector;
 
   public PipeTransferTabletBatchEventHandler(
-      IoTDBThriftAsyncPipeTransferBatchReqBuilder batchBuilder,
-      IoTDBDataRegionAsyncConnector connector)
+      final PipeEventBatch batch, final IoTDBDataRegionAsyncConnector connector)
       throws IOException {
     // Deep copy to keep Ids' and events' reference
-    requestCommitIds = batchBuilder.deepCopyRequestCommitIds();
-    events = batchBuilder.deepCopyEvents();
-    req = batchBuilder.toTPipeTransferReq();
+    requestCommitIds = batch.deepCopyRequestCommitIds();
+    events = batch.deepCopyEvents();
+    req =
+        connector.isRpcCompressionEnabled()
+            ? batch.toTPipeTransferReq()
+            : PipeTransferCompressedReq.toTPipeTransferReq(
+                batch.toTPipeTransferReq(), connector.getCompressors());
 
     this.connector = connector;
   }
 
-  public void transfer(AsyncPipeDataTransferServiceClient client) throws TException {
+  public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
     client.pipeTransfer(req, this);
   }
 
   @Override
-  public void onComplete(TPipeTransferResp response) {
+  public void onComplete(final TPipeTransferResp response) {
     // Just in case
     if (response == null) {
       onError(new PipeException("TPipeTransferResp is null"));
@@ -73,22 +82,32 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
     }
 
     try {
-      connector
-          .statusHandler()
-          .handle(response.getStatus(), response.getStatus().getMessage(), events.toString());
+      final TSStatus status = response.getStatus();
+      // Only handle the failed statuses to avoid string format performance overhead
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        connector
+            .statusHandler()
+            .handle(status, response.getStatus().getMessage(), events.toString());
+      }
+      for (final Pair<String, TEndPoint> redirectPair :
+          LeaderCacheUtils.parseRecommendedRedirections(status)) {
+        connector.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
+      }
+
       for (final Event event : events) {
         if (event instanceof EnrichedEvent) {
           ((EnrichedEvent) event)
               .decreaseReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
         }
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       onError(e);
     }
   }
 
   @Override
-  public void onError(Exception exception) {
+  public void onError(final Exception exception) {
     LOGGER.warn(
         "Failed to transfer TabletInsertionEvent batch {} (request commit ids={}).",
         events.stream()
@@ -101,8 +120,6 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
         requestCommitIds,
         exception);
 
-    for (final Event event : events) {
-      connector.addFailureEventToRetryQueue(event);
-    }
+    connector.addFailureEventsToRetryQueue(events);
   }
 }

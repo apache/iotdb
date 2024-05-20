@@ -124,7 +124,7 @@ public class SnapshotStorage implements StateMachineStorage {
         }
       }
     } catch (IOException exception) {
-      logger.warn("cannot construct snapshot directory stream ", exception);
+      logger.warn("Cannot construct snapshot directory stream ", exception);
       return null;
     }
 
@@ -165,13 +165,13 @@ public class SnapshotStorage implements StateMachineStorage {
       if (file.endsWith(".md5")) {
         continue;
       }
-      FileInfo fileInfo = null;
+      FileInfo fileInfo;
       try {
         if (getSnapshotDir() == null) {
-          // for regions that place the snapshot in default sm folder, use relative path
+          // For regions that place the snapshot in default sm folder, use relative path
           fileInfo = new FileInfo(file, null);
         } else {
-          // for regions that have a separate snapshot installation path, use absolute path
+          // For regions that have a separate snapshot installation path, use absolute path
           fileInfo = new FileInfo(file.toRealPath(), null);
         }
       } catch (IOException e) {

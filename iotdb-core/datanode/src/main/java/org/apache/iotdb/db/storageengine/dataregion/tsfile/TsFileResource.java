@@ -39,18 +39,18 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeInd
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.FilePathUtils;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.FilePathUtils;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +69,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class TsFileResource {
@@ -404,7 +404,7 @@ public class TsFileResource {
     return timeIndex.getMinStartTime();
   }
 
-  /** open file's end time is Long.MIN_VALUE */
+  /** Open file's end time is Long.MIN_VALUE */
   public long getFileEndTime() {
     return timeIndex.getMaxEndTime();
   }
@@ -645,6 +645,11 @@ public class TsFileResource {
     if (status == getStatus()) {
       return true;
     }
+    return transformStatus(status);
+  }
+
+  /** Return false if the status is not changed */
+  public boolean transformStatus(TsFileResourceStatus status) {
     switch (status) {
       case NORMAL:
         return compareAndSetStatus(TsFileResourceStatus.UNCLOSED, TsFileResourceStatus.NORMAL)
@@ -697,7 +702,9 @@ public class TsFileResource {
     return timeIndex.checkDeviceIdExist(deviceId);
   }
 
-  /** @return true if the device is contained in the TsFile and it lives beyond TTL */
+  /**
+   * @return true if the device is contained in the TsFile and it lives beyond TTL
+   */
   public boolean isSatisfied(
       IDeviceID deviceId, Filter globalTimeFilter, boolean isSeq, long ttl, boolean debug) {
     if (deviceId == null) {
@@ -736,7 +743,9 @@ public class TsFileResource {
     return true;
   }
 
-  /** @return true if the TsFile lives beyond TTL */
+  /**
+   * @return true if the TsFile lives beyond TTL
+   */
   private boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
     long startTime = getFileStartTime();
     long endTime = isClosed() || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
@@ -768,7 +777,9 @@ public class TsFileResource {
     return true;
   }
 
-  /** @return true if the device is contained in the TsFile */
+  /**
+   * @return true if the device is contained in the TsFile
+   */
   public boolean isSatisfied(IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
     if (definitelyNotContains(deviceId)) {
       if (debug) {
@@ -802,7 +813,9 @@ public class TsFileResource {
     return true;
   }
 
-  /** @return whether the given time falls in ttl */
+  /**
+   * @return whether the given time falls in ttl
+   */
   private boolean isAlive(long time, long dataTTL) {
     return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
   }
@@ -856,7 +869,9 @@ public class TsFileResource {
     }
   }
 
-  /** @return resource map size */
+  /**
+   * @return resource map size
+   */
   public long calculateRamSize() {
     if (ramSize == 0) {
       ramSize = INSTANCE_SIZE + timeIndex.calculateRamSize();
@@ -1110,7 +1125,9 @@ public class TsFileResource {
     }
   }
 
-  /** @return is this tsfile resource in a TsFileResourceList */
+  /**
+   * @return is this tsfile resource in a TsFileResourceList
+   */
   public boolean isFileInList() {
     return prev != null || next != null;
   }
@@ -1147,7 +1164,7 @@ public class TsFileResource {
   }
 
   public boolean isEmpty() {
-    return getDevices().isEmpty();
+    return getFileStartTime() == Long.MAX_VALUE && getFileEndTime() == Long.MIN_VALUE;
   }
 
   public String getDatabaseName() {

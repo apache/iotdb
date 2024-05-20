@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.common.schematree.node;
 
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -51,6 +51,11 @@ public class SchemaInternalNode extends SchemaNode {
     SchemaNode oldChild = children.get(name);
     oldChild.copyDataTo(newChild);
     children.replace(name, newChild);
+  }
+
+  @Override
+  public void removeChild(String name) {
+    children.remove(name);
   }
 
   @Override

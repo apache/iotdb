@@ -69,6 +69,7 @@ public class ConsensusManager {
   private static final long MAX_WAIT_READY_TIME_MS =
       CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2;
   private static final long RETRY_WAIT_TIME_MS = 100;
+
   /** There is only one ConfigNodeGroup */
   public static final ConsensusGroupId DEFAULT_CONSENSUS_GROUP_ID =
       new ConfigRegionId(CONF.getConfigRegionId());
@@ -145,7 +146,6 @@ public class ConsensusManager {
                                   RatisConfig.Snapshot.newBuilder()
                                       .setAutoTriggerThreshold(
                                           CONF.getConfigNodeRatisSnapshotTriggerThreshold())
-                                      .setCreationGap(1)
                                       .build())
                               .setLog(
                                   RatisConfig.Log.newBuilder()
@@ -341,7 +341,9 @@ public class ConsensusManager {
     return consensusImpl.isLeaderReady(DEFAULT_CONSENSUS_GROUP_ID);
   }
 
-  /** @return ConfigNode-leader peer if leader exists, null otherwise. */
+  /**
+   * @return ConfigNode-leader peer if leader exists, null otherwise.
+   */
   private Peer getLeaderPeer() {
     for (int retry = 0; retry < 50; retry++) {
       Peer leaderPeer = consensusImpl.getLeader(DEFAULT_CONSENSUS_GROUP_ID);
@@ -358,7 +360,9 @@ public class ConsensusManager {
     return null;
   }
 
-  /** @return ConfigNode-leader's location if leader exists, null otherwise. */
+  /**
+   * @return ConfigNode-leader's location if leader exists, null otherwise.
+   */
   public TConfigNodeLocation getLeaderLocation() {
     Peer leaderPeer = getLeaderPeer();
     if (leaderPeer != null) {
@@ -370,7 +374,9 @@ public class ConsensusManager {
     return null;
   }
 
-  /** @return true if ConfigNode-leader is elected, false otherwise. */
+  /**
+   * @return true if ConfigNode-leader is elected, false otherwise.
+   */
   public boolean isLeaderExist() {
     return getLeaderPeer() != null;
   }
@@ -436,6 +442,6 @@ public class ConsensusManager {
   }
 
   public void manuallyTakeSnapshot() throws ConsensusException {
-    consensusImpl.triggerSnapshot(ConfigNodeInfo.CONFIG_REGION_ID);
+    consensusImpl.triggerSnapshot(ConfigNodeInfo.CONFIG_REGION_ID, true);
   }
 }

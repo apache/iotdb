@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
@@ -143,6 +144,18 @@ public interface IConsensus {
    */
   void removeRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException;
 
+  /**
+   * Reset the peer list of the corresponding consensus group. Currently only used in the automatic
+   * cleanup of region migration as a rollback for {@link #addRemotePeer(ConsensusGroupId, Peer)},
+   * so it will only be less but not more.
+   *
+   * @param groupId the consensus group
+   * @param peers the new peer list
+   * @throws ConsensusException when resetPeerList doesn't success with other reasons
+   * @throws ConsensusGroupNotExistException when the specified consensus group doesn't exist
+   */
+  void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException;
+
   // management API
 
   /**
@@ -159,24 +172,33 @@ public interface IConsensus {
    * Trigger the snapshot of the corresponding consensus group.
    *
    * @param groupId the consensus group which should execute this command
+   * @param force if {@link true}, force to take a snapshot
    * @throws ConsensusException when triggerSnapshot doesn't success with other reasons
    */
-  void triggerSnapshot(ConsensusGroupId groupId) throws ConsensusException;
+  void triggerSnapshot(ConsensusGroupId groupId, boolean force) throws ConsensusException;
 
   /**
    * Determine if the current peer is the leader in the corresponding consensus group.
    *
    * @param groupId the consensus group
-   * @return true or false
+   * @return {@code true} or {@code false}
    */
   boolean isLeader(ConsensusGroupId groupId);
+
+  /**
+   * Returns the logic clock of the current consensus group
+   *
+   * @param groupId the consensus group
+   * @return long
+   */
+  long getLogicalClock(ConsensusGroupId groupId);
 
   /**
    * Determine if the current peer is the leader and already able to provide services in the
    * corresponding consensus group.
    *
    * @param groupId the consensus group
-   * @return true or false
+   * @return {@code true} or {@code false}
    */
   boolean isLeaderReady(ConsensusGroupId groupId);
 
@@ -194,4 +216,30 @@ public interface IConsensus {
    * @return consensusGroupId list
    */
   List<ConsensusGroupId> getAllConsensusGroupIds();
+
+  /**
+   * Return all consensus group ids from disk.
+   *
+   * <p>We need to parse all the RegionGroupIds from the disk directory before starting the
+   * consensus layer, and {@link #getAllConsensusGroupIds()} returns an empty list, so we need to
+   * add a new interface.
+   *
+   * @return consensusGroupId list
+   */
+  List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting();
+
+  /**
+   * Return the region directory of the corresponding consensus group.
+   *
+   * @param groupId the consensus group
+   * @return region directory
+   */
+  String getRegionDirFromConsensusGroupId(ConsensusGroupId groupId);
+
+  /**
+   * Reload the consensus config.
+   *
+   * @param consensusConfig the new consensus config
+   */
+  void reloadConsensusConfig(ConsensusConfig consensusConfig);
 }

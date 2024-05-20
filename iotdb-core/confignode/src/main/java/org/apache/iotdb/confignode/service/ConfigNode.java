@@ -44,8 +44,9 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeMetrics;
-import org.apache.iotdb.confignode.manager.pipe.transfer.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
@@ -95,11 +96,11 @@ public class ConfigNode implements ConfigNodeMBean {
           IoTDBConstant.IOTDB_SERVICE_JMX_NAME,
           IoTDBConstant.JMX_TYPE,
           ServiceType.CONFIG_NODE.getJmxName());
-  private final RegisterManager registerManager = new RegisterManager();
+  protected final RegisterManager registerManager = new RegisterManager();
 
   protected ConfigManager configManager;
 
-  private ConfigNode() {
+  protected ConfigNode() {
     // We do not init anything here, so that we can re-initialize the instance in IT.
   }
 
@@ -298,19 +299,23 @@ public class ConfigNode implements ConfigNodeMBean {
 
   void initConfigManager() {
     try {
-      configManager = new ConfigManager();
-    } catch (IOException e) {
+      setConfigManager();
+    } catch (Exception e) {
       LOGGER.error("Can't start ConfigNode consensus group!", e);
       stop();
     }
     LOGGER.info("Successfully initialize ConfigManager.");
   }
 
+  protected void setConfigManager() throws Exception {
+    this.configManager = new ConfigManager();
+  }
+
   /**
-   * Register Non-seed ConfigNode when first startup.
+   * Register Non-seed {@link ConfigNode} when first startup.
    *
    * @throws StartupException if register failed.
-   * @throws IOException if consensus manager init failed.
+   * @throws IOException if {@link ConsensusManager} init failed.
    */
   private void sendRegisterConfigNodeRequest() throws StartupException, IOException {
     TConfigNodeRegisterReq req =
@@ -387,9 +392,13 @@ public class ConfigNode implements ConfigNodeMBean {
     // Setup RPCService
     ConfigNodeRPCService configNodeRPCService = new ConfigNodeRPCService();
     ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor =
-        new ConfigNodeRPCServiceProcessor(configManager);
+        getConfigNodeRPCServiceProcessor();
     configNodeRPCService.initSyncedServiceImpl(configNodeRPCServiceProcessor);
     registerManager.register(configNodeRPCService);
+  }
+
+  protected ConfigNodeRPCServiceProcessor getConfigNodeRPCServiceProcessor() {
+    return new ConfigNodeRPCServiceProcessor(configManager);
   }
 
   private void waitForLeaderElected() {
@@ -405,9 +414,9 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   /**
-   * Deactivating ConfigNode internal services.
+   * Deactivating {@link ConfigNode} internal services.
    *
-   * @throws IOException if close configManager failed.
+   * @throws IOException if close {@link ConfigNode} failed.
    */
   public void deactivate() throws IOException {
     LOGGER.info("Deactivating {}...", ConfigNodeConstant.GLOBAL_NAME);
@@ -432,7 +441,7 @@ public class ConfigNode implements ConfigNodeMBean {
     return configManager;
   }
 
-  protected void addShutDownHook() {
+  private void addShutDownHook() {
     Runtime.getRuntime().addShutdownHook(new ConfigNodeShutdownHook());
   }
 
@@ -443,7 +452,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private static class ConfigNodeHolder {
 
-    private static final ConfigNode INSTANCE = new ConfigNode();
+    private static ConfigNode instance = new ConfigNode();
 
     private ConfigNodeHolder() {
       // Empty constructor
@@ -451,6 +460,10 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   public static ConfigNode getInstance() {
-    return ConfigNodeHolder.INSTANCE;
+    return ConfigNodeHolder.instance;
+  }
+
+  public static void setInstance(ConfigNode configNode) {
+    ConfigNodeHolder.instance = configNode;
   }
 }

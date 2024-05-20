@@ -31,10 +31,9 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.enums.TSDataType;
 
 import java.util.Collections;
 import java.util.List;
@@ -46,9 +45,6 @@ public class TypeInferenceUtils {
 
   private static final TSDataType integerStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
-
-  private static final TSDataType longStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getLongStringInferType();
 
   private static final TSDataType floatingStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
@@ -75,6 +71,15 @@ public class TypeInferenceUtils {
         || s.equalsIgnoreCase(SqlConstant.BOOLEAN_FALSE);
   }
 
+  private static boolean isLong(String s) {
+    try {
+      Long.parseLong(s);
+    } catch (NumberFormatException e) {
+      return false;
+    }
+    return true;
+  }
+
   private static boolean isConvertFloatPrecisionLack(String s) {
     try {
       return Long.parseLong(s) > (1 << 24);
@@ -86,15 +91,22 @@ public class TypeInferenceUtils {
   /** Get predicted DataType of the given value */
   public static TSDataType getPredictedDataType(Object value, boolean inferType) {
 
-    if (inferType) {
+    if (value instanceof Boolean) {
+      return TSDataType.BOOLEAN;
+    } else if (value instanceof Integer) {
+      return TSDataType.INT32;
+    } else if (value instanceof Long) {
+      return TSDataType.INT64;
+    } else if (value instanceof Float) {
+      return TSDataType.FLOAT;
+    } else if (value instanceof Double) {
+      return TSDataType.DOUBLE;
+    } else if (inferType) {
       String strValue = value.toString();
       if (isBoolean(strValue)) {
         return booleanStringInferType;
       } else if (isNumber(strValue)) {
-        if (!strValue.contains(TsFileConstant.PATH_SEPARATOR)) {
-          if (isConvertFloatPrecisionLack(StringUtils.trim(strValue))) {
-            return longStringInferType;
-          }
+        if (isLong(StringUtils.trim(strValue))) {
           return integerStringInferType;
         } else {
           return floatingStringInferType;
@@ -107,16 +119,6 @@ public class TypeInferenceUtils {
       } else {
         return TSDataType.TEXT;
       }
-    } else if (value instanceof Boolean) {
-      return TSDataType.BOOLEAN;
-    } else if (value instanceof Integer) {
-      return TSDataType.INT32;
-    } else if (value instanceof Long) {
-      return TSDataType.INT64;
-    } else if (value instanceof Float) {
-      return TSDataType.FLOAT;
-    } else if (value instanceof Double) {
-      return TSDataType.DOUBLE;
     }
 
     return TSDataType.TEXT;

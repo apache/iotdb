@@ -69,7 +69,6 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
           LOG.info("Delete peer for ConfigNode: {}", removedConfigNode);
           break;
         case STOP_CONFIG_NODE:
-          env.broadCastTheLatestConfigNodeGroup();
           env.stopConfigNode(removedConfigNode);
           LOG.info("Stop ConfigNode: {}", removedConfigNode);
           return Flow.NO_MORE_STATE;

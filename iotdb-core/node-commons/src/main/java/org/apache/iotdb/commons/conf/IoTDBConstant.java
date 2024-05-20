@@ -20,8 +20,11 @@
 package org.apache.iotdb.commons.conf;
 
 import java.io.File;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -34,7 +37,10 @@ public class IoTDBConstant {
     Properties prop = new Properties();
     String finalBuildInfo = "UNKNOWN";
     try {
-      prop.load(IoTDBConstant.class.getResourceAsStream("/git.properties"));
+      prop.load(
+          new InputStreamReader(
+              Objects.requireNonNull(IoTDBConstant.class.getResourceAsStream("/git.properties")),
+              StandardCharsets.UTF_8));
       finalBuildInfo = prop.getProperty("git.commit.id.abbrev", "UNKNOWN");
       String isDirty = prop.getProperty("git.dirty", "false");
       if (isDirty.equalsIgnoreCase("true")) {
@@ -164,10 +170,6 @@ public class IoTDBConstant {
   public static final String QUERY_ID = "queryId";
   public static final String STATEMENT = "statement";
 
-  public static final String COLUMN_ROLE = "role";
-  public static final String COLUMN_USER = "user";
-  public static final String COLUMN_PRIVILEGE = "privilege";
-
   public static final String COLUMN_DATABASE = "database";
   public static final String COLUMN_TTL = "ttl";
 
@@ -233,6 +235,9 @@ public class IoTDBConstant {
   public static final String UNSEQUENCE_FOLDER_NAME = "unsequence";
   public static final String FILE_NAME_SEPARATOR = "-";
   public static final String CONSENSUS_FOLDER_NAME = "consensus";
+  public static final String DATA_REGION_FOLDER_NAME = "data_region";
+  public static final String INVALID_DATA_REGION_FOLDER_NAME = "invalid_data_region";
+  public static final String SCHEMA_REGION_FOLDER_NAME = "schema_region";
   public static final String SNAPSHOT_FOLDER_NAME = "snapshot";
 
   // system folder name
@@ -340,4 +345,6 @@ public class IoTDBConstant {
   public static final String TIER_SEPARATOR = ";";
 
   public static final String OBJECT_STORAGE_DIR = "object_storage";
+
+  public static final String INTEGRATION_TEST_KILL_POINTS = "integrationTestKillPoints";
 }

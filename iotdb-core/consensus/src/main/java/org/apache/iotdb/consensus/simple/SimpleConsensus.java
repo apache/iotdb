@@ -38,6 +38,7 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
+import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -192,7 +193,7 @@ class SimpleConsensus implements IConsensus {
         (k, v) -> {
           exist.set(true);
           v.stop();
-          FileUtils.deleteDirectory(new File(buildPeerDir(groupId)));
+          FileUtils.deleteFileOrDirectory(new File(buildPeerDir(groupId)));
           return null;
         });
     if (!exist.get()) {
@@ -216,7 +217,7 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
-  public void triggerSnapshot(ConsensusGroupId groupId) throws ConsensusException {
+  public void triggerSnapshot(ConsensusGroupId groupId, boolean force) throws ConsensusException {
     throw new ConsensusException("SimpleConsensus does not support snapshot trigger currently");
   }
 
@@ -231,6 +232,11 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
+  public long getLogicalClock(ConsensusGroupId groupId) {
+    return 0;
+  }
+
+  @Override
   public Peer getLeader(ConsensusGroupId groupId) {
     if (!stateMachineMap.containsKey(groupId)) {
       return null;
@@ -241,6 +247,26 @@ class SimpleConsensus implements IConsensus {
   @Override
   public List<ConsensusGroupId> getAllConsensusGroupIds() {
     return new ArrayList<>(stateMachineMap.keySet());
+  }
+
+  @Override
+  public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
+    return IoTConsensus.getConsensusGroupIdsFromDir(storageDir, logger);
+  }
+
+  @Override
+  public String getRegionDirFromConsensusGroupId(ConsensusGroupId groupId) {
+    return buildPeerDir(groupId);
+  }
+
+  @Override
+  public void reloadConsensusConfig(ConsensusConfig consensusConfig) {
+    // do not support reload consensus config for now
+  }
+
+  @Override
+  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
+    throw new ConsensusException("SimpleConsensus does not support reset peer list");
   }
 
   private String buildPeerDir(ConsensusGroupId groupId) {

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.subscription.task.subtask;
 
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.execution.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtaskLifeCycle;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;

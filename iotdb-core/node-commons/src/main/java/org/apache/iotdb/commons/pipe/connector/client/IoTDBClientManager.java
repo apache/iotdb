@@ -20,18 +20,71 @@
 package org.apache.iotdb.commons.pipe.connector.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.SocketTimeoutException;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class IoTDBClientManager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBClientManager.class);
 
   protected final List<TEndPoint> endPointList;
   protected long currentClientIndex = 0;
 
   protected final boolean useLeaderCache;
 
+  // This flag indicates whether the receiver supports mods transferring if
+  // it is a DataNode receiver. The flag is useless for configNode receiver.
+  protected boolean supportModsIfIsDataNodeReceiver = true;
+
+  private static final int MAX_CONNECTION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 1 day
+  private static final int FIRST_ADJUSTMENT_TIMEOUT_MS = 6 * 60 * 60 * 1000; // 6 hours
+  protected static final AtomicInteger CONNECTION_TIMEOUT_MS =
+      new AtomicInteger(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
+
   protected IoTDBClientManager(List<TEndPoint> endPointList, boolean useLeaderCache) {
     this.endPointList = endPointList;
     this.useLeaderCache = useLeaderCache;
+  }
+
+  public boolean supportModsIfIsDataNodeReceiver() {
+    return supportModsIfIsDataNodeReceiver;
+  }
+
+  public void adjustTimeoutIfNecessary(Throwable e) {
+    do {
+      if (e instanceof SocketTimeoutException || e instanceof TimeoutException) {
+        int newConnectionTimeout;
+        try {
+          newConnectionTimeout =
+              Math.min(
+                  Math.max(
+                      FIRST_ADJUSTMENT_TIMEOUT_MS,
+                      Math.toIntExact(CONNECTION_TIMEOUT_MS.get() * 2L)),
+                  MAX_CONNECTION_TIMEOUT_MS);
+        } catch (ArithmeticException arithmeticException) {
+          newConnectionTimeout = MAX_CONNECTION_TIMEOUT_MS;
+        }
+
+        if (newConnectionTimeout != CONNECTION_TIMEOUT_MS.get()) {
+          CONNECTION_TIMEOUT_MS.set(newConnectionTimeout);
+          LOGGER.info(
+              "Pipe connection timeout is adjusted to {} ms ({} mins)",
+              newConnectionTimeout,
+              newConnectionTimeout / 60000.0);
+        }
+        return;
+      }
+    } while ((e = e.getCause()) != null);
+  }
+
+  public int getConnectionTimeout() {
+    return CONNECTION_TIMEOUT_MS.get();
   }
 }

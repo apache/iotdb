@@ -52,20 +52,20 @@ class OpcUaKeyStoreLoader {
   private KeyPair serverKeyPair;
 
   OpcUaKeyStoreLoader load(Path baseDir, char[] password) throws Exception {
-    KeyStore keyStore = KeyStore.getInstance("PKCS12");
+    final KeyStore keyStore = KeyStore.getInstance("PKCS12");
 
-    File serverKeyStore = baseDir.resolve("iotdb-server.pfx").toFile();
+    final File serverKeyStore = baseDir.resolve("iotdb-server.pfx").toFile();
 
     LOGGER.info("Loading KeyStore at {}", serverKeyStore);
 
     if (!serverKeyStore.exists()) {
       keyStore.load(null, password);
 
-      KeyPair keyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
+      final KeyPair keyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
 
-      String applicationUri = "urn:apache:iotdb:opc-ua-server:" + UUID.randomUUID();
+      final String applicationUri = "urn:apache:iotdb:opc-ua-server:" + UUID.randomUUID();
 
-      SelfSignedCertificateBuilder builder =
+      final SelfSignedCertificateBuilder builder =
           new SelfSignedCertificateBuilder(keyPair)
               .setCommonName("Apache IoTDB OPC UA server")
               .setOrganization("Apache")
@@ -75,8 +75,8 @@ class OpcUaKeyStoreLoader {
               .setCountryCode("CN")
               .setApplicationUri(applicationUri);
 
-      // Get as many hostnames and IP addresses as we can listed in the certificate.
-      Set<String> hostnames =
+      // Get as many hostnames and IP addresses as we can list in the certificate.
+      final Set<String> hostnames =
           Sets.union(
               Sets.newHashSet(HostnameUtil.getHostname()),
               HostnameUtil.getHostnames("0.0.0.0", false));
@@ -89,7 +89,7 @@ class OpcUaKeyStoreLoader {
         }
       }
 
-      X509Certificate certificate = builder.build();
+      final X509Certificate certificate = builder.build();
 
       keyStore.setKeyEntry(
           SERVER_ALIAS, keyPair.getPrivate(), password, new X509Certificate[] {certificate});
@@ -98,11 +98,11 @@ class OpcUaKeyStoreLoader {
       keyStore.load(new FileInputStream(serverKeyStore), password);
     }
 
-    Key serverPrivateKey = keyStore.getKey(SERVER_ALIAS, password);
+    final Key serverPrivateKey = keyStore.getKey(SERVER_ALIAS, password);
     if (serverPrivateKey instanceof PrivateKey) {
       serverCertificate = (X509Certificate) keyStore.getCertificate(SERVER_ALIAS);
 
-      PublicKey serverPublicKey = serverCertificate.getPublicKey();
+      final PublicKey serverPublicKey = serverCertificate.getPublicKey();
       serverKeyPair = new KeyPair(serverPublicKey, (PrivateKey) serverPrivateKey);
     }
 

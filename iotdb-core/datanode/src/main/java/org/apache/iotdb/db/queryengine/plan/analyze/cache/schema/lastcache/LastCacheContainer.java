@@ -21,8 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache;
 
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.value.ILastCacheValue;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.value.LastCacheValue;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.TsPrimitiveType;
 
 /**
  * This class possesses the ILastCacheValue and implements the basic last cache operations.
@@ -68,6 +69,13 @@ public class LastCacheContainer implements ILastCacheContainer {
       return getDiffSize(oldValue, timeValuePair.getValue());
     }
     return 0;
+  }
+
+  @Override
+  public int invalidateLastCache() {
+    int size = lastCacheValue.estimateSize();
+    lastCacheValue = null;
+    return size;
   }
 
   private int getDiffSize(TsPrimitiveType oldValue, TsPrimitiveType newValue) {

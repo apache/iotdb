@@ -34,6 +34,8 @@ public interface IRegionGroupAllocator {
    * @param availableDataNodeMap DataNodes that can be used for allocation
    * @param freeDiskSpaceMap The free disk space of the DataNodes
    * @param allocatedRegionGroups Allocated RegionGroups
+   * @param databaseAllocatedRegionGroups Allocated RegionGroups within the same Database with the
+   *     result
    * @param replicationFactor Replication factor of TRegionReplicaSet
    * @param consensusGroupId TConsensusGroupId of result TRegionReplicaSet
    * @return The optimal TRegionReplicaSet derived by the specified algorithm
@@ -42,6 +44,7 @@ public interface IRegionGroupAllocator {
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       Map<Integer, Double> freeDiskSpaceMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
+      List<TRegionReplicaSet> databaseAllocatedRegionGroups,
       int replicationFactor,
       TConsensusGroupId consensusGroupId);
 }

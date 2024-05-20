@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -56,13 +57,12 @@ import org.apache.iotdb.confignode.manager.UDFManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
-import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
+import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -95,6 +95,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 /** {@link NodeManager} manages cluster node addition and removal requests. */
 public class NodeManager {
@@ -105,7 +106,7 @@ public class NodeManager {
   public static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
 
   private final IManager configManager;
-  private final NodeInfo nodeInfo;
+  protected final NodeInfo nodeInfo;
 
   private final ReentrantLock removeConfigNodeLock;
 
@@ -271,7 +272,11 @@ public class NodeManager {
       return resp;
     }
 
+    // Create a new DataNodeHeartbeatCache and force update NodeStatus
     int dataNodeId = nodeInfo.generateNextNodeId();
+    getLoadManager().getLoadCache().createNodeHeartbeatCache(NodeType.DataNode, dataNodeId);
+    // TODO: invoke a force heartbeat to update new DataNode's status immediately
+
     RegisterDataNodePlan registerDataNodePlan =
         new RegisterDataNodePlan(req.getDataNodeConfiguration());
     // Register new DataNode
@@ -281,13 +286,6 @@ public class NodeManager {
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
     }
-
-    // Init HeartbeatCache
-    getLoadManager()
-        .forceUpdateNodeCache(
-            NodeType.DataNode,
-            dataNodeId,
-            NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
 
     // update datanode's versionInfo
     UpdateVersionInfoPlan updateVersionInfoPlan =
@@ -302,7 +300,7 @@ public class NodeManager {
     PartitionMetrics.bindDataNodePartitionMetricsWhenUpdate(
         MetricService.getInstance(), configManager, dataNodeId);
 
-    // Adjust the maximum RegionGroup number of each StorageGroup
+    // Adjust the maximum RegionGroup number of each Database
     getClusterSchemaManager().adjustMaxRegionGroupNum();
 
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
@@ -353,6 +351,11 @@ public class NodeManager {
 
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
     resp.setRuntimeConfiguration(getRuntimeConfiguration().setClusterId(clusterId));
+    List<TConsensusGroupId> consensusGroupIds =
+        getPartitionManager().getAllReplicaSets(nodeId).stream()
+            .map(TRegionReplicaSet::getRegionId)
+            .collect(Collectors.toList());
+    resp.setConsensusGroupIds(consensusGroupIds);
     return resp;
   }
 
@@ -366,10 +369,8 @@ public class NodeManager {
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
 
-    DataNodeRemoveHandler dataNodeRemoveHandler =
-        new DataNodeRemoveHandler((ConfigManager) configManager);
-    DataNodeToStatusResp preCheckStatus =
-        dataNodeRemoveHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
+    RegionMaintainHandler handler = new RegionMaintainHandler((ConfigManager) configManager);
+    DataNodeToStatusResp preCheckStatus = handler.checkRemoveDataNodeRequest(removeDataNodePlan);
     if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(
           "The remove DataNode request check failed. req: {}, check result: {}",
@@ -560,6 +561,10 @@ public class NodeManager {
 
     dataNodeInfoList.sort(Comparator.comparingInt(TDataNodeInfo::getDataNodeId));
     return dataNodeInfoList;
+  }
+
+  public int getDataNodeCpuCoreCount() {
+    return nodeInfo.getDataNodeTotalCpuCoreCount();
   }
 
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {

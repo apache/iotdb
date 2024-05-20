@@ -21,8 +21,9 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PathPatternNode.VoidSerializer;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
+
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -307,6 +308,60 @@ public class PathPatternTree {
       }
     }
     return false;
+  }
+
+  public PathPatternTree intersectWithFullPathPrefixTree(PathPatternTree fullPathPrefixTree) {
+    PathPatternTree result = new PathPatternTree(containWildcard);
+    List<PartialPath> partialPathList = null;
+
+    for (PartialPath fullPathOrPrefix : fullPathPrefixTree.getAllPathPatterns()) {
+      PathPatternNode<Void, VoidSerializer> curNode = root;
+      PathPatternNode<Void, VoidSerializer> tarNode = result.root;
+      String[] nodes = fullPathOrPrefix.nodes;
+      boolean done = false;
+      if (fullPathOrPrefix.endWithMultiLevelWildcard()) {
+        // if prefix match, directly construct result tree
+        for (int i = 1; i < nodes.length - 1; i++) {
+          done = true;
+          List<PathPatternNode<Void, VoidSerializer>> tmp = curNode.getMatchChildren(nodes[i]);
+          if (tmp.size() == 1 && tmp.get(0).getName().equals(nodes[i])) {
+            curNode = tmp.get(0);
+            if (tarNode.getChildren(nodes[i]) == null) {
+              tarNode.addChild(new PathPatternNode<>(nodes[i], VoidSerializer.getInstance()));
+            }
+            tarNode = tarNode.getChildren(nodes[i]);
+          } else {
+            done = false;
+            break;
+          }
+        }
+      }
+      if (done) {
+        for (PathPatternNode<Void, VoidSerializer> node : curNode.getChildren().values()) {
+          tarNode.addChild(node);
+        }
+      } else {
+        // this branch is to construct intersection one by one
+        if (partialPathList == null) {
+          partialPathList = getAllPathPatterns();
+        }
+        for (PartialPath pathPattern : partialPathList) {
+          if (fullPathOrPrefix.endWithMultiLevelWildcard()) {
+            // prefix
+            for (PartialPath temp : pathPattern.intersectWithPrefixPattern(fullPathOrPrefix)) {
+              result.appendPathPattern(temp);
+            }
+          } else {
+            // full path
+            if (pathPattern.matchFullPath(fullPathOrPrefix)) {
+              result.appendPathPattern(fullPathOrPrefix);
+            }
+          }
+        }
+      }
+    }
+    result.constructTree();
+    return result;
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////

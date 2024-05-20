@@ -64,19 +64,19 @@ import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -209,8 +209,6 @@ public class LoadTsfileAnalyzer {
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
           new TsFileSequenceReaderTimeseriesMetadataIterator(reader, true, 1);
 
-      long writePointCount = 0;
-
       // construct tsfile resource
       final TsFileResource tsFileResource = new TsFileResource(tsFile);
       if (!tsFileResource.resourceFileExists()) {
@@ -221,27 +219,34 @@ public class LoadTsfileAnalyzer {
         tsFileResource.deserialize();
       }
 
-      // auto create or verify schema
-      if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
-          || loadTsFileStatement.isVerifySchema()) {
-        // check if the tsfile is empty
-        if (!timeseriesMetadataIterator.hasNext()) {
-          LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
-          return;
-        }
+      // check if the tsfile is empty
+      if (!timeseriesMetadataIterator.hasNext()) {
+        LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
+        return;
+      }
 
-        while (timeseriesMetadataIterator.hasNext()) {
-          Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
-              timeseriesMetadataIterator.next();
+      long writePointCount = 0;
 
+      final boolean isAutoCreateSchemaOrVerifySchemaEnabled =
+          IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+              || loadTsFileStatement.isVerifySchema();
+      while (timeseriesMetadataIterator.hasNext()) {
+        final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
+            timeseriesMetadataIterator.next();
+
+        if (isAutoCreateSchemaOrVerifySchemaEnabled) {
           schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, device2TimeseriesMetadata);
-
-          if (!tsFileResource.resourceFileExists()) {
-            TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
-          }
-          writePointCount += getWritePointCount(device2TimeseriesMetadata);
         }
 
+        if (!tsFileResource.resourceFileExists()) {
+          TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+        }
+
+        // TODO: how to get the correct write point count when
+        //  !isAutoCreateSchemaOrVerifySchemaEnabled
+        writePointCount += getWritePointCount(device2TimeseriesMetadata);
+      }
+      if (isAutoCreateSchemaOrVerifySchemaEnabled) {
         schemaAutoCreatorAndVerifier.flushAndClearDeviceIsAlignedCacheIfNecessary();
       }
 

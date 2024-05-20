@@ -22,17 +22,20 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Map;
@@ -40,6 +43,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 public class IntoOperator extends AbstractIntoOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(IntoOperator.class);
 
   private final List<Pair<String, PartialPath>> sourceTargetPathPairList;
 
@@ -116,5 +122,20 @@ public class IntoOperator extends AbstractIntoOperator {
       resultTsBlockBuilder.declarePosition();
     }
     return resultTsBlockBuilder.build();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
+        + (sourceTargetPathPairList == null
+            ? 0
+            : sourceTargetPathPairList.stream()
+                .mapToLong(
+                    pair ->
+                        RamUsageEstimator.sizeOf(pair.left)
+                            + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(pair.right))
+                .sum());
   }
 }

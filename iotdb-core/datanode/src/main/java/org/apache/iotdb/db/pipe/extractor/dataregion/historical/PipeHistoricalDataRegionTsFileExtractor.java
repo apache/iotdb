@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.historical;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
@@ -56,16 +58,21 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_START_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 
 public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDataRegionExtractor {
@@ -96,31 +103,40 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private boolean shouldExtractInsertion;
 
+  private boolean shouldTransferModFile; // Whether to transfer mods
+
   private Queue<TsFileResource> pendingQueue;
 
   @Override
   public void validate(PipeParameterValidator validator) {
-    PipeParameters parameters = validator.getParameters();
+    final PipeParameters parameters = validator.getParameters();
 
-    if (parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY)) {
+    if (parameters.hasAnyAttributes(
+        SOURCE_START_TIME_KEY,
+        EXTRACTOR_START_TIME_KEY,
+        SOURCE_END_TIME_KEY,
+        EXTRACTOR_END_TIME_KEY)) {
       isHistoricalExtractorEnabled = true;
 
       try {
         historicalDataExtractionStartTime =
-            parameters.hasAnyAttributes(SOURCE_START_TIME_KEY)
+            parameters.hasAnyAttributes(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY)
                 ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
-                    parameters.getStringByKeys(SOURCE_START_TIME_KEY))
+                    parameters.getStringByKeys(SOURCE_START_TIME_KEY, EXTRACTOR_START_TIME_KEY))
                 : Long.MIN_VALUE;
         historicalDataExtractionEndTime =
-            parameters.hasAnyAttributes(SOURCE_END_TIME_KEY)
+            parameters.hasAnyAttributes(SOURCE_END_TIME_KEY, EXTRACTOR_END_TIME_KEY)
                 ? DateTimeUtils.convertTimestampOrDatetimeStrToLongWithDefaultZone(
-                    parameters.getStringByKeys(SOURCE_END_TIME_KEY))
+                    parameters.getStringByKeys(SOURCE_END_TIME_KEY, EXTRACTOR_END_TIME_KEY))
                 : Long.MAX_VALUE;
         if (historicalDataExtractionStartTime > historicalDataExtractionEndTime) {
           throw new PipeParameterNotValidException(
               String.format(
-                  "%s should be less than or equal to %s.",
-                  SOURCE_START_TIME_KEY, SOURCE_END_TIME_KEY));
+                  "%s or %s should be less than or equal to %s or %s.",
+                  SOURCE_START_TIME_KEY,
+                  EXTRACTOR_START_TIME_KEY,
+                  SOURCE_END_TIME_KEY,
+                  EXTRACTOR_END_TIME_KEY));
         }
         return;
       } catch (Exception e) {
@@ -167,8 +183,16 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 EXTRACTOR_HISTORY_END_TIME_KEY,
                 SOURCE_HISTORY_END_TIME_KEY));
       }
+
+      shouldTransferModFile =
+          parameters.getBooleanOrDefault(
+              Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
+              EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE
+                  || // Should extract deletion
+                  DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters)
+                      .getRight());
     } catch (Exception e) {
-      // compatible with the current validation framework
+      // Compatible with the current validation framework
       throw new PipeParameterNotValidException(e.getMessage());
     }
   }
@@ -344,13 +368,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                     resource ->
                         // Some resource may not be closed due to the control of
                         // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                        resource.isClosed()
-                            // Some different tsFiles may share the same max progressIndex, thus
-                            // tsFiles with an "equals" max progressIndex must be transmitted to
-                            // avoid data loss
-                            && !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
-                            && isTsFileResourceOverlappedWithTimeRange(resource)
-                            && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
+                        !resource.isClosed()
+                            || mayTsFileContainUnprocessedData(resource)
+                                && isTsFileResourceOverlappedWithTimeRange(resource)
+                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
         resourceList.addAll(sequenceTsFileResources);
 
@@ -360,13 +381,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                     resource ->
                         // Some resource may not be closed due to the control of
                         // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
-                        resource.isClosed()
-                            // Some different tsFiles may share the same max progressIndex, thus
-                            // tsFiles with an "equals" max progressIndex must be transmitted to
-                            // avoid data loss
-                            && !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
-                            && isTsFileResourceOverlappedWithTimeRange(resource)
-                            && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
+                        !resource.isClosed()
+                            || mayTsFileContainUnprocessedData(resource)
+                                && isTsFileResourceOverlappedWithTimeRange(resource)
+                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
         resourceList.addAll(unsequenceTsFileResources);
 
@@ -375,14 +393,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
               // Pin the resource, in case the file is removed by compaction or anything.
               // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
               try {
-                PipeResourceManager.tsfile().pinTsFileResource(resource);
+                PipeResourceManager.tsfile().pinTsFileResource(resource, shouldTransferModFile);
               } catch (IOException e) {
                 LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath());
               }
             });
 
         resourceList.sort(
-            (o1, o2) -> o1.getMaxProgressIndex().topologicalCompareTo(o2.getMaxProgressIndex()));
+            (o1, o2) ->
+                startIndex instanceof TimeWindowStateProgressIndex
+                    ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
+                    : o1.getMaxProgressIndex().topologicalCompareTo(o2.getMaxProgressIndex()));
         pendingQueue = new ArrayDeque<>(resourceList);
 
         LOGGER.info(
@@ -403,6 +424,26 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     } finally {
       dataRegion.writeUnlock();
     }
+  }
+
+  private boolean mayTsFileContainUnprocessedData(TsFileResource resource) {
+    if (startIndex instanceof TimeWindowStateProgressIndex) {
+      // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
+      return ((TimeWindowStateProgressIndex) startIndex).getMinTime() <= resource.getFileEndTime();
+    }
+
+    if (startIndex instanceof StateProgressIndex) {
+      // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
+      // "equals" max progressIndex must be transmitted to avoid data loss
+      final ProgressIndex innerProgressIndex =
+          ((StateProgressIndex) startIndex).getInnerProgressIndex();
+      return !innerProgressIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+          && !innerProgressIndex.equals(resource.getMaxProgressIndexAfterClose());
+    }
+
+    // Some different tsFiles may share the same max progressIndex, thus tsFiles with an
+    // "equals" max progressIndex must be transmitted to avoid data loss
+    return !startIndex.isAfter(resource.getMaxProgressIndexAfterClose());
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(TsFileResource resource) {
@@ -448,6 +489,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     final PipeTsFileInsertionEvent event =
         new PipeTsFileInsertionEvent(
             resource,
+            shouldTransferModFile,
             false,
             false,
             pipeName,

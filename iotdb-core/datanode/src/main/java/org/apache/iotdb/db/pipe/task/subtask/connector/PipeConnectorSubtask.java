@@ -113,7 +113,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
                 : event);
       }
 
-      releaseLastEvent(true);
+      decreaseReferenceCountAndReleaseLastEvent(true);
     } catch (PipeException e) {
       if (!isClosed.get()) {
         throw e;
@@ -122,7 +122,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
             "{} in pipe transfer, ignored because pipe is dropped.",
             e.getClass().getSimpleName(),
             e);
-        releaseLastEvent(false);
+        clearReferenceCountAndReleaseLastEvent();
       }
     } catch (Exception e) {
       if (!isClosed.get()) {
@@ -137,14 +137,14 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
             e);
       } else {
         LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.", e);
-        releaseLastEvent(false);
+        clearReferenceCountAndReleaseLastEvent();
       }
     }
 
     return true;
   }
 
-  private void transferHeartbeatEvent(PipeHeartbeatEvent event) throws Exception {
+  private void transferHeartbeatEvent(PipeHeartbeatEvent event) {
     try {
       outputPipeConnector.heartbeat();
       outputPipeConnector.transfer(event);

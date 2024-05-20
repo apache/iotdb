@@ -90,7 +90,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
 
     if (isClosed.get()) {
       LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.", throwable);
-      releaseLastEvent(false);
+      clearReferenceCountAndReleaseLastEvent();
       return;
     }
 
@@ -113,7 +113,9 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
             : new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
   }
 
-  /** @return {@code true} if the {@link PipeSubtask} should be stopped, {@code false} otherwise */
+  /**
+   * @return {@code true} if the {@link PipeSubtask} should be stopped, {@code false} otherwise
+   */
   private boolean onPipeConnectionException(Throwable throwable) {
     LOGGER.warn(
         "PipeConnectionException occurred, {} retries to handshake with the target system.",

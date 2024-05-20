@@ -23,8 +23,9 @@ import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 
 public class UDFQueryRowWindowTransformer extends UniversalUDFQueryTransformer {
 

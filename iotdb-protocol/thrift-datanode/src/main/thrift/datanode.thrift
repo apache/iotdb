@@ -41,6 +41,18 @@ struct TRegionLeaderChangeReq {
   2: required common.TDataNodeLocation newLeaderNode
 }
 
+struct TRegionLeaderChangeResp {
+  1: required common.TSStatus status
+  2: required i64 consensusLogicalTimestamp
+}
+
+struct TRegionMigrateResult {
+  1: optional common.TConsensusGroupId regionId
+  2: optional common.TSStatus migrateResult
+  3: optional map<common.TDataNodeLocation, common.TRegionMigrateFailedType> failedNodeAndReason
+  4: required common.TRegionMaintainTaskStatus taskStatus
+}
+
 struct TCreatePeerReq {
   1: required common.TConsensusGroupId regionId
   2: required list<common.TDataNodeLocation> regionLocations
@@ -51,6 +63,12 @@ struct TCreatePeerReq {
 struct TMaintainPeerReq {
   1: required common.TConsensusGroupId regionId
   2: required common.TDataNodeLocation destNode
+  3: required i64 taskId
+}
+
+struct TResetPeerListReq {
+  1: required common.TConsensusGroupId regionId
+  2: required list<common.TDataNodeLocation> correctLocations
 }
 
 struct TFragmentInstanceId {
@@ -252,6 +270,7 @@ struct TDataNodeHeartbeatReq {
   8: optional bool needPipeMetaList
   9: optional i64 deviceQuotaRemain
   10: optional TDataNodeActivation activation
+  11: optional set<common.TEndPoint> configNodeEndPoints
 }
 
 struct TDataNodeActivation {
@@ -273,6 +292,8 @@ struct TDataNodeHeartbeatResp {
   9: optional TSchemaLimitLevel schemaLimitLevel
   10: optional list<binary> pipeMetaList
   11: optional string activateStatus
+  12: optional set<common.TEndPoint> confirmedConfigNodeEndPoints
+  13: optional map<common.TConsensusGroupId, i64> consensusLogicalTimeMap
 }
 
 struct TPipeHeartbeatReq {
@@ -303,10 +324,6 @@ struct TLoadSample {
 struct TRegionRouteReq {
   1: required i64 timestamp
   2: required map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
-}
-
-struct TUpdateConfigNodeGroupReq {
-  1: required list<common.TConfigNodeLocation> configNodeLocations
 }
 
 struct TUpdateTemplateReq {
@@ -396,6 +413,15 @@ struct TCountPathsUsingTemplateResp {
   2: optional i64 count
 }
 
+struct TCheckSchemaRegionUsingTemplateReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+}
+
+struct TCheckSchemaRegionUsingTemplateResp {
+  1: required common.TSStatus status
+  2: required bool result
+}
+
 struct TCheckTimeSeriesExistenceReq {
   1: required binary patternTree
   2: required list<common.TConsensusGroupId> schemaRegionIdList
@@ -426,20 +452,38 @@ struct TPushSinglePipeMetaReq {
   2: optional string pipeNameToDrop // If it is not null, pipe with indicated name on datanode will be dropped.
 }
 
+struct TPushMultiPipeMetaReq {
+  1: optional list<binary> pipeMetas // Should not set both to null.
+  2: optional list<string> pipeNamesToDrop // If it is not null, pipes with indicated names on datanode will be dropped.
+}
+
+struct TPushTopicMetaReq {
+  1: required list<binary> topicMetas
+}
+
 struct TPushSingleTopicMetaReq {
    1: optional binary topicMeta // Should not set both to null.
    2: optional string topicNameToDrop
 }
 
-struct TPushTopicMetaResp {
-  1: required common.TSStatus status
-  2: optional list<TPushTopicRespExceptionMessage> exceptionMessages
+struct TPushMultiTopicMetaReq {
+   1: optional list<binary> topicMetas // Should not set both to null.
+   2: optional list<string> topicNamesToDrop
 }
 
-struct TPushTopicRespExceptionMessage {
+struct TPushTopicMetaResp {
+  1: required common.TSStatus status
+  2: optional list<TPushTopicMetaRespExceptionMessage> exceptionMessages
+}
+
+struct TPushTopicMetaRespExceptionMessage {
   1: required string topicName
   2: required string message
   3: required i64 timeStamp
+}
+
+struct TPushConsumerGroupMetaReq {
+  1: required list<binary> consumerGroupMetas
 }
 
 struct TPushSingleConsumerGroupMetaReq {
@@ -449,10 +493,10 @@ struct TPushSingleConsumerGroupMetaReq {
 
 struct TPushConsumerGroupMetaResp {
   1: required common.TSStatus status
-  2: optional list<TPushConsumerGroupRespExceptionMessage> exceptionMessages
+  2: optional list<TPushConsumerGroupMetaRespExceptionMessage> exceptionMessages
 }
 
-struct TPushConsumerGroupRespExceptionMessage {
+struct TPushConsumerGroupMetaRespExceptionMessage {
   1: required string consumerGroupId
   2: required string message
   3: required i64 timeStamp
@@ -645,7 +689,7 @@ service IDataNodeRPCService {
    *
    * @param The specified RegionGroup and the new leader DataNode
    */
-  common.TSStatus changeRegionLeader(TRegionLeaderChangeReq req)
+  TRegionLeaderChangeResp changeRegionLeader(TRegionLeaderChangeReq req)
 
   /**
    * Create a new Region peer in the given DataNode for the specified RegionGroup
@@ -674,6 +718,16 @@ service IDataNodeRPCService {
    * @param TMaintainPeerReq which contains RegionId and the DataNodeLocation where the specified Region peer located
    */
   common.TSStatus deleteOldRegionPeer(TMaintainPeerReq req)
+
+  /**
+   * Reset a consensus group's peer list
+   */
+  common.TSStatus resetPeerList(TResetPeerListReq req);
+
+  /**
+   * Get the result of a region maintainance task
+   */
+  TRegionMigrateResult getRegionMaintainResult(i64 taskId)
 
   /**
    * Config node will disable the Data node, the Data node will not accept read/write request when disabled
@@ -803,13 +857,6 @@ service IDataNodeRPCService {
    * Config node will Set the TTL for the database on a list of data nodes.
    */
   common.TSStatus setTTL(common.TSetTTLReq req)
-  
-  /**
-   * configNode will notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced
-   *
-   * @param list<common.TConfigNodeLocation> configNodeLocations
-   */
-  common.TSStatus updateConfigNodeGroup(TUpdateConfigNodeGroupReq req)
 
   /**
    * Update template cache when template info or template set info is updated
@@ -868,6 +915,8 @@ service IDataNodeRPCService {
 
   TCountPathsUsingTemplateResp countPathsUsingTemplate(TCountPathsUsingTemplateReq req)
 
+  TCheckSchemaRegionUsingTemplateResp checkSchemaRegionUsingTemplate(TCheckSchemaRegionUsingTemplateReq req)
+
   TCheckTimeSeriesExistenceResp checkTimeSeriesExistence(TCheckTimeSeriesExistenceReq req)
 
   common.TSStatus constructViewSchemaBlackList(TConstructViewSchemaBlackListReq req)
@@ -889,9 +938,29 @@ service IDataNodeRPCService {
   TPushPipeMetaResp pushSinglePipeMeta(TPushSinglePipeMetaReq req)
 
  /**
+  * Send multiple pipeMetas to DataNodes, for create/drop subscriptions
+  */
+  TPushPipeMetaResp pushMultiPipeMeta(TPushMultiPipeMetaReq req)
+
+ /**
+  * Send topicMetas to DataNodes, for synchronization
+  */
+  TPushTopicMetaResp pushTopicMeta(TPushTopicMetaReq req)
+
+ /**
   * Send one topic meta to DataNodes.
   */
   TPushTopicMetaResp pushSingleTopicMeta(TPushSingleTopicMetaReq req)
+
+ /**
+  * Send multiple topic metas to DataNodes, for create/drop subscriptions
+  */
+  TPushTopicMetaResp pushMultiTopicMeta(TPushMultiTopicMetaReq req)
+
+ /**
+  * Send consumerGroupMetas to DataNodes, for synchronization
+  */
+  TPushConsumerGroupMetaResp pushConsumerGroupMeta(TPushConsumerGroupMetaReq req)
 
  /**
   * Send one consumer group meta to DataNodes.

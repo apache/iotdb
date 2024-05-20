@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -45,6 +44,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -221,6 +221,9 @@ public class AuthorInfo implements SnapshotProcessor {
         case CreateUser:
           authorizer.createUser(userName, password);
           break;
+        case CreateUserWithRawPassword:
+          authorizer.createUserWithRawPassword(userName, password);
+          break;
         case CreateRoleDep:
           AuthUtils.validateRolenamePre(roleName);
           authorizer.createRole(roleName);
@@ -334,7 +337,7 @@ public class AuthorInfo implements SnapshotProcessor {
         }
       }
     }
-    result.setTag(IoTDBConstant.COLUMN_USER);
+    result.setTag(ColumnHeaderConstant.USER);
     result.setMemberInfo(userList);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return result;
@@ -356,7 +359,7 @@ public class AuthorInfo implements SnapshotProcessor {
       }
       roleList.addAll(user.getRoleList());
     }
-    result.setTag(IoTDBConstant.COLUMN_ROLE);
+    result.setTag(ColumnHeaderConstant.ROLE);
     result.setMemberInfo(roleList);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return result;
@@ -390,7 +393,7 @@ public class AuthorInfo implements SnapshotProcessor {
     roleInfo.put(role.getName(), roleResp);
     resp.setRoleInfo(roleInfo);
     resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-    result.setTag(IoTDBConstant.COLUMN_PRIVILEGE);
+    result.setTag(ColumnHeaderConstant.PRIVILEGES);
     result.setPermissionInfoResp(resp);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setMemberInfo(permissionInfo);
@@ -407,7 +410,7 @@ public class AuthorInfo implements SnapshotProcessor {
     }
     TPermissionInfoResp resp = getUserPermissionInfo(plan.getUserName());
     resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-    result.setTag(IoTDBConstant.COLUMN_PRIVILEGE);
+    result.setTag(ColumnHeaderConstant.PRIVILEGES);
     result.setPermissionInfoResp(resp);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return result;
@@ -551,11 +554,11 @@ public class AuthorInfo implements SnapshotProcessor {
   public void clear() throws AuthException {
     File userFolder = new File(COMMON_CONFIG.getUserFolder());
     if (userFolder.exists()) {
-      FileUtils.deleteDirectory(userFolder);
+      FileUtils.deleteFileOrDirectory(userFolder);
     }
     File roleFolder = new File(COMMON_CONFIG.getRoleFolder());
     if (roleFolder.exists()) {
-      FileUtils.deleteDirectory(roleFolder);
+      FileUtils.deleteFileOrDirectory(roleFolder);
     }
     authorizer.reset();
   }

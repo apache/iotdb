@@ -24,11 +24,6 @@ import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.adapter.PointCollectorAdaptor;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.InputRowUtils;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
@@ -38,6 +33,11 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.udf.api.utils.RowImpl;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

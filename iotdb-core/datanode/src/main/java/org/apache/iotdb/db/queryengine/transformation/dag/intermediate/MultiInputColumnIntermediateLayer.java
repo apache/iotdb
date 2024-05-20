@@ -31,19 +31,19 @@ import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticS
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.TVColumns;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.RowListForwardIterator;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.StateWindowAccessStrategy;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

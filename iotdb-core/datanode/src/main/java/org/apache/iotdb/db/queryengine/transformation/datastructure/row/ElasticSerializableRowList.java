@@ -24,9 +24,10 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.Cache;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.RowListForwardIterator;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.utils.BitMap;
+
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.BitMap;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -44,6 +45,7 @@ public class ElasticSerializableRowList {
 
   protected LRUCache cache;
   protected List<SerializableRowList> internalRowList;
+
   /** Mark bitMaps of correct index when one row has at least one null field. */
   protected List<BitMap> bitMaps;
 
@@ -170,6 +172,7 @@ public class ElasticSerializableRowList {
   public Object[] getRowRecord(int index) throws IOException {
     return cache.get(index / internalRowListCapacity).getRow(index % internalRowListCapacity);
   }
+
   // endregion
 
   // region batch rows methods
@@ -261,6 +264,7 @@ public class ElasticSerializableRowList {
       totalByteArrayLength += rowByteArrayLength * total;
     }
   }
+
   // endregion
 
   public RowListForwardIterator constructIterator() {

@@ -31,10 +31,14 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.connector.websocket.WebSocke
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.writeback.WriteBackConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.donothing.DoNothingExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.iotdb.IoTDBExtractor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate.AggregateProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate.StandardStatisticsProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate.TumblingWindowingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.SwingingDoorTrendingSamplingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.TumblingTimeSamplingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.throwing.ThrowingExceptionProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.twostage.TwoStageCountProcessor;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -56,6 +60,12 @@ public enum BuiltinPipePlugin {
       "tumbling-time-sampling-processor", TumblingTimeSamplingProcessor.class),
   SDT_SAMPLING_PROCESSOR("sdt-sampling-processor", SwingingDoorTrendingSamplingProcessor.class),
   THROWING_EXCEPTION_PROCESSOR("throwing-exception-processor", ThrowingExceptionProcessor.class),
+  AGGREGATE_PROCESSOR("aggregate-processor", AggregateProcessor.class),
+  COUNT_POINT_PROCESSOR("count-point-processor", TwoStageCountProcessor.class),
+
+  // Hidden-processors, which are plugins of the processors
+  STANDARD_STATISTICS_PROCESSOR("standard-statistics-processor", StandardStatisticsProcessor.class),
+  TUMBLING_WINDOWING_PROCESSOR("tumbling-windowing-processor", TumblingWindowingProcessor.class),
 
   // connectors
   DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingConnector.class),
@@ -117,6 +127,9 @@ public enum BuiltinPipePlugin {
                   TUMBLING_TIME_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   SDT_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   THROWING_EXCEPTION_PROCESSOR.getPipePluginName().toUpperCase(),
+                  AGGREGATE_PROCESSOR.getPipePluginName().toUpperCase(),
+                  STANDARD_STATISTICS_PROCESSOR.getPipePluginName().toUpperCase(),
+                  TUMBLING_WINDOWING_PROCESSOR.getPipePluginName().toUpperCase(),
                   // Connectors
                   DO_NOTHING_CONNECTOR.getPipePluginName().toUpperCase(),
                   IOTDB_THRIFT_CONNECTOR.getPipePluginName().toUpperCase(),

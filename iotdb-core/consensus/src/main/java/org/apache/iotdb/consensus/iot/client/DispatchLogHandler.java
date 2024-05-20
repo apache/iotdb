@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,10 +74,7 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
           messages);
       sleepCorrespondingTimeAndRetryAsynchronous();
     } else {
-      thread.getSyncStatus().removeBatch(batch);
-      // update safely deleted search index after last flushed sync index may be updated by
-      // removeBatch
-      thread.updateSafelyDeletedSearchIndex();
+      completeBatch(batch);
     }
     logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
   }
@@ -91,12 +89,20 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   public void onError(Exception exception) {
     ++retryCount;
     if (logger.isWarnEnabled()) {
+      Throwable rootCause = ExceptionUtils.getRootCause(exception);
       logger.warn(
           "Can not send {} to peer for {} times {} because {}",
           batch,
           thread.getPeer(),
           retryCount,
-          ExceptionUtils.getRootCause(exception).toString());
+          rootCause.toString());
+      // skip TApplicationException caused by follower
+      if (rootCause instanceof TApplicationException) {
+        completeBatch(batch);
+        logger.warn("Skip retrying this Batch {} because of TApplicationException.", batch);
+        logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
+        return;
+      }
     }
     sleepCorrespondingTimeAndRetryAsynchronous();
   }
@@ -126,5 +132,12 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
             },
             sleepTime,
             TimeUnit.MILLISECONDS);
+  }
+
+  private void completeBatch(Batch batch) {
+    thread.getSyncStatus().removeBatch(batch);
+    // update safely deleted search index after last flushed sync index may be updated by
+    // removeBatch
+    thread.updateSafelyDeletedSearchIndex();
   }
 }

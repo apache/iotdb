@@ -27,15 +27,15 @@ import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -113,6 +113,7 @@ public class SessionTest {
             .fetchSize(1000)
             .zoneId(ZoneId.systemDefault())
             .enableRedirection(true)
+            .enableRecordsAutoConvertTablet(true)
             .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
             .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
             .version(Version.V_0_13)
@@ -964,9 +965,9 @@ public class SessionTest {
     map.put("one", tablet);
     session.insertAlignedTablets(map, false);
     session.setEnableRedirection(true);
-    Assert.assertEquals(true, session.isEnableRedirection());
+    Assert.assertTrue(session.isEnableRedirection());
     session.setEnableQueryRedirection(true);
-    Assert.assertEquals(true, session.isEnableQueryRedirection());
+    Assert.assertTrue(session.isEnableQueryRedirection());
   }
 
   @Test
@@ -1198,5 +1199,11 @@ public class SessionTest {
     } catch (IllegalArgumentException e) {
       assertEquals("nodeUrls shouldn't be empty.", e.getMessage());
     }
+  }
+
+  @Test
+  public void testTimeoutUsingBuilder() {
+    ISession session1 = new Session.Builder().timeOut(1).build();
+    assertEquals(1L, session1.getQueryTimeout());
   }
 }

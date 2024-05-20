@@ -57,7 +57,7 @@ public interface PipeExtractor extends PipePlugin {
    * PipeExtractor#customize(PipeParameters, PipeExtractorRuntimeConfiguration)} is called.
    *
    * @param validator the validator used to validate {@link PipeParameters}
-   * @throws Exception if any parameter is not valid
+   * @throws Exception if any {@link PipeParameters} is not valid
    */
   void validate(PipeParameterValidator validator) throws Exception;
 

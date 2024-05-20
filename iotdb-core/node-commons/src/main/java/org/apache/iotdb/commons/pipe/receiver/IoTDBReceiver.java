@@ -27,7 +27,7 @@ public interface IoTDBReceiver {
 
   IoTDBConnectorRequestVersion getVersion();
 
-  TPipeTransferResp receive(TPipeTransferReq req);
+  TPipeTransferResp receive(final TPipeTransferReq req);
 
   void handleExit();
 }

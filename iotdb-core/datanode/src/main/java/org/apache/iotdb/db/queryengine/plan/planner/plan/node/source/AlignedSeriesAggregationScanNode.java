@@ -33,9 +33,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.Aggregatio
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
 
@@ -49,7 +49,7 @@ import java.util.Objects;
 public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNode {
 
   // The paths of the target series which will be aggregated.
-  private final AlignedPath alignedPath;
+  private AlignedPath alignedPath;
 
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
@@ -110,6 +110,10 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
 
   public AlignedPath getAlignedPath() {
     return alignedPath;
+  }
+
+  public void setAlignedPath(AlignedPath alignedPath) {
+    this.alignedPath = alignedPath;
   }
 
   @Override

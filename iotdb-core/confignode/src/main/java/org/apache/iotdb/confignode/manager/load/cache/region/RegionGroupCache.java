@@ -19,35 +19,35 @@
 
 package org.apache.iotdb.confignode.manager.load.cache.region;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * RegionGroupCache caches the RegionHeartbeatSamples of all Regions in the same RegionGroup. Update
+ * and cache the current statistics of the RegionGroup based on the latest RegionHeartbeatSamples
+ * from all Regions it contains.
+ */
 public class RegionGroupCache {
 
-  private final TConsensusGroupId consensusGroupId;
-
+  private final String database;
   // Map<DataNodeId(where a RegionReplica resides in), RegionCache>
   private final Map<Integer, RegionCache> regionCacheMap;
-
-  // The previous RegionGroupStatistics, used for comparing with
-  // the current RegionGroupStatistics to initiate notification when they are different
-  protected AtomicReference<RegionGroupStatistics> previousStatistics;
   // The current RegionGroupStatistics, used for providing statistics to other services
   private final AtomicReference<RegionGroupStatistics> currentStatistics;
 
   /** Constructor for create RegionGroupCache with default RegionGroupStatistics. */
-  public RegionGroupCache(TConsensusGroupId consensusGroupId) {
-    this.consensusGroupId = consensusGroupId;
+  public RegionGroupCache(String database, Set<Integer> dataNodeIds) {
+    this.database = database;
     this.regionCacheMap = new ConcurrentHashMap<>();
-
-    this.previousStatistics =
-        new AtomicReference<>(RegionGroupStatistics.generateDefaultRegionGroupStatistics());
+    dataNodeIds.forEach(dataNodeId -> regionCacheMap.put(dataNodeId, new RegionCache()));
     this.currentStatistics =
         new AtomicReference<>(RegionGroupStatistics.generateDefaultRegionGroupStatistics());
   }
@@ -57,74 +57,56 @@ public class RegionGroupCache {
    *
    * @param dataNodeId Where the specified Region resides
    * @param newHeartbeatSample The newest RegionHeartbeatSample
+   * @param overwrite Able to overwrite Adding or Removing
    */
+  public void cacheHeartbeatSample(
+      int dataNodeId, RegionHeartbeatSample newHeartbeatSample, boolean overwrite) {
+    // Only cache sample when the corresponding loadCache exists
+    Optional.ofNullable(regionCacheMap.get(dataNodeId))
+        .ifPresent(region -> region.cacheHeartbeatSample(newHeartbeatSample, overwrite));
+  }
+
+  @TestOnly
   public void cacheHeartbeatSample(int dataNodeId, RegionHeartbeatSample newHeartbeatSample) {
-    regionCacheMap
-        .computeIfAbsent(dataNodeId, empty -> new RegionCache())
-        .cacheHeartbeatSample(newHeartbeatSample);
+    cacheHeartbeatSample(dataNodeId, newHeartbeatSample, false);
   }
 
   /**
-   * Invoking periodically in the Cluster-LoadStatistics-Service to update currentStatistics and
-   * compare with the previousStatistics, in order to detect whether the RegionGroup's statistics
-   * has changed.
+   * Create the cache of the specified Region.
    *
-   * @return True if the currentStatistics has changed recently(compare with the
-   *     previousStatistics), false otherwise
+   * @param dataNodeId the specified DataNode
    */
-  public boolean periodicUpdate() {
-    updateCurrentStatistics();
-    if (!currentStatistics.get().equals(previousStatistics.get())) {
-      previousStatistics.set(currentStatistics.get());
-      return true;
-    } else {
-      return false;
-    }
+  public void createRegionCache(int dataNodeId) {
+    regionCacheMap.put(dataNodeId, new RegionCache());
   }
 
   /**
-   * Actively append custom NodeHeartbeatSamples to force a change in the RegionGroupStatistics.
+   * Remove the cache of the specified Region in the specified RegionGroup.
    *
-   * <p>For example, this interface can be invoked in RegionGroup creating process to forcibly
-   * activate the corresponding RegionGroup's status to Available without waiting for heartbeat
-   * sampling
-   *
-   * <p>Notice: The ConfigNode-leader doesn't know the specified RegionGroup's statistics has
-   * changed even if this interface is invoked, since the ConfigNode-leader only detect cluster
-   * RegionGroups' statistics by periodicUpdate interface. However, other service can still read the
-   * update of currentStatistics by invoking getters below.
-   *
-   * @param newHeartbeatSamples Custom RegionHeartbeatSamples that will lead to needed
-   *     RegionGroupStatistics
+   * @param dataNodeId the specified DataNode
    */
-  public void forceUpdate(Map<Integer, RegionHeartbeatSample> newHeartbeatSamples) {
-    newHeartbeatSamples.forEach(this::cacheHeartbeatSample);
-    updateCurrentStatistics();
+  public void removeRegionCache(int dataNodeId) {
+    regionCacheMap.remove(dataNodeId);
   }
 
   /**
-   * Update currentStatistics based on recent NodeHeartbeatSamples that cached in the slidingWindow.
+   * Update currentStatistics based on the latest NodeHeartbeatSamples that cached in the
+   * slidingWindow.
    */
-  protected void updateCurrentStatistics() {
-    Map<Integer, RegionStatistics> regionStatisticsMap = new HashMap<>();
-    for (Map.Entry<Integer, RegionCache> cacheEntry : regionCacheMap.entrySet()) {
-      // Update RegionStatistics
-      RegionStatistics regionStatistics = cacheEntry.getValue().getRegionStatistics();
-      regionStatisticsMap.put(cacheEntry.getKey(), regionStatistics);
-    }
-
-    // Update RegionGroupStatus
-    RegionGroupStatus status = updateRegionGroupStatus(regionStatisticsMap);
-
-    RegionGroupStatistics newRegionGroupStatistics =
-        new RegionGroupStatistics(status, regionStatisticsMap);
-    if (!currentStatistics.get().equals(newRegionGroupStatistics)) {
-      // Update RegionGroupStatistics if necessary
-      currentStatistics.set(newRegionGroupStatistics);
-    }
+  public void updateCurrentStatistics() {
+    regionCacheMap.values().forEach(RegionCache::updateCurrentStatistics);
+    Map<Integer, RegionStatistics> regionStatisticsMap =
+        regionCacheMap.entrySet().stream()
+            .collect(
+                TreeMap::new,
+                (map, entry) -> map.put(entry.getKey(), entry.getValue().getCurrentStatistics()),
+                TreeMap::putAll);
+    currentStatistics.set(
+        new RegionGroupStatistics(
+            caculateRegionGroupStatus(regionStatisticsMap), regionStatisticsMap));
   }
 
-  private RegionGroupStatus updateRegionGroupStatus(
+  private RegionGroupStatus caculateRegionGroupStatus(
       Map<Integer, RegionStatistics> regionStatisticsMap) {
     int unknownCount = 0;
     int readonlyCount = 0;
@@ -160,11 +142,15 @@ public class RegionGroupCache {
     }
   }
 
-  public RegionGroupStatistics getStatistics() {
+  public RegionGroupStatistics getCurrentStatistics() {
     return currentStatistics.get();
   }
 
-  public RegionGroupStatistics getPreviousStatistics() {
-    return previousStatistics.get();
+  public String getDatabase() {
+    return database;
+  }
+
+  public Set<Integer> getRegionLocations() {
+    return regionCacheMap.keySet();
   }
 }

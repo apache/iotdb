@@ -104,7 +104,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
         e);
   }
 
-  /** for asynced ThriftService. */
+  /** For async ThriftService. */
   @SuppressWarnings("squid:S107")
   protected AbstractThriftServiceThread(
       TBaseAsyncProcessor<?> processor,
@@ -160,7 +160,7 @@ public abstract class AbstractThriftServiceThread extends Thread {
     }
   }
 
-  /** for synced ThriftServiceThread */
+  /** For sync ThriftServiceThread */
   @SuppressWarnings("squid:S107")
   protected AbstractThriftServiceThread(
       TProcessor processor,

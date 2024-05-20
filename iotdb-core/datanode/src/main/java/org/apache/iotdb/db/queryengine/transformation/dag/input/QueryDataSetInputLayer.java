@@ -26,8 +26,9 @@ import org.apache.iotdb.db.queryengine.transformation.dag.memory.SafetyLine;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.SafetyLine.SafetyPile;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.RowListForwardIterator;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
+
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.enums.TSDataType;
 
 public class QueryDataSetInputLayer {
 

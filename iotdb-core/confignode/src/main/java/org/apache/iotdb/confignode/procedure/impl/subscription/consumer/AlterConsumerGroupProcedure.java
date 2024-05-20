@@ -20,10 +20,10 @@
 package org.apache.iotdb.confignode.procedure.impl.subscription.consumer;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.subscription.AbstractOperateSubscriptionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.SubscriptionOperation;
@@ -31,8 +31,9 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +42,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProcedure {
 
@@ -56,6 +58,15 @@ public class AlterConsumerGroupProcedure extends AbstractOperateSubscriptionProc
   public AlterConsumerGroupProcedure(ConsumerGroupMeta updatedConsumerGroupMeta) {
     super();
     this.updatedConsumerGroupMeta = updatedConsumerGroupMeta;
+  }
+
+  /** This is only used when the subscription info lock is held by another procedure. */
+  public AlterConsumerGroupProcedure(
+      ConsumerGroupMeta updatedConsumerGroupMeta,
+      AtomicReference<SubscriptionInfo> subscriptionInfo) {
+    super();
+    this.updatedConsumerGroupMeta = updatedConsumerGroupMeta;
+    this.subscriptionInfo = subscriptionInfo;
   }
 
   @Override

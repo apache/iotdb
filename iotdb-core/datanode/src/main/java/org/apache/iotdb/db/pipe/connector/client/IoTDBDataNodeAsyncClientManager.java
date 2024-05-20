@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBClientManager;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -42,9 +43,14 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY;
 
 public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     implements IoTDBDataNodeCacheLeaderClientManager {
@@ -59,7 +65,10 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new AtomicReference<>();
   private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> endPoint2Client;
 
-  public IoTDBDataNodeAsyncClientManager(List<TEndPoint> endPoints, boolean useLeaderCache) {
+  private final LoadBalancer loadBalancer;
+
+  public IoTDBDataNodeAsyncClientManager(
+      List<TEndPoint> endPoints, boolean useLeaderCache, String loadBalanceStrategy) {
     super(endPoints, useLeaderCache);
 
     endPointSet = new HashSet<>(endPoints);
@@ -75,26 +84,39 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       }
     }
     endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get();
+
+    switch (loadBalanceStrategy) {
+      case CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY:
+        loadBalancer = new RoundRobinLoadBalancer();
+        break;
+      case CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY:
+        loadBalancer = new RandomLoadBalancer();
+        break;
+      case CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY:
+        loadBalancer = new PriorityLoadBalancer();
+        break;
+      default:
+        LOGGER.warn(
+            "Unknown load balance strategy: {}, use round-robin strategy instead.",
+            loadBalanceStrategy);
+        loadBalancer = new RoundRobinLoadBalancer();
+    }
   }
 
   public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
-    final int clientSize = endPointList.size();
-    while (true) {
-      final TEndPoint targetNodeUrl = endPointList.get((int) (currentClientIndex++ % clientSize));
-      final AsyncPipeDataTransferServiceClient client = endPoint2Client.borrowClient(targetNodeUrl);
-      if (handshakeIfNecessary(targetNodeUrl, client)) {
-        return client;
-      }
-    }
+    return loadBalancer.borrowClient();
   }
 
   public AsyncPipeDataTransferServiceClient borrowClient(String deviceId) throws Exception {
-    if (!useLeaderCache) {
+    if (!useLeaderCache || Objects.isNull(deviceId)) {
       return borrowClient();
     }
 
-    final TEndPoint endPoint = LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId);
-    if (endPoint == null) {
+    return borrowClient(LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId));
+  }
+
+  public AsyncPipeDataTransferServiceClient borrowClient(TEndPoint endPoint) throws Exception {
+    if (!useLeaderCache || Objects.isNull(endPoint)) {
       return borrowClient();
     }
 
@@ -185,6 +207,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+
+    client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
     client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);
     waitHandshakeFinished(isHandshakeFinished);
 
@@ -197,10 +221,12 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
           targetNodeUrl.getIp(),
           targetNodeUrl.getPort());
 
+      supportModsIfIsDataNodeReceiver = false;
       isHandshakeFinished.set(false);
       resp.set(null);
       exception.set(null);
 
+      client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
       client.pipeTransfer(
           PipeTransferDataNodeHandshakeV1Req.toTPipeTransferReq(
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
@@ -237,5 +263,56 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     }
 
     LEADER_CACHE_MANAGER.updateLeaderEndPoint(deviceId, endPoint);
+  }
+
+  /////////////////////// Strategies for load balance //////////////////////////
+
+  private interface LoadBalancer {
+    AsyncPipeDataTransferServiceClient borrowClient() throws Exception;
+  }
+
+  private class RoundRobinLoadBalancer implements LoadBalancer {
+    @Override
+    public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
+      final int clientSize = endPointList.size();
+      while (true) {
+        final TEndPoint targetNodeUrl = endPointList.get((int) (currentClientIndex++ % clientSize));
+        final AsyncPipeDataTransferServiceClient client =
+            endPoint2Client.borrowClient(targetNodeUrl);
+        if (handshakeIfNecessary(targetNodeUrl, client)) {
+          return client;
+        }
+      }
+    }
+  }
+
+  private class RandomLoadBalancer implements LoadBalancer {
+    @Override
+    public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
+      final int clientSize = endPointList.size();
+      while (true) {
+        final TEndPoint targetNodeUrl = endPointList.get((int) (Math.random() * clientSize));
+        final AsyncPipeDataTransferServiceClient client =
+            endPoint2Client.borrowClient(targetNodeUrl);
+        if (handshakeIfNecessary(targetNodeUrl, client)) {
+          return client;
+        }
+      }
+    }
+  }
+
+  private class PriorityLoadBalancer implements LoadBalancer {
+    @Override
+    public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
+      while (true) {
+        for (final TEndPoint targetNodeUrl : endPointList) {
+          final AsyncPipeDataTransferServiceClient client =
+              endPoint2Client.borrowClient(targetNodeUrl);
+          if (handshakeIfNecessary(targetNodeUrl, client)) {
+            return client;
+          }
+        }
+      }
+    }
   }
 }

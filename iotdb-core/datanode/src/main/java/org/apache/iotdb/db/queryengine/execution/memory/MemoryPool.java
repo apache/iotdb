@@ -21,12 +21,12 @@ package org.apache.iotdb.db.queryengine.execution.memory;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.runtime.MemoryLeakException;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,6 +52,7 @@ public class MemoryPool {
     private final String fragmentInstanceId;
     private final String planNodeId;
     private final long bytesToReserve;
+
     /**
      * MemoryReservationFuture is created when SinkHandle or SourceHandle tries to reserve memory
      * from pool. This field is max Bytes that SinkHandle or SourceHandle can reserve.
@@ -115,6 +116,7 @@ public class MemoryPool {
   private final long maxBytesPerFragmentInstance;
 
   private final AtomicLong remainingBytes;
+
   /** queryId -> fragmentInstanceId -> planNodeId -> bytesReserved. */
   private final Map<String, Map<String, Map<String, Long>>> queryMemoryReservations =
       new ConcurrentHashMap<>();
@@ -223,9 +225,9 @@ public class MemoryPool {
       String planNodeId,
       long bytesToReserve,
       long maxBytesCanReserve) {
-    Validate.notNull(queryId);
-    Validate.notNull(fragmentInstanceId);
-    Validate.notNull(planNodeId);
+    Validate.notNull(queryId, "queryId can not be null.");
+    Validate.notNull(fragmentInstanceId, "fragmentInstanceId can not be null.");
+    Validate.notNull(planNodeId, "planNodeId can not be null.");
     Validate.isTrue(
         bytesToReserve > 0L && bytesToReserve <= maxBytesPerFragmentInstance,
         "bytesToReserve should be in (0,maxBytesPerFI]. maxBytesPerFI: %d",
@@ -263,9 +265,9 @@ public class MemoryPool {
       String planNodeId,
       long bytesToReserve,
       long maxBytesCanReserve) {
-    Validate.notNull(queryId);
-    Validate.notNull(fragmentInstanceId);
-    Validate.notNull(planNodeId);
+    Validate.notNull(queryId, "queryId can not be null.");
+    Validate.notNull(fragmentInstanceId, "fragmentInstanceId can not be null.");
+    Validate.notNull(planNodeId, "planNodeId can not be null.");
     Validate.isTrue(
         bytesToReserve > 0L && bytesToReserve <= maxBytesPerFragmentInstance,
         "bytesToReserve should be in (0,maxBytesPerFI]. maxBytesPerFI: %d",
@@ -288,10 +290,10 @@ public class MemoryPool {
    */
   @SuppressWarnings("squid:S2445")
   public synchronized long tryCancel(ListenableFuture<Void> future) {
+    Validate.notNull(future, "The future to be cancelled can not be null.");
     // add synchronized on the future to avoid that the future is concurrently completed by
     // MemoryPool.free() which may lead to memory leak.
     synchronized (future) {
-      Validate.notNull(future, "The future to be cancelled can not be null.");
       // If the future is not a MemoryReservationFuture, it must have been completed.
       if (future.isDone()) {
         return 0L;

@@ -27,7 +27,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -49,14 +49,14 @@ import java.util.Map;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2.class})
+@Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
   @Test
   public void testExtractorValidParameter() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
     // ---------------------------------------------------------- //
     // Scenario 1: when 'extractor.history.enable' is set to true //
@@ -64,7 +64,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
 
     // Scenario 1.1: test when 'extractor.history.start-time' and 'extractor.history.end-time' are
     // not set
-    String p1_1 =
+    final String p1_1 =
         String.format(
             "create pipe p1_1"
                 + " with extractor ("
@@ -75,15 +75,15 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(p1_1);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
     // Scenario 1.2: test when only 'extractor.history.start-time' is set
-    String p1_2 =
+    final String p1_2 =
         String.format(
             "create pipe p1_2"
                 + " with extractor ("
@@ -95,15 +95,15 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(p1_2);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
     // Scenario 1.3: test when only 'extractor.history.end-time' is set
-    String p1_3 =
+    final String p1_3 =
         String.format(
             "create pipe p1_3"
                 + " with extractor ("
@@ -115,15 +115,15 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(p1_3);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
     // Scenario 1.4: test when 'extractor.history.start-time' equals 'extractor.history.end-time'
-    String p1_4 =
+    final String p1_4 =
         String.format(
             "create pipe p1_4"
                 + " with extractor ("
@@ -136,15 +136,15 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(p1_4);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
     // Scenario 1.5: test when 'extractor.history.end-time' is future time
-    String p1_5 =
+    final String p1_5 =
         String.format(
             "create pipe p1_5"
                 + " with extractor ("
@@ -157,10 +157,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(p1_5);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
@@ -171,7 +171,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
     // ---------------------------------------------------------------------- //
 
     // Scenario 2.1: test when only 'source.start-time' is set
-    String p2_1 =
+    final String p2_1 =
         String.format(
             "create pipe p2_1"
                 + " with source ("
@@ -182,15 +182,15 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(p2_1);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
     // Scenario 2.2: test when only 'source.end-time' is set
-    String p2_2 =
+    final String p2_2 =
         String.format(
             "create pipe p2_2"
                 + " with source ("
@@ -201,15 +201,15 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(p2_2);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
     // Scenario 2.3: test when 'source.start-time' equals 'source.end-time'
-    String p2_3 =
+    final String p2_3 =
         String.format(
             "create pipe p2_3"
                 + " with source ("
@@ -221,15 +221,15 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(p2_3);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
     // Scenario 2.4: test when only when 'source.start-time' is less than 'source.end-time'
-    String p2_4 =
+    final String p2_4 =
         String.format(
             "create pipe p2_4"
                 + " with source ("
@@ -241,10 +241,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(p2_4);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
@@ -255,7 +255,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
     // ---------------------------------------------------------------------- //
 
     // Scenario 3.1: test when 'source.start-time' is timestamp string
-    String p3_1 =
+    final String p3_1 =
         String.format(
             "create pipe p3_1"
                 + " with source ("
@@ -267,10 +267,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(p3_1);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
@@ -279,13 +279,13 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testExtractorInvalidParameter() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
     // Scenario 1: invalid 'extractor.history.start-time'
-    String formatString =
+    final String formatString =
         String.format(
             "create pipe p1"
                 + " with extractor ("
@@ -298,21 +298,21 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
                 + "'connector.batch.enable'='false')",
             "%s", receiverIp, receiverPort);
 
-    List<String> invalidStartTimes =
+    final List<String> invalidStartTimes =
         Arrays.asList("''", "null", "'null'", "'-1000-01-01T00:00:00'", "'2000-01-01T00:00:0'");
-    for (String invalidStartTime : invalidStartTimes) {
-      try (Connection connection = senderEnv.getConnection();
-          Statement statement = connection.createStatement()) {
+    for (final String invalidStartTime : invalidStartTimes) {
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
         statement.execute(String.format(formatString, invalidStartTime));
         fail();
-      } catch (SQLException ignored) {
+      } catch (final SQLException ignored) {
       }
     }
     assertPipeCount(0);
 
     // Scenario 2: can not set 'extractor.history.enable' and 'extractor.realtime.enable' both to
     // false
-    String p2 =
+    final String p2 =
         String.format(
             "create pipe p2"
                 + " with extractor ("
@@ -324,17 +324,17 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(p2);
       fail();
-    } catch (SQLException ignored) {
+    } catch (final SQLException ignored) {
     }
     assertPipeCount(0);
 
     // Scenario 3: test when 'extractor.history.start-time' is greater than
     // 'extractor.history.end-time'
-    String p3 =
+    final String p3 =
         String.format(
             "create pipe p3"
                 + " with extractor ("
@@ -347,16 +347,16 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(p3);
       fail();
-    } catch (SQLException ignored) {
+    } catch (final SQLException ignored) {
     }
     assertPipeCount(0);
 
     // Scenario 4: test when 'source.start-time' is greater than 'source.end-time'
-    String p4 =
+    final String p4 =
         String.format(
             "create pipe p4"
                 + " with source ("
@@ -368,23 +368,23 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
                 + "'connector.port'='%s',"
                 + "'connector.batch.enable'='false')",
             receiverIp, receiverPort);
-    try (Connection connection = senderEnv.getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(p4);
       fail();
-    } catch (SQLException ignored) {
+    } catch (final SQLException ignored) {
     }
     assertPipeCount(0);
   }
 
   @Test
   public void testExtractorPatternMatch() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
@@ -406,9 +406,9 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", null);
       extractorAttributes.put("extractor.inclusion", "data");
@@ -418,7 +418,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      List<String> patterns =
+      final List<String> patterns =
           Arrays.asList(
               "root.db.nonExistPath", // match nothing
               "root.nonAligned.1TS.s_float",
@@ -434,12 +434,12 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
               "root.aligned.1" // match device root.aligned.1TS, 100TS and 100TS
               );
 
-      List<Integer> expectedTimeseriesCount =
+      final List<Integer> expectedTimeseriesCount =
           Arrays.asList(0, 1, 2, 3, 4, 5, 6, 11, 16, 16, 18, 20);
 
       for (int i = 0; i < patterns.size(); ++i) {
         extractorAttributes.replace("extractor.pattern", patterns.get(i));
-        TSStatus status =
+        final TSStatus status =
             client.createPipe(
                 new TCreatePipeReq("p" + i, connectorAttributes)
                     .setExtractorAttributes(extractorAttributes)
@@ -447,6 +447,14 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p" + i).getCode());
+        // We add flush here because the pipe may be created on the new IoT leader
+        // and the old leader's data may come as an unclosed historical tsfile
+        // and is skipped flush when the pipe starts. In this case, the "waitForTsFileClose()"
+        // may not return until a flush is executed, namely the data transfer relies
+        // on a flush operation.
+        if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+          return;
+        }
         assertTimeseriesCountOnReceiver(receiverEnv, expectedTimeseriesCount.get(i));
       }
 
@@ -471,16 +479,16 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testMatchingMultipleDatabases() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", "root.db1");
       extractorAttributes.put("extractor.inclusion", "data");
@@ -554,12 +562,12 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testHistoryAndRealtime() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
@@ -572,9 +580,9 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -644,12 +652,12 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testHistoryStartTimeAndEndTimeWorkingWithOrWithoutPattern() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
@@ -662,9 +670,9 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", "root.db.d1");
       extractorAttributes.put("extractor.inclusion", "data");
@@ -713,12 +721,12 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testExtractorTimeRangeMatch() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // insert history data
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
@@ -732,9 +740,9 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -745,7 +753,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       extractorAttributes.put("source.start-time", "1970-01-01T08:00:02+08:00");
       extractorAttributes.put("source.end-time", "1970-01-01T08:00:04+08:00");
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -758,7 +766,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
           "count(root.db.d1.at1),",
           Collections.singleton("3,"));
 
-      // insert realtime data that overlapped with time range
+      // Insert realtime data that overlapped with time range
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
@@ -774,7 +782,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
           "count(root.db.d1.at1),count(root.db.d3.at1),",
           Collections.singleton("3,3,"));
 
-      // insert realtime data that does not overlap with time range
+      // Insert realtime data that does not overlap with time range
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
@@ -794,12 +802,12 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testSourceStartTimeAndEndTimeWorkingWithOrWithoutPattern() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
@@ -812,9 +820,9 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("source.pattern", "root.db.d1");
       extractorAttributes.put("source.inclusion", "data");
@@ -866,9 +874,9 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
   }
 
   private void assertPipeCount(int count) throws Exception {
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(count, showPipeResult.size());
       // for (TShowPipeInfo showPipeInfo : showPipeResult) {
       //   System.out.println(showPipeInfo);

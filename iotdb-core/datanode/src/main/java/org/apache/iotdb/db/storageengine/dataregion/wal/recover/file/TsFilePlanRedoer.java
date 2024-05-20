@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -41,15 +42,11 @@ import java.util.List;
  */
 public class TsFilePlanRedoer {
   private final TsFileResource tsFileResource;
-  // only unsequence file tolerates duplicated data
-  private final boolean sequence;
-
   // store data when redoing logs
   private IMemTable recoveryMemTable;
 
-  public TsFilePlanRedoer(TsFileResource tsFileResource, boolean sequence) {
+  public TsFilePlanRedoer(TsFileResource tsFileResource) {
     this.tsFileResource = tsFileResource;
-    this.sequence = sequence;
     this.recoveryMemTable =
         new PrimitiveMemTable(tsFileResource.getDatabaseName(), tsFileResource.getDataRegionId());
     WritingMetrics.getInstance().recordActiveMemTableCount(tsFileResource.getDataRegionId(), 1);
@@ -89,7 +86,7 @@ public class TsFilePlanRedoer {
       } else {
         minTimeInNode = ((InsertTabletNode) node).getTimes()[0];
       }
-      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTimeInNode && sequence) {
+      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTimeInNode) {
         return;
       }
     }
@@ -107,6 +104,30 @@ public class TsFilePlanRedoer {
       } else {
         recoveryMemTable.insertTablet(
             (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount());
+      }
+    }
+  }
+
+  void redoInsertRows(InsertRowsNode insertRowsNode) {
+    for (InsertRowNode node : insertRowsNode.getInsertRowNodeList()) {
+      if (!node.hasValidMeasurements()) {
+        continue;
+      }
+      if (tsFileResource != null) {
+        // orders of insert node is guaranteed by storage engine, just check time in the file
+        // the last chunk group may contain the same data with the logs, ignore such logs in seq
+        // file
+        long lastEndTime = tsFileResource.getEndTime(node.getDeviceID());
+        long minTimeInNode;
+        minTimeInNode = node.getTime();
+        if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTimeInNode) {
+          continue;
+        }
+      }
+      if (node.isAligned()) {
+        recoveryMemTable.insertAlignedRow(node);
+      } else {
+        recoveryMemTable.insert(node);
       }
     }
   }

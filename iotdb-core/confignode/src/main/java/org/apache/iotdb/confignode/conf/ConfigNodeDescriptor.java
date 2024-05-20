@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
-import org.apache.iotdb.confignode.manager.load.balancer.router.leader.ILeaderBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractLeaderBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -39,9 +39,11 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Properties;
 
@@ -94,6 +96,7 @@ public class ConfigNodeDescriptor {
     try {
       return new URL(urlString);
     } catch (MalformedURLException e) {
+      LOGGER.warn("get url failed", e);
       return null;
     }
   }
@@ -105,7 +108,7 @@ public class ConfigNodeDescriptor {
       try (InputStream inputStream = url.openStream()) {
 
         LOGGER.info("Start to read config file {}", url);
-        commonProperties.load(inputStream);
+        commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
       } catch (FileNotFoundException e) {
         LOGGER.error("Fail to find config file {}, reject ConfigNode startup.", url, e);
@@ -128,7 +131,7 @@ public class ConfigNodeDescriptor {
       try (InputStream inputStream = url.openStream()) {
         LOGGER.info("start reading ConfigNode conf file: {}", url);
         Properties properties = new Properties();
-        properties.load(inputStream);
+        properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
         commonProperties.putAll(properties);
         loadProperties(commonProperties);
       } catch (IOException | BadNodeUrlException e) {
@@ -352,14 +355,13 @@ public class ConfigNodeDescriptor {
         properties
             .getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy())
             .trim();
-    if (ILeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
-        || ILeaderBalancer.MIN_COST_FLOW_POLICY.equals(leaderDistributionPolicy)) {
+    if (AbstractLeaderBalancer.GREEDY_POLICY.equals(leaderDistributionPolicy)
+        || AbstractLeaderBalancer.CFD_POLICY.equals(leaderDistributionPolicy)) {
       conf.setLeaderDistributionPolicy(leaderDistributionPolicy);
     } else {
       throw new IOException(
           String.format(
-              "Unknown leader_distribution_policy: %s, "
-                  + "please set to \"GREEDY\" or \"MIN_COST_FLOW\"",
+              "Unknown leader_distribution_policy: %s, " + "please set to \"GREEDY\" or \"CFD\"",
               leaderDistributionPolicy));
     }
 

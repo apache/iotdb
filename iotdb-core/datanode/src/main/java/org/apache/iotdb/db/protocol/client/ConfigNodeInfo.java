@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
@@ -33,6 +34,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -56,6 +60,7 @@ public class ConfigNodeInfo {
   public static final ConfigRegionId CONFIG_REGION_ID = new ConfigRegionId(0);
 
   private final File propertiesFile;
+  private final File propertiesFileTmp;
 
   private ConfigNodeInfo() {
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
@@ -65,21 +70,31 @@ public class ConfigNodeInfo {
             IoTDBDescriptor.getInstance().getConfig().getSystemDir()
                 + File.separator
                 + PROPERTIES_FILE_NAME);
+    propertiesFileTmp =
+        SystemFileFactory.INSTANCE.getFile(propertiesFile.getAbsolutePath() + ".tmp");
+    if (propertiesFileTmp.exists()) {
+      try {
+        updatePropertiesFile();
+      } catch (IOException e) {
+        logger.error("Update properties file fail", e);
+      }
+    }
   }
+
   // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     ConfigNodeInfoHolder.INSTANCE = new ConfigNodeInfo();
   }
 
   /** Update ConfigNodeList both in memory and system.properties file */
-  public void updateConfigNodeList(List<TEndPoint> latestConfigNodes) {
+  public boolean updateConfigNodeList(List<TEndPoint> latestConfigNodes) {
     long startTime = System.currentTimeMillis();
     // Check whether the config nodes are latest or not
     configNodeInfoReadWriteLock.readLock().lock();
     try {
-      if (onlineConfigNodes.containsAll(latestConfigNodes)
-          && new HashSet<>(latestConfigNodes).containsAll(onlineConfigNodes)) {
-        return;
+      if (onlineConfigNodes.size() == latestConfigNodes.size()
+          && onlineConfigNodes.containsAll(latestConfigNodes)) {
+        return true;
       }
     } finally {
       configNodeInfoReadWriteLock.readLock().unlock();
@@ -98,9 +113,11 @@ public class ConfigNodeInfo {
           (endTime - startTime));
     } catch (IOException e) {
       logger.error("Update ConfigNode failed.", e);
+      return false;
     } finally {
       configNodeInfoReadWriteLock.writeLock().unlock();
     }
+    return true;
   }
 
   /**
@@ -111,13 +128,24 @@ public class ConfigNodeInfo {
   private void storeConfigNode() throws IOException {
     Properties properties = new Properties();
     try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
-      properties.load(inputStream);
+      properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
     }
     properties.setProperty(
         CONFIG_NODE_LIST, NodeUrlUtils.convertTEndPointUrls(new ArrayList<>(onlineConfigNodes)));
-    try (FileOutputStream fileOutputStream = new FileOutputStream(propertiesFile)) {
-      properties.store(fileOutputStream, "");
+    try (FileOutputStream fileOutputStream = new FileOutputStream(propertiesFileTmp)) {
+      properties.store(new OutputStreamWriter(fileOutputStream, StandardCharsets.UTF_8), "");
     }
+    updatePropertiesFile();
+  }
+
+  private void updatePropertiesFile() throws IOException {
+    if (!propertiesFile.delete()) {
+      String msg =
+          String.format(
+              "Update %s file fail: %s", PROPERTIES_FILE_NAME, propertiesFile.getAbsoluteFile());
+      throw new IOException(msg);
+    }
+    FileUtils.moveFileSafe(propertiesFileTmp, propertiesFile);
   }
 
   public void loadConfigNodeList() {
@@ -127,7 +155,7 @@ public class ConfigNodeInfo {
       configNodeInfoReadWriteLock.writeLock().lock();
       Properties properties = new Properties();
       try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
-        properties.load(inputStream);
+        properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
       } catch (IOException e) {
         throw new RuntimeException(e);
       }

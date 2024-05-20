@@ -23,9 +23,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
-import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -160,6 +161,9 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   @Override
   public long getCurrentTVListSize(String measurement) {
+    if (!memChunkMap.containsKey(measurement)) {
+      return 0;
+    }
     return memChunkMap.get(measurement).getTVList().rowCount();
   }
 

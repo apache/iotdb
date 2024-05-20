@@ -22,8 +22,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,20 +53,20 @@ public class ConfignodeSnapshotParser {
     if (snapshotPathList.isEmpty()) {
       return null;
     }
-    Path[] pathArray = snapshotPathList.toArray(new Path[0]);
+    final Path[] pathArray = snapshotPathList.toArray(new Path[0]);
     Arrays.sort(
         pathArray,
         (o1, o2) -> {
-          String index1 = o1.toFile().getName().split("_")[1];
-          String index2 = o2.toFile().getName().split("_")[1];
+          final String index1 = o1.toFile().getName().split("_")[1];
+          final String index2 = o2.toFile().getName().split("_")[1];
           return Long.compare(Long.parseLong(index2), Long.parseLong(index1));
         });
     return pathArray[0];
   }
 
   public static List<Pair<Pair<Path, Path>, CNSnapshotFileType>> getSnapshots() throws IOException {
-    List<Pair<Pair<Path, Path>, CNSnapshotFileType>> snapshotPairList = new ArrayList<>();
-    String snapshotPath = CONF.getConsensusDir();
+    final List<Pair<Pair<Path, Path>, CNSnapshotFileType>> snapshotPairList = new ArrayList<>();
+    final String snapshotPath = CONF.getConsensusDir();
     try (DirectoryStream<Path> stream =
         Files.newDirectoryStream(Paths.get(snapshotPath), "[0-9]*-[0-9]*-[0-9]*-[0-9]*-[0-9]*")) {
       // In confignode there is only one consensus dir.
@@ -74,18 +74,17 @@ public class ConfignodeSnapshotParser {
       for (Path path : stream) {
         try (DirectoryStream<Path> filestream =
             Files.newDirectoryStream(Paths.get(path.toString() + File.separator + "sm"))) {
-          // find the latest snapshots
           ArrayList<Path> snapshotList = new ArrayList<>();
           for (Path snapshotFolder : filestream) {
             if (snapshotFolder.toFile().isDirectory()) {
               snapshotList.add(snapshotFolder);
             }
           }
-          Path latestSnapshotPath = getLatestSnapshotPath(snapshotList);
+          final Path latestSnapshotPath = getLatestSnapshotPath(snapshotList);
 
           if (latestSnapshotPath != null) {
             // Get role files.
-            String rolePath =
+            final String rolePath =
                 latestSnapshotPath
                     + File.separator
                     + IoTDBConstant.SYSTEM_FOLDER_NAME
@@ -98,15 +97,15 @@ public class ConfignodeSnapshotParser {
               }
             }
             // Get user files.
-            String userPath =
+            final String userPath =
                 latestSnapshotPath
                     + File.separator
                     + IoTDBConstant.SYSTEM_FOLDER_NAME
                     + File.separator
                     + "users";
             try (DirectoryStream<Path> userStream = Files.newDirectoryStream(Paths.get(userPath))) {
-              List<Path> userFilePath = new ArrayList<>();
-              List<Path> userRoleFilePath = new ArrayList<>();
+              final List<Path> userFilePath = new ArrayList<>();
+              final List<Path> userRoleFilePath = new ArrayList<>();
               for (Path user : userStream) {
                 if (user.getFileName().toString().contains("_role.profile")) {
                   userRoleFilePath.add(user);
@@ -125,17 +124,17 @@ public class ConfignodeSnapshotParser {
             }
 
             // Get cluster schema info file and template file.
-            File schemaInfoFile =
+            final File schemaInfoFile =
                 SystemFileFactory.INSTANCE.getFile(
                     latestSnapshotPath + File.separator + SNAPSHOT_CLUSTER_SCHEMA_FILENAME);
-            File templateInfoFile =
+            final File templateInfoFile =
                 SystemFileFactory.INSTANCE.getFile(
                     latestSnapshotPath + File.separator + SNAPSHOT_TEMPLATE_FILENAME);
             if (schemaInfoFile.exists() && templateInfoFile.exists()) {
               snapshotPairList.add(
                   new Pair<>(
                       new Pair<>(schemaInfoFile.toPath(), templateInfoFile.toPath()),
-                      CNSnapshotFileType.SCHEMA_TEMPLATE));
+                      CNSnapshotFileType.SCHEMA));
             }
           }
         }
@@ -146,20 +145,20 @@ public class ConfignodeSnapshotParser {
 
   public static CNPhysicalPlanGenerator translate2PhysicalPlan(
       Path path1, Path path2, CNSnapshotFileType type) throws IOException {
-    if (type == CNSnapshotFileType.SCHEMA_TEMPLATE && (path1 == null || path2 == null)) {
-      LOGGER.warn("schema_template require schemainfo file and template file");
+    if (type == CNSnapshotFileType.SCHEMA && (path1 == null || path2 == null)) {
+      LOGGER.warn("Schema_template require schema info file and template file");
       return null;
     } else if (path1 == null) {
-      LOGGER.warn("path1 should not be null");
+      LOGGER.warn("Path1 should not be null");
       return null;
     }
 
-    if (path1.toFile().exists()) {
-      LOGGER.warn("file {}  not exists", path1.toFile().getName());
+    if (!path1.toFile().exists()) {
+      LOGGER.warn("File {} not exists", path1.toFile().getName());
       return null;
     }
 
-    if (type == CNSnapshotFileType.SCHEMA_TEMPLATE) {
+    if (type == CNSnapshotFileType.SCHEMA) {
       return new CNPhysicalPlanGenerator(path1, path2);
     } else {
       return new CNPhysicalPlanGenerator(path1, type);

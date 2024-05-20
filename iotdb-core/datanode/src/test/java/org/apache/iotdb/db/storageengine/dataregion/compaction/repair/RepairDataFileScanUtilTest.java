@@ -24,11 +24,11 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 
+import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.TimeRange;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -134,5 +134,34 @@ public class RepairDataFileScanUtilTest extends AbstractCompactionTest {
     scanUtil2.scanTsFile();
     Assert.assertFalse(scanUtil2.isBrokenFile());
     Assert.assertTrue(scanUtil2.hasUnsortedData());
+  }
+
+  @Test
+  public void testScanFileWithDifferentCompressionTypes() throws IOException {
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s0",
+          new TimeRange[] {new TimeRange(10, 40), new TimeRange(50, 60)},
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY);
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s0",
+          new TimeRange[] {new TimeRange(10, 40), new TimeRange(50, 60)},
+          TSEncoding.PLAIN,
+          CompressionType.GZIP);
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[] {new TimeRange(10, 40), new TimeRange(20, 50)},
+          TSEncoding.PLAIN,
+          CompressionType.ZSTD);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    RepairDataFileScanUtil scanUtil = new RepairDataFileScanUtil(resource);
+    scanUtil.scanTsFile();
+    Assert.assertFalse(scanUtil.isBrokenFile());
+    Assert.assertTrue(scanUtil.hasUnsortedData());
   }
 }

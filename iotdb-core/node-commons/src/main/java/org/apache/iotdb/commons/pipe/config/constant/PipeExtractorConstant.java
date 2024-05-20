@@ -26,7 +26,7 @@ public class PipeExtractorConstant {
 
   public static final String EXTRACTOR_INCLUSION_KEY = "extractor.inclusion";
   public static final String SOURCE_INCLUSION_KEY = "source.inclusion";
-  public static final String EXTRACTOR_INCLUSION_DEFAULT_VALUE = "all";
+  public static final String EXTRACTOR_INCLUSION_DEFAULT_VALUE = "data.insert";
 
   public static final String EXTRACTOR_EXCLUSION_KEY = "extractor.inclusion.exclusion";
   public static final String SOURCE_EXCLUSION_KEY = "source.inclusion.exclusion";
@@ -58,6 +58,9 @@ public class PipeExtractorConstant {
   public static final String SOURCE_HISTORY_END_TIME_KEY = "source.history.end-time";
   public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_KEY = "extractor.history.loose-range";
   public static final String SOURCE_HISTORY_LOOSE_RANGE_KEY = "source.history.loose-range";
+  public static final String EXTRACTOR_MODS_ENABLE_KEY = "extractor.mods.enable";
+  public static final String SOURCE_MODS_ENABLE_KEY = "source.mods.enable";
+  public static final boolean EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE = false;
 
   public static final String EXTRACTOR_REALTIME_ENABLE_KEY = "extractor.realtime.enable";
   public static final String SOURCE_REALTIME_ENABLE_KEY = "source.realtime.enable";
@@ -71,8 +74,14 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE = "stream";
   public static final String EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE = "batch";
 
+  public static final String EXTRACTOR_START_TIME_KEY = "extractor.start-time";
   public static final String SOURCE_START_TIME_KEY = "source.start-time";
+  public static final String EXTRACTOR_END_TIME_KEY = "extractor.end-time";
   public static final String SOURCE_END_TIME_KEY = "source.end-time";
+
+  public static final String EXTRACTOR_WATERMARK_INTERVAL_KEY = "extractor.watermark-interval-ms";
+  public static final String SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark-interval-ms";
+  public static final long EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE = -1; // -1 means no watermark
 
   private PipeExtractorConstant() {
     throw new IllegalStateException("Utility class");

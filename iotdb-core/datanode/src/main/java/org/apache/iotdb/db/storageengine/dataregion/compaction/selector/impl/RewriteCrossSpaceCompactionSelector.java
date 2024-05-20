@@ -38,9 +38,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
-import org.apache.iotdb.tsfile.exception.StopReadTsFileByInterruptException;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
 
+import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -363,7 +363,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           "{} [{}] Total source files: {} seqFiles, {} unseqFiles. "
               + "Candidate source files: {} seqFiles, {} unseqFiles. "
               + "Selected source files: {} seqFiles, "
-              + "{} unseqFiles, total memory cost {} MB, "
+              + "{} unseqFiles, estimated memory cost {} MB, "
               + "total selected file size is {} MB, "
               + "total selected seq file size is {} MB, "
               + "total selected unseq file size is {} MB, "
@@ -388,6 +388,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       return Collections.singletonList(taskResources);
 
     } catch (MergeException e) {
+      // This exception may be caused by drop database
+      if (!tsFileManager.isAllowCompaction()) {
+        return Collections.emptyList();
+      }
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
     return Collections.emptyList();

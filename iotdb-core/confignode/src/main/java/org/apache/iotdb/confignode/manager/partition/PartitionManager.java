@@ -51,9 +51,10 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotL
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.PollSpecificRegionMaintainTaskPlan;
 import org.apache.iotdb.confignode.consensus.response.partition.CountTimeSlotListResp;
@@ -88,8 +89,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -136,6 +137,7 @@ public class PartitionManager {
   /** Region cleaner. */
   // Monitor for leadership change
   private final Object scheduleMonitor = new Object();
+
   // Try to delete Regions in every 10s
   private static final int REGION_MAINTAINER_WORK_INTERVAL = 10;
   private final ScheduledExecutorService regionMaintainer;
@@ -388,7 +390,7 @@ public class PartitionManager {
       try {
         assignedDataPartition =
             getLoadManager().allocateDataPartition(unassignedDataPartitionSlotsMap);
-      } catch (NoAvailableRegionGroupException e) {
+      } catch (DatabaseNotExistsException | NoAvailableRegionGroupException e) {
         status = getConsensusManager().confirmLeader();
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           // The allocation might fail due to leadership change
@@ -397,9 +399,15 @@ public class PartitionManager {
         }
 
         LOGGER.error("Create DataPartition failed because: ", e);
-        resp.setStatus(
-            new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
-                .setMessage(e.getMessage()));
+        if (e instanceof DatabaseNotExistsException) {
+          resp.setStatus(
+              new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())
+                  .setMessage(e.getMessage()));
+        } else {
+          resp.setStatus(
+              new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode())
+                  .setMessage(e.getMessage()));
+        }
         return resp;
       }
 
@@ -711,6 +719,18 @@ public class PartitionManager {
   }
 
   /**
+   * Only leader use this interface.
+   *
+   * @param database The specified Database
+   * @param type SchemaRegion or DataRegion
+   * @return Deep copy of all Regions' RegionReplicaSet with the specified Database and
+   *     TConsensusGroupType
+   */
+  public List<TRegionReplicaSet> getAllReplicaSets(String database, TConsensusGroupType type) {
+    return partitionInfo.getAllReplicaSets(database, type);
+  }
+
+  /**
    * Get all RegionGroups currently owned by the specified Database.
    *
    * @param dataNodeId The specified dataNodeId
@@ -730,6 +750,11 @@ public class PartitionManager {
   public List<TRegionReplicaSet> getReplicaSets(
       String database, List<TConsensusGroupId> regionGroupIds) {
     return partitionInfo.getReplicaSets(database, regionGroupIds);
+  }
+
+  public boolean isDataNodeContainsRegion(int dataNodeId, TConsensusGroupId regionId) {
+    return getAllReplicaSets(dataNodeId).stream()
+        .anyMatch(tRegionReplicaSet -> tRegionReplicaSet.getRegionId().equals(regionId));
   }
 
   /**
@@ -774,6 +799,18 @@ public class PartitionManager {
   public int getRegionGroupCount(String database, TConsensusGroupType type)
       throws DatabaseNotExistsException {
     return partitionInfo.getRegionGroupCount(database, type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * <p>Get the all RegionGroups currently in the cluster
+   *
+   * @param type SchemaRegion or DataRegion
+   * @return Map<Database, List<RegionGroupIds>>
+   */
+  public Map<String, List<TConsensusGroupId>> getAllRegionGroupIdMap(TConsensusGroupType type) {
+    return partitionInfo.getAllRegionGroupIdMap(type);
   }
 
   /**
@@ -910,6 +947,25 @@ public class PartitionManager {
     return partitionInfo.generateNextRegionGroupId();
   }
 
+  public Optional<TConsensusGroupId> generateTConsensusGroupIdByRegionId(final int regionId) {
+    if (configManager
+        .getPartitionManager()
+        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId))) {
+      return Optional.of(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, regionId));
+    }
+    if (configManager
+        .getPartitionManager()
+        .isRegionGroupExists(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId))) {
+      return Optional.of(new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId));
+    }
+    String msg =
+        String.format(
+            "Submit RegionMigrateProcedure failed, because RegionGroup: %s doesn't exist",
+            regionId);
+    LOGGER.warn(msg);
+    return Optional.empty();
+  }
+
   /**
    * GetNodePathsPartition.
    *
@@ -1000,13 +1056,18 @@ public class PartitionManager {
     return partitionInfo.isRegionGroupExisted(regionGroupId);
   }
 
-  /**
-   * Update region location.
-   *
-   * @param req UpdateRegionLocationReq
-   * @return TSStatus
-   */
-  public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
+  public TSStatus addRegionLocation(AddRegionLocationPlan req) {
+    try {
+      return getConsensusManager().write(req);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
+    }
+  }
+
+  public TSStatus removeRegionLocation(RemoveRegionLocationPlan req) {
     try {
       return getConsensusManager().write(req);
     } catch (ConsensusException e) {

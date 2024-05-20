@@ -19,16 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -43,6 +45,9 @@ import static org.apache.iotdb.db.queryengine.execution.operator.process.last.La
 public class LastQuerySortOperator implements ProcessOperator {
   private static final int MAX_DETECT_COUNT =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LastQuerySortOperator.class);
 
   // we must make sure that data in cachedTsBlock has already been sorted
   // values that have last cache
@@ -238,6 +243,18 @@ public class LastQuerySortOperator implements ProcessOperator {
       childrenSumRetainedSize += child.calculateRetainedSizeAfterCallingNext();
     }
     return cachedTsBlock.getRetainedSizeInBytes() + childrenMaxReturnSize + childrenSumRetainedSize;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + (children == null
+            ? 0
+            : children.stream()
+                .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
+                .sum())
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 
   private int getEndIndex() {

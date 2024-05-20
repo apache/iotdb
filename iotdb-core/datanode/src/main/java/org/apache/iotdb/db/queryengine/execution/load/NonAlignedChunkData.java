@@ -21,21 +21,22 @@ package org.apache.iotdb.db.queryengine.execution.load;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.exception.write.PageException;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.exception.write.PageException;
+import org.apache.tsfile.file.header.ChunkHeader;
+import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -127,6 +128,7 @@ public class NonAlignedChunkData implements ChunkData {
   private void serializeAttr(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(timePartitionSlot.getStartTime(), stream);
     ReadWriteIOUtils.write(device, stream);
+    ReadWriteIOUtils.write(dataSize, stream);
     ReadWriteIOUtils.write(needDecodeChunk, stream);
     chunkHeader.serializeTo(stream); // chunk header already serialize chunk type
     if (needDecodeChunk) {
@@ -262,6 +264,7 @@ public class NonAlignedChunkData implements ChunkData {
     TTimePartitionSlot timePartitionSlot =
         TimePartitionUtils.getTimePartitionSlot(ReadWriteIOUtils.readLong(stream));
     String device = ReadWriteIOUtils.readString(stream);
+    long dataSize = ReadWriteIOUtils.readLong(stream);
     boolean needDecodeChunk = ReadWriteIOUtils.readBool(stream);
     byte chunkType = ReadWriteIOUtils.readByte(stream);
     ChunkHeader chunkHeader = ChunkHeader.deserializeFrom(stream, chunkType);
@@ -274,6 +277,7 @@ public class NonAlignedChunkData implements ChunkData {
     chunkData.needDecodeChunk = needDecodeChunk;
     chunkData.pageNumber = pageNumber;
     chunkData.deserializeTsFileData(stream);
+    chunkData.dataSize = dataSize;
     chunkData.close();
     return chunkData;
   }

@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.input;
 
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
+
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.enums.TSDataType;
 
 import java.util.List;
 

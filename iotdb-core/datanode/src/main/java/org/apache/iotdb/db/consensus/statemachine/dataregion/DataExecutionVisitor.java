@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.consensus.statemachine.dataregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -93,13 +94,13 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
           node.getTimes()[0],
           node.getMeasurements(),
           e.getFailingStatus());
-      // for each error
+      // For each error
       TSStatus firstStatus = null;
       for (TSStatus status : e.getFailingStatus()) {
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           firstStatus = status;
         }
-        // return WRITE_PROCESS_REJECT directly for the consensus retry logic
+        // Return WRITE_PROCESS_REJECT directly for the consensus retry logic
         if (status.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
           return status;
         }
@@ -131,7 +132,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
             insertRowNode.getTime(),
             insertRowNode.getMeasurements(),
             failedEntry.getValue());
-        // return WRITE_PROCESS_REJECT directly for the consensus retry logic
+        // Return WRITE_PROCESS_REJECT directly for the consensus retry logic
         if (failedEntry.getValue().getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
           node.clearResults();
           return failedEntry.getValue();
@@ -161,7 +162,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
             insertTabletNode.getTimes()[0],
             insertTabletNode.getMeasurements(),
             failedEntry.getValue());
-        // return WRITE_PROCESS_REJECT directly for the consensus retry logic
+        // Return WRITE_PROCESS_REJECT directly for the consensus retry logic
         if (failedEntry.getValue().getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
           node.clearResults();
           return failedEntry.getValue();
@@ -197,7 +198,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
             insertRowNode.getTime(),
             insertRowNode.getMeasurements(),
             failedEntry.getValue());
-        // return WRITE_PROCESS_REJECT directly for the consensus retry logic
+        // Return WRITE_PROCESS_REJECT directly for the consensus retry logic
         if (failedEntry.getValue().getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
           node.clearResults();
           return failedEntry.getValue();

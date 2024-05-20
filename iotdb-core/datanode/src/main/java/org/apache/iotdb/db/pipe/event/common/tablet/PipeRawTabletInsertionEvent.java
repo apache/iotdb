@@ -30,7 +30,8 @@ import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.tsfile.write.record.Tablet;
+
+import org.apache.tsfile.write.record.Tablet;
 
 import java.util.Objects;
 import java.util.function.BiConsumer;
@@ -40,12 +41,14 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   private Tablet tablet;
   private final boolean isAligned;
 
-  private EnrichedEvent sourceEvent;
+  private final EnrichedEvent sourceEvent;
   private boolean needToReport;
 
   private PipeTabletMemoryBlock allocatedMemoryBlock;
 
   private TabletInsertionDataContainer dataContainer;
+
+  private ProgressIndex overridingProgressIndex;
 
   private PipeRawTabletInsertionEvent(
       Tablet tablet,
@@ -109,7 +112,6 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     allocatedMemoryBlock.close();
     // Actually release the occupied memory.
     tablet = null;
-    sourceEvent = null;
     dataContainer = null;
     return true;
   }
@@ -122,7 +124,23 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   @Override
+  public void bindProgressIndex(ProgressIndex overridingProgressIndex) {
+    // Normally not all events need to report progress, but if the overridingProgressIndex
+    // is given, indicating that the progress needs to be reported.
+    if (Objects.nonNull(overridingProgressIndex)) {
+      markAsNeedToReport();
+    }
+
+    this.overridingProgressIndex = overridingProgressIndex;
+  }
+
+  @Override
   public ProgressIndex getProgressIndex() {
+    // If the overridingProgressIndex is given, ignore the sourceEvent's progressIndex.
+    if (Objects.nonNull(overridingProgressIndex)) {
+      return overridingProgressIndex;
+    }
+
     return sourceEvent != null ? sourceEvent.getProgressIndex() : MinimumProgressIndex.INSTANCE;
   }
 
@@ -152,7 +170,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
-    long[] timestamps = tablet.timestamps;
+    final long[] timestamps = tablet.timestamps;
     if (Objects.isNull(timestamps) || timestamps.length == 0) {
       return false;
     }
@@ -205,6 +223,11 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
           new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, pipePattern);
     }
     return dataContainer.convertToTablet();
+  }
+
+  public long count() {
+    final Tablet covertedTablet = shouldParseTimeOrPattern() ? convertToTablet() : tablet;
+    return (long) covertedTablet.rowSize * covertedTablet.getSchemas().size();
   }
 
   /////////////////////////// parsePatternOrTime ///////////////////////////

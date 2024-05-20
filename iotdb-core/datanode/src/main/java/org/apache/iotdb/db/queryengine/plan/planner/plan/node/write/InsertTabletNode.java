@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -35,16 +36,17 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferVie
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.NotImplementedException;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -69,7 +71,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   private int rowCount = 0;
 
-  // when this plan is sub-plan split from another InsertTabletNode, this indicates the original
+  // When this plan is sub-plan split from another InsertTabletNode, this indicates the original
   // positions of values in
   // this plan. For example, if the plan contains 5 timestamps, and range = [1,4,10,12], then it
   // means that the first 3
@@ -937,6 +939,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, measurementSize, rowCount);
     isAligned = buffer.get() == 1;
   }
+
   // endregion
 
   @Override

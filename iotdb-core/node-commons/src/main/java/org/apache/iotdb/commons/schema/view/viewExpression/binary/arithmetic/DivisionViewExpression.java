@@ -40,6 +40,7 @@ public class DivisionViewExpression extends ArithmeticBinaryViewExpression {
   public DivisionViewExpression(InputStream inputStream) {
     super(inputStream);
   }
+
   // endregion
 
   // region common interfaces that have to be implemented

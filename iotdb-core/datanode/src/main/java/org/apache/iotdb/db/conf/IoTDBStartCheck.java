@@ -27,9 +27,9 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +38,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
@@ -96,6 +98,7 @@ public class IoTDBStartCheck {
     variableParamValueTable.put(
         DATA_REGION_CONSENSUS_PORT, () -> String.valueOf(config.getDataRegionConsensusPort()));
   }
+
   // endregion
   // region params don't need checking, determined by the system
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
@@ -106,6 +109,7 @@ public class IoTDBStartCheck {
   // endregion
   // region params of old versions
   private static final String VIRTUAL_STORAGE_GROUP_NUM = "virtual_storage_group_num";
+
   // endregion
 
   public static IoTDBStartCheck getInstance() {
@@ -176,7 +180,8 @@ public class IoTDBStartCheck {
       // write properties to system.properties
       try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
         systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
-        properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
+        properties.store(
+            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
       }
       isFirstStart = true;
       return true;
@@ -266,7 +271,8 @@ public class IoTDBStartCheck {
       // overwrite system.properties when first start
       try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
         systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
-        properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
+        properties.store(
+            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
       }
       if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
           && config.getWalMode().equals(WALMode.DISABLE)) {
@@ -309,7 +315,8 @@ public class IoTDBStartCheck {
           });
       properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
       properties.setProperty(COMMIT_ID_STRING, IoTDBConstant.BUILD_INFO);
-      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
+      properties.store(
+          new OutputStreamWriter(tmpFOS, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
       // upgrade finished, delete old system.properties file
       if (propertiesFile.exists()) {
         Files.delete(propertiesFile.toPath());
@@ -380,7 +387,8 @@ public class IoTDBStartCheck {
     try {
       properties.setProperty(IoTDBConstant.CLUSTER_NAME, clusterName);
       properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
-      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
+      properties.store(
+          new OutputStreamWriter(tmpFOS, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file
       if (propertiesFile.exists()) {
         Files.delete(propertiesFile.toPath());
@@ -417,7 +425,8 @@ public class IoTDBStartCheck {
     if (needsSerialize) {
       try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
         systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
-        properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
+        properties.store(
+            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
       }
     }
     long endTime = System.currentTimeMillis();

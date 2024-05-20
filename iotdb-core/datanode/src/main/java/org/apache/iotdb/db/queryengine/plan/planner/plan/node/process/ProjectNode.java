@@ -24,7 +24,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -35,7 +36,7 @@ import java.util.Objects;
 
 public class ProjectNode extends SingleChildProcessNode {
 
-  private final List<String> outputColumnNames;
+  private List<String> outputColumnNames;
 
   public ProjectNode(PlanNodeId id, List<String> outputColumnNames) {
     super(id);
@@ -60,6 +61,10 @@ public class ProjectNode extends SingleChildProcessNode {
   @Override
   public List<String> getOutputColumnNames() {
     return outputColumnNames;
+  }
+
+  public void setOutputColumnNames(List<String> outputColumnNames) {
+    this.outputColumnNames = outputColumnNames;
   }
 
   @Override

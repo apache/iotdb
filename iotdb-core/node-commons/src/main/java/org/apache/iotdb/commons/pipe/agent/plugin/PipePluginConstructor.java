@@ -55,7 +55,7 @@ public abstract class PipePluginConstructor {
 
   public abstract PipePlugin reflectPlugin(PipeParameters pipeParameters);
 
-  protected PipePlugin reflectPluginByKey(String pluginKey) {
+  public PipePlugin reflectPluginByKey(String pluginKey) {
     return pluginConstructors.getOrDefault(pluginKey, () -> reflect(pluginKey)).get();
   }
 

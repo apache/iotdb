@@ -31,6 +31,8 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -50,6 +52,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSc
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
@@ -88,7 +92,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected Map<Integer, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromConfigNode) {
+  protected Map<Integer, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromConfigNode)
+      throws IllegalPathException {
     return new PipeDataNodeBuilder(pipeMetaFromConfigNode).build();
   }
 
@@ -223,8 +228,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   public void stopAllPipesWithCriticalException() {
-    super.stopAllPipesWithCriticalException(
-        IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
+    super.stopAllPipesWithCriticalException(CONFIG.getDataNodeId());
   }
 
   ///////////////////////// Heartbeat /////////////////////////
@@ -321,16 +325,32 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       final String pipeName = pipeMeta.getStaticMeta().getPipeName();
       final List<IoTDBDataRegionExtractor> extractors =
           taskId2ExtractorMap.values().stream()
-              .filter(e -> e.getPipeName().equals(pipeName))
+              .filter(e -> e.getPipeName().equals(pipeName) && e.shouldExtractInsertion())
               .collect(Collectors.toList());
-      if (extractors.isEmpty()
-          || !extractors.get(0).isStreamMode()
+
+      if (extractors.isEmpty()) {
+        continue;
+      }
+
+      if (!extractors.get(0).isStreamMode()
           || extractors.stream()
               .noneMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)) {
+        // Extractors of this pipe might not pin too much MemTables,
+        // still need to check if linked-and-deleted TsFile count exceeds limit.
+        if ((CONFIG.isEnableSeqSpaceCompaction()
+                || CONFIG.isEnableUnseqSpaceCompaction()
+                || CONFIG.isEnableCrossSpaceCompaction())
+            && mayDeletedTsFileSizeReachDangerousThreshold()) {
+          LOGGER.warn(
+              "Pipe {} needs to restart because too many TsFiles are out-of-date.",
+              pipeMeta.getStaticMeta());
+          stuckPipes.add(pipeMeta);
+        }
         continue;
       }
 
       if (mayMemTablePinnedCountReachDangerousThreshold() || mayWalSizeReachThrottleThreshold()) {
+        // Extractors of this pipe may be stuck and pinning too much MemTables.
         LOGGER.warn("Pipe {} may be stuck.", pipeMeta.getStaticMeta());
         stuckPipes.add(pipeMeta);
       }
@@ -340,14 +360,38 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     stuckPipes.parallelStream().forEach(this::restartStuckPipe);
   }
 
+  private boolean mayDeletedTsFileSizeReachDangerousThreshold() {
+    try {
+      final long linkedButDeletedTsFileSize =
+          PipeResourceManager.tsfile().getTotalLinkedButDeletedTsfileSize();
+      final double totalDisk =
+          MetricService.getInstance()
+              .getAutoGauge(
+                  SystemMetric.SYS_DISK_TOTAL_SPACE.toString(),
+                  MetricLevel.CORE,
+                  Tag.NAME.toString(),
+                  // This "system" should stay the same with the one in
+                  // DataNodeInternalRPCServiceImpl.
+                  "system")
+              .getValue();
+      return linkedButDeletedTsFileSize > 0
+          && totalDisk > 0
+          && linkedButDeletedTsFileSize
+              > PipeConfig.getInstance().getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage()
+                  * totalDisk;
+    } catch (Exception e) {
+      LOGGER.warn("Failed to judge if deleted TsFile size reaches dangerous threshold.", e);
+      return false;
+    }
+  }
+
   private boolean mayMemTablePinnedCountReachDangerousThreshold() {
     return PipeResourceManager.wal().getPinnedWalCount()
         >= 10 * PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
   }
 
   private boolean mayWalSizeReachThrottleThreshold() {
-    return 3 * WALManager.getInstance().getTotalDiskUsage()
-        > 2 * IoTDBDescriptor.getInstance().getConfig().getThrottleThreshold();
+    return 3 * WALManager.getInstance().getTotalDiskUsage() > 2 * CONFIG.getThrottleThreshold();
   }
 
   private void restartStuckPipe(PipeMeta pipeMeta) {
@@ -380,15 +424,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     dataRegionPipeTasks.parallelStream().forEach(PipeTask::drop);
 
     // Stop schema region tasks
-    pipeTaskManager
-        .getPipeTasks(pipeMeta.getStaticMeta())
-        .values()
-        .parallelStream()
+    pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta()).values().parallelStream()
         .forEach(PipeTask::stop);
 
     // Re-create data region tasks
-    dataRegionPipeTasks
-        .parallelStream()
+    dataRegionPipeTasks.parallelStream()
         .forEach(
             pipeTask -> {
               final PipeTask newPipeTask =
@@ -409,5 +449,14 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     // Set pipe meta status to STOPPED
     pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+  }
+
+  ///////////////////////// Utils /////////////////////////
+
+  public Set<Integer> getPipeTaskRegionIdSet(String pipeName, long creationTime) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    return pipeMeta == null || pipeMeta.getStaticMeta().getCreationTime() != creationTime
+        ? Collections.emptySet()
+        : pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().keySet();
   }
 }

@@ -24,9 +24,12 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -34,8 +37,6 @@ import java.util.function.Supplier;
 public abstract class IoTDBReceiverAgent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBReceiverAgent.class);
-
-  protected ThreadLocal<IoTDBReceiver> receiverThreadLocal = new ThreadLocal<>();
 
   protected static final Map<Byte, Supplier<IoTDBReceiver>> RECEIVER_CONSTRUCTORS = new HashMap<>();
 
@@ -45,10 +46,14 @@ public abstract class IoTDBReceiverAgent {
     initConstructors();
   }
 
-  public final TPipeTransferResp receive(TPipeTransferReq req) {
+  public final TPipeTransferResp receive(final TPipeTransferReq req) {
+    return receive(null, req);
+  }
+
+  public final TPipeTransferResp receive(final String key, final TPipeTransferReq req) {
     final byte reqVersion = req.getVersion();
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
-      return getReceiver(reqVersion).receive(req);
+      return getReceiver(key, reqVersion).receive(req);
     } else {
       return new TPipeTransferResp(
           RpcUtils.getStatus(
@@ -57,41 +62,69 @@ public abstract class IoTDBReceiverAgent {
     }
   }
 
-  protected final IoTDBReceiver getReceiver(byte reqVersion) {
-    if (receiverThreadLocal.get() == null) {
-      return setAndGetReceiver(reqVersion);
+  protected final IoTDBReceiver getReceiver(final String key, final byte reqVersion) {
+    if (getReceiverWithSpecifiedClient(key) == null) {
+      return setAndGetReceiver(key, reqVersion);
     }
 
-    final byte receiverThreadLocalVersion = receiverThreadLocal.get().getVersion().getVersion();
+    final byte receiverThreadLocalVersion =
+        getReceiverWithSpecifiedClient(key).getVersion().getVersion();
     if (receiverThreadLocalVersion != reqVersion) {
       LOGGER.warn(
           "The receiver version {} is different from the sender version {},"
               + " the receiver will be reset to the sender version.",
           receiverThreadLocalVersion,
           reqVersion);
-      receiverThreadLocal.get().handleExit();
-      receiverThreadLocal.remove();
-      return setAndGetReceiver(reqVersion);
+      getReceiverWithSpecifiedClient(key).handleExit();
+      removeReceiverWithSpecifiedClient(key);
+      return setAndGetReceiver(key, reqVersion);
     }
 
-    return receiverThreadLocal.get();
+    return getReceiverWithSpecifiedClient(key);
   }
 
-  private IoTDBReceiver setAndGetReceiver(byte reqVersion) {
+  private IoTDBReceiver setAndGetReceiver(final String key, final byte reqVersion) {
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
-      receiverThreadLocal.set(RECEIVER_CONSTRUCTORS.get(reqVersion).get());
+      setReceiverWithSpecifiedClient(key, RECEIVER_CONSTRUCTORS.get(reqVersion).get());
     } else {
       throw new UnsupportedOperationException(
           String.format("Unsupported pipe version %d", reqVersion));
     }
-    return receiverThreadLocal.get();
+    return getReceiverWithSpecifiedClient(key);
   }
 
+  protected abstract IoTDBReceiver getReceiverWithSpecifiedClient(final String key);
+
+  protected abstract void setReceiverWithSpecifiedClient(
+      final String key, final IoTDBReceiver receiver);
+
+  protected abstract void removeReceiverWithSpecifiedClient(final String key);
+
   public final void handleClientExit() {
-    final IoTDBReceiver receiver = receiverThreadLocal.get();
+    handleClientExit(null);
+  }
+
+  public final void handleClientExit(String key) {
+    final IoTDBReceiver receiver = getReceiverWithSpecifiedClient(key);
     if (receiver != null) {
       receiver.handleExit();
-      receiverThreadLocal.remove();
+      removeReceiverWithSpecifiedClient(key);
+    }
+  }
+
+  public static void cleanPipeReceiverDir(final File receiverFileDir) {
+    try {
+      FileUtils.deleteDirectory(receiverFileDir);
+      LOGGER.info("Clean pipe receiver dir {} successfully.", receiverFileDir);
+    } catch (Exception e) {
+      LOGGER.warn("Clean pipe receiver dir {} failed.", receiverFileDir, e);
+    }
+
+    try {
+      FileUtils.forceMkdir(receiverFileDir);
+      LOGGER.info("Create pipe receiver dir {} successfully.", receiverFileDir);
+    } catch (IOException e) {
+      LOGGER.warn("Create pipe receiver dir {} failed.", receiverFileDir, e);
     }
   }
 }

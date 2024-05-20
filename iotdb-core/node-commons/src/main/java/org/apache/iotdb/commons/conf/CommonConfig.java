@@ -23,13 +23,15 @@ import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProper
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 
+import org.apache.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class CommonConfig {
@@ -183,8 +185,8 @@ public class CommonConfig {
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
   private int pipeExtractorMatcherCacheSize = 1024;
 
-  private long pipeConnectorHandshakeTimeoutMs = 10 * 1000L; // 10 seconds
-  private long pipeConnectorTransferTimeoutMs = 15 * 60 * 1000L; // 15 minutes
+  private int pipeConnectorHandshakeTimeoutMs = 10 * 1000; // 10 seconds
+  private int pipeConnectorTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
   // recommend to set this value to 3 * pipeSubtaskExecutorMaxThreadNum *
@@ -205,9 +207,11 @@ public class CommonConfig {
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
 
+  private int pipeMaxAllowedHistoricalTsFilePerDataRegion = 100;
   private int pipeMaxAllowedPendingTsFileEpochPerDataRegion = 2;
   private int pipeMaxAllowedPinnedMemTableCount = 50;
   private long pipeMaxAllowedLinkedTsFileCount = 100;
+  private float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage = 0.1F;
   private long pipeStuckRestartIntervalSeconds = 120;
 
   private int pipeMetaReportMaxLogNumPerRound = 10;
@@ -224,16 +228,22 @@ public class CommonConfig {
   private long pipeMemoryAllocateForTsFileSequenceReaderInBytes = (long) 2 * 1024 * 1024; // 2MB
   private long pipeMemoryExpanderIntervalSeconds = (long) 3 * 60; // 3Min
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
+  private long pipeListeningQueueTransferSnapshotThreshold = 1000;
+  private int pipeSnapshotExecutionMaxBatchSize = 1000;
+
+  private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000; // 8 minutes
+  private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000; // 3 minutes
+  private long twoStageAggregateSenderEndPointsCacheInMs = 3 * 60 * 1000; // 3 minutes
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
   private int subscriptionMaxTabletsPerPrefetching = 16;
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
-  private int subscriptionClearMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
-  private int subscriptionClearCommittedEventIntervalSeconds = 30;
-  private int subscriptionRecycleUncommittedEventIntervalSeconds = 240;
+  private int subscriptionRecycleUncommittedEventIntervalMs = 240000; // 240s
+  private long subscriptionDefaultPollTimeoutMs = 30000;
+  private long subscriptionMinPollTimeoutMs = 500;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -255,6 +265,12 @@ public class CommonConfig {
 
   // time in nanosecond precision when starting up
   private final long startUpNanosecond = System.nanoTime();
+
+  private final boolean isIntegrationTest =
+      System.getProperties().containsKey(IoTDBConstant.INTEGRATION_TEST_KILL_POINTS);
+
+  private final Set<String> enabledKillPoints =
+      KillPoint.parseKillPoints(System.getProperty(IoTDBConstant.INTEGRATION_TEST_KILL_POINTS));
 
   CommonConfig() {
     // Empty constructor
@@ -620,20 +636,32 @@ public class CommonConfig {
     this.pipeExtractorMatcherCacheSize = pipeExtractorMatcherCacheSize;
   }
 
-  public long getPipeConnectorHandshakeTimeoutMs() {
+  public int getPipeConnectorHandshakeTimeoutMs() {
     return pipeConnectorHandshakeTimeoutMs;
   }
 
   public void setPipeConnectorHandshakeTimeoutMs(long pipeConnectorHandshakeTimeoutMs) {
-    this.pipeConnectorHandshakeTimeoutMs = pipeConnectorHandshakeTimeoutMs;
+    try {
+      this.pipeConnectorHandshakeTimeoutMs = Math.toIntExact(pipeConnectorHandshakeTimeoutMs);
+    } catch (ArithmeticException e) {
+      this.pipeConnectorHandshakeTimeoutMs = Integer.MAX_VALUE;
+      logger.warn(
+          "Given pipe connector handshake timeout is too large, set to {} ms.", Integer.MAX_VALUE);
+    }
   }
 
-  public long getPipeConnectorTransferTimeoutMs() {
+  public int getPipeConnectorTransferTimeoutMs() {
     return pipeConnectorTransferTimeoutMs;
   }
 
   public void setPipeConnectorTransferTimeoutMs(long pipeConnectorTransferTimeoutMs) {
-    this.pipeConnectorTransferTimeoutMs = pipeConnectorTransferTimeoutMs;
+    try {
+      this.pipeConnectorTransferTimeoutMs = Math.toIntExact(pipeConnectorTransferTimeoutMs);
+    } catch (ArithmeticException e) {
+      this.pipeConnectorTransferTimeoutMs = Integer.MAX_VALUE;
+      logger.warn(
+          "Given pipe connector transfer timeout is too large, set to {} ms.", Integer.MAX_VALUE);
+    }
   }
 
   public int getPipeConnectorReadFileBufferSize() {
@@ -804,6 +832,16 @@ public class CommonConfig {
     return pipeAirGapReceiverPort;
   }
 
+  public int getPipeMaxAllowedHistoricalTsFilePerDataRegion() {
+    return pipeMaxAllowedHistoricalTsFilePerDataRegion;
+  }
+
+  public void setPipeMaxAllowedHistoricalTsFilePerDataRegion(
+      int pipeMaxAllowedPendingTsFileEpochPerDataRegion) {
+    this.pipeMaxAllowedHistoricalTsFilePerDataRegion =
+        pipeMaxAllowedPendingTsFileEpochPerDataRegion;
+  }
+
   public int getPipeMaxAllowedPendingTsFileEpochPerDataRegion() {
     return pipeMaxAllowedPendingTsFileEpochPerDataRegion;
   }
@@ -827,6 +865,16 @@ public class CommonConfig {
 
   public void setPipeMaxAllowedLinkedTsFileCount(long pipeMaxAllowedLinkedTsFileCount) {
     this.pipeMaxAllowedLinkedTsFileCount = pipeMaxAllowedLinkedTsFileCount;
+  }
+
+  public float getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage() {
+    return pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage;
+  }
+
+  public void setPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage(
+      float pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage) {
+    this.pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage =
+        pipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage;
   }
 
   public long getPipeStuckRestartIntervalSeconds() {
@@ -943,6 +991,51 @@ public class CommonConfig {
     this.pipeLeaderCacheMemoryUsagePercentage = pipeLeaderCacheMemoryUsagePercentage;
   }
 
+  public long getPipeListeningQueueTransferSnapshotThreshold() {
+    return pipeListeningQueueTransferSnapshotThreshold;
+  }
+
+  public void setPipeListeningQueueTransferSnapshotThreshold(
+      long pipeListeningQueueTransferSnapshotThreshold) {
+    this.pipeListeningQueueTransferSnapshotThreshold = pipeListeningQueueTransferSnapshotThreshold;
+  }
+
+  public int getPipeSnapshotExecutionMaxBatchSize() {
+    return pipeSnapshotExecutionMaxBatchSize;
+  }
+
+  public void setPipeSnapshotExecutionMaxBatchSize(int pipeSnapshotExecutionMaxBatchSize) {
+    this.pipeSnapshotExecutionMaxBatchSize = pipeSnapshotExecutionMaxBatchSize;
+  }
+
+  public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
+    return twoStageAggregateMaxCombinerLiveTimeInMs;
+  }
+
+  public void setTwoStageAggregateMaxCombinerLiveTimeInMs(
+      long twoStageAggregateMaxCombinerLiveTimeInMs) {
+    this.twoStageAggregateMaxCombinerLiveTimeInMs = twoStageAggregateMaxCombinerLiveTimeInMs;
+  }
+
+  public long getTwoStageAggregateDataRegionInfoCacheTimeInMs() {
+    return twoStageAggregateDataRegionInfoCacheTimeInMs;
+  }
+
+  public void setTwoStageAggregateDataRegionInfoCacheTimeInMs(
+      long twoStageAggregateDataRegionInfoCacheTimeInMs) {
+    this.twoStageAggregateDataRegionInfoCacheTimeInMs =
+        twoStageAggregateDataRegionInfoCacheTimeInMs;
+  }
+
+  public long getTwoStageAggregateSenderEndPointsCacheInMs() {
+    return twoStageAggregateSenderEndPointsCacheInMs;
+  }
+
+  public void setTwoStageAggregateSenderEndPointsCacheInMs(
+      long twoStageAggregateSenderEndPointsCacheInMs) {
+    this.twoStageAggregateSenderEndPointsCacheInMs = twoStageAggregateSenderEndPointsCacheInMs;
+  }
+
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {
     return subscriptionSubtaskExecutorMaxThreadNum;
   }
@@ -980,14 +1073,6 @@ public class CommonConfig {
     this.subscriptionSerializeMaxBlockingTimeMs = subscriptionSerializeMaxBlockingTimeMs;
   }
 
-  public int getSubscriptionClearMaxBlockingTimeMs() {
-    return subscriptionClearMaxBlockingTimeMs;
-  }
-
-  public void setSubscriptionClearMaxBlockingTimeMs(int subscriptionClearMaxBlockingTimeMs) {
-    this.subscriptionClearMaxBlockingTimeMs = subscriptionClearMaxBlockingTimeMs;
-  }
-
   public long getSubscriptionLaunchRetryIntervalMs() {
     return subscriptionLaunchRetryIntervalMs;
   }
@@ -996,24 +1081,30 @@ public class CommonConfig {
     this.subscriptionLaunchRetryIntervalMs = subscriptionLaunchRetryIntervalMs;
   }
 
-  public int getSubscriptionClearCommittedEventIntervalSeconds() {
-    return subscriptionClearCommittedEventIntervalSeconds;
+  public int getSubscriptionRecycleUncommittedEventIntervalMs() {
+    return subscriptionRecycleUncommittedEventIntervalMs;
   }
 
-  public void setSubscriptionClearCommittedEventIntervalSeconds(
-      int subscriptionClearCommittedEventIntervalSeconds) {
-    this.subscriptionClearCommittedEventIntervalSeconds =
-        subscriptionClearCommittedEventIntervalSeconds;
+  public void setSubscriptionRecycleUncommittedEventIntervalMs(
+      int subscriptionRecycleUncommittedEventIntervalMs) {
+    this.subscriptionRecycleUncommittedEventIntervalMs =
+        subscriptionRecycleUncommittedEventIntervalMs;
   }
 
-  public int getSubscriptionRecycleUncommittedEventIntervalSeconds() {
-    return subscriptionRecycleUncommittedEventIntervalSeconds;
+  public long getSubscriptionDefaultPollTimeoutMs() {
+    return subscriptionDefaultPollTimeoutMs;
   }
 
-  public void setSubscriptionRecycleUncommittedEventIntervalSeconds(
-      int subscriptionRecycleUncommittedEventIntervalSeconds) {
-    this.subscriptionRecycleUncommittedEventIntervalSeconds =
-        subscriptionRecycleUncommittedEventIntervalSeconds;
+  public void setSubscriptionDefaultPollTimeoutMs(long subscriptionDefaultPollTimeoutMs) {
+    this.subscriptionDefaultPollTimeoutMs = subscriptionDefaultPollTimeoutMs;
+  }
+
+  public long getSubscriptionMinPollTimeoutMs() {
+    return subscriptionMinPollTimeoutMs;
+  }
+
+  public void setSubscriptionMinPollTimeoutMs(long subscriptionMinPollTimeoutMs) {
+    this.subscriptionMinPollTimeoutMs = subscriptionMinPollTimeoutMs;
   }
 
   public String getSchemaEngineMode() {
@@ -1074,5 +1165,13 @@ public class CommonConfig {
 
   public long getStartUpNanosecond() {
     return startUpNanosecond;
+  }
+
+  public boolean isIntegrationTest() {
+    return isIntegrationTest;
+  }
+
+  public Set<String> getEnabledKillPoints() {
+    return enabledKillPoints;
   }
 }

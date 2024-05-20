@@ -41,14 +41,15 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.factory.ValueFilterApi;
-import org.apache.iotdb.tsfile.read.filter.operator.ValueFilterOperators;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.factory.FilterFactory;
+import org.apache.tsfile.read.filter.factory.ValueFilterApi;
+import org.apache.tsfile.read.filter.operator.ValueFilterOperators;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.HashSet;
 import java.util.List;
@@ -56,7 +57,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
+import static org.apache.tsfile.read.filter.operator.Not.CONTAIN_NOT_ERR_MSG;
 
 public class ConvertPredicateToFilterVisitor
     extends PredicateVisitor<Filter, ConvertPredicateToFilterVisitor.Context> {

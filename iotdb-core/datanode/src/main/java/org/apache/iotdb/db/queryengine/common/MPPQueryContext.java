@@ -25,12 +25,16 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This class is used to record the context of a query including QueryId, query statement, session
@@ -65,7 +69,7 @@ public class MPPQueryContext {
 
   private Filter globalTimeFilter;
 
-  private int acquiredLockNum;
+  private Map<SchemaLockType, Integer> acquiredLockNumMap = new HashMap<>();
 
   private boolean isExplainAnalyze = false;
 
@@ -187,12 +191,16 @@ public class MPPQueryContext {
     return sql;
   }
 
-  public int getAcquiredLockNum() {
-    return acquiredLockNum;
+  public Map<SchemaLockType, Integer> getAcquiredLockNumMap() {
+    return acquiredLockNumMap;
   }
 
-  public void addAcquiredLockNum() {
-    acquiredLockNum++;
+  public void addAcquiredLockNum(SchemaLockType lockType) {
+    if (acquiredLockNumMap.containsKey(lockType)) {
+      acquiredLockNumMap.put(lockType, acquiredLockNumMap.get(lockType) + 1);
+    } else {
+      acquiredLockNumMap.put(lockType, 1);
+    }
   }
 
   public void generateGlobalTimeFilter(Analysis analysis) {

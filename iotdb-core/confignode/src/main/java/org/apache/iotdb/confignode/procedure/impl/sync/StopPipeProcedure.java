@@ -23,7 +23,8 @@ import org.apache.iotdb.commons.sync.PipeInfo;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

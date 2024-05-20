@@ -36,46 +36,42 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
   public AbstractCompactionTask take() throws InterruptedException {
     final ReentrantLock lock = this.lock;
     while (true) {
+      AbstractCompactionTask task = null;
       lock.lockInterruptibly();
       try {
         while (queue.isEmpty()) {
           notEmpty.await();
         }
-        AbstractCompactionTask task = tryPollExecutableTask();
-        // task == null indicates that there is no runnable task now
-        if (task != null) {
-          return task;
-        }
+        task = queue.pollFirst();
       } finally {
         lock.unlock();
       }
-      Thread.sleep(TimeUnit.SECONDS.toMillis(1));
-    }
-  }
-
-  private AbstractCompactionTask tryPollExecutableTask() {
-    while (true) {
-      if (queue.isEmpty()) {
-        return null;
-      }
-      AbstractCompactionTask task = queue.pollFirst();
-      if (task == null) {
-        continue;
-      }
-      if (!checkTaskValid(task)) {
-        dropCompactionTask(task);
-        continue;
-      }
-      if (!task.tryOccupyResourcesForRunning()) {
-        queue.add(task);
-        return null;
-      }
-      if (!transitTaskFileStatus(task)) {
-        dropCompactionTask(task);
+      boolean prepareTaskSuccess = prepareTask(task);
+      if (!prepareTaskSuccess) {
+        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
         continue;
       }
       return task;
     }
+  }
+
+  private boolean prepareTask(AbstractCompactionTask task) throws InterruptedException {
+    if (task == null) {
+      return false;
+    }
+    if (!checkTaskValid(task)) {
+      dropCompactionTask(task);
+      return false;
+    }
+    if (!task.tryOccupyResourcesForRunning()) {
+      put(task);
+      return false;
+    }
+    if (!transitTaskFileStatus(task)) {
+      dropCompactionTask(task);
+      return false;
+    }
+    return true;
   }
 
   private void dropCompactionTask(AbstractCompactionTask task) {

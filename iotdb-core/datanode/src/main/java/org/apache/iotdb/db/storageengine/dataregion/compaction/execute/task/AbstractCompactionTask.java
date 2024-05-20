@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
-import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
@@ -42,8 +40,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -124,7 +123,7 @@ public abstract class AbstractCompactionTask {
   public boolean setSourceFilesToCompactionCandidate() {
     List<TsFileResource> files = getAllSourceTsFiles();
     for (int i = 0; i < files.size(); i++) {
-      if (!files.get(i).setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE)) {
+      if (!files.get(i).transformStatus(TsFileResourceStatus.COMPACTION_CANDIDATE)) {
         // rollback status to NORMAL
         for (int j = 0; j < i; j++) {
           files.get(j).setStatus(TsFileResourceStatus.NORMAL);
@@ -167,7 +166,10 @@ public abstract class AbstractCompactionTask {
           resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
         }
       }
-    } else if (e instanceof InterruptedException) {
+    } else if (e instanceof InterruptedException
+        || Thread.interrupted()
+        || e instanceof StopReadTsFileByInterruptException
+        || !tsFileManager.isAllowCompaction()) {
       logger.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
       Thread.currentThread().interrupt();
     } else {
@@ -249,7 +251,7 @@ public abstract class AbstractCompactionTask {
 
   public void transitSourceFilesToMerging() throws FileCannotTransitToCompactingException {
     for (TsFileResource f : getAllSourceTsFiles()) {
-      if (!f.setStatus(TsFileResourceStatus.COMPACTING)) {
+      if (!f.transformStatus(TsFileResourceStatus.COMPACTING)) {
         throw new FileCannotTransitToCompactingException(f);
       }
     }
@@ -314,14 +316,21 @@ public abstract class AbstractCompactionTask {
   }
 
   protected void handleRecoverException(Exception e) {
+    // all files in this data region may be deleted directly without acquire lock or transfer
+    // TsFileResourceStatus
+    if (!tsFileManager.isAllowCompaction()) {
+      return;
+    }
     LOGGER.error(
         "{} [Compaction][Recover] Failed to recover compaction. TaskInfo: {}, Exception: {}",
         dataRegionId,
         this,
         e);
-    tsFileManager.setAllowCompaction(false);
-    LOGGER.error("stop compaction because of exception during recovering");
-    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
+    // Do not set allow compaction to false here. To keep the error environment, mark all source
+    // files in memory to avoid compaction.
+    for (TsFileResource sourceTsFileResource : getAllSourceTsFiles()) {
+      sourceTsFileResource.setTsFileRepairStatus(TsFileRepairStatus.CAN_NOT_REPAIR);
+    }
   }
 
   protected void insertFilesToTsFileManager(List<TsFileResource> tsFiles) throws IOException {

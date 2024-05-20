@@ -28,11 +28,11 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.ID
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.DataNodeLastCacheManager;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -373,5 +373,119 @@ public class DualKeyCacheTest {
                     false));
     Assert.assertEquals(expectSize, dualKeyCache.stats().memoryUsage());
     return dualKeyCache;
+  }
+
+  private IDualKeyCache<PartialPath, String, SchemaCacheEntry> generateLastCache()
+      throws IllegalPathException {
+    DualKeyCacheBuilder<PartialPath, String, SchemaCacheEntry> dualKeyCacheBuilder =
+        new DualKeyCacheBuilder<>();
+    IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache =
+        dualKeyCacheBuilder
+            .cacheEvictionPolicy(DualKeyCachePolicy.valueOf(policy))
+            .memoryCapacity(2000) // actual threshold is 1600
+            .firstKeySizeComputer(PartialPath::estimateSize)
+            .secondKeySizeComputer(this::computeStringSize)
+            .valueSizeComputer(SchemaCacheEntry::estimateSize)
+            .build();
+    SchemaCacheEntry cacheEntry1 =
+        new SchemaCacheEntry(
+            "root.db1",
+            new MeasurementSchema("s1", TSDataType.INT32),
+            Collections.emptyMap(),
+            false);
+    cacheEntry1.updateLastCache(new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)), true, 0L);
+    dualKeyCache.put(new PartialPath("root.db1.d1"), "s1", cacheEntry1);
+
+    SchemaCacheEntry cacheEntry2 =
+        new SchemaCacheEntry(
+            "root.db1",
+            new MeasurementSchema("s2", TSDataType.INT32),
+            Collections.emptyMap(),
+            false);
+    cacheEntry2.updateLastCache(new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)), true, 0L);
+    dualKeyCache.put(new PartialPath("root.db1.d1"), "s2", cacheEntry2);
+
+    SchemaCacheEntry cacheEntry3 =
+        new SchemaCacheEntry(
+            "root.db2",
+            new MeasurementSchema("s2", TSDataType.INT32),
+            Collections.emptyMap(),
+            false);
+    cacheEntry3.updateLastCache(new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)), true, 0L);
+    dualKeyCache.put(new PartialPath("root.db2.d1"), "s2", cacheEntry3);
+
+    SchemaCacheEntry cacheEntry4 =
+        new SchemaCacheEntry(
+            "root.db2",
+            new MeasurementSchema("s2", TSDataType.INT32),
+            Collections.emptyMap(),
+            false);
+    cacheEntry4.updateLastCache(new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)), true, 0L);
+    dualKeyCache.put(new PartialPath("root.db2.d1"), "s1", cacheEntry4);
+
+    SchemaCacheEntry cacheEntry5 =
+        new SchemaCacheEntry(
+            "root.db1",
+            new MeasurementSchema("s2", TSDataType.INT32),
+            Collections.emptyMap(),
+            false);
+    cacheEntry5.updateLastCache(new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)), true, 0L);
+    dualKeyCache.put(new PartialPath("root.db1"), "s2", cacheEntry5);
+
+    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s1"));
+    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s2"));
+    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1"), "s2"));
+    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s1"));
+    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s2"));
+
+    int expectSize =
+        PartialPath.estimateSize(new PartialPath("root.db1.d1")) * 2
+            + PartialPath.estimateSize(new PartialPath("root.db1"))
+            + computeStringSize("s1") * 5
+            + SchemaCacheEntry.estimateSize(cacheEntry1) * 5;
+    Assert.assertEquals(expectSize, dualKeyCache.stats().memoryUsage());
+    return dualKeyCache;
+  }
+
+  @Test
+  public void testInvalidateSimpleTimeseriesAndDataRegion() throws IllegalPathException {
+    IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateLastCache();
+    long memUse = dualKeyCache.stats().memoryUsage();
+
+    dualKeyCache.invalidateLastCache(new PartialPath("root.db1.d1.s1"));
+    SchemaCacheEntry cacheEntry = dualKeyCache.get(new PartialPath("root.db1.d1"), "s1");
+    Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
+
+    dualKeyCache.invalidateLastCache(new PartialPath("root.db1.d1.*"));
+    cacheEntry = dualKeyCache.get(new PartialPath("root.db1.d1"), "s2");
+    Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
+
+    dualKeyCache.invalidateLastCache(new PartialPath("root.db2.d1.**"));
+    cacheEntry = dualKeyCache.get(new PartialPath("root.db2.d1"), "s2");
+    Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
+
+    dualKeyCache.invalidateDataRegionLastCache("root.db2");
+    cacheEntry = dualKeyCache.get(new PartialPath("root.db2.d1"), "s1");
+    Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
+
+    cacheEntry = dualKeyCache.get(new PartialPath("root.db1"), "s2");
+    // last cache container' estimateSize(): header 8b + Ilastcachevalueref 8b +  lastcache's size
+    // invalidate operation: make Ilastcachevalueref = null.
+    // So the amount of change in size is estimateSize() - 8b - 8b
+    int size = cacheEntry.getLastCacheContainer().estimateSize() - 16;
+    Assert.assertEquals(memUse - size * 4, dualKeyCache.stats().memoryUsage());
+  }
+
+  @Test
+  public void testComplexInvalidate() throws IllegalPathException {
+    IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateLastCache();
+
+    dualKeyCache.invalidateLastCache(new PartialPath("root.db1.*.s1"));
+    SchemaCacheEntry cacheEntry = dualKeyCache.get(new PartialPath("root.db1.d1"), "s1");
+    Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
+
+    dualKeyCache.invalidateLastCache(new PartialPath("root.db1.**.s2"));
+    cacheEntry = dualKeyCache.get(new PartialPath("root.db1.d1"), "s2");
+    Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
   }
 }

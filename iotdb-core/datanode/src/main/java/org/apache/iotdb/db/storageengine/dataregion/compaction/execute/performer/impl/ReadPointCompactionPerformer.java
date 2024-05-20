@@ -41,15 +41,15 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.QueryResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.file.metadata.PlainDeviceID;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,7 +117,7 @@ public class ReadPointCompactionPerformer
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
         IDeviceID device = deviceInfo.left;
         boolean isAligned = deviceInfo.right;
-        queryDataSource.fillOrderIndexes(((PlainDeviceID) device).toStringID(), true);
+        queryDataSource.fillOrderIndexes(device, true);
 
         if (isAligned) {
           compactAlignedSeries(
@@ -220,7 +220,7 @@ public class ReadPointCompactionPerformer
                         device,
                         measurementListArray[i],
                         fragmentInstanceContext,
-                        queryDataSource,
+                        new QueryDataSource(queryDataSource),
                         compactionWriter,
                         schemaMap,
                         i)));

@@ -26,9 +26,9 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,9 +83,10 @@ public class LocalFileUserAccessor implements IUserAccessor {
   private static final String STRING_ENCODING = "utf-8";
   private static final String USER_SNAPSHOT_FILE_NAME = "system" + File.separator + "users";
 
-  private static final String ROLE_SUFFIX = "_role";
+  public static final String ROLE_SUFFIX = "_role";
 
   private final String userDirPath;
+
   /**
    * Reused buffer for primitive types encoding/decoding, which aim to reduce memory fragments. Use
    * ThreadLocal for thread safety.
@@ -367,7 +368,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
       result &= userTmpSnapshotDir.renameTo(userSnapshotDir);
     } finally {
       if (userTmpSnapshotDir.exists() && !userTmpSnapshotDir.delete()) {
-        FileUtils.deleteDirectory(userTmpSnapshotDir);
+        FileUtils.deleteFileOrDirectory(userTmpSnapshotDir);
       }
     }
     return result;
@@ -386,11 +387,11 @@ public class LocalFileUserAccessor implements IUserAccessor {
       if (!FileUtils.copyDir(userSnapshotDir, userFolder)) {
         LOGGER.error("Failed to load user folder snapshot and rollback.");
         // rollback if failed to copy
-        FileUtils.deleteDirectory(userFolder);
+        FileUtils.deleteFileOrDirectory(userFolder);
         org.apache.commons.io.FileUtils.moveDirectory(userTmpFolder, userFolder);
       }
     } finally {
-      FileUtils.deleteDirectory(userTmpFolder);
+      FileUtils.deleteFileOrDirectory(userTmpFolder);
     }
   }
 
@@ -421,8 +422,12 @@ public class LocalFileUserAccessor implements IUserAccessor {
   @Override
   public void cleanUserFolder() {
     File[] files = SystemFileFactory.INSTANCE.getFile(userDirPath).listFiles();
-    for (File file : files) {
-      FileUtils.deleteFileIfExist(file);
+    if (files != null) {
+      for (File file : files) {
+        FileUtils.deleteFileIfExist(file);
+      }
+    } else {
+      LOGGER.warn("User folder not exists");
     }
   }
 

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.task.connection;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.progress.committer.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -46,20 +46,26 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   private final EnrichedDeque<Event> bufferQueue;
 
+  private final long creationTime;
+
   private final int regionId;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
 
-  public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue, int regionId) {
+  public PipeEventCollector(
+      final BoundedBlockingPendingQueue<Event> pendingQueue,
+      final long creationTime,
+      final int regionId) {
     this.pendingQueue = pendingQueue;
+    this.creationTime = creationTime;
     this.regionId = regionId;
     bufferQueue = new EnrichedDeque<>(new LinkedList<>());
   }
 
   @Override
-  public synchronized void collect(Event event) {
+  public void collect(final Event event) {
     try {
       if (event instanceof PipeInsertNodeTabletInsertionEvent) {
         parseAndCollectEvent((PipeInsertNodeTabletInsertionEvent) event);
@@ -70,14 +76,25 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
       } else {
         collectEvent(event);
       }
-    } catch (PipeException e) {
+    } catch (final PipeException e) {
       throw e;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new PipeException("Error occurred when collecting events from processor.", e);
     }
   }
 
-  private void parseAndCollectEvent(PipeInsertNodeTabletInsertionEvent sourceEvent) {
+  private void parseAndCollectEvent(final PipeInsertNodeTabletInsertionEvent sourceEvent) {
+    if (sourceEvent.shouldParseTimeOrPattern()) {
+      for (final PipeRawTabletInsertionEvent parsedEvent :
+          sourceEvent.toRawTabletInsertionEvents()) {
+        collectEvent(parsedEvent);
+      }
+    } else {
+      collectEvent(sourceEvent);
+    }
+  }
+
+  private void parseAndCollectEvent(final PipeRawTabletInsertionEvent sourceEvent) {
     if (sourceEvent.shouldParseTimeOrPattern()) {
       final PipeRawTabletInsertionEvent parsedEvent = sourceEvent.parseEventWithPatternOrTime();
       if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
@@ -88,18 +105,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
     }
   }
 
-  private void parseAndCollectEvent(PipeRawTabletInsertionEvent sourceEvent) {
-    if (sourceEvent.shouldParseTimeOrPattern()) {
-      final PipeRawTabletInsertionEvent parsedEvent = sourceEvent.parseEventWithPatternOrTime();
-      if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
-        collectEvent(parsedEvent);
-      }
-    } else {
-      collectEvent(sourceEvent);
-    }
-  }
-
-  private void parseAndCollectEvent(PipeTsFileInsertionEvent sourceEvent) throws Exception {
+  private void parseAndCollectEvent(final PipeTsFileInsertionEvent sourceEvent) throws Exception {
     if (!sourceEvent.waitForTsFileClose()) {
       LOGGER.warn(
           "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
@@ -121,7 +127,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
     }
   }
 
-  private void collectEvent(Event event) {
+  private synchronized void collectEvent(final Event event) {
     collectInvocationCount.incrementAndGet();
 
     if (event instanceof EnrichedEvent) {
@@ -129,7 +135,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
       // Assign a commit id for this event in order to report progress in order.
       PipeEventCommitManager.getInstance()
-          .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, regionId);
+          .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
     }
     if (event instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) event).recordBufferQueueSize(bufferQueue);

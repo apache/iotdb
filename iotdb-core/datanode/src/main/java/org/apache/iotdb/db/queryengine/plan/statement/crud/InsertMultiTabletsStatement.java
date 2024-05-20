@@ -23,8 +23,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.NotImplementedException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +47,14 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
 
   public void setInsertTabletStatementList(List<InsertTabletStatement> insertTabletStatementList) {
     this.insertTabletStatementList = insertTabletStatementList;
+  }
+
+  public List<PartialPath> getDevicePaths() {
+    List<PartialPath> partialPaths = new ArrayList<>();
+    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
+      partialPaths.add(insertTabletStatement.devicePath);
+    }
+    return partialPaths;
   }
 
   public List<String[]> getMeasurementsList() {

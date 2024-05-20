@@ -27,8 +27,8 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransf
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
-import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,8 +47,9 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
       boolean useSSL,
       String trustStorePath,
       String trustStorePwd,
-      boolean useLeaderCache) {
-    super(endPoints, useSSL, trustStorePath, trustStorePwd, useLeaderCache);
+      boolean useLeaderCache,
+      String loadBalanceStrategy) {
+    super(endPoints, useSSL, trustStorePath, trustStorePwd, useLeaderCache, loadBalanceStrategy);
   }
 
   @Override
@@ -70,6 +71,15 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
 
   public Pair<IoTDBSyncClient, Boolean> getClient(String deviceId) {
     final TEndPoint endPoint = LEADER_CACHE_MANAGER.getLeaderEndPoint(deviceId);
+    return useLeaderCache
+            && endPoint != null
+            && endPoint2ClientAndStatus.containsKey(endPoint)
+            && Boolean.TRUE.equals(endPoint2ClientAndStatus.get(endPoint).getRight())
+        ? endPoint2ClientAndStatus.get(endPoint)
+        : getClient();
+  }
+
+  public Pair<IoTDBSyncClient, Boolean> getClient(TEndPoint endPoint) {
     return useLeaderCache
             && endPoint != null
             && endPoint2ClientAndStatus.containsKey(endPoint)

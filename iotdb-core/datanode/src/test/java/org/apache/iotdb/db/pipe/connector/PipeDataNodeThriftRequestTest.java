@@ -30,20 +30,21 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -260,6 +261,25 @@ public class PipeDataNodeThriftRequestTest {
   }
 
   @Test
+  public void testPipeTransferFilePieceWithModReq() throws IOException {
+    byte[] body = "testPipeTransferFilePieceWithModReq".getBytes();
+    String fileName = "1.tsfile.mod";
+
+    PipeTransferTsFilePieceWithModReq req =
+        PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(fileName, 0, body);
+    PipeTransferTsFilePieceWithModReq deserializeReq =
+        PipeTransferTsFilePieceWithModReq.fromTPipeTransferReq(req);
+
+    Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+    Assert.assertEquals(req.getType(), deserializeReq.getType());
+    Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
+
+    Assert.assertEquals(req.getFileName(), deserializeReq.getFileName());
+    Assert.assertEquals(req.getStartWritingOffset(), deserializeReq.getStartWritingOffset());
+    Assert.assertArrayEquals(req.getFilePiece(), deserializeReq.getFilePiece());
+  }
+
+  @Test
   public void testPipeTransferSchemaSnapshotPieceReq() throws IOException {
     byte[] body = "testPipeTransferSchemaSnapshotPieceReq".getBytes();
     String fileName = "1.temp";
@@ -295,10 +315,15 @@ public class PipeDataNodeThriftRequestTest {
 
   @Test
   public void testPipeTransferSchemaSnapshotSealReq() throws IOException {
-    String fileName = "1.temp";
+    String mTreeSnapshotName = "mtree.snapshot";
+    String tLogName = "tlog.txt";
+    String databaseName = "root.db";
+    // CREATE_TIME_SERIES
+    String typeString = "19";
 
     PipeTransferSchemaSnapshotSealReq req =
-        PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(fileName, 100);
+        PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
+            mTreeSnapshotName, 100, tLogName, 10, databaseName, typeString);
     PipeTransferSchemaSnapshotSealReq deserializeReq =
         PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req);
 
@@ -306,12 +331,13 @@ public class PipeDataNodeThriftRequestTest {
     Assert.assertEquals(req.getType(), deserializeReq.getType());
     Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
-    Assert.assertEquals(req.getFileName(), deserializeReq.getFileName());
-    Assert.assertEquals(req.getFileLength(), deserializeReq.getFileLength());
+    Assert.assertEquals(req.getFileNames(), deserializeReq.getFileNames());
+    Assert.assertEquals(req.getFileLengths(), deserializeReq.getFileLengths());
+    Assert.assertEquals(req.getParameters(), deserializeReq.getParameters());
   }
 
   @Test
-  public void testPIpeTransferFilePieceResp() throws IOException {
+  public void testPipeTransferFilePieceResp() throws IOException {
     PipeTransferFilePieceResp resp =
         PipeTransferFilePieceResp.toTPipeTransferResp(RpcUtils.SUCCESS_STATUS, 100);
     PipeTransferFilePieceResp deserializeResp =

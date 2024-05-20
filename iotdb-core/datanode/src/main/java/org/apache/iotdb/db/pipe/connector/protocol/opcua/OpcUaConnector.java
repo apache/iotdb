@@ -29,12 +29,12 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.record.Tablet;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.model.nodes.objects.BaseEventTypeNode;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
@@ -83,31 +83,32 @@ public class OpcUaConnector implements PipeConnector {
   private OpcUaServer server;
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     // All the parameters are optional
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    int tcpBindPort =
+    final int tcpBindPort =
         parameters.getIntOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_TCP_BIND_PORT_KEY, SINK_OPC_UA_TCP_BIND_PORT_KEY),
             CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE);
-    int httpsBindPort =
+    final int httpsBindPort =
         parameters.getIntOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_HTTPS_BIND_PORT_KEY, SINK_OPC_UA_HTTPS_BIND_PORT_KEY),
             CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE);
 
-    String user =
+    final String user =
         parameters.getStringOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_USER_KEY, SINK_IOTDB_USER_KEY),
             CONNECTOR_IOTDB_USER_DEFAULT_VALUE);
-    String password =
+    final String password =
         parameters.getStringOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY),
             CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
-    String securityDir =
+    final String securityDir =
         parameters.getStringOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_SECURITY_DIR_KEY, SINK_OPC_UA_SECURITY_DIR_KEY),
             CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE);
@@ -131,7 +132,7 @@ public class OpcUaConnector implements PipeConnector {
                               .build();
                       newServer.startup();
                       return new Pair<>(new AtomicInteger(0), newServer);
-                    } catch (Exception e) {
+                    } catch (final Exception e) {
                       throw new PipeException("Failed to build and startup OpcUaServer", e);
                     }
                   })
@@ -151,12 +152,12 @@ public class OpcUaConnector implements PipeConnector {
   }
 
   @Override
-  public void transfer(Event event) throws Exception {
+  public void transfer(final Event event) throws Exception {
     // Do nothing when receive heartbeat or other events
   }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+  public void transfer(final TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
@@ -169,26 +170,57 @@ public class OpcUaConnector implements PipeConnector {
     }
 
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      transferTablet(
-          server, ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
+      transferTabletWrapper(server, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
     } else {
-      transferTablet(
-          server, ((PipeRawTabletInsertionEvent) tabletInsertionEvent).convertToTablet());
+      transferTabletWrapper(server, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
+    }
+  }
+
+  private void transferTabletWrapper(
+      final OpcUaServer server,
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
+      throws UaException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+          OpcUaConnector.class.getName())) {
+        return;
+      }
+      for (final Tablet tablet : pipeInsertNodeTabletInsertionEvent.convertToTablets()) {
+        transferTablet(server, tablet);
+      }
+    } finally {
+      pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
+          OpcUaConnector.class.getName(), false);
+    }
+  }
+
+  private void transferTabletWrapper(
+      final OpcUaServer server, final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+      throws UaException {
+    try {
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(OpcUaConnector.class.getName())) {
+        return;
+      }
+      transferTablet(server, pipeRawTabletInsertionEvent.convertToTablet());
+    } finally {
+      pipeRawTabletInsertionEvent.decreaseReferenceCount(OpcUaConnector.class.getName(), false);
     }
   }
 
   /**
-   * Transfer tablet into eventNodes and post it on the eventBus, so that they will be heard at the
-   * subscribers. Notice that an eventNode is reused to reduce object creation costs.
+   * Transfer {@link Tablet} into eventNodes and post it on the eventBus, so that they will be heard
+   * at the subscribers. Notice that an eventNode is reused to reduce object creation costs.
    *
    * @param server OpcUaServer
    * @param tablet the tablet to send
-   * @throws UaException if failed to create event
+   * @throws UaException if failed to create {@link Event}
    */
-  private void transferTablet(OpcUaServer server, Tablet tablet) throws UaException {
+  private void transferTablet(final OpcUaServer server, final Tablet tablet) throws UaException {
     // There is no nameSpace, so that nameSpaceIndex is always 0
-    int pseudoNameSpaceIndex = 0;
-    BaseEventTypeNode eventNode =
+    final int pseudoNameSpaceIndex = 0;
+    final BaseEventTypeNode eventNode =
         server
             .getEventFactory()
             .createEvent(
@@ -196,7 +228,7 @@ public class OpcUaConnector implements PipeConnector {
     // Use eventNode here because other nodes doesn't support values and times simultaneously
     for (int columnIndex = 0; columnIndex < tablet.getSchemas().size(); ++columnIndex) {
 
-      TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
+      final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
 
       // Source name --> Sensor path, like root.test.d_0.s_0
       eventNode.setSourceName(
@@ -213,7 +245,7 @@ public class OpcUaConnector implements PipeConnector {
           continue;
         }
 
-        // time --> timeStamp
+        // Time --> TimeStamp
         eventNode.setTime(new DateTime(tablet.timestamps[rowIndex]));
 
         // Message --> Value
@@ -262,7 +294,7 @@ public class OpcUaConnector implements PipeConnector {
     eventNode.delete();
   }
 
-  private NodeId convertToOpcDataType(TSDataType type) {
+  private NodeId convertToOpcDataType(final TSDataType type) {
     switch (type) {
       case BOOLEAN:
         return Identifiers.Boolean;

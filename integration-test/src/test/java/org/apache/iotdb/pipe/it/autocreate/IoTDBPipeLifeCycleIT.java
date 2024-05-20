@@ -26,7 +26,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2;
+import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -51,16 +51,16 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueriesWithRet
 import static org.apache.iotdb.db.it.utils.TestUtils.tryExecuteNonQueryWithRetry;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2.class})
+@Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
   @Test
   public void testLifeCycleWithHistoryEnabled() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
@@ -68,16 +68,16 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -88,7 +88,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      Set<String> expectedResSet = new HashSet<>();
+      final Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
@@ -124,12 +124,12 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testLifeCycleWithHistoryDisabled() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
@@ -137,9 +137,9 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "all");
       extractorAttributes.put("extractor.inclusion.exclusion", "");
@@ -154,7 +154,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -225,12 +225,12 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testLifeCycleLogMode() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
@@ -238,9 +238,9 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.mode", "log");
 
@@ -249,7 +249,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -260,7 +260,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      Set<String> expectedResSet = new HashSet<>();
+      final Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
@@ -289,12 +289,12 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testLifeCycleFileMode() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
@@ -302,9 +302,9 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.mode", "file");
 
@@ -313,7 +313,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -324,7 +324,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      Set<String> expectedResSet = new HashSet<>();
+      final Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
@@ -353,12 +353,12 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testLifeCycleHybridMode() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
@@ -366,9 +366,9 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.mode", "hybrid");
 
@@ -377,7 +377,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -388,7 +388,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      Set<String> expectedResSet = new HashSet<>();
+      final Set<String> expectedResSet = new HashSet<>();
       expectedResSet.add("1,1.0,");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "select * from root.**", "Time,root.db.d1.s1,", expectedResSet);
@@ -417,13 +417,13 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testLifeCycleWithClusterRestart() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    Set<String> expectedResSet = new HashSet<>();
-    try (SyncConfigNodeIServiceClient client =
+    final Set<String> expectedResSet = new HashSet<>();
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       if (!TestUtils.tryExecuteNonQueryWithRetry(
@@ -431,16 +431,16 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -468,7 +468,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
     TestUtils.restartCluster(senderEnv);
     TestUtils.restartCluster(receiverEnv);
 
-    try (SyncConfigNodeIServiceClient ignored =
+    try (final SyncConfigNodeIServiceClient ignored =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
@@ -484,24 +484,24 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testReceiverRestartWhenTransferring() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -512,7 +512,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       final AtomicInteger succeedNum = new AtomicInteger(0);
-      Thread t =
+      final Thread t =
           new Thread(
               () -> {
                 try {
@@ -545,28 +545,28 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
 
   @Test
   public void testReceiverAlreadyHaveTimeSeries() throws Exception {
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       if (!TestUtils.tryExecuteNonQueryWithRetry(
           receiverEnv, "insert into root.db.d1(time, s1) values (1, 1)")) {
         return;
       }
 
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -607,13 +607,13 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
   @Test
   public void testDoubleLiving() throws Exception {
     // Double living is two clusters with pipes connecting each other.
-    DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
-    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper senderDataNode = senderEnv.getDataNodeWrapper(0);
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
-    String senderIp = senderDataNode.getIp();
-    int senderPort = senderDataNode.getPort();
-    String receiverIp = receiverDataNode.getIp();
-    int receiverPort = receiverDataNode.getPort();
+    final String senderIp = senderDataNode.getIp();
+    final int senderPort = senderDataNode.getPort();
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
 
     for (int i = 0; i < 100; ++i) {
       if (!TestUtils.tryExecuteNonQueryWithRetry(
@@ -625,20 +625,20 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       return;
     }
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
-      // add this property to avoid to make self cycle.
+      // Add this property to avoid to make self cycle.
       connectorAttributes.put("source.forwarding-pipe-requests", "false");
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -668,20 +668,20 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       return;
     }
 
-    try (SyncConfigNodeIServiceClient client =
+    try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) receiverEnv.getLeaderConfigNodeConnection()) {
-      Map<String, String> extractorAttributes = new HashMap<>();
-      Map<String, String> processorAttributes = new HashMap<>();
-      Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
 
-      // add this property to avoid to make self cycle.
+      // Add this property to avoid to make self cycle.
       connectorAttributes.put("source.forwarding-pipe-requests", "false");
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", senderIp);
       connectorAttributes.put("connector.port", Integer.toString(senderPort));
 
-      TSStatus status =
+      final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("p1", connectorAttributes)
                   .setExtractorAttributes(extractorAttributes)
@@ -701,7 +701,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
       return;
     }
 
-    Set<String> expectedResSet = new HashSet<>();
+    final Set<String> expectedResSet = new HashSet<>();
     for (int i = 0; i < 400; ++i) {
       expectedResSet.add(i + ",1.0,");
     }

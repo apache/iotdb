@@ -27,10 +27,10 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import org.apache.commons.collections4.map.LRUMap;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.TsFileSequenceReader;
 
 import java.io.File;
 import java.io.IOException;

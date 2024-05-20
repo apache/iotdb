@@ -25,7 +25,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMN
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.basic.BasicMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.container.MemMNodeContainer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.MeasurementInfo;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 public class MeasurementMNode extends AbstractMeasurementMNode<IMemMNode, BasicMNode>
     implements IMemMNode {

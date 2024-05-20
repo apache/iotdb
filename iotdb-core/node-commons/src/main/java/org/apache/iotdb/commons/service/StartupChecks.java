@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,18 +35,7 @@ public abstract class StartupChecks {
   private static final Logger logger = LoggerFactory.getLogger(StartupChecks.class);
 
   private final String nodeRole;
-  private static final StartupCheck checkJDK =
-      () -> {
-        int version = JVMCommonUtils.getJdkVersion();
-        if (version < IoTDBConstant.MIN_SUPPORTED_JDK_VERSION) {
-          throw new StartupException(
-              String.format(
-                  "Requires JDK version >= %d, current version is %d.",
-                  IoTDBConstant.MIN_SUPPORTED_JDK_VERSION, version));
-        } else {
-          logger.info("JDK version is {}.", version);
-        }
-      };
+
   protected final List<StartupCheck> preChecks = new ArrayList<>();
 
   protected StartupChecks(String nodeRole) {
@@ -76,10 +67,37 @@ public abstract class StartupChecks {
     }
   }
 
+  private void checkJDK() throws StartupException {
+    int version = JVMCommonUtils.getJdkVersion();
+    if (version < IoTDBConstant.MIN_SUPPORTED_JDK_VERSION) {
+      throw new StartupException(
+          String.format(
+              "Requires JDK version >= %d, current version is %d.",
+              IoTDBConstant.MIN_SUPPORTED_JDK_VERSION, version));
+    } else {
+      logger.info("JDK version is {}.", version);
+    }
+  }
+
+  private void checkJVM() {
+    RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
+    logger.info("JVM version is {} {}.", bean.getVmName(), bean.getVmVersion());
+    try {
+      // For more information, visit https://github.com/oracle/graal/issues/8638
+      Class.forName("org.graalvm.home.Version");
+    } catch (ClassNotFoundException e) {
+      return;
+    }
+    logger.warn(
+        "Perhaps you are using GraalVM, which is strongly not recommended. Using GraalVM may cause strange problems after the system runs for a while. Please check your JVM version.");
+  }
+
   protected void envCheck() {
     preChecks.add(() -> checkJMXPort(nodeRole));
-    preChecks.add(checkJDK);
+    preChecks.add(this::checkJDK);
+    preChecks.add(this::checkJVM);
   }
+
   /** execute every pretest. */
   protected void verify() throws StartupException {
     for (StartupCheck check : preChecks) {

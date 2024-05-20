@@ -21,6 +21,9 @@ package org.apache.iotdb.consensus.iot.service;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.IoTConsensusInactivatePeerKillPoints;
+import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
@@ -137,6 +140,9 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
   public void inactivatePeer(
       TInactivatePeerReq req, AsyncMethodCallback<TInactivatePeerRes> resultHandler)
       throws TException {
+    if (req.isForDeletionPurpose()) {
+      KillPoint.setKillPoint(IoTConsensusInactivatePeerKillPoints.BEFORE_INACTIVATE);
+    }
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
@@ -152,6 +158,9 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
     impl.setActive(false);
     resultHandler.onComplete(
         new TInactivatePeerRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+    if (req.isForDeletionPurpose()) {
+      KillPoint.setKillPoint(IoTConsensusInactivatePeerKillPoints.AFTER_INACTIVATE);
+    }
   }
 
   @Override
@@ -169,6 +178,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
       resultHandler.onComplete(new TActivatePeerRes(status));
       return;
     }
+    KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_ADD_PEER_DONE);
     impl.setActive(true);
     resultHandler.onComplete(
         new TActivatePeerRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
@@ -294,6 +304,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
       return;
     }
     impl.loadSnapshot(req.snapshotId);
+    KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_ADD_PEER_TRANSITION);
     resultHandler.onComplete(
         new TTriggerSnapshotLoadRes(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
   }

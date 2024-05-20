@@ -19,16 +19,16 @@
 
 package org.apache.iotdb.db.subscription.task.subtask;
 
-import org.apache.iotdb.commons.exception.SubscriptionException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.progress.committer.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.execution.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtaskLifeCycle;
@@ -37,6 +37,10 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -48,6 +52,9 @@ import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.SUB
 
 public class SubscriptionConnectorSubtaskManager {
 
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SubscriptionConnectorSubtaskManager.class);
+
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
       "Failed to deregister PipeConnectorSubtask. No such subtask: ";
 
@@ -56,9 +63,9 @@ public class SubscriptionConnectorSubtaskManager {
       attributeSortedString2SubtaskLifeCycleMap = new HashMap<>();
 
   public synchronized String register(
-      PipeConnectorSubtaskExecutor executor,
-      PipeParameters pipeConnectorParameters,
-      PipeTaskConnectorRuntimeEnvironment environment) {
+      final PipeConnectorSubtaskExecutor executor,
+      final PipeParameters pipeConnectorParameters,
+      final PipeTaskConnectorRuntimeEnvironment environment) {
     final String connectorKey =
         pipeConnectorParameters
             .getStringOrDefault(
@@ -73,9 +80,13 @@ public class SubscriptionConnectorSubtaskManager {
     }
 
     PipeEventCommitManager.getInstance()
-        .register(environment.getPipeName(), environment.getRegionId(), connectorKey);
+        .register(
+            environment.getPipeName(),
+            environment.getCreationTime(),
+            environment.getRegionId(),
+            connectorKey);
 
-    String attributeSortedString = new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
+    String attributeSortedString = generateAttributeSortedString(pipeConnectorParameters);
     attributeSortedString = "__subscription_" + attributeSortedString;
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
@@ -93,7 +104,15 @@ public class SubscriptionConnectorSubtaskManager {
         pipeConnector.customize(
             pipeConnectorParameters, new PipeTaskRuntimeConfiguration(environment));
         pipeConnector.handshake();
-      } catch (Exception e) {
+      } catch (final Exception e) {
+        try {
+          pipeConnector.close();
+        } catch (final Exception closeException) {
+          LOGGER.warn(
+              "Failed to close connector after failed to initialize connector. "
+                  + "Ignore this exception.",
+              closeException);
+        }
         throw new PipeException(
             "Failed to construct PipeConnector, because of " + e.getMessage(), e);
       }
@@ -129,7 +148,7 @@ public class SubscriptionConnectorSubtaskManager {
           attributeSortedString, pipeConnectorSubtaskLifeCycle);
     }
 
-    PipeConnectorSubtaskLifeCycle lifeCycle =
+    final PipeConnectorSubtaskLifeCycle lifeCycle =
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
     lifeCycle.register();
 
@@ -137,48 +156,58 @@ public class SubscriptionConnectorSubtaskManager {
   }
 
   public synchronized void deregister(
-      String pipeName, int dataRegionId, String attributeSortedString) {
+      final String pipeName,
+      final long creationTime,
+      final int dataRegionId,
+      final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
-    PipeConnectorSubtaskLifeCycle lifeCycle =
+    final PipeConnectorSubtaskLifeCycle lifeCycle =
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
     if (lifeCycle.deregister(pipeName)) {
       attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
     }
 
-    PipeEventCommitManager.getInstance().deregister(pipeName, dataRegionId);
+    PipeEventCommitManager.getInstance().deregister(pipeName, creationTime, dataRegionId);
   }
 
-  public synchronized void start(String attributeSortedString) {
+  public synchronized void start(final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
-    PipeConnectorSubtaskLifeCycle lifeCycle =
+    final PipeConnectorSubtaskLifeCycle lifeCycle =
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
     lifeCycle.start();
   }
 
-  public synchronized void stop(String attributeSortedString) {
+  public synchronized void stop(final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
     }
 
-    PipeConnectorSubtaskLifeCycle lifeCycle =
+    final PipeConnectorSubtaskLifeCycle lifeCycle =
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
     lifeCycle.stop();
   }
 
   public BoundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue(
-      String attributeSortedString) {
+      final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(
           "Failed to get PendingQueue. No such subtask: " + attributeSortedString);
     }
 
     return attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString).getPendingQueue();
+  }
+
+  private String generateAttributeSortedString(final PipeParameters pipeConnectorParameters) {
+    final TreeMap<String, String> sortedStringSourceMap =
+        new TreeMap<>(pipeConnectorParameters.getAttribute());
+    sortedStringSourceMap.remove(SystemConstant.RESTART_KEY);
+    return sortedStringSourceMap.toString();
   }
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////

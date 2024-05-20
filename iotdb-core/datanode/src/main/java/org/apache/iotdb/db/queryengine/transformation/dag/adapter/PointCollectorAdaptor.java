@@ -20,12 +20,13 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.adapter;
 
 import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.type.Binary;
+
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.utils.BytesUtils;
 
 import java.io.IOException;
 

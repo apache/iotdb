@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.common.schematree;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -38,9 +37,10 @@ import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisit
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -69,12 +69,11 @@ public class ClusterSchemaTree implements ISchemaTree {
 
   /** a flag recording whether there is logical view in this schema tree. */
   private boolean hasLogicalMeasurementPath = false;
+
   /** used to judge schema tree type */
   private boolean hasNormalTimeSeries = false;
 
   private Map<Integer, Template> templateMap = new HashMap<>();
-
-  private PathPatternTree authorityScope;
 
   public ClusterSchemaTree() {
     root = new SchemaInternalNode(PATH_ROOT);
@@ -100,7 +99,7 @@ public class ClusterSchemaTree implements ISchemaTree {
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
     try (SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
         SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
-            root, pathPattern, isPrefixMatch, slimit, soffset, authorityScope)) {
+            root, pathPattern, isPrefixMatch, slimit, soffset)) {
       visitor.setTemplateMap(templateMap);
       return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
     }
@@ -398,6 +397,32 @@ public class ClusterSchemaTree implements ISchemaTree {
     traverseAndMerge(this.root, null, schemaTree.root);
     this.templateMap.putAll(schemaTree.templateMap);
     this.hasNormalTimeSeries |= schemaTree.hasNormalTimeSeries;
+  }
+
+  @Override
+  public void removeLogicalView() {
+    removeLogicViewMeasurement(root);
+  }
+
+  private void removeLogicViewMeasurement(SchemaNode parent) {
+    if (parent.isMeasurement()) {
+      return;
+    }
+
+    Map<String, SchemaNode> children = parent.getChildren();
+    List<String> childrenToBeRemoved = new ArrayList<>();
+    for (Map.Entry<String, SchemaNode> entry : children.entrySet()) {
+      SchemaNode child = entry.getValue();
+      if (child.isMeasurement() && child.getAsMeasurementNode().isLogicalView()) {
+        childrenToBeRemoved.add(entry.getKey());
+      } else {
+        removeLogicViewMeasurement(child);
+      }
+    }
+
+    for (String key : childrenToBeRemoved) {
+      parent.removeChild(key);
+    }
   }
 
   private void traverseAndMerge(SchemaNode thisNode, SchemaNode thisParent, SchemaNode thatNode) {

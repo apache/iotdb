@@ -44,13 +44,13 @@ import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.rpc.BaseRpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
-import org.apache.iotdb.tsfile.utils.FSUtils;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.fileSystem.FSType;
+import org.apache.tsfile.utils.FSUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,7 +67,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class IoTDBConfig {
 
@@ -189,6 +189,9 @@ public class IoTDBConfig {
   /** When inserting rejected exceeds this, throw an exception. Unit: millisecond */
   private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
 
+  /** off heap memory bytes from env */
+  private long maxOffHeapMemoryBytes = 0;
+
   // region Write Ahead Log Configuration
   /** Write mode of wal */
   private volatile WALMode walMode = WALMode.ASYNC;
@@ -210,6 +213,9 @@ public class IoTDBConfig {
 
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 32 * 1024 * 1024;
+
+  /** max total direct buffer off heap memory size proportion */
+  private double maxDirectBufferOffHeapMemorySizeProportion = 0.8;
 
   /** Blocking queue capacity of each wal buffer */
   private int walBufferQueueCapacity = 500;
@@ -328,9 +334,14 @@ public class IoTDBConfig {
   /** Consensus directory. */
   private String consensusDir = IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + "consensus";
 
-  private String dataRegionConsensusDir = consensusDir + File.separator + "data_region";
+  private String dataRegionConsensusDir =
+      consensusDir + File.separator + IoTDBConstant.DATA_REGION_FOLDER_NAME;
 
-  private String schemaRegionConsensusDir = consensusDir + File.separator + "schema_region";
+  private String invalidDataRegionConsensusDir =
+      consensusDir + File.separator + IoTDBConstant.INVALID_DATA_REGION_FOLDER_NAME;
+
+  private String schemaRegionConsensusDir =
+      consensusDir + File.separator + IoTDBConstant.SCHEMA_REGION_FOLDER_NAME;
 
   /** temp result directory for sortOperator */
   private String sortTmpDir =
@@ -627,17 +638,14 @@ public class IoTDBConfig {
   /** Register time series as which type when receiving boolean string "true" or "false" */
   private TSDataType booleanStringInferType = TSDataType.BOOLEAN;
 
-  /** Register time series as which type when receiving an integer string "67" */
-  private TSDataType integerStringInferType = TSDataType.FLOAT;
-
   /**
    * register time series as which type when receiving an integer string and using float may lose
-   * precision num > 2 ^ 24
+   * precision
    */
-  private TSDataType longStringInferType = TSDataType.DOUBLE;
+  private TSDataType integerStringInferType = TSDataType.DOUBLE;
 
   /** register time series as which type when receiving a floating number string "6.7" */
-  private TSDataType floatingStringInferType = TSDataType.FLOAT;
+  private TSDataType floatingStringInferType = TSDataType.DOUBLE;
 
   /**
    * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT
@@ -682,8 +690,17 @@ public class IoTDBConfig {
    */
   private long mergeIntervalSec = 0L;
 
-  /** The limit of compaction merge can reach per second */
+  /** The limit of compaction merge can reach per second. When <= 0, no limit. unit: megabyte */
   private int compactionWriteThroughputMbPerSec = 16;
+
+  /**
+   * The limit of compaction read throughput can reach per second. When <= 0, no limit. unit:
+   * megabyte
+   */
+  private int compactionReadThroughputMbPerSec = 0;
+
+  /** The limit of compaction read operation can reach per second. When <= 0, no limit. */
+  private int compactionReadOperationPerSec = 0;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
@@ -885,7 +902,7 @@ public class IoTDBConfig {
    * on startup and set this variable so that the correct class name can be obtained later when the
    * data region consensus layer singleton is initialized
    */
-  private String dataRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
 
   /**
    * The consensus protocol class for schema region. The Datanode should communicate with ConfigNode
@@ -1076,6 +1093,7 @@ public class IoTDBConfig {
   private int maxSizePerBatch = 16 * 1024 * 1024;
   private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
+  private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
 
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
@@ -1088,6 +1106,8 @@ public class IoTDBConfig {
   private int loadMemoryAllocateMaxRetries = 5;
 
   private long loadCleanupTaskExecutionDelayTimeSeconds = 1800L; // 30 min
+
+  private double loadWriteThroughputBytesPerSecond = Double.MAX_VALUE; // Bytes/s
 
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
@@ -1123,6 +1143,15 @@ public class IoTDBConfig {
 
   public void setMaxLogEntriesNumPerBatch(int maxLogEntriesNumPerBatch) {
     this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
+  }
+
+  public long getRegionMigrationSpeedLimitBytesPerSecond() {
+    return regionMigrationSpeedLimitBytesPerSecond;
+  }
+
+  public void setRegionMigrationSpeedLimitBytesPerSecond(
+      long regionMigrationSpeedLimitBytesPerSecond) {
+    this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
   }
 
   public void setMaxSizePerBatch(int maxSizePerBatch) {
@@ -1448,8 +1477,12 @@ public class IoTDBConfig {
 
   public void setConsensusDir(String consensusDir) {
     this.consensusDir = consensusDir;
-    setDataRegionConsensusDir(consensusDir + File.separator + "data_region");
-    setSchemaRegionConsensusDir(consensusDir + File.separator + "schema_region");
+    setDataRegionConsensusDir(
+        consensusDir + File.separator + IoTDBConstant.DATA_REGION_FOLDER_NAME);
+    setSchemaRegionConsensusDir(
+        consensusDir + File.separator + IoTDBConstant.SCHEMA_REGION_FOLDER_NAME);
+    setInvalidDataRegionConsensusDir(
+        consensusDir + File.separator + IoTDBConstant.INVALID_DATA_REGION_FOLDER_NAME);
   }
 
   public String getDataRegionConsensusDir() {
@@ -1458,6 +1491,14 @@ public class IoTDBConfig {
 
   public void setDataRegionConsensusDir(String dataRegionConsensusDir) {
     this.dataRegionConsensusDir = dataRegionConsensusDir;
+  }
+
+  public String getInvalidDataRegionConsensusDir() {
+    return invalidDataRegionConsensusDir;
+  }
+
+  public void setInvalidDataRegionConsensusDir(String invalidDataRegionConsensusDir) {
+    this.invalidDataRegionConsensusDir = invalidDataRegionConsensusDir;
   }
 
   public String getSchemaRegionConsensusDir() {
@@ -1786,6 +1827,15 @@ public class IoTDBConfig {
     this.walBufferSize = walBufferSize;
   }
 
+  public double getMaxDirectBufferOffHeapMemorySizeProportion() {
+    return maxDirectBufferOffHeapMemorySizeProportion;
+  }
+
+  public void setMaxDirectBufferOffHeapMemorySizeProportion(
+      double maxDirectBufferOffHeapMemorySizeProportion) {
+    this.maxDirectBufferOffHeapMemorySizeProportion = maxDirectBufferOffHeapMemorySizeProportion;
+  }
+
   public int getWalBufferQueueCapacity() {
     return walBufferQueueCapacity;
   }
@@ -2022,6 +2072,22 @@ public class IoTDBConfig {
     this.compactionWriteThroughputMbPerSec = compactionWriteThroughputMbPerSec;
   }
 
+  public int getCompactionReadThroughputMbPerSec() {
+    return compactionReadThroughputMbPerSec;
+  }
+
+  public void setCompactionReadThroughputMbPerSec(int compactionReadThroughputMbPerSec) {
+    this.compactionReadThroughputMbPerSec = compactionReadThroughputMbPerSec;
+  }
+
+  public int getCompactionReadOperationPerSec() {
+    return compactionReadOperationPerSec;
+  }
+
+  public void setCompactionReadOperationPerSec(int compactionReadOperationPerSec) {
+    this.compactionReadOperationPerSec = compactionReadOperationPerSec;
+  }
+
   public boolean isEnableTimedFlushSeqMemtable() {
     return enableTimedFlushSeqMemtable;
   }
@@ -2197,6 +2263,12 @@ public class IoTDBConfig {
   }
 
   public void setBooleanStringInferType(TSDataType booleanStringInferType) {
+    if (booleanStringInferType != TSDataType.BOOLEAN && booleanStringInferType != TSDataType.TEXT) {
+      logger.warn(
+          "Config Property boolean_string_infer_type can only be BOOLEAN or TEXT but is {}",
+          booleanStringInferType);
+      return;
+    }
     this.booleanStringInferType = booleanStringInferType;
   }
 
@@ -2208,19 +2280,19 @@ public class IoTDBConfig {
     this.integerStringInferType = integerStringInferType;
   }
 
-  public void setLongStringInferType(TSDataType longStringInferType) {
-    this.longStringInferType = longStringInferType;
-  }
-
-  public TSDataType getLongStringInferType() {
-    return longStringInferType;
-  }
-
   public TSDataType getFloatingStringInferType() {
     return floatingStringInferType;
   }
 
   public void setFloatingStringInferType(TSDataType floatingNumberStringInferType) {
+    if (floatingNumberStringInferType != TSDataType.DOUBLE
+        && floatingNumberStringInferType != TSDataType.FLOAT
+        && floatingNumberStringInferType != TSDataType.TEXT) {
+      logger.warn(
+          "Config Property floating_string_infer_type can only be FLOAT, DOUBLE or TEXT but is {}",
+          floatingNumberStringInferType);
+      return;
+    }
     this.floatingStringInferType = floatingNumberStringInferType;
   }
 
@@ -2232,9 +2304,10 @@ public class IoTDBConfig {
     if (nanStringInferType != TSDataType.DOUBLE
         && nanStringInferType != TSDataType.FLOAT
         && nanStringInferType != TSDataType.TEXT) {
-      throw new IllegalArgumentException(
-          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is "
-              + nanStringInferType);
+      logger.warn(
+          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is {}",
+          nanStringInferType);
+      return;
     }
     this.nanStringInferType = nanStringInferType;
   }
@@ -2539,6 +2612,14 @@ public class IoTDBConfig {
 
   public void setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
     this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
+  }
+
+  public void setMaxOffHeapMemoryBytes(long maxOffHeapMemoryBytes) {
+    this.maxOffHeapMemoryBytes = maxOffHeapMemoryBytes;
+  }
+
+  public long getMaxOffHeapMemoryBytes() {
+    return maxOffHeapMemoryBytes;
   }
 
   public long getSlowQueryThreshold() {
@@ -3735,6 +3816,14 @@ public class IoTDBConfig {
   public void setLoadCleanupTaskExecutionDelayTimeSeconds(
       long loadCleanupTaskExecutionDelayTimeSeconds) {
     this.loadCleanupTaskExecutionDelayTimeSeconds = loadCleanupTaskExecutionDelayTimeSeconds;
+  }
+
+  public double getLoadWriteThroughputBytesPerSecond() {
+    return loadWriteThroughputBytesPerSecond;
+  }
+
+  public void setLoadWriteThroughputBytesPerSecond(double loadWriteThroughputBytesPerSecond) {
+    this.loadWriteThroughputBytesPerSecond = loadWriteThroughputBytesPerSecond;
   }
 
   public void setPipeReceiverFileDirs(String[] pipeReceiverFileDirs) {

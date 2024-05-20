@@ -37,10 +37,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +49,7 @@ import javax.validation.constraints.NotNull;
 import java.time.ZoneId;
 import java.util.List;
 
-import static org.apache.iotdb.db.pipe.receiver.legacy.loader.ILoader.SCHEMA_FETCHER;
+import static org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader.ILoader.SCHEMA_FETCHER;
 
 public class AuditLogger {
   private static final Logger logger = LoggerFactory.getLogger(AuditLogger.class);
@@ -160,11 +160,11 @@ public class AuditLogger {
       case REVOKE_WATERMARK_EMBEDDING:
       case STORAGE_GROUP_SCHEMA:
       case DELETE_STORAGE_GROUP:
-      case CREATE_TIMESERIES:
-      case CREATE_ALIGNED_TIMESERIES:
-      case CREATE_MULTI_TIMESERIES:
-      case DELETE_TIMESERIES:
-      case ALTER_TIMESERIES:
+      case CREATE_TIME_SERIES:
+      case CREATE_ALIGNED_TIME_SERIES:
+      case CREATE_MULTI_TIME_SERIES:
+      case DELETE_TIME_SERIES:
+      case ALTER_TIME_SERIES:
       case CHANGE_ALIAS:
       case CHANGE_TAG_OFFSET:
       case CREATE_FUNCTION:

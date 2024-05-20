@@ -23,10 +23,11 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.ILastCacheContainer;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.LastCacheContainer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Map;
 
@@ -162,5 +163,13 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   @Override
   public boolean isLogicalView() {
     return this.iMeasurementSchema.isLogicalView();
+  }
+
+  public int invalidateLastCache() {
+    if (this.lastCacheContainer == null || this.lastCacheContainer.getCachedLast() == null) {
+      return 0;
+    }
+
+    return this.lastCacheContainer.invalidateLastCache();
   }
 }

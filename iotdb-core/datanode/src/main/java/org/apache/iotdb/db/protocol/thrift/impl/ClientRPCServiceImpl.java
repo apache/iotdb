@@ -164,26 +164,26 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.TimeFilterApi;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.TimeDuration;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import io.airlift.units.Duration;
 import io.jsonwebtoken.lang.Strings;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.factory.TimeFilterApi;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.TimeDuration;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -2554,7 +2554,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSStatus handshake(TSyncIdentityInfo info) throws TException {
+  public TSStatus handshake(final TSyncIdentityInfo info) throws TException {
     return PipeAgent.receiver()
         .legacy()
         .handshake(
@@ -2565,22 +2565,23 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSStatus sendPipeData(ByteBuffer buff) throws TException {
+  public TSStatus sendPipeData(final ByteBuffer buff) throws TException {
     return PipeAgent.receiver().legacy().transportPipeData(buff);
   }
 
   @Override
-  public TSStatus sendFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff) throws TException {
+  public TSStatus sendFile(final TSyncTransportMetaInfo metaInfo, final ByteBuffer buff)
+      throws TException {
     return PipeAgent.receiver().legacy().transportFile(metaInfo, buff);
   }
 
   @Override
-  public TPipeTransferResp pipeTransfer(TPipeTransferReq req) {
+  public TPipeTransferResp pipeTransfer(final TPipeTransferReq req) {
     return PipeAgent.receiver().thrift().receive(req);
   }
 
   @Override
-  public TPipeSubscribeResp pipeSubscribe(TPipeSubscribeReq req) {
+  public TPipeSubscribeResp pipeSubscribe(final TPipeSubscribeReq req) {
     return SubscriptionAgent.receiver().handle(req);
   }
 
@@ -2590,16 +2591,16 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSConnectionInfoResp fetchAllConnectionsInfo() throws TException {
+  public TSConnectionInfoResp fetchAllConnectionsInfo() {
     return SESSION_MANAGER.getAllConnectionInfo();
   }
 
   @Override
-  public TSStatus insertStringRecord(TSInsertStringRecordReq req) {
-    long t1 = System.nanoTime();
+  public TSStatus insertStringRecord(final TSInsertStringRecordReq req) {
+    final long t1 = System.nanoTime();
     OperationQuota quota = null;
     try {
-      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+      final IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
         return getNotLoggedInStatus();
       }
@@ -2607,7 +2608,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // check whether measurement is legal according to syntax convention
       req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
 
-      InsertRowStatement statement = StatementGenerator.createStatement(req);
+      final InsertRowStatement statement = StatementGenerator.createStatement(req);
 
       if (ENABLE_AUDIT_LOG) {
         AuditLogger.log(
@@ -2617,8 +2618,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             true);
       }
 
-      // permission check
-      TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
+      // Permission check
+      final TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -2627,9 +2628,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           DataNodeThrottleQuotaManager.getInstance()
               .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), statement);
 
-      // Step 2: call the coordinator
-      long queryId = SESSION_MANAGER.requestQueryId();
-      ExecutionResult result =
+      // Step 2: Call the coordinator
+      final long queryId = SESSION_MANAGER.requestQueryId();
+      final ExecutionResult result =
           COORDINATOR.executeForTreeModel(
               statement,
               queryId,

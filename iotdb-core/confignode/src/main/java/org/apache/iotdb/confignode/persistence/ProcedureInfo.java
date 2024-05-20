@@ -33,10 +33,10 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureWAL;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +59,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
 public class ProcedureInfo implements SnapshotProcessor {
@@ -76,7 +77,7 @@ public class ProcedureInfo implements SnapshotProcessor {
   private final Map<Long, Procedure<ConfigNodeProcedureEnv>> procedureMap =
       new ConcurrentHashMap<>();
 
-  private long lastProcId = -1;
+  private final AtomicLong lastProcId = new AtomicLong(-1);
 
   private final ProcedureFactory procedureFactory = ProcedureFactory.getInstance();
 
@@ -104,7 +105,8 @@ public class ProcedureInfo implements SnapshotProcessor {
       LOGGER.error("Load procedure wal failed.", e);
     }
     procedureList.forEach(procedure -> procedureMap.put(procedure.getProcId(), procedure));
-    procedureList.forEach(procedure -> lastProcId = Math.max(lastProcId, procedure.getProcId()));
+    procedureList.forEach(
+        procedure -> lastProcId.set(Math.max(lastProcId.get(), procedure.getProcId())));
     return procedureList;
   }
 
@@ -118,7 +120,7 @@ public class ProcedureInfo implements SnapshotProcessor {
         return;
       }
       try {
-        FileUtils.recursiveDeleteFolder(OLD_PROCEDURE_WAL_DIR);
+        FileUtils.recursivelyDeleteFolder(OLD_PROCEDURE_WAL_DIR);
       } catch (IOException e) {
         LOGGER.error("Delete useless procedure wal dir fail.", e);
         LOGGER.error(
@@ -133,7 +135,7 @@ public class ProcedureInfo implements SnapshotProcessor {
   public TSStatus updateProcedure(UpdateProcedurePlan updateProcedurePlan) {
     Procedure<ConfigNodeProcedureEnv> procedure = updateProcedurePlan.getProcedure();
     procedureMap.put(procedure.getProcId(), procedure);
-    lastProcId = Math.max(lastProcId, procedure.getProcId());
+    lastProcId.set(Math.max(lastProcId.get(), procedure.getProcId()));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -198,7 +200,7 @@ public class ProcedureInfo implements SnapshotProcessor {
     try (FileOutputStream fileOutputStream = new FileOutputStream(mainFile);
         DataOutputStream dataOutputStream = new DataOutputStream(fileOutputStream);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileOutputStream)) {
-      ReadWriteIOUtils.write(lastProcId, fileOutputStream);
+      ReadWriteIOUtils.write(lastProcId.get(), fileOutputStream);
       tioStreamTransport.flush();
       fileOutputStream.getFD().sync();
     }
@@ -244,7 +246,7 @@ public class ProcedureInfo implements SnapshotProcessor {
     File mainFile =
         new File(procedureSnapshotDir.getAbsolutePath() + File.separator + MAIN_SNAPSHOT_FILENAME);
     try (FileInputStream fileInputStream = new FileInputStream(mainFile)) {
-      lastProcId = ReadWriteIOUtils.readLong(fileInputStream);
+      lastProcId.set(ReadWriteIOUtils.readLong(fileInputStream));
     }
 
     Arrays.stream(Objects.requireNonNull(procedureSnapshotDir.listFiles()))
@@ -262,7 +264,7 @@ public class ProcedureInfo implements SnapshotProcessor {
   }
 
   public long getNextProcId() {
-    return ++this.lastProcId;
+    return this.lastProcId.incrementAndGet();
   }
 
   @Override
@@ -274,7 +276,7 @@ public class ProcedureInfo implements SnapshotProcessor {
       return false;
     }
     ProcedureInfo procedureInfo = (ProcedureInfo) o;
-    return lastProcId == procedureInfo.lastProcId
+    return lastProcId.get() == procedureInfo.lastProcId.get()
         && procedureMap.equals(procedureInfo.procedureMap);
   }
 }

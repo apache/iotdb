@@ -21,7 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -48,7 +49,7 @@ public class TsFileManager {
   private final TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
   private final TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
 
-  private boolean allowCompaction = true;
+  private volatile boolean allowCompaction = true;
   private final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
   public TsFileManager(String storageGroupName, String dataRegionId, String storageGroupDir) {
@@ -62,8 +63,8 @@ public class TsFileManager {
   }
 
   /**
-   * @param sequence true for sequence, false for unsequence
-   * @param timePartitions null for all time partitions, empty for zero time partitions
+   * @param sequence {@code true} for sequence, {@code false} for unsequence
+   * @param timePartitions {@code null} for all time partitions, empty for zero time partitions
    */
   public List<TsFileResource> getTsFileList(
       boolean sequence, List<Long> timePartitions, Filter timeFilter) {
@@ -177,7 +178,7 @@ public class TsFileManager {
   }
 
   /**
-   * insert tsFileResource to a target pos(targetPos = insertPos) e.g. if insertPos = 0, then to the
+   * Insert tsFileResource to a target pos(targetPos = insertPos) e.g. if insertPos = 0, then to the
    * first, if insert Pos = 1, then to the second.
    */
   public void insertToPartitionFileList(

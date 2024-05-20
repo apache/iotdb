@@ -135,4 +135,6 @@ public interface CommonConfig {
   CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs);
 
   CommonConfig setWalMode(String walMode);
+
+  CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize);
 }

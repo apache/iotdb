@@ -29,6 +29,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+@Deprecated
 public class UpdateRegionLocationPlan extends ConfigPhysicalPlan {
   /*which region*/
   TConsensusGroupId regionId;

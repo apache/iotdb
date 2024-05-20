@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache;
 
-import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.TimeValuePair;
 
 /** this interface declares the operations of LastCache data */
 public interface ILastCacheContainer {
@@ -28,7 +28,7 @@ public interface ILastCacheContainer {
   TimeValuePair getCachedLast();
 
   /**
-   * update last point cache
+   * update last point cache and enable last cache.
    *
    * @param timeValuePair last point
    * @param highPriorityUpdate whether it's a high priority update
@@ -37,6 +37,9 @@ public interface ILastCacheContainer {
    */
   int updateCachedLast(
       TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
+
+  /** Invalidate Last cache. */
+  int invalidateLastCache();
 
   int estimateSize();
 }

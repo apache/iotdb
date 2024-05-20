@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
@@ -34,10 +36,10 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.IDeviceID;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,7 +82,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     this.dataRegionId = tsFileResource.getDataRegionId();
     this.sequence = sequence;
     this.callbackAfterUnsealedTsFileRecovered = callbackAfterUnsealedTsFileRecovered;
-    this.walRedoer = new TsFilePlanRedoer(tsFileResource, sequence);
+    this.walRedoer = new TsFilePlanRedoer(tsFileResource);
     this.recoverListener = new WALRecoverListener(tsFileResource.getTsFilePath());
   }
 
@@ -188,6 +190,15 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         case MEMORY_TABLE_SNAPSHOT:
           IMemTable memTable = (IMemTable) walEntry.getValue();
           if (!memTable.isSignalMemTable()) {
+            if (tsFileResource != null) {
+              for (IDeviceID device : tsFileResource.getDevices()) {
+                memTable.delete(
+                    new PartialPath(device, "*"),
+                    new PartialPath(device),
+                    tsFileResource.getStartTime(device),
+                    tsFileResource.getEndTime(device));
+              }
+            }
             walRedoer.resetRecoveryMemTable(memTable);
           }
           // update memtable's database and dataRegionId
@@ -196,6 +207,9 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         case INSERT_ROW_NODE:
         case INSERT_TABLET_NODE:
           walRedoer.redoInsert((InsertNode) walEntry.getValue());
+          break;
+        case INSERT_ROWS_NODE:
+          walRedoer.redoInsertRows((InsertRowsNode) walEntry.getValue());
           break;
         case DELETE_DATA_NODE:
           walRedoer.redoDelete((DeleteDataNode) walEntry.getValue());

@@ -22,7 +22,8 @@ package org.apache.iotdb.pipe.api.event.dml.insertion;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.tsfile.write.record.Tablet;
+
+import org.apache.tsfile.write.record.Tablet;
 
 import java.util.function.BiConsumer;
 
@@ -30,18 +31,18 @@ import java.util.function.BiConsumer;
 public interface TabletInsertionEvent extends Event {
 
   /**
-   * The consumer processes the data row by row and collects the results by RowCollector.
+   * The consumer processes the data row by row and collects the results by {@link RowCollector}.
    *
-   * @return {@code Iterable<TabletInsertionEvent>} a list of new TabletInsertionEvent contains the
-   *     results collected by the RowCollector
+   * @return {@code Iterable<TabletInsertionEvent>} a list of new {@link TabletInsertionEvent}
+   *     contains the results collected by the {@link RowCollector}
    */
   Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer);
 
   /**
-   * The consumer processes the Tablet directly and collects the results by RowCollector.
+   * The consumer processes the Tablet directly and collects the results by {@link RowCollector}.
    *
-   * @return {@code Iterable<TabletInsertionEvent>} a list of new TabletInsertionEvent contains the
-   *     results collected by the RowCollector
+   * @return {@code Iterable<TabletInsertionEvent>} a list of new {@link TabletInsertionEvent}
+   *     contains the results collected by the {@link RowCollector}
    */
   Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer);
 }

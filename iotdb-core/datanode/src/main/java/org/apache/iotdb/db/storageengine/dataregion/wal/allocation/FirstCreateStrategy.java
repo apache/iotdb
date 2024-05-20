@@ -42,6 +42,7 @@ public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
   // region these variables should be protected by nodesLock
   // wal nodes
   private final Map<String, WALNode> identifier2Nodes = new HashMap<>();
+
   // endregion
 
   // it's safe to not close WALNode here, we use clear method to close all WALNodes.
@@ -95,7 +96,7 @@ public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
       if (walNode != null) {
         walNode.close();
         if (walNode.getLogDirectory().exists()) {
-          FileUtils.deleteDirectory(walNode.getLogDirectory());
+          FileUtils.deleteFileOrDirectory(walNode.getLogDirectory());
         }
         WALManager.getInstance().subtractTotalDiskUsage(walNode.getDiskUsage());
         WALManager.getInstance().subtractTotalFileNum(walNode.getFileNum());

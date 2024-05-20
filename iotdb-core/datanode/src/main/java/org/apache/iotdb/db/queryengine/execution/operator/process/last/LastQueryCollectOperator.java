@@ -19,17 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
 public class LastQueryCollectOperator implements ProcessOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LastQueryCollectOperator.class);
 
   private final OperatorContext operatorContext;
 
@@ -117,5 +122,16 @@ public class LastQueryCollectOperator implements ProcessOperator {
       sum += operator.calculateRetainedSizeAfterCallingNext();
     }
     return sum;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + (children == null
+            ? 0
+            : children.stream()
+                .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
+                .sum());
   }
 }

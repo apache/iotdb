@@ -26,22 +26,19 @@ import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.subscription.payload.config.ConsumerConfig;
-import org.apache.iotdb.rpc.subscription.payload.response.EnrichedTablets;
 import org.apache.iotdb.service.rpc.thrift.TSBackupConfigurationResp;
 import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.write.record.Tablet;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public interface ISession extends AutoCloseable {
 
@@ -75,17 +72,23 @@ public interface ISession extends AutoCloseable {
 
   void setTimeZoneOfSession(String zoneId);
 
-  /** @deprecated Use {@link #createDatabase(String)} instead. */
+  /**
+   * @deprecated Use {@link #createDatabase(String)} instead.
+   */
   @Deprecated
   void setStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  /** @deprecated Use {@link #deleteDatabase(String)} instead. */
+  /**
+   * @deprecated Use {@link #deleteDatabase(String)} instead.
+   */
   @Deprecated
   void deleteStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  /** @deprecated Use {@link #deleteDatabases(List)} instead. */
+  /**
+   * @deprecated Use {@link #deleteDatabases(List)} instead.
+   */
   @Deprecated
   void deleteStorageGroups(List<String> storageGroups)
       throws IoTDBConnectionException, StatementExecutionException;
@@ -512,50 +515,46 @@ public interface ISession extends AutoCloseable {
 
   long getQueryTimeout();
 
-  /** @deprecated */
+  /**
+   * @deprecated
+   */
   @Deprecated
   default SystemStatus getSystemStatus() {
     return SystemStatus.NORMAL;
   }
 
-  /** @deprecated */
+  /**
+   * @deprecated
+   */
   @Deprecated
   default void createTimeseriesOfTemplateOnPath(String path)
       throws IoTDBConnectionException, StatementExecutionException {}
 
-  /** @deprecated */
+  /**
+   * @deprecated
+   */
   @Deprecated
   default void deactivateTemplateOn(String templateName, String prefixPath)
       throws IoTDBConnectionException, StatementExecutionException {}
 
-  /** @deprecated */
+  /**
+   * @deprecated
+   */
   @Deprecated
   default void operationSyncTransmit(ByteBuffer buffer)
       throws IoTDBConnectionException, StatementExecutionException {}
 
-  /** @deprecated */
+  /**
+   * @deprecated
+   */
   @Deprecated
   default boolean isEnableCacheLeader() {
     return true;
   }
 
-  /** @deprecated */
+  /**
+   * @deprecated
+   */
   @Deprecated
   default void setEnableCacheLeader(boolean enableCacheLeader) {}
-
-  // -------------------------------------------------------------- //
-  // provided for IoTDBSubscriptionSimpleIT (will be removed later) //
-  // -------------------------------------------------------------- //
-
-  void createConsumer(ConsumerConfig consumerConfig) throws Exception;
-
-  void dropConsumer() throws Exception;
-
-  void subscribe(Set<String> topicNames) throws Exception;
-
-  void unsubscribe(Set<String> topicNames) throws Exception;
-
-  List<EnrichedTablets> poll(Set<String> topicNames) throws Exception;
-
-  void commit(Map<String, List<String>> topicNameToSubscriptionCommitIds) throws Exception;
 }

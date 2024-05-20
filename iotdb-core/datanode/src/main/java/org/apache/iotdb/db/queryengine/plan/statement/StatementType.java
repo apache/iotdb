@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement;
 /**
  * Type code of statement.
  *
- * <p>NOTE: If you want to add new StatementType, you must add it in the LAST.
+ * <p>NOTE: If you want to add new {@link StatementType}, you must add it in the LAST.
  */
 public enum StatementType {
   NULL,
@@ -51,11 +51,11 @@ public enum StatementType {
 
   STORAGE_GROUP_SCHEMA,
   DELETE_STORAGE_GROUP,
-  CREATE_TIMESERIES,
-  CREATE_ALIGNED_TIMESERIES,
-  CREATE_MULTI_TIMESERIES,
-  DELETE_TIMESERIES,
-  ALTER_TIMESERIES,
+  CREATE_TIME_SERIES,
+  CREATE_ALIGNED_TIME_SERIES,
+  CREATE_MULTI_TIME_SERIES,
+  DELETE_TIME_SERIES,
+  ALTER_TIME_SERIES,
   CHANGE_ALIAS,
   CHANGE_TAG_OFFSET,
 

@@ -20,18 +20,15 @@
 package org.apache.iotdb.confignode.procedure.impl.node;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
-import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.AddConfigNodeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,14 +81,8 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
           break;
         case REGISTER_SUCCESS:
           env.notifyRegisterSuccess(tConfigNodeLocation);
+          env.createConfigNodeHeartbeatCache(tConfigNodeLocation.getConfigNodeId());
           env.applyConfigNode(tConfigNodeLocation, versionInfo);
-          env.broadCastTheLatestConfigNodeGroup();
-          env.getConfigManager()
-              .getLoadManager()
-              .forceUpdateNodeCache(
-                  NodeType.ConfigNode,
-                  tConfigNodeLocation.getConfigNodeId(),
-                  NodeHeartbeatSample.generateDefaultSample(NodeStatus.Unknown));
           LOG.info("The ConfigNode: {} is successfully added to the cluster", tConfigNodeLocation);
           return Flow.NO_MORE_STATE;
       }

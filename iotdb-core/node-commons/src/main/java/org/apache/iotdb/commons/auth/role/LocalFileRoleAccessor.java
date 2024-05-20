@@ -26,9 +26,9 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -235,7 +235,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       result &= roleTmpSnapshotDir.renameTo(roleSnapshotDir);
     } finally {
       if (roleTmpSnapshotDir.exists() && !roleTmpSnapshotDir.delete()) {
-        FileUtils.deleteDirectory(roleTmpSnapshotDir);
+        FileUtils.deleteFileOrDirectory(roleTmpSnapshotDir);
       }
     }
     return result;
@@ -254,11 +254,11 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
         if (!FileUtils.copyDir(roleSnapshotDir, roleFolder)) {
           LOGGER.error("Failed to load role folder snapshot and rollback.");
           // rollback if failed to copy
-          FileUtils.deleteDirectory(roleFolder);
+          FileUtils.deleteFileOrDirectory(roleFolder);
           org.apache.commons.io.FileUtils.moveDirectory(roleTmpFolder, roleFolder);
         }
       } finally {
-        FileUtils.deleteDirectory(roleTmpFolder);
+        FileUtils.deleteFileOrDirectory(roleTmpFolder);
       }
     } else {
       LOGGER.info("There are no roles to load.");
@@ -291,6 +291,8 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       for (File file : files) {
         FileUtils.deleteFileIfExist(file);
       }
+    } else {
+      LOGGER.warn("Role folder not exists");
     }
   }
 

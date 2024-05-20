@@ -28,9 +28,10 @@ import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -55,9 +56,9 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   private static final int FETCH_SIZE = 10_000;
 
-  // availableNodes won't be updated frequently, so we use CopyOnWriteArraySet which is thread-safe
+  // availableNodes won't be updated frequently, so we use CopyOnWriteArrayList which is thread-safe
   // and is optimized for scenarios of reading more and writing less
-  private volatile Set<TEndPoint> availableNodes = new CopyOnWriteArraySet<>();
+  private volatile List<TEndPoint> availableNodes = new CopyOnWriteArrayList<>();
 
   private final boolean useSSL;
   private final String trustStore;
@@ -76,6 +77,8 @@ public class NodesSupplier implements INodeSupplier, Runnable {
   private final int connectionTimeoutInMs;
 
   private final String version;
+
+  private final QueryEndPointPolicy policy = new RoundRobinPolicy();
 
   private ThriftConnection client;
 
@@ -133,7 +136,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       String trustStorePwd,
       boolean enableRPCCompression,
       String version) {
-    this.availableNodes.addAll(endPointList);
+    this.availableNodes.addAll(new HashSet<>(endPointList));
     this.userName = userName;
     this.password = password;
     this.useSSL = useSSL;
@@ -151,7 +154,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
   // and the List needn't be thread-safe, because it will only be used in one thread.
   @Override
   public List<TEndPoint> get() {
-    return new ArrayList<>(availableNodes);
+    return availableNodes;
   }
 
   @Override
@@ -213,6 +216,15 @@ public class NodesSupplier implements INodeSupplier, Runnable {
     destroyCurrentClient();
   }
 
+  @Override
+  public Optional<TEndPoint> getQueryEndPoint() {
+    if (availableNodes == null || availableNodes.isEmpty()) {
+      return Optional.empty();
+    } else {
+      return Optional.of(policy.chooseOne(get()));
+    }
+  }
+
   private boolean updateDataNodeList() {
     try (SessionDataSet sessionDataSet =
         client.executeQueryStatement(SHOW_DATA_NODES_COMMAND, TIMEOUT_IN_MS, FETCH_SIZE)) {
@@ -231,7 +243,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
       }
       // replace the older ones.
       if (!res.isEmpty()) {
-        availableNodes = new CopyOnWriteArraySet<>(res);
+        availableNodes = res;
       }
       return true;
     } catch (Exception e) {

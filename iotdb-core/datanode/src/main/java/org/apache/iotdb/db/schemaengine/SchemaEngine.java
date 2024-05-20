@@ -335,7 +335,7 @@ public class SchemaEngine {
     // remove the empty sg dir
     if (regionDirList == null || regionDirList.length == 0) {
       if (sgDir.exists()) {
-        FileUtils.deleteDirectory(sgDir);
+        FileUtils.deleteFileOrDirectory(sgDir);
       }
     }
   }
@@ -371,7 +371,7 @@ public class SchemaEngine {
             entry ->
                 timeSeriesNum.put(
                     entry.getKey().getId(),
-                    entry.getValue().getSchemaRegionStatistics().getSeriesNumber()));
+                    entry.getValue().getSchemaRegionStatistics().getSeriesNumber(false)));
     return timeSeriesNum;
   }
 
@@ -407,7 +407,7 @@ public class SchemaEngine {
                                   schemaRegion.getSchemaRegionStatistics().getDevicesNumber())
                           .orElse(0L)));
     }
-    if (schemaQuotaManager.isSeriesLimit()) {
+    if (schemaQuotaManager.isMeasurementLimit()) {
       if (resp.getRegionSeriesUsageMap() == null) {
         resp.setRegionSeriesUsageMap(new HashMap<>());
       }
@@ -423,7 +423,7 @@ public class SchemaEngine {
                       Optional.ofNullable(schemaRegionMap.get(consensusGroupId))
                           .map(
                               schemaRegion ->
-                                  schemaRegion.getSchemaRegionStatistics().getSeriesNumber())
+                                  schemaRegion.getSchemaRegionStatistics().getSeriesNumber(false))
                           .orElse(0L)));
     }
   }

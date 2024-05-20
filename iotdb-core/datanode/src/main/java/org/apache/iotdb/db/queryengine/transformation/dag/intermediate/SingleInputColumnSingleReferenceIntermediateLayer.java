@@ -29,15 +29,15 @@ import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.TVListForwardIterator;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.StateWindowAccessStrategy;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

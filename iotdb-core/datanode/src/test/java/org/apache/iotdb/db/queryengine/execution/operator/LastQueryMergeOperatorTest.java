@@ -29,10 +29,10 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateM
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
+import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -147,6 +147,11 @@ public class LastQueryMergeOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long ramBytesUsed() {
+            return 0;
+          }
         };
 
     Operator operator2 =
@@ -214,6 +219,11 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long ramBytesUsed() {
             return 0;
           }
         };
@@ -362,6 +372,11 @@ public class LastQueryMergeOperatorTest {
           public long calculateRetainedSizeAfterCallingNext() {
             return 0;
           }
+
+          @Override
+          public long ramBytesUsed() {
+            return 0;
+          }
         };
 
     Operator operator2 =
@@ -430,6 +445,11 @@ public class LastQueryMergeOperatorTest {
 
           @Override
           public long calculateRetainedSizeAfterCallingNext() {
+            return 0;
+          }
+
+          @Override
+          public long ramBytesUsed() {
             return 0;
           }
         };
