@@ -22,15 +22,21 @@
 set current_dir=%~dp0
 set superior_dir=%current_dir%\..\
 
+IF EXIST "%superior%\conf\iotdb-system.properties" (
+  set config_file="%superior_dir%\iotdb-system.properties"
+) ELSE (
+  set config_file="%superior_dir%\iotdb-datanode.properties"
+)
+
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
-"%superior_dir%\conf\iotdb-datanode.properties"') do (
+"%config_file%"') do (
   set dn_rpc_port=%%i
 )
 
 echo Check whether the rpc_port is used..., port is %dn_rpc_port%
 
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "dn_rpc_address"
-"%superior_dir%\conf\iotdb-datanode.properties"') do (
+"%config_file%"') do (
   set dn_rpc_address=%%i
 )
 

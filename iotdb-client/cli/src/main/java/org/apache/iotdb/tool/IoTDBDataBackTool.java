@@ -21,7 +21,6 @@ package org.apache.iotdb.tool;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
@@ -62,8 +61,6 @@ public class IoTDBDataBackTool {
   static String targetDataDirParam = "";
   static String targetWalDirParam = "";
 
-  static String DATA_NODE_CONF_NAME = IoTDBConfig.CONFIG_NAME;
-  static String CONFIG_NODE_CONF_NAME = "iotdb-confignode.properties";
   static AtomicInteger fileCount = new AtomicInteger(0);
   static AtomicInteger targetFileCount = new AtomicInteger(0);
   static AtomicInteger processFileCount = new AtomicInteger(0);
@@ -201,7 +198,7 @@ public class IoTDBDataBackTool {
                 + File.separatorChar
                 + "conf"
                 + File.separatorChar
-                + CONFIG_NODE_CONF_NAME,
+                + CommonConfig.SYSTEM_CONFIG_NAME,
             cnMapProperties);
       } else if (nodeTypeParam.equalsIgnoreCase("datanode")) {
         countDataNodeFile(targetDirString.toString(), copyMap, dnDataDirsMap, dnMapProperties);
@@ -223,7 +220,7 @@ public class IoTDBDataBackTool {
                 + File.separatorChar
                 + "conf"
                 + File.separatorChar
-                + DATA_NODE_CONF_NAME,
+                + CommonConfig.SYSTEM_CONFIG_NAME,
             dnMapProperties);
       } else if (nodeTypeParam.equalsIgnoreCase("all") || nodeTypeParam.isEmpty()) {
         countConfigNodeFile(targetDirString.toString(), copyMap, cnMapProperties);
@@ -246,14 +243,14 @@ public class IoTDBDataBackTool {
                 + File.separatorChar
                 + "conf"
                 + File.separatorChar
-                + CONFIG_NODE_CONF_NAME,
+                + CommonConfig.SYSTEM_CONFIG_NAME,
             cnMapProperties);
         propertiesFileUpdate(
             targetDirString.toString()
                 + File.separatorChar
                 + "conf"
                 + File.separatorChar
-                + DATA_NODE_CONF_NAME,
+                + CommonConfig.SYSTEM_CONFIG_NAME,
             dnMapProperties);
       }
 
@@ -279,7 +276,7 @@ public class IoTDBDataBackTool {
                 + File.separatorChar
                 + "conf"
                 + File.separatorChar
-                + CONFIG_NODE_CONF_NAME,
+                + CommonConfig.SYSTEM_CONFIG_NAME,
             cnMapProperties);
       } else if (nodeTypeParam.equalsIgnoreCase("datanode")) {
         countNodeBack(targetDirString.toString(), copyMap);
@@ -299,7 +296,7 @@ public class IoTDBDataBackTool {
                 + File.separatorChar
                 + "conf"
                 + File.separatorChar
-                + DATA_NODE_CONF_NAME,
+                + CommonConfig.SYSTEM_CONFIG_NAME,
             dnMapProperties);
       } else if (nodeTypeParam.equalsIgnoreCase("all") || nodeTypeParam.isEmpty()) {
         countNodeBack(targetDirString.toString(), copyMap);
@@ -321,14 +318,14 @@ public class IoTDBDataBackTool {
                 + File.separatorChar
                 + "conf"
                 + File.separatorChar
-                + CONFIG_NODE_CONF_NAME,
+                + CommonConfig.SYSTEM_CONFIG_NAME,
             cnMapProperties);
         propertiesFileUpdate(
             targetDirString.toString()
                 + File.separatorChar
                 + "conf"
                 + File.separatorChar
-                + DATA_NODE_CONF_NAME,
+                + CommonConfig.SYSTEM_CONFIG_NAME,
             dnMapProperties);
       }
     }

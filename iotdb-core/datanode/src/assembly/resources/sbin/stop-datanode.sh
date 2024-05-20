@@ -19,7 +19,12 @@
 #
 
 DATANODE_CONF="`dirname "$0"`/../conf"
-dn_rpc_port=`sed '/^dn_rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-datanode.properties`
+
+if [ -f "${CONFIG_DIR}/iotdb-system.properties" ]; then
+    dn_rpc_port=`sed '/^dn_rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-system.properties`
+else
+    dn_rpc_port=`sed '/^dn_rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-datanode.properties`
+fi
 
 force=""
 

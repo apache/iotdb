@@ -103,9 +103,9 @@ public class IoTDBDescriptor {
   static {
     ConfigFileAutoUpdateTool updateTool = new ConfigFileAutoUpdateTool();
     URL systemConfigUrl = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
-    URL configNodeUrl = getPropsUrl(CommonConfig.CONFIG_NODE_CONFIG_NAME);
-    URL dataNodeUrl = getPropsUrl(CommonConfig.DATA_NODE_CONFIG_NAME);
-    URL commonConfigUrl = getPropsUrl(CommonConfig.COMMON_CONFIG_NAME);
+    URL configNodeUrl = getPropsUrl(CommonConfig.OLD_CONFIG_NODE_CONFIG_NAME);
+    URL dataNodeUrl = getPropsUrl(CommonConfig.OLD_DATA_NODE_CONFIG_NAME);
+    URL commonConfigUrl = getPropsUrl(CommonConfig.OLD_COMMON_CONFIG_NAME);
     try {
       updateTool.checkAndMayUpdate(systemConfigUrl, configNodeUrl, dataNodeUrl, commonConfigUrl);
     } catch (Exception e) {
