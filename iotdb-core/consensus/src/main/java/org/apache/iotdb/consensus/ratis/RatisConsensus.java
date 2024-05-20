@@ -115,8 +115,8 @@ class RatisConsensus implements IConsensus {
   private final RaftPeer myself;
 
   private final File storageDir;
-
-  private final RaftServer server;
+  private final RaftServer.Builder serverBuilder;
+  private RaftServer server;
 
   private final RaftProperties properties = new RaftProperties();
   private final RaftClientRpc clientRpc;
@@ -144,8 +144,7 @@ class RatisConsensus implements IConsensus {
 
   private final ConcurrentHashMap<ConsensusGroupId, AtomicBoolean> canServeStaleRead;
 
-  public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
-      throws IOException {
+  public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry) {
     myself =
         Utils.fromNodeInfoAndPriorityToRaftPeer(
             config.getThisNodeId(), config.getThisNodeEndPoint(), DEFAULT_PRIORITY);
@@ -195,7 +194,8 @@ class RatisConsensus implements IConsensus {
 
     clientRpc = new GrpcFactory(new Parameters()).newRaftClientRpc(ClientId.randomId(), properties);
 
-    server =
+    // do not build server in constructor in case stateMachine is not ready
+    serverBuilder =
         RaftServer.newBuilder()
             .setServerId(myself.getId())
             .setProperties(properties)
@@ -205,12 +205,12 @@ class RatisConsensus implements IConsensus {
                     new ApplicationStateMachineProxy(
                         registry.apply(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId)),
                         raftGroupId,
-                        this::onLeaderChanged))
-            .build();
+                        this::onLeaderChanged));
   }
 
   @Override
   public synchronized void start() throws IOException {
+    server = serverBuilder.build();
     MetricService.getInstance().addMetricSet(this.ratisMetricSet);
     server.start();
     registerAndStartDiskGuardian();
