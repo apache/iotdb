@@ -20,7 +20,7 @@
 -->
 
 # ODBC
-With IoTDB JDBC, IoTDB be accessed using ODBC-JDBC bridge. The example program in "odbc" can write and read data through ODBC using the bridge.
+With IoTDB JDBC, IoTDB can be accessed using the ODBC-JDBC bridge. The example program in "odbc" can write and read data through ODBC using the bridge.
 
 ## Dependencies
 * IoTDB-JDBC's jar-with-dependency package
@@ -78,4 +78,4 @@ Then, you can see the output `iotdb-jdbc-1.3.2-SNAPSHOT-jar-with-dependencies.ja
 ## Operate IoTDB's data with ODBC example
 After correct deployment, you can use the example program to operate IoTDB's data. 
 
-This program can write data into IoTDB, and query the data we have just written. You can directly open the "odbc-example" with JetBrains Rider and run it..
+This program can write data into IoTDB, and query the data we have just written. You can directly open the "odbc-example" with JetBrains Rider and run it.
