@@ -24,6 +24,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.Path;
@@ -47,7 +48,7 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
   private final TsFileReader tsFileReader;
   private final Map<String, TSDataType> measurementDataTypeMap;
 
-  private final String deviceId;
+  private final IDeviceID deviceId;
   private final List<String> measurements;
 
   private final IExpression timeFilterExpression;
@@ -57,7 +58,7 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
   public TsFileInsertionDataTabletIterator(
       TsFileReader tsFileReader,
       Map<String, TSDataType> measurementDataTypeMap,
-      String deviceId,
+      IDeviceID deviceId,
       List<String> measurements,
       IExpression timeFilterExpression)
       throws IOException {
@@ -117,7 +118,11 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
       schemas.add(new MeasurementSchema(measurement, dataType));
     }
     final Tablet tablet =
-        new Tablet(deviceId, schemas, PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
+        new Tablet(
+            // Used for tree model
+            deviceId.toString(),
+            schemas,
+            PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
     tablet.initBitMaps();
 
     while (queryDataSet.hasNext()) {

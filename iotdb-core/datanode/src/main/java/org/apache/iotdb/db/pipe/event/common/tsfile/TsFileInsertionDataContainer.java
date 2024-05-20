@@ -218,7 +218,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
                     new TsFileInsertionDataTabletIterator(
                         tsFileReader,
                         measurementDataTypeMap,
-                        ((PlainDeviceID) entry.getKey()).toStringID(),
+                        entry.getKey(),
                         entry.getValue(),
                         timeFilterExpression);
               } catch (IOException e) {
