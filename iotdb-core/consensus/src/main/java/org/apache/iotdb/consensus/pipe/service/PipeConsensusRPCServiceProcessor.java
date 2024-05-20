@@ -206,6 +206,5 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
     resultHandler.onComplete(new TCheckConsensusPipeCompleteddResp(responseStatus, isCompleted));
   }
 
-  // TODO：添加发送端重启后，释放资源逻辑
   public void handleClientExit() {}
 }
