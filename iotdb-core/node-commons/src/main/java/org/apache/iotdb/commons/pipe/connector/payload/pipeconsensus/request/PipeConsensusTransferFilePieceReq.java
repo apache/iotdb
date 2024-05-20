@@ -39,6 +39,18 @@ public abstract class PipeConsensusTransferFilePieceReq extends TPipeConsensusTr
   private transient long startWritingOffset;
   private transient byte[] filePiece;
 
+  public final String getFileName() {
+    return fileName;
+  }
+
+  public final long getStartWritingOffset() {
+    return startWritingOffset;
+  }
+
+  public final byte[] getFilePiece() {
+    return filePiece;
+  }
+
   protected abstract PipeConsensusRequestType getPlanType();
 
   /////////////////////////////// Thrift ///////////////////////////////

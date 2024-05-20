@@ -37,6 +37,14 @@ public abstract class PipeConsensusTransferFileSealReq
   private transient String fileName;
   private transient long fileLength;
 
+  public final String getFileName() {
+    return fileName;
+  }
+
+  public final long getFileLength() {
+    return fileLength;
+  }
+
   protected abstract PipeConsensusRequestType getPlanType();
 
   /////////////////////////////// Thrift ///////////////////////////////

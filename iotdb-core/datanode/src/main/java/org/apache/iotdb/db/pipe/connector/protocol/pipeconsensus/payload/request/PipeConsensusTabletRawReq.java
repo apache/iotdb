@@ -46,21 +46,6 @@ public class PipeConsensusTabletRawReq extends TPipeConsensusTransferReq {
   private transient Tablet tablet;
   private transient boolean isAligned;
 
-  public InsertTabletNode convertToInsertTabletNode() throws IllegalPathException {
-    return new InsertTabletNode(
-        new PlanNodeId("PipeConsensusRawTablet-0"),
-        new PartialPath(new PlainDeviceID(tablet.deviceId)),
-        isAligned,
-        tablet.getSchemas().stream()
-            .map(MeasurementSchema::getMeasurementId)
-            .toArray(String[]::new),
-        tablet.getSchemas().stream().map(MeasurementSchema::getType).toArray(TSDataType[]::new),
-        tablet.timestamps,
-        tablet.bitMaps,
-        tablet.values,
-        tablet.rowSize);
-  }
-
   /////////////////////////////// WriteBack & Batch ///////////////////////////////
 
   public static PipeConsensusTabletRawReq toTPipeConsensusTransferRawReq(

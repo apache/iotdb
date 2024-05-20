@@ -41,6 +41,18 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
   private transient List<Long> fileLengths;
   private transient Map<String, String> parameters;
 
+  public final List<String> getFileNames() {
+    return fileNames;
+  }
+
+  public final List<Long> getFileLengths() {
+    return fileLengths;
+  }
+
+  public final Map<String, String> getParameters() {
+    return parameters;
+  }
+
   protected abstract PipeConsensusRequestType getPlanType();
 
   /////////////////////////////// Thrift ///////////////////////////////
