@@ -39,6 +39,9 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertSchemaPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.cache.TableDeviceId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.cache.TableDeviceSchemaCache;
@@ -52,6 +55,7 @@ import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
@@ -59,6 +63,8 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.read.common.type.UnknownType;
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -66,6 +72,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -73,11 +80,16 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class TableModelSchemaFetcher {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(TableModelSchemaFetcher.class);
+
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
 
   private final TableDeviceSchemaCache cache = new TableDeviceSchemaCache();
+
+  private final ClusterConfigTaskExecutor configTaskExecutor =
+      ClusterConfigTaskExecutor.getInstance();
 
   private static class TableModelSchemaFetcherHolder {
     private static final TableModelSchemaFetcher INSTANCE = new TableModelSchemaFetcher();
@@ -183,12 +195,23 @@ public class TableModelSchemaFetcher {
   private void autoCreateColumn(
       String database,
       String tableName,
-      List<ColumnSchema> columnSchemaList,
+      List<ColumnSchema> inputColumnList,
       MPPQueryContext context) {
-    throw new SemanticException(
-        String.format(
-            "Unknown columns %s",
-            columnSchemaList.stream().map(ColumnSchema::getName).collect(Collectors.toList())));
+    AlterTableAddColumnTask task =
+        new AlterTableAddColumnTask(
+            database, tableName, inputColumnList, context.getQueryId().getId());
+    try {
+      ListenableFuture<ConfigTaskResult> future = task.execute(configTaskExecutor);
+      ConfigTaskResult result = future.get();
+      if (result.getStatusCode().getStatusCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(
+            new IoTDBException(
+                "Auto add table column failed.", result.getStatusCode().getStatusCode()));
+      }
+    } catch (ExecutionException | InterruptedException e) {
+      LOGGER.warn("Auto add table column failed.", e);
+      throw new RuntimeException(e);
+    }
   }
 
   public void validateDeviceSchema(

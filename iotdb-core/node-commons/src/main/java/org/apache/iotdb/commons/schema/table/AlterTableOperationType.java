@@ -17,30 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.table;
+package org.apache.iotdb.commons.schema.table;
 
-import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+public enum AlterTableOperationType {
+  ADD_COLUMN((byte) 0);
 
-import java.util.List;
+  private final byte type;
 
-public interface ITableCache {
+  AlterTableOperationType(byte type) {
+    this.type = type;
+  }
 
-  void init(byte[] tableInitializationBytes);
+  public byte getTypeValue() {
+    return type;
+  }
 
-  void preCreateTable(String database, TsTable table);
-
-  void rollbackCreateTable(String database, String tableName);
-
-  void commitCreateTable(String database, String tableName);
-
-  void invalidateTable(String database, String tableName);
-
-  void invalidateTable(String database);
-
-  void addTableColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList);
-
-  void rollbackAddColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList);
+  public static AlterTableOperationType getType(byte value) {
+    switch (value) {
+      case 0:
+        return ADD_COLUMN;
+      default:
+        throw new IllegalArgumentException();
+    }
+  }
 }

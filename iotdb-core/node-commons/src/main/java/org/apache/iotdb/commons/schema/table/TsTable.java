@@ -75,6 +75,10 @@ public class TsTable {
     }
   }
 
+  public void removeColumnSchema(String columnName) {
+    columnSchemaMap.remove(columnName);
+  }
+
   public int getColumnNum() {
     return columnSchemaMap.size();
   }

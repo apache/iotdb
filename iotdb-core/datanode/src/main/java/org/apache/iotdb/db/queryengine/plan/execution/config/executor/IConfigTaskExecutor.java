@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -83,6 +84,8 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import com.google.common.util.concurrent.SettableFuture;
+
+import java.util.List;
 
 public interface IConfigTaskExecutor {
 
@@ -263,4 +266,10 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showTables(String database);
 
   SettableFuture<ConfigTaskResult> dropTable(String database, String tableName, String queryId);
+
+  SettableFuture<ConfigTaskResult> alterTableAddColumn(
+      String database,
+      String tableName,
+      List<TsTableColumnSchema> columnSchemaList,
+      String queryId);
 }

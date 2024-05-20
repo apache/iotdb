@@ -34,6 +34,8 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -76,6 +78,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProced
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
@@ -99,6 +102,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
@@ -1291,6 +1295,56 @@ public class ProcedureManager {
         }
         procedureId =
             this.executor.submitProcedure(new DropTableProcedure(database, tableName, queryId));
+      }
+    }
+    List<TSStatus> procedureStatus = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
+    if (isSucceed) {
+      return StatusUtils.OK;
+    } else {
+      return procedureStatus.get(0);
+    }
+  }
+
+  public TSStatus alterTableAddColumn(TAlterTableReq req) {
+    String database = req.database;
+    String tableName = req.tableName;
+    String queryId = req.queryId;
+    List<TsTableColumnSchema> columnSchemaList =
+        TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo);
+
+    long procedureId = -1;
+    synchronized (this) {
+      boolean hasOverlappedTask = false;
+      ProcedureType type;
+      AddTableColumnProcedure addTableColumnProcedure;
+      for (Procedure<?> procedure : executor.getProcedures().values()) {
+        type = ProcedureFactory.getProcedureType(procedure);
+        if (type == null || !type.equals(ProcedureType.ADD_TABLE_COLUMN_PROCEDURE)) {
+          continue;
+        }
+        addTableColumnProcedure = (AddTableColumnProcedure) procedure;
+        if (queryId.equals(addTableColumnProcedure.getQueryId())) {
+          procedureId = addTableColumnProcedure.getProcId();
+          break;
+        }
+        if (database.equals(addTableColumnProcedure.getDatabase())
+            && tableName.equals(addTableColumnProcedure.getTableName())) {
+          hasOverlappedTask = true;
+          break;
+        }
+      }
+
+      if (procedureId == -1) {
+        if (hasOverlappedTask) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              "Some other task dropping table with same name.");
+        }
+        procedureId =
+            this.executor.submitProcedure(
+                new AddTableColumnProcedure(database, tableName, queryId, columnSchemaList));
       }
     }
     List<TSStatus> procedureStatus = new ArrayList<>();

@@ -928,6 +928,14 @@ struct TDropTableReq{
     3: required string queryId
 }
 
+struct TAlterTableReq{
+    1: required string database
+    2: required string tableName
+    3: required string queryId
+    4: required byte operationType
+    5: required binary updateInfo
+}
+
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -1576,5 +1584,7 @@ service IConfigNodeRPCService {
   common.TSStatus createTable(binary tableInfo)
 
   common.TSStatus dropTable(TDropTableReq req)
+
+  common.TSStatus alterTable(TAlterTableReq req)
 }
 
