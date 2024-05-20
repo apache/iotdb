@@ -58,22 +58,22 @@ public class ConfigFileAutoUpdateTool {
     File dataNodeFile = new File(dataNodeUrl.getFile());
     File commonFile = new File(commonUrl.getFile());
 
+    if (systemFile.exists()) {
+      return;
+    }
     boolean canUpdate = configNodeFile.exists() && dataNodeFile.exists() && commonFile.exists();
     if (!canUpdate) {
       return;
     }
 
-    if (!systemFile.exists()) {
-      systemFile.createNewFile();
-    }
-
-    acquireTargetFileLock(systemFile);
+    File lockFile = new File(systemFile.getPath() + lockFileSuffix);
+    acquireTargetFileLock(lockFile);
     try {
       // other progress updated this file
-      if (systemFile.length() != 0) {
+      if (systemFile.exists()) {
         return;
       }
-      try (RandomAccessFile raf = new RandomAccessFile(systemFile, "rw")) {
+      try (RandomAccessFile raf = new RandomAccessFile(lockFile, "rw")) {
         raf.write(license.getBytes());
         String configNodeContent = readConfigLines(configNodeFile);
         raf.write(configNodeContent.getBytes());
@@ -82,8 +82,9 @@ public class ConfigFileAutoUpdateTool {
         String commonContent = readConfigLines(commonFile);
         raf.write(commonContent.getBytes());
       }
+      Files.move(lockFile.toPath(), systemFile.toPath());
     } finally {
-      releaseFileLock(systemFile);
+      releaseFileLock(lockFile);
     }
   }
 
@@ -95,9 +96,8 @@ public class ConfigFileAutoUpdateTool {
 
   private void acquireTargetFileLock(File file) throws IOException, InterruptedException {
     long waitTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(20);
-    File lockFile = new File(file.getPath() + lockFileSuffix);
     while (System.currentTimeMillis() < waitTime) {
-      if (lockFile.createNewFile()) {
+      if (file.createNewFile()) {
         return;
       }
       Thread.sleep(TimeUnit.MICROSECONDS.toMillis(100));
@@ -105,6 +105,6 @@ public class ConfigFileAutoUpdateTool {
   }
 
   private void releaseFileLock(File file) throws IOException {
-    Files.deleteIfExists(new File(file.getPath() + lockFileSuffix).toPath());
+    Files.deleteIfExists(file.toPath());
   }
 }
