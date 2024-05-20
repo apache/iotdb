@@ -64,6 +64,8 @@ public class TabletInsertionDataContainer {
   private final EnrichedEvent
       sourceEvent; // used to report progress and filter value columns by time range
 
+  // Used to preserve performance
+  private String deviceStr;
   private IDeviceID deviceId;
   private boolean isAligned;
   private IMeasurementSchema[] measurementSchemaList;
@@ -140,6 +142,8 @@ public class TabletInsertionDataContainer {
     final int originColumnSize = insertRowNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
+    // The full path is always cached when device path is deserialized
+    this.deviceStr = insertRowNode.getDevicePath().getFullPath();
     this.deviceId = insertRowNode.getDeviceID();
     this.isAligned = insertRowNode.isAligned();
 
@@ -207,6 +211,8 @@ public class TabletInsertionDataContainer {
     final int originColumnSize = insertTabletNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
+    // The full path is always cached when device path is deserialized
+    this.deviceStr = insertTabletNode.getDevicePath().getFullPath();
     this.deviceId = insertTabletNode.getDeviceID();
     this.isAligned = insertTabletNode.isAligned();
 
@@ -291,6 +297,7 @@ public class TabletInsertionDataContainer {
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
     // Only support tree-model tablet
+    this.deviceStr = tablet.getDeviceId();
     this.deviceId = new StringArrayDeviceID(tablet.getDeviceId());
     this.isAligned = isAligned;
 
@@ -572,7 +579,7 @@ public class TabletInsertionDataContainer {
       consumer.accept(
           new PipeRow(
               i,
-              deviceId.toString(),
+              getDeviceStr(),
               isAligned,
               measurementSchemaList,
               timestampColumn,
@@ -599,7 +606,7 @@ public class TabletInsertionDataContainer {
     }
 
     final Tablet newTablet =
-        new Tablet(deviceId.toString(), Arrays.asList(measurementSchemaList), rowCount);
+        new Tablet(getDeviceStr(), Arrays.asList(measurementSchemaList), rowCount);
     newTablet.timestamps = timestampColumn;
     newTablet.bitMaps = nullValueColumnBitmaps;
     newTablet.values = valueColumns;
@@ -608,5 +615,9 @@ public class TabletInsertionDataContainer {
     tablet = newTablet;
 
     return tablet;
+  }
+
+  private String getDeviceStr() {
+    return Objects.nonNull(deviceStr) ? deviceStr : deviceId.toString();
   }
 }
