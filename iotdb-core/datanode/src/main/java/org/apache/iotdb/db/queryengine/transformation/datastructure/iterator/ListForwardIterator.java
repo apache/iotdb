@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator;
+package org.apache.iotdb.db.queryengine.transformation.datastructure.iterator;
 
 import java.io.IOException;
 

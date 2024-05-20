@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.queryengine.transformation.datastructure.tv;
 
 import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.iterator.TVListForwardIterator;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.BinaryUtils;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.TVListForwardIterator;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;

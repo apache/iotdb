@@ -41,9 +41,9 @@ import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.ConstantIntermediateLayer;
 import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.IntermediateLayer;
-import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.MultiInputColumnIntermediateLayer;
-import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
-import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.SingleInputColumnSingleReferenceIntermediateLayer;
+import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.MultiInputLayer;
+import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.SingleInputMultiReferenceLayer;
+import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.SingleInputSingleReferenceLayer;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.ArithmeticAdditionTransformer;
@@ -112,9 +112,9 @@ public class IntermediateLayerVisitor
           unaryExpression,
           context.memoryAssigner.getReference(unaryExpression) == 1
                   || unaryExpression.isConstantOperand()
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
+              ? new SingleInputSingleReferenceLayer(
                   unaryExpression, context.queryId, memoryBudgetInMB, transformer)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
+              : new SingleInputMultiReferenceLayer(
                   unaryExpression, context.queryId, memoryBudgetInMB, transformer));
     }
 
@@ -145,9 +145,9 @@ public class IntermediateLayerVisitor
           binaryExpression,
           context.memoryAssigner.getReference(binaryExpression) == 1
                   || binaryExpression.isConstantOperand()
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
+              ? new SingleInputSingleReferenceLayer(
                   binaryExpression, context.queryId, memoryBudgetInMB, transformer)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
+              : new SingleInputMultiReferenceLayer(
                   binaryExpression, context.queryId, memoryBudgetInMB, transformer));
     }
 
@@ -180,9 +180,9 @@ public class IntermediateLayerVisitor
           ternaryExpression,
           context.memoryAssigner.getReference(ternaryExpression) == 1
                   || ternaryExpression.isConstantOperand()
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
+              ? new SingleInputSingleReferenceLayer(
                   ternaryExpression, context.queryId, memoryBudgetInMB, transformer)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
+              : new SingleInputMultiReferenceLayer(
                   ternaryExpression, context.queryId, memoryBudgetInMB, transformer));
     }
 
@@ -214,9 +214,9 @@ public class IntermediateLayerVisitor
       context.expressionIntermediateLayerMap.put(
           functionExpression,
           context.memoryAssigner.getReference(functionExpression) == 1
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
+              ? new SingleInputSingleReferenceLayer(
                   functionExpression, context.queryId, memoryBudgetInMB, transformer)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
+              : new SingleInputMultiReferenceLayer(
                   functionExpression, context.queryId, memoryBudgetInMB, transformer));
     }
 
@@ -243,9 +243,9 @@ public class IntermediateLayerVisitor
       context.expressionIntermediateLayerMap.put(
           timestampOperand,
           context.memoryAssigner.getReference(timestampOperand) == 1
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
+              ? new SingleInputSingleReferenceLayer(
                   timestampOperand, context.queryId, memoryBudgetInMB, parentLayerReader)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
+              : new SingleInputMultiReferenceLayer(
                   timestampOperand, context.queryId, memoryBudgetInMB, parentLayerReader));
     }
 
@@ -265,9 +265,9 @@ public class IntermediateLayerVisitor
       context.expressionIntermediateLayerMap.put(
           timeSeriesOperand,
           context.memoryAssigner.getReference(timeSeriesOperand) == 1
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
+              ? new SingleInputSingleReferenceLayer(
                   timeSeriesOperand, context.queryId, memoryBudgetInMB, parentLayerReader)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
+              : new SingleInputMultiReferenceLayer(
                   timeSeriesOperand, context.queryId, memoryBudgetInMB, parentLayerReader));
     }
 
@@ -419,7 +419,7 @@ public class IntermediateLayerVisitor
     }
     return intermediateLayers.size() == 1
         ? intermediateLayers.get(0)
-        : new MultiInputColumnIntermediateLayer(
+        : new MultiInputLayer(
             functionExpression,
             context.queryId,
             context.memoryAssigner.assign(),

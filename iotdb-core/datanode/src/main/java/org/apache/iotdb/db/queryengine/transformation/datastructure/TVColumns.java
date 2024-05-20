@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.transformation.datastructure.util;
+package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.TimeColumn;

@@ -24,11 +24,13 @@ import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.LayerRowWindowReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.adapter.ElasticSerializableTVListBackedSingleColumnWindow;
+import org.apache.iotdb.db.queryengine.transformation.dag.memory.SafetyLine;
+import org.apache.iotdb.db.queryengine.transformation.dag.memory.SafetyLine.SafetyPile;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.LayerCacheUtils;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.iterator.TVListForwardIterator;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.TVListForwardIterator;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
@@ -43,39 +45,127 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class SingleInputColumnSingleReferenceIntermediateLayer extends IntermediateLayer {
+public class SingleInputMultiReferenceLayer extends IntermediateLayer {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(SingleInputColumnSingleReferenceIntermediateLayer.class);
+      LoggerFactory.getLogger(SingleInputMultiReferenceLayer.class);
 
   private final LayerReader parentLayerReader;
-  private final TSDataType dataType;
+  private final TSDataType parentLayerReaderDataType;
+  private final boolean isParentLayerReaderConstant;
+  private final ElasticSerializableTVList tvList;
+  private final SafetyLine safetyLine;
 
-  public SingleInputColumnSingleReferenceIntermediateLayer(
+  public SingleInputMultiReferenceLayer(
       Expression expression,
       String queryId,
       float memoryBudgetInMB,
       LayerReader parentLayerReader) {
     super(expression, queryId, memoryBudgetInMB);
     this.parentLayerReader = parentLayerReader;
-    dataType = parentLayerReader.getDataTypes()[0];
+
+    parentLayerReaderDataType = this.parentLayerReader.getDataTypes()[0];
+    isParentLayerReaderConstant = this.parentLayerReader.isConstantPointReader();
+    tvList =
+        ElasticSerializableTVList.construct(
+            parentLayerReaderDataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
+    safetyLine = new SafetyLine();
   }
 
   @Override
   public LayerReader constructReader() {
-    return parentLayerReader;
+    return new LayerReader() {
+      private final SafetyPile safetyPile = safetyLine.addSafetyPile();
+
+      private TimeColumn cachedTimes = null;
+      private Column cachedValues = null;
+      private int cacheConsumed = 0;
+
+      private final TVListForwardIterator iterator = tvList.constructIterator();
+
+      @Override
+      public boolean isConstantPointReader() {
+        return isParentLayerReaderConstant;
+      }
+
+      @Override
+      public YieldableState yield() throws Exception {
+        // Column cached in reader is not yet consumed
+        if (cachedTimes != null && cacheConsumed < cachedTimes.getPositionCount()) {
+          return YieldableState.YIELDABLE;
+        }
+
+        // TVList still has some cached columns
+        if (iterator.hasNext()) {
+          iterator.next();
+          cachedTimes = iterator.currentTimes();
+          cachedValues = iterator.currentValues();
+
+          return YieldableState.YIELDABLE;
+        }
+
+        // No data cached, yield from parent layer reader
+        YieldableState state = LayerCacheUtils.yieldPoints(parentLayerReader, tvList);
+        if (state == YieldableState.YIELDABLE) {
+          iterator.next();
+          cachedTimes = iterator.currentTimes();
+          cachedValues = iterator.currentValues();
+        }
+        return state;
+      }
+
+      @Override
+      public void consumed(int consumed) {
+        assert cacheConsumed + consumed <= cachedTimes.getPositionCount();
+        cacheConsumed += consumed;
+
+        safetyPile.moveForward(consumed);
+        tvList.setEvictionUpperBound(safetyLine.getSafetyLine());
+
+        // Invalid cache
+        if (cacheConsumed == cachedTimes.getPositionCount()) {
+          cacheConsumed = 0;
+          cachedTimes = null;
+          cachedValues = null;
+        }
+      }
+
+      @Override
+      public void consumedAll() {
+        int steps = cachedTimes.getPositionCount() - cacheConsumed;
+        safetyPile.moveForward(steps);
+        tvList.setEvictionUpperBound(safetyLine.getSafetyLine());
+
+        cacheConsumed = 0;
+        cachedTimes = null;
+        cachedValues = null;
+      }
+
+      @Override
+      public Column[] current() {
+        return cacheConsumed == 0
+            ? new Column[] {cachedValues, cachedTimes}
+            : new Column[] {
+              cachedValues.subColumn(cacheConsumed), cachedTimes.subColumn(cacheConsumed)
+            };
+      }
+
+      @Override
+      public TSDataType[] getDataTypes() {
+        return new TSDataType[] {parentLayerReaderDataType};
+      }
+    };
   }
 
   @Override
   protected LayerRowWindowReader constructRowSlidingSizeWindowReader(
       SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB) {
     return new LayerRowWindowReader() {
+
       private final int windowSize = strategy.getWindowSize();
       private final int slidingStep = strategy.getSlidingStep();
 
-      private final ElasticSerializableTVList tvList =
-          ElasticSerializableTVList.construct(
-              dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
+      private final SafetyPile safetyPile = safetyLine.addSafetyPile();
       private final ElasticSerializableTVListBackedSingleColumnWindow window =
           new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
 
@@ -127,12 +217,13 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       public void readyForNext() {
         hasCached = false;
 
-        tvList.setEvictionUpperBound(beginIndex + 1);
+        safetyPile.moveForwardTo(beginIndex + 1);
+        tvList.setEvictionUpperBound(safetyLine.getSafetyLine());
       }
 
       @Override
       public TSDataType[] getDataTypes() {
-        return new TSDataType[] {dataType};
+        return new TSDataType[] {parentLayerReaderDataType};
       }
 
       @Override
@@ -145,21 +236,23 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
   @Override
   protected LayerRowWindowReader constructRowSlidingTimeWindowReader(
       SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
+
     final long timeInterval = strategy.getTimeInterval();
     final long slidingStep = strategy.getSlidingStep();
     final long displayWindowEnd = strategy.getDisplayWindowEnd();
 
-    final ElasticSerializableTVList tvList =
-        ElasticSerializableTVList.construct(dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
+    final SafetyPile safetyPile = safetyLine.addSafetyPile();
     final ElasticSerializableTVListBackedSingleColumnWindow window =
         new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
 
+    final long nextWindowTimeBeginGivenByStrategy = strategy.getDisplayWindowBegin();
+
     return new LayerRowWindowReader() {
+
       private boolean isFirstIteration = true;
       private boolean hasAtLeastOneRow = false;
-
       private boolean hasCached = false;
-      private long nextWindowTimeBegin = strategy.getDisplayWindowBegin();
+      private long nextWindowTimeBegin = nextWindowTimeBeginGivenByStrategy;
       private int nextIndexBegin = 0;
       private int nextIndexEnd = 0;
       private long currentEndTime = Long.MAX_VALUE;
@@ -290,12 +383,13 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         hasCached = false;
         nextWindowTimeBegin += slidingStep;
 
-        tvList.setEvictionUpperBound(nextIndexBegin + 1);
+        safetyPile.moveForwardTo(nextIndexBegin + 1);
+        tvList.setEvictionUpperBound(safetyLine.getSafetyLine());
       }
 
       @Override
       public TSDataType[] getDataTypes() {
-        return new TSDataType[] {dataType};
+        return new TSDataType[] {parentLayerReaderDataType};
       }
 
       @Override
@@ -308,13 +402,11 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
   @Override
   protected LayerRowWindowReader constructRowSessionTimeWindowReader(
       SessionTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
-
     final long displayWindowBegin = strategy.getDisplayWindowBegin();
     final long displayWindowEnd = strategy.getDisplayWindowEnd();
     final long sessionTimeGap = strategy.getSessionTimeGap();
 
-    final ElasticSerializableTVList tvList =
-        ElasticSerializableTVList.construct(dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
+    final SafetyPile safetyPile = safetyLine.addSafetyPile();
     final ElasticSerializableTVListBackedSingleColumnWindow window =
         new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
 
@@ -457,13 +549,14 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         if (nextIndexEnd < tvList.size()) {
           nextWindowTimeBegin = tvList.getTime(nextIndexEnd);
         }
-        tvList.setEvictionUpperBound(nextIndexBegin + 1);
+        safetyPile.moveForwardTo(nextIndexBegin + 1);
+        tvList.setEvictionUpperBound(safetyLine.getSafetyLine());
         nextIndexBegin = nextIndexEnd;
       }
 
       @Override
       public TSDataType[] getDataTypes() {
-        return new TSDataType[] {dataType};
+        return new TSDataType[] {parentLayerReaderDataType};
       }
 
       @Override
@@ -476,13 +569,11 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
   @Override
   protected LayerRowWindowReader constructRowStateWindowReader(
       StateWindowAccessStrategy strategy, float memoryBudgetInMB) {
-
     final long displayWindowBegin = strategy.getDisplayWindowBegin();
     final long displayWindowEnd = strategy.getDisplayWindowEnd();
     final double delta = strategy.getDelta();
 
-    final ElasticSerializableTVList tvList =
-        ElasticSerializableTVList.construct(dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
+    final SafetyPile safetyPile = safetyLine.addSafetyPile();
     final ElasticSerializableTVListBackedSingleColumnWindow window =
         new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
 
@@ -534,7 +625,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
             }
 
             if (TransformUtils.splitWindowForStateWindow(
-                dataType, valueRecorder, delta, cachedValues, cachedConsumed)) {
+                parentLayerReaderDataType, valueRecorder, delta, cachedValues, cachedConsumed)) {
               findWindow = true;
               break;
             }
@@ -630,13 +721,14 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         if (nextIndexEnd < tvList.size()) {
           nextWindowTimeBegin = tvList.getTime(nextIndexEnd);
         }
-        tvList.setEvictionUpperBound(nextIndexBegin + 1);
+        safetyPile.moveForwardTo(nextIndexBegin + 1);
+        tvList.setEvictionUpperBound(safetyLine.getSafetyLine());
         nextIndexBegin = nextIndexEnd;
       }
 
       @Override
       public TSDataType[] getDataTypes() {
-        return new TSDataType[] {dataType};
+        return new TSDataType[] {parentLayerReaderDataType};
       }
 
       @Override

@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.Cache;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.util.iterator.RowListForwardIterator;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.iterator.RowListForwardIterator;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
