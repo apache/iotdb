@@ -24,6 +24,9 @@ import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.Pip
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;
@@ -33,6 +36,11 @@ public class PipeConsensusTabletBinaryReq extends TPipeConsensusTransferReq {
 
   private PipeConsensusTabletBinaryReq() {
     // Do nothing
+  }
+
+  public InsertNode convertToInsertNode() {
+    final PlanNode node = WALEntry.deserializeForConsensus(byteBuffer);
+    return node instanceof InsertNode ? (InsertNode) node : null;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////

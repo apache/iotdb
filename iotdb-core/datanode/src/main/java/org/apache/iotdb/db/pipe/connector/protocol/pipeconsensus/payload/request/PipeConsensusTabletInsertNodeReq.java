@@ -36,6 +36,10 @@ public class PipeConsensusTabletInsertNodeReq extends TPipeConsensusTransferReq 
     // Do nothing
   }
 
+  public InsertNode getInsertNode() {
+    return insertNode;
+  }
+
   /////////////////////////////// WriteBack & Batch ///////////////////////////////
 
   public static PipeConsensusTabletInsertNodeReq toTPipeConsensusTransferRawReq(

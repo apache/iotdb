@@ -26,26 +26,33 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
+import org.apache.iotdb.consensus.pipe.PipeConsensusServerImpl;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
+import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
+import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletRawReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Comparator;
+import java.util.Optional;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+// TODO: 如：1,1 1,2 1,3 1,4 1,5 / 1,6 1,7 1,8（follower 得想办法知道 leader
+// 是否发满了/前置请求是否发完了）：发送端等待事件超时后尝试握手
+// TODO: 处理 tablet 攒批
 public class PipeConsensusReceiver {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusReceiver.class);
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
@@ -85,14 +92,43 @@ public class PipeConsensusReceiver {
     return new TPipeConsensusTransferResp(status);
   }
 
-  // TODO
+  // TODO: support batch transfer
   public TPipeConsensusBatchTransferResp receive(final TPipeConsensusBatchTransferReq req) {
     return null;
   }
 
   private TPipeConsensusTransferResp loadEvent(final TPipeConsensusTransferReq req) {
     // synchronized load event
+    try {
+      final short rawRequestType = req.getType();
+      if (PipeConsensusRequestType.isValidatedRequestType(rawRequestType)) {
+        switch (PipeConsensusRequestType.valueOf(rawRequestType)) {
+          case TRANSFER_TABLET_INSERT_NODE:
+            return handleTransferTabletInsertNode(
+                PipeConsensusTabletInsertNodeReq.fromTPipeConsensusTransferReq(req));
+          case TRANSFER_TABLET_RAW:
+            return handleTransferTabletRaw(
+                PipeConsensusTabletRawReq.fromTPipeConsensusTransferReq(req));
+          case TRANSFER_TABLET_BINARY:
+            return handleTransferTabletBinary(
+                PipeConsensusTabletBinaryReq.fromTPipeConsensusTransferReq(req));
+          case TRANSFER_TS_FILE_PIECE:
 
+          case TRANSFER_TS_FILE_SEAL:
+
+          case TRANSFER_TS_FILE_PIECE_WITH_MOD:
+
+          case TRANSFER_TS_FILE_SEAL_WITH_MOD:
+
+          case TRANSFER_TABLET_BATCH:
+            LOGGER.info("PipeConsensus transfer batch hasn't been implemented yet.");
+          default:
+            break;
+        }
+      }
+    } catch (Exception e) {
+
+    }
     // TODO: use DataRegionStateMachine to impl it. here will invoke @sc's impl interface
     // TODO: check memory when logging wal
     // TODO: check disk(read-only etc.) when writing tsFile
@@ -101,21 +137,28 @@ public class PipeConsensusReceiver {
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
-  // WIP
-  private TPipeTransferReq toTPipeTransferReq(TPipeConsensusTransferReq req) {
-    TPipeTransferReq result = new TPipeTransferReq();
-    result.body = req.body;
-    result.version = req.getVersion();
-    result.type = req.getType();
-    return result;
+  private TPipeConsensusTransferResp handleTransferTabletInsertNode(
+      PipeConsensusTabletInsertNodeReq req) throws ConsensusGroupNotExistException {
+    PipeConsensusServerImpl impl =
+        Optional.ofNullable(pipeConsensus.getImpl(consensusGroupId))
+            .orElseThrow(() -> new ConsensusGroupNotExistException(consensusGroupId));
+    return new TPipeConsensusTransferResp(impl.write(req.getInsertNode()));
   }
 
-  // WIP
-  private TPipeConsensusTransferResp toTPipeConsensusTransferResp(TPipeTransferResp resp) {
-    TPipeConsensusTransferResp result = new TPipeConsensusTransferResp();
-    result.body = resp.body;
-    result.status = resp.getStatus();
-    return result;
+  private TPipeConsensusTransferResp handleTransferTabletBinary(PipeConsensusTabletBinaryReq req)
+      throws ConsensusGroupNotExistException {
+    PipeConsensusServerImpl impl =
+        Optional.ofNullable(pipeConsensus.getImpl(consensusGroupId))
+            .orElseThrow(() -> new ConsensusGroupNotExistException(consensusGroupId));
+    return new TPipeConsensusTransferResp(impl.write(req.convertToInsertNode()));
+  }
+
+  private TPipeConsensusTransferResp handleTransferTabletRaw(PipeConsensusTabletRawReq req)
+      throws Exception {
+    PipeConsensusServerImpl impl =
+        Optional.ofNullable(pipeConsensus.getImpl(consensusGroupId))
+            .orElseThrow(() -> new ConsensusGroupNotExistException(consensusGroupId));
+    return new TPipeConsensusTransferResp(impl.write(req.convertToInsertTabletNode()));
   }
 
   public PipeConsensusRequestVersion getVersion() {
@@ -180,9 +223,6 @@ public class PipeConsensusReceiver {
         // connectorRebootTimes, need to reset receiver because connector has been restarted.
         if (wrappedReq.getRebootTime() > connectorRebootTimes) {
           resetWithNewestRebootTime(wrappedReq.getRebootTime());
-          // TODO: 如：1,1 1,2 1,3 1,4 1,5 / 1,6 1,7 1,8（follower 得想办法知道 leader
-          // 是否发满了/前置请求是否发完了）：发送端等待事件超时后尝试握手
-          // TODO: 处理 tablet 攒批
         }
         reqBuffer.add(wrappedReq);
 
