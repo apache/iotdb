@@ -51,8 +51,7 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
 
   private long count = 0;
 
-  public TsFileInsertionPointCounter(final File tsFile, final PipePattern pattern)
-      throws IOException {
+  public TsFileInsertionPointCounter(File tsFile, PipePattern pattern) throws IOException {
     this.pattern = pattern;
 
     try {
@@ -80,8 +79,7 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
         tsFileSequenceReader.getDeviceMeasurementsMap();
     final Map<IDeviceID, Set<String>> filteredDeviceMeasurementsMap = new HashMap<>();
 
-    for (final Map.Entry<IDeviceID, List<String>> entry :
-        originalDeviceMeasurementsMap.entrySet()) {
+    for (Map.Entry<IDeviceID, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
       final IDeviceID deviceId = entry.getKey();
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
@@ -162,7 +160,7 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
       if (tsFileSequenceReader != null) {
         tsFileSequenceReader.close();
       }
-    } catch (final IOException e) {
+    } catch (IOException e) {
       LOGGER.warn("Failed to close TsFileSequenceReader", e);
     }
   }

@@ -31,76 +31,76 @@ public class PrefixPipePatternTest {
   @Test
   public void testPrefixPipePattern() {
     // Test legal and illegal pattern
-    final String[] legalPatterns = {
+    String[] legalPatterns = {
       "root", "root.", "root.db", "root.db.d1.s", "root.db.`1`",
     };
-    final String[] illegalPatterns = {
+    String[] illegalPatterns = {
       "roo", "", "root..", "root./",
     };
-    for (final String s : legalPatterns) {
+    for (String s : legalPatterns) {
       Assert.assertTrue(new PrefixPipePattern(s).isLegal());
     }
-    for (final String t : illegalPatterns) {
+    for (String t : illegalPatterns) {
       Assert.assertFalse(new PrefixPipePattern(t).isLegal());
     }
 
     // Test pattern cover db
-    final String db = "root.db";
-    final String[] patternsCoverDb = {
+    String db = "root.db";
+    String[] patternsCoverDb = {
       "root", "root.", "root.d", "root.db",
     };
-    final String[] patternsNotCoverDb = {
+    String[] patternsNotCoverDb = {
       "root.**", "root.db.",
     };
-    for (final String s : patternsCoverDb) {
+    for (String s : patternsCoverDb) {
       Assert.assertTrue(new PrefixPipePattern(s).coversDb(db));
     }
-    for (final String t : patternsNotCoverDb) {
+    for (String t : patternsNotCoverDb) {
       Assert.assertFalse(new PrefixPipePattern(t).coversDb(db));
     }
 
-    final IDeviceID device = new StringArrayDeviceID("root.db.d1");
+    IDeviceID device = new StringArrayDeviceID("root.db.d1");
 
     // Test pattern cover device
-    final String[] patternsCoverDevice = {
+    String[] patternsCoverDevice = {
       "root", "root.", "root.d", "root.db", "root.db.", "root.db.d", "root.db.d1",
     };
-    final String[] patternsNotCoverDevice = {
+    String[] patternsNotCoverDevice = {
       "root.db.d1.", "root.db.d1.s1", "root.**", "root.db.d2",
     };
-    for (final String s : patternsCoverDevice) {
+    for (String s : patternsCoverDevice) {
       Assert.assertTrue(new PrefixPipePattern(s).coversDevice(device));
     }
-    for (final String t : patternsNotCoverDevice) {
+    for (String t : patternsNotCoverDevice) {
       Assert.assertFalse(new PrefixPipePattern(t).coversDevice(device));
     }
 
     // Test pattern may overlap with device
-    final String[] patternsOverlapWithDevice = {
+    String[] patternsOverlapWithDevice = {
       "root", "root.db.d1", "root.db.d1.", "root.db.d1.s1",
     };
-    final String[] patternsNotOverlapWithDevice = {
+    String[] patternsNotOverlapWithDevice = {
       "root.db.d2", "root.**",
     };
-    for (final String s : patternsOverlapWithDevice) {
+    for (String s : patternsOverlapWithDevice) {
       Assert.assertTrue(new PrefixPipePattern(s).mayOverlapWithDevice(device));
     }
-    for (final String t : patternsNotOverlapWithDevice) {
+    for (String t : patternsNotOverlapWithDevice) {
       Assert.assertFalse(new PrefixPipePattern(t).mayOverlapWithDevice(device));
     }
 
     // Test pattern match measurement
-    final String measurement = "s1";
-    final String[] patternsMatchMeasurement = {
+    String measurement = "s1";
+    String[] patternsMatchMeasurement = {
       "root.db.d1", "root.db.d1.", "root.db.d1.s", "root.db.d1.s1",
     };
-    final String[] patternsNotMatchMeasurement = {
+    String[] patternsNotMatchMeasurement = {
       "root.db.d1.s11", "root.db.d1.s2",
     };
-    for (final String s : patternsMatchMeasurement) {
+    for (String s : patternsMatchMeasurement) {
       Assert.assertTrue(new PrefixPipePattern(s).matchesMeasurement(device, measurement));
     }
-    for (final String t : patternsNotMatchMeasurement) {
+    for (String t : patternsNotMatchMeasurement) {
       Assert.assertFalse(new PrefixPipePattern(t).matchesMeasurement(device, measurement));
     }
   }
