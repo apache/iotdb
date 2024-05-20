@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch;
 
+import com.google.common.base.Functions;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +42,7 @@ public class TsFileEpochManager {
   private final ConcurrentMap<String, TsFileEpoch> filePath2Epoch = new ConcurrentHashMap<>();
 
   public PipeRealtimeEvent bindPipeTsFileInsertionEvent(
-      PipeTsFileInsertionEvent event, TsFileResource resource) {
+      final PipeTsFileInsertionEvent event, final TsFileResource resource) {
     final String filePath = resource.getTsFilePath();
 
     // This would not happen, but just in case
@@ -64,22 +63,21 @@ public class TsFileEpochManager {
         event,
         epoch,
         resource.getDevices().stream()
-            .collect(
-                Collectors.toMap(
-                    device -> ((PlainDeviceID) device).toStringID(),
-                    device -> EMPTY_MEASUREMENT_ARRAY)),
+            .collect(Collectors.toMap(Functions.identity(), device -> EMPTY_MEASUREMENT_ARRAY)),
         event.getPipePattern());
   }
 
   public PipeRealtimeEvent bindPipeInsertNodeTabletInsertionEvent(
-      PipeInsertNodeTabletInsertionEvent event, InsertNode node, TsFileResource resource) {
+      final PipeInsertNodeTabletInsertionEvent event,
+      final InsertNode node,
+      final TsFileResource resource) {
     final TsFileEpoch epoch =
         filePath2Epoch.computeIfAbsent(resource.getTsFilePath(), TsFileEpoch::new);
     epoch.updateInsertNodeMinTime(node.getMinTime());
     return new PipeRealtimeEvent(
         event,
         epoch,
-        Collections.singletonMap(node.getDevicePath().getFullPath(), node.getMeasurements()),
+        Collections.singletonMap(node.getDeviceID(), node.getMeasurements()),
         event.getPipePattern());
   }
 }

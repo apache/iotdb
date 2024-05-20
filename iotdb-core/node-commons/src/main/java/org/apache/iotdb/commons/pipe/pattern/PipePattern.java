@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.pattern;
 
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,7 +108,7 @@ public abstract class PipePattern {
   public abstract boolean coversDb(String db);
 
   /** Check if a device's all measurements are covered by this pattern. */
-  public abstract boolean coversDevice(String device);
+  public abstract boolean coversDevice(IDeviceID device);
 
   /**
    * Check if a device may have some measurements matched by the pattern.
@@ -117,14 +118,14 @@ public abstract class PipePattern {
    * <p>NOTE2: this is just a loose check and may have false positives. To further check if a
    * measurement matches the pattern, please use {@link PipePattern#matchesMeasurement} after this.
    */
-  public abstract boolean mayOverlapWithDevice(String device);
+  public abstract boolean mayOverlapWithDevice(IDeviceID device);
 
   /**
    * Check if a full path with device and measurement can be matched by pattern.
    *
    * <p>NOTE: this is only called when {@link PipePattern#mayOverlapWithDevice} is true.
    */
-  public abstract boolean matchesMeasurement(String device, String measurement);
+  public abstract boolean matchesMeasurement(IDeviceID device, String measurement);
 
   @Override
   public String toString() {
