@@ -358,11 +358,20 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// subscription provider ///////////////////////////////
 
   SubscriptionProvider constructProviderAndHandshake(final TEndPoint endPoint)
-      throws SubscriptionException, IoTDBConnectionException {
+      throws SubscriptionException {
     final SubscriptionProvider provider =
         new SubscriptionProvider(
             endPoint, this.username, this.password, this.consumerId, this.consumerGroupId);
-    provider.handshake();
+    try {
+      provider.handshake();
+    } catch (final Exception e) {
+      try {
+        provider.close();
+      } catch (final Exception ignored) {
+      }
+      throw new SubscriptionConnectionException(
+          String.format("Failed to handshake with subscription provider %s", provider));
+    }
 
     // update consumer id and consumer group id if not exist
     if (Objects.isNull(this.consumerId)) {
