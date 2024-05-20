@@ -22,9 +22,11 @@ package org.apache.iotdb.db.pipe.receiver.protocol.pipeconsensus;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
@@ -48,6 +50,13 @@ public class PipeConsensusReceiver {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusReceiver.class);
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private final RequestExecutor requestExecutor = new RequestExecutor();
+  private final PipeConsensus pipeConsensus;
+  private final ConsensusGroupId consensusGroupId;
+
+  public PipeConsensusReceiver(PipeConsensus pipeConsensus, ConsensusGroupId consensusGroupId) {
+    this.pipeConsensus = pipeConsensus;
+    this.consensusGroupId = consensusGroupId;
+  }
 
   /**
    * This method cannot be set to synchronize. Receive events can be concurrent since reqBuffer but

@@ -29,7 +29,8 @@ struct TPipeConsensusTransferReq {
   1:required i8 version
   2:required i16 type
   3:required TCommitId commitId
-  4:required binary body
+  4:required common.TConsensusGroupId consensusGroupId
+  5:required binary body
 }
 
 struct TPipeConsensusTransferResp {

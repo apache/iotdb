@@ -20,10 +20,6 @@
 package org.apache.iotdb.consensus;
 
 import org.apache.iotdb.consensus.config.ConsensusConfig;
-import org.apache.iotdb.consensus.iot.IoTConsensus;
-import org.apache.iotdb.consensus.pipe.PipeConsensus;
-import org.apache.iotdb.consensus.ratis.RatisConsensus;
-import org.apache.iotdb.consensus.simple.SimpleConsensus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,10 +32,10 @@ public class ConsensusFactory {
   public static final String CONSTRUCT_FAILED_MSG =
       "Construct consensusImpl failed, Please check your consensus className %s";
 
-  public static final String SIMPLE_CONSENSUS = SimpleConsensus.class.getName();
-  public static final String RATIS_CONSENSUS = RatisConsensus.class.getName();
-  public static final String IOT_CONSENSUS = IoTConsensus.class.getName();
-  public static final String PIPE_CONSENSUS = PipeConsensus.class.getName();
+  public static final String SIMPLE_CONSENSUS = "org.apache.iotdb.consensus.simple.SimpleConsensus";
+  public static final String RATIS_CONSENSUS = "org.apache.iotdb.consensus.ratis.RatisConsensus";
+  public static final String IOT_CONSENSUS = "org.apache.iotdb.consensus.iot.IoTConsensus";
+  public static final String PIPE_CONSENSUS = "org.apache.iotdb.consensus.pipe.PipeConsensus.";
 
   private static final Logger logger = LoggerFactory.getLogger(ConsensusFactory.class);
 

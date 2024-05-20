@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
@@ -72,6 +75,9 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusAsyncConnector.class);
 
+  private static final String CUSTOMIZE_EXCEPTION_MSG =
+      "Failed to customize pipeConsensusAsyncConnector because there isn't consensusGroupId passed by. Please check your construct parameters!";
+
   private static final String ENQUEUE_EXCEPTION_MSG =
       "Timeout: PipeConsensusConnector offers an event into transferBuffer failed, because transferBuffer is full";
 
@@ -101,6 +107,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
 
   private final AtomicInteger alreadySentEventsInTransferBuffer = new AtomicInteger(0);
 
+  private String consensusGroupId;
+
   private PipeConsensusSyncConnector retryConnector;
 
   private IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> asyncTransferClientManager;
@@ -111,6 +119,13 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
+
+    // Get consensusGroupId from parameters passed by PipeConsensusImpl
+    consensusGroupId =
+        parameters.getStringOrDefault(PipeConnectorConstant.CONNECTOR_CONSENSUS_GROUP_ID_KEY, null);
+    if (Objects.isNull(consensusGroupId)) {
+      throw new PipeException(CUSTOMIZE_EXCEPTION_MSG);
+    }
 
     // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
     // `nodeUrls` here actually is a singletonList that contains one peer's TEndPoint. But here we

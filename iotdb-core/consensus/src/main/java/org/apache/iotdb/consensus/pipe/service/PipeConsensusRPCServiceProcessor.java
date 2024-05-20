@@ -22,10 +22,10 @@ package org.apache.iotdb.consensus.pipe.service;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensusServerImpl;
-import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.pipe.thrift.PipeConsensusIService;
 import org.apache.iotdb.consensus.pipe.thrift.TCheckTransferCompletedReq;
 import org.apache.iotdb.consensus.pipe.thrift.TCheckTransferCompletedResp;
@@ -54,9 +54,10 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
 
   private final PipeConsensusConfig.Pipe config;
 
-  public PipeConsensusRPCServiceProcessor(PipeConsensus pipeConsensus, PipeConsensusConfig.Pipe config) {
-      this.pipeConsensus = pipeConsensus;
-      this.config = config;
+  public PipeConsensusRPCServiceProcessor(
+      PipeConsensus pipeConsensus, PipeConsensusConfig.Pipe config) {
+    this.pipeConsensus = pipeConsensus;
+    this.config = config;
   }
 
   @Override

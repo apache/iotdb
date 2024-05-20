@@ -23,9 +23,12 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeReceiver;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -36,21 +39,31 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
+import java.util.function.BiFunction;
 
 public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusReceiverAgent.class);
 
+  private static final Map<Byte, BiFunction<PipeConsensus, ConsensusGroupId, PipeConsensusReceiver>>
+      RECEIVER_CONSTRUCTORS = new HashMap<>();
+
   private final Map<ConsensusGroupId, AtomicReference<PipeConsensusReceiver>> replicaReceiverMap =
       new ConcurrentHashMap<>();
 
-  private final AtomicReference<PipeConsensusReceiver> receiverReference = new AtomicReference<>();
-
-  private static final Map<Byte, Supplier<PipeConsensusReceiver>> RECEIVER_CONSTRUCTORS =
-      new HashMap<>();
+  private final PipeConsensus pipeConsensus;
 
   public PipeConsensusReceiverAgent() {
+    IConsensus consensus = DataRegionConsensusImpl.getInstance();
+    // If DataRegion uses PipeConsensus
+    if (consensus instanceof PipeConsensus) {
+      this.pipeConsensus = (PipeConsensus) consensus;
+    }
+    // If DataRegion uses other consensus such as IoTConsensus
+    else {
+      this.pipeConsensus = null;
+    }
+
     RECEIVER_CONSTRUCTORS.put(
         PipeConsensusRequestVersion.VERSION_1.getVersion(), PipeConsensusReceiver::new);
   }
@@ -59,7 +72,9 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
   public TPipeConsensusTransferResp receive(TPipeConsensusTransferReq req) {
     final byte reqVersion = req.getVersion();
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
-      return getReceiver(reqVersion).receive(req);
+      final ConsensusGroupId consensusGroupId =
+          ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+      return getReceiver(consensusGroupId, reqVersion).receive(req);
     } else {
       final TSStatus status =
           RpcUtils.getStatus(
@@ -71,9 +86,12 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     }
   }
 
-  private PipeConsensusReceiver getReceiver(byte reqVersion) {
+  private PipeConsensusReceiver getReceiver(ConsensusGroupId consensusGroupId, byte reqVersion) {
+    AtomicReference<PipeConsensusReceiver> receiverReference =
+        replicaReceiverMap.computeIfAbsent(consensusGroupId, key -> new AtomicReference<>(null));
+
     if (receiverReference.get() == null) {
-      return internalSetAndGetReceiver(reqVersion);
+      return internalSetAndGetReceiver(consensusGroupId, reqVersion);
     }
 
     final byte receiverThreadLocalVersion = receiverReference.get().getVersion().getVersion();
@@ -84,15 +102,20 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
           receiverThreadLocalVersion,
           reqVersion);
       receiverReference.set(null);
-      return internalSetAndGetReceiver(reqVersion);
+      return internalSetAndGetReceiver(consensusGroupId, reqVersion);
     }
 
     return receiverReference.get();
   }
 
-  private PipeConsensusReceiver internalSetAndGetReceiver(byte reqVersion) {
+  private PipeConsensusReceiver internalSetAndGetReceiver(
+      ConsensusGroupId consensusGroupId, byte reqVersion) {
+    AtomicReference<PipeConsensusReceiver> receiverReference =
+        replicaReceiverMap.get(consensusGroupId);
+
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
-      receiverReference.set(RECEIVER_CONSTRUCTORS.get(reqVersion).get());
+      receiverReference.set(
+          RECEIVER_CONSTRUCTORS.get(reqVersion).apply(pipeConsensus, consensusGroupId));
     } else {
       throw new UnsupportedOperationException(
           String.format("Unsupported pipeConsensus request version %d", reqVersion));
@@ -102,25 +125,26 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
 
   @TestOnly
   public void resetReceiver() {
-    // reset receiver
-    internalSetAndGetReceiver(PipeConsensusRequestVersion.VERSION_1.getVersion());
+    // changed to reset given receiver
   }
 
   @TestOnly
   public long getSyncCommitIndex() {
-    if (receiverReference.get() == null) {
-      return internalSetAndGetReceiver(PipeConsensusRequestVersion.VERSION_1.getVersion())
-          .getOnSyncedCommitIndex();
-    }
-    return receiverReference.get().getOnSyncedCommitIndex();
+    return 0;
+    //    if (receiverReference.get() == null) {
+    //      return internalSetAndGetReceiver(PipeConsensusRequestVersion.VERSION_1.getVersion())
+    //          .getOnSyncedCommitIndex();
+    //    }
+    //    return receiverReference.get().getOnSyncedCommitIndex();
   }
 
   @TestOnly
   public int getRebootTimes() {
-    if (receiverReference.get() == null) {
-      return internalSetAndGetReceiver(PipeConsensusRequestVersion.VERSION_1.getVersion())
-          .getConnectorRebootTimes();
-    }
-    return receiverReference.get().getConnectorRebootTimes();
+    return 0;
+    //    if (receiverReference.get() == null) {
+    //      return internalSetAndGetReceiver(PipeConsensusRequestVersion.VERSION_1.getVersion())
+    //          .getConnectorRebootTimes();
+    //    }
+    //    return receiverReference.get().getConnectorRebootTimes();
   }
 }

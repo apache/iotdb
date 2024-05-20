@@ -119,7 +119,7 @@ public class PipeConsensus implements IConsensus {
   public synchronized void start() throws IOException {
     initAndRecover();
 
-    rpcService.initAsyncedServiceImpl(new PipeConsensusRPCServiceProcessor(config.getPipe()));
+    rpcService.initAsyncedServiceImpl(new PipeConsensusRPCServiceProcessor(this, config.getPipe()));
     try {
       registerManager.register(rpcService);
     } catch (StartupException e) {

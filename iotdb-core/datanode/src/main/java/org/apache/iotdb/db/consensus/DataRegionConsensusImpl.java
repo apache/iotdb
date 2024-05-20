@@ -132,8 +132,8 @@ public class DataRegionConsensusImpl {
                                           BuiltinPipePlugin.DO_NOTHING_PROCESSOR
                                               .getPipePluginName())
                                       .setConnectorPluginName(
-                                          BuiltinPipePlugin.DO_NOTHING_CONNECTOR
-                                              .getPipePluginName()) // TODO: set connector plugin
+                                          BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR
+                                              .getPipePluginName())
                                       // name
                                       .setConsensusPipeDispatcher(
                                           new ConsensusPipeDataNodeDispatcher())

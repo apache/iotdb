@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.consensus.pipe.consensuspipe;
 
-import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferReq;
-import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 
 public interface ConsensusPipeReceiver {
-    TPipeConsensusTransferResp receive(TPipeConsensusTransferReq req);
+  TPipeConsensusTransferResp receive(TPipeConsensusTransferReq req);
 }
