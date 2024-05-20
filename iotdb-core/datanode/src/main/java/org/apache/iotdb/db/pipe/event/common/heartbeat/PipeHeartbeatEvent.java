@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.connection.BlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
@@ -190,7 +189,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     }
   }
 
-  public void recordConnectorQueueSize(BlockingPendingQueue<Event> pendingQueue) {
+  public void recordConnectorQueueSize(UnboundedBlockingPendingQueue<Event> pendingQueue) {
     if (shouldPrintMessage) {
       connectorQueueTabletSize = pendingQueue.getTabletInsertionEventCount();
       connectorQueueTsFileSize = pendingQueue.getTsFileInsertionEventCount();

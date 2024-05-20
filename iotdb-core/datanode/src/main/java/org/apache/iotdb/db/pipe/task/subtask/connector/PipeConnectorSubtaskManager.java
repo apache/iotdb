@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeC
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.task.connection.BlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.execution.PipeConnectorSubtaskExecutor;
@@ -211,7 +210,7 @@ public class PipeConnectorSubtaskManager {
     }
   }
 
-  public BlockingPendingQueue<Event> getPipeConnectorPendingQueue(
+  public UnboundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue(
       final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(

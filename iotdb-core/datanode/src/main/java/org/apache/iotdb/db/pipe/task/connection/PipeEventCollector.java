@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.task.connection;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.task.connection.BlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -40,7 +40,7 @@ public class PipeEventCollector implements EventCollector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCollector.class);
 
-  private final BlockingPendingQueue<Event> pendingQueue;
+  private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
   private final long creationTime;
 
@@ -49,7 +49,9 @@ public class PipeEventCollector implements EventCollector {
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
 
   public PipeEventCollector(
-      final BlockingPendingQueue<Event> pendingQueue, final long creationTime, final int regionId) {
+      final UnboundedBlockingPendingQueue<Event> pendingQueue,
+      final long creationTime,
+      final int regionId) {
     this.pendingQueue = pendingQueue;
     this.creationTime = creationTime;
     this.regionId = regionId;

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.subscription.task.subtask;
 
-import org.apache.iotdb.commons.pipe.task.connection.BlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -35,7 +35,7 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
       long creationTime,
       String attributeSortedString,
       int connectorIndex,
-      BlockingPendingQueue<Event> inputPendingQueue,
+      UnboundedBlockingPendingQueue<Event> inputPendingQueue,
       PipeConnector outputPipeConnector,
       String topicName,
       String consumerGroupId) {
@@ -69,7 +69,7 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
     return consumerGroupId;
   }
 
-  public BlockingPendingQueue<Event> getInputPendingQueue() {
+  public UnboundedBlockingPendingQueue<Event> getInputPendingQueue() {
     return inputPendingQueue;
   }
 }
