@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -84,13 +86,16 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
 
   private final List<TEndPoint> peers;
 
+  private String consensusGroupId;
+
   private PipeConsensusSyncBatchReqBuilder tabletBatchBuilder;
 
-  public PipeConsensusSyncConnector(List<TEndPoint> peers) {
+  public PipeConsensusSyncConnector(List<TEndPoint> peers, String consensusGroupId) {
     // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
     // `peers` here actually is a singletonList that contains one peer's TEndPoint. But here we
     // retain the implementation of list to cope with possible future expansion
     this.peers = peers;
+    this.consensusGroupId = consensusGroupId;
     this.syncRetryAndHandshakeClientManager =
         ((PipeConsensus) DataRegionConsensusImpl.getInstance()).getSyncClientManager();
   }
@@ -100,7 +105,11 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
       throws Exception {
     super.customize(parameters, configuration);
     if (isTabletBatchModeEnabled) {
-      tabletBatchBuilder = new PipeConsensusSyncBatchReqBuilder(parameters);
+      tabletBatchBuilder =
+          new PipeConsensusSyncBatchReqBuilder(
+              parameters,
+              new TConsensusGroupId(
+                  TConsensusGroupType.DataRegion, Integer.parseInt(consensusGroupId)));
     }
     // currently, tablet batch is false by default in PipeConsensus;
     isTabletBatchModeEnabled = false;
@@ -240,6 +249,8 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
         new TCommitId(
             pipeInsertNodeTabletInsertionEvent.getCommitId(),
             pipeInsertNodeTabletInsertionEvent.getRebootTimes());
+    TConsensusGroupId tConsensusGroupId =
+        new TConsensusGroupId(TConsensusGroupType.DataRegion, Integer.parseInt(consensusGroupId));
 
     try (final SyncPipeConsensusServiceClient syncPipeConsensusServiceClient =
         syncRetryAndHandshakeClientManager.borrowClient(getFollowerUrl())) {
@@ -249,12 +260,14 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
         resp =
             syncPipeConsensusServiceClient.pipeConsensusTransfer(
                 PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
-                    insertNode, tCommitId));
+                    insertNode, tCommitId, tConsensusGroupId));
       } else {
         resp =
             syncPipeConsensusServiceClient.pipeConsensusTransfer(
                 PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
-                    pipeInsertNodeTabletInsertionEvent.getByteBuffer(), tCommitId));
+                    pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
+                    tCommitId,
+                    tConsensusGroupId));
       }
     } catch (Exception e) {
       throw new PipeConnectionException(
@@ -305,13 +318,16 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
           new TCommitId(
               pipeRawTabletInsertionEvent.getCommitId(),
               pipeRawTabletInsertionEvent.getRebootTimes());
+      TConsensusGroupId tConsensusGroupId =
+          new TConsensusGroupId(TConsensusGroupType.DataRegion, Integer.parseInt(consensusGroupId));
 
       resp =
           syncPipeConsensusServiceClient.pipeConsensusTransfer(
               PipeConsensusTabletRawReq.toTPipeConsensusTransferReq(
                   pipeRawTabletInsertionEvent.convertToTablet(),
                   pipeRawTabletInsertionEvent.isAligned(),
-                  tCommitId));
+                  tCommitId,
+                  tConsensusGroupId));
     } catch (Exception e) {
       throw new PipeConnectionException(
           String.format(
@@ -348,11 +364,15 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
       final TCommitId tCommitId =
           new TCommitId(
               pipeTsFileInsertionEvent.getCommitId(), pipeTsFileInsertionEvent.getRebootTimes());
+      final TConsensusGroupId tConsensusGroupId =
+          new TConsensusGroupId(TConsensusGroupType.DataRegion, Integer.parseInt(consensusGroupId));
 
       // 1. Transfer tsFile, and mod file if exists and receiver's version >= 2
       if (pipeTsFileInsertionEvent.isWithMod()) {
-        transferFilePieces(modFile, syncPipeConsensusServiceClient, true, tCommitId);
-        transferFilePieces(tsFile, syncPipeConsensusServiceClient, true, tCommitId);
+        transferFilePieces(
+            modFile, syncPipeConsensusServiceClient, true, tCommitId, tConsensusGroupId);
+        transferFilePieces(
+            tsFile, syncPipeConsensusServiceClient, true, tCommitId, tConsensusGroupId);
         // 2. Transfer filre seal signal with mod, which means the file is tansferred completely
         resp =
             syncPipeConsensusServiceClient.pipeConsensusTransfer(
@@ -361,14 +381,16 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                     modFile.length(),
                     tsFile.getName(),
                     tsFile.length(),
-                    tCommitId));
+                    tCommitId,
+                    tConsensusGroupId));
       } else {
-        transferFilePieces(tsFile, syncPipeConsensusServiceClient, false, tCommitId);
+        transferFilePieces(
+            tsFile, syncPipeConsensusServiceClient, false, tCommitId, tConsensusGroupId);
         // 2. Transfer file seal signal without mod, which means the file is transferred completely
         resp =
             syncPipeConsensusServiceClient.pipeConsensusTransfer(
                 PipeConsensusTsFileSealReq.toTPipeConsensusTransferReq(
-                    tsFile.getName(), tsFile.length(), tCommitId));
+                    tsFile.getName(), tsFile.length(), tCommitId, tConsensusGroupId));
       }
     } catch (Exception e) {
       throw new PipeConnectionException(
@@ -398,7 +420,8 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
       File file,
       SyncPipeConsensusServiceClient syncPipeConsensusServiceClient,
       boolean isMultiFile,
-      TCommitId tCommitId)
+      TCommitId tCommitId,
+      TConsensusGroupId tConsensusGroupId)
       throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
@@ -421,9 +444,9 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                   syncPipeConsensusServiceClient.pipeConsensusTransfer(
                       isMultiFile
                           ? PipeConsensusTsFilePieceWithModReq.toTPipeConsensusTransferReq(
-                              file.getName(), position, payLoad, tCommitId)
+                              file.getName(), position, payLoad, tCommitId, tConsensusGroupId)
                           : PipeConsensusTsFilePieceReq.toTPipeConsensusTransferReq(
-                              file.getName(), position, payLoad, tCommitId)));
+                              file.getName(), position, payLoad, tCommitId, tConsensusGroupId)));
         } catch (Exception e) {
           throw new PipeConnectionException(
               String.format(

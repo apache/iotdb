@@ -160,9 +160,11 @@ public class PipeConsensus implements IConsensus {
 
   @Override
   public synchronized void stop() throws IOException {
+    asyncClientManager.close();
+    syncClientManager.close();
+    registerManager.deregisterAll();
     consensusPipeGuardian.stop();
     stateMachineMap.values().parallelStream().forEach(PipeConsensusServerImpl::stop);
-    // TODO: stop thrift service
   }
 
   public void checkAllConsensusPipe() {

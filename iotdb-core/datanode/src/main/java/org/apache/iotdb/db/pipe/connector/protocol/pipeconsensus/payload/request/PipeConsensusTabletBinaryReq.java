@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
@@ -37,11 +38,12 @@ public class PipeConsensusTabletBinaryReq extends TPipeConsensusTransferReq {
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeConsensusTabletBinaryReq toTPipeConsensusTransferReq(
-      ByteBuffer byteBuffer, TCommitId commitId) {
+      ByteBuffer byteBuffer, TCommitId commitId, TConsensusGroupId consensusGroupId) {
     final PipeConsensusTabletBinaryReq req = new PipeConsensusTabletBinaryReq();
     req.byteBuffer = byteBuffer;
 
     req.commitId = commitId;
+    req.consensusGroupId = consensusGroupId;
     req.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     req.type = PipeConsensusRequestType.TRANSFER_TABLET_BINARY.getType();
     req.body = byteBuffer;
@@ -58,6 +60,7 @@ public class PipeConsensusTabletBinaryReq extends TPipeConsensusTransferReq {
     binaryReq.type = transferReq.type;
     binaryReq.body = transferReq.body;
     binaryReq.commitId = transferReq.commitId;
+    binaryReq.consensusGroupId = transferReq.consensusGroupId;
 
     return binaryReq;
   }
@@ -77,11 +80,12 @@ public class PipeConsensusTabletBinaryReq extends TPipeConsensusTransferReq {
         && version == that.version
         && type == that.type
         && body.equals(that.body)
-        && Objects.equals(commitId, that.commitId);
+        && Objects.equals(commitId, that.commitId)
+        && Objects.equals(consensusGroupId, that.consensusGroupId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(byteBuffer, version, type, body, commitId);
+    return Objects.hash(byteBuffer, version, type, body, commitId, consensusGroupId);
   }
 }

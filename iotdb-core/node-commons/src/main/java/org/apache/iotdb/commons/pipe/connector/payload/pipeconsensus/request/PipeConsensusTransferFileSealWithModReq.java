@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 
@@ -48,7 +49,8 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
       List<String> fileNames,
       List<Long> fileLengths,
       Map<String, String> parameters,
-      TCommitId commitId)
+      TCommitId commitId,
+      TConsensusGroupId consensusGroupId)
       throws IOException {
 
     this.fileNames = fileNames;
@@ -56,6 +58,7 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
     this.parameters = parameters;
 
     this.commitId = commitId;
+    this.consensusGroupId = consensusGroupId;
     this.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     this.type = getPlanType().getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -105,6 +108,7 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
     type = req.type;
     body = req.body;
     commitId = req.commitId;
+    consensusGroupId = req.consensusGroupId;
 
     return this;
   }
@@ -126,11 +130,13 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
         && Objects.equals(version, that.version)
         && Objects.equals(type, that.type)
         && Objects.equals(body, that.body)
-        && Objects.equals(commitId, that.commitId);
+        && Objects.equals(commitId, that.commitId)
+        && Objects.equals(consensusGroupId, that.consensusGroupId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(fileNames, fileLengths, parameters, version, type, body, commitId);
+    return Objects.hash(
+        fileNames, fileLengths, parameters, version, type, body, commitId, consensusGroupId);
   }
 }

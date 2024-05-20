@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusTransferFileSealWithModReq;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
@@ -45,7 +46,8 @@ public class PipeConsensusTsFileSealWithModReq extends PipeConsensusTransferFile
       long modFileLength,
       String tsFileName,
       long tsFileLength,
-      TCommitId commitId)
+      TCommitId commitId,
+      TConsensusGroupId consensusGroupId)
       throws IOException {
     return (PipeConsensusTsFileSealWithModReq)
         new PipeConsensusTsFileSealWithModReq()
@@ -53,7 +55,8 @@ public class PipeConsensusTsFileSealWithModReq extends PipeConsensusTransferFile
                 Arrays.asList(modFileName, tsFileName),
                 Arrays.asList(modFileLength, tsFileLength),
                 new HashMap<>(),
-                commitId);
+                commitId,
+                consensusGroupId);
   }
 
   public static PipeConsensusTsFileSealWithModReq fromTPipeConsensusTransferReq(

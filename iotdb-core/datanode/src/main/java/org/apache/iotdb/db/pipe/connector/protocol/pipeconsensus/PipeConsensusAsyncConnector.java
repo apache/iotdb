@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -130,13 +130,17 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
     // `nodeUrls` here actually is a singletonList that contains one peer's TEndPoint. But here we
     // retain the implementation of list to cope with possible future expansion
-    retryConnector = new PipeConsensusSyncConnector(nodeUrls);
+    retryConnector = new PipeConsensusSyncConnector(nodeUrls, consensusGroupId);
     retryConnector.customize(parameters, configuration);
     asyncTransferClientManager =
         ((PipeConsensus) DataRegionConsensusImpl.getInstance()).getAsyncClientManager();
 
     if (isTabletBatchModeEnabled) {
-      tabletBatchBuilder = new PipeConsensusAsyncBatchReqBuilder(parameters);
+      tabletBatchBuilder =
+          new PipeConsensusAsyncBatchReqBuilder(
+              parameters,
+              new TConsensusGroupId(
+                  TConsensusGroupType.DataRegion, Integer.parseInt(consensusGroupId)));
     }
 
     // currently, tablet batch is false by default in PipeConsensus;
@@ -238,6 +242,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
       }
     } else {
       TCommitId tCommitId;
+      TConsensusGroupId tConsensusGroupId =
+          new TConsensusGroupId(TConsensusGroupType.DataRegion, Integer.parseInt(consensusGroupId));
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
             (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
@@ -259,9 +265,11 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
         final TPipeConsensusTransferReq pipeConsensusTransferReq =
             Objects.isNull(insertNode)
                 ? PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
-                    pipeInsertNodeTabletInsertionEvent.getByteBuffer(), tCommitId)
+                    pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
+                    tCommitId,
+                    tConsensusGroupId)
                 : PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
-                    insertNode, tCommitId);
+                    insertNode, tCommitId, tConsensusGroupId);
         final PipeConsensusTabletInsertNodeEventHandler pipeConsensusInsertNodeReqHandler =
             new PipeConsensusTabletInsertNodeEventHandler(
                 pipeInsertNodeTabletInsertionEvent, pipeConsensusTransferReq, this);
@@ -287,7 +295,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
             PipeConsensusTabletRawReq.toTPipeConsensusTransferReq(
                 pipeRawTabletInsertionEvent.convertToTablet(),
                 pipeRawTabletInsertionEvent.isAligned(),
-                tCommitId);
+                tCommitId,
+                tConsensusGroupId);
         final PipeConsensusTabletRawEventHandler pipeConsensusTabletRawEventHandler =
             new PipeConsensusTabletRawEventHandler(
                 pipeRawTabletInsertionEvent, pipeConsensusTabletRawReq, this);
@@ -354,6 +363,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     TCommitId tCommitId =
         new TCommitId(
             pipeTsFileInsertionEvent.getCommitId(), pipeTsFileInsertionEvent.getRebootTimes());
+    TConsensusGroupId tConsensusGroupId =
+        new TConsensusGroupId(TConsensusGroupType.DataRegion, Integer.parseInt(consensusGroupId));
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeTsFileInsertionEvent.increaseReferenceCount(
         PipeConsensusAsyncConnector.class.getName())) {
@@ -368,7 +379,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     }
 
     final PipeConsensusTsFileInsertionEventHandler pipeConsensusTsFileInsertionEventHandler =
-        new PipeConsensusTsFileInsertionEventHandler(pipeTsFileInsertionEvent, this, tCommitId);
+        new PipeConsensusTsFileInsertionEventHandler(
+            pipeTsFileInsertionEvent, this, tCommitId, tConsensusGroupId);
 
     transfer(pipeConsensusTsFileInsertionEventHandler);
   }

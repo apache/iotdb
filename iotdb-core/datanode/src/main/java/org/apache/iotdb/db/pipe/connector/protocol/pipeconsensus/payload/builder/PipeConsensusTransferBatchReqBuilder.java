@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
@@ -66,18 +67,22 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
   protected final List<TPipeConsensusTransferReq> batchReqs = new ArrayList<>();
   // limit in delayed time
   protected final int maxDelayInMs;
+  protected final TConsensusGroupId consensusGroupId;
   protected long firstEventProcessingTime = Long.MIN_VALUE;
 
   // limit in buffer size
   protected final PipeMemoryBlock allocatedMemoryBlock;
   protected long totalBufferSize = 0;
 
-  protected PipeConsensusTransferBatchReqBuilder(PipeParameters parameters) {
+  protected PipeConsensusTransferBatchReqBuilder(
+      PipeParameters parameters, TConsensusGroupId consensusGroupId) {
     maxDelayInMs =
         parameters.getIntOrDefault(
                 Arrays.asList(CONNECTOR_IOTDB_BATCH_DELAY_KEY, SINK_IOTDB_BATCH_DELAY_KEY),
                 CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE)
             * 1000;
+
+    this.consensusGroupId = consensusGroupId;
 
     final long requestMaxBatchSizeInBytes =
         parameters.getLongOrDefault(
@@ -190,11 +195,14 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
       // PipeConsensus will transfer binary data to TPipeConsensusTransferReq
       if (Objects.isNull(insertNode)) {
         buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
-        batchReqs.add(PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(buffer, commitId));
+        batchReqs.add(
+            PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
+                buffer, commitId, consensusGroupId));
       } else {
         buffer = insertNode.serializeToByteBuffer();
         batchReqs.add(
-            PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(insertNode, commitId));
+            PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
+                insertNode, commitId, consensusGroupId));
       }
     } else {
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
@@ -214,7 +222,8 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
           PipeConsensusTabletRawReq.toTPipeConsensusTransferRawReq(
               pipeRawTabletInsertionEvent.convertToTablet(),
               pipeRawTabletInsertionEvent.isAligned(),
-              commitId));
+              commitId,
+              consensusGroupId));
     }
 
     return buffer.limit();

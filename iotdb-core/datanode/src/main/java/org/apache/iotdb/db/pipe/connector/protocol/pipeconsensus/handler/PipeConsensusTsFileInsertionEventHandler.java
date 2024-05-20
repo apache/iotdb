@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.response.PipeConsensusTransferFilePieceResp;
@@ -55,6 +56,7 @@ public class PipeConsensusTsFileInsertionEventHandler
   private final PipeTsFileInsertionEvent event;
   private final PipeConsensusAsyncConnector connector;
   private final TCommitId commitId;
+  private final TConsensusGroupId consensusGroupId;
   private final File tsFile;
   private final File modFile;
   private File currentFile;
@@ -74,11 +76,13 @@ public class PipeConsensusTsFileInsertionEventHandler
   public PipeConsensusTsFileInsertionEventHandler(
       final PipeTsFileInsertionEvent event,
       final PipeConsensusAsyncConnector connector,
-      final TCommitId commitId)
+      final TCommitId commitId,
+      final TConsensusGroupId consensusGroupId)
       throws FileNotFoundException {
     this.event = event;
     this.connector = connector;
     this.commitId = commitId;
+    this.consensusGroupId = consensusGroupId;
 
     tsFile = event.getTsFile();
     modFile = event.getModFile();
@@ -124,9 +128,10 @@ public class PipeConsensusTsFileInsertionEventHandler
                     modFile.length(),
                     tsFile.getName(),
                     tsFile.length(),
-                    commitId)
+                    commitId,
+                    consensusGroupId)
                 : PipeConsensusTsFileSealReq.toTPipeConsensusTransferReq(
-                    tsFile.getName(), tsFile.length(), commitId),
+                    tsFile.getName(), tsFile.length(), commitId, consensusGroupId),
             this);
       }
       return;
@@ -140,9 +145,9 @@ public class PipeConsensusTsFileInsertionEventHandler
     client.pipeConsensusTransfer(
         transferMod
             ? PipeConsensusTsFilePieceWithModReq.toTPipeConsensusTransferReq(
-                currentFile.getName(), position, payload, commitId)
+                currentFile.getName(), position, payload, commitId, consensusGroupId)
             : PipeConsensusTsFilePieceReq.toTPipeConsensusTransferReq(
-                currentFile.getName(), position, payload, commitId),
+                currentFile.getName(), position, payload, commitId, consensusGroupId),
         this);
     position += readLength;
   }

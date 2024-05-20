@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
@@ -41,10 +42,11 @@ public class PipeConsensusTabletRawReq extends TPipeConsensusTransferReq {
   /////////////////////////////// WriteBack & Batch ///////////////////////////////
 
   public static PipeConsensusTabletRawReq toTPipeConsensusTransferRawReq(
-      Tablet tablet, boolean isAligned, TCommitId commitId) {
+      Tablet tablet, boolean isAligned, TCommitId commitId, TConsensusGroupId consensusGroupId) {
     final PipeConsensusTabletRawReq tabletReq = new PipeConsensusTabletRawReq();
 
     tabletReq.commitId = commitId;
+    tabletReq.consensusGroupId = consensusGroupId;
     tabletReq.tablet = tablet;
     tabletReq.isAligned = isAligned;
 
@@ -54,13 +56,15 @@ public class PipeConsensusTabletRawReq extends TPipeConsensusTransferReq {
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeConsensusTabletRawReq toTPipeConsensusTransferReq(
-      Tablet tablet, boolean isAligned, TCommitId commitId) throws IOException {
+      Tablet tablet, boolean isAligned, TCommitId commitId, TConsensusGroupId consensusGroupId)
+      throws IOException {
     final PipeConsensusTabletRawReq tabletReq = new PipeConsensusTabletRawReq();
 
     tabletReq.tablet = tablet;
     tabletReq.isAligned = isAligned;
 
     tabletReq.commitId = commitId;
+    tabletReq.consensusGroupId = consensusGroupId;
     tabletReq.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     tabletReq.type = PipeConsensusRequestType.TRANSFER_TABLET_RAW.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -85,6 +89,7 @@ public class PipeConsensusTabletRawReq extends TPipeConsensusTransferReq {
     tabletReq.type = transferReq.type;
     tabletReq.body = transferReq.body;
     tabletReq.commitId = transferReq.commitId;
+    tabletReq.consensusGroupId = transferReq.consensusGroupId;
 
     return tabletReq;
   }
@@ -105,11 +110,12 @@ public class PipeConsensusTabletRawReq extends TPipeConsensusTransferReq {
         && version == that.version
         && type == that.type
         && Objects.equals(body, that.body)
-        && Objects.equals(commitId, that.commitId);
+        && Objects.equals(commitId, that.commitId)
+        && Objects.equals(consensusGroupId, that.consensusGroupId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tablet, isAligned, version, type, body, commitId);
+    return Objects.hash(tablet, isAligned, version, type, body, commitId, consensusGroupId);
   }
 }

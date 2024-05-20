@@ -19,14 +19,16 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 public class PipeConsensusSyncBatchReqBuilder extends PipeConsensusTransferBatchReqBuilder {
 
-  public PipeConsensusSyncBatchReqBuilder(PipeParameters parameters) {
-    super(parameters);
+  public PipeConsensusSyncBatchReqBuilder(
+      PipeParameters parameters, TConsensusGroupId consensusGroupId) {
+    super(parameters, consensusGroupId);
   }
 
   @Override

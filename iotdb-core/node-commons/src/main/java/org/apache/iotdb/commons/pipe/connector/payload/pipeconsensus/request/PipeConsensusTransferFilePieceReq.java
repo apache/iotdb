@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 
@@ -43,7 +44,11 @@ public abstract class PipeConsensusTransferFilePieceReq extends TPipeConsensusTr
   /////////////////////////////// Thrift ///////////////////////////////
 
   protected final PipeConsensusTransferFilePieceReq convertToTPipeConsensusTransferReq(
-      String snapshotName, long startWritingOffset, byte[] snapshotPiece, TCommitId commitId)
+      String snapshotName,
+      long startWritingOffset,
+      byte[] snapshotPiece,
+      TCommitId commitId,
+      TConsensusGroupId consensusGroupId)
       throws IOException {
 
     this.fileName = snapshotName;
@@ -51,6 +56,7 @@ public abstract class PipeConsensusTransferFilePieceReq extends TPipeConsensusTr
     this.filePiece = snapshotPiece;
 
     this.commitId = commitId;
+    this.consensusGroupId = consensusGroupId;
     this.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     this.type = getPlanType().getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -75,6 +81,7 @@ public abstract class PipeConsensusTransferFilePieceReq extends TPipeConsensusTr
     type = transferReq.type;
     body = transferReq.body;
     commitId = transferReq.commitId;
+    consensusGroupId = transferReq.consensusGroupId;
 
     return this;
   }
@@ -96,12 +103,20 @@ public abstract class PipeConsensusTransferFilePieceReq extends TPipeConsensusTr
         && version == that.version
         && type == that.type
         && body.equals(that.body)
-        && Objects.equals(commitId, that.commitId);
+        && Objects.equals(commitId, that.commitId)
+        && Objects.equals(consensusGroupId, that.consensusGroupId);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        fileName, startWritingOffset, Arrays.hashCode(filePiece), version, type, body, commitId);
+        fileName,
+        startWritingOffset,
+        Arrays.hashCode(filePiece),
+        version,
+        type,
+        body,
+        commitId,
+        consensusGroupId);
   }
 }
