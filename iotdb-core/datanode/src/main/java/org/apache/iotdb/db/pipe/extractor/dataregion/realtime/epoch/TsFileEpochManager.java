@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch;
 
-import com.google.common.base.Functions;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+
+import com.google.common.base.Functions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

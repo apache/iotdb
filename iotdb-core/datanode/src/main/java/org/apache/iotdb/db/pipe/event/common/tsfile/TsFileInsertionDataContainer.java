@@ -151,7 +151,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       // in this case, all data can be matched without checking the measurements
       if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
         if (!entry.getValue().isEmpty()) {
-          filteredDeviceMeasurementsMap.put(new PlainDeviceID(deviceId), entry.getValue());
+          filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
         }
       }
 
@@ -170,7 +170,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
         }
 
         if (!filteredMeasurements.isEmpty()) {
-          filteredDeviceMeasurementsMap.put(new PlainDeviceID(deviceId), filteredMeasurements);
+          filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
         }
       }
 
