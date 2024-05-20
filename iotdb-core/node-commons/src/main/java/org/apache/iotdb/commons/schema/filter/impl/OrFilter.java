@@ -57,7 +57,7 @@ public class OrFilter extends SchemaFilter {
 
   @Override
   public SchemaFilterType getSchemaFilterType() {
-    return SchemaFilterType.AND;
+    return SchemaFilterType.OR;
   }
 
   @Override
