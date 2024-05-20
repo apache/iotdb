@@ -116,7 +116,7 @@ public class ChunkCacheTest {
               false);
 
       ChunkMetadata chunkMetadataKey =
-          new ChunkMetadata("sensor0", TSDataType.DOUBLE, null, null, 35, new DoubleStatistics());
+          new ChunkMetadata("sensor0", TSDataType.DOUBLE, null, null, 26, new DoubleStatistics());
       chunkMetadataKey.setVersion(0);
 
       // get cache
