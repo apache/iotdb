@@ -141,6 +141,8 @@ public class DataRegionConsensusImpl {
                                           new ConsensusPipeDataNodeRuntimeAgentGuardian())
                                       .setConsensusPipeSelector(
                                           () -> PipeAgent.task().getAllConsensusPipe())
+                                      .setConsensusPipeReceiver(
+                                          PipeAgent.receiver().pipeConsensus())
                                       .setProgressIndexManager(new ProgressIndexDataNodeManager())
                                       .setConsensusPipeGuardJobIntervalInSeconds(
                                           300) // TODO: move to config

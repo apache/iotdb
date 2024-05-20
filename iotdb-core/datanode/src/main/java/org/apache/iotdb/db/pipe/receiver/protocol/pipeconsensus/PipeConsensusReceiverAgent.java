@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.pipe.receiver.protocol.pipeconsensus;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeReceiver;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -32,12 +34,16 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
-public class PipeConsensusReceiverAgent {
+public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusReceiverAgent.class);
+
+  private final Map<ConsensusGroupId, AtomicReference<PipeConsensusReceiver>> replicaReceiverMap =
+      new ConcurrentHashMap<>();
 
   private final AtomicReference<PipeConsensusReceiver> receiverReference = new AtomicReference<>();
 
@@ -49,6 +55,7 @@ public class PipeConsensusReceiverAgent {
         PipeConsensusRequestVersion.VERSION_1.getVersion(), PipeConsensusReceiver::new);
   }
 
+  @Override
   public TPipeConsensusTransferResp receive(TPipeConsensusTransferReq req) {
     final byte reqVersion = req.getVersion();
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {

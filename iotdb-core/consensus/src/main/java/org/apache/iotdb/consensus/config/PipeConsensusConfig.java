@@ -1,9 +1,29 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.consensus.config;
 
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeDispatcher;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeReceiver;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeSelector;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ProgressIndexManager;
 
@@ -218,6 +238,7 @@ public class PipeConsensusConfig {
     private final ConsensusPipeGuardian consensusPipeGuardian;
     private final ConsensusPipeSelector consensusPipeSelector;
     private final ProgressIndexManager progressIndexManager;
+    private final ConsensusPipeReceiver consensusPipeReceiver;
     private final long consensusPipeGuardJobIntervalInSeconds;
 
     public Pipe(
@@ -228,6 +249,7 @@ public class PipeConsensusConfig {
         ConsensusPipeGuardian consensusPipeGuardian,
         ConsensusPipeSelector consensusPipeSelector,
         ProgressIndexManager progressIndexManager,
+        ConsensusPipeReceiver consensusPipeReceiver,
         long consensusPipeGuardJobIntervalInSeconds) {
       this.extractorPluginName = extractorPluginName;
       this.processorPluginName = processorPluginName;
@@ -236,6 +258,7 @@ public class PipeConsensusConfig {
       this.consensusPipeGuardian = consensusPipeGuardian;
       this.consensusPipeSelector = consensusPipeSelector;
       this.progressIndexManager = progressIndexManager;
+      this.consensusPipeReceiver = consensusPipeReceiver;
       this.consensusPipeGuardJobIntervalInSeconds = consensusPipeGuardJobIntervalInSeconds;
     }
 
@@ -263,6 +286,10 @@ public class PipeConsensusConfig {
       return consensusPipeSelector;
     }
 
+    public ConsensusPipeReceiver getConsensusPipeReceiver() {
+      return consensusPipeReceiver;
+    }
+
     public ProgressIndexManager getProgressIndexManager() {
       return progressIndexManager;
     }
@@ -285,6 +312,7 @@ public class PipeConsensusConfig {
       private ConsensusPipeGuardian consensusPipeGuardian = null;
       private ConsensusPipeSelector consensusPipeSelector = null;
       private ProgressIndexManager progressIndexManager = null;
+      private ConsensusPipeReceiver consensusPipeReceiver = null;
       private long consensusPipeGuardJobIntervalInSeconds = 180L;
 
       public Pipe.Builder setExtractorPluginName(String extractorPluginName) {
@@ -318,6 +346,11 @@ public class PipeConsensusConfig {
         return this;
       }
 
+      public Pipe.Builder setConsensusPipeReceiver(ConsensusPipeReceiver consensusPipeReceiver) {
+        this.consensusPipeReceiver = consensusPipeReceiver;
+        return this;
+      }
+
       public Pipe.Builder setProgressIndexManager(ProgressIndexManager progressIndexManager) {
         this.progressIndexManager = progressIndexManager;
         return this;
@@ -338,6 +371,7 @@ public class PipeConsensusConfig {
             consensusPipeGuardian,
             consensusPipeSelector,
             progressIndexManager,
+            consensusPipeReceiver,
             consensusPipeGuardJobIntervalInSeconds);
       }
     }

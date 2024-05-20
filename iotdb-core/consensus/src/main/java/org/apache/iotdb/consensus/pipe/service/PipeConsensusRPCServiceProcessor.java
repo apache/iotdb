@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.pipe.service;
 
+import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.pipe.thrift.PipeConsensusIService;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
@@ -27,24 +28,23 @@ import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.AsyncIface {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeConsensusRPCServiceProcessor.class);
 
-  public PipeConsensusRPCServiceProcessor() {}
+  private final PipeConsensusConfig.Pipe config;
+
+  public PipeConsensusRPCServiceProcessor(PipeConsensusConfig.Pipe config) {
+    this.config = config;
+  }
 
   @Override
   public void pipeConsensusTransfer(
       TPipeConsensusTransferReq req,
       AsyncMethodCallback<TPipeConsensusTransferResp> resultHandler) {
     try {
-      //    TODO:  TPipeConsensusTransferResp resp = impl.receive(req);
-
+      TPipeConsensusTransferResp resp = config.getConsensusPipeReceiver().receive(req);
       // we need to call onComplete by hand
-      //      TODO: resultHandler.onComplete(resp);
+      resultHandler.onComplete(resp);
     } catch (Exception e) {
       resultHandler.onError(e);
     }

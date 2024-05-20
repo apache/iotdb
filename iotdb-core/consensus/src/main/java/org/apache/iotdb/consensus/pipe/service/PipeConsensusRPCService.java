@@ -41,7 +41,6 @@ public class PipeConsensusRPCService extends ThriftService implements PipeConsen
   private static final Logger logger = LoggerFactory.getLogger(PipeConsensusRPCService.class);
 
   private final TEndPoint thisNode;
-  // TODO: migrate this class to PipeConsensusConfig
   private final PipeConsensusConfig config;
   private PipeConsensusRPCServiceProcessor pipeConsensusRPCServiceProcessor;
 

@@ -23,7 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
+import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.IConsensus;
@@ -47,6 +49,8 @@ import org.apache.iotdb.consensus.pipe.client.SyncPipeConsensusServiceClient;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeManager;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
+import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCService;
+import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCServiceProcessor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -80,6 +84,8 @@ public class PipeConsensus implements IConsensus {
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, PipeConsensusServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
+  private final PipeConsensusRPCService rpcService;
+  private final RegisterManager registerManager = new RegisterManager();
   private final ReentrantLock stateMachineMapLock = new ReentrantLock();
   private final PipeConsensusConfig config;
   private final ConsensusPipeManager consensusPipeManager;
@@ -93,6 +99,7 @@ public class PipeConsensus implements IConsensus {
     this.storageDir = new File(config.getStorageDir());
     this.config = config.getPipeConsensusConfig();
     this.registry = registry;
+    this.rpcService = new PipeConsensusRPCService(thisNode, config.getPipeConsensusConfig());
     this.consensusPipeManager = new ConsensusPipeManager(config.getPipeConsensusConfig().getPipe());
     this.consensusPipeGuardian =
         config.getPipeConsensusConfig().getPipe().getConsensusPipeGuardian();
@@ -112,11 +119,17 @@ public class PipeConsensus implements IConsensus {
   public synchronized void start() throws IOException {
     initAndRecover();
 
+    rpcService.initAsyncedServiceImpl(new PipeConsensusRPCServiceProcessor(config.getPipe()));
+    try {
+      registerManager.register(rpcService);
+    } catch (StartupException e) {
+      throw new IOException(e);
+    }
+
     consensusPipeGuardian.start(
         CONSENSUS_PIPE_GUARDIAN_TASK_ID,
         this::checkAllConsensusPipe,
         config.getPipe().getConsensusPipeGuardJobIntervalInSeconds());
-    // TODO: thrift service start
   }
 
   private void initAndRecover() throws IOException {
