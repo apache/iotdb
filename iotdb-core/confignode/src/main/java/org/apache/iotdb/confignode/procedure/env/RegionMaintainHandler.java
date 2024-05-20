@@ -398,7 +398,7 @@ public class RegionMaintainHandler {
       long waitTime =
           Math.min(
               INITIAL_DISCONNECTION_TOLERATE_MS
-                  + TimeUnit.NANOSECONDS.toMillis(lastReportTime - startTime) / 3600,
+                  + TimeUnit.NANOSECONDS.toMillis(lastReportTime - startTime) / 60,
               MAX_DISCONNECTION_TOLERATE_MS);
       long disconnectionTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastReportTime);
       if (disconnectionTime > waitTime) {
