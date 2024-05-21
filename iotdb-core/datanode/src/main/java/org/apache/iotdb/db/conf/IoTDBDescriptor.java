@@ -1171,7 +1171,7 @@ public class IoTDBDescriptor {
     conf.setCompactionWriteThroughputMbPerSec(
         Integer.parseInt(
             properties.getProperty(
-                "merge_write_throughput_mb_per_sec",
+                "compaction_write_throughput_mb_per_sec",
                 Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
     // update compaction_read_operation_per_sec

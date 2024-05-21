@@ -17,18 +17,41 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.core.uitls;
+package org.apache.iotdb.commons.pipe.connector.compressor;
 
-import javax.management.ObjectName;
+import java.io.IOException;
 
-public interface ObjectNameFactory {
-  /**
-   * Create objectName for a certain metric.
-   *
-   * @param type metric type
-   * @param domain metric domain
-   * @param name metric name
-   * @return metric's objectName
-   */
-  public ObjectName createName(String type, String domain, String name);
+public abstract class PipeCompressor {
+
+  public enum PipeCompressionType {
+    SNAPPY((byte) 0),
+    GZIP((byte) 1),
+    LZ4((byte) 2),
+    ZSTD((byte) 3),
+    LZMA2((byte) 4);
+
+    final byte index;
+
+    PipeCompressionType(byte index) {
+      this.index = index;
+    }
+
+    public byte getIndex() {
+      return index;
+    }
+  }
+
+  private final PipeCompressionType compressionType;
+
+  protected PipeCompressor(PipeCompressionType compressionType) {
+    this.compressionType = compressionType;
+  }
+
+  public abstract byte[] compress(byte[] data) throws IOException;
+
+  public abstract byte[] decompress(byte[] byteArray) throws IOException;
+
+  public byte serialize() {
+    return compressionType.getIndex();
+  }
 }

@@ -31,6 +31,8 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeSchemaRegionExtractorMetrics;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -42,6 +44,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
@@ -67,6 +70,9 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
 
     schemaRegionId = new SchemaRegionId(regionId);
     listenedTypeSet = SchemaRegionListeningFilter.parseListeningPlanTypeSet(parameters);
+
+    PipeSchemaRegionExtractorMetrics.getInstance().register(this);
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().register(this);
   }
 
   @Override
@@ -96,7 +102,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   protected void triggerSnapshot() {
     try {
       SchemaRegionConsensusImpl.getInstance().triggerSnapshot(schemaRegionId, true);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       throw new PipeException("Exception encountered when triggering schema region snapshot.", e);
     }
   }
@@ -150,6 +156,9 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
       // The queue is not closed here, and is closed iff the PipeMetaKeeper
       // has no schema pipe after one successful sync
       PipeAgent.runtime().decreaseAndGetSchemaListenerReferenceCount(schemaRegionId);
+    }
+    if (Objects.nonNull(taskID)) {
+      PipeSchemaRegionExtractorMetrics.getInstance().deregister(taskID);
     }
   }
 }

@@ -54,7 +54,7 @@ public abstract class IoTDBExtractor implements PipeExtractor {
   protected final AtomicBoolean hasBeenStarted = new AtomicBoolean(false);
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     validator
         .validate(
             args -> optionsAreAllLegal((String) args),
@@ -88,7 +88,8 @@ public abstract class IoTDBExtractor implements PipeExtractor {
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     final PipeTaskExtractorRuntimeEnvironment environment =
         ((PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment());
@@ -112,5 +113,23 @@ public abstract class IoTDBExtractor implements PipeExtractor {
       return;
     }
     hasBeenStarted.set(true);
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public String getTaskID() {
+    return taskID;
+  }
+
+  public String getPipeName() {
+    return pipeName;
+  }
+
+  public int getRegionId() {
+    return regionId;
+  }
+
+  public long getCreationTime() {
+    return creationTime;
   }
 }

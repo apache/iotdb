@@ -38,9 +38,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PipeConnectorMetrics implements IMetricSet {
+public class PipeDataRegionConnectorMetrics implements IMetricSet {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorMetrics.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PipeDataRegionConnectorMetrics.class);
 
   private volatile AbstractMetricService metricService;
 
@@ -55,22 +56,22 @@ public class PipeConnectorMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(AbstractMetricService metricService) {
+  public void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
-    ImmutableSet<String> taskIDs = ImmutableSet.copyOf(connectorMap.keySet());
+    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(connectorMap.keySet());
     for (String taskID : taskIDs) {
       createMetrics(taskID);
     }
   }
 
-  private void createMetrics(String taskID) {
+  private void createMetrics(final String taskID) {
     createAutoGauge(taskID);
     createRate(taskID);
   }
 
-  private void createAutoGauge(String taskID) {
-    PipeConnectorSubtask connector = connectorMap.get(taskID);
-    // pending event count
+  private void createAutoGauge(final String taskID) {
+    final PipeConnectorSubtask connector = connectorMap.get(taskID);
+    // Pending event count
     metricService.createAutoGauge(
         Metric.UNTRANSFERRED_TABLET_COUNT.toString(),
         MetricLevel.IMPORTANT,
@@ -104,7 +105,7 @@ public class PipeConnectorMetrics implements IMetricSet {
         String.valueOf(connector.getConnectorIndex()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(connector.getCreationTime()));
-    // metrics related to IoTDBThriftAsyncConnector
+    // Metrics related to IoTDBThriftAsyncConnector
     metricService.createAutoGauge(
         Metric.PIPE_ASYNC_CONNECTOR_RETRY_EVENT_QUEUE_SIZE.toString(),
         MetricLevel.IMPORTANT,
@@ -118,9 +119,9 @@ public class PipeConnectorMetrics implements IMetricSet {
         String.valueOf(connector.getCreationTime()));
   }
 
-  private void createRate(String taskID) {
-    PipeConnectorSubtask connector = connectorMap.get(taskID);
-    // transfer event rate
+  private void createRate(final String taskID) {
+    final PipeConnectorSubtask connector = connectorMap.get(taskID);
+    // Transfer event rate
     tabletRateMap.put(
         taskID,
         metricService.getOrCreateRate(
@@ -157,24 +158,25 @@ public class PipeConnectorMetrics implements IMetricSet {
   }
 
   @Override
-  public void unbindFrom(AbstractMetricService metricService) {
-    ImmutableSet<String> taskIDs = ImmutableSet.copyOf(connectorMap.keySet());
-    for (String taskID : taskIDs) {
+  public void unbindFrom(final AbstractMetricService metricService) {
+    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(connectorMap.keySet());
+    for (final String taskID : taskIDs) {
       deregister(taskID);
     }
     if (!connectorMap.isEmpty()) {
-      LOGGER.warn("Failed to unbind from pipe connector metrics, connector map not empty");
+      LOGGER.warn(
+          "Failed to unbind from pipe data region connector metrics, connector map not empty");
     }
   }
 
-  private void removeMetrics(String taskID) {
+  private void removeMetrics(final String taskID) {
     removeAutoGauge(taskID);
     removeRate(taskID);
   }
 
-  private void removeAutoGauge(String taskID) {
-    PipeConnectorSubtask connector = connectorMap.get(taskID);
-    // pending event count
+  private void removeAutoGauge(final String taskID) {
+    final PipeConnectorSubtask connector = connectorMap.get(taskID);
+    // Pending event count
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.UNTRANSFERRED_TABLET_COUNT.toString(),
@@ -202,7 +204,7 @@ public class PipeConnectorMetrics implements IMetricSet {
         String.valueOf(connector.getConnectorIndex()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(connector.getCreationTime()));
-    // metrics related to IoTDBThriftAsyncConnector
+    // Metrics related to IoTDBThriftAsyncConnector
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_ASYNC_CONNECTOR_RETRY_EVENT_QUEUE_SIZE.toString(),
@@ -214,9 +216,9 @@ public class PipeConnectorMetrics implements IMetricSet {
         String.valueOf(connector.getCreationTime()));
   }
 
-  private void removeRate(String taskID) {
-    PipeConnectorSubtask connector = connectorMap.get(taskID);
-    // transfer event rate
+  private void removeRate(final String taskID) {
+    final PipeConnectorSubtask connector = connectorMap.get(taskID);
+    // Transfer event rate
     metricService.remove(
         MetricType.RATE,
         Metric.PIPE_CONNECTOR_TABLET_TRANSFER.toString(),
@@ -251,18 +253,18 @@ public class PipeConnectorMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(@NonNull PipeConnectorSubtask pipeConnectorSubtask) {
-    String taskID = pipeConnectorSubtask.getTaskID();
+  public void register(@NonNull final PipeConnectorSubtask pipeConnectorSubtask) {
+    final String taskID = pipeConnectorSubtask.getTaskID();
     connectorMap.putIfAbsent(taskID, pipeConnectorSubtask);
     if (Objects.nonNull(metricService)) {
       createMetrics(taskID);
     }
   }
 
-  public void deregister(String taskID) {
+  public void deregister(final String taskID) {
     if (!connectorMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe connector metrics, PipeConnectorSubtask({}) does not exist",
+          "Failed to deregister pipe data region connector metrics, PipeConnectorSubtask({}) does not exist",
           taskID);
       return;
     }
@@ -272,43 +274,41 @@ public class PipeConnectorMetrics implements IMetricSet {
     connectorMap.remove(taskID);
   }
 
-  public void markTabletEvent(String taskID) {
+  public void markTabletEvent(final String taskID) {
     if (Objects.isNull(metricService)) {
       return;
     }
-    Rate rate = tabletRateMap.get(taskID);
+    final Rate rate = tabletRateMap.get(taskID);
     if (rate == null) {
       LOGGER.warn(
-          "Failed to mark pipe connector tablet event, PipeConnectorSubtask({}) does not exist",
+          "Failed to mark pipe data region connector tablet event, PipeConnectorSubtask({}) does not exist",
           taskID);
       return;
     }
     rate.mark();
   }
 
-  public void markTsFileEvent(String taskID) {
+  public void markTsFileEvent(final String taskID) {
     if (Objects.isNull(metricService)) {
       return;
     }
-    Rate rate = tsFileRateMap.get(taskID);
+    final Rate rate = tsFileRateMap.get(taskID);
     if (rate == null) {
       LOGGER.warn(
-          "Failed to mark pipe connector tsfile event, PipeConnectorSubtask({}) does not exist",
+          "Failed to mark pipe data region connector tsfile event, PipeConnectorSubtask({}) does not exist",
           taskID);
       return;
     }
     rate.mark();
   }
 
-  public void markPipeHeartbeatEvent(String taskID) {
+  public void markPipeHeartbeatEvent(final String taskID) {
     if (Objects.isNull(metricService)) {
       return;
     }
-    Rate rate = pipeHeartbeatRateMap.get(taskID);
+    final Rate rate = pipeHeartbeatRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.warn(
-          "Failed to mark pipe connector heartbeat event, PipeConnectorSubtask({}) does not exist",
-          taskID);
+      // Do not warn for the schema region events
       return;
     }
     rate.mark();
@@ -318,18 +318,19 @@ public class PipeConnectorMetrics implements IMetricSet {
 
   private static class PipeConnectorMetricsHolder {
 
-    private static final PipeConnectorMetrics INSTANCE = new PipeConnectorMetrics();
+    private static final PipeDataRegionConnectorMetrics INSTANCE =
+        new PipeDataRegionConnectorMetrics();
 
     private PipeConnectorMetricsHolder() {
-      // empty constructor
+      // Empty constructor
     }
   }
 
-  public static PipeConnectorMetrics getInstance() {
-    return PipeConnectorMetrics.PipeConnectorMetricsHolder.INSTANCE;
+  public static PipeDataRegionConnectorMetrics getInstance() {
+    return PipeDataRegionConnectorMetrics.PipeConnectorMetricsHolder.INSTANCE;
   }
 
-  private PipeConnectorMetrics() {
-    // empty constructor
+  private PipeDataRegionConnectorMetrics() {
+    // Empty constructor
   }
 }
