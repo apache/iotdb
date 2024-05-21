@@ -17,37 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.tsfile;
+package org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.PlaceHolderProcessor;
 
-import java.io.IOException;
-import java.io.OutputStream;
-
-public enum TsFileResourceBlockType {
-  EMPTY_BLOCK((byte) 0),
-  PROGRESS_INDEX((byte) 1),
-  REMOTE_STORAGE_BLOCK((byte) 2),
-  ;
-
-  private final byte type;
-
-  TsFileResourceBlockType(byte type) {
-    this.type = type;
-  }
-
-  public void serialize(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(type, outputStream);
-  }
-
-  public static TsFileResourceBlockType deserialize(byte type) {
-    switch (type) {
-      case 0:
-        return EMPTY_BLOCK;
-      case 1:
-        return PROGRESS_INDEX;
-      default:
-        throw new IllegalArgumentException("Invalid input: " + type);
-    }
-  }
-}
+/**
+ * This class is a placeholder and should not be initialized. It represents the
+ * changing-value-sampling-processor. There is a real implementation in the server module but cannot
+ * be imported here. The pipe agent in the server module will replace this class with the real
+ * implementation when initializing the changing-value-sampling-processor.
+ */
+public class ChangingValueSamplingProcessor extends PlaceHolderProcessor {}
