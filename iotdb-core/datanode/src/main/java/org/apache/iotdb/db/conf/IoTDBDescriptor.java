@@ -2118,6 +2118,17 @@ public class IoTDBDescriptor {
                     .split(","))
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
+
+    conf.setPipeConsensusReceiverFileDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "pipe_consensus_receiver_file_dirs",
+                        String.join(",", conf.getPipeConsensusReceiverFileDirs()))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
   }
 
   private void loadCQProps(Properties properties) {
