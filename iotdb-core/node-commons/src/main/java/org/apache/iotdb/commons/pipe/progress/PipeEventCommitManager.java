@@ -106,13 +106,22 @@ public class PipeEventCommitManager {
       }
       return;
     }
-    if (Objects.nonNull(commitRateMarker)) {
-      commitRateMarker.accept(
-          new PipeTaskRuntimeEnvironment(
-              committer.getPipeName(), committer.getCreationTime(), committer.getRegionId()));
-    }
 
     committer.commit(event);
+    if (Objects.nonNull(commitRateMarker)) {
+      try {
+        commitRateMarker.accept(
+            new PipeTaskRuntimeEnvironment(
+                committer.getPipeName(), committer.getCreationTime(), committer.getRegionId()));
+      } catch (Exception e) {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "Failed to mark commit rate for pipe: {}, stack trace: {}",
+              committerKey,
+              Thread.currentThread().getStackTrace());
+        }
+      }
+    }
   }
 
   private static String generateCommitterKey(
