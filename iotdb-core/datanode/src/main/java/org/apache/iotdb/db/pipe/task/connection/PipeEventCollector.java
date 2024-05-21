@@ -131,6 +131,7 @@ public class PipeEventCollector implements EventCollector {
       PipeEventCommitManager.getInstance()
           .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
     }
+
     if (event instanceof PipeHeartbeatEvent) {
       ((PipeHeartbeatEvent) event).recordConnectorQueueSize(pendingQueue);
     }
