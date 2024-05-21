@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
@@ -149,11 +150,13 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   createPipeRequest.getExtractorAttributes().get(EXTRACTOR_CONSENSUS_GROUP_ID_KEY))
               .convertToTConsensusGroupId();
 
+      final int leaderDataNodeId =
+          env.getConfigManager().getLoadManager().getRegionLeaderMap().get(groupId);
       consensusGroupIdToTaskMetaMap.put(
           groupId.getId(),
           new PipeTaskMeta(
-              new SimpleProgressIndex(0, 0), // pipe consensus use simple progress index
-              env.getConfigManager().getLoadManager().getRegionLeaderMap().get(groupId)));
+              new RecoverProgressIndex(leaderDataNodeId, new SimpleProgressIndex(0, 0)),
+              leaderDataNodeId));
     } else {
       // data regions & schema regions
       env.getConfigManager()

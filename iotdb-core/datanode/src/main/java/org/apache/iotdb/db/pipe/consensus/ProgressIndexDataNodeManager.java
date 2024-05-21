@@ -21,19 +21,28 @@ package org.apache.iotdb.db.pipe.consensus;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ProgressIndexManager;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class ProgressIndexDataNodeManager implements ProgressIndexManager {
   private final Map<ConsensusGroupId, ProgressIndex> groupId2MaxProgressIndex;
+  private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
   public ProgressIndexDataNodeManager() {
     this.groupId2MaxProgressIndex = new ConcurrentHashMap<>();
@@ -49,19 +58,57 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
               final TsFileManager tsFileManager =
                   StorageEngine.getInstance().getDataRegion(dataRegionId).getTsFileManager();
 
+              final List<ProgressIndex> allProgressIndex = new ArrayList<>();
+              allProgressIndex.addAll(
+                  tsFileManager.getTsFileList(true).stream()
+                      .map(TsFileResource::getMaxProgressIndex)
+                      .collect(Collectors.toList()));
+              allProgressIndex.addAll(
+                  tsFileManager.getTsFileList(false).stream()
+                      .map(TsFileResource::getMaxProgressIndex)
+                      .collect(Collectors.toList()));
+
               ProgressIndex maxProgressIndex = MinimumProgressIndex.INSTANCE;
-              tsFileManager.getTsFileList(true).stream()
-                  .map(TsFileResource::getMaxProgressIndex)
-                  .forEach(maxProgressIndex::updateToMinimumEqualOrIsAfterProgressIndex);
-              tsFileManager.getTsFileList(false).stream()
-                  .map(TsFileResource::getMaxProgressIndex)
-                  .forEach(maxProgressIndex::updateToMinimumEqualOrIsAfterProgressIndex);
+              for (ProgressIndex progressIndex : allProgressIndex) {
+                maxProgressIndex =
+                    maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                        extractLocalSimpleProgressIndex(progressIndex));
+              }
               groupId2MaxProgressIndex
                   .computeIfAbsent(dataRegionId, o -> MinimumProgressIndex.INSTANCE)
                   .updateToMinimumEqualOrIsAfterProgressIndex(maxProgressIndex);
+              groupId2MaxProgressIndex.put(
+                  dataRegionId,
+                  maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                      groupId2MaxProgressIndex.getOrDefault(
+                          dataRegionId, MinimumProgressIndex.INSTANCE)));
             });
 
     // TODO: update deletion progress index
+  }
+
+  private ProgressIndex extractLocalSimpleProgressIndex(ProgressIndex progressIndex) {
+    if (progressIndex instanceof RecoverProgressIndex) {
+      final Map<Integer, SimpleProgressIndex> dataNodeId2LocalIndex =
+          ((RecoverProgressIndex) progressIndex).getDataNodeId2LocalIndex();
+      return dataNodeId2LocalIndex.containsKey(DATA_NODE_ID)
+          ? dataNodeId2LocalIndex.get(DATA_NODE_ID)
+          : MinimumProgressIndex.INSTANCE;
+    } else if (progressIndex instanceof HybridProgressIndex) {
+      final Map<Short, ProgressIndex> type2Index =
+          ((HybridProgressIndex) progressIndex).getType2Index();
+      if (!type2Index.containsKey(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType())) {
+        return MinimumProgressIndex.INSTANCE;
+      }
+      final Map<Integer, SimpleProgressIndex> dataNodeId2LocalIndex =
+          ((RecoverProgressIndex)
+                  type2Index.get(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType()))
+              .getDataNodeId2LocalIndex();
+      return dataNodeId2LocalIndex.containsKey(DATA_NODE_ID)
+          ? dataNodeId2LocalIndex.get(DATA_NODE_ID)
+          : MinimumProgressIndex.INSTANCE;
+    }
+    return MinimumProgressIndex.INSTANCE;
   }
 
   @Override
@@ -74,10 +121,12 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
   @Override
   public ProgressIndex assignProgressIndex(ConsensusGroupId consensusGroupId) {
     final ProgressIndex progressIndex =
-        PipeAgent.runtime().assignSimpleProgressIndexForPipeConsensus();
-    groupId2MaxProgressIndex
-        .computeIfAbsent(consensusGroupId, o -> MinimumProgressIndex.INSTANCE)
-        .updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
+        PipeAgent.runtime().assignProgressIndexForPipeConsensus();
+    groupId2MaxProgressIndex.put(
+        consensusGroupId,
+        progressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+            groupId2MaxProgressIndex.getOrDefault(
+                consensusGroupId, MinimumProgressIndex.INSTANCE)));
     return progressIndex;
   }
 
