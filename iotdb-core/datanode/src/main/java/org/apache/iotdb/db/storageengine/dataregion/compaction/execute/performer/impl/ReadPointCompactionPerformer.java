@@ -259,7 +259,6 @@ public class ReadPointCompactionPerformer
     } else {
       seriesPath = new NonAlignedFullPath(deviceId, measurementSchemas.get(0));
     }
-    seriesPath.getIDeviceID();
     return new SeriesDataBlockReader(
         seriesPath, new HashSet<>(allSensors), fragmentInstanceContext, queryDataSource, true);
   }

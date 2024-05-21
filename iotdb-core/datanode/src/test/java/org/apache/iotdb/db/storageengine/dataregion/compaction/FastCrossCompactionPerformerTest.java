@@ -1532,10 +1532,10 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
       for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-          PartialPath path =
-              new MeasurementPath(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
-                  "s" + j,
+          IFullPath path =
+              new NonAlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                   new MeasurementSchema("s" + j, TSDataType.INT64));
           IDataBlockReader tsBlockReader =
               new SeriesDataBlockReader(
@@ -1595,9 +1595,10 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
 
     List<IMeasurementSchema> schemas = new ArrayList<>();
     schemas.add(new MeasurementSchema("s1", TSDataType.INT64));
-    AlignedPath path =
-        new AlignedPath(
-            COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000",
+    IFullPath path =
+        new AlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000"),
             Collections.singletonList("s1"),
             schemas);
     IDataBlockReader tsBlockReader =
@@ -2437,10 +2438,10 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
         measurementMaxTime.putIfAbsent(
             COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
             Long.MIN_VALUE);
-        PartialPath path =
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
-                "s" + j,
+        IFullPath path =
+            new NonAlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 new MeasurementSchema("s" + j, tsDataType));
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
@@ -3410,12 +3411,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             Long.MIN_VALUE);
         List<IMeasurementSchema> schemas = new ArrayList<>();
         schemas.add(new MeasurementSchema("s" + j, tsDataType));
-        AlignedPath path =
-            new AlignedPath(
-                COMPACTION_TEST_SG
-                    + PATH_SEPARATOR
-                    + "d"
-                    + (TsFileGeneratorUtils.getAlignDeviceOffset() + i),
+        IFullPath path =
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG
+                        + PATH_SEPARATOR
+                        + "d"
+                        + (TsFileGeneratorUtils.getAlignDeviceOffset() + i)),
                 Collections.singletonList("s" + j),
                 schemas);
         IDataBlockReader tsBlockReader =
@@ -3704,12 +3706,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             Long.MIN_VALUE);
         List<IMeasurementSchema> schemas = new ArrayList<>();
         schemas.add(new MeasurementSchema("s" + j, TSDataType.TEXT));
-        AlignedPath path =
-            new AlignedPath(
-                COMPACTION_TEST_SG
-                    + PATH_SEPARATOR
-                    + "d"
-                    + (TsFileGeneratorUtils.getAlignDeviceOffset() + i),
+        IFullPath path =
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG
+                        + PATH_SEPARATOR
+                        + "d"
+                        + (TsFileGeneratorUtils.getAlignDeviceOffset() + i)),
                 Collections.singletonList("s" + j),
                 schemas);
         IDataBlockReader tsBlockReader =
@@ -3903,12 +3906,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             Long.MIN_VALUE);
         List<IMeasurementSchema> schemas = new ArrayList<>();
         schemas.add(new MeasurementSchema("s" + j, TSDataType.TEXT));
-        AlignedPath path =
-            new AlignedPath(
-                COMPACTION_TEST_SG
-                    + PATH_SEPARATOR
-                    + "d"
-                    + (TsFileGeneratorUtils.getAlignDeviceOffset() + i),
+        IFullPath path =
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG
+                        + PATH_SEPARATOR
+                        + "d"
+                        + (TsFileGeneratorUtils.getAlignDeviceOffset() + i)),
                 Collections.singletonList("s" + j),
                 schemas);
         IDataBlockReader tsBlockReader =
@@ -4132,12 +4136,13 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
             Long.MIN_VALUE);
         List<IMeasurementSchema> schemas = new ArrayList<>();
         schemas.add(new MeasurementSchema("s" + j, TSDataType.TEXT));
-        AlignedPath path =
-            new AlignedPath(
-                COMPACTION_TEST_SG
-                    + PATH_SEPARATOR
-                    + "d"
-                    + (TsFileGeneratorUtils.getAlignDeviceOffset() + i),
+        IFullPath path =
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG
+                        + PATH_SEPARATOR
+                        + "d"
+                        + (TsFileGeneratorUtils.getAlignDeviceOffset() + i)),
                 Collections.singletonList("s" + j),
                 schemas);
 
