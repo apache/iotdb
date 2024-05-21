@@ -509,13 +509,20 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   // result. However, this shall not cause any exceptions when concurrently read & written.
   public int getRetryEventCount(final String pipeName) {
     final AtomicInteger count = new AtomicInteger(0);
-    retryEventQueue.forEach(
-        event -> {
-          if (event instanceof EnrichedEvent
-              && pipeName.equals(((EnrichedEvent) event).getPipeName())) {
-            count.incrementAndGet();
-          }
-        });
-    return count.get();
+    try {
+      retryEventQueue.forEach(
+          event -> {
+            if (event instanceof EnrichedEvent
+                && pipeName.equals(((EnrichedEvent) event).getPipeName())) {
+              count.incrementAndGet();
+            }
+          });
+      return count.get();
+    } catch (Exception e) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Failed to get retry event count for pipe {}.", pipeName, e);
+      }
+      return count.get();
+    }
   }
 }
