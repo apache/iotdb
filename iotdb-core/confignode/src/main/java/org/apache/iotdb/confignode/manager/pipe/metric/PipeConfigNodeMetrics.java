@@ -27,21 +27,29 @@ public class PipeConfigNodeMetrics implements IMetricSet {
 
   private final PipeTaskInfoMetrics pipeTaskInfoMetrics;
 
-  public PipeConfigNodeMetrics(PipeManager pipeManager) {
+  public PipeConfigNodeMetrics(final PipeManager pipeManager) {
     this.pipeTaskInfoMetrics = new PipeTaskInfoMetrics(pipeManager);
   }
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(AbstractMetricService metricService) {
+  public void bindTo(final AbstractMetricService metricService) {
     PipeProcedureMetrics.getInstance().bindTo(metricService);
     pipeTaskInfoMetrics.bindTo(metricService);
+    PipeConfigNodeListenerMetrics.getInstance().bindTo(metricService);
+    PipeConfigRegionExtractorMetrics.getInstance().bindTo(metricService);
+    PipeConfigRegionConnectorMetrics.getInstance().bindTo(metricService);
+    PipeConfigNodeRemainingTimeMetrics.getInstance().bindTo(metricService);
   }
 
   @Override
-  public void unbindFrom(AbstractMetricService metricService) {
+  public void unbindFrom(final AbstractMetricService metricService) {
     PipeProcedureMetrics.getInstance().unbindFrom(metricService);
     pipeTaskInfoMetrics.unbindFrom(metricService);
+    PipeConfigNodeListenerMetrics.getInstance().unbindFrom(metricService);
+    PipeConfigRegionExtractorMetrics.getInstance().unbindFrom(metricService);
+    PipeConfigRegionConnectorMetrics.getInstance().unbindFrom(metricService);
+    PipeConfigNodeRemainingTimeMetrics.getInstance().unbindFrom(metricService);
   }
 }

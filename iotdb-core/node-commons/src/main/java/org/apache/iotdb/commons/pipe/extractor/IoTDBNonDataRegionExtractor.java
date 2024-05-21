@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -47,6 +48,9 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
   protected IoTDBPipePattern pipePattern;
 
   private List<PipeSnapshotEvent> historicalEvents = new LinkedList<>();
+  // A fixed size initialized only when the historicalEvents are first
+  // filled. Used only for metric framework.
+  private int historicalEventsCount = 0;
 
   private ConcurrentIterableLinkedQueue<Event>.DynamicIterator iterator;
 
@@ -120,6 +124,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
             ? queueTailIndex2Snapshots.getLeft()
             : Long.MIN_VALUE;
     historicalEvents = new LinkedList<>(queueTailIndex2Snapshots.getRight());
+    historicalEventsCount = historicalEvents.size();
     return nextIndex;
   }
 
@@ -162,18 +167,16 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
     }
 
     // Realtime
-    PipeWritePlanEvent realtimeEvent;
-    do {
-      realtimeEvent = (PipeWritePlanEvent) iterator.next(getMaxBlockingTimeMs());
-      realtimeEvent =
-          Objects.nonNull(realtimeEvent)
-              ? trimRealtimeEventByPipePattern(realtimeEvent).orElse(null)
-              : realtimeEvent;
-      if (Objects.isNull(realtimeEvent)) {
-        return null;
+    PipeWritePlanEvent realtimeEvent = trimRealtimeEventByPipePattern(realtimeEvent).orElse(null);
+      if (Objects.isNull(realtimeEvent)
+      || !isTypeListened(realtimeEvent)
+              || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe())) {
+          final ProgressReportEvent event =
+                  new ProgressReportEvent(pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+          event.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+          event.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
+          return event;
       }
-    } while (!isTypeListened(realtimeEvent)
-        || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe()));
 
     realtimeEvent =
         (PipeWritePlanEvent)
@@ -196,16 +199,17 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
   @Override
   public void close() throws Exception {
-    if (hasBeenClosed.get()) {
-      return;
-    }
-    hasBeenClosed.set(true);
-
-    if (!hasBeenStarted.get()) {
-      return;
-    }
-
     getListeningQueue().returnIterator(iterator);
     historicalEvents.clear();
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public long getUnTransferredEventCount() {
+    return !(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)
+        ? getListeningQueue().getTailIndex()
+            - ((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex()
+            - 1
+        : getListeningQueue().getSize() + historicalEventsCount;
   }
 }

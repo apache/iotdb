@@ -26,10 +26,12 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeE
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeAbstractConnectorSubtask;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
+import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigRegionConnectorMetrics;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -48,6 +50,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfigNodeSubtask.class);
 
+  private final String pipeName;
   private final PipeTaskMeta pipeTaskMeta;
 
   // Pipe plugins for this subtask
@@ -58,23 +61,28 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
   private PipeProcessor processor;
 
   public PipeConfigNodeSubtask(
-      String pipeName,
-      long creationTime,
-      Map<String, String> extractorAttributes,
-      Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes,
-      PipeTaskMeta pipeTaskMeta)
+      final String pipeName,
+      final long creationTime,
+      final Map<String, String> extractorAttributes,
+      final Map<String, String> processorAttributes,
+      final Map<String, String> connectorAttributes,
+      final PipeTaskMeta pipeTaskMeta)
       throws Exception {
     // We initialize outputPipeConnector by initConnector()
-    super(pipeName, creationTime, null);
+    super(pipeName + "_" + creationTime, creationTime, null);
+    this.pipeName = pipeName;
     this.pipeTaskMeta = pipeTaskMeta;
 
     initExtractor(extractorAttributes);
     initProcessor(processorAttributes);
     initConnector(connectorAttributes);
+
+    PipeConfigRegionConnectorMetrics.getInstance().register(this);
+    PipeEventCommitManager.getInstance()
+        .register(pipeName, creationTime, CONFIG_REGION_ID.getId(), pipeName + "_" + creationTime);
   }
 
-  private void initExtractor(Map<String, String> extractorAttributes) throws Exception {
+  private void initExtractor(final Map<String, String> extractorAttributes) throws Exception {
     final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
 
     // 1. Construct extractor
@@ -88,7 +96,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskExtractorRuntimeEnvironment(
-                  taskID, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
+                  pipeName, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
       extractor.customize(extractorParameters, runtimeConfiguration);
     } catch (final Exception e) {
       try {
@@ -103,12 +111,12 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
     }
   }
 
-  private void initProcessor(Map<String, String> processorAttributes) {
+  private void initProcessor(final Map<String, String> processorAttributes) {
     final PipeParameters processorParameters = new PipeParameters(processorAttributes);
 
     final PipeTaskRuntimeConfiguration runtimeConfiguration =
         new PipeTaskRuntimeConfiguration(
-            new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
+            new PipeTaskRuntimeEnvironment(pipeName, creationTime, CONFIG_REGION_ID.getId()));
 
     processor =
         PipeConfigNodeAgent.plugin()
@@ -120,7 +128,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
                 runtimeConfiguration);
   }
 
-  private void initConnector(Map<String, String> connectorAttributes) throws Exception {
+  private void initConnector(final Map<String, String> connectorAttributes) throws Exception {
     final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
 
     // 1. Construct connector
@@ -133,7 +141,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
       // 3. Customize connector
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskRuntimeEnvironment(taskID, creationTime, CONFIG_REGION_ID.getId()));
+              new PipeTaskRuntimeEnvironment(pipeName, creationTime, CONFIG_REGION_ID.getId()));
       outputPipeConnector.customize(connectorParameters, runtimeConfiguration);
 
       // 4. Handshake
@@ -174,9 +182,10 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
       }
 
       outputPipeConnector.transfer(event);
-
       decreaseReferenceCountAndReleaseLastEvent(true);
-    } catch (PipeException e) {
+
+      PipeConfigRegionConnectorMetrics.getInstance().markConfigEvent(taskID);
+    } catch (final PipeException e) {
       if (!isClosed.get()) {
         throw e;
       } else {
@@ -186,7 +195,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
             e);
         clearReferenceCountAndReleaseLastEvent();
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       if (!isClosed.get()) {
         throw new PipeException(
             String.format(
@@ -205,21 +214,25 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
   public void close() {
     isClosed.set(true);
 
+    PipeEventCommitManager.getInstance()
+        .deregister(pipeName, creationTime, CONFIG_REGION_ID.getId());
+    PipeConfigRegionConnectorMetrics.getInstance().deregister(taskID);
+
     try {
       extractor.close();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.info("Error occurred during closing PipeExtractor.", e);
     }
 
     try {
       processor.close();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.info("Error occurred during closing PipeProcessor.", e);
     }
 
     try {
       outputPipeConnector.close();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.info("Error occurred during closing PipeConnector.", e);
     } finally {
       // Should be after connector.close()
@@ -230,12 +243,18 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
   //////////////////////////// Error report ////////////////////////////
 
   @Override
-  protected String getRootCause(Throwable throwable) {
+  protected String getRootCause(final Throwable throwable) {
     return throwable != null ? throwable.getMessage() : null;
   }
 
   @Override
-  protected void report(EnrichedEvent event, PipeRuntimeException exception) {
+  protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
     PipeConfigNodeAgent.runtime().report(event, exception);
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public String getPipeName() {
+    return pipeName;
   }
 }

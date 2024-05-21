@@ -28,27 +28,35 @@ public class PipeDataNodeMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(AbstractMetricService metricService) {
+  public void bindTo(final AbstractMetricService metricService) {
     PipeAssignerMetrics.getInstance().bindTo(metricService);
-    PipeExtractorMetrics.getInstance().bindTo(metricService);
+    PipeDataRegionExtractorMetrics.getInstance().bindTo(metricService);
     PipeProcessorMetrics.getInstance().bindTo(metricService);
-    PipeConnectorMetrics.getInstance().bindTo(metricService);
+    PipeDataRegionConnectorMetrics.getInstance().bindTo(metricService);
     PipeHeartbeatEventMetrics.getInstance().bindTo(metricService);
     PipeWALInsertNodeCacheMetrics.getInstance().bindTo(metricService);
     PipeResourceMetrics.getInstance().bindTo(metricService);
     PipeEventCommitMetrics.getInstance().bindTo(metricService);
+    PipeSchemaRegionListenerMetrics.getInstance().bindTo(metricService);
+    PipeSchemaRegionExtractorMetrics.getInstance().bindTo(metricService);
+    PipeSchemaRegionConnectorMetrics.getInstance().bindTo(metricService);
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().bindTo(metricService);
   }
 
   @Override
-  public void unbindFrom(AbstractMetricService metricService) {
+  public void unbindFrom(final AbstractMetricService metricService) {
     PipeAssignerMetrics.getInstance().unbindFrom(metricService);
-    PipeExtractorMetrics.getInstance().unbindFrom(metricService);
+    PipeDataRegionExtractorMetrics.getInstance().unbindFrom(metricService);
     PipeProcessorMetrics.getInstance().unbindFrom(metricService);
-    PipeConnectorMetrics.getInstance().unbindFrom(metricService);
+    PipeDataRegionConnectorMetrics.getInstance().unbindFrom(metricService);
     PipeHeartbeatEventMetrics.getInstance().unbindFrom(metricService);
     PipeWALInsertNodeCacheMetrics.getInstance().unbindFrom(metricService);
     PipeResourceMetrics.getInstance().unbindFrom(metricService);
     PipeEventCommitMetrics.getInstance().unbindFrom(metricService);
+    PipeSchemaRegionListenerMetrics.getInstance().unbindFrom(metricService);
+    PipeSchemaRegionExtractorMetrics.getInstance().unbindFrom(metricService);
+    PipeSchemaRegionConnectorMetrics.getInstance().unbindFrom(metricService);
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().unbindFrom(metricService);
   }
 
   //////////////////////////// singleton ////////////////////////////

@@ -255,8 +255,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
           receiverEnv,
           "select * from root.**",
           "Time,root.ln.wf01.wt01.status1,",
-          Collections.emptySet(),
-          10);
+          Collections.emptySet());
     }
   }
 }

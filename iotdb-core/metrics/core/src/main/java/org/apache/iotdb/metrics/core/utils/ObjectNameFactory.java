@@ -17,12 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.core.uitls;
+package org.apache.iotdb.metrics.core.utils;
 
 import javax.management.ObjectName;
 
-public interface IoTDBCachedGaugeMBean {
-  ObjectName objectName();
-
-  double getValue();
+public interface ObjectNameFactory {
+  /**
+   * Create objectName for a certain metric.
+   *
+   * @param type metric type
+   * @param domain metric domain
+   * @param name metric name
+   * @return metric's objectName
+   */
+  public ObjectName createName(String type, String domain, String name);
 }
