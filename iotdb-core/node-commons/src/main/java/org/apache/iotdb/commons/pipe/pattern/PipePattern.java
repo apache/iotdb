@@ -123,7 +123,7 @@ public abstract class PipePattern {
   /**
    * Check if a full path with device and measurement can be matched by pattern.
    *
-   * <p>NOTE: this is only called when {@link PipePattern#matchPrefixPath} is true.
+   * <p>NOTE: this is only called when {@link PipePattern#mayOverlapWithDevice(String)} is true.
    */
   public abstract boolean matchesMeasurement(final String device, final String measurement);
 
