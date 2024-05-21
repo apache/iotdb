@@ -173,7 +173,7 @@ public class IoTDBDataBackTool {
     return isVaild;
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws IOException {
     System.setProperty("IOTDB_HOME", System.getenv("IOTDB_HOME"));
     argsParse(args);
     File sourceDir = new File(sourcePath);
@@ -1041,15 +1041,14 @@ public class IoTDBDataBackTool {
   public static void propertiesFileUpdate(String filePath, String key, String newValue) {
     try {
       newValue = formatPathForOS(newValue);
-      FileInputStream fileInputStream = new FileInputStream(filePath);
-      BufferedReader reader = new BufferedReader(new InputStreamReader(fileInputStream));
-
       List<String> lines = new ArrayList<>();
-      String line;
-      while ((line = reader.readLine()) != null) {
-        lines.add(line);
+      try (FileInputStream fileInputStream = new FileInputStream(filePath);
+          BufferedReader reader = new BufferedReader(new InputStreamReader(fileInputStream))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          lines.add(line);
+        }
       }
-      reader.close();
       boolean keyFound = false;
 
       for (int i = 0; i < lines.size(); i++) {
@@ -1121,11 +1120,11 @@ public class IoTDBDataBackTool {
     return 0;
   }
 
-  public static void delFile(String filename) {
+  public static void delFile(String filename) throws IOException {
     filename = sourcePath + File.separatorChar + "logs" + File.separatorChar + filename;
     File file = new File(filename);
     if (file.exists()) {
-      file.delete();
+      Files.delete(file.toPath());
     }
   }
 

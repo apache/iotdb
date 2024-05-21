@@ -40,7 +40,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -488,12 +487,11 @@ public class ImportData extends AbstractDataTool {
       } catch (IOException e) {
         ioTPrinter.println("Cannot dump fail result because: " + e.getMessage());
       } finally {
-        if (ObjectUtils.isNotEmpty(writer)) {
+        if (writer != null) {
           try {
             writer.flush();
             writer.close();
-          } catch (IOException e) {
-            ;
+          } catch (IOException ignore) {
           }
         }
       }

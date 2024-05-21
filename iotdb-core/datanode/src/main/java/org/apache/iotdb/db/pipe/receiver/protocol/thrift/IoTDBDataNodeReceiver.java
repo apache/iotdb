@@ -401,6 +401,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TSStatus executeStatementAndClassifyExceptions(final Statement statement) {
+    if (statement == null) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
+    }
+
     try {
       final TSStatus result = executeStatement(statement);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()

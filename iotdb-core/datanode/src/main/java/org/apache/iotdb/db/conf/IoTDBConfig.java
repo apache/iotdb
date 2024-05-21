@@ -1306,6 +1306,15 @@ public class IoTDBConfig {
   void reloadDataDirs(String[][] tierDataDirs) throws LoadConfigurationException {
     // format data directories
     formulateDataDirs(tierDataDirs);
+    // make sure the tiers number not reduced
+    if (this.tierDataDirs.length > tierDataDirs.length) {
+      String msg =
+          String.format(
+              "The tiers number is reduced from %d from %d please add it back.",
+              this.tierDataDirs.length, tierDataDirs.length);
+      logger.error(msg);
+      throw new LoadConfigurationException(msg);
+    }
     // make sure old data directories not removed
     for (int i = 0; i < this.tierDataDirs.length; ++i) {
       HashSet<String> newDirs = new HashSet<>(Arrays.asList(tierDataDirs[i]));
@@ -1399,12 +1408,14 @@ public class IoTDBConfig {
   }
 
   public void setTierDataDirs(String[][] tierDataDirs) {
-    formulateDataDirs(tierDataDirs);
-    this.tierDataDirs = tierDataDirs;
-    // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
-    setRatisDataRegionSnapshotDir(
-        tierDataDirs[0][0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
-    setLoadTsFileDir(tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME);
+    if (tierDataDirs.length > 0 && tierDataDirs[0].length > 0) {
+      formulateDataDirs(tierDataDirs);
+      this.tierDataDirs = tierDataDirs;
+      // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
+      setRatisDataRegionSnapshotDir(
+          tierDataDirs[0][0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
+      setLoadTsFileDir(tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME);
+    }
   }
 
   public String getRpcAddress() {

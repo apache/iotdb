@@ -58,7 +58,7 @@ public class NodesSupplier implements INodeSupplier, Runnable {
 
   // availableNodes won't be updated frequently, so we use CopyOnWriteArrayList which is thread-safe
   // and is optimized for scenarios of reading more and writing less
-  private volatile List<TEndPoint> availableNodes = new CopyOnWriteArrayList<>();
+  private List<TEndPoint> availableNodes = new CopyOnWriteArrayList<>();
 
   private final boolean useSSL;
   private final String trustStore;

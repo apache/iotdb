@@ -710,21 +710,21 @@ public abstract class PageManager implements IPageManager {
     if (batchSize < SchemaFileConfig.SEG_SIZE_METRIC[0]) {
       return reEstimateSegSize(expSize);
     }
-    int base_tier = 0;
+    int baseTier = 0;
     for (int i = 0; i < SchemaFileConfig.SEG_SIZE_LST.length; i++) {
       if (SchemaFileConfig.SEG_SIZE_LST[i] >= expSize) {
-        base_tier = i;
+        baseTier = i;
         break;
       }
     }
     int tier = SchemaFileConfig.SEG_SIZE_LST.length - 1;
-    while (tier >= base_tier) {
+    while (tier >= baseTier) {
       if (batchSize > SchemaFileConfig.SEG_SIZE_METRIC[tier]) {
         return SchemaFileConfig.SEG_SIZE_LST[tier];
       }
       tier--;
     }
-    return SchemaFileConfig.SEG_SIZE_LST[base_tier];
+    return SchemaFileConfig.SEG_SIZE_LST[baseTier];
   }
 
   private static short reEstimateSegSize(int expSize) throws MetadataException {
