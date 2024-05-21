@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.path;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -54,14 +52,6 @@ public class NonAlignedFullPath implements IFullPath {
 
   public String getMeasurement() {
     return measurementSchema.getMeasurementId();
-  }
-
-  public PartialPath convertToPartialPath() {
-    try {
-      return new PartialPath(deviceID, measurementSchema.getMeasurementId());
-    } catch (IllegalPathException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   @Override

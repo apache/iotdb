@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -202,7 +202,7 @@ public class TTLTest {
     unseqResource = dataSource.getUnseqResources();
     assertTrue(seqResource.size() < 4);
     assertEquals(0, unseqResource.size());
-    MeasurementPath path = mockMeasurementPath();
+    NonAlignedFullPath path = mockMeasurementPath();
 
     IDataBlockReader reader =
         new SeriesDataBlockReader(
@@ -235,9 +235,9 @@ public class TTLTest {
     assertEquals(0, unseqResource.size());
   }
 
-  private MeasurementPath mockMeasurementPath() throws MetadataException {
-    return new MeasurementPath(
-        new PartialPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1),
+  private NonAlignedFullPath mockMeasurementPath() {
+    return new NonAlignedFullPath(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(sg1),
         new MeasurementSchema(
             s1,
             TSDataType.INT64,

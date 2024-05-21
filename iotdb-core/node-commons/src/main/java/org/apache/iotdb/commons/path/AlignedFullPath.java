@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.path;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -63,15 +61,5 @@ public class AlignedFullPath implements IFullPath {
 
   public int getColumnNum() {
     return measurementList.size();
-  }
-
-  // Never use this method, this will be removed soon
-  @Deprecated
-  public PartialPath concatNode(String measurement) {
-    try {
-      return new PartialPath(deviceID, measurement);
-    } catch (IllegalPathException e) {
-      throw new RuntimeException(e);
-    }
   }
 }
