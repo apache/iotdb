@@ -28,9 +28,4 @@ public class RemoteConfigNodeConfig implements ConfigNodeConfig {
   public ConfigNodeConfig setMetricReporterType(List<String> metricReporterTypes) {
     return this;
   }
-
-  @Override
-  public ConfigNodeConfig setConnectionTimeoutMs(long connectionTimeoutMs) {
-    return this;
-  }
 }

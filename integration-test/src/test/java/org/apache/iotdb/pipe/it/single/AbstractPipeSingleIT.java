@@ -35,7 +35,7 @@ abstract class AbstractPipeSingleIT {
     env = MultiEnvFactory.getEnv(0);
     env.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
     // 10 min, assert that the operations will not time out
-    env.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    env.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
     env.initClusterEnvironment();
   }
 
