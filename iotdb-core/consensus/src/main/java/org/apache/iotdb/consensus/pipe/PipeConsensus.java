@@ -73,6 +73,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.consensus.iot.IoTConsensus.getConsensusGroupIdsFromDir;
 
+// TODO: support syncLag
 public class PipeConsensus implements IConsensus {
   private static final String CONSENSUS_PIPE_GUARDIAN_TASK_ID = "consensus_pipe_guardian";
   private static final String CLASS_NAME = PipeConsensus.class.getSimpleName();
@@ -177,7 +178,9 @@ public class PipeConsensus implements IConsensus {
                     Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
     try {
       stateMachineMapLock.lock();
-      stateMachineMap.entrySet().parallelStream()
+      stateMachineMap
+          .entrySet()
+          .parallelStream()
           .forEach(
               entry ->
                   entry

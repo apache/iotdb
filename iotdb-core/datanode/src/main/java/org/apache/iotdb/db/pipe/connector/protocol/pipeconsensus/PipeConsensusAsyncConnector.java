@@ -70,9 +70,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-// TODO: 改造 handler，onComplete 的优化 + onComplete 加上出队逻辑
-// TODO: 改造 batch 协议
-// TODO: 改造 tsFile 传送协议
+// TODO: Optimize the network and disk io for TsFile onComplete
+// TODO: support Tablet Batch
 public class PipeConsensusAsyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusAsyncConnector.class);
@@ -163,7 +162,9 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
       }
       boolean result =
           transferBuffer.offer(
-              event, COMMON_CONFIG.getPipeConsensusEventEnqueueTimeoutInMs(), TimeUnit.SECONDS);
+              event,
+              COMMON_CONFIG.getPipeConsensusEventEnqueueTimeoutInMs(),
+              TimeUnit.MILLISECONDS);
       // add reference
       if (result) {
         ((EnrichedEvent) event).increaseReferenceCount(PipeConsensusAsyncConnector.class.getName());
@@ -181,25 +182,23 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
    * from transferBuffer in order to transfer other event.
    */
   public synchronized void removeEventFromBuffer(Event event) {
-    synchronized (this) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "PipeConsensus connector: one event removed from queue, queue size = {}, limit size = {}",
-            transferBuffer.size(),
-            COMMON_CONFIG.getPipeConsensusEventBufferSize());
-      }
-      Iterator<Event> iterator = transferBuffer.iterator();
-      Event current = iterator.next();
-      while (!current.equals(event) && iterator.hasNext()) {
-        current = iterator.next();
-      }
-      iterator.remove();
-      // decrease reference count
-      ((EnrichedEvent) event)
-          .decreaseReferenceCount(PipeConsensusAsyncConnector.class.getName(), true);
-      // decrease alreadySentEventsCounts
-      alreadySentEventsInTransferBuffer.decrementAndGet();
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "PipeConsensus connector: one event removed from queue, queue size = {}, limit size = {}",
+          transferBuffer.size(),
+          COMMON_CONFIG.getPipeConsensusEventBufferSize());
     }
+    Iterator<Event> iterator = transferBuffer.iterator();
+    Event current = iterator.next();
+    while (!current.equals(event) && iterator.hasNext()) {
+      current = iterator.next();
+    }
+    iterator.remove();
+    // decrease reference count
+    ((EnrichedEvent) event)
+        .decreaseReferenceCount(PipeConsensusAsyncConnector.class.getName(), true);
+    // decrease alreadySentEventsCounts
+    alreadySentEventsInTransferBuffer.decrementAndGet();
   }
 
   @Override
@@ -435,7 +434,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
    *
    * @throws Exception if an error occurs. The error will be handled by pipe framework, which will
    *     retry the {@link Event} and mark the {@link Event} as failure and stop the pipe if the
-   *     retry times exceeds the threshold. TODO: pipe 框架对于 Consensus 改成无限重试，而不是超过次数后 停止
+   *     retry times exceeds the threshold.
    */
   private synchronized void syncTransferQueuedEventsIfNecessary() throws Exception {
     while (!retryEventQueue.isEmpty()) {
