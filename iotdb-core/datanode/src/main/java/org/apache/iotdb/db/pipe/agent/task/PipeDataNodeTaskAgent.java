@@ -233,17 +233,21 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   @Override
   protected void dropPipe(final String pipeName, final long creationTime) {
     super.dropPipe(pipeName, creationTime);
+
     PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
         .deregister(pipeName + "_" + creationTime);
   }
 
   @Override
   protected void dropPipe(final String pipeName) {
-    final long creationTime =
-        pipeMetaKeeper.getPipeMeta(pipeName).getStaticMeta().getCreationTime();
     super.dropPipe(pipeName);
-    PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-        .deregister(pipeName + "_" + creationTime);
+
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    if (Objects.nonNull(pipeMeta)) {
+      final long creationTime = pipeMeta.getStaticMeta().getCreationTime();
+      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+          .deregister(pipeName + "_" + creationTime);
+    }
   }
 
   public void stopAllPipesWithCriticalException() {
