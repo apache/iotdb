@@ -31,6 +31,8 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionSnapshotEvent;
 import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanEvent;
+import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeRemainingTimeMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigRegionExtractorMetrics;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -40,6 +42,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
@@ -61,6 +64,9 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
 
     super.customize(parameters, configuration);
     listenedTypeSet = ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters);
+
+    PipeConfigRegionExtractorMetrics.getInstance().register(this);
+    PipeConfigNodeRemainingTimeMetrics.getInstance().register(this);
   }
 
   @Override
@@ -83,7 +89,7 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
           .triggerSnapshot(
               new ConfigRegionId(ConfigNodeDescriptor.getInstance().getConf().getConfigRegionId()),
               true);
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       throw new PipeException("Exception encountered when triggering schema region snapshot.", e);
     }
   }
@@ -125,5 +131,10 @@ public class IoTDBConfigRegionExtractor extends IoTDBNonDataRegionExtractor {
       return;
     }
     super.close();
+
+    if (Objects.nonNull(taskID)) {
+      PipeConfigRegionExtractorMetrics.getInstance().deregister(taskID);
+      PipeConfigNodeRemainingTimeMetrics.getInstance().deregister(pipeName + "_" + creationTime);
+    }
   }
 }
