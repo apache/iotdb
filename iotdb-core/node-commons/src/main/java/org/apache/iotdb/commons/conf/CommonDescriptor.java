@@ -526,6 +526,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_snapshot_execution_max_batch_size",
                 String.valueOf(config.getPipeSnapshotExecutionMaxBatchSize()))));
+    config.setPipeRemainingTimeCommitRateSmoothingFactor(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_remaining_time_commit_rate_smoothing_factor",
+                String.valueOf(config.getPipeRemainingTimeCommitRateSmoothingFactor()))));
 
     config.setTwoStageAggregateMaxCombinerLiveTimeInMs(
         Long.parseLong(

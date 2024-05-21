@@ -135,6 +135,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeSnapshotExecutionMaxBatchSize();
   }
 
+  public double getPipeRemainingTimeCommitRateSmoothingFactor() {
+    return COMMON_CONFIG.getPipeRemainingTimeCommitRateSmoothingFactor();
+  }
+
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
   public boolean isSeperatedPipeHeartbeatEnabled() {
@@ -313,6 +317,9 @@ public class PipeConfig {
         "PipeListeningQueueTransferSnapshotThreshold: {}",
         getPipeListeningQueueTransferSnapshotThreshold());
     LOGGER.info("PipeSnapshotExecutionMaxBatchSize: {}", getPipeSnapshotExecutionMaxBatchSize());
+    LOGGER.info(
+        "PipeRemainingTimeCommitRateSmoothingFactor: {}",
+        getPipeRemainingTimeCommitRateSmoothingFactor());
 
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());

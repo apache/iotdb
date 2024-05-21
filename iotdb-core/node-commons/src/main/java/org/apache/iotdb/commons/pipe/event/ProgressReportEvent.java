@@ -23,28 +23,29 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
-public abstract class PipeWritePlanEvent extends EnrichedEvent implements SerializableEvent {
+/**
+ * {@link ProgressReportEvent} is an {@link EnrichedEvent} that is used only for progress report. It
+ * is bind to a {@link ProgressIndex} and will be committed after all its preceding {@link
+ * EnrichedEvent}s.
+ */
+public class ProgressReportEvent extends EnrichedEvent {
 
-  protected boolean isGeneratedByPipe;
+  private ProgressIndex progressIndex;
 
-  protected ProgressIndex progressIndex;
-
-  protected PipeWritePlanEvent(
+  public ProgressReportEvent(
       final String pipeName,
       final PipeTaskMeta pipeTaskMeta,
-      final PipePattern pattern,
-      final boolean isGeneratedByPipe) {
-    super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
-    this.isGeneratedByPipe = isGeneratedByPipe;
+      final PipePattern pipePattern,
+      final long startTime,
+      final long endTime) {
+    super(pipeName, pipeTaskMeta, pipePattern, startTime, endTime);
   }
 
-  /** {@link PipeWritePlanEvent} does not share resources with other events. */
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     return true;
   }
 
-  /** This {@link PipeWritePlanEvent} does not share resources with other events. */
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     return true;
@@ -61,32 +62,22 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
   }
 
   @Override
+  public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+      final String pipeName,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime) {
+    return new ProgressReportEvent(pipeName, pipeTaskMeta, pattern, startTime, endTime);
+  }
+
+  @Override
   public boolean isGeneratedByPipe() {
-    return isGeneratedByPipe;
+    return false;
   }
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     return true;
-  }
-
-  /////////////////////////// Object ///////////////////////////
-
-  @Override
-  public String toString() {
-    return String.format(
-            "PipeWritePlanEvent{progressIndex=%s, isGeneratedByPipe=%s}",
-            progressIndex, isGeneratedByPipe)
-        + " - "
-        + super.toString();
-  }
-
-  @Override
-  public String coreReportMessage() {
-    return String.format(
-            "PipeWritePlanEvent{progressIndex=%s, isGeneratedByPipe=%s}",
-            progressIndex, isGeneratedByPipe)
-        + " - "
-        + super.coreReportMessage();
   }
 }
