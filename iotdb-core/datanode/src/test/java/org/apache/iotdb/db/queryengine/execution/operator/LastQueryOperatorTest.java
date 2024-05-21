@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -139,7 +140,7 @@ public class LastQueryOperatorTest {
       SeriesAggregationScanOperator seriesAggregationScanOperator1 =
           new SeriesAggregationScanOperator(
               planNodeId1,
-              measurementPath1,
+              IFullPath.convertToIFullPath(measurementPath1),
               Ordering.DESC,
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
@@ -164,7 +165,7 @@ public class LastQueryOperatorTest {
       SeriesAggregationScanOperator seriesAggregationScanOperator2 =
           new SeriesAggregationScanOperator(
               planNodeId3,
-              measurementPath2,
+              IFullPath.convertToIFullPath(measurementPath2),
               Ordering.DESC,
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(2),
@@ -266,7 +267,7 @@ public class LastQueryOperatorTest {
       SeriesAggregationScanOperator seriesAggregationScanOperator1 =
           new SeriesAggregationScanOperator(
               planNodeId1,
-              measurementPath1,
+              IFullPath.convertToIFullPath(measurementPath1),
               Ordering.DESC,
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
@@ -290,7 +291,7 @@ public class LastQueryOperatorTest {
       SeriesAggregationScanOperator seriesAggregationScanOperator2 =
           new SeriesAggregationScanOperator(
               planNodeId3,
-              measurementPath2,
+              IFullPath.convertToIFullPath(measurementPath2),
               Ordering.DESC,
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(2),
