@@ -76,6 +76,8 @@ public class ConsensusManager {
   private final IManager configManager;
   private IConsensus consensusImpl;
 
+  private boolean isInitialized;
+
   public ConsensusManager(IManager configManager, ConfigRegionStateMachine stateMachine) {
     this.configManager = configManager;
     setConsensusLayer(stateMachine);
@@ -100,6 +102,7 @@ public class ConsensusManager {
             "Something wrong happened while calling consensus layer's createLocalPeer API.", e);
       }
     }
+    isInitialized = true;
   }
 
   public void close() throws IOException {
@@ -436,5 +439,9 @@ public class ConsensusManager {
 
   public void manuallyTakeSnapshot() throws ConsensusException {
     consensusImpl.triggerSnapshot(ConfigNodeInfo.CONFIG_REGION_ID, true);
+  }
+
+  public boolean isInitialized() {
+    return isInitialized;
   }
 }
