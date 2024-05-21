@@ -72,11 +72,7 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
    * @throws IOException if an I/O error occurs
    */
   public Path moveFile(final Path targetFilePath) throws IOException {
-    return Files.move(
-        getPath(),
-        targetFilePath,
-        StandardCopyOption.REPLACE_EXISTING,
-        StandardCopyOption.ATOMIC_MOVE);
+    return Files.move(getPath(), targetFilePath, StandardCopyOption.REPLACE_EXISTING);
   }
 
   /**
