@@ -539,7 +539,10 @@ public class TsFileProcessor {
                 : 0;
       }
       // TEXT data mem size
-      if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
+      if ((dataTypes[i] == TSDataType.TEXT
+              || dataTypes[i] == TSDataType.BLOB
+              || dataTypes[i] == TSDataType.STRING)
+          && values[i] != null) {
         textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
       }
     }
@@ -589,7 +592,10 @@ public class TsFileProcessor {
           increasingMemTableInfo.get(deviceId).computeIfPresent(measurements[i], (k, v) -> v + 1);
         }
         // TEXT data mem size
-        if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
+        if ((dataTypes[i] == TSDataType.TEXT
+                || dataTypes[i] == TSDataType.BLOB
+                || dataTypes[i] == TSDataType.STRING)
+            && values[i] != null) {
           textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
         }
       }
@@ -620,7 +626,10 @@ public class TsFileProcessor {
           continue;
         }
         // TEXT data mem size
-        if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
+        if ((dataTypes[i] == TSDataType.TEXT
+                || dataTypes[i] == TSDataType.BLOB
+                || dataTypes[i] == TSDataType.STRING)
+            && values[i] != null) {
           textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
         }
       }
@@ -644,7 +653,10 @@ public class TsFileProcessor {
           dataTypesInTVList.add(dataTypes[i]);
         }
         // TEXT data mem size
-        if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
+        if ((dataTypes[i] == TSDataType.TEXT
+                || dataTypes[i] == TSDataType.BLOB
+                || dataTypes[i] == TSDataType.STRING)
+            && values[i] != null) {
           textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
         }
       }
@@ -690,7 +702,10 @@ public class TsFileProcessor {
               .left
               .put(measurements[i], dataTypes[i]);
           // TEXT data mem size
-          if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
+          if ((dataTypes[i] == TSDataType.TEXT
+                  || dataTypes[i] == TSDataType.BLOB
+                  || dataTypes[i] == TSDataType.STRING)
+              && values[i] != null) {
             textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
           }
         }
@@ -721,7 +736,10 @@ public class TsFileProcessor {
             increasingMemTableInfo.get(deviceId).left.put(measurements[i], dataTypes[i]);
           }
           // TEXT data mem size
-          if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
+          if ((dataTypes[i] == TSDataType.TEXT
+                  || dataTypes[i] == TSDataType.BLOB
+                  || dataTypes[i] == TSDataType.STRING)
+              && values[i] != null) {
             textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
           }
         }
@@ -822,7 +840,9 @@ public class TsFileProcessor {
       }
     }
     // TEXT data size
-    if (dataType == TSDataType.TEXT) {
+    if ((dataType == TSDataType.TEXT
+        || dataType == TSDataType.BLOB
+        || dataType == TSDataType.STRING)) {
       Binary[] binColumn = (Binary[]) column;
       memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end);
     }
@@ -853,7 +873,9 @@ public class TsFileProcessor {
           continue;
         }
         // TEXT data size
-        if (dataType == TSDataType.TEXT) {
+        if ((dataType == TSDataType.TEXT
+            || dataType == TSDataType.BLOB
+            || dataType == TSDataType.STRING)) {
           Binary[] binColumn = (Binary[]) columns[i];
           memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end);
         }
@@ -879,7 +901,9 @@ public class TsFileProcessor {
           dataTypesInTVList.add(dataType);
         }
         // TEXT data size
-        if (dataType == TSDataType.TEXT) {
+        if ((dataType == TSDataType.TEXT
+            || dataType == TSDataType.BLOB
+            || dataType == TSDataType.STRING)) {
           Binary[] binColumn = (Binary[]) columns[i];
           memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end);
         }
