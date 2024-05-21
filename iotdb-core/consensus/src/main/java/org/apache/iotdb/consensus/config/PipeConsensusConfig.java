@@ -305,9 +305,9 @@ public class PipeConsensusConfig {
     public static class Builder {
       private String extractorPluginName = BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName();
       private String processorPluginName =
-          BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName();
+          BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName();
       private String connectorPluginName =
-          BuiltinPipePlugin.DO_NOTHING_CONNECTOR.getPipePluginName();
+          BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName();
       private ConsensusPipeDispatcher consensusPipeDispatcher = null;
       private ConsensusPipeGuardian consensusPipeGuardian = null;
       private ConsensusPipeSelector consensusPipeSelector = null;
