@@ -137,4 +137,6 @@ public interface CommonConfig {
   CommonConfig setWalMode(String walMode);
 
   CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize);
+
+  CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs);
 }

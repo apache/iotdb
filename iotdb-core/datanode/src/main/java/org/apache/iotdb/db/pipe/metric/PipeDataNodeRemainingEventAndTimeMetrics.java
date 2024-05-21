@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
-import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -123,17 +122,6 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
         .register(extractor);
-    if (Objects.nonNull(metricService)) {
-      createMetrics(pipeID);
-    }
-  }
-
-  public void register(final PipeProcessorSubtask processorSubtask) {
-    // The metric is global thus the regionId is omitted
-    final String pipeID = processorSubtask.getPipeName() + "_" + processorSubtask.getCreationTime();
-    remainingEventAndTimeOperatorMap
-        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
-        .register(processorSubtask);
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
     }
