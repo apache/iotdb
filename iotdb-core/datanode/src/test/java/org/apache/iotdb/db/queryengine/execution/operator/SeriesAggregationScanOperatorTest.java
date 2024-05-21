@@ -629,7 +629,7 @@ public class SeriesAggregationScanOperatorTest {
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter)
       throws IllegalPathException {
-    IFullPath measurementPath =
+    NonAlignedFullPath measurementPath =
         new NonAlignedFullPath(
             IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device0"),
             new MeasurementSchema("sensor0", TSDataType.INT32));

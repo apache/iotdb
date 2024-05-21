@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -322,7 +321,7 @@ public class AggregationOperatorTest {
         .getOperatorContexts()
         .forEach(operatorContext -> OperatorContext.setMaxRunTime(TEST_TIME_SLICE));
 
-    IFullPath measurementPath1 =
+    NonAlignedFullPath measurementPath1 =
         new NonAlignedFullPath(
             IDeviceID.Factory.DEFAULT_FACTORY.create(AGGREGATION_OPERATOR_TEST_SG + ".device0"),
             new MeasurementSchema("sensor0", TSDataType.INT32));
