@@ -21,8 +21,8 @@ package org.apache.iotdb.db.queryengine.execution.operator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -45,6 +45,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import io.airlift.units.Duration;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;
@@ -53,6 +54,7 @@ import org.apache.tsfile.read.common.block.column.FloatColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -99,9 +101,9 @@ public class AlignedSeriesScanOperatorTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
-      AlignedPath alignedPath =
-          new AlignedPath(
-              SERIES_SCAN_OPERATOR_TEST_SG + ".device0",
+      AlignedFullPath alignedPath =
+          new AlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device0"),
               measurementSchemas.stream()
                   .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),
@@ -179,9 +181,9 @@ public class AlignedSeriesScanOperatorTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
-      AlignedPath alignedPath1 =
-          new AlignedPath(
-              SERIES_SCAN_OPERATOR_TEST_SG + ".device0",
+      AlignedFullPath alignedPath1 =
+          new AlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device0"),
               measurementSchemas.stream()
                   .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),
@@ -231,9 +233,9 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      AlignedPath alignedPath2 =
-          new AlignedPath(
-              SERIES_SCAN_OPERATOR_TEST_SG + ".device1",
+      AlignedFullPath alignedPath2 =
+          new AlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device1"),
               measurementSchemas.stream()
                   .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),
@@ -263,9 +265,10 @@ public class AlignedSeriesScanOperatorTest {
       allSensors.add("sensor4");
       allSensors.add("sensor5");
 
-      MeasurementPath measurementPath3 =
-          new MeasurementPath(
-              SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.BOOLEAN);
+      NonAlignedFullPath measurementPath3 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device2"),
+              new MeasurementSchema("sensor0", TSDataType.BOOLEAN));
 
       SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
       scanOptionsBuilder.withAllSensors(allSensors);
@@ -281,8 +284,10 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath4 =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
+      NonAlignedFullPath measurementPath4 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device2"),
+              new MeasurementSchema("sensor1", TSDataType.INT32));
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(3),
@@ -295,8 +300,10 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath5 =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor2", TSDataType.INT64);
+      NonAlignedFullPath measurementPath5 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device2"),
+              new MeasurementSchema("sensor2", TSDataType.INT64));
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(4),
@@ -309,8 +316,10 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath6 =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor3", TSDataType.FLOAT);
+      NonAlignedFullPath measurementPath6 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device2"),
+              new MeasurementSchema("sensor3", TSDataType.FLOAT));
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(5),
@@ -323,8 +332,10 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath7 =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor4", TSDataType.DOUBLE);
+      NonAlignedFullPath measurementPath7 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device2"),
+              new MeasurementSchema("sensor4", TSDataType.DOUBLE));
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(6),
@@ -337,8 +348,10 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath8 =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor5", TSDataType.TEXT);
+      NonAlignedFullPath measurementPath8 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device2"),
+              new MeasurementSchema("sensor5", TSDataType.TEXT));
       SeriesScanOperator seriesScanOperator8 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(7),
@@ -475,9 +488,9 @@ public class AlignedSeriesScanOperatorTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
-      AlignedPath alignedPath1 =
-          new AlignedPath(
-              SERIES_SCAN_OPERATOR_TEST_SG + ".device0",
+      AlignedFullPath alignedPath1 =
+          new AlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device0"),
               measurementSchemas.stream()
                   .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),
@@ -527,9 +540,9 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      AlignedPath alignedPath2 =
-          new AlignedPath(
-              SERIES_SCAN_OPERATOR_TEST_SG + ".device1",
+      AlignedFullPath alignedPath2 =
+          new AlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device1"),
               measurementSchemas.stream()
                   .map(IMeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()),
@@ -559,9 +572,10 @@ public class AlignedSeriesScanOperatorTest {
       allSensors.add("sensor4");
       allSensors.add("sensor5");
 
-      MeasurementPath measurementPath3 =
-          new MeasurementPath(
-              SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor0", TSDataType.BOOLEAN);
+      NonAlignedFullPath measurementPath3 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device"),
+              new MeasurementSchema("sensor0", TSDataType.BOOLEAN));
       SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
       scanOptionsBuilder.withAllSensors(allSensors);
       SeriesScanOperator seriesScanOperator3 =
@@ -576,8 +590,10 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath4 =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor1", TSDataType.INT32);
+      NonAlignedFullPath measurementPath4 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device"),
+              new MeasurementSchema("sensor1", TSDataType.INT32));
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(3),
@@ -590,8 +606,10 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath5 =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor2", TSDataType.INT64);
+      NonAlignedFullPath measurementPath5 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device"),
+              new MeasurementSchema("sensor2", TSDataType.INT64));
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(4),
@@ -604,8 +622,10 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath6 =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor3", TSDataType.FLOAT);
+      NonAlignedFullPath measurementPath6 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device"),
+              new MeasurementSchema("sensor3", TSDataType.FLOAT));
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(5),
@@ -618,8 +638,10 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath7 =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor4", TSDataType.DOUBLE);
+      NonAlignedFullPath measurementPath7 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device"),
+              new MeasurementSchema("sensor4", TSDataType.DOUBLE));
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(6),
@@ -632,8 +654,10 @@ public class AlignedSeriesScanOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath8 =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device2.sensor5", TSDataType.TEXT);
+      NonAlignedFullPath measurementPath8 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device"),
+              new MeasurementSchema("sensor5", TSDataType.TEXT));
       SeriesScanOperator seriesScanOperator8 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(7),

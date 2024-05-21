@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -144,13 +145,13 @@ public class TsFileResource {
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a read
    * process.
    */
-  private Map<PartialPath, List<IChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
+  private Map<IFullPath, List<IChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
 
   /** Mem chunk data. Only be set in a temporal TsFileResource in a read process. */
-  private Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
+  private Map<IFullPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
 
   /** used for unsealed file to get TimeseriesMetadata */
-  private Map<PartialPath, ITimeSeriesMetadata> pathToTimeSeriesMetadataMap = new HashMap<>();
+  private Map<IFullPath, ITimeSeriesMetadata> pathToTimeSeriesMetadataMap = new HashMap<>();
 
   /**
    * If it is not null, it indicates that the current tsfile resource is a snapshot of the
@@ -199,8 +200,8 @@ public class TsFileResource {
 
   /** unsealed TsFile, for read */
   public TsFileResource(
-      Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap,
-      Map<PartialPath, List<IChunkMetadata>> pathToChunkMetadataListMap,
+      Map<IFullPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap,
+      Map<IFullPath, List<IChunkMetadata>> pathToChunkMetadataListMap,
       TsFileResource originTsFileResource)
       throws IOException {
     this.file = originTsFileResource.file;
@@ -312,11 +313,11 @@ public class TsFileResource {
     return getCompactionModFile().exists();
   }
 
-  public List<IChunkMetadata> getChunkMetadataList(PartialPath seriesPath) {
+  public List<IChunkMetadata> getChunkMetadataList(IFullPath seriesPath) {
     return new ArrayList<>(pathToChunkMetadataListMap.get(seriesPath));
   }
 
-  public List<ReadOnlyMemChunk> getReadOnlyMemChunk(PartialPath seriesPath) {
+  public List<ReadOnlyMemChunk> getReadOnlyMemChunk(IFullPath seriesPath) {
     return pathToReadOnlyMemChunkMap.get(seriesPath);
   }
 
@@ -817,11 +818,8 @@ public class TsFileResource {
    *
    * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
    */
-  public ITimeSeriesMetadata getTimeSeriesMetadata(PartialPath seriesPath) {
-    if (pathToTimeSeriesMetadataMap.containsKey(seriesPath)) {
-      return pathToTimeSeriesMetadataMap.get(seriesPath);
-    }
-    return null;
+  public ITimeSeriesMetadata getTimeSeriesMetadata(IFullPath seriesPath) {
+    return pathToTimeSeriesMetadataMap.get(seriesPath);
   }
 
   public DataRegion.SettleTsFileCallBack getSettleTsFileCallBack() {
@@ -1090,7 +1088,7 @@ public class TsFileResource {
   }
 
   private void generatePathToTimeSeriesMetadataMap() throws IOException {
-    for (PartialPath path : pathToChunkMetadataListMap.keySet()) {
+    for (IFullPath path : pathToChunkMetadataListMap.keySet()) {
       pathToTimeSeriesMetadataMap.put(
           path,
           ResourceByPathUtils.getResourceInstance(path)

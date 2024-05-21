@@ -19,11 +19,10 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
@@ -245,7 +244,6 @@ public class ReadPointCompactionPerformer
    *
    * @param measurementIds if device is aligned, then measurementIds contain all measurements. If
    *     device is not aligned, then measurementIds only contain one measurement.
-   * @throws IllegalPathException if the path is illegal
    */
   public static IDataBlockReader constructReader(
       IDeviceID deviceId,
@@ -254,13 +252,12 @@ public class ReadPointCompactionPerformer
       List<String> allSensors,
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource,
-      boolean isAlign)
-      throws IllegalPathException {
-    PartialPath seriesPath;
+      boolean isAlign) {
+    IFullPath seriesPath;
     if (isAlign) {
-      seriesPath = new AlignedPath(deviceId, measurementIds, measurementSchemas);
+      seriesPath = new AlignedFullPath(deviceId, measurementIds, measurementSchemas);
     } else {
-      seriesPath = new MeasurementPath(deviceId, measurementIds.get(0), measurementSchemas.get(0));
+      seriesPath = new NonAlignedFullPath(deviceId, measurementSchemas.get(0));
     }
     seriesPath.getIDeviceID();
     return new SeriesDataBlockReader(

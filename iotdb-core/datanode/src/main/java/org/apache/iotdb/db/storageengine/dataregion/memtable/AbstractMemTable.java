@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -451,7 +452,7 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public ReadOnlyMemChunk query(
       QueryContext context,
-      PartialPath fullPath,
+      IFullPath fullPath,
       long ttlLowerBound,
       List<Pair<Modification, IMemTable>> modsToMemtable)
       throws IOException, QueryProcessException {
