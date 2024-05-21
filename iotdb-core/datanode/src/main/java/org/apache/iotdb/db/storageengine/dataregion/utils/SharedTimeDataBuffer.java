@@ -19,9 +19,16 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.header.ChunkHeader;
+import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -31,7 +38,12 @@ import java.util.List;
 public class SharedTimeDataBuffer {
   private ByteBuffer timeBuffer;
   private final IChunkMetadata timeChunkMetaData;
+  private ChunkHeader timeChunkHeader;
   private final List<long[]> timeData;
+  private final Decoder defaultTimeDecoder =
+      Decoder.getDecoderByType(
+          TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+          TSDataType.INT64);
 
   public SharedTimeDataBuffer(IChunkMetadata timeChunkMetaData) {
     this.timeChunkMetaData = timeChunkMetaData;
@@ -44,10 +56,11 @@ public class SharedTimeDataBuffer {
       return;
     }
     Chunk timeChunk = reader.readMemChunk(timeChunkMetaData.getOffsetOfChunkHeader());
+    timeChunkHeader = timeChunk.getHeader();
     timeBuffer = timeChunk.getData();
   }
 
-  public synchronized long[] getPageTime(int pageId) {
+  public synchronized long[] getPageTime(int pageId) throws IOException {
     int size = timeData.size();
     if (pageId < size) {
       return timeData.get(pageId);
@@ -60,16 +73,19 @@ public class SharedTimeDataBuffer {
     }
   }
 
-  private void loadPageData() {
-    if (timeBuffer.hasRemaining()) {
-      int size = timeBuffer.getInt();
-      long[] pageData = new long[size];
-      for (int i = 0; i < size; i++) {
-        pageData[i] = timeBuffer.getLong();
-      }
-      timeData.add(pageData);
-    } else {
+  private void loadPageData() throws IOException {
+    if (!timeBuffer.hasRemaining()) {
       throw new UnsupportedOperationException("No more data in SharedTimeDataBuffer");
     }
+    PageHeader timePageHeader =
+        PageHeader.deserializeFrom(timeBuffer, timeChunkHeader.getDataType());
+    ByteBuffer timePageData =
+        ChunkReader.deserializePageData(timePageHeader, timeBuffer, timeChunkHeader);
+    long[] pageData = new long[(int) timePageHeader.getNumOfValues()];
+    int index = 0;
+    while (defaultTimeDecoder.hasNext(timePageData)) {
+      pageData[index] = defaultTimeDecoder.readLong(timePageData);
+    }
+    timeData.add(pageData);
   }
 }

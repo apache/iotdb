@@ -29,7 +29,6 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 
 public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
   private static final int MASK = 0x80;
@@ -67,16 +66,16 @@ public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
       throw new UnsupportedOperationException("Time data size not match");
     }
 
-    ArrayList<Long> validTimeList = new ArrayList<>();
+    long[] validTimeList = new long[(int) currentPageHeader.getNumOfValues()];
     for (int i = 0; i < size; i++) {
       if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
         continue;
       }
       long timestamp = timeData[i];
-      validTimeList.add(timestamp);
+      validTimeList[i] = timestamp;
     }
 
     pageIndex++;
-    return validTimeList.stream().mapToLong(Long::longValue).toArray();
+    return validTimeList;
   }
 }

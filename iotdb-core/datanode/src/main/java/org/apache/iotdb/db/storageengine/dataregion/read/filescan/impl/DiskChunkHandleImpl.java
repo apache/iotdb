@@ -22,9 +22,13 @@ package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
@@ -43,6 +47,11 @@ public class DiskChunkHandleImpl implements IChunkHandle {
   protected PageHeader currentPageHeader;
   protected ByteBuffer currentChunkDataBuffer;
   protected long offset;
+
+  private final Decoder defaultTimeDecoder =
+      Decoder.getDecoderByType(
+          TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+          TSDataType.INT64);
 
   // Page will reuse chunkStatistics if there is only one page in chunk
   protected final Statistics<? extends Serializable> chunkStatistic;
@@ -114,13 +123,14 @@ public class DiskChunkHandleImpl implements IChunkHandle {
     ByteBuffer timeBuffer = currentPageDataBuffer.slice();
     timeBuffer.limit(timeBufferLength);
 
-    return convertToTimeArray(timeBuffer, timeBufferLength);
+    return convertToTimeArray(timeBuffer);
   }
 
-  private long[] convertToTimeArray(ByteBuffer timeBuffer, int timeBufferLength) {
-    long[] timeArray = new long[timeBufferLength / 8];
-    for (int i = 0; i < timeArray.length; i++) {
-      timeArray[i] = timeBuffer.getLong();
+  private long[] convertToTimeArray(ByteBuffer timeBuffer) throws IOException {
+    long[] timeArray = new long[(int) currentPageHeader.getNumOfValues()];
+    int index = 0;
+    while (defaultTimeDecoder.hasNext(timeBuffer)) {
+      timeArray[index++] = defaultTimeDecoder.readLong(timeBuffer);
     }
     return timeArray;
   }
