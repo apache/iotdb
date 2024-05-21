@@ -104,10 +104,10 @@ public class PipeConsensusServerImpl {
     } else {
       // create consensus pipes
       configuration.remove(thisNode);
-      final List<Peer> successfulPips = createConsensusPipes(configuration);
-      if (successfulPips.size() < configuration.size()) {
+      final List<Peer> successfulPipes = createConsensusPipes(configuration);
+      if (successfulPipes.size() < configuration.size()) {
         // roll back
-        updateConsensusPipesStatus(successfulPips, PipeStatus.DROPPED);
+        updateConsensusPipesStatus(successfulPipes, PipeStatus.DROPPED);
         throw new IOException(String.format("%s cannot create all consensus pipes", thisNode));
       }
 
@@ -117,7 +117,7 @@ public class PipeConsensusServerImpl {
       } catch (Exception e) {
         // roll back
         LOGGER.warn("{} cannot persist all peers", thisNode, e);
-        updateConsensusPipesStatus(successfulPips, PipeStatus.DROPPED);
+        updateConsensusPipesStatus(successfulPipes, PipeStatus.DROPPED);
         throw e;
       }
     }

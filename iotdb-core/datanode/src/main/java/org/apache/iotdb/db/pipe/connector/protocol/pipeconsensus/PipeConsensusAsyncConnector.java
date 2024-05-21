@@ -160,7 +160,9 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
       }
       boolean result =
           transferBuffer.offer(
-              event, COMMON_CONFIG.getPipeConsensusEventEnqueueTimeoutInMs(), TimeUnit.SECONDS);
+              event,
+              COMMON_CONFIG.getPipeConsensusEventEnqueueTimeoutInMs(),
+              TimeUnit.MILLISECONDS);
       // add reference
       if (result) {
         ((EnrichedEvent) event).increaseReferenceCount(PipeConsensusAsyncConnector.class.getName());
@@ -178,25 +180,23 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
    * from transferBuffer in order to transfer other event.
    */
   public synchronized void removeEventFromBuffer(Event event) {
-    synchronized (this) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "PipeConsensus connector: one event removed from queue, queue size = {}, limit size = {}",
-            transferBuffer.size(),
-            COMMON_CONFIG.getPipeConsensusEventBufferSize());
-      }
-      Iterator<Event> iterator = transferBuffer.iterator();
-      Event current = iterator.next();
-      while (!current.equals(event) && iterator.hasNext()) {
-        current = iterator.next();
-      }
-      iterator.remove();
-      // decrease reference count
-      ((EnrichedEvent) event)
-          .decreaseReferenceCount(PipeConsensusAsyncConnector.class.getName(), true);
-      // decrease alreadySentEventsCounts
-      alreadySentEventsInTransferBuffer.decrementAndGet();
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "PipeConsensus connector: one event removed from queue, queue size = {}, limit size = {}",
+          transferBuffer.size(),
+          COMMON_CONFIG.getPipeConsensusEventBufferSize());
     }
+    Iterator<Event> iterator = transferBuffer.iterator();
+    Event current = iterator.next();
+    while (!current.equals(event) && iterator.hasNext()) {
+      current = iterator.next();
+    }
+    iterator.remove();
+    // decrease reference count
+    ((EnrichedEvent) event)
+        .decreaseReferenceCount(PipeConsensusAsyncConnector.class.getName(), true);
+    // decrease alreadySentEventsCounts
+    alreadySentEventsInTransferBuffer.decrementAndGet();
   }
 
   @Override
