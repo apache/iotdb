@@ -200,7 +200,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
               .map(TPipeConsensusTransferResp::getStatus)
               .collect(Collectors.toList());
 
-      // TODO: 处理重试逻辑
+      // TODO(support batch): handle retry logic
       // Only handle the failed statuses to avoid string format performance overhead
       //      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
       //          && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -352,7 +352,6 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     }
   }
 
-  // TODO: 一个 event 分成了多个，共享 commitId，需要改造
   private void doTransfer(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();

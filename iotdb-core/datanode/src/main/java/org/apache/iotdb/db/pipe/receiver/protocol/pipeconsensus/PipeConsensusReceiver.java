@@ -82,7 +82,6 @@ public class PipeConsensusReceiver {
       IoTDBDescriptor.getInstance().getConfig().getPipeConsensusReceiverFileDirs();
   private final TsFileDiskBufferPool tsFileDiskBufferPool = new TsFileDiskBufferPool();
   private final AtomicReference<File> receiverFileDirWithIdSuffix = new AtomicReference<>();
-
   private FolderManager folderManager;
 
   public PipeConsensusReceiver(PipeConsensus pipeConsensus, ConsensusGroupId consensusGroupId) {
