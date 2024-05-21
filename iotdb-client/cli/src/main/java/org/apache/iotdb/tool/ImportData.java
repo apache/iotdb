@@ -478,22 +478,13 @@ public class ImportData extends AbstractDataTool {
       ioTPrinter.println("SQL file read exception because: " + e.getMessage());
     }
     if (!failedRecords.isEmpty()) {
-      FileWriter writer = null;
-      try {
-        writer = new FileWriter(failedFilePath);
+      try (FileWriter writer = new FileWriter(failedFilePath)) {
         for (List<Object> failedRecord : failedRecords) {
           writer.write(failedRecord.get(0).toString() + "\n");
         }
+        writer.flush();
       } catch (IOException e) {
         ioTPrinter.println("Cannot dump fail result because: " + e.getMessage());
-      } finally {
-        if (writer != null) {
-          try {
-            writer.flush();
-            writer.close();
-          } catch (IOException ignore) {
-          }
-        }
       }
     }
   }
