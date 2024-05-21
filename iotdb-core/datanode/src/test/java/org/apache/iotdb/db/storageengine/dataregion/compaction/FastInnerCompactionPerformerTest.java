@@ -20,8 +20,9 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
@@ -495,10 +496,10 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
 
     for (int i = 0; i < 2; i++) {
       for (int j = 0; j < 3; j++) {
-        PartialPath path =
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
-                "s1",
+        IFullPath path =
+            new NonAlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 new MeasurementSchema("s" + j, TSDataType.INT64));
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
@@ -538,10 +539,10 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
 
     for (int i = 0; i < 2; i++) {
       for (int j = 0; j < 3; j++) {
-        PartialPath path =
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
-                "s1",
+        IFullPath path =
+            new NonAlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 new MeasurementSchema("s" + j, TSDataType.INT64));
         IDataBlockReader tsBlockReader =
             new SeriesDataBlockReader(
