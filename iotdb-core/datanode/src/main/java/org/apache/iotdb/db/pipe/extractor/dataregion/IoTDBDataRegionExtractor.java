@@ -33,7 +33,8 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRe
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionLogExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionTsFileExtractor;
-import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -309,7 +310,8 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     }
 
     // register metric after generating taskID
-    PipeExtractorMetrics.getInstance().register(this);
+    PipeDataRegionExtractorMetrics.getInstance().register(this);
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().register(this);
   }
 
   @Override
@@ -415,11 +417,11 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
     if (Objects.nonNull(event)) {
       if (event instanceof TabletInsertionEvent) {
-        PipeExtractorMetrics.getInstance().markTabletEvent(taskID);
+        PipeDataRegionExtractorMetrics.getInstance().markTabletEvent(taskID);
       } else if (event instanceof TsFileInsertionEvent) {
-        PipeExtractorMetrics.getInstance().markTsFileEvent(taskID);
+        PipeDataRegionExtractorMetrics.getInstance().markTsFileEvent(taskID);
       } else if (event instanceof PipeHeartbeatEvent) {
-        PipeExtractorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
+        PipeDataRegionExtractorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
       }
     }
 
@@ -435,7 +437,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     historicalExtractor.close();
     realtimeExtractor.close();
     if (Objects.nonNull(taskID)) {
-      PipeExtractorMetrics.getInstance().deregister(taskID);
+      PipeDataRegionExtractorMetrics.getInstance().deregister(taskID);
     }
   }
 
@@ -456,22 +458,6 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
-  public String getTaskID() {
-    return taskID;
-  }
-
-  public String getPipeName() {
-    return pipeName;
-  }
-
-  public int getDataRegionId() {
-    return regionId;
-  }
-
-  public long getCreationTime() {
-    return creationTime;
-  }
-
   public int getHistoricalTsFileInsertionEventCount() {
     return hasBeenStarted.get() ? historicalExtractor.getPendingQueueSize() : 0;
   }
@@ -486,5 +472,11 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   public int getPipeHeartbeatEventCount() {
     return hasBeenStarted.get() ? realtimeExtractor.getPipeHeartbeatEventCount() : 0;
+  }
+
+  public int getEventCount() {
+    return hasBeenStarted.get()
+        ? (historicalExtractor.getPendingQueueSize() + realtimeExtractor.getEventCount())
+        : 0;
   }
 }

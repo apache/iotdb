@@ -64,46 +64,7 @@ public class PipeProcessorMetrics implements IMetricSet {
   }
 
   private void createMetrics(String taskID) {
-    createAutoGauge(taskID);
     createRate(taskID);
-  }
-
-  private void createAutoGauge(String taskID) {
-    PipeProcessorSubtask processor = processorMap.get(taskID);
-    // pending event count
-    metricService.createAutoGauge(
-        Metric.BUFFERED_TABLET_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        processor,
-        PipeProcessorSubtask::getTabletInsertionEventCount,
-        Tag.NAME.toString(),
-        processor.getPipeName(),
-        Tag.REGION.toString(),
-        String.valueOf(processor.getRegionId()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(processor.getCreationTime()));
-    metricService.createAutoGauge(
-        Metric.BUFFERED_TSFILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        processor,
-        PipeProcessorSubtask::getTsFileInsertionEventCount,
-        Tag.NAME.toString(),
-        processor.getPipeName(),
-        Tag.REGION.toString(),
-        String.valueOf(processor.getRegionId()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(processor.getCreationTime()));
-    metricService.createAutoGauge(
-        Metric.BUFFERED_HEARTBEAT_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        processor,
-        PipeProcessorSubtask::getPipeHeartbeatEventCount,
-        Tag.NAME.toString(),
-        processor.getPipeName(),
-        Tag.REGION.toString(),
-        String.valueOf(processor.getRegionId()),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(processor.getCreationTime()));
   }
 
   private void createRate(String taskID) {

@@ -66,6 +66,17 @@ public class PipeProcessorConstant {
       "processor.sdt.max-time-interval";
   public static final long PROCESSOR_SDT_MAX_TIME_INTERVAL_DEFAULT_VALUE = Long.MAX_VALUE;
 
+  public static final String PROCESSOR_CHANGING_VALUE_COMPRESSION_DEVIATION =
+      "processor.changing-value.compression-deviation";
+  public static final double PROCESSOR_CHANGING_VALUE_COMPRESSION_DEVIATION_DEFAULT_VALUE = 0;
+  public static final String PROCESSOR_CHANGING_VALUE_MIN_TIME_INTERVAL_KEY =
+      "processor.changing-value.min-time-interval";
+  public static final long PROCESSOR_CHANGING_VALUE_MIN_TIME_INTERVAL_DEFAULT_VALUE = 0;
+  public static final String PROCESSOR_CHANGING_VALUE_MAX_TIME_INTERVAL_KEY =
+      "processor.changing-value.max-time-interval";
+  public static final long PROCESSOR_CHANGING_VALUE_MAX_TIME_INTERVAL_DEFAULT_VALUE =
+      Long.MAX_VALUE;
+
   public static final String PROCESSOR_OUTPUT_SERIES_KEY = "processor.output-series";
 
   private PipeProcessorConstant() {
