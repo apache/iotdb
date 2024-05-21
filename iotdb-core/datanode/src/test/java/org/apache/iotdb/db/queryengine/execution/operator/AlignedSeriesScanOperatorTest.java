@@ -574,7 +574,7 @@ public class AlignedSeriesScanOperatorTest {
 
       NonAlignedFullPath measurementPath3 =
           new NonAlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device"),
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device2"),
               new MeasurementSchema("sensor0", TSDataType.BOOLEAN));
       SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
       scanOptionsBuilder.withAllSensors(allSensors);
@@ -592,7 +592,7 @@ public class AlignedSeriesScanOperatorTest {
 
       NonAlignedFullPath measurementPath4 =
           new NonAlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device"),
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device2"),
               new MeasurementSchema("sensor1", TSDataType.INT32));
       SeriesScanOperator seriesScanOperator4 =
           new SeriesScanOperator(
@@ -608,7 +608,7 @@ public class AlignedSeriesScanOperatorTest {
 
       NonAlignedFullPath measurementPath5 =
           new NonAlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device"),
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device2"),
               new MeasurementSchema("sensor2", TSDataType.INT64));
       SeriesScanOperator seriesScanOperator5 =
           new SeriesScanOperator(
@@ -624,7 +624,7 @@ public class AlignedSeriesScanOperatorTest {
 
       NonAlignedFullPath measurementPath6 =
           new NonAlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device"),
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device2"),
               new MeasurementSchema("sensor3", TSDataType.FLOAT));
       SeriesScanOperator seriesScanOperator6 =
           new SeriesScanOperator(
@@ -640,7 +640,7 @@ public class AlignedSeriesScanOperatorTest {
 
       NonAlignedFullPath measurementPath7 =
           new NonAlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device"),
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device2"),
               new MeasurementSchema("sensor4", TSDataType.DOUBLE));
       SeriesScanOperator seriesScanOperator7 =
           new SeriesScanOperator(
@@ -656,7 +656,7 @@ public class AlignedSeriesScanOperatorTest {
 
       NonAlignedFullPath measurementPath8 =
           new NonAlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device"),
+              IDeviceID.Factory.DEFAULT_FACTORY.create(SERIES_SCAN_OPERATOR_TEST_SG + ".device2"),
               new MeasurementSchema("sensor5", TSDataType.TEXT));
       SeriesScanOperator seriesScanOperator8 =
           new SeriesScanOperator(
