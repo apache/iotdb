@@ -182,9 +182,9 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
       }
 
       outputPipeConnector.transfer(event);
-      PipeConfigRegionConnectorMetrics.getInstance().markConfigEvent(taskID);
-
       decreaseReferenceCountAndReleaseLastEvent(true);
+
+      PipeConfigRegionConnectorMetrics.getInstance().markConfigEvent(taskID);
     } catch (final PipeException e) {
       if (!isClosed.get()) {
         throw e;
@@ -214,9 +214,9 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
   public void close() {
     isClosed.set(true);
 
-    PipeConfigRegionConnectorMetrics.getInstance().deregister(taskID);
     PipeEventCommitManager.getInstance()
         .deregister(pipeName, creationTime, CONFIG_REGION_ID.getId());
+    PipeConfigRegionConnectorMetrics.getInstance().deregister(taskID);
 
     try {
       extractor.close();
