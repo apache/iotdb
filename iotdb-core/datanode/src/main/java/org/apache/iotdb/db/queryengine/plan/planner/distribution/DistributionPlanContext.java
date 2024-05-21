@@ -86,4 +86,8 @@ public class DistributionPlanContext {
   public Filter getPartitionTimeFilter() {
     return queryContext.getGlobalTimeFilter();
   }
+
+  public boolean isOneSeriesInMultiRegion() {
+    return oneSeriesInMultiRegion;
+  }
 }

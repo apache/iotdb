@@ -102,7 +102,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
               taskID,
               creationTime,
               this.getClass().getSimpleName(),
-              retryCount.get(),
+              retryCount.get() - 1,
               throwable.getMessage(),
               getRootCause(throwable));
       LOGGER.warn(errorMessage, throwable);

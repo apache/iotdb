@@ -100,7 +100,7 @@ if not exist "%logsDir%" (
 )
 
 set IOTDB_CLI_CONF=%IOTDB_HOME%\conf
-set "iotdb_cli_params=-Dlogback.configurationFile=!IOTDB_CLI_CONF!\logback-cli.xml"
+set "iotdb_cli_params=-Dlogback.configurationFile=!IOTDB_CLI_CONF!\logback-backup.xml"
 start /B "" cmd /C "("%JAVA_HOME%\bin\java" -DIOTDB_HOME=!IOTDB_HOME! !iotdb_cli_params! !JAVA_OPTS! -cp !CLASSPATH! !MAIN_CLASS! %*) > nul 2>&1"
 exit /b
 

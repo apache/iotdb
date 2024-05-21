@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.task.connection;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -55,7 +56,9 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
 
   public PipeEventCollector(
-      BoundedBlockingPendingQueue<Event> pendingQueue, long creationTime, int regionId) {
+      final BoundedBlockingPendingQueue<Event> pendingQueue,
+      final long creationTime,
+      final int regionId) {
     this.pendingQueue = pendingQueue;
     this.creationTime = creationTime;
     this.regionId = regionId;
@@ -63,7 +66,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
   }
 
   @Override
-  public synchronized void collect(Event event) {
+  public void collect(final Event event) {
     try {
       if (event instanceof PipeInsertNodeTabletInsertionEvent) {
         parseAndCollectEvent((PipeInsertNodeTabletInsertionEvent) event);
@@ -71,19 +74,20 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
         parseAndCollectEvent((PipeRawTabletInsertionEvent) event);
       } else if (event instanceof PipeTsFileInsertionEvent) {
         parseAndCollectEvent((PipeTsFileInsertionEvent) event);
-      } else {
+      } else if (!(event instanceof ProgressReportEvent)) {
         collectEvent(event);
       }
-    } catch (PipeException e) {
+    } catch (final PipeException e) {
       throw e;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new PipeException("Error occurred when collecting events from processor.", e);
     }
   }
 
-  private void parseAndCollectEvent(PipeInsertNodeTabletInsertionEvent sourceEvent) {
+  private void parseAndCollectEvent(final PipeInsertNodeTabletInsertionEvent sourceEvent) {
     if (sourceEvent.shouldParseTimeOrPattern()) {
-      for (PipeRawTabletInsertionEvent parsedEvent : sourceEvent.toRawTabletInsertionEvents()) {
+      for (final PipeRawTabletInsertionEvent parsedEvent :
+          sourceEvent.toRawTabletInsertionEvents()) {
         collectEvent(parsedEvent);
       }
     } else {
@@ -91,7 +95,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
     }
   }
 
-  private void parseAndCollectEvent(PipeRawTabletInsertionEvent sourceEvent) {
+  private void parseAndCollectEvent(final PipeRawTabletInsertionEvent sourceEvent) {
     if (sourceEvent.shouldParseTimeOrPattern()) {
       final PipeRawTabletInsertionEvent parsedEvent = sourceEvent.parseEventWithPatternOrTime();
       if (!parsedEvent.hasNoNeedParsingAndIsEmpty()) {
@@ -102,7 +106,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
     }
   }
 
-  private void parseAndCollectEvent(PipeTsFileInsertionEvent sourceEvent) throws Exception {
+  private void parseAndCollectEvent(final PipeTsFileInsertionEvent sourceEvent) throws Exception {
     if (!sourceEvent.waitForTsFileClose()) {
       LOGGER.warn(
           "Pipe skipping temporary TsFile which shouldn't be transferred: {}",
@@ -124,7 +128,7 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
     }
   }
 
-  private void collectEvent(Event event) {
+  private synchronized void collectEvent(final Event event) {
     collectInvocationCount.incrementAndGet();
 
     if (event instanceof EnrichedEvent) {
@@ -219,5 +223,9 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   public int getPipeHeartbeatEventCount() {
     return bufferQueue.getPipeHeartbeatEventCount();
+  }
+
+  public int getEventCount() {
+    return bufferQueue.size();
   }
 }

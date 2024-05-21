@@ -615,7 +615,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
       Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
       try (ResultSet resultSet = statement.executeQuery("list user")) {
         while (resultSet.next()) {
-          String user = resultSet.getString("user").toLowerCase();
+          String user = resultSet.getString(ColumnHeaderConstant.USER).toLowerCase();
           Assert.assertTrue(expectedResult.contains(user));
           expectedResult.remove(user);
         }
@@ -678,7 +678,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
       Set<String> expectedResult = new HashSet<>(Arrays.asList(resultNames));
       try (ResultSet resultSet = statement.executeQuery("list role")) {
         while (resultSet.next()) {
-          String role = resultSet.getString("role").toLowerCase();
+          String role = resultSet.getString(ColumnHeaderConstant.ROLE).toLowerCase();
           Assert.assertTrue(expectedResult.contains(role));
           expectedResult.remove(role);
         }
