@@ -135,4 +135,33 @@ public class RepairDataFileScanUtilTest extends AbstractCompactionTest {
     Assert.assertFalse(scanUtil2.isBrokenFile());
     Assert.assertTrue(scanUtil2.hasUnsortedData());
   }
+
+  @Test
+  public void testScanFileWithDifferentCompressionTypes() throws IOException {
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s0",
+          new TimeRange[] {new TimeRange(10, 40), new TimeRange(50, 60)},
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY);
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s0",
+          new TimeRange[] {new TimeRange(10, 40), new TimeRange(50, 60)},
+          TSEncoding.PLAIN,
+          CompressionType.GZIP);
+      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
+          "s1",
+          new TimeRange[] {new TimeRange(10, 40), new TimeRange(20, 50)},
+          TSEncoding.PLAIN,
+          CompressionType.ZSTD);
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    RepairDataFileScanUtil scanUtil = new RepairDataFileScanUtil(resource);
+    scanUtil.scanTsFile();
+    Assert.assertFalse(scanUtil.isBrokenFile());
+    Assert.assertTrue(scanUtil.hasUnsortedData());
+  }
 }

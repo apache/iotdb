@@ -657,6 +657,18 @@ public class IoTDBDescriptor {
                 "compaction_write_throughput_mb_per_sec",
                 Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
 
+    conf.setCompactionReadThroughputMbPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_read_throughput_mb_per_sec",
+                Integer.toString(conf.getCompactionReadThroughputMbPerSec()))));
+
+    conf.setCompactionReadOperationPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_read_operation_per_sec",
+                Integer.toString(conf.getCompactionReadOperationPerSec()))));
+
     conf.setEnableTsFileValidation(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -1128,6 +1140,35 @@ public class IoTDBDescriptor {
     if (restartCompactionTaskManager) {
       CompactionTaskManager.getInstance().restart();
     }
+    // hot load compaction rate limit configurations
+
+    // update merge_write_throughput_mb_per_sec
+    conf.setCompactionWriteThroughputMbPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "merge_write_throughput_mb_per_sec",
+                Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
+
+    // update compaction_read_operation_per_sec
+    conf.setCompactionReadOperationPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_read_operation_per_sec",
+                Integer.toString(conf.getCompactionReadOperationPerSec()))));
+
+    // update compaction_read_throughput_mb_per_sec
+    conf.setCompactionReadThroughputMbPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_read_throughput_mb_per_sec",
+                Integer.toString(conf.getCompactionReadThroughputMbPerSec()))));
+
+    CompactionTaskManager.getInstance()
+        .setCompactionReadOperationRate(conf.getCompactionReadOperationPerSec());
+    CompactionTaskManager.getInstance()
+        .setCompactionReadThroughputRate(conf.getCompactionReadThroughputMbPerSec());
+    CompactionTaskManager.getInstance()
+        .setWriteMergeRate(conf.getCompactionWriteThroughputMbPerSec());
   }
 
   private boolean loadCompactionThreadCountHotModifiedProps(Properties properties) {
@@ -1595,13 +1636,6 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty(
                   "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
-      // update merge_write_throughput_mb_per_sec
-      conf.setCompactionWriteThroughputMbPerSec(
-          Integer.parseInt(
-              properties.getProperty(
-                  "merge_write_throughput_mb_per_sec",
-                  Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
-
       // update select into operation max buffer size
       conf.setIntoOperationBufferSizeInByte(
           Long.parseLong(
