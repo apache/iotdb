@@ -19,7 +19,7 @@
 #
 
 echo ------------------------------------------
-echo Starting IoTDB Client Export Data Script
+echo Starting IoTDB Client Import Schema Script
 echo ------------------------------------------
 
 if [ -z "${IOTDB_INCLUDE}" ]; then
@@ -53,7 +53,7 @@ for f in ${IOTDB_HOME}/lib/*.jar; do
     CLASSPATH=${CLASSPATH}":"$f
 done
 
-MAIN_CLASS=org.apache.iotdb.tool.ExportData
+MAIN_CLASS=org.apache.iotdb.tool.ImportSchema
 
 "$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

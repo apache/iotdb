@@ -19,10 +19,10 @@
 
 @echo off
 
-title IoTDB Import
+title IoTDB Export
 
 echo ````````````````````````````````````````````````
-echo Starting IoTDB Client Import Data Script
+echo Starting IoTDB Client Export Schema Script
 echo ````````````````````````````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
@@ -31,7 +31,7 @@ pushd %~dp0..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
 popd
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.tool.ImportData
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.tool.ExportSchema
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
@@ -53,7 +53,6 @@ goto finally
 echo JAVA_HOME environment variable must be set!
 set ret_code=1
 pause
-
 
 @REM -----------------------------------------------------------------------------
 :finally

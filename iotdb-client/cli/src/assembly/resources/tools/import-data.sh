@@ -19,7 +19,7 @@
 #
 
 echo ------------------------------------------
-echo Starting IoTDB Client Import Script
+echo Starting IoTDB Client Import Data Script
 echo ------------------------------------------
 
 if [ -z "${IOTDB_INCLUDE}" ]; then

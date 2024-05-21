@@ -22,7 +22,7 @@
 title IoTDB Export
 
 echo ````````````````````````````````````````````````
-echo Starting IoTDB Client Export Script
+echo Starting IoTDB Client Export Data Script
 echo ````````````````````````````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
