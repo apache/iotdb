@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 
 import com.google.common.base.CharMatcher;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -64,6 +65,10 @@ public class BinaryLiteral extends Literal {
     }
   }
 
+  public BinaryLiteral(byte[] values) {
+    this.values = values;
+  }
+
   public byte[] getValues() {
     return values;
   }
@@ -71,17 +76,18 @@ public class BinaryLiteral extends Literal {
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(LiteralType.BINARY.ordinal(), byteBuffer);
-    for (byte b : values) {
-      ReadWriteIOUtils.write(b, byteBuffer);
-    }
+    ReadWriteIOUtils.write(new Binary(values), byteBuffer);
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(LiteralType.BINARY.ordinal(), stream);
-    for (byte b : values) {
-      ReadWriteIOUtils.write(b, stream);
-    }
+    ReadWriteIOUtils.write(new Binary(values), stream);
+  }
+
+  @Override
+  public Binary getBinary() {
+    return new Binary(values);
   }
 
   @Override

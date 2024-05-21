@@ -1891,7 +1891,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (timeIndex == -1 && rows.size() != 1) {
       throw new SemanticException("need timestamps when insert multi rows");
     }
-    List<Object[]> valuesList = new ArrayList<>();
+    List<String[]> valuesList = new ArrayList<>();
     long[] timeArray = new long[rows.size()];
     for (int i = 0, size = rows.size(); i < size; i++) {
       IoTDBSqlParser.RowContext row = rows.get(i);
