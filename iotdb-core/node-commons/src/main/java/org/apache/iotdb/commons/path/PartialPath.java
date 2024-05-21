@@ -321,6 +321,17 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return matchPath(rPath.getNodes(), 0, 0, false, false);
   }
 
+  public boolean matchFullPath(IDeviceID deviceID, String measurement) {
+    // TODO change this way
+    PartialPath devicePath;
+    try {
+      devicePath = new PartialPath(deviceID.toString());
+    } catch (IllegalPathException e) {
+      throw new RuntimeException(e);
+    }
+    return matchPath(devicePath.concatNode(measurement).getNodes(), 0, 0, false, false);
+  }
+
   /**
    * Check if current pattern PartialPath can match 1 prefix path.
    *

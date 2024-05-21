@@ -21,8 +21,10 @@ package org.apache.iotdb.db.queryengine.execution.operator;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -89,6 +91,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumn
 import com.google.common.collect.Sets;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.IntColumn;
@@ -98,6 +101,7 @@ import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.TimeDuration;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -125,8 +129,10 @@ public class OperatorMemoryTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
-      MeasurementPath measurementPath =
-          new MeasurementPath("root.SeriesScanOperatorTest.device0.sensor0", TSDataType.INT32);
+      NonAlignedFullPath measurementPath =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create("root.SeriesScanOperatorTest.device0"),
+              new MeasurementSchema("sensor0", TSDataType.INT32));
       Set<String> allSensors = Sets.newHashSet("sensor0");
       QueryId queryId = new QueryId("stub_query");
       FragmentInstanceId instanceId =
@@ -159,9 +165,6 @@ public class OperatorMemoryTest {
           TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 2L,
           seriesScanOperator.calculateRetainedSizeAfterCallingNext());
 
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-      fail();
     } finally {
       instanceNotificationExecutor.shutdown();
     }
@@ -172,10 +175,15 @@ public class OperatorMemoryTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
-      AlignedPath alignedPath =
-          new AlignedPath(
-              "root.AlignedSeriesScanOperatorTest.device0",
-              Arrays.asList("sensor0", "sensor1", "sensor2"));
+      AlignedFullPath alignedPath =
+          new AlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(
+                  "root.AlignedSeriesScanOperatorTest.device0"),
+              Arrays.asList("sensor0", "sensor1", "sensor2"),
+              Arrays.asList(
+                  new MeasurementSchema("sensor0", TSDataType.BOOLEAN),
+                  new MeasurementSchema("sensor1", TSDataType.BOOLEAN),
+                  new MeasurementSchema("sensor2", TSDataType.BOOLEAN)));
       QueryId queryId = new QueryId("stub_query");
       FragmentInstanceId instanceId =
           new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
@@ -214,9 +222,6 @@ public class OperatorMemoryTest {
           maxPeekMemory - maxReturnMemory,
           seriesScanOperator.calculateRetainedSizeAfterCallingNext());
 
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-      fail();
     } finally {
       instanceNotificationExecutor.shutdown();
     }
@@ -1216,7 +1221,7 @@ public class OperatorMemoryTest {
     scanOptionsBuilder.withAllSensors(allSensors);
     return new SeriesAggregationScanOperator(
         planNodeId,
-        measurementPath,
+        IFullPath.convertToIFullPath(measurementPath),
         Ordering.ASC,
         scanOptionsBuilder.build(),
         driverContext.getOperatorContexts().get(0),

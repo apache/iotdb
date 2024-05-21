@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
@@ -236,7 +236,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(tableScanOperator);
 
     for (int i = 0, size = node.getDeviceEntries().size(); i < size; i++) {
-      AlignedPath alignedPath =
+      AlignedFullPath alignedPath =
           constructAlignedPath(
               node.getDeviceEntries().get(i), measurementColumnNames, measurementSchemas);
       ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);

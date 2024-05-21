@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -1778,7 +1779,7 @@ public class DataRegion implements IDataRegionForQuery {
   /** used for queryengine */
   @Override
   public QueryDataSource query(
-      List<PartialPath> pathList,
+      List<IFullPath> pathList,
       IDeviceID singleDeviceId,
       QueryContext context,
       Filter globalTimeFilter,
@@ -1847,7 +1848,7 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources,
-      List<PartialPath> pathList,
+      List<IFullPath> pathList,
       IDeviceID singleDeviceId,
       QueryContext context,
       Filter globalTimeFilter,

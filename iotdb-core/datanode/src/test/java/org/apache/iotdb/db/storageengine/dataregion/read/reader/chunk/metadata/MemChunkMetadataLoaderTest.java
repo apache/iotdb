@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -40,7 +40,7 @@ public class MemChunkMetadataLoaderTest {
 
   @Test
   public void testLoadChunkMetadataList() {
-    MeasurementPath path = Mockito.mock(MeasurementPath.class);
+    NonAlignedFullPath path = Mockito.mock(NonAlignedFullPath.class);
     TsFileResource resource = Mockito.mock(TsFileResource.class);
     FragmentInstanceContext context = Mockito.mock(FragmentInstanceContext.class);
     List<IChunkMetadata> chunkMetadataList1 = new ArrayList<>();
