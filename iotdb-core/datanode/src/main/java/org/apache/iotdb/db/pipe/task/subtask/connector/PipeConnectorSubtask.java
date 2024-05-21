@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeAbstractConnectorSubtask;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
@@ -50,7 +50,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 
   // For input
-  protected final BoundedBlockingPendingQueue<Event> inputPendingQueue;
+  protected final UnboundedBlockingPendingQueue<Event> inputPendingQueue;
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   private final String attributeSortedString;
@@ -71,7 +71,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       final long creationTime,
       final String attributeSortedString,
       final int connectorIndex,
-      final BoundedBlockingPendingQueue<Event> inputPendingQueue,
+      final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
       final PipeConnector outputPipeConnector) {
     super(taskID, creationTime, outputPipeConnector);
     this.attributeSortedString = attributeSortedString;

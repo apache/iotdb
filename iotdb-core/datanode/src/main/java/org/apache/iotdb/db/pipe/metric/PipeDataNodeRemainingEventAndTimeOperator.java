@@ -72,10 +72,6 @@ class PipeDataNodeRemainingEventAndTimeOperator {
             .map(IoTDBDataRegionExtractor::getEventCount)
             .reduce(Integer::sum)
             .orElse(0)
-        + dataRegionProcessors.keySet().stream()
-            .map(PipeProcessorSubtask::getEventCount)
-            .reduce(Integer::sum)
-            .orElse(0)
         + dataRegionConnectors.keySet().stream()
             .map(connectorSubtask -> connectorSubtask.getEventCount(pipeName))
             .reduce(Integer::sum)
@@ -103,20 +99,12 @@ class PipeDataNodeRemainingEventAndTimeOperator {
                 .map(IoTDBDataRegionExtractor::getEventCount)
                 .reduce(Integer::sum)
                 .orElse(0)
-            + dataRegionProcessors.keySet().stream()
-                .map(PipeProcessorSubtask::getEventCount)
-                .reduce(Integer::sum)
-                .orElse(0)
             + dataRegionConnectors.keySet().stream()
                 .map(connectorSubtask -> connectorSubtask.getEventCount(pipeName))
                 .reduce(Integer::sum)
                 .orElse(0)
             - dataRegionExtractors.keySet().stream()
                 .map(IoTDBDataRegionExtractor::getPipeHeartbeatEventCount)
-                .reduce(Integer::sum)
-                .orElse(0)
-            - dataRegionProcessors.keySet().stream()
-                .map(PipeProcessorSubtask::getPipeHeartbeatEventCount)
                 .reduce(Integer::sum)
                 .orElse(0)
             - dataRegionConnectors.keySet().stream()
@@ -172,11 +160,6 @@ class PipeDataNodeRemainingEventAndTimeOperator {
   void register(final IoTDBDataRegionExtractor extractor) {
     setNameAndCreationTime(extractor.getPipeName(), extractor.getCreationTime());
     dataRegionExtractors.put(extractor, extractor);
-  }
-
-  void register(final PipeProcessorSubtask processorSubtask) {
-    setNameAndCreationTime(processorSubtask.getPipeName(), processorSubtask.getCreationTime());
-    dataRegionProcessors.put(processorSubtask, processorSubtask);
   }
 
   void register(
