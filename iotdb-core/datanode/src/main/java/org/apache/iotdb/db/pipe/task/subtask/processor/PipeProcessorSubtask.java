@@ -116,6 +116,10 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // Record the last event for retry when exception occurs
     setLastEvent(event);
 
+    if (Objects.isNull(event)) {
+      return false;
+    }
+
     outputEventCollector.resetCollectInvocationCount();
     try {
       // event can be supplied after the subtask is closed, so we need to check isClosed here
