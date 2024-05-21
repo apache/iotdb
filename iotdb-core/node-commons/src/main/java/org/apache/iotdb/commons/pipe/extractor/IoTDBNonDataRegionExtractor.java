@@ -72,7 +72,9 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
         && (((IoTDBPipePattern) pattern).isPrefix()
             || ((IoTDBPipePattern) pattern).isFullPath()))) {
       throw new IllegalArgumentException(
-          "The source path be an IoTDB-style pattern and ends with '**' when schema transfer is included.");
+          String.format(
+              "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
+              pattern.getPattern()));
     }
     pipePattern = (IoTDBPipePattern) pattern;
   }

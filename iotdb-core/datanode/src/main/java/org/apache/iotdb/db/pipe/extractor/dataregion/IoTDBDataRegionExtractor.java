@@ -95,6 +95,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   private boolean hasNoExtractionNeed = true;
   private boolean shouldExtractInsertion = false;
+  private boolean shouldExtractDeletion = false;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -109,6 +110,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     }
     hasNoExtractionNeed = false;
     shouldExtractInsertion = insertionDeletionListeningOptionPair.getLeft();
+    shouldExtractDeletion = insertionDeletionListeningOptionPair.getRight();
 
     if (insertionDeletionListeningOptionPair.getLeft().equals(true)
         && IoTDBDescriptor.getInstance()
@@ -137,7 +139,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
         PipePattern.parsePipePatternFromSourceParameters(validator.getParameters());
 
     // Check whether the pattern is legal
-    validatePattern(pattern, insertionDeletionListeningOptionPair.getRight());
+    validatePattern(pattern);
 
     // Validate extractor.history.enable and extractor.realtime.enable
     validator
@@ -211,16 +213,19 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     realtimeExtractor.validate(validator);
   }
 
-  private void validatePattern(final PipePattern pattern, final boolean isDeleteData) {
+  private void validatePattern(final PipePattern pattern) {
     if (!pattern.isLegal()) {
       throw new IllegalArgumentException(String.format("Pattern \"%s\" is illegal.", pattern));
     }
-    if (isDeleteData
+
+    if (shouldExtractDeletion
         && !(pattern instanceof IoTDBPipePattern
             && (((IoTDBPipePattern) pattern).isPrefix()
                 || ((IoTDBPipePattern) pattern).isFullPath()))) {
       throw new IllegalArgumentException(
-          "The source path be an IoTDB-style pattern and ends with '**' when schema transfer is included.");
+          String.format(
+              "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
+              pattern));
     }
   }
 
