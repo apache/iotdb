@@ -58,6 +58,9 @@ public class UDTFExecutor {
   protected PointCollectorAdaptor collector;
   protected Column[] cachedColumns;
 
+  protected boolean isFirstIter = true;
+  protected boolean useBatch = true;
+
   public UDTFExecutor(String functionName, ZoneId zoneId) {
     this.functionName = functionName;
     configurations = new UDTFConfigurations(zoneId);
@@ -131,62 +134,92 @@ public class UDTFExecutor {
   public void execute(
       Column[] columns, TimeColumnBuilder timeColumnBuilder, ColumnBuilder valueColumnBuilder)
       throws Exception {
-    try {
-      udtf.transform(columns, timeColumnBuilder, valueColumnBuilder);
-
-      Column timeColumn = timeColumnBuilder.build();
-      Column valueColumn = valueColumnBuilder.build();
-
-      // Some UDTF only generate data in terminate method
-      if (timeColumn.getPositionCount() != 0) {
-        cachedColumns = new Column[] {valueColumn, timeColumn};
-        outputStorage.putColumn((TimeColumn) timeColumn, valueColumn);
-      }
-    } catch (UnsupportedOperationException e) {
-      int colCount = columns.length;
-      int rowCount = columns[0].getPositionCount();
-
-      // collect input data types from columns
-      TSDataType[] dataTypes = new TSDataType[colCount];
-      for (int i = 0; i < colCount; i++) {
-        dataTypes[i] = columns[i].getDataType();
+    if (isFirstIter) {
+      try {
+        batchExecuteRow(columns, timeColumnBuilder, valueColumnBuilder);
+        useBatch = true;
+      } catch (UnsupportedOperationException e) {
+        singleExecuteRow(columns, timeColumnBuilder, valueColumnBuilder);
+        useBatch = false;
+      } catch (Exception e) {
+        onError("Mappable UDTF execution error", e);
       }
 
-      collector = new PointCollectorAdaptor(timeColumnBuilder, valueColumnBuilder);
-      // iterate each row
-      for (int i = 0; i < rowCount; i++) {
-        // collect values from columns
-        Object[] values = new Object[colCount];
-        for (int j = 0; j < colCount; j++) {
-          values[j] = columns[j].isNull(i) ? null : columns[j].getObject(i);
-        }
-
-        // construct input row for executor
-        RowImpl row = new RowImpl(dataTypes);
-        row.setRowRecord(values);
-
-        boolean isAllNull = InputRowUtils.isAllNull(values);
-        if (isAllNull) {
-          // skip row that all fields are null
-          collector.putNull(row.getTime());
+      isFirstIter = false;
+    } else {
+      try {
+        if (useBatch) {
+          batchExecuteRow(columns, timeColumnBuilder, valueColumnBuilder);
         } else {
-          // transform each row by default
-          udtf.transform(row, collector);
+          singleExecuteRow(columns, timeColumnBuilder, valueColumnBuilder);
         }
+      } catch (Exception e) {
+        onError("Mappable UDTF execution error", e);
       }
-      // Store output data
-      TimeColumn timeColumn = collector.buildTimeColumn();
-      Column valueColumn = collector.buildValueColumn();
+    }
+  }
 
-      // Some UDTF only generate data in terminate method
-      if (timeColumn.getPositionCount() != 0) {
-        cachedColumns = new Column[] {valueColumn, timeColumn};
-        outputStorage.putColumn(timeColumn, valueColumn);
-      } else {
-        cachedColumns = null;
+  private void singleExecuteRow(
+      Column[] columns, TimeColumnBuilder timeColumnBuilder, ColumnBuilder valueColumnBuilder)
+      throws Exception {
+    int colCount = columns.length;
+    int rowCount = columns[0].getPositionCount();
+
+    // collect input data types from columns
+    TSDataType[] dataTypes = new TSDataType[colCount];
+    for (int i = 0; i < colCount; i++) {
+      dataTypes[i] = columns[i].getDataType();
+    }
+
+    collector = new PointCollectorAdaptor(timeColumnBuilder, valueColumnBuilder);
+    // iterate each row
+    for (int i = 0; i < rowCount; i++) {
+      // collect values from columns
+      Object[] values = new Object[colCount];
+      for (int j = 0; j < colCount; j++) {
+        values[j] = columns[j].isNull(i) ? null : columns[j].getObject(i);
       }
-    } catch (Exception e) {
-      onError("Mappable UDTF execution error", e);
+
+      // construct input row for executor
+      RowImpl row = new RowImpl(dataTypes);
+      row.setRowRecord(values);
+
+      boolean isAllNull = InputRowUtils.isAllNull(values);
+      if (isAllNull) {
+        // skip row that all fields are null
+        collector.putNull(row.getTime());
+      } else {
+        // transform each row by default
+        udtf.transform(row, collector);
+      }
+    }
+    // Store output data
+    TimeColumn timeColumn = collector.buildTimeColumn();
+    Column valueColumn = collector.buildValueColumn();
+
+    // Some UDTF only generate data in terminate method
+    if (timeColumn.getPositionCount() != 0) {
+      cachedColumns = new Column[] {valueColumn, timeColumn};
+      outputStorage.putColumn(timeColumn, valueColumn);
+    } else {
+      cachedColumns = null;
+    }
+  }
+
+  private void batchExecuteRow(
+      Column[] columns, TimeColumnBuilder timeColumnBuilder, ColumnBuilder valueColumnBuilder)
+      throws Exception {
+    udtf.transform(columns, timeColumnBuilder, valueColumnBuilder);
+
+    Column timeColumn = timeColumnBuilder.build();
+    Column valueColumn = valueColumnBuilder.build();
+
+    // Some UDTF only generate data in terminate method
+    if (timeColumn.getPositionCount() != 0) {
+      cachedColumns = new Column[] {valueColumn, timeColumn};
+      outputStorage.putColumn((TimeColumn) timeColumn, valueColumn);
+    } else {
+      cachedColumns = null;
     }
   }
 
