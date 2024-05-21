@@ -52,14 +52,6 @@ import java.util.Map;
 public class TableModelReadChunkCompactionPerformerTest extends AbstractCompactionTest {
 
   private final String oldThreadName = Thread.currentThread().getName();
-  private final String v3TsFilePath =
-      "target"
-          + File.separator
-          + "test-classes"
-          + File.separator
-          + "v3tsfile"
-          + File.separator
-          + "compaction-test-tsfile";
 
   @Before
   public void setUp()
@@ -273,7 +265,8 @@ public class TableModelReadChunkCompactionPerformerTest extends AbstractCompacti
 
   @Test
   public void testCompactionWithV3Tsfile() throws IOException {
-    String pathStr = v3TsFilePath;
+    String pathStr =
+        this.getClass().getClassLoader().getResource("v3tsfile/compaction-test-tsfile").getFile();
     File v3TsFile = new File(pathStr);
     File v3TsFileResource = new File(pathStr + ".resource");
     TsFileResource resource1 = createEmptyFileAndResource(true);
