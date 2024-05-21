@@ -2156,7 +2156,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 TSDataType.INT64));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2228,7 +2228,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 TSDataType.INT64));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2301,7 +2301,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 TSDataType.INT64));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2375,7 +2375,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 TSDataType.INT64));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2455,7 +2455,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2534,7 +2534,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2614,7 +2614,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2695,7 +2695,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
                 Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact

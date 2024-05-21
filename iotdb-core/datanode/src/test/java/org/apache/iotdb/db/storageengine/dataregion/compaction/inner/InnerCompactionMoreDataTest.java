@@ -21,8 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
@@ -164,10 +164,9 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
     }
     CompactionTaskManager.getInstance().waitAllCompactionFinish();
 
-    MeasurementPath path =
-        new MeasurementPath(
-            new PartialPath(deviceIds[0], measurementSchemas[2688].getMeasurementId()),
-            measurementSchemas[2688].getType());
+    IFullPath path =
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIds[0]), measurementSchemas[2688]);
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,

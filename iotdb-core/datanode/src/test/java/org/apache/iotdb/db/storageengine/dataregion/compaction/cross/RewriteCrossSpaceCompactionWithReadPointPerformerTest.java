@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -155,9 +154,10 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
       for (int j = 0; j < 5; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
         schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
-        AlignedPath path =
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+        IFullPath path =
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 schemas);
         IDataBlockReader tsFilesReader =
@@ -255,9 +255,10 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
       for (int j = 0; j < 5; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
         schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
-        AlignedPath path =
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+        IFullPath path =
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 schemas);
         IDataBlockReader tsFilesReader =
@@ -382,9 +383,10 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
       for (int j = 0; j < 5; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
         schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
-        AlignedPath path =
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+        IFullPath path =
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 schemas);
         IDataBlockReader tsFilesReader =
@@ -483,9 +485,10 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
       for (int j = 0; j < 5; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
         schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
-        AlignedPath path =
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+        IFullPath path =
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 schemas);
         IDataBlockReader tsFilesReader =

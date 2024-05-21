@@ -20,6 +20,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -304,7 +305,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -605,7 +606,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -905,7 +906,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -1223,7 +1224,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -1656,7 +1657,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -2096,7 +2097,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -2549,7 +2550,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -2984,7 +2985,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -3420,7 +3421,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -3869,7 +3870,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -4378,7 +4379,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -4890,7 +4891,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -5402,7 +5403,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -5974,7 +5975,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -6483,7 +6484,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -6744,7 +6745,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -7075,7 +7076,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -7557,7 +7558,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -7993,7 +7994,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -8298,7 +8299,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -8465,7 +8466,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -8691,7 +8692,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
@@ -8955,7 +8956,7 @@ public class ReadPointNonAlignedCrossCompactionTest extends AbstractCompactionTe
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(

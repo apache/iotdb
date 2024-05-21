@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -500,20 +501,20 @@ public class CompactionCheckerUtils {
    * @throws IllegalPathException
    * @throws IOException
    */
-  public static Map<PartialPath, List<TimeValuePair>> getDataByQuery(
-      List<PartialPath> fullPaths,
+  public static Map<IFullPath, List<TimeValuePair>> getDataByQuery(
+      List<IFullPath> fullPaths,
       List<IMeasurementSchema> schemas,
       List<TsFileResource> sequenceResources,
       List<TsFileResource> unsequenceResources)
       throws IllegalPathException, IOException {
-    Map<PartialPath, List<TimeValuePair>> pathDataMap = new HashMap<>();
+    Map<IFullPath, List<TimeValuePair>> pathDataMap = new HashMap<>();
     for (int i = 0; i < fullPaths.size(); ++i) {
       FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
       TimeSeriesMetadataCache.getInstance().clear();
       ChunkCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();
 
-      PartialPath path = fullPaths.get(i);
+      IFullPath path = fullPaths.get(i);
       List<TimeValuePair> dataList = new LinkedList<>();
 
       IDataBlockReader reader =
@@ -542,9 +543,9 @@ public class CompactionCheckerUtils {
   }
 
   public static void validDataByValueList(
-      Map<PartialPath, List<TimeValuePair>> expectedData,
-      Map<PartialPath, List<TimeValuePair>> actualData) {
-    for (PartialPath path : expectedData.keySet()) {
+      Map<IFullPath, List<TimeValuePair>> expectedData,
+      Map<IFullPath, List<TimeValuePair>> actualData) {
+    for (IFullPath path : expectedData.keySet()) {
       List<TimeValuePair> expectedTimeValueList = expectedData.get(path);
       List<TimeValuePair> actualTimeValueList = actualData.get(path);
 

@@ -473,7 +473,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
         }
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     InnerSpaceCompactionTask task =
@@ -620,7 +620,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
         }
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     InnerSpaceCompactionTask task =
@@ -766,7 +766,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
         }
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     InnerSpaceCompactionTask task =
@@ -912,7 +912,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
         }
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     InnerSpaceCompactionTask task =
@@ -1068,7 +1068,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
         }
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     InnerSpaceCompactionTask task =
@@ -1214,7 +1214,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
         }
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     InnerSpaceCompactionTask task =
