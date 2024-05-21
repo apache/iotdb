@@ -156,7 +156,7 @@ public class SubscriptionSessionExample {
     try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_READER_VALUE);
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
       subscriptionSession.createTopic(TOPIC_2, config);
     }
 

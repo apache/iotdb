@@ -83,7 +83,7 @@ public class TopicConfig extends PipeParameters {
   }
 
   public Map<String, String> getAttributesWithSourceRealtimeMode() {
-    if (TopicConstant.FORMAT_TS_FILE_READER_VALUE.equals(
+    if (TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(
         attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))) {
       return Collections.singletonMap("realtime.mode", "batch");
     }
@@ -103,7 +103,7 @@ public class TopicConfig extends PipeParameters {
   }
 
   public boolean isValid() {
-    if (!TopicConstant.FORMAT_TS_FILE_READER_VALUE.equals(
+    if (!TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(
         attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))) {
       return true;
     }

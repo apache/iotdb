@@ -830,7 +830,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       }
       {
         final Properties config = new Properties();
-        config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_READER_VALUE);
+        config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
         session.createTopic("all", config);
       }
     } catch (final Exception e) {

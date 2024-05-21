@@ -142,7 +142,7 @@ public class SubscriptionBroker {
       return;
     }
     final String topicFormat = SubscriptionAgent.topic().getTopicFormat(topicName);
-    if (TopicConstant.FORMAT_TS_FILE_READER_VALUE.equals(topicFormat)) {
+    if (TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(topicFormat)) {
       final SubscriptionPrefetchingQueue queue =
           new SubscriptionPrefetchingTsFileQueue(brokerId, topicName, inputPendingQueue);
       SubscriptionPrefetchingQueueMetrics.getInstance().register(queue);

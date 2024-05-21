@@ -526,19 +526,19 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final List<Properties> configs = new ArrayList<>();
     {
       final Properties config = new Properties();
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_READER_VALUE);
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
       config.put(TopicConstant.PATH_KEY, "root.db.*.s");
       configs.add(config);
     }
     {
       final Properties config = new Properties();
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_READER_VALUE);
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
       config.put(TopicConstant.START_TIME_KEY, System.currentTimeMillis());
       configs.add(config);
     }
     {
       final Properties config = new Properties();
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_READER_VALUE);
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
       config.put("processor", "tumbling-time-sampling-processor");
       config.put("processor.tumbling-time.interval-seconds", "1");
       config.put("processor.down-sampling.split-file", "true");

@@ -187,7 +187,7 @@ public class IoTDBSubscriptionBasicIT {
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
       final Properties config = new Properties();
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_READER_VALUE);
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
       session.createTopic(topicName, config);
     } catch (final Exception e) {
       e.printStackTrace();
