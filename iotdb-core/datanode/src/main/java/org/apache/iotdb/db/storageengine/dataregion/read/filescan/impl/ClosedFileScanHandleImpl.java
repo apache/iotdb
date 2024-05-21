@@ -19,19 +19,24 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandle;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AlignedChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AlignedDeviceChunkMetaData;
-import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.ChunkOffsetInfo;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.ChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.DeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileDeviceStartEndTimeIterator;
+import org.apache.iotdb.db.utils.ModificationUtils;
 
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -39,12 +44,14 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -54,13 +61,14 @@ import java.util.stream.Collectors;
 public class ClosedFileScanHandleImpl implements IFileScanHandle {
 
   private final TsFileResource tsFileResource;
-  private final Map<IDeviceID, Map<String, List<Modification>>> deviceToModifications;
+  private final QueryContext queryContext;
+  // Used to cache the modifications of each timeseries
+  private final Map<IDeviceID, Map<String, List<TimeRange>>> deviceToModifications;
 
-  public ClosedFileScanHandleImpl(
-      TsFileResource tsFileResource,
-      Map<IDeviceID, Map<String, List<Modification>>> deviceToModifications) {
+  public ClosedFileScanHandleImpl(TsFileResource tsFileResource, QueryContext context) {
     this.tsFileResource = tsFileResource;
-    this.deviceToModifications = deviceToModifications;
+    this.queryContext = context;
+    this.deviceToModifications = new HashMap<>();
   }
 
   @Override
@@ -72,29 +80,55 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
   }
 
   @Override
-  public boolean isDeviceTimeDeleted(IDeviceID deviceID, long timestamp) {
-    for (List<Modification> modificationList : deviceToModifications.get(deviceID).values()) {
-      if (modificationList.stream()
-          .anyMatch(
-              modification ->
-                  modification instanceof Deletion
-                      && ((Deletion) modification).getStartTime() <= timestamp
-                      && ((Deletion) modification).getEndTime() >= timestamp)) {
-        return true;
-      }
+  public boolean[] isDeviceTimeDeleted(IDeviceID deviceID, long[] timeArray)
+      throws IllegalPathException {
+    boolean[] result = new boolean[2];
+    List<Modification> modifications = queryContext.getPathModifications(tsFileResource, deviceID);
+    List<TimeRange> timeRangeList =
+        modifications.stream()
+            .filter(Deletion.class::isInstance)
+            .map(Deletion.class::cast)
+            .map(Deletion::getTimeRange)
+            .collect(Collectors.toList());
+
+    Integer deleteCursor = 0;
+    for (int i = 0; i < timeArray.length; i++) {
+      result[i] = ModificationUtils.isPointDeleted(timeArray[i], timeRangeList, deleteCursor);
     }
-    return false;
+    return result;
+  }
+
+  private boolean[] calculateBooleanArray(List<TimeRange> timeRangeList, long[] timeArray) {
+    boolean[] result = new boolean[timeArray.length];
+    Integer deleteCursor = 0;
+    for (int i = 0; i < timeArray.length; i++) {
+      result[i] = ModificationUtils.isPointDeleted(timeArray[i], timeRangeList, deleteCursor);
+    }
+    return result;
   }
 
   @Override
-  public boolean isTimeSeriesTimeDeleted(
-      IDeviceID deviceID, String timeSeriesName, long timestamp) {
-    return deviceToModifications.get(deviceID).get(timeSeriesName).stream()
-        .anyMatch(
-            modification ->
-                modification instanceof Deletion
-                    && ((Deletion) modification).getStartTime() <= timestamp
-                    && ((Deletion) modification).getEndTime() >= timestamp);
+  public boolean[] isTimeSeriesTimeDeleted(
+      IDeviceID deviceID, String timeSeriesName, long[] timeArray) throws IllegalPathException {
+
+    if (deviceToModifications.containsKey(deviceID)
+        && deviceToModifications.get(deviceID).containsKey(timeSeriesName)) {
+      return calculateBooleanArray(
+          deviceToModifications.get(deviceID).get(timeSeriesName), timeArray);
+    }
+
+    List<Modification> modifications =
+        queryContext.getPathModifications(tsFileResource, deviceID, timeSeriesName);
+    List<TimeRange> timeRangeList =
+        modifications.stream()
+            .filter(Deletion.class::isInstance)
+            .map(Deletion.class::cast)
+            .map(Deletion::getTimeRange)
+            .collect(Collectors.toList());
+    deviceToModifications
+        .computeIfAbsent(deviceID, k -> new HashMap<>())
+        .put(timeSeriesName, timeRangeList);
+    return calculateBooleanArray(timeRangeList, timeArray);
   }
 
   @Override
@@ -107,13 +141,13 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
     // Traverse each device in current tsFile and get all the relating chunkMetaData
     while (deviceIterator.hasNext()) {
       Pair<IDeviceID, Boolean> deviceIDWithIsAligned = deviceIterator.next();
+      Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> metadataForDevice =
+          tsFileReader.getTimeseriesMetadataOffsetByDevice(
+              deviceIterator.getFirstMeasurementNodeOfCurrentDevice(),
+              Collections.emptySet(),
+              true);
       if (!deviceIDWithIsAligned.right) {
         // device is not aligned
-        Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> metadataForDevice =
-            tsFileReader.getTimeseriesMetadataOffsetByDevice(
-                deviceIterator.getFirstMeasurementNodeOfCurrentDevice(),
-                Collections.emptySet(),
-                true);
         deviceChunkMetaDataList.add(
             new DeviceChunkMetaData(
                 deviceIDWithIsAligned.left,
@@ -122,8 +156,22 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
                     .collect(Collectors.toList())));
       } else {
         // device is aligned
-        List<AlignedChunkMetadata> alignedDeviceChunkMetaData =
-            tsFileReader.getAlignedChunkMetadata(deviceIDWithIsAligned.left);
+        List<IChunkMetadata> timeChunkMetaData = metadataForDevice.get("").getLeft();
+        List<List<IChunkMetadata>> valueMetaDataList = new ArrayList<>();
+        for (Map.Entry<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> pair :
+            metadataForDevice.entrySet()) {
+          // Skip timeChunkMetaData
+          if (pair.getKey().isEmpty()) {
+            continue;
+          }
+          valueMetaDataList.add(pair.getValue().getLeft());
+        }
+
+        List<AlignedChunkMetadata> alignedDeviceChunkMetaData = new ArrayList<>();
+        for (int i = 0; i < timeChunkMetaData.size(); i++) {
+          alignedDeviceChunkMetaData.add(
+              new AlignedChunkMetadata(timeChunkMetaData.get(i), valueMetaDataList.get(i)));
+        }
         deviceChunkMetaDataList.add(
             new AlignedDeviceChunkMetaData(deviceIDWithIsAligned.left, alignedDeviceChunkMetaData));
       }
@@ -133,28 +181,29 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
 
   @Override
   public Iterator<IChunkHandle> getChunkHandles(
-      List<ChunkOffsetInfo> chunkInfoList, List<Statistics<? extends Serializable>> statisticsList)
-      throws IOException {
-    TsFileSequenceReader reader =
-        FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
+      List<AbstractChunkOffset> chunkInfoList,
+      List<Statistics<? extends Serializable>> statisticsList) {
+    String filePath = tsFileResource.getTsFilePath();
     List<IChunkHandle> chunkHandleList = new ArrayList<>();
     for (int i = 0; i < chunkInfoList.size(); i++) {
-      ChunkOffsetInfo chunkOffset = chunkInfoList.get(i);
+      AbstractChunkOffset chunkOffset = chunkInfoList.get(i);
       chunkHandleList.add(
-          chunkOffset.isAligned()
-              ? new DiskChunkHandleImpl(reader, chunkOffset.getOffSet(), statisticsList.get(i))
+          chunkOffset instanceof ChunkOffset
+              ? new DiskChunkHandleImpl(
+                  filePath, true, chunkOffset.getOffSet(), statisticsList.get(i))
               : new DiskAlignedChunkHandleImpl(
-                  reader,
+                  filePath,
+                  true,
                   chunkOffset.getOffSet(),
                   statisticsList.get(i),
-                  chunkOffset.getSharedTimeDataBuffer()));
+                  ((AlignedChunkOffset) chunkOffset).getSharedTimeDataBuffer()));
     }
     return chunkHandleList.iterator();
   }
 
   @Override
   public boolean isClosed() {
-    return tsFileResource.isClosed();
+    return true;
   }
 
   @Override
@@ -162,7 +211,6 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
     return tsFileResource.isDeleted();
   }
 
-  @Override
   public String getFilePath() {
     return tsFileResource.getTsFilePath();
   }

@@ -23,49 +23,18 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.SharedTimeDataBuffer;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
-public class ChunkOffsetInfo {
-
-  private final IDeviceID devicePath;
-  private String measurementPath;
-  private final boolean isAligned;
-
-  private final long offSet;
+public class AlignedChunkOffset extends AbstractChunkOffset {
 
   // Used by aligned device to share the same time buffer
-  private SharedTimeDataBuffer sharedTimeDataBuffer;
+  private final SharedTimeDataBuffer sharedTimeDataBuffer;
 
-  public ChunkOffsetInfo(
+  public AlignedChunkOffset(
       long offSet, IDeviceID devicePath, SharedTimeDataBuffer sharedTimeDataBuffer) {
-    this.devicePath = devicePath;
-    this.offSet = offSet;
-    this.isAligned = true;
+    super(offSet, devicePath);
     this.sharedTimeDataBuffer = sharedTimeDataBuffer;
-  }
-
-  public ChunkOffsetInfo(long offSet, IDeviceID devicePath, String measurementPath) {
-    this.offSet = offSet;
-    this.devicePath = devicePath;
-    this.isAligned = false;
-    this.measurementPath = measurementPath;
-  }
-
-  public boolean isAligned() {
-    return isAligned;
-  }
-
-  public IDeviceID getDevicePath() {
-    return devicePath;
-  }
-
-  public long getOffSet() {
-    return offSet;
   }
 
   public SharedTimeDataBuffer getSharedTimeDataBuffer() {
     return sharedTimeDataBuffer;
-  }
-
-  public String getMeasurementPath() {
-    return measurementPath;
   }
 }

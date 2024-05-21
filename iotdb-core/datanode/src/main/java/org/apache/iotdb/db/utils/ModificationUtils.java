@@ -33,7 +33,6 @@ import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class ModificationUtils {
 
@@ -79,19 +78,6 @@ public class ModificationUtils {
           }
           return false;
         });
-  }
-
-  public static void modifyAlignedChunkMetaData(
-      List<AlignedChunkMetadata> chunkMetadata, Map<String, List<Modification>> modifications) {
-    if (chunkMetadata.isEmpty()) {
-      return;
-    }
-    List<List<Modification>> modificationList = new ArrayList<>();
-    for (int i = 0; i < chunkMetadata.get(0).getValueChunkMetadataList().size(); i++) {
-      IChunkMetadata valueChunkMetadata = chunkMetadata.get(0).getValueChunkMetadataList().get(i);
-      modificationList.add(modifications.get(valueChunkMetadata.getMeasurementUid()));
-    }
-    modifyAlignedChunkMetaData(chunkMetadata, modificationList);
   }
 
   public static void modifyAlignedChunkMetaData(
@@ -160,6 +146,11 @@ public class ModificationUtils {
         });
   }
 
+  public static boolean isPointDeleted(long timestamp, List<TimeRange> deletionList) {
+    Integer deleteCursor = 0;
+    return isPointDeleted(timestamp, deletionList, deleteCursor);
+  }
+
   public static boolean isPointDeleted(
       long timestamp, List<TimeRange> deletionList, Integer deleteCursor) {
     while (deletionList != null && deleteCursor < deletionList.size()) {
@@ -225,29 +216,6 @@ public class ModificationUtils {
       if (modification instanceof Deletion) {
         Deletion deletion = (Deletion) modification;
         if (deletion.getPath().matchFullPath(partialPath)
-            && deletion.getEndTime() > timeLowerBound) {
-          long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
-          deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
-        }
-      }
-    }
-    return TimeRange.sortAndMerge(deletionList);
-  }
-
-  public static List<TimeRange> constructDeletionList(
-      String deviceID,
-      String measurement,
-      IMemTable memTable,
-      List<Pair<Modification, IMemTable>> modsToMemtable,
-      long timeLowerBound) {
-    List<TimeRange> deletionList = new ArrayList<>();
-    deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
-    for (Modification modification : getModificationsForMemtable(memTable, modsToMemtable)) {
-      if (modification instanceof Deletion) {
-        Deletion deletion = (Deletion) modification;
-        PartialPath partialPath = deletion.getPath();
-        if ((partialPath.getDevice().equals(deviceID)
-                && partialPath.getMeasurement().equals(measurement))
             && deletion.getEndTime() > timeLowerBound) {
           long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
           deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));

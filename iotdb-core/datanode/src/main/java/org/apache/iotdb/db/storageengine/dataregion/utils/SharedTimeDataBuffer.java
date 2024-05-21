@@ -31,7 +31,7 @@ import java.util.List;
 public class SharedTimeDataBuffer {
   private ByteBuffer timeBuffer;
   private final IChunkMetadata timeChunkMetaData;
-  private final List<Long[]> timeData;
+  private final List<long[]> timeData;
 
   public SharedTimeDataBuffer(IChunkMetadata timeChunkMetaData) {
     this.timeChunkMetaData = timeChunkMetaData;
@@ -47,7 +47,7 @@ public class SharedTimeDataBuffer {
     timeBuffer = timeChunk.getData();
   }
 
-  public synchronized Long[] getPageTime(int pageId) {
+  public synchronized long[] getPageTime(int pageId) {
     int size = timeData.size();
     if (pageId < size) {
       return timeData.get(pageId);
@@ -63,7 +63,7 @@ public class SharedTimeDataBuffer {
   private void loadPageData() {
     if (timeBuffer.hasRemaining()) {
       int size = timeBuffer.getInt();
-      Long[] pageData = new Long[size];
+      long[] pageData = new long[size];
       for (int i = 0; i < size; i++) {
         pageData[i] = timeBuffer.getLong();
       }

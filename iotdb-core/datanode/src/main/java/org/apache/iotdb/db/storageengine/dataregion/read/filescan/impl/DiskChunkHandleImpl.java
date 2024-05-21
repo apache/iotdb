@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
+import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 
+import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
@@ -35,26 +37,28 @@ import java.nio.ByteBuffer;
 
 /** It will receive a list of offset and execute sequential scan of TsFile for chunkData. */
 public class DiskChunkHandleImpl implements IChunkHandle {
-
+  private final boolean tsFileClosed;
+  private final String filePath;
   protected ChunkHeader currentChunkHeader;
   protected PageHeader currentPageHeader;
   protected ByteBuffer currentChunkDataBuffer;
-  protected TsFileSequenceReader reader;
   protected long offset;
 
   // Page will reuse chunkStatistics if there is only one page in chunk
   protected final Statistics<? extends Serializable> chunkStatistic;
 
   public DiskChunkHandleImpl(
-      TsFileSequenceReader reader,
+      String filePath,
+      boolean isTsFileClosed,
       long offset,
       Statistics<? extends Serializable> chunkStatistics) {
     this.chunkStatistic = chunkStatistics;
-    this.reader = reader;
     this.offset = offset;
+    this.filePath = filePath;
+    this.tsFileClosed = isTsFileClosed;
   }
 
-  protected void init() throws IOException {
+  protected void init(TsFileSequenceReader reader) throws IOException {
     if (currentChunkDataBuffer != null) {
       return;
     }
@@ -68,13 +72,18 @@ public class DiskChunkHandleImpl implements IChunkHandle {
   @Override
   public boolean hasNextPage() throws IOException {
     // read chunk from disk if needed
-    init();
+    if (currentChunkDataBuffer == null) {
+      TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, tsFileClosed);
+      init(reader);
+    }
+
     if (!currentChunkDataBuffer.hasRemaining()) {
       return false;
     }
     // If there is only one page, page statistics is not stored in the chunk header, which is the
     // same as chunkStatistics
-    if ((byte) (this.currentChunkHeader.getChunkType() & 63) == 5) {
+    if ((byte) (this.currentChunkHeader.getChunkType() & 0x3F)
+        == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
       currentPageHeader =
           PageHeader.deserializeFrom(this.currentChunkDataBuffer, this.chunkStatistic);
     } else {

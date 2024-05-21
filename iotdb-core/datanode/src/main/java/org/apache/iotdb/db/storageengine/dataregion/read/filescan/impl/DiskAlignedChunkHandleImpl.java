@@ -38,30 +38,31 @@ public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
   private int pageIndex = 0;
 
   public DiskAlignedChunkHandleImpl(
-      TsFileSequenceReader reader,
+      String filePath,
+      boolean isTsFileClosed,
       long offset,
       Statistics<? extends Serializable> chunkStatistic,
       SharedTimeDataBuffer sharedTimeDataBuffer) {
-    super(reader, offset, chunkStatistic);
+    super(filePath, isTsFileClosed, offset, chunkStatistic);
     this.sharedTimeDataBuffer = sharedTimeDataBuffer;
   }
 
   @Override
-  protected void init() throws IOException {
+  protected void init(TsFileSequenceReader reader) throws IOException {
     sharedTimeDataBuffer.init(reader);
-    super.init();
+    super.init(reader);
   }
 
   @Override
   public long[] getDataTime() throws IOException {
     ByteBuffer currentPageDataBuffer =
         ChunkReader.deserializePageData(
-            currentPageHeader, this.currentChunkDataBuffer, this.currentChunkHeader);
+            this.currentPageHeader, this.currentChunkDataBuffer, this.currentChunkHeader);
     int size = ReadWriteIOUtils.readInt(currentPageDataBuffer);
     byte[] bitmap = new byte[(size + 7) / 8];
     currentPageDataBuffer.get(bitmap);
 
-    Long[] timeData = sharedTimeDataBuffer.getPageTime(pageIndex);
+    long[] timeData = sharedTimeDataBuffer.getPageTime(pageIndex);
     if (timeData.length != size) {
       throw new UnsupportedOperationException("Time data size not match");
     }

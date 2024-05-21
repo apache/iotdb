@@ -80,7 +80,6 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -1972,10 +1971,7 @@ public class DataRegion implements IDataRegionForQuery {
       closeQueryLock.readLock().lock();
       try {
         if (tsFileResource.isClosed()) {
-          fileScanHandles.add(
-              new ClosedFileScanHandleImpl(
-                  tsFileResource,
-                  buildModificationForDevice(tsFileResource, partialPaths, context)));
+          fileScanHandles.add(new ClosedFileScanHandleImpl(tsFileResource, context));
         } else {
           tsFileResource
               .getProcessor()
@@ -2046,10 +2042,7 @@ public class DataRegion implements IDataRegionForQuery {
       try {
         if (tsFileResource.isClosed()) {
           // Get all the modification in current device
-          fileScanHandles.add(
-              new ClosedFileScanHandleImpl(
-                  tsFileResource,
-                  buildModificationForDevice(tsFileResource, devicePathToAligned, context)));
+          fileScanHandles.add(new ClosedFileScanHandleImpl(tsFileResource, context));
         } else {
           tsFileResource
               .getProcessor()
@@ -2060,32 +2053,6 @@ public class DataRegion implements IDataRegionForQuery {
       }
     }
     return fileScanHandles;
-  }
-
-  /** Get all the modification below devices */
-  private Map<IDeviceID, Map<String, List<Modification>>> buildModificationForDevice(
-      TsFileResource tsFileResource,
-      Map<IDeviceID, Boolean> devicePathToAligned,
-      QueryContext context) {
-    Map<IDeviceID, Map<String, List<Modification>>> deviceModificationMap = new HashMap<>();
-    for (Map.Entry<IDeviceID, Boolean> entry : devicePathToAligned.entrySet()) {
-      IDeviceID deviceId = entry.getKey();
-      deviceModificationMap.put(deviceId, context.getDeviceModifications(tsFileResource, deviceId));
-    }
-    return deviceModificationMap;
-  }
-
-  /** Get all the modification of partialPaths */
-  private Map<IDeviceID, Map<String, List<Modification>>> buildModificationForDevice(
-      TsFileResource tsFileResource, List<PartialPath> pathList, QueryContext context) {
-    Map<IDeviceID, Map<String, List<Modification>>> deviceModificationMap = new HashMap<>();
-    for (PartialPath path : pathList) {
-      List<Modification> modificationsList = context.getPathModifications(tsFileResource, path);
-      deviceModificationMap
-          .computeIfAbsent(path.getIDeviceID(), k -> new HashMap<>())
-          .put(path.getMeasurement(), modificationsList);
-    }
-    return deviceModificationMap;
   }
 
   /** lock the read lock of the insert lock */

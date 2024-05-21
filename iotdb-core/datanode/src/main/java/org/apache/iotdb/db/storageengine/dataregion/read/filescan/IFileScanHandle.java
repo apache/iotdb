@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
-import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.ChunkOffsetInfo;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileDeviceStartEndTimeIterator;
 
@@ -50,10 +51,10 @@ public interface IFileScanHandle {
    * Check whether timestamp is deleted in specified device.
    *
    * @param deviceID the devicePath needs to be checked.
-   * @param timestamp time value.
-   * @return if timestamp is deleted, return true, else return false.
+   * @param timeArray time value needed to be checked, which should be ordered.
+   * @return A boolean array, which indicates whether the timestamp in timeArray is deleted.
    */
-  boolean isDeviceTimeDeleted(IDeviceID deviceID, long timestamp);
+  boolean[] isDeviceTimeDeleted(IDeviceID deviceID, long[] timeArray) throws IllegalPathException;
 
   /**
    * Get all the chunkMetaData in current TsFile. ChunkMetaData will be organized in device level.
@@ -68,10 +69,11 @@ public interface IFileScanHandle {
    *
    * @param deviceID the devicePath needs to be checked.
    * @param timeSeriesName the timeSeries needs to be checked.
-   * @param timestamp time value.
-   * @return if timestamp is deleted, return true, else return false.
+   * @param timeArray time value needed to be checked, which should be ordered.
+   * @return A boolean array, which indicates whether the timestamp in timeArray is deleted.
    */
-  boolean isTimeSeriesTimeDeleted(IDeviceID deviceID, String timeSeriesName, long timestamp);
+  boolean[] isTimeSeriesTimeDeleted(IDeviceID deviceID, String timeSeriesName, long[] timeArray)
+      throws IllegalPathException;
 
   /**
    * Get the chunkHandles of chunks needed to be scanned. ChunkHandles are used to read chunk.
@@ -82,7 +84,8 @@ public interface IFileScanHandle {
    * @return the iterator of IChunkHandle.
    */
   Iterator<IChunkHandle> getChunkHandles(
-      List<ChunkOffsetInfo> chunkInfoList, List<Statistics<? extends Serializable>> statisticsList)
+      List<AbstractChunkOffset> chunkInfoList,
+      List<Statistics<? extends Serializable>> statisticsList)
       throws IOException;
 
   /** If the TsFile of this handle is closed. */
@@ -90,9 +93,6 @@ public interface IFileScanHandle {
 
   /** If the TsFile of this handle is deleted. */
   boolean isDeleted();
-
-  /** Get file path of current TsFile. */
-  String getFilePath();
 
   /** Get TsFileResource of current TsFile. */
   TsFileResource getTsResource();

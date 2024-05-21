@@ -21,9 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandle;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AlignedDeviceChunkMetaData;
-import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.ChunkOffsetInfo;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.ChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.DeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
@@ -42,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 public class UnclosedFileScanHandleImpl implements IFileScanHandle {
 
@@ -67,18 +69,28 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
   }
 
   @Override
-  public boolean isDeviceTimeDeleted(IDeviceID deviceID, long timestamp) {
+  public boolean[] isDeviceTimeDeleted(IDeviceID deviceID, long[] timeArray) {
     Map<String, List<IChunkMetadata>> chunkMetadataMap = deviceToChunkMetadataMap.get(deviceID);
-    for (List<IChunkMetadata> chunkMetadataList : chunkMetadataMap.values()) {
-      for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-        Integer deleteCursor = 0;
-        if (ModificationUtils.isPointDeleted(
-            timestamp, chunkMetadata.getDeleteIntervalList(), deleteCursor)) {
-          return true;
-        }
-      }
-    }
-    return false;
+    boolean[] result = new boolean[timeArray.length];
+
+    chunkMetadataMap.values().stream()
+        .flatMap(List::stream)
+        .map(IChunkMetadata::getDeleteIntervalList)
+        .filter(deleteIntervalList -> !deleteIntervalList.isEmpty())
+        .forEach(
+            timeRangeList -> {
+              Integer deleteCursor = 0;
+              IntStream.range(0, timeArray.length)
+                  .forEach(
+                      i -> {
+                        if (!result[i]
+                            && ModificationUtils.isPointDeleted(
+                                timeArray[i], timeRangeList, deleteCursor)) {
+                          result[i] = true;
+                        }
+                      });
+            });
+    return result;
   }
 
   @Override
@@ -91,19 +103,25 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
       if (chunkMetadataList.isEmpty()) {
         continue;
       }
-      for (Map.Entry<String, List<IChunkMetadata>> measurementMetaData :
-          chunkMetadataList.entrySet()) {
-        String timeSeriesName = measurementMetaData.getKey();
-        List<IChunkMetadata> curChunkMetadataList = measurementMetaData.getValue();
-        if (timeSeriesName.isEmpty()) {
-          List<AlignedChunkMetadata> alignedChunkMetadataList = new ArrayList<>();
-          for (IChunkMetadata chunkMetadata : curChunkMetadataList) {
-            alignedChunkMetadataList.add((AlignedChunkMetadata) chunkMetadata);
-          }
+
+      boolean isAligned = chunkMetadataList.containsKey("");
+      if (isAligned) {
+        List<AlignedChunkMetadata> alignedChunkMetadataList = new ArrayList<>();
+        List<IChunkMetadata> timeChunkMetadataList = chunkMetadataList.get("");
+        List<List<IChunkMetadata>> valueChunkMetadataList =
+            new ArrayList<>(chunkMetadataList.values());
+        for (int i = 0; i < timeChunkMetadataList.size(); i++) {
+          alignedChunkMetadataList.add(
+              new AlignedChunkMetadata(
+                  timeChunkMetadataList.get(i), valueChunkMetadataList.get(i)));
+        }
+        deviceChunkMetaDataList.add(
+            new AlignedDeviceChunkMetaData(deviceID, alignedChunkMetadataList));
+      } else {
+        for (Map.Entry<String, List<IChunkMetadata>> measurementMetaData :
+            chunkMetadataList.entrySet()) {
           deviceChunkMetaDataList.add(
-              new AlignedDeviceChunkMetaData(deviceID, alignedChunkMetadataList));
-        } else {
-          deviceChunkMetaDataList.add(new DeviceChunkMetaData(deviceID, curChunkMetadataList));
+              new DeviceChunkMetaData(deviceID, measurementMetaData.getValue()));
         }
       }
     }
@@ -111,30 +129,40 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
   }
 
   @Override
-  public boolean isTimeSeriesTimeDeleted(
-      IDeviceID deviceID, String timeSeriesName, long timestamp) {
+  public boolean[] isTimeSeriesTimeDeleted(
+      IDeviceID deviceID, String timeSeriesName, long[] timeArray) {
     List<IChunkMetadata> chunkMetadataList =
         deviceToChunkMetadataMap.get(deviceID).get(timeSeriesName);
-    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-      Integer deleteCursor = 0;
-      if (ModificationUtils.isPointDeleted(
-          timestamp, chunkMetadata.getDeleteIntervalList(), deleteCursor)) {
-        return true;
-      }
-    }
-    return false;
+    boolean[] result = new boolean[timeArray.length];
+    chunkMetadataList.stream()
+        .map(IChunkMetadata::getDeleteIntervalList)
+        .filter(deleteIntervalList -> !deleteIntervalList.isEmpty())
+        .forEach(
+            timeRangeList -> {
+              Integer deleteCursor = 0;
+              IntStream.range(0, timeArray.length)
+                  .forEach(
+                      i -> {
+                        if (!result[i]
+                            && ModificationUtils.isPointDeleted(
+                                timeArray[i], timeRangeList, deleteCursor)) {
+                          result[i] = true;
+                        }
+                      });
+            });
+    return result;
   }
 
   @Override
   public Iterator<IChunkHandle> getChunkHandles(
-      List<ChunkOffsetInfo> chunkInfoList, List<Statistics<? extends Serializable>> statisticsList)
-      throws IOException {
+      List<AbstractChunkOffset> chunkInfoList,
+      List<Statistics<? extends Serializable>> statisticsList) {
     List<IChunkHandle> chunkHandleList = new ArrayList<>();
-    for (ChunkOffsetInfo chunkOffsetInfo : chunkInfoList) {
+    for (AbstractChunkOffset chunkOffsetInfo : chunkInfoList) {
       List<IChunkHandle> chunkHandle =
           deviceToMemChunkHandleMap
               .get(chunkOffsetInfo.getDevicePath())
-              .get(chunkOffsetInfo.getMeasurementPath());
+              .get(((ChunkOffset) chunkOffsetInfo).getMeasurement());
       chunkHandleList.addAll(chunkHandle);
     }
     return chunkHandleList.iterator();
@@ -148,11 +176,6 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
   @Override
   public boolean isDeleted() {
     return tsFileResource.isDeleted();
-  }
-
-  @Override
-  public String getFilePath() {
-    return tsFileResource.getTsFilePath();
   }
 
   @Override

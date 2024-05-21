@@ -24,7 +24,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
-import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -69,13 +68,15 @@ public class DataDriver extends Driver {
   }
 
   /**
-   * Init seq file list and unseq file list in {@link QueryDataSource} and set it into each
+   * Init seq file list and unseq file list in {@link
+   * org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource} and set it into each
    * SourceNode.
    *
    * @throws QueryProcessException while failed to init query resource, QueryProcessException will
    *     be thrown
-   * @throws IllegalStateException if {@link QueryDataSource} is null after initialization,
-   *     IllegalStateException will be thrown
+   * @throws IllegalStateException if {@link
+   *     org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource} is null after
+   *     initialization, IllegalStateException will be thrown
    */
   private void initialize() throws QueryProcessException {
     long startTime = System.nanoTime();
@@ -112,7 +113,7 @@ public class DataDriver extends Driver {
 
   /**
    * The method is called in mergeLock() when executing query. This method will get all the {@link
-   * QueryDataSource} needed for this query.
+   * org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource} needed for this query.
    *
    * @throws QueryProcessException while failed to init query resource, QueryProcessException will
    *     be thrown
