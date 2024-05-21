@@ -268,7 +268,7 @@ public class TableModelReadChunkCompactionPerformerTest extends AbstractCompacti
     String pathStr =
         this.getClass().getClassLoader().getResource("v3tsfile/compaction-test-tsfile").getFile();
     File v3TsFile = new File(pathStr);
-    File v3TsFileResource = new File(pathStr + ".resource");
+    File v3TsFileResource = new File(pathStr + "-resource");
     TsFileResource resource1 = createEmptyFileAndResource(true);
     Files.copy(v3TsFile.toPath(), resource1.getTsFile().toPath());
     Files.copy(
