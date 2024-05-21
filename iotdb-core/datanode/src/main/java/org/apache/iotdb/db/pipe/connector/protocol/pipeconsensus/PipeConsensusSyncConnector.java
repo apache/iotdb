@@ -459,7 +459,8 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
         final TSStatus status = resp.getStatus();
         // This case only happens when the connection is broken, and the connector is reconnected
         // to the receiver, then the receiver will redirect the file position to the last position
-        if (status.getCode() == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
+        if (status.getCode()
+            == TSStatusCode.PIPE_CONSENSUS_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
           position = resp.getEndWritingOffset();
           reader.seek(position);
           LOGGER.info("Redirect file position to {}.", position);
