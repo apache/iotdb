@@ -71,7 +71,6 @@ public class ColumnHeader {
     if (hasAlias()) {
       ReadWriteIOUtils.write(alias, byteBuffer);
     }
-    dataType.serializeTo(byteBuffer);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
@@ -81,7 +80,6 @@ public class ColumnHeader {
     if (hasAlias()) {
       ReadWriteIOUtils.write(alias, stream);
     }
-    dataType.serializeTo(stream);
   }
 
   public static ColumnHeader deserialize(ByteBuffer byteBuffer) {
