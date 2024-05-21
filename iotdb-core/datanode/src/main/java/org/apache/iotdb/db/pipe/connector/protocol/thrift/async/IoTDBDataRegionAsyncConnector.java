@@ -513,8 +513,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         event -> {
           if (event instanceof EnrichedEvent
               && pipeName.equals(((EnrichedEvent) event).getPipeName())) {
-            ((EnrichedEvent) event)
-                .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
             count.incrementAndGet();
           }
         });
