@@ -31,6 +31,7 @@ struct TPipeConsensusTransferReq {
   3:required TCommitId commitId
   4:required common.TConsensusGroupId consensusGroupId
   5:required binary body
+  6:optional binary progressIndex
 }
 
 struct TPipeConsensusTransferResp {

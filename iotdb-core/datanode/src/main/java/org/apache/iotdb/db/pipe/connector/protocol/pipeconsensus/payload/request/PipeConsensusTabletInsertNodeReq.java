@@ -20,16 +20,25 @@
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.tsfile.utils.PublicBAOS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeConsensusTabletInsertNodeReq extends TPipeConsensusTransferReq {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PipeConsensusTabletInsertNodeReq.class);
   private transient InsertNode insertNode;
 
   private PipeConsensusTabletInsertNodeReq() {
@@ -43,12 +52,24 @@ public class PipeConsensusTabletInsertNodeReq extends TPipeConsensusTransferReq 
   /////////////////////////////// WriteBack & Batch ///////////////////////////////
 
   public static PipeConsensusTabletInsertNodeReq toTPipeConsensusTransferRawReq(
-      InsertNode insertNode, TCommitId commitId, TConsensusGroupId consensusGroupId) {
+      InsertNode insertNode,
+      TCommitId commitId,
+      TConsensusGroupId consensusGroupId,
+      ProgressIndex progressIndex) {
     final PipeConsensusTabletInsertNodeReq req = new PipeConsensusTabletInsertNodeReq();
 
     req.insertNode = insertNode;
     req.commitId = commitId;
     req.consensusGroupId = consensusGroupId;
+
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      progressIndex.serialize(outputStream);
+      req.progressIndex =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+      LOGGER.warn("Failed to serialize progress index {}", progressIndex, e);
+    }
 
     return req;
   }
@@ -56,7 +77,10 @@ public class PipeConsensusTabletInsertNodeReq extends TPipeConsensusTransferReq 
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeConsensusTabletInsertNodeReq toTPipeConsensusTransferReq(
-      InsertNode insertNode, TCommitId commitId, TConsensusGroupId consensusGroupId) {
+      InsertNode insertNode,
+      TCommitId commitId,
+      TConsensusGroupId consensusGroupId,
+      ProgressIndex progressIndex) {
     final PipeConsensusTabletInsertNodeReq req = new PipeConsensusTabletInsertNodeReq();
 
     req.insertNode = insertNode;
@@ -66,6 +90,15 @@ public class PipeConsensusTabletInsertNodeReq extends TPipeConsensusTransferReq 
     req.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     req.type = PipeConsensusRequestType.TRANSFER_TABLET_INSERT_NODE.getType();
     req.body = insertNode.serializeToByteBuffer();
+
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      progressIndex.serialize(outputStream);
+      req.progressIndex =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+      LOGGER.warn("Failed to serialize progress index {}", progressIndex, e);
+    }
 
     return req;
   }
@@ -81,6 +114,7 @@ public class PipeConsensusTabletInsertNodeReq extends TPipeConsensusTransferReq 
     insertNodeReq.body = transferReq.body;
     insertNodeReq.commitId = transferReq.commitId;
     insertNodeReq.consensusGroupId = transferReq.consensusGroupId;
+    insertNodeReq.progressIndex = transferReq.progressIndex;
 
     return insertNodeReq;
   }

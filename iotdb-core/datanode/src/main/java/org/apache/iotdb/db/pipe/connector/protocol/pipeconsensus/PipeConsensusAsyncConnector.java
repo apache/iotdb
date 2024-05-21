@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -263,14 +264,16 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
 
         final InsertNode insertNode =
             pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+        final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
         final TPipeConsensusTransferReq pipeConsensusTransferReq =
             Objects.isNull(insertNode)
                 ? PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
                     pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
                     tCommitId,
-                    tConsensusGroupId)
+                    tConsensusGroupId,
+                    progressIndex)
                 : PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
-                    insertNode, tCommitId, tConsensusGroupId);
+                    insertNode, tCommitId, tConsensusGroupId, progressIndex);
         final PipeConsensusTabletInsertNodeEventHandler pipeConsensusInsertNodeReqHandler =
             new PipeConsensusTabletInsertNodeEventHandler(
                 pipeInsertNodeTabletInsertionEvent, pipeConsensusTransferReq, this);

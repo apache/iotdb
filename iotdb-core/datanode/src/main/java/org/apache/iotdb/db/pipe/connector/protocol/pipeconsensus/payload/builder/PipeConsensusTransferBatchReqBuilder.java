@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
@@ -193,16 +194,17 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
       final InsertNode insertNode =
           pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
       // PipeConsensus will transfer binary data to TPipeConsensusTransferReq
+      final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
       if (Objects.isNull(insertNode)) {
         buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
         batchReqs.add(
             PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
-                buffer, commitId, consensusGroupId));
+                buffer, commitId, consensusGroupId, progressIndex));
       } else {
         buffer = insertNode.serializeToByteBuffer();
         batchReqs.add(
             PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
-                insertNode, commitId, consensusGroupId));
+                insertNode, commitId, consensusGroupId, progressIndex));
       }
     } else {
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =

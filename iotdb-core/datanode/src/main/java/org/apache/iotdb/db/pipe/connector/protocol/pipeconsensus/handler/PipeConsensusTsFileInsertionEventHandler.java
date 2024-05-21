@@ -129,9 +129,14 @@ public class PipeConsensusTsFileInsertionEventHandler
                     tsFile.getName(),
                     tsFile.length(),
                     commitId,
-                    consensusGroupId)
+                    consensusGroupId,
+                    event.getProgressIndex())
                 : PipeConsensusTsFileSealReq.toTPipeConsensusTransferReq(
-                    tsFile.getName(), tsFile.length(), commitId, consensusGroupId),
+                    tsFile.getName(),
+                    tsFile.length(),
+                    commitId,
+                    consensusGroupId,
+                    event.getProgressIndex()),
             this);
       }
       return;

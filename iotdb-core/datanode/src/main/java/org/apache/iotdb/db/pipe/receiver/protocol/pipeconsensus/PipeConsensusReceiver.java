@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusTransferFilePieceReq;
@@ -38,29 +40,41 @@ import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealWithModReq;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeSet;
@@ -250,7 +264,10 @@ public class PipeConsensusReceiver {
     PipeConsensusServerImpl impl =
         Optional.ofNullable(pipeConsensus.getImpl(consensusGroupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(consensusGroupId));
-    return new TPipeConsensusTransferResp(impl.write(req.getInsertNode()));
+    final InsertNode insertNode = req.getInsertNode();
+    insertNode.setProgressIndex(
+        ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
+    return new TPipeConsensusTransferResp(impl.writeOnFollowerReplica(insertNode));
   }
 
   private TPipeConsensusTransferResp handleTransferTabletBinary(
@@ -258,7 +275,10 @@ public class PipeConsensusReceiver {
     PipeConsensusServerImpl impl =
         Optional.ofNullable(pipeConsensus.getImpl(consensusGroupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(consensusGroupId));
-    return new TPipeConsensusTransferResp(impl.write(req.convertToInsertNode()));
+    final InsertNode insertNode = req.convertToInsertNode();
+    insertNode.setProgressIndex(
+        ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
+    return new TPipeConsensusTransferResp(impl.writeOnFollowerReplica(insertNode));
   }
 
   private TPipeConsensusTransferResp handleTransferFilePiece(
@@ -356,7 +376,10 @@ public class PipeConsensusReceiver {
       // writingFile will be deleted after load if no exception occurs
       diskBuffer.setWritingFile(null);
 
-      final TSStatus status = loadFileToDateRegion(fileAbsolutePath);
+      final TSStatus status =
+          loadFileToDateRegion(
+              fileAbsolutePath,
+              ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
         diskBuffer.releaseSelf();
@@ -382,6 +405,17 @@ public class PipeConsensusReceiver {
       return new TPipeConsensusTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_CONSENSUS_TRANSFER_FILE_ERROR,
+              String.format("Failed to seal file %s because %s", writingFile, e.getMessage())));
+    } catch (LoadFileException e) {
+      LOGGER.warn(
+          "PipeConsensus-ConsensusGroupId-{}: Failed to load file {} from req {}.",
+          consensusGroupId.getId(),
+          writingFile,
+          req,
+          e);
+      return new TPipeConsensusTransferResp(
+          RpcUtils.getStatus(
+              TSStatusCode.LOAD_FILE_ERROR,
               String.format("Failed to seal file %s because %s", writingFile, e.getMessage())));
     } finally {
       // If the writing file is not sealed successfully, the writing file will be deleted.
@@ -450,7 +484,10 @@ public class PipeConsensusReceiver {
           files.stream().map(File::getAbsolutePath).collect(Collectors.toList());
 
       // only load mods
-      final TSStatus status = loadFileToDateRegion(fileAbsolutePaths.get(1));
+      final TSStatus status =
+          loadFileToDateRegion(
+              fileAbsolutePaths.get(1),
+              ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
         diskBuffer.releaseSelf();
@@ -529,9 +566,26 @@ public class PipeConsensusReceiver {
     return null;
   }
 
-  private TSStatus loadFileToDateRegion(String filePath) throws IOException {
-    // TODO(sc)
-    return null;
+  private TSStatus loadFileToDateRegion(String filePath, ProgressIndex progressIndex)
+      throws IOException, LoadFileException {
+    StorageEngine.getInstance()
+        .getDataRegion(((DataRegionId) consensusGroupId))
+        .loadNewTsFile(generateTsFileResource(filePath, progressIndex), true, false);
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  private TsFileResource generateTsFileResource(String filePath, ProgressIndex progressIndex)
+      throws IOException {
+    final File tsFile = new File(filePath);
+
+    final TsFileResource tsFileResource = new TsFileResource(tsFile);
+    try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+      TsFileResourceUtils.updateTsFileResource(reader, tsFileResource);
+    }
+
+    tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+    tsFileResource.setProgressIndex(progressIndex);
+    return tsFileResource;
   }
 
   private boolean isWritingFileNonAvailable(TsFileTransferDiskBuffer diskBuffer) {

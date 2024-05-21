@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusTransferFileSealReq;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
@@ -40,11 +41,11 @@ public class PipeConsensusTsFileSealReq extends PipeConsensusTransferFileSealReq
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeConsensusTsFileSealReq toTPipeConsensusTransferReq(
-      String fileName, long fileLength, TCommitId commitId, TConsensusGroupId consensusGroupId)
+          String fileName, long fileLength, TCommitId commitId, TConsensusGroupId consensusGroupId, ProgressIndex progressIndex)
       throws IOException {
     return (PipeConsensusTsFileSealReq)
         new PipeConsensusTsFileSealReq()
-            .convertToTPipeConsensusTransferReq(fileName, fileLength, commitId, consensusGroupId);
+            .convertToTPipeConsensusTransferReq(fileName, fileLength, commitId, consensusGroupId, progressIndex);
   }
 
   public static PipeConsensusTsFileSealReq fromTPipeConsensusTransferReq(

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 
@@ -50,7 +51,7 @@ public abstract class PipeConsensusTransferFileSealReq
   /////////////////////////////// Thrift ///////////////////////////////
 
   protected PipeConsensusTransferFileSealReq convertToTPipeConsensusTransferReq(
-      String fileName, long fileLength, TCommitId commitId, TConsensusGroupId consensusGroupId)
+          String fileName, long fileLength, TCommitId commitId, TConsensusGroupId consensusGroupId, ProgressIndex progressIndex)
       throws IOException {
 
     this.fileName = fileName;
@@ -65,6 +66,12 @@ public abstract class PipeConsensusTransferFileSealReq
       ReadWriteIOUtils.write(fileName, outputStream);
       ReadWriteIOUtils.write(fileLength, outputStream);
       this.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      progressIndex.serialize(outputStream);
+      this.progressIndex =
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
     return this;
@@ -81,6 +88,7 @@ public abstract class PipeConsensusTransferFileSealReq
     body = req.body;
     commitId = req.commitId;
     consensusGroupId = req.consensusGroupId;
+    progressIndex = req.progressIndex;
 
     return this;
   }

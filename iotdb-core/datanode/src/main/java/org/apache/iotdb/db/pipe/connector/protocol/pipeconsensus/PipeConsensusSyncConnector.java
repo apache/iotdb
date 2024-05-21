@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.response.PipeConsensusTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
@@ -244,6 +245,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException {
     final InsertNode insertNode;
+    final ProgressIndex progressIndex;
     final TPipeConsensusTransferResp resp;
     TCommitId tCommitId =
         new TCommitId(
@@ -255,19 +257,21 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     try (final SyncPipeConsensusServiceClient syncPipeConsensusServiceClient =
         syncRetryAndHandshakeClientManager.borrowClient(getFollowerUrl())) {
       insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
 
       if (insertNode != null) {
         resp =
             syncPipeConsensusServiceClient.pipeConsensusTransfer(
                 PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
-                    insertNode, tCommitId, tConsensusGroupId));
+                    insertNode, tCommitId, tConsensusGroupId, progressIndex));
       } else {
         resp =
             syncPipeConsensusServiceClient.pipeConsensusTransfer(
                 PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
                     pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
                     tCommitId,
-                    tConsensusGroupId));
+                    tConsensusGroupId,
+                    progressIndex));
       }
     } catch (Exception e) {
       throw new PipeConnectionException(
@@ -382,7 +386,8 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                     tsFile.getName(),
                     tsFile.length(),
                     tCommitId,
-                    tConsensusGroupId));
+                    tConsensusGroupId,
+                    pipeTsFileInsertionEvent.getProgressIndex()));
       } else {
         transferFilePieces(
             tsFile, syncPipeConsensusServiceClient, false, tCommitId, tConsensusGroupId);
@@ -390,7 +395,11 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
         resp =
             syncPipeConsensusServiceClient.pipeConsensusTransfer(
                 PipeConsensusTsFileSealReq.toTPipeConsensusTransferReq(
-                    tsFile.getName(), tsFile.length(), tCommitId, tConsensusGroupId));
+                    tsFile.getName(),
+                    tsFile.length(),
+                    tCommitId,
+                    tConsensusGroupId,
+                    pipeTsFileInsertionEvent.getProgressIndex()));
       }
     } catch (Exception e) {
       throw new PipeConnectionException(

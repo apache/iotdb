@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
@@ -27,11 +28,17 @@ import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
+import org.apache.tsfile.utils.PublicBAOS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeConsensusTabletBinaryReq extends TPipeConsensusTransferReq {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusTabletBinaryReq.class);
   private transient ByteBuffer byteBuffer;
 
   private PipeConsensusTabletBinaryReq() {
@@ -46,7 +53,10 @@ public class PipeConsensusTabletBinaryReq extends TPipeConsensusTransferReq {
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeConsensusTabletBinaryReq toTPipeConsensusTransferReq(
-      ByteBuffer byteBuffer, TCommitId commitId, TConsensusGroupId consensusGroupId) {
+      ByteBuffer byteBuffer,
+      TCommitId commitId,
+      TConsensusGroupId consensusGroupId,
+      ProgressIndex progressIndex) {
     final PipeConsensusTabletBinaryReq req = new PipeConsensusTabletBinaryReq();
     req.byteBuffer = byteBuffer;
 
@@ -55,6 +65,15 @@ public class PipeConsensusTabletBinaryReq extends TPipeConsensusTransferReq {
     req.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     req.type = PipeConsensusRequestType.TRANSFER_TABLET_BINARY.getType();
     req.body = byteBuffer;
+
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      progressIndex.serialize(outputStream);
+      req.progressIndex =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+      LOGGER.warn("Failed to serialize progress index {}", progressIndex, e);
+    }
 
     return req;
   }
@@ -69,6 +88,7 @@ public class PipeConsensusTabletBinaryReq extends TPipeConsensusTransferReq {
     binaryReq.body = transferReq.body;
     binaryReq.commitId = transferReq.commitId;
     binaryReq.consensusGroupId = transferReq.consensusGroupId;
+    binaryReq.progressIndex = transferReq.progressIndex;
 
     return binaryReq;
   }

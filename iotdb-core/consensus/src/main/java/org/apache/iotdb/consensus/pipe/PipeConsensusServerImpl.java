@@ -282,6 +282,15 @@ public class PipeConsensusServerImpl {
     }
   }
 
+  public TSStatus writeOnFollowerReplica(IConsensusRequest request) {
+    try {
+      stateMachineLock.lock();
+      return stateMachine.write(request);
+    } finally {
+      stateMachineLock.unlock();
+    }
+  }
+
   public DataSet read(IConsensusRequest request) {
     return stateMachine.read(request);
   }
