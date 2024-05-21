@@ -211,7 +211,7 @@ public class PipeConsensusTsFileInsertionEventHandler
       // to the receiver, then the receiver will redirect the file position to the last position
       final long code = resp.getStatus().getCode();
 
-      if (code == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
+      if (code == TSStatusCode.PIPE_CONSENSUS_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
         position = resp.getEndWritingOffset();
         reader.seek(position);
         LOGGER.info("Redirect file position to {}.", position);
