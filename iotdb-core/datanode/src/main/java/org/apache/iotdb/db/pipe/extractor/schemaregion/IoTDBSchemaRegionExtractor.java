@@ -44,8 +44,8 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.HashSet;
-import java.util.Optional;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {

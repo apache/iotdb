@@ -117,13 +117,13 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
         compressIfNeeded(
             PipeTransferSchemaSnapshotSealReq.toTPipeTransferBytes(
                 // The pattern is surely Non-null
-            pipeSchemaRegionSnapshotEvent.getPatternString(),
-            mtreeSnapshotFile.getName(),
-            mtreeSnapshotFile.length(),
-            Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
-            Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
-            pipeSchemaRegionSnapshotEvent.getDatabaseName(),
-            pipeSchemaRegionSnapshotEvent.toSealTypeString())))) {
+                pipeSchemaRegionSnapshotEvent.getPatternString(),
+                mtreeSnapshotFile.getName(),
+                mtreeSnapshotFile.length(),
+                Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
+                Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
+                pipeSchemaRegionSnapshotEvent.getDatabaseName(),
+                pipeSchemaRegionSnapshotEvent.toSealTypeString())))) {
       final String errorMessage =
           String.format(
               "Seal schema region snapshot file %s and %s error. Socket %s.",

@@ -196,13 +196,13 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
                   compressIfNeeded(
                       PipeTransferConfigSnapshotSealReq.toTPipeTransferReq(
                           // The pattern is surely Non-null
-                      snapshotEvent.getPatternString(),
-                      snapshotFile.getName(),
-                      snapshotFile.length(),
-                      Objects.nonNull(templateFile) ? templateFile.getName() : null,
-                      Objects.nonNull(templateFile) ? templateFile.length() : 0,
-                      snapshotEvent.getFileType(),
-                      snapshotEvent.toSealTypeString())));
+                          snapshotEvent.getPatternString(),
+                          snapshotFile.getName(),
+                          snapshotFile.length(),
+                          Objects.nonNull(templateFile) ? templateFile.getName() : null,
+                          Objects.nonNull(templateFile) ? templateFile.length() : 0,
+                          snapshotEvent.getFileType(),
+                          snapshotEvent.toSealTypeString())));
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(

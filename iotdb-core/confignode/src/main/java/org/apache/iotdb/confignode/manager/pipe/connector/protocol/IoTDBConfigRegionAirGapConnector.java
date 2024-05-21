@@ -202,13 +202,13 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
         compressIfNeeded(
             PipeTransferConfigSnapshotSealReq.toTPipeTransferBytes(
                 // The pattern is surely Non-null
-            pipeConfigRegionSnapshotEvent.getPatternString(),
-            snapshot.getName(),
-            snapshot.length(),
-            Objects.nonNull(templateFile) ? templateFile.getName() : null,
-            Objects.nonNull(templateFile) ? templateFile.length() : 0,
-            pipeConfigRegionSnapshotEvent.getFileType(),
-            pipeConfigRegionSnapshotEvent.toSealTypeString())))) {
+                pipeConfigRegionSnapshotEvent.getPatternString(),
+                snapshot.getName(),
+                snapshot.length(),
+                Objects.nonNull(templateFile) ? templateFile.getName() : null,
+                Objects.nonNull(templateFile) ? templateFile.length() : 0,
+                pipeConfigRegionSnapshotEvent.getFileType(),
+                pipeConfigRegionSnapshotEvent.toSealTypeString())))) {
       final String errorMessage =
           String.format("Seal config region snapshot %s error. Socket %s.", snapshot, socket);
       // Send handshake because we don't know whether the receiver side configNode
