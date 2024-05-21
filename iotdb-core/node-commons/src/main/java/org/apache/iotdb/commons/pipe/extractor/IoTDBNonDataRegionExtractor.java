@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.commons.pipe.datastructure.queue.listening.AbstractPipeListeningQueue;
-import org.apache.iotdb.commons.pipe.event.EmptyEvent;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -150,8 +150,8 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
 
     if (!isTypeListened(realtimeEvent)
         || (!isForwardingPipeRequests && realtimeEvent.isGeneratedByPipe())) {
-      final EmptyEvent event =
-          new EmptyEvent(pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+      final ProgressReportEvent event =
+          new ProgressReportEvent(pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
       event.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
       event.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
       return event;

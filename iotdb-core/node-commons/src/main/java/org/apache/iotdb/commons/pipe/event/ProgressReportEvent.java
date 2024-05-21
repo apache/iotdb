@@ -24,14 +24,15 @@ import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
 /**
- * {@link EmptyEvent} is an {@link EnrichedEvent} that is used only for progress report. It is bind
- * to a {@link ProgressIndex} and will be committed after all its preceding {@link EnrichedEvent}s.
+ * {@link ProgressReportEvent} is an {@link EnrichedEvent} that is used only for progress report. It
+ * is bind to a {@link ProgressIndex} and will be committed after all its preceding {@link
+ * EnrichedEvent}s.
  */
-public class EmptyEvent extends EnrichedEvent {
+public class ProgressReportEvent extends EnrichedEvent {
 
   private ProgressIndex progressIndex;
 
-  public EmptyEvent(
+  public ProgressReportEvent(
       final String pipeName,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pipePattern,
@@ -67,7 +68,7 @@ public class EmptyEvent extends EnrichedEvent {
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
-    return new EmptyEvent(pipeName, pipeTaskMeta, pattern, startTime, endTime);
+    return new ProgressReportEvent(pipeName, pipeTaskMeta, pattern, startTime, endTime);
   }
 
   @Override
