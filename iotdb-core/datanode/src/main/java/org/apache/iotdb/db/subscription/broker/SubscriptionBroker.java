@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
-import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.metric.SubscriptionPrefetchingQueueMetrics;
@@ -133,7 +133,7 @@ public class SubscriptionBroker {
   /////////////////////////////// prefetching queue ///////////////////////////////
 
   public void bindPrefetchingQueue(
-      final String topicName, final BoundedBlockingPendingQueue<Event> inputPendingQueue) {
+      final String topicName, final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.nonNull(prefetchingQueue)) {

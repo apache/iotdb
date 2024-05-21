@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -57,7 +57,7 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
   public SubscriptionPrefetchingTabletsQueue(
       final String brokerId,
       final String topicName,
-      final BoundedBlockingPendingQueue<Event> inputPendingQueue) {
+      final UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
     super(brokerId, topicName, inputPendingQueue);
 
     this.prefetchingQueue = new LinkedBlockingQueue<>();
