@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
@@ -38,6 +40,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TopKOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
@@ -45,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
@@ -86,6 +90,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
@@ -140,6 +145,47 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<Operator> children = new ArrayList<>(1);
     children.add(child);
     return new IdentitySinkOperator(operatorContext, children, downStreamChannelIndex, sinkHandle);
+  }
+
+  @Override
+  public Operator visitExchange(ExchangeNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                ExchangeOperator.class.getSimpleName());
+
+    FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
+    FragmentInstanceId remoteInstanceId = node.getUpstreamInstanceId();
+
+    TEndPoint upstreamEndPoint = node.getUpstreamEndpoint();
+    boolean isSameNode = isSameNode(upstreamEndPoint);
+    ISourceHandle sourceHandle =
+        isSameNode
+            ? MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForFragment(
+                localInstanceId.toThrift(),
+                node.getPlanNodeId().getId(),
+                node.getUpstreamPlanNodeId().getId(),
+                remoteInstanceId.toThrift(),
+                node.getIndexOfUpstreamSinkHandle(),
+                context.getInstanceContext()::failed)
+            : MPP_DATA_EXCHANGE_MANAGER.createSourceHandle(
+                localInstanceId.toThrift(),
+                node.getPlanNodeId().getId(),
+                node.getIndexOfUpstreamSinkHandle(),
+                upstreamEndPoint,
+                remoteInstanceId.toThrift(),
+                context.getInstanceContext()::failed);
+    if (!isSameNode) {
+      context.addExchangeSumNum(1);
+    }
+    sourceHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
+    ExchangeOperator exchangeOperator =
+        new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
+    context.addExchangeOperator(exchangeOperator);
+    return exchangeOperator;
   }
 
   @Override

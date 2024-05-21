@@ -59,6 +59,10 @@ public class ProjectNode extends SingleChildProcessNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
 
+  public static ProjectNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
   @Override
   public List<Symbol> getOutputSymbols() {
     return assignments.getOutputs();

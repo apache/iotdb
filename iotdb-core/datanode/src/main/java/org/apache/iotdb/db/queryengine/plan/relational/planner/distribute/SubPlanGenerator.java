@@ -15,7 +15,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -32,11 +31,10 @@ import java.util.Set;
 /** Split SubPlan according to ExchangeNode. */
 public class SubPlanGenerator {
 
-  public SubPlan splitToSubPlan(LogicalQueryPlan logicalQueryPlan) {
-    QueryId queryId = logicalQueryPlan.getContext().getQueryId();
-    SubPlan rootSubPlan = createSubPlan(logicalQueryPlan.getRootNode(), queryId);
+  public SubPlan splitToSubPlan(QueryId queryId, PlanNode rootPlanNode) {
+    SubPlan rootSubPlan = createSubPlan(rootPlanNode, queryId);
     Set<PlanNodeId> visitedSinkNode = new HashSet<>();
-    splitToSubPlan(logicalQueryPlan.getRootNode(), rootSubPlan, visitedSinkNode, queryId);
+    splitToSubPlan(rootPlanNode, rootSubPlan, visitedSinkNode, queryId);
     return rootSubPlan;
   }
 

@@ -17,6 +17,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -135,20 +136,19 @@ public class IndexScan implements RelationalPlanOptimizer {
         context.getAnalysis().setFinishQueryAfterAnalyze();
       } else {
         // TODO add the real impl
-        TRegionReplicaSet regionReplicaSet =
-            dataPartition
-                .getDataPartitionMap()
-                .values()
-                .iterator()
-                .next()
-                .values()
-                .iterator()
-                .next()
-                .values()
-                .iterator()
-                .next()
-                .get(0);
-        node.setRegionReplicaSet(regionReplicaSet);
+        Set<TRegionReplicaSet> regionReplicaSet = new HashSet<>();
+        for (Map.Entry<
+                String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+            e1 : dataPartition.getDataPartitionMap().entrySet()) {
+          for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+              e2 : e1.getValue().entrySet()) {
+            for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> e3 :
+                e2.getValue().entrySet()) {
+              regionReplicaSet.addAll(e3.getValue());
+            }
+          }
+        }
+        node.setRegionReplicaSetList(new ArrayList<>(regionReplicaSet));
       }
 
       return node;

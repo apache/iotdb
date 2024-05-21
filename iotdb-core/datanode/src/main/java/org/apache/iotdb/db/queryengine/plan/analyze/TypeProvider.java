@@ -164,10 +164,12 @@ public class TypeProvider {
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(treeModelTypeMap.size(), stream);
-    for (Map.Entry<String, TSDataType> entry : treeModelTypeMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), stream);
-      ReadWriteIOUtils.write(entry.getValue().ordinal(), stream);
+    ReadWriteIOUtils.write(treeModelTypeMap == null ? 0 : treeModelTypeMap.size(), stream);
+    if (treeModelTypeMap != null) {
+      for (Map.Entry<String, TSDataType> entry : treeModelTypeMap.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), stream);
+        ReadWriteIOUtils.write(entry.getValue().ordinal(), stream);
+      }
     }
 
     if (templatedInfo == null) {
@@ -180,6 +182,7 @@ public class TypeProvider {
     if (tableModelTypes == null) {
       ReadWriteIOUtils.write((byte) 0, stream);
     } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
       ReadWriteIOUtils.write(tableModelTypes.size(), stream);
       for (Map.Entry<Symbol, Type> entry : tableModelTypes.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey().getName(), stream);
@@ -204,20 +207,20 @@ public class TypeProvider {
       templatedInfo = TemplatedInfo.deserialize(byteBuffer);
     }
 
-    Map<Symbol, Type> types = null;
-    byte hasTypes = ReadWriteIOUtils.readByte(byteBuffer);
-    if (hasTypes == 1) {
+    Map<Symbol, Type> tableModelTypes = null;
+    byte hasTableModelTypes = ReadWriteIOUtils.readByte(byteBuffer);
+    if (hasTableModelTypes == 1) {
       mapSize = ReadWriteIOUtils.readInt(byteBuffer);
-      types = new HashMap<>(mapSize);
+      tableModelTypes = new HashMap<>(mapSize);
       while (mapSize > 0) {
-        types.put(
+        tableModelTypes.put(
             new Symbol(ReadWriteIOUtils.readString(byteBuffer)),
             TypeFactory.getType(TypeEnum.values()[ReadWriteIOUtils.readInt(byteBuffer)]));
         mapSize--;
       }
     }
 
-    return new TypeProvider(typeMap, templatedInfo, types);
+    return new TypeProvider(typeMap, templatedInfo, tableModelTypes);
   }
 
   @Override
