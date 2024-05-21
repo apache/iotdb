@@ -28,7 +28,7 @@ public class DataRegionWatermarkInjector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataRegionWatermarkInjector.class);
 
-  public static final long MIN_INJECTION_INTERVAL_IN_MS = 30 * 1000; // 30s
+  public static final long MIN_INJECTION_INTERVAL_IN_MS = 30 * 1000L; // 30s
 
   private final int regionId;
 
