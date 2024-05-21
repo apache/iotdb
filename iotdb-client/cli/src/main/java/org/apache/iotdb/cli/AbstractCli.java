@@ -651,7 +651,6 @@ public abstract class AbstractCli {
 
       IoTDBJDBCResultSet ioTDBJDBCResultSet = (IoTDBJDBCResultSet) resultSet;
       boolean printTimestamp = !ioTDBJDBCResultSet.isIgnoreTimeStamp();
-      ioTDBJDBCResultSet.setZoneId(zoneId);
       while (j < maxPrintRowCount && !isReachEnd) {
         for (int i = 1; i <= columnCount; i++) {
           String tmp;
