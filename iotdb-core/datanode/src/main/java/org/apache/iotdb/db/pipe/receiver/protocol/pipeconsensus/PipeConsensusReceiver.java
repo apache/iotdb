@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.Pip
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.response.PipeConsensusTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensusServerImpl;
@@ -72,17 +71,13 @@ import java.util.stream.Collectors;
 
 // TODO: 如：1,1 1,2 1,3 1,4 1,5 / 1,6 1,7 1,8（follower 得想办法知道 leader
 // 是否发满了/前置请求是否发完了）：发送端等待事件超时后尝试握手
-// TODO: 处理 tablet 攒批
-// TODO: check memory when logging wal
-// TODO: check disk(read-only etc.) when writing tsFile
-// TODO: support batch transfer
 public class PipeConsensusReceiver {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusReceiver.class);
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
   private final RequestExecutor requestExecutor = new RequestExecutor();
   private final PipeConsensus pipeConsensus;
   private final ConsensusGroupId consensusGroupId;
-  // Used to buffer TsFile when transfer TsFile asynchronizedly.
+  // Used to buffer TsFile when transfer TsFile asynchronously.
   // TODO: move to pipe config
   private static final String[] RECEIVER_FILE_BASE_DIRS =
       IoTDBDescriptor.getInstance().getConfig().getPipeReceiverFileDirs();
@@ -114,16 +109,32 @@ public class PipeConsensusReceiver {
    * load event must be synchronized.
    */
   public TPipeConsensusTransferResp receive(final TPipeConsensusTransferReq req) {
+    // PreCheck: if there are these cases: read-only; null impl; inactive impl, etc. The receiver
+    // will reject synchronization.
+    TPipeConsensusTransferResp resp = preCheckForReceiver(req);
+    if (resp != null) {
+      return resp;
+    }
+
     final short rawRequestType = req.getType();
     if (PipeConsensusRequestType.isValidatedRequestType(rawRequestType)) {
       switch (PipeConsensusRequestType.valueOf(rawRequestType)) {
         case TRANSFER_TS_FILE_PIECE:
         case TRANSFER_TS_FILE_PIECE_WITH_MOD:
           {
-            // just take a place in requestExecutor's buffer
+            // Just take a place in requestExecutor's buffer, the further seal request will remove
+            // its place from buffer.
             Object ignore = requestExecutor.onRequest(req, true);
             return loadEvent(req);
           }
+          // TODO: check memory when logging wal(in further version)
+        case TRANSFER_TABLET_RAW:
+        case TRANSFER_TABLET_BINARY:
+        case TRANSFER_TABLET_INSERT_NODE:
+          // TODO: support batch transfer(in further version)
+        case TRANSFER_TABLET_BATCH:
+        case TRANSFER_TS_FILE_SEAL:
+        case TRANSFER_TS_FILE_SEAL_WITH_MOD:
         default:
           return requestExecutor.onRequest(req, false);
       }
@@ -138,6 +149,45 @@ public class PipeConsensusReceiver {
       LOGGER.warn("PipeConsensus Unknown PipeRequestType, response status = {}.", status);
     }
     return new TPipeConsensusTransferResp(status);
+  }
+
+  private TPipeConsensusTransferResp preCheckForReceiver(final TPipeConsensusTransferReq req) {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    PipeConsensusServerImpl impl = pipeConsensus.getImpl(groupId);
+
+    if (impl == null) {
+      String message = String.format("PipeConsensus: unexpected consensusGroupId %s", groupId);
+      if (LOGGER.isErrorEnabled()) {
+        LOGGER.error(message);
+      }
+      return new TPipeConsensusTransferResp(
+          RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), message));
+    }
+    if (impl.isReadOnly()) {
+      String message =
+          String.format(
+              "PipeConsensus-ConsensusGroupId-%s: fail to receive because system is read-only.",
+              groupId);
+      if (LOGGER.isErrorEnabled()) {
+        LOGGER.error(message);
+      }
+      return new TPipeConsensusTransferResp(
+          RpcUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode(), message));
+    }
+    if (!impl.isActive()) {
+      String message =
+          String.format(
+              "PipeConsensus-ConsensusGroupId-%s: fail to receive because peer is inactive and not ready.",
+              groupId);
+      if (LOGGER.isWarnEnabled()) {
+        LOGGER.warn(message);
+      }
+      return new TPipeConsensusTransferResp(
+          RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode(), message));
+    }
+
+    return null;
   }
 
   private TPipeConsensusTransferResp loadEvent(final TPipeConsensusTransferReq req) {
@@ -218,7 +268,7 @@ public class PipeConsensusReceiver {
       final File writingFile = diskBuffer.getWritingFile();
       final RandomAccessFile writingFileWriter = diskBuffer.getWritingFileWriter();
 
-      if (!isWritingFileOffsetCorrect(diskBuffer, req.getStartWritingOffset())) {
+      if (isWritingFileOffsetNonCorrect(diskBuffer, req.getStartWritingOffset())) {
         if (!writingFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
           // If the file is a tsFile, then the content will not be changed for a specific
           // filename. However, for other files (mod, snapshot, etc.) the content varies for the
@@ -307,7 +357,7 @@ public class PipeConsensusReceiver {
       final TSStatus status = loadFileToDateRegion(fileAbsolutePath);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
-        releaseCorrespondingBuffer(diskBuffer);
+        diskBuffer.releaseSelf();
         LOGGER.info(
             "PipeConsensus-ConsensusGroupId-{}: Seal file {} successfully.",
             consensusGroupId.getId(),
@@ -401,9 +451,9 @@ public class PipeConsensusReceiver {
       final TSStatus status = loadFileToDateRegion(fileAbsolutePaths.get(1));
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
-        releaseCorrespondingBuffer(diskBuffer);
+        diskBuffer.releaseSelf();
         LOGGER.info(
-            "PipeConsensus-ConsensusGroupId-{}: Seal file {} successfully.",
+            "PipeConsensus-ConsensusGroupId-{}: Seal file with mods {} successfully.",
             consensusGroupId.getId(),
             fileAbsolutePaths);
       } else {
@@ -521,7 +571,7 @@ public class PipeConsensusReceiver {
       return new TPipeConsensusTransferResp(status);
     }
 
-    if (!isWritingFileOffsetCorrect(diskBuffer, fileLength)) {
+    if (isWritingFileOffsetNonCorrect(diskBuffer, fileLength)) {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.PIPE_CONSENSUS_TRANSFER_FILE_ERROR,
@@ -548,8 +598,8 @@ public class PipeConsensusReceiver {
     return writingFile != null && writingFile.getName().equals(fileName);
   }
 
-  private boolean isWritingFileOffsetCorrect(TsFileTransferDiskBuffer diskBuffer, final long offset)
-      throws IOException {
+  private boolean isWritingFileOffsetNonCorrect(
+      TsFileTransferDiskBuffer diskBuffer, final long offset) throws IOException {
     final File writingFile = diskBuffer.getWritingFile();
     final RandomAccessFile writingFileWriter = diskBuffer.getWritingFileWriter();
 
@@ -562,7 +612,7 @@ public class PipeConsensusReceiver {
           writingFileWriter.length(),
           offset);
     }
-    return offsetCorrect;
+    return !offsetCorrect;
   }
 
   private void closeCurrentWritingFileWriter(TsFileTransferDiskBuffer diskBuffer) {
@@ -687,7 +737,7 @@ public class PipeConsensusReceiver {
         try {
           FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
           LOGGER.info(
-              "PipeConsensus-ConsensusGroupId-{}: Original receiver file dir {} was deleted.",
+              "PipeConsensus-ConsensusGroupId-{}: Original receiver file dir {} was deleted successfully.",
               consensusGroupId.getId(),
               receiverFileDirWithIdSuffix.get().getPath());
         } catch (IOException e) {
@@ -760,11 +810,6 @@ public class PipeConsensusReceiver {
     return diskBuffer.get();
   }
 
-  private void releaseCorrespondingBuffer(TsFileTransferDiskBuffer diskBuffer) {
-    diskBuffer.setUsed(false);
-    diskBuffer.setCommitIdOfCorrespondingHolderEvent(null);
-  }
-
   public PipeConsensusRequestVersion getVersion() {
     return PipeConsensusRequestVersion.VERSION_1;
   }
@@ -820,7 +865,7 @@ public class PipeConsensusReceiver {
           }
 
           // release disk buffer
-          releaseCorrespondingBuffer(diskBuffer);
+          diskBuffer.releaseSelf();
         });
 
     // Clear the original receiver file dir if exists
@@ -902,6 +947,11 @@ public class PipeConsensusReceiver {
     public void setUsed(boolean used) {
       isUsed = used;
     }
+
+    public void releaseSelf() {
+      this.isUsed = false;
+      this.commitIdOfCorrespondingHolderEvent = null;
+    }
   }
 
   /**
@@ -965,7 +1015,8 @@ public class PipeConsensusReceiver {
         }
         reqBuffer.add(wrappedReq);
         // TsFilePieceTransferEvent will not enter further procedure, it just holds a place in
-        // buffer.
+        // buffer. Only after the corresponding sealing event is processed, this event can be
+        // dequeued.
         if (isTransferTsFilePiece) {
           return null;
         }
@@ -1044,26 +1095,6 @@ public class PipeConsensusReceiver {
       // sync the follower's connectorRebootTimes with connector's actual rebootTimes
       this.connectorRebootTimes = connectorRebootTimes;
     }
-
-    @TestOnly
-    public int getConnectorRebootTimes() {
-      return connectorRebootTimes;
-    }
-
-    @TestOnly
-    public long getOnSyncedCommitIndex() {
-      return onSyncedCommitIndex;
-    }
-  }
-
-  @TestOnly
-  public int getConnectorRebootTimes() {
-    return requestExecutor.getConnectorRebootTimes();
-  }
-
-  @TestOnly
-  public long getOnSyncedCommitIndex() {
-    return requestExecutor.getOnSyncedCommitIndex();
   }
 
   /**

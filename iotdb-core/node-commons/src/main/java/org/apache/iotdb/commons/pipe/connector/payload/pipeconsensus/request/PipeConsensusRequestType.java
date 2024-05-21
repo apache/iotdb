@@ -25,9 +25,6 @@ import java.util.Map;
 
 public enum PipeConsensusRequestType {
 
-  // Handshake
-  PIPE_CONSENSUS_HANDSHAKE((short) 0),
-
   // Data region
   TRANSFER_TABLET_INSERT_NODE((short) 100),
   TRANSFER_TABLET_RAW((short) 101),
