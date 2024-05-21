@@ -19,37 +19,49 @@
 
 package org.apache.iotdb.confignode.manager.pipe.metric;
 
-import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
+import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningQueue;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
-public class PipeConfigNodeMetrics implements IMetricSet {
-
-  private final PipeTaskInfoMetrics pipeTaskInfoMetrics;
-
-  public PipeConfigNodeMetrics(final PipeManager pipeManager) {
-    this.pipeTaskInfoMetrics = new PipeTaskInfoMetrics(pipeManager);
-  }
+public class PipeConfigNodeListenerMetrics implements IMetricSet {
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
   public void bindTo(final AbstractMetricService metricService) {
-    PipeProcedureMetrics.getInstance().bindTo(metricService);
-    pipeTaskInfoMetrics.bindTo(metricService);
-    PipeConfigNodeListenerMetrics.getInstance().bindTo(metricService);
-    PipeConfigRegionExtractorMetrics.getInstance().bindTo(metricService);
-    PipeConfigRegionConnectorMetrics.getInstance().bindTo(metricService);
-    PipeConfigNodeRemainingTimeMetrics.getInstance().bindTo(metricService);
+    metricService.createAutoGauge(
+        Metric.PIPE_CONFIG_LINKED_QUEUE_SIZE.toString(),
+        MetricLevel.IMPORTANT,
+        PipeConfigNodeAgent.runtime().listener(),
+        ConfigRegionListeningQueue::getSize);
   }
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    PipeProcedureMetrics.getInstance().unbindFrom(metricService);
-    pipeTaskInfoMetrics.unbindFrom(metricService);
-    PipeConfigNodeListenerMetrics.getInstance().unbindFrom(metricService);
-    PipeConfigRegionExtractorMetrics.getInstance().unbindFrom(metricService);
-    PipeConfigRegionConnectorMetrics.getInstance().unbindFrom(metricService);
-    PipeConfigNodeRemainingTimeMetrics.getInstance().unbindFrom(metricService);
+    metricService.remove(MetricType.AUTO_GAUGE, Metric.PIPE_CONFIG_LINKED_QUEUE_SIZE.toString());
+  }
+
+  //////////////////////////// singleton ////////////////////////////
+
+  private static class PipeConfigNodeListenerMetricsHolder {
+
+    private static final PipeConfigNodeListenerMetrics INSTANCE =
+        new PipeConfigNodeListenerMetrics();
+
+    private PipeConfigNodeListenerMetricsHolder() {
+      // Empty constructor
+    }
+  }
+
+  public static PipeConfigNodeListenerMetrics getInstance() {
+    return PipeConfigNodeListenerMetricsHolder.INSTANCE;
+  }
+
+  private PipeConfigNodeListenerMetrics() {
+    // Empty constructor
   }
 }

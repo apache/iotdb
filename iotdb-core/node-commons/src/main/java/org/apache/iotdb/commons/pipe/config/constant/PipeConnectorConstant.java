@@ -53,6 +53,10 @@ public class PipeConnectorConstant {
   public static final int CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE =
       PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum();
 
+  public static final String CONNECTOR_REALTIME_FIRST_KEY = "connector.realtime-first";
+  public static final String SINK_REALTIME_FIRST_KEY = "sink.realtime-first";
+  public static final boolean CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE = false;
+
   public static final String CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY = "connector.batch.enable";
   public static final String SINK_IOTDB_BATCH_MODE_ENABLE_KEY = "sink.batch.enable";
   public static final boolean CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE = true;

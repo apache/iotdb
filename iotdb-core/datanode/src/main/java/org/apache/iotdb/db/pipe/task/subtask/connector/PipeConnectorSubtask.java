@@ -22,13 +22,15 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeAbstractConnectorSubtask;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.metric.PipeConnectorMetrics;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.db.pipe.metric.PipeDataRegionConnectorMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeSchemaRegionConnectorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -41,12 +43,14 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 
   // For input
-  protected final BoundedBlockingPendingQueue<Event> inputPendingQueue;
+  protected final UnboundedBlockingPendingQueue<Event> inputPendingQueue;
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   private final String attributeSortedString;
@@ -63,17 +67,22 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   private long lastHeartbeatEventInjectTime = System.currentTimeMillis();
 
   public PipeConnectorSubtask(
-      String taskID,
-      long creationTime,
-      String attributeSortedString,
-      int connectorIndex,
-      BoundedBlockingPendingQueue<Event> inputPendingQueue,
-      PipeConnector outputPipeConnector) {
+      final String taskID,
+      final long creationTime,
+      final String attributeSortedString,
+      final int connectorIndex,
+      final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
+      final PipeConnector outputPipeConnector) {
     super(taskID, creationTime, outputPipeConnector);
     this.attributeSortedString = attributeSortedString;
     this.connectorIndex = connectorIndex;
     this.inputPendingQueue = inputPendingQueue;
-    PipeConnectorMetrics.getInstance().register(this);
+
+    if (!attributeSortedString.startsWith("schema_")) {
+      PipeDataRegionConnectorMetrics.getInstance().register(this);
+    } else {
+      PipeSchemaRegionConnectorMetrics.getInstance().register(this);
+    }
   }
 
   @Override
@@ -100,10 +109,13 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
-        PipeConnectorMetrics.getInstance().markTabletEvent(taskID);
+        PipeDataRegionConnectorMetrics.getInstance().markTabletEvent(taskID);
       } else if (event instanceof TsFileInsertionEvent) {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
-        PipeConnectorMetrics.getInstance().markTsFileEvent(taskID);
+        PipeDataRegionConnectorMetrics.getInstance().markTsFileEvent(taskID);
+      } else if (event instanceof PipeSchemaRegionWritePlanEvent) {
+        outputPipeConnector.transfer(event);
+        PipeSchemaRegionConnectorMetrics.getInstance().markSchemaEvent(taskID);
       } else if (event instanceof PipeHeartbeatEvent) {
         transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else {
@@ -114,7 +126,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       }
 
       decreaseReferenceCountAndReleaseLastEvent(true);
-    } catch (PipeException e) {
+    } catch (final PipeException e) {
       if (!isClosed.get()) {
         throw e;
       } else {
@@ -124,7 +136,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
             e);
         clearReferenceCountAndReleaseLastEvent();
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       if (!isClosed.get()) {
         throw new PipeException(
             String.format(
@@ -144,11 +156,11 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     return true;
   }
 
-  private void transferHeartbeatEvent(PipeHeartbeatEvent event) {
+  private void transferHeartbeatEvent(final PipeHeartbeatEvent event) {
     try {
       outputPipeConnector.heartbeat();
       outputPipeConnector.transfer(event);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new PipeConnectionException(
           "PipeConnector: "
               + outputPipeConnector.getClass().getName()
@@ -160,16 +172,21 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     lastHeartbeatEventInjectTime = System.currentTimeMillis();
 
     event.onTransferred();
-    PipeConnectorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
+    PipeDataRegionConnectorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
   }
 
   @Override
   public void close() {
-    PipeConnectorMetrics.getInstance().deregister(taskID);
+    if (!attributeSortedString.startsWith("schema_")) {
+      PipeDataRegionConnectorMetrics.getInstance().deregister(taskID);
+    } else {
+      PipeSchemaRegionConnectorMetrics.getInstance().deregister(taskID);
+    }
+
     isClosed.set(true);
     try {
       outputPipeConnector.close();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.info(
           "Exception occurred when closing pipe connector subtask {}, root cause: {}",
           taskID,
@@ -193,7 +210,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
    * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
    * its queued events in the output pipe connector.
    */
-  public void discardEventsOfPipe(String pipeNameToDrop) {
+  public void discardEventsOfPipe(final String pipeNameToDrop) {
     if (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector) {
       ((IoTDBDataRegionAsyncConnector) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop);
     }
@@ -227,15 +244,42 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
         : 0;
   }
 
+  // For performance, this will not acquire lock and does not guarantee the correct
+  // result. However, this shall not cause any exceptions when concurrently read & written.
+  public int getEventCount(final String pipeName) {
+    final AtomicInteger count = new AtomicInteger(0);
+    try {
+      inputPendingQueue.forEach(
+          event -> {
+            if (event instanceof EnrichedEvent
+                && pipeName.equals(((EnrichedEvent) event).getPipeName())) {
+              count.incrementAndGet();
+            }
+          });
+    } catch (Exception e) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Exception occurred when counting event of pipe {}, root cause: {}",
+            pipeName,
+            ErrorHandlingUtils.getRootCause(e).getMessage(),
+            e);
+      }
+    }
+    return count.get()
+        + (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
+            ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getRetryEventCount(pipeName)
+            : 0);
+  }
+
   //////////////////////////// Error report ////////////////////////////
 
   @Override
-  protected String getRootCause(Throwable throwable) {
+  protected String getRootCause(final Throwable throwable) {
     return ErrorHandlingUtils.getRootCause(throwable).getMessage();
   }
 
   @Override
-  protected void report(EnrichedEvent event, PipeRuntimeException exception) {
+  protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
     PipeAgent.runtime().report(event, exception);
   }
 }
