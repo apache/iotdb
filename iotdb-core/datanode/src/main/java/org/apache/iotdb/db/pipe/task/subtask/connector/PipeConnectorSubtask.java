@@ -77,6 +77,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     this.attributeSortedString = attributeSortedString;
     this.connectorIndex = connectorIndex;
     this.inputPendingQueue = inputPendingQueue;
+
     if (!attributeSortedString.startsWith("schema_")) {
       PipeDataRegionConnectorMetrics.getInstance().register(this);
     } else {
@@ -112,11 +113,11 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       } else if (event instanceof TsFileInsertionEvent) {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
         PipeDataRegionConnectorMetrics.getInstance().markTsFileEvent(taskID);
-      } else if (event instanceof PipeHeartbeatEvent) {
-        transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else if (event instanceof PipeSchemaRegionWritePlanEvent) {
         outputPipeConnector.transfer(event);
         PipeSchemaRegionConnectorMetrics.getInstance().markSchemaEvent(taskID);
+      } else if (event instanceof PipeHeartbeatEvent) {
+        transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else {
         outputPipeConnector.transfer(
             event instanceof UserDefinedEnrichedEvent
@@ -181,6 +182,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     } else {
       PipeSchemaRegionConnectorMetrics.getInstance().deregister(taskID);
     }
+
     isClosed.set(true);
     try {
       outputPipeConnector.close();
@@ -246,13 +248,23 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   // result. However, this shall not cause any exceptions when concurrently read & written.
   public int getEventCount(final String pipeName) {
     final AtomicInteger count = new AtomicInteger(0);
-    inputPendingQueue.forEach(
-        event -> {
-          if (event instanceof EnrichedEvent
-              && pipeName.equals(((EnrichedEvent) event).getPipeName())) {
-            count.incrementAndGet();
-          }
-        });
+    try {
+      inputPendingQueue.forEach(
+          event -> {
+            if (event instanceof EnrichedEvent
+                && pipeName.equals(((EnrichedEvent) event).getPipeName())) {
+              count.incrementAndGet();
+            }
+          });
+    } catch (Exception e) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Exception occurred when counting event of pipe {}, root cause: {}",
+            pipeName,
+            ErrorHandlingUtils.getRootCause(e).getMessage(),
+            e);
+      }
+    }
     return count.get()
         + (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
             ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getRetryEventCount(pipeName)

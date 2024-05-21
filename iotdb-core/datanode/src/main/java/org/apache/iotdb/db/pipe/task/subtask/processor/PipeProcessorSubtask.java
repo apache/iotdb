@@ -83,6 +83,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
+
     // Only register dataRegions
     if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
       PipeProcessorMetrics.getInstance().register(this);
