@@ -70,7 +70,6 @@ public class IoTDBJDBCResultSet implements ResultSet {
   private String operationType = "";
   private List<String> columns = null;
   private List<String> sgColumns = null;
-  private ZoneId zoneId = ZoneId.systemDefault();
   private String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
@@ -91,7 +90,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
       List<String> columns,
       List<String> sgColumns,
       BitSet aliasColumnMap,
-      boolean moreData)
+      boolean moreData,
+      ZoneId zoneId)
       throws SQLException {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
@@ -137,7 +137,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
       List<ByteBuffer> dataSet,
       TSTracingInfo tracingInfo,
       long timeout,
-      boolean moreData)
+      boolean moreData,
+      ZoneId zoneId)
       throws SQLException {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
@@ -1274,9 +1275,5 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   public List<String> getSgColumns() {
     return sgColumns;
-  }
-
-  public void setZoneId(ZoneId zoneId) {
-    this.zoneId = zoneId;
   }
 }

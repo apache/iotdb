@@ -81,6 +81,7 @@ public class IoTDBJDBCDataSet {
   public byte[] currentBitmap; // used to cache the current bitmap for every column
   public static final int FLAG =
       0x80; // used to do `and` operation with bitmap to judge whether the value is null
+  public ZoneId zoneId;
 
   @SuppressWarnings({
     "squid:S3776",
@@ -99,7 +100,8 @@ public class IoTDBJDBCDataSet {
       long sessionId,
       TSQueryDataSet queryDataSet,
       int fetchSize,
-      long timeout) {
+      long timeout,
+      ZoneId zoneId) {
     this.sessionId = sessionId;
     this.statementId = statementId;
     this.ignoreTimeStamp = ignoreTimeStamp;
@@ -108,6 +110,7 @@ public class IoTDBJDBCDataSet {
     this.client = client;
     this.fetchSize = fetchSize;
     this.timeout = timeout;
+    this.zoneId = zoneId;
     columnSize = columnNameList.size();
 
     this.columnNameList = new ArrayList<>();
@@ -211,7 +214,8 @@ public class IoTDBJDBCDataSet {
       int fetchSize,
       long timeout,
       List<String> sgList,
-      BitSet aliasColumnMap) {
+      BitSet aliasColumnMap,
+      ZoneId zoneId) {
     this.sessionId = sessionId;
     this.statementId = statementId;
     this.ignoreTimeStamp = ignoreTimeStamp;
@@ -220,6 +224,7 @@ public class IoTDBJDBCDataSet {
     this.client = client;
     this.fetchSize = fetchSize;
     this.timeout = timeout;
+    this.zoneId = zoneId;
     columnSize = columnNameList.size();
 
     this.columnNameList = new ArrayList<>();
@@ -594,10 +599,7 @@ public class IoTDBJDBCDataSet {
         return BytesUtils.parseBlobByteArrayToString(values[index]);
       case TIMESTAMP:
         return RpcUtils.formatDatetime(
-            RpcUtils.DEFAULT_TIME_FORMAT,
-            "ms",
-            BytesUtils.bytesToLong(values[index]),
-            ZoneId.systemDefault());
+            RpcUtils.DEFAULT_TIME_FORMAT, "ms", BytesUtils.bytesToLong(values[index]), zoneId);
       case DATE:
         return DateUtils.formatDate(BytesUtils.bytesToInt(values[index]));
       default:
