@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.relational.sql.tree;
 
 public enum TableExpressionType {
-  LITERAL((short) 1);
+  SYMBOL_REFERENCE((short) 24),
+  COMPARISON((short) 15),
+  STRING_LITERAL((short) 23);
 
   TableExpressionType(short type) {
     this.type = type;

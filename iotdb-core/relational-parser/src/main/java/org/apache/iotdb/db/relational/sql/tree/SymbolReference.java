@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
@@ -62,5 +67,22 @@ public class SymbolReference extends Expression {
   @Override
   public int hashCode() {
     return Objects.hash(name);
+  }
+
+  // =============== serialize =================
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.SYMBOL_REFERENCE;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(this.name, stream);
+  }
+
+  public SymbolReference(ByteBuffer byteBuffer) {
+    super(null);
+    this.name = ReadWriteIOUtils.readString(byteBuffer);
   }
 }

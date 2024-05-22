@@ -46,12 +46,15 @@ public abstract class Expression extends Node {
   }
 
   public TableExpressionType getExpressionType() {
-    return null;
+    throw new UnsupportedOperationException(
+        "getExpressionType is not implemented yet: " + this.getClass().getSimpleName());
   }
 
+  // TODO make abstract later
   protected void serialize(ByteBuffer byteBuffer) {}
 
-  protected void serialize(DataOutputStream stream) {}
+  // TODO make abstract later
+  protected void serialize(DataOutputStream stream) throws IOException {}
 
   public static void serialize(Expression expression, ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(
@@ -70,8 +73,14 @@ public abstract class Expression extends Node {
 
     Expression expression;
     switch (type) {
-      case 0:
+      case 24:
+        expression = new SymbolReference(byteBuffer);
+        break;
+      case 15:
         expression = new ComparisonExpression(byteBuffer);
+        break;
+      case 23:
+        expression = new StringLiteral(byteBuffer);
         break;
       default:
         throw new IllegalArgumentException("Invalid expression type: " + type);
