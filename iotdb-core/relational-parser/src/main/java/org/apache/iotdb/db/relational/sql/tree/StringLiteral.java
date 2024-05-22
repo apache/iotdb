@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
@@ -78,5 +83,23 @@ public class StringLiteral extends Literal {
     }
 
     return Objects.equals(value, ((StringLiteral) other).value);
+  }
+
+  // =============== serialize =================
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.STRING_LITERAL;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(this.value, stream);
+    ReadWriteIOUtils.write(this.length, stream);
+  }
+
+  public StringLiteral(ByteBuffer byteBuffer) {
+    super(null);
+    this.value = ReadWriteIOUtils.readString(byteBuffer);
+    this.length = ReadWriteIOUtils.readInt(byteBuffer);
   }
 }

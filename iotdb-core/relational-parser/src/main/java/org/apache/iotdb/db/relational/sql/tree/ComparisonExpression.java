@@ -26,6 +26,7 @@ import com.google.common.collect.ImmutableList;
 import javax.annotation.Nonnull;
 
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -174,14 +175,22 @@ public class ComparisonExpression extends Expression {
   }
 
   // =============== serialize =================
-  protected void serialize(DataOutputStream stream) {
-    // stream.write();
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.COMPARISON;
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(operator.ordinal(), stream);
+    Expression.serialize(left, stream);
+    Expression.serialize(right, stream);
   }
 
   public ComparisonExpression(ByteBuffer byteBuffer) {
     super(null);
     operator = Operator.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-    left = null;
-    right = null;
+    left = Expression.deserialize(byteBuffer);
+    right = Expression.deserialize(byteBuffer);
   }
 }
