@@ -106,6 +106,10 @@ public class TableModelSchemaFetcher {
     // do nothing
   }
 
+  public void invalidateDeviceCache(String database, String tableName){
+    cache.invalidate(database, tableName);
+  }
+
   // This method return all the existing column schemas in the target table.
   // When table or column is missing, this method will execute auto creation.
   // When using SQL, the columnSchemaList could be null and there won't be any validation.

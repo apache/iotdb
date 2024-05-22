@@ -121,6 +121,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.TableModelSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -1456,10 +1458,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 ReadWriteIOUtils.readString(req.tableInfo));
         break;
       case INVALIDATE_CACHE:
+        database = ReadWriteIOUtils.readString(req.tableInfo);
+        tableName = ReadWriteIOUtils.readString(req.tableInfo);
         DataNodeTableCache.getInstance()
-            .invalidateTable(
-                ReadWriteIOUtils.readString(req.tableInfo),
-                ReadWriteIOUtils.readString(req.tableInfo));
+            .invalidateTable(database, tableName);
+        TableModelSchemaFetcher.getInstance().invalidateDeviceCache(database, tableName);
         break;
       case DELETE_DATA_IN_DATA_REGION:
         database = ReadWriteIOUtils.readString(req.tableInfo);
