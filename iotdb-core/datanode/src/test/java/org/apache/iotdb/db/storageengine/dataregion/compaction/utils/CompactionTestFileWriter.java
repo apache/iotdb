@@ -42,11 +42,11 @@ import java.util.Random;
 public class CompactionTestFileWriter implements Closeable {
 
   private TsFileResource resource;
-  private TsFileIOWriter fileWriter;
+  protected TsFileIOWriter fileWriter;
   private static final String SG_NAME = "root.testsg";
-  private IDeviceID currentDeviceId;
-  private long currentDeviceStartTime;
-  private long currentDeviceEndTime;
+  protected IDeviceID currentDeviceId;
+  protected long currentDeviceStartTime;
+  protected long currentDeviceEndTime;
 
   public CompactionTestFileWriter(TsFileResource emptyFile) throws IOException {
     this.resource = emptyFile;

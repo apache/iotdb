@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.IUnseqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.ReadPointPerformerSubTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
@@ -48,6 +49,7 @@ import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,6 +112,10 @@ public class ReadPointCompactionPerformer
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
       MultiTsFileDeviceIterator deviceIterator =
           new MultiTsFileDeviceIterator(seqFiles, unseqFiles);
+      List<Schema> schemas =
+          CompactionTableSchemaCollector.collectSchema(
+              seqFiles, unseqFiles, deviceIterator.getReaderMap());
+      compactionWriter.setSchemaForAllTargetFile(schemas);
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted();
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
@@ -127,6 +133,7 @@ public class ReadPointCompactionPerformer
         summary.setTemporalFileSize(compactionWriter.getWriterSize());
       }
 
+      compactionWriter.removeUnusedTableSchema();
       compactionWriter.endFile();
       CompactionUtils.updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
 

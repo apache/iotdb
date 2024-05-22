@@ -20,6 +20,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -211,7 +212,7 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
@@ -408,7 +409,7 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
@@ -823,7 +824,7 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
 
     // execute inner compaction for each seq file to produce file with empty value chunk

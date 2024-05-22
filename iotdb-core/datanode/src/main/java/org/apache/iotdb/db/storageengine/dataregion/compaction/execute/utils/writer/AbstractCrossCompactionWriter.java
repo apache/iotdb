@@ -89,6 +89,11 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   }
 
   @Override
+  protected List<CompactionTsFileWriter> getAllTargetFileWriter() {
+    return targetFileWriters;
+  }
+
+  @Override
   public void startChunkGroup(IDeviceID deviceId, boolean isAlign) throws IOException {
     this.deviceId = deviceId;
     this.isAlign = isAlign;

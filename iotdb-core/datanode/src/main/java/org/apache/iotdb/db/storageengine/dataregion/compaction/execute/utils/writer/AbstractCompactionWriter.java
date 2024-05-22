@@ -40,6 +40,7 @@ import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.Schema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -131,6 +132,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
    * @throws IOException if io errors occurred
    */
   public abstract void checkAndMayFlushChunkMetadata() throws IOException;
+
+  protected abstract List<CompactionTsFileWriter> getAllTargetFileWriter();
 
   protected void writeDataPoint(long timestamp, TsPrimitiveType value, IChunkWriter chunkWriter) {
     if (chunkWriter instanceof ChunkWriterImpl) {
@@ -314,6 +317,22 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
           deviceId.toString() + IoTDBConstant.PATH_SEPARATOR + measurementId[subTaskId],
           currentWritingTimestamp,
           lastTime[subTaskId]);
+    }
+  }
+
+  public void setSchemaForAllTargetFile(List<Schema> schemas) {
+    List<CompactionTsFileWriter> allTargetFileWriter = getAllTargetFileWriter();
+    for (int i = 0; i < allTargetFileWriter.size(); i++) {
+      Schema schema = schemas.get(i);
+      CompactionTsFileWriter writer = allTargetFileWriter.get(i);
+      writer.setSchema(schema);
+    }
+  }
+
+  public void removeUnusedTableSchema() {
+    List<CompactionTsFileWriter> allTargetFileWriter = getAllTargetFileWriter();
+    for (CompactionTsFileWriter writer : allTargetFileWriter) {
+      writer.removeUnusedTableSchema();
     }
   }
 }
