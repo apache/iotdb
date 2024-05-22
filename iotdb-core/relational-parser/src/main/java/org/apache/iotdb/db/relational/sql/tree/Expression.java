@@ -73,6 +73,18 @@ public abstract class Expression extends Node {
 
     Expression expression;
     switch (type) {
+      case 11:
+        expression = new BetweenPredicate(byteBuffer);
+        break;
+      case 12:
+        expression = new InPredicate(byteBuffer);
+        break;
+      case 13:
+        expression = new LogicalExpression(byteBuffer);
+        break;
+      case 14:
+        expression = new NotExpression(byteBuffer);
+        break;
       case 15:
         expression = new ComparisonExpression(byteBuffer);
         break;
