@@ -232,7 +232,7 @@ public class OpcUaConnector implements PipeConnector {
 
       // Source name --> Sensor path, like root.test.d_0.s_0
       eventNode.setSourceName(
-          tablet.deviceId
+          tablet.getDeviceId()
               + TsFileConstant.PATH_SEPARATOR
               + tablet.getSchemas().get(columnIndex).getMeasurementId());
 

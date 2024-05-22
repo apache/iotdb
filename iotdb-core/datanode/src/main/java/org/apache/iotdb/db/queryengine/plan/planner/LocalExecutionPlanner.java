@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -183,8 +183,8 @@ public class LocalExecutionPlanner {
     return estimatedMemorySize;
   }
 
-  private List<PartialPath> collectSourcePaths(LocalExecutionPlanContext context) {
-    List<PartialPath> sourcePaths = new ArrayList<>();
+  private List<IFullPath> collectSourcePaths(LocalExecutionPlanContext context) {
+    List<IFullPath> sourcePaths = new ArrayList<>();
     context
         .getPipelineDriverFactories()
         .forEach(

@@ -21,7 +21,8 @@ package org.apache.iotdb.db.queryengine.execution.operator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -44,8 +45,10 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import io.airlift.units.Duration;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.IntColumn;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -69,7 +72,7 @@ public class LimitOperatorTest {
 
   private static final String TIME_JOIN_OPERATOR_TEST_SG = "root.LimitOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
-  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
@@ -90,8 +93,10 @@ public class LimitOperatorTest {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
-      MeasurementPath measurementPath1 =
-          new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
+      IFullPath measurementPath1 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(TIME_JOIN_OPERATOR_TEST_SG + ".device0"),
+              new MeasurementSchema("sensor0", TSDataType.INT32));
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
       allSensors.add("sensor1");
@@ -125,8 +130,10 @@ public class LimitOperatorTest {
           .getOperatorContext()
           .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-      MeasurementPath measurementPath2 =
-          new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
+      IFullPath measurementPath2 =
+          new NonAlignedFullPath(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(TIME_JOIN_OPERATOR_TEST_SG + ".device0"),
+              new MeasurementSchema("sensor1", TSDataType.INT32));
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
               driverContext.getOperatorContexts().get(1),

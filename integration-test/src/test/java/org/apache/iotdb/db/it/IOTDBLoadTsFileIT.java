@@ -31,6 +31,7 @@ import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -134,10 +135,10 @@ public class IOTDBLoadTsFileIT {
     return sql;
   }
 
-  private String convert2AlignedSQL(String device, List<MeasurementSchema> schemas) {
+  private String convert2AlignedSQL(String device, List<IMeasurementSchema> schemas) {
     String sql = String.format("create aligned timeseries %s(", device);
     for (int i = 0; i < schemas.size(); i++) {
-      MeasurementSchema schema = schemas.get(i);
+      IMeasurementSchema schema = schemas.get(i);
       sql += (String.format("%s %s", schema.getMeasurementId(), schema.getType().name()));
       sql += (i == schemas.size() - 1 ? ")" : ",");
     }

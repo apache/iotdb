@@ -116,6 +116,7 @@ public class TsFileAndModSettleToolTest {
         tsFileAndModSettleTool.settleOneTsFileAndMod(oldResource, settledResources);
       }
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail(e.getMessage());
     }
   }

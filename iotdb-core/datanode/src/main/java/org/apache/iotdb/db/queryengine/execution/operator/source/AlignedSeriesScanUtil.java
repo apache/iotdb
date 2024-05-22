@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -51,7 +50,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   private final boolean queryAllSensors;
 
   public AlignedSeriesScanUtil(
-      PartialPath seriesPath,
+      AlignedFullPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context) {
@@ -59,7 +58,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   }
 
   public AlignedSeriesScanUtil(
-      PartialPath seriesPath,
+      AlignedFullPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context,
@@ -70,10 +69,9 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     this.dataTypes =
         givenDataTypes != null
             ? givenDataTypes
-            : ((AlignedPath) seriesPath)
-                .getSchemaList().stream()
-                    .map(IMeasurementSchema::getType)
-                    .collect(Collectors.toList());
+            : seriesPath.getSchemaList().stream()
+                .map(IMeasurementSchema::getType)
+                .collect(Collectors.toList());
     this.queryAllSensors = queryAllSensors;
   }
 
@@ -91,7 +89,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   protected AlignedTimeSeriesMetadata loadTimeSeriesMetadata(TsFileResource resource, boolean isSeq)
       throws IOException {
     return FileLoaderUtils.loadAlignedTimeSeriesMetadata(
-        resource, (AlignedPath) seriesPath, context, scanOptions.getGlobalTimeFilter(), isSeq);
+        resource, (AlignedFullPath) seriesPath, context, scanOptions.getGlobalTimeFilter(), isSeq);
   }
 
   @Override

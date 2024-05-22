@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
@@ -37,6 +36,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
@@ -353,7 +353,7 @@ public class TableScanOperator extends AbstractDataSourceOperator {
   }
 
   private AlignedSeriesScanUtil constructAlignedSeriesScanUtil(DeviceEntry deviceEntry) {
-    AlignedPath alignedPath =
+    AlignedFullPath alignedPath =
         constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas);
 
     return new AlignedSeriesScanUtil(
@@ -365,7 +365,7 @@ public class TableScanOperator extends AbstractDataSourceOperator {
         measurementColumnTSDataTypes);
   }
 
-  public static AlignedPath constructAlignedPath(
+  public static AlignedFullPath constructAlignedPath(
       DeviceEntry deviceEntry,
       List<String> measurementColumnNames,
       List<IMeasurementSchema> measurementSchemas) {
@@ -374,10 +374,10 @@ public class TableScanOperator extends AbstractDataSourceOperator {
     for (int i = 1; i < devicePath.length; i++) {
       devicePath[i] = (String) deviceEntry.getDeviceID().segment(i - 1);
     }
-    AlignedPath alignedPath = new AlignedPath(new PartialPath(devicePath));
 
-    alignedPath.setMeasurementList(measurementColumnNames);
-    alignedPath.setSchemaList(measurementSchemas);
-    return alignedPath;
+    return new AlignedFullPath(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(devicePath),
+        measurementColumnNames,
+        measurementSchemas);
   }
 }

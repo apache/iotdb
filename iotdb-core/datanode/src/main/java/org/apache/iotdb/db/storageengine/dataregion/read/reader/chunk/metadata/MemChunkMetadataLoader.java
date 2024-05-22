@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
@@ -39,7 +39,7 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOA
 public class MemChunkMetadataLoader implements IChunkMetadataLoader {
 
   private final TsFileResource resource;
-  private final PartialPath seriesPath;
+  private final NonAlignedFullPath seriesPath;
   private final QueryContext context;
   private final Filter globalTimeFilter;
 
@@ -48,7 +48,7 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
 
   public MemChunkMetadataLoader(
       TsFileResource resource,
-      PartialPath seriesPath,
+      NonAlignedFullPath seriesPath,
       QueryContext context,
       Filter globalTimeFilter) {
     this.resource = resource;

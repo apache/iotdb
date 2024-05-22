@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -113,7 +114,7 @@ public interface IMemTable extends WALEntryValue {
 
   ReadOnlyMemChunk query(
       QueryContext context,
-      PartialPath fullPath,
+      IFullPath fullPath,
       long ttlLowerBound,
       List<Pair<Modification, IMemTable>> modsToMemtabled)
       throws IOException, QueryProcessException, MetadataException;
