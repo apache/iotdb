@@ -196,7 +196,10 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                 pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
 
         transfer(
-            Objects.nonNull(insertNode) ? insertNode.getDevicePath().getFullPath() : null,
+            // insertNode.getDevicePath() is null for InsertRowsNode
+            Objects.nonNull(insertNode) && Objects.nonNull(insertNode.getDevicePath())
+                ? insertNode.getDevicePath().getFullPath()
+                : null,
             pipeTransferInsertNodeReqHandler);
       } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
         final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =

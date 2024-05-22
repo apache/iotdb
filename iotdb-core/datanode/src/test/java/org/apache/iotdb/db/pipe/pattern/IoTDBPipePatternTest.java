@@ -30,48 +30,48 @@ public class IoTDBPipePatternTest {
   @Test
   public void testIotdbPipePattern() {
     // Test legal and illegal pattern
-    String[] legalPatterns = {
+    final String[] legalPatterns = {
       "root", "root.db", "root.db.d1.s", "root.db.`1`", "root.*.d.*s.s",
     };
-    String[] illegalPatterns = {
+    final String[] illegalPatterns = {
       "root.", "roo", "", "root..", "root./",
     };
-    for (String s : legalPatterns) {
+    for (final String s : legalPatterns) {
       Assert.assertTrue(new IoTDBPipePattern(s).isLegal());
     }
-    for (String t : illegalPatterns) {
+    for (final String t : illegalPatterns) {
       try {
         Assert.assertFalse(new IoTDBPipePattern(t).isLegal());
-      } catch (Exception e) {
+      } catch (final Exception e) {
         Assert.assertTrue(e instanceof PipeException);
       }
     }
 
     // Test pattern cover db
-    String db = "root.db";
-    String[] patternsCoverDb = {
+    final String db = "root.db";
+    final String[] patternsCoverDb = {
       "root.**", "root.db.**", "root.*db*.**",
     };
-    String[] patternsNotCoverDb = {
+    final String[] patternsNotCoverDb = {
       "root.db", "root.*", "root.*.*", "root.db.*.**", "root.db.d1", "root.**.db.**",
     };
-    for (String s : patternsCoverDb) {
+    for (final String s : patternsCoverDb) {
       Assert.assertTrue(new IoTDBPipePattern(s).coversDb(db));
     }
-    for (String t : patternsNotCoverDb) {
+    for (final String t : patternsNotCoverDb) {
       Assert.assertFalse(new IoTDBPipePattern(t).coversDb(db));
     }
 
-    String device = "root.db.d1";
+    final String device = "root.db.d1";
 
     // Test pattern cover device
-    String[] patternsCoverDevice = {
+    final String[] patternsCoverDevice = {
       "root.**", "root.db.**", "root.*.*.*", "root.db.d1.*", "root.*db*.*d*.*", "root.**.*1.*",
     };
-    String[] patternsNotCoverDevice = {
+    final String[] patternsNotCoverDevice = {
       "root.*", "root.*.*", "root.db.d1", "root.db.d2.*", "root.**.d2.**",
     };
-    for (String s : patternsCoverDevice) {
+    for (final String s : patternsCoverDevice) {
       Assert.assertTrue(new IoTDBPipePattern(s).coversDevice(device));
     }
     for (String t : patternsNotCoverDevice) {
@@ -79,31 +79,31 @@ public class IoTDBPipePatternTest {
     }
 
     // Test pattern may overlap with device
-    String[] patternsOverlapWithDevice = {
+    final String[] patternsOverlapWithDevice = {
       "root.db.**", "root.db.d1", "root.db.d1.*", "root.db.d1.s1", "root.**.d2.**", "root.*.d*.**",
     };
-    String[] patternsNotOverlapWithDevice = {
+    final String[] patternsNotOverlapWithDevice = {
       "root.db.d2.**", "root.db2.d1.**", "root.db.db.d1.**",
     };
-    for (String s : patternsOverlapWithDevice) {
+    for (final String s : patternsOverlapWithDevice) {
       Assert.assertTrue(new IoTDBPipePattern(s).mayOverlapWithDevice(device));
     }
-    for (String t : patternsNotOverlapWithDevice) {
+    for (final String t : patternsNotOverlapWithDevice) {
       Assert.assertFalse(new IoTDBPipePattern(t).mayOverlapWithDevice(device));
     }
 
     // Test pattern match measurement
-    String measurement = "s1";
-    String[] patternsMatchMeasurement = {
+    final String measurement = "s1";
+    final String[] patternsMatchMeasurement = {
       "root.db.d1.s1", "root.db.d1.*",
     };
-    String[] patternsNotMatchMeasurement = {
+    final String[] patternsNotMatchMeasurement = {
       "root.db.d1", "root.db.d1", "root.db.d1.*.*",
     };
-    for (String s : patternsMatchMeasurement) {
+    for (final String s : patternsMatchMeasurement) {
       Assert.assertTrue(new IoTDBPipePattern(s).matchesMeasurement(device, measurement));
     }
-    for (String t : patternsNotMatchMeasurement) {
+    for (final String t : patternsNotMatchMeasurement) {
       Assert.assertFalse(new IoTDBPipePattern(t).matchesMeasurement(device, measurement));
     }
   }

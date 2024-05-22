@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.consensus.request.auth;
 
-import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -51,7 +50,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
   private String userName;
   private boolean grantOpt;
 
-  public AuthorPlan(ConfigPhysicalPlanType type) {
+  public AuthorPlan(final ConfigPhysicalPlanType type) {
     super(type);
     authorType = type;
   }
@@ -67,18 +66,16 @@ public class AuthorPlan extends ConfigPhysicalPlan {
    * @param permissions permissions
    * @param grantOpt with grant option, only grant statement can set grantOpt = true
    * @param nodeNameList node name in Path structure
-   * @throws AuthException Authentication Exception
    */
   public AuthorPlan(
-      ConfigPhysicalPlanType authorType,
-      String userName,
-      String roleName,
-      String password,
-      String newPassword,
-      Set<Integer> permissions,
-      boolean grantOpt,
-      List<PartialPath> nodeNameList)
-      throws AuthException {
+      final ConfigPhysicalPlanType authorType,
+      final String userName,
+      final String roleName,
+      final String password,
+      final String newPassword,
+      final Set<Integer> permissions,
+      final boolean grantOpt,
+      final List<PartialPath> nodeNameList) {
     this(authorType);
     this.authorType = authorType;
     this.userName = userName;

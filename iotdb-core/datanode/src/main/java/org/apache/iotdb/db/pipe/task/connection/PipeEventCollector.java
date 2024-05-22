@@ -21,12 +21,15 @@ package org.apache.iotdb.db.pipe.task.connection;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -67,6 +70,8 @@ public class PipeEventCollector implements EventCollector {
         parseAndCollectEvent((PipeRawTabletInsertionEvent) event);
       } else if (event instanceof PipeTsFileInsertionEvent) {
         parseAndCollectEvent((PipeTsFileInsertionEvent) event);
+      } else if (event instanceof PipeSchemaRegionWritePlanEvent) {
+        parseAndCollectEvent((PipeSchemaRegionWritePlanEvent) event);
       } else if (!(event instanceof ProgressReportEvent)) {
         collectEvent(event);
       }
@@ -119,6 +124,20 @@ public class PipeEventCollector implements EventCollector {
     } finally {
       sourceEvent.close();
     }
+  }
+
+  private void parseAndCollectEvent(final PipeSchemaRegionWritePlanEvent deleteDataEvent) {
+    IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        .process(deleteDataEvent.getPlanNode(), (IoTDBPipePattern) deleteDataEvent.getPipePattern())
+        .map(
+            planNode ->
+                new PipeSchemaRegionWritePlanEvent(
+                    planNode,
+                    deleteDataEvent.getPipeName(),
+                    deleteDataEvent.getPipeTaskMeta(),
+                    deleteDataEvent.getPipePattern(),
+                    deleteDataEvent.isGeneratedByPipe()))
+        .ifPresent(this::collectEvent);
   }
 
   private void collectEvent(final Event event) {
