@@ -114,7 +114,8 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
     } else if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final InsertNode insertNode =
           ((PipeInsertNodeTabletInsertionEvent) event).getInsertNodeViaCacheIfPossible();
-      if (Objects.nonNull(insertNode)) {
+      // insertNode.getDevicePath() is null for InsertRowsNode
+      if (Objects.nonNull(insertNode) && Objects.nonNull(insertNode.getDevicePath())) {
         deviceId = insertNode.getDevicePath().getFullPath();
       }
     }
