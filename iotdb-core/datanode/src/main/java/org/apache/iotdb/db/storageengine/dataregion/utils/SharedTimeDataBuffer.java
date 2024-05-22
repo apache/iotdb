@@ -60,7 +60,7 @@ public class SharedTimeDataBuffer {
     timeBuffer = timeChunk.getData();
   }
 
-  public synchronized long[] getPageTime(int pageId) throws IOException {
+  public long[] getPageTime(int pageId) throws IOException {
     int size = timeData.size();
     if (pageId < size) {
       return timeData.get(pageId);

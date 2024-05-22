@@ -19,7 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.model;
 
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.DiskChunkHandleImpl;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
+
+import java.io.Serializable;
 
 public class ChunkOffset extends AbstractChunkOffset {
 
@@ -32,5 +38,11 @@ public class ChunkOffset extends AbstractChunkOffset {
 
   public String getMeasurement() {
     return measurement;
+  }
+
+  @Override
+  public IChunkHandle generateChunkHandle(
+      String filePath, Statistics<? extends Serializable> statistics) {
+    return new DiskChunkHandleImpl(filePath, true, getOffSet(), statistics);
   }
 }

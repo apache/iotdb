@@ -148,7 +148,7 @@ public abstract class DoubleTVList extends TVList {
       int floatPrecision,
       TSEncoding encoding,
       List<TimeRange> deletionList) {
-    Integer deleteCursor = 0;
+    int[] deleteCursor = {0};
     for (int i = 0; i < rowCount; i++) {
       if (!isPointDeleted(getTime(i), deletionList, deleteCursor)
           && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {

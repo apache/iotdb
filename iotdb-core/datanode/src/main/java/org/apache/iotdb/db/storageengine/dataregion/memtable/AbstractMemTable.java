@@ -761,7 +761,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
 
     long lastTime = -1;
-    Integer deletionCursor = 0;
+    int[] deletionCursor = {0};
     int rowCount = tvList.rowCount();
     List<Long> result = new ArrayList<>();
 

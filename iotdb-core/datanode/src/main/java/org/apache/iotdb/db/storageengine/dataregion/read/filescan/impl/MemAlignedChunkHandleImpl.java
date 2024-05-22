@@ -56,7 +56,7 @@ public class MemAlignedChunkHandleImpl extends MemChunkHandleImpl {
   @Override
   public long[] getDataTime() throws IOException {
     List<Long> timeList = new ArrayList<>();
-    Integer deletionCursor = 0;
+    int[] deletionCursor = {0};
     for (int i = 0; i < dataOfTimestamp.length; i++) {
       int arrayIndex = i / ARRAY_SIZE;
       int elementIndex = i % ARRAY_SIZE;

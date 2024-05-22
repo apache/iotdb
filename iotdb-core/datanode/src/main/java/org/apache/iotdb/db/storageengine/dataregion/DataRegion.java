@@ -2041,7 +2041,6 @@ public class DataRegion implements IDataRegionForQuery {
       closeQueryLock.readLock().lock();
       try {
         if (tsFileResource.isClosed()) {
-          // Get all the modification in current device
           fileScanHandles.add(new ClosedFileScanHandleImpl(tsFileResource, context));
         } else {
           tsFileResource

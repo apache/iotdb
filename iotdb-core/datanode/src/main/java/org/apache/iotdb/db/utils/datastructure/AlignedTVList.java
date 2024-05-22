@@ -940,7 +940,7 @@ public abstract class AlignedTVList extends TVList {
 
     // value columns
     for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
-      int deleteCursor = 0;
+      int[] deleteCursor = {0};
       // Pair of Time and Index
       Pair<Long, Integer> lastValidPointIndexForTimeDupCheck = null;
       if (Objects.nonNull(timeDuplicateInfo)) {

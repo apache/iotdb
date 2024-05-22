@@ -146,23 +146,30 @@ public class ModificationUtils {
         });
   }
 
-  public static boolean isPointDeleted(long timestamp, List<TimeRange> deletionList) {
-    Integer deleteCursor = 0;
-    return isPointDeleted(timestamp, deletionList, deleteCursor);
-  }
 
+  // Check whether the timestamp is deleted in deletionList
+  // Timestamp and deletionList need to be ordered, and deleteCursor is array whose size is 1 stands
+  // for the index of the deletionList
   public static boolean isPointDeleted(
-      long timestamp, List<TimeRange> deletionList, Integer deleteCursor) {
-    while (deletionList != null && deleteCursor < deletionList.size()) {
-      if (deletionList.get(deleteCursor).contains(timestamp)) {
+      long timestamp, List<TimeRange> deletionList, int[] deleteCursor) {
+    if (deleteCursor.length != 1) {
+      throw new IllegalArgumentException("deleteCursor should be an array whose size is 1");
+    }
+    while (deletionList != null && deleteCursor[0] < deletionList.size()) {
+      if (deletionList.get(deleteCursor[0]).contains(timestamp)) {
         return true;
-      } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
-        deleteCursor++;
+      } else if (deletionList.get(deleteCursor[0]).getMax() < timestamp) {
+        deleteCursor[0]++;
       } else {
         return false;
       }
     }
     return false;
+  }
+
+  public static boolean isPointDeleted(long timestamp, List<TimeRange> deletionList) {
+    int[] deleteCursor = {0};
+    return isPointDeleted(timestamp, deletionList, deleteCursor);
   }
 
   private static void doModifyChunkMetaData(Modification modification, IChunkMetadata metaData) {

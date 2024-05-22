@@ -28,9 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
-import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AlignedChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AlignedDeviceChunkMetaData;
-import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.ChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.DeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
@@ -91,7 +89,7 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
             .map(Deletion::getTimeRange)
             .collect(Collectors.toList());
 
-    Integer deleteCursor = 0;
+    int[] deleteCursor = {0};
     for (int i = 0; i < timeArray.length; i++) {
       result[i] = ModificationUtils.isPointDeleted(timeArray[i], timeRangeList, deleteCursor);
     }
@@ -100,7 +98,7 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
 
   private boolean[] calculateBooleanArray(List<TimeRange> timeRangeList, long[] timeArray) {
     boolean[] result = new boolean[timeArray.length];
-    Integer deleteCursor = 0;
+    int[] deleteCursor = {0};
     for (int i = 0; i < timeArray.length; i++) {
       result[i] = ModificationUtils.isPointDeleted(timeArray[i], timeRangeList, deleteCursor);
     }
@@ -187,16 +185,7 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
     List<IChunkHandle> chunkHandleList = new ArrayList<>();
     for (int i = 0; i < chunkInfoList.size(); i++) {
       AbstractChunkOffset chunkOffset = chunkInfoList.get(i);
-      chunkHandleList.add(
-          chunkOffset instanceof ChunkOffset
-              ? new DiskChunkHandleImpl(
-                  filePath, true, chunkOffset.getOffSet(), statisticsList.get(i))
-              : new DiskAlignedChunkHandleImpl(
-                  filePath,
-                  true,
-                  chunkOffset.getOffSet(),
-                  statisticsList.get(i),
-                  ((AlignedChunkOffset) chunkOffset).getSharedTimeDataBuffer()));
+      chunkHandleList.add(chunkOffset.generateChunkHandle(filePath, statisticsList.get(i)));
     }
     return chunkHandleList.iterator();
   }

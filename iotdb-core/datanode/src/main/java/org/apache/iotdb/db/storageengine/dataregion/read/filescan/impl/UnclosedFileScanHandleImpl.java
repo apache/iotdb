@@ -43,7 +43,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.IntStream;
 
 public class UnclosedFileScanHandleImpl implements IFileScanHandle {
 
@@ -79,16 +78,14 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
         .filter(deleteIntervalList -> !deleteIntervalList.isEmpty())
         .forEach(
             timeRangeList -> {
-              Integer deleteCursor = 0;
-              IntStream.range(0, timeArray.length)
-                  .forEach(
-                      i -> {
-                        if (!result[i]
-                            && ModificationUtils.isPointDeleted(
-                                timeArray[i], timeRangeList, deleteCursor)) {
-                          result[i] = true;
-                        }
-                      });
+              int[] deleteCursor = {0};
+              for (int i = 0; i < timeArray.length; i++) {
+                if (!result[i]
+                    && ModificationUtils.isPointDeleted(
+                        timeArray[i], timeRangeList, deleteCursor)) {
+                  result[i] = true;
+                }
+              }
             });
     return result;
   }
@@ -139,16 +136,14 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
         .filter(deleteIntervalList -> !deleteIntervalList.isEmpty())
         .forEach(
             timeRangeList -> {
-              Integer deleteCursor = 0;
-              IntStream.range(0, timeArray.length)
-                  .forEach(
-                      i -> {
-                        if (!result[i]
-                            && ModificationUtils.isPointDeleted(
-                                timeArray[i], timeRangeList, deleteCursor)) {
-                          result[i] = true;
-                        }
-                      });
+              int[] deleteCursor = {0};
+              for (int i = 0; i < timeArray.length; i++) {
+                if (!result[i]
+                    && ModificationUtils.isPointDeleted(
+                        timeArray[i], timeRangeList, deleteCursor)) {
+                  result[i] = true;
+                }
+              }
             });
     return result;
   }
