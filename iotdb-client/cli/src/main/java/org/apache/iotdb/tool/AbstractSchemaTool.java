@@ -80,6 +80,7 @@ public abstract class AbstractSchemaTool {
   protected static String aligned;
   protected static Session session;
 
+  protected static final String systemPathPrefix = "root.__system";
   protected static final List<String> headColumns =
       Arrays.asList("Timeseries", "Alias", "DataType", "Encoding", "Compression");
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
@@ -220,8 +221,8 @@ public abstract class AbstractSchemaTool {
       while (var2.hasNext()) {
         Object value = var2.next();
         csvPrinter.print(value);
-        csvPrinter.println();
       }
+      csvPrinter.println();
     }
 
     public void print(Object value) {

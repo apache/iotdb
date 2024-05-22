@@ -280,7 +280,7 @@ public class ImportSchema extends AbstractSchemaTool {
         List<String> headerNames = csvRecords.getHeaderNames();
         Stream<CSVRecord> records = csvRecords.stream();
         if (headerNames.isEmpty()) {
-          ioTPrinter.println("Empty file!");
+          ioTPrinter.println(file.getName() + " : Empty file!");
           return;
         }
         if (!checkHeader(headerNames)) {
@@ -294,7 +294,8 @@ public class ImportSchema extends AbstractSchemaTool {
         }
         writeScheme(file.getName(), headerNames, records, failedFilePath);
       } catch (IOException | IllegalPathException e) {
-        ioTPrinter.println("CSV file read exception because: " + e.getMessage());
+        ioTPrinter.println(
+            file.getName() + " : CSV file read exception because: " + e.getMessage());
       }
     } else {
       ioTPrinter.println(file.getName() + " : The file name must end with \"csv\"!");
@@ -364,31 +365,32 @@ public class ImportSchema extends AbstractSchemaTool {
           TSEncoding encodingType = encodingInfer(encodingTypeRaw);
           String compressionTypeRaw = recordObj.get(headerNames.indexOf(headColumns.get(4)));
           CompressionType compressionType = compressInfer(compressionTypeRaw);
-          if (StringUtils.isBlank(path)
-              || dataType == null
-              || encodingType == null
-              || compressionType == null) {
-            ioTPrinter.printf(
-                "Line '%s', column '%s': unknown path",
-                recordObj.getRecordNumber(), headerNames, path);
+          if (StringUtils.isBlank(path) || path.trim().startsWith(systemPathPrefix)) {
+            ioTPrinter.println(
+                String.format(
+                    "Line '%s', column '%s': illegal path %s",
+                    recordObj.getRecordNumber(), headerNames, path));
             failedRecords.add(recordObj.stream().collect(Collectors.toList()));
             failed = true;
           } else if (ObjectUtils.isEmpty(dataType)) {
-            ioTPrinter.printf(
-                "Line '%s', column '%s': '%s' unknown dataType %n",
-                recordObj.getRecordNumber(), path, dataTypeRaw);
+            ioTPrinter.println(
+                String.format(
+                    "Line '%s', column '%s': '%s' unknown dataType %n",
+                    recordObj.getRecordNumber(), path, dataTypeRaw));
             failedRecords.add(recordObj.stream().collect(Collectors.toList()));
             failed = true;
           } else if (ObjectUtils.isEmpty(encodingType)) {
-            ioTPrinter.printf(
-                "Line '%s', column '%s': '%s' unknown encodingType %n",
-                recordObj.getRecordNumber(), path, encodingTypeRaw);
+            ioTPrinter.println(
+                String.format(
+                    "Line '%s', column '%s': '%s' unknown encodingType %n",
+                    recordObj.getRecordNumber(), path, encodingTypeRaw));
             failedRecords.add(recordObj.stream().collect(Collectors.toList()));
             failed = true;
           } else if (ObjectUtils.isEmpty(compressionType)) {
-            ioTPrinter.printf(
-                "Line '%s', column '%s': '%s' unknown compressionType %n",
-                recordObj.getRecordNumber(), path, compressionTypeRaw);
+            ioTPrinter.println(
+                String.format(
+                    "Line '%s', column '%s': '%s' unknown compressionType %n",
+                    recordObj.getRecordNumber(), path, compressionTypeRaw));
             failedRecords.add(recordObj.stream().collect(Collectors.toList()));
             failed = true;
           } else {

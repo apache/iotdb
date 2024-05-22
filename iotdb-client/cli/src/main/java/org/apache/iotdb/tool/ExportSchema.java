@@ -76,7 +76,6 @@ public class ExportSchema extends AbstractSchemaTool {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
-  private static final String systemPathPrefix = "root.__system";
   private static final String baseViewType = "BASE";
   private static final String headerViewType = "ViewType";
   private static final String headerTimeseries = "Timeseries";
