@@ -57,6 +57,10 @@ public class SortNode extends SingleChildProcessNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
 
+  public static SortNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
   @Override
   public List<Symbol> getOutputSymbols() {
     return child.getOutputSymbols();

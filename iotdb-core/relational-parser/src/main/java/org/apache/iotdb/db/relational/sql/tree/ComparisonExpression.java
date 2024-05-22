@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nonnull;
 
+import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
@@ -167,5 +171,17 @@ public class ComparisonExpression extends Expression {
     }
 
     return operator == ((ComparisonExpression) other).operator;
+  }
+
+  // =============== serialize =================
+  protected void serialize(DataOutputStream stream) {
+    // stream.write();
+  }
+
+  public ComparisonExpression(ByteBuffer byteBuffer) {
+    super(null);
+    operator = Operator.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    left = null;
+    right = null;
   }
 }

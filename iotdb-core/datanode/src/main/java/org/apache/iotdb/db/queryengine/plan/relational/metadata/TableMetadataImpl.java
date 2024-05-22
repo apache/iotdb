@@ -114,11 +114,11 @@ public class TableMetadataImpl implements Metadata {
               && isNumericType(argumentTypes.get(0))
               && BOOLEAN.equals(argumentTypes.get(0)))) {
         throw new SemanticException(
-            "Scalar function"
+            "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only supports one numeric data types [INT32, INT64, FLOAT, DOUBLE] and one boolean");
       }
-
+      return argumentTypes.get(0);
     } else if (BuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isOneNumericType(argumentTypes) && !isTwoNumericType(argumentTypes)) {
         throw new SemanticException(
@@ -129,9 +129,9 @@ public class TableMetadataImpl implements Metadata {
       return DOUBLE;
     } else if (BuiltinScalarFunction.REPLACE.getFunctionName().equalsIgnoreCase(functionName)) {
 
-      if (!isTwoTextType(argumentTypes) && isThreeTextType(argumentTypes)) {
+      if (!isTwoTextType(argumentTypes) && !isThreeTextType(argumentTypes)) {
         throw new SemanticException(
-            "Scalar function"
+            "Scalar function: "
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only supports text data type.");
       }

@@ -21,12 +21,12 @@ import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.relational.sql.tree.FunctionCall;
 import org.apache.iotdb.db.relational.sql.tree.Identifier;
 import org.apache.iotdb.db.relational.sql.tree.IfExpression;
+import org.apache.iotdb.db.relational.sql.tree.InListExpression;
 import org.apache.iotdb.db.relational.sql.tree.InPredicate;
 import org.apache.iotdb.db.relational.sql.tree.IsNullPredicate;
 import org.apache.iotdb.db.relational.sql.tree.LikePredicate;
 import org.apache.iotdb.db.relational.sql.tree.Literal;
 import org.apache.iotdb.db.relational.sql.tree.LogicalExpression;
-import org.apache.iotdb.db.relational.sql.tree.NotExpression;
 import org.apache.iotdb.db.relational.sql.tree.NullIfExpression;
 import org.apache.iotdb.db.relational.sql.tree.SearchedCaseExpression;
 import org.apache.iotdb.db.relational.sql.tree.SimpleCaseExpression;
@@ -110,6 +110,13 @@ public class ExpressionTranslateVisitor extends RewritingVisitor<PlanBuilder> {
   }
 
   @Override
+  protected Expression visitInListExpression(InListExpression node, PlanBuilder context) {
+    List<Expression> newValues =
+        node.getValues().stream().map(this::process).collect(Collectors.toList());
+    return new InListExpression(newValues);
+  }
+
+  @Override
   protected Expression visitLikePredicate(LikePredicate node, PlanBuilder context) {
     return new LikePredicate(
         process(node.getValue(), context),
@@ -118,11 +125,6 @@ public class ExpressionTranslateVisitor extends RewritingVisitor<PlanBuilder> {
   }
 
   // ============================ not implemented =======================================
-
-  @Override
-  protected Expression visitNotExpression(NotExpression node, PlanBuilder context) {
-    throw new IllegalStateException(String.format(NOT_SUPPORTED, node.getClass().getName()));
-  }
 
   @Override
   protected Expression visitSimpleCaseExpression(SimpleCaseExpression node, PlanBuilder context) {
