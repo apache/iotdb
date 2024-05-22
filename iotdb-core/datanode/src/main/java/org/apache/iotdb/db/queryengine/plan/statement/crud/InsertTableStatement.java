@@ -35,6 +35,7 @@ import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.relational.sql.tree.Identifier;
 import org.apache.iotdb.db.relational.sql.tree.Insert;
 import org.apache.iotdb.db.relational.sql.tree.LongLiteral;
+import org.apache.iotdb.db.relational.sql.tree.NullLiteral;
 import org.apache.iotdb.db.relational.sql.tree.Row;
 import org.apache.iotdb.db.relational.sql.tree.Values;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -121,11 +122,17 @@ public class InsertTableStatement extends Statement implements ITableDeviceSchem
           hasColumn
               ? columnNameList.get(i).getValue()
               : table.getColumnList().get(i).getColumnName();
+      if (columnName.equalsIgnoreCase("time")){
+        columnName = "Time";
+      }
       TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
       if (columnSchema == null) {
         throw new SemanticException(String.format("Unknown Column %s", columnName));
       }
       TsTableColumnCategory category = table.getColumnSchema(columnName).getColumnCategory();
+      if (values.get(i) instanceof NullLiteral){
+        continue;
+      }
       if (category.equals(TsTableColumnCategory.ID)) {
         idColumnMap.put(columnName, ((Identifier) values.get(i)).getValue());
       } else if (category.equals(TsTableColumnCategory.ATTRIBUTE)) {
