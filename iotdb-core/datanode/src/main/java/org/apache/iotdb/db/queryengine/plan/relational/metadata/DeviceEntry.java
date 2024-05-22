@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class DeviceEntry {
 
@@ -71,6 +72,19 @@ public class DeviceEntry {
       attributeColumnValues.add(ReadWriteIOUtils.readString(byteBuffer));
     }
     return new DeviceEntry(iDeviceID, attributeColumnValues);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (!(o instanceof DeviceEntry)) return false;
+    DeviceEntry that = (DeviceEntry) o;
+    return Objects.equals(deviceID, that.deviceID) && Objects.equals(attributeColumnValues, that.attributeColumnValues);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(deviceID, attributeColumnValues);
   }
 
   @Override
