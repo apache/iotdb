@@ -146,7 +146,6 @@ public class ModificationUtils {
         });
   }
 
-
   // Check whether the timestamp is deleted in deletionList
   // Timestamp and deletionList need to be ordered, and deleteCursor is array whose size is 1 stands
   // for the index of the deletionList
