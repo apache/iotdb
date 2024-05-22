@@ -91,19 +91,47 @@ public abstract class Expression extends Node {
       case 6:
         expression = new IsNullPredicate(byteBuffer);
         break;
-      case 7:
-      case 8:
-      case 9:
-      case 10:
+      case 11:
+        expression = new BetweenPredicate(byteBuffer);
         break;
-      case 24:
-        expression = new SymbolReference(byteBuffer);
+      case 12:
+        expression = new InPredicate(byteBuffer);
+        break;
+      case 13:
+        expression = new LogicalExpression(byteBuffer);
+        break;
+      case 14:
+        expression = new NotExpression(byteBuffer);
         break;
       case 15:
         expression = new ComparisonExpression(byteBuffer);
         break;
+      case 16:
+        expression = new BinaryLiteral(byteBuffer);
+        break;
+      case 17:
+        expression = new BooleanLiteral(byteBuffer);
+        break;
+      case 18:
+        expression = new DecimalLiteral(byteBuffer);
+        break;
+      case 19:
+        expression = new DoubleLiteral(byteBuffer);
+        break;
+      case 20:
+        expression = new GenericLiteral(byteBuffer);
+        break;
+      case 21:
+        expression = new LongLiteral(byteBuffer);
+        break;
+      case 22:
+        expression = new NullLiteral(byteBuffer);
+        break;
       case 23:
         expression = new StringLiteral(byteBuffer);
+        break;
+      case 24:
+        expression = new SymbolReference(byteBuffer);
         break;
       default:
         throw new IllegalArgumentException("Invalid expression type: " + type);

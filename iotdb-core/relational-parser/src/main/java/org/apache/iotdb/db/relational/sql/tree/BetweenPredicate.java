@@ -23,6 +23,9 @@ import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nonnull;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
@@ -102,5 +105,24 @@ public final class BetweenPredicate extends Expression {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.BETWEEN;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    Expression.serialize(value, stream);
+    Expression.serialize(min, stream);
+    Expression.serialize(max, stream);
+  }
+
+  public BetweenPredicate(ByteBuffer byteBuffer) {
+    super(null);
+    this.value = Expression.deserialize(byteBuffer);
+    this.min = Expression.deserialize(byteBuffer);
+    this.max = Expression.deserialize(byteBuffer);
   }
 }
