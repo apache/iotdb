@@ -97,18 +97,16 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private boolean isDbNameCoveredByPattern = false;
 
   private boolean isHistoricalExtractorEnabled = false;
-
   private long historicalDataExtractionStartTime = Long.MIN_VALUE; // Event time
   private long historicalDataExtractionEndTime = Long.MAX_VALUE; // Event time
-
   private long historicalDataExtractionTimeLowerBound; // Arrival time
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
 
   private boolean shouldExtractInsertion;
-
   private boolean shouldTransferModFile; // Whether to transfer mods
-  private boolean shouldTerminatePipeOnAllConsumed;
+
+  private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
 
   private Queue<TsFileResource> pendingQueue;
@@ -197,7 +195,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                   || // Should extract deletion
                   DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters)
                       .getRight());
-      shouldTerminatePipeOnAllConsumed =
+
+      shouldTerminatePipeOnAllHistoricalEventsConsumed =
           parameters.getBooleanOrDefault(
               Arrays.asList(
                   SOURCE_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY,
@@ -542,7 +541,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     // implies that the extractor only extracts deletion thus the
     // Historical event has nothing to consume
     return Objects.isNull(pendingQueue)
-        || pendingQueue.isEmpty() && (!shouldTerminatePipeOnAllConsumed || isTerminateSignalSent);
+        || pendingQueue.isEmpty()
+            && (!shouldTerminatePipeOnAllHistoricalEventsConsumed || isTerminateSignalSent);
   }
 
   @Override
