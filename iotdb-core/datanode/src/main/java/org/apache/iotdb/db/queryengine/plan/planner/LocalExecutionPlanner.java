@@ -57,7 +57,6 @@ public class LocalExecutionPlanner {
     MAX_REST_MEMORY_FOR_LOAD =
         (long)
             ((ALLOCATE_MEMORY_FOR_OPERATORS) * (1.0 - CONFIG.getMaxAllocateMemoryRatioForLoad()));
-    LOGGER.info("freeMemoryForOperators is : {}", ALLOCATE_MEMORY_FOR_OPERATORS);
   }
 
   /** allocated memory for operator execution */
