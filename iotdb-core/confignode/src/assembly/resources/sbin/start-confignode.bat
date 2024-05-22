@@ -84,14 +84,14 @@ IF EXIST "%CONFIGNODE_CONF%\confignode-env.bat" (
 
 @REM CHECK THE PORT USAGES
 @REM SET CONFIG FILE
-IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
-  set CONFIG_FILE="%IOTDB_CONF%\iotdb-system.properties"
-) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-system.properties" (
-  set CONFIG_FILE="%IOTDB_HOME%\conf\iotdb-system.properties"
-) ELSE IF EXIST "%IOTDB_CONF%\iotdb-confignode.properties" (
-  set CONFIG_FILE="%IOTDB_CONF%\iotdb-confignode.properties"
-) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-confignode.properties" (
-  set CONFIG_FILE="%IOTDB_HOME%\conf\iotdb-confignode.properties"
+IF EXIST "%CONFIGNODE_CONF%\iotdb-system.properties" (
+  set CONFIG_FILE="%CONFIGNODE_CONF%\iotdb-system.properties"
+) ELSE IF EXIST "%CONFIGNODE_HOME%\conf\iotdb-system.properties" (
+  set CONFIG_FILE="%CONFIGNODE_HOME%\conf\iotdb-system.properties"
+) ELSE IF EXIST "%CONFIGNODE_CONF%\iotdb-confignode.properties" (
+  set CONFIG_FILE="%CONFIGNODE_CONF%\iotdb-confignode.properties"
+) ELSE IF EXIST "%CONFIGNODE_HOME%\conf\iotdb-confignode.properties" (
+  set CONFIG_FILE="%CONFIGNODE_HOME%\conf\iotdb-confignode.properties"
 ) ELSE (
   set CONFIG_FILE=
 )

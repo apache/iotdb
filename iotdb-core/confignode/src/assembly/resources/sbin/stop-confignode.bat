@@ -23,9 +23,9 @@ set current_dir=%~dp0
 set superior_dir=%current_dir%\..\
 
 IF EXIST "%superior%\conf\iotdb-system.properties" (
-  set config_file="%superior_dir%\iotdb-system.properties"
+  set config_file="%superior_dir%\conf\iotdb-system.properties"
 ) ELSE (
-  set config_file="%superior_dir%\iotdb-confignode.properties"
+  set config_file="%superior_dir%\conf\iotdb-confignode.properties"
 )
 
 for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^cn_internal_port"
