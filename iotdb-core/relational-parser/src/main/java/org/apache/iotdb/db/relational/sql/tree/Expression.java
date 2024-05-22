@@ -20,13 +20,8 @@
 package org.apache.iotdb.db.relational.sql.tree;
 
 import org.apache.iotdb.db.relational.sql.util.ExpressionFormatter;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 
 public abstract class Expression extends Node {
 
@@ -43,40 +38,5 @@ public abstract class Expression extends Node {
   @Override
   public final String toString() {
     return ExpressionFormatter.formatExpression(this);
-  }
-
-  public TableExpressionType getExpressionType() {
-    return null;
-  }
-
-  protected void serialize(ByteBuffer byteBuffer) {}
-
-  protected void serialize(DataOutputStream stream) {}
-
-  public static void serialize(Expression expression, ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(
-        expression.getExpressionType().getExpressionTypeInShortEnum(), byteBuffer);
-
-    expression.serialize(byteBuffer);
-  }
-
-  public static void serialize(Expression expression, DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(expression.getExpressionType().getExpressionTypeInShortEnum(), stream);
-    expression.serialize(stream);
-  }
-
-  public static Expression deserialize(ByteBuffer byteBuffer) {
-    short type = ReadWriteIOUtils.readShort(byteBuffer);
-
-    Expression expression;
-    switch (type) {
-      case 0:
-        expression = new ComparisonExpression(byteBuffer);
-        break;
-      default:
-        throw new IllegalArgumentException("Invalid expression type: " + type);
-    }
-
-    return expression;
   }
 }
