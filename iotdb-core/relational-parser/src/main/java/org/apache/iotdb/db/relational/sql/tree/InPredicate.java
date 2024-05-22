@@ -21,6 +21,9 @@ package org.apache.iotdb.db.relational.sql.tree;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
@@ -82,5 +85,22 @@ public class InPredicate extends Expression {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.IN_PREDICATE;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    Expression.serialize(value, stream);
+    Expression.serialize(valueList, stream);
+  }
+
+  public InPredicate(ByteBuffer byteBuffer) {
+    super(null);
+    this.value = Expression.deserialize(byteBuffer);
+    this.valueList = Expression.deserialize(byteBuffer);
   }
 }
