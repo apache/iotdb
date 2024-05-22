@@ -65,6 +65,7 @@ public abstract class UnaryViewExpression extends ViewExpression {
   protected void serialize(OutputStream stream) throws IOException {
     ViewExpression.serialize(expression, stream);
   }
+
   // endregion
 
   public final ViewExpression getExpression() {

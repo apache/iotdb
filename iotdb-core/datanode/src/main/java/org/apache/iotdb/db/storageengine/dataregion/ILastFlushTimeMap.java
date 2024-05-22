@@ -39,6 +39,7 @@ public interface ILastFlushTimeMap {
 
   /** Update both partitionLatestFlushedTime and globalLatestFlushedTimeForEachDevice. */
   void updateLatestFlushTime(long partitionId, Map<IDeviceID, Long> updateMap);
+
   // endregion
 
   // region ensure
@@ -50,12 +51,14 @@ public interface ILastFlushTimeMap {
   long getFlushedTime(long timePartitionId, IDeviceID deviceId);
 
   long getGlobalFlushedTime(IDeviceID path);
+
   // endregion
 
   // region clear
   void clearFlushedTime();
 
   void clearGlobalFlushedTime();
+
   // endregion
 
   void degradeLastFlushTime(long partitionId);

@@ -21,8 +21,8 @@ package org.apache.iotdb.metrics.core.reporter;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.core.IoTDBMetricManager;
-import org.apache.iotdb.metrics.core.uitls.IoTDBMetricObjNameFactory;
-import org.apache.iotdb.metrics.core.uitls.ObjectNameFactory;
+import org.apache.iotdb.metrics.core.utils.IoTDBMetricObjNameFactory;
+import org.apache.iotdb.metrics.core.utils.ObjectNameFactory;
 import org.apache.iotdb.metrics.reporter.JmxReporter;
 import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.utils.MetricInfo;
@@ -44,14 +44,19 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class IoTDBJmxReporter implements JmxReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBJmxReporter.class);
+
   /** Domain name of IoTDB Metrics */
   private static final String DOMAIN = "org.apache.iotdb.metrics";
+
   /** The metricManager of IoTDB */
   private final AbstractMetricManager metricManager;
+
   /** The objectNameFactory used to create objectName for metrics */
   private final ObjectNameFactory objectNameFactory;
+
   /** The map that stores all registered metrics */
   private final Map<ObjectName, ObjectName> registered;
+
   /** The JMX MBeanServer */
   private final MBeanServer mBeanServer;
 

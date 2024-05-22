@@ -61,10 +61,14 @@ public interface IMemTable extends WALEntryValue {
       long insertTime,
       Object[] objectValue);
 
-  /** @return the number of points */
+  /**
+   * @return the number of points
+   */
   long size();
 
-  /** @return memory usage */
+  /**
+   * @return memory usage
+   */
   long memSize();
 
   /** only used when mem control enabled */

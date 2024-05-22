@@ -188,7 +188,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     } else {
       supportModsIfIsDataNodeReceiver = true;
     }
-    socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
+    socket.setSoTimeout(PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
     LOGGER.info("Handshake success. Socket: {}", socket);
   }
 
@@ -226,9 +226,10 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
                 : Arrays.copyOfRange(readBuffer, 0, readLength);
         if (!send(
             socket,
-            isMultiFile
-                ? getTransferMultiFilePieceBytes(file.getName(), position, payload)
-                : getTransferSingleFilePieceBytes(file.getName(), position, payload))) {
+            compressIfNeeded(
+                isMultiFile
+                    ? getTransferMultiFilePieceBytes(file.getName(), position, payload)
+                    : getTransferSingleFilePieceBytes(file.getName(), position, payload)))) {
           final String errorMessage =
               String.format("Transfer file %s error. Socket %s.", file, socket);
           if (mayNeedHandshakeWhenFail()) {

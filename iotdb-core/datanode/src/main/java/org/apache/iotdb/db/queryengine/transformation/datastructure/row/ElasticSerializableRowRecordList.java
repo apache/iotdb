@@ -45,6 +45,7 @@ public class ElasticSerializableRowRecordList {
 
   protected LRUCache cache;
   protected List<SerializableRowRecordList> rowRecordLists;
+
   /** Mark bitMaps of correct index when one row has at least one null field. */
   protected List<BitMap> bitMaps;
 

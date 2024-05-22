@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeighUtil;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -38,6 +40,7 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -45,22 +48,29 @@ public class PipeTsFileResource implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileResource.class);
 
+  public static final long TSFILE_MIN_TIME_TO_LIVE_IN_MS = 1000L * 20;
+  private static final float MEMORY_SUFFICIENT_THRESHOLD = 0.5f;
+
   private final File hardlinkOrCopiedFile;
   private final boolean isTsFile;
 
-  public static final long TSFILE_MIN_TIME_TO_LIVE_IN_MS = 1000L * 20;
+  /** this TsFileResource is used to track the {@link TsFileResourceStatus} of original TsFile. * */
+  private final TsFileResource tsFileResource;
+
+  private volatile long fileSize = -1L;
+
   private final AtomicInteger referenceCount;
   private final AtomicLong lastUnpinToZeroTime;
-
-  private static final float MEMORY_SUFFICIENT_THRESHOLD = 0.5f;
   private PipeMemoryBlock allocatedMemoryBlock;
   private Map<IDeviceID, List<String>> deviceMeasurementsMap = null;
   private Map<IDeviceID, Boolean> deviceIsAlignedMap = null;
   private Map<String, TSDataType> measurementDataTypeMap = null;
 
-  public PipeTsFileResource(File hardlinkOrCopiedFile, boolean isTsFile) {
+  public PipeTsFileResource(
+      File hardlinkOrCopiedFile, boolean isTsFile, TsFileResource tsFileResource) {
     this.hardlinkOrCopiedFile = hardlinkOrCopiedFile;
     this.isTsFile = isTsFile;
+    this.tsFileResource = tsFileResource;
 
     referenceCount = new AtomicInteger(1);
     lastUnpinToZeroTime = new AtomicLong(Long.MAX_VALUE);
@@ -68,6 +78,21 @@ public class PipeTsFileResource implements AutoCloseable {
 
   public File getFile() {
     return hardlinkOrCopiedFile;
+  }
+
+  public boolean isOriginalTsFileDeleted() {
+    return isTsFile && Objects.nonNull(tsFileResource) && tsFileResource.isDeleted();
+  }
+
+  public long getFileSize() {
+    if (fileSize == -1L) {
+      synchronized (this) {
+        if (fileSize == -1L) {
+          fileSize = hardlinkOrCopiedFile.length();
+        }
+      }
+    }
+    return fileSize;
   }
 
   ///////////////////// Reference Count /////////////////////

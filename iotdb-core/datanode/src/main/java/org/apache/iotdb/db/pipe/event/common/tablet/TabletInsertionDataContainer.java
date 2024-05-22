@@ -75,6 +75,9 @@ public class TabletInsertionDataContainer {
 
   private Tablet tablet;
 
+  // Whether the container shall report progress
+  private boolean shouldReport = false;
+
   private static final Integer CACHED_FULL_ROW_INDEX_LIST_ROW_COUNT_UPPER = 16;
   private static final Map<Integer, List<Integer>> cachedFullRowIndexList = new HashMap<>();
 
@@ -86,10 +89,10 @@ public class TabletInsertionDataContainer {
   }
 
   public TabletInsertionDataContainer(
-      PipeTaskMeta pipeTaskMeta,
-      EnrichedEvent sourceEvent,
-      InsertNode insertNode,
-      PipePattern pattern) {
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent,
+      final InsertNode insertNode,
+      final PipePattern pattern) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
 
@@ -104,11 +107,11 @@ public class TabletInsertionDataContainer {
   }
 
   public TabletInsertionDataContainer(
-      PipeTaskMeta pipeTaskMeta,
-      EnrichedEvent sourceEvent,
-      Tablet tablet,
-      boolean isAligned,
-      PipePattern pattern) {
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent,
+      final Tablet tablet,
+      final boolean isAligned,
+      final PipePattern pattern) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
 
@@ -116,7 +119,7 @@ public class TabletInsertionDataContainer {
   }
 
   @TestOnly
-  public TabletInsertionDataContainer(InsertNode insertNode, PipePattern pattern) {
+  public TabletInsertionDataContainer(final InsertNode insertNode, final PipePattern pattern) {
     this(null, null, insertNode, pattern);
   }
 
@@ -124,9 +127,13 @@ public class TabletInsertionDataContainer {
     return isAligned;
   }
 
+  public void markAsNeedToReport() {
+    shouldReport = true;
+  }
+
   //////////////////////////// parse ////////////////////////////
 
-  private void parse(InsertRowNode insertRowNode, PipePattern pattern) {
+  private void parse(final InsertRowNode insertRowNode, final PipePattern pattern) {
     final int originColumnSize = insertRowNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -193,7 +200,7 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  private void parse(InsertTabletNode insertTabletNode, PipePattern pattern) {
+  private void parse(final InsertTabletNode insertTabletNode, final PipePattern pattern) {
     final int originColumnSize = insertTabletNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -276,7 +283,7 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  private void parse(Tablet tablet, boolean isAligned, PipePattern pattern) {
+  private void parse(final Tablet tablet, final boolean isAligned, final PipePattern pattern) {
     final int originColumnSize = tablet.getSchemas().size();
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -368,9 +375,9 @@ public class TabletInsertionDataContainer {
   }
 
   private void generateColumnIndexMapper(
-      String[] originMeasurementList,
-      PipePattern pattern,
-      Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
+      final String[] originMeasurementList,
+      final PipePattern pattern,
+      final Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
     final int originColumnSize = originMeasurementList.length;
 
     // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
@@ -551,7 +558,7 @@ public class TabletInsertionDataContainer {
 
   ////////////////////////////  process  ////////////////////////////
 
-  public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
+  public List<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     if (valueColumns.length == 0 || timestampColumn.length == 0) {
       return Collections.emptyList();
     }
@@ -571,13 +578,13 @@ public class TabletInsertionDataContainer {
               columnNameStringList),
           rowCollector);
     }
-    return rowCollector.convertToTabletInsertionEvents();
+    return rowCollector.convertToTabletInsertionEvents(shouldReport);
   }
 
-  public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
+  public List<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, sourceEvent);
     consumer.accept(convertToTablet(), rowCollector);
-    return rowCollector.convertToTabletInsertionEvents();
+    return rowCollector.convertToTabletInsertionEvents(shouldReport);
   }
 
   ////////////////////////////  convertToTablet  ////////////////////////////

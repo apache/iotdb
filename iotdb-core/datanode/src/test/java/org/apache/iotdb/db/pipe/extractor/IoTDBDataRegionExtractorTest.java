@@ -32,8 +32,7 @@ import java.util.HashMap;
 public class IoTDBDataRegionExtractorTest {
   @Test
   public void testIoTDBDataRegionExtractor() {
-    IoTDBDataRegionExtractor extractor = new IoTDBDataRegionExtractor();
-    try {
+    try (final IoTDBDataRegionExtractor extractor = new IoTDBDataRegionExtractor()) {
       extractor.validate(
           new PipeParameterValidator(
               new PipeParameters(
@@ -50,7 +49,7 @@ public class IoTDBDataRegionExtractorTest {
                           PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_HYBRID_VALUE);
                     }
                   })));
-    } catch (Exception e) {
+    } catch (final Exception e) {
       Assert.fail();
     }
   }
@@ -58,23 +57,23 @@ public class IoTDBDataRegionExtractorTest {
   @Test
   public void testIoTDBDataRegionExtractorWithPattern() {
     Assert.assertEquals(
-        testIoTDBDataRegionExtractorWithPattern("root.a-b").getClass(),
-        IllegalArgumentException.class);
+        IllegalArgumentException.class,
+        testIoTDBDataRegionExtractorWithPattern("root.a-b").getClass());
     Assert.assertEquals(
-        testIoTDBDataRegionExtractorWithPattern("root.1.a").getClass(),
-        IllegalArgumentException.class);
+        IllegalArgumentException.class,
+        testIoTDBDataRegionExtractorWithPattern("root.1.a").getClass());
     Assert.assertEquals(
-        testIoTDBDataRegionExtractorWithPattern("r").getClass(), IllegalArgumentException.class);
+        IllegalArgumentException.class, testIoTDBDataRegionExtractorWithPattern("r").getClass());
     Assert.assertEquals(
-        testIoTDBDataRegionExtractorWithPattern("").getClass(), IllegalArgumentException.class);
+        IllegalArgumentException.class, testIoTDBDataRegionExtractorWithPattern("").getClass());
     Assert.assertEquals(
-        testIoTDBDataRegionExtractorWithPattern("123").getClass(), IllegalArgumentException.class);
+        IllegalArgumentException.class, testIoTDBDataRegionExtractorWithPattern("123").getClass());
     Assert.assertEquals(
-        testIoTDBDataRegionExtractorWithPattern("root.a b").getClass(),
-        IllegalArgumentException.class);
+        IllegalArgumentException.class,
+        testIoTDBDataRegionExtractorWithPattern("root.a b").getClass());
     Assert.assertEquals(
-        testIoTDBDataRegionExtractorWithPattern("root.a+b").getClass(),
-        IllegalArgumentException.class);
+        IllegalArgumentException.class,
+        testIoTDBDataRegionExtractorWithPattern("root.a+b").getClass());
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.ab."));
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.a#b"));
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.一二三"));
@@ -87,8 +86,8 @@ public class IoTDBDataRegionExtractorTest {
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.1"));
   }
 
-  public Exception testIoTDBDataRegionExtractorWithPattern(String pattern) {
-    try (IoTDBDataRegionExtractor extractor = new IoTDBDataRegionExtractor()) {
+  public Exception testIoTDBDataRegionExtractorWithPattern(final String pattern) {
+    try (final IoTDBDataRegionExtractor extractor = new IoTDBDataRegionExtractor()) {
       extractor.validate(
           new PipeParameterValidator(
               new PipeParameters(
@@ -97,9 +96,24 @@ public class IoTDBDataRegionExtractorTest {
                       put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, pattern);
                     }
                   })));
-    } catch (Exception e) {
+    } catch (final Exception e) {
       return e;
     }
     return null;
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testIoTDBDataRegionExtractorWithDeletionAndPattern() throws Exception {
+    try (final IoTDBDataRegionExtractor extractor = new IoTDBDataRegionExtractor()) {
+      extractor.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, "root.db");
+                      put(PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY, "data.delete");
+                    }
+                  })));
+    }
   }
 }

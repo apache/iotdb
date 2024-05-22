@@ -31,7 +31,8 @@ public class TimestampViewOperand extends LeafViewOperand {
   // region member variables and init functions
   public TimestampViewOperand() {
     // do nothing
-  };
+  }
+  ;
 
   public TimestampViewOperand(ByteBuffer byteBuffer) {
     // do nothing
@@ -40,6 +41,7 @@ public class TimestampViewOperand extends LeafViewOperand {
   public TimestampViewOperand(InputStream inputStream) {
     // do nothing
   }
+
   // endregion
 
   // region common interfaces that have to be implemented

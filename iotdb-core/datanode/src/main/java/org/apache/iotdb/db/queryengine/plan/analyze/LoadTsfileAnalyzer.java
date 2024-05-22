@@ -209,8 +209,6 @@ public class LoadTsfileAnalyzer {
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
           new TsFileSequenceReaderTimeseriesMetadataIterator(reader, true, 1);
 
-      long writePointCount = 0;
-
       // construct tsfile resource
       final TsFileResource tsFileResource = new TsFileResource(tsFile);
       if (!tsFileResource.resourceFileExists()) {
@@ -221,27 +219,34 @@ public class LoadTsfileAnalyzer {
         tsFileResource.deserialize();
       }
 
-      // auto create or verify schema
-      if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
-          || loadTsFileStatement.isVerifySchema()) {
-        // check if the tsfile is empty
-        if (!timeseriesMetadataIterator.hasNext()) {
-          LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
-          return;
-        }
+      // check if the tsfile is empty
+      if (!timeseriesMetadataIterator.hasNext()) {
+        LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
+        return;
+      }
 
-        while (timeseriesMetadataIterator.hasNext()) {
-          Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
-              timeseriesMetadataIterator.next();
+      long writePointCount = 0;
 
+      final boolean isAutoCreateSchemaOrVerifySchemaEnabled =
+          IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+              || loadTsFileStatement.isVerifySchema();
+      while (timeseriesMetadataIterator.hasNext()) {
+        final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
+            timeseriesMetadataIterator.next();
+
+        if (isAutoCreateSchemaOrVerifySchemaEnabled) {
           schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, device2TimeseriesMetadata);
-
-          if (!tsFileResource.resourceFileExists()) {
-            TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
-          }
-          writePointCount += getWritePointCount(device2TimeseriesMetadata);
         }
 
+        if (!tsFileResource.resourceFileExists()) {
+          TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+        }
+
+        // TODO: how to get the correct write point count when
+        //  !isAutoCreateSchemaOrVerifySchemaEnabled
+        writePointCount += getWritePointCount(device2TimeseriesMetadata);
+      }
+      if (isAutoCreateSchemaOrVerifySchemaEnabled) {
         schemaAutoCreatorAndVerifier.flushAndClearDeviceIsAlignedCacheIfNecessary();
       }
 

@@ -74,14 +74,13 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    int successCount = 0;
     for (int i = 0; i < 10; ++i) {
-      if (TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv,
           String.format(
               "create timeseries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
               i))) {
-        ++successCount;
+        return;
       }
     }
 
@@ -89,20 +88,17 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
     TestUtils.restartCluster(receiverEnv);
 
     for (int i = 10; i < 20; ++i) {
-      if (TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv,
           String.format(
               "create timeseries root.ln.wf01.GPS.status%s with datatype=BOOLEAN,encoding=PLAIN",
               i))) {
-        ++successCount;
+        return;
       }
     }
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "count timeseries",
-        "count(timeseries),",
-        Collections.singleton(String.format("%d,", successCount)));
+        receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("20,"));
   }
 
   @Test
@@ -139,11 +135,10 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
     }
 
-    int successCount = 0;
     for (int i = 0; i < 10; ++i) {
-      if (TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv, String.format("create database root.ln%s", i))) {
-        ++successCount;
+        return;
       }
     }
 
@@ -151,16 +146,13 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
     TestUtils.restartCluster(receiverEnv);
 
     for (int i = 10; i < 20; ++i) {
-      if (TestUtils.tryExecuteNonQueryWithRetry(
+      if (!TestUtils.tryExecuteNonQueryWithRetry(
           senderEnv, String.format("create database root.ln%s", i))) {
-        ++successCount;
+        return;
       }
     }
 
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "count databases",
-        "count,",
-        Collections.singleton(String.format("%d,", successCount)));
+        receiverEnv, "count databases", "count,", Collections.singleton("20,"));
   }
 }

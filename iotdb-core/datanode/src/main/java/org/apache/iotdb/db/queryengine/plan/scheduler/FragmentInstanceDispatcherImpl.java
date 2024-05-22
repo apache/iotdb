@@ -291,7 +291,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   private void dispatchRemoteHelper(FragmentInstance instance, TEndPoint endPoint)
-      throws FragmentInstanceDispatchException, TException, ClientManagerException,
+      throws FragmentInstanceDispatchException,
+          TException,
+          ClientManagerException,
           RatisReadUnavailableException {
     try (SyncDataNodeInternalServiceClient client =
         syncInternalServiceClientManager.borrowClient(endPoint)) {

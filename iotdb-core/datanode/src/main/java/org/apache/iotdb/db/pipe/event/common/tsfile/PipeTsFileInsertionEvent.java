@@ -178,9 +178,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
-      tsFile = PipeResourceManager.tsfile().increaseFileReference(tsFile, true);
+      tsFile = PipeResourceManager.tsfile().increaseFileReference(tsFile, true, resource);
       if (isWithMod) {
-        modFile = PipeResourceManager.tsfile().increaseFileReference(modFile, false);
+        modFile = PipeResourceManager.tsfile().increaseFileReference(modFile, false, null);
       }
       return true;
     } catch (Exception e) {
@@ -366,5 +366,14 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
             resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get(), dataContainer)
         + " - "
         + super.toString();
+  }
+
+  @Override
+  public String coreReportMessage() {
+    return String.format(
+            "PipeTsFileInsertionEvent{resource=%s, tsFile=%s, isLoaded=%s, isGeneratedByPipe=%s, isClosed=%s}",
+            resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get())
+        + " - "
+        + super.coreReportMessage();
   }
 }

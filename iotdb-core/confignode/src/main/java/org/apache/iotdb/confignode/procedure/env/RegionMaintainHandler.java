@@ -417,8 +417,7 @@ public class RegionMaintainHandler {
     return report;
   }
 
-  public void addRegionLocation(
-      TConsensusGroupId regionId, TDataNodeLocation newLocation, RegionStatus regionStatus) {
+  public void addRegionLocation(TConsensusGroupId regionId, TDataNodeLocation newLocation) {
     AddRegionLocationPlan req = new AddRegionLocationPlan(regionId, newLocation);
     TSStatus status = configManager.getPartitionManager().addRegionLocation(req);
     LOGGER.info(
@@ -428,14 +427,15 @@ public class RegionMaintainHandler {
         status);
     configManager
         .getLoadManager()
-        .forceAddRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
+        .getLoadCache()
+        .createRegionCache(regionId, newLocation.getDataNodeId());
   }
 
-  public void updateRegionCache(
+  public void forceUpdateRegionCache(
       TConsensusGroupId regionId, TDataNodeLocation newLocation, RegionStatus regionStatus) {
     configManager
         .getLoadManager()
-        .forceAddRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
+        .forceUpdateRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
   }
 
   public void removeRegionLocation(
@@ -447,9 +447,7 @@ public class RegionMaintainHandler {
         regionId,
         getIdWithRpcEndpoint(deprecatedLocation),
         status);
-    configManager
-        .getLoadManager()
-        .forceRemoveRegionCache(regionId, deprecatedLocation.getDataNodeId());
+    configManager.getLoadManager().removeRegionCache(regionId, deprecatedLocation.getDataNodeId());
     configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
   }
 
@@ -739,8 +737,7 @@ public class RegionMaintainHandler {
         configManager.getNodeManager().filterDataNodeThroughStatus(allowingStatus).stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
-
-    // TODO return the node which has lowest load.
+    Collections.shuffle(aliveDataNodes);
     for (TDataNodeLocation aliveDataNode : aliveDataNodes) {
       if (regionLocations.contains(aliveDataNode) && !aliveDataNode.equals(filterLocation)) {
         return Optional.of(aliveDataNode);

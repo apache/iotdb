@@ -211,6 +211,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
       collectGlobalCountIfNecessary(eventCollector);
       commitLocalProgressIndexIfNecessary();
       triggerCombineIfNecessary();
+      eventCollector.collect(event);
+      return;
     }
 
     if (event instanceof PipeWatermarkEvent) {
@@ -218,6 +220,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
           new Pair<>(
               new long[] {((PipeWatermarkEvent) event).getWatermark(), localCount.get()},
               localCommitProgressIndex.get()));
+      // TODO: Collect watermark events. We ignore it because they may cause OOM in collector.
     }
   }
 

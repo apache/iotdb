@@ -238,7 +238,7 @@ public class ConfigManager implements IManager {
   private final ClusterManager clusterManager;
 
   /** Manage cluster node. */
-  private final NodeManager nodeManager;
+  protected NodeManager nodeManager;
 
   /** Manage cluster schema engine. */
   private final ClusterSchemaManager clusterSchemaManager;
@@ -250,7 +250,7 @@ public class ConfigManager implements IManager {
   private final PermissionManager permissionManager;
 
   /** Manage load balancing. */
-  private final LoadManager loadManager;
+  protected LoadManager loadManager;
 
   /** Manage procedure. */
   private final ProcedureManager procedureManager;
@@ -313,7 +313,7 @@ public class ConfigManager implements IManager {
 
     // Build the manager module
     this.clusterManager = new ClusterManager(this, clusterInfo);
-    this.nodeManager = new NodeManager(this, nodeInfo);
+    setNodeManager(nodeInfo);
     this.clusterSchemaManager =
         new ClusterSchemaManager(
             this,
@@ -333,7 +333,7 @@ public class ConfigManager implements IManager {
     // LoadManager will register PipeManager as a listener.
     // 2. keep RetryFailedTasksThread initialization after LoadManager initialization,
     // because RetryFailedTasksThread will keep a reference of LoadManager.
-    this.loadManager = new LoadManager(this);
+    setLoadManager();
 
     this.retryFailedTasksThread = new RetryFailedTasksThread(this);
     this.clusterQuotaManager = new ClusterQuotaManager(this, quotaInfo);
@@ -342,6 +342,14 @@ public class ConfigManager implements IManager {
   public void initConsensusManager() throws IOException {
     this.consensusManager.set(new ConsensusManager(this, this.stateMachine));
     this.consensusManager.get().start();
+  }
+
+  protected void setNodeManager(NodeInfo nodeInfo) {
+    this.nodeManager = new NodeManager(this, nodeInfo);
+  }
+
+  protected void setLoadManager() {
+    this.loadManager = new LoadManager(this);
   }
 
   public void close() throws IOException {
@@ -476,11 +484,20 @@ public class ConfigManager implements IManager {
           dataNodeLocation ->
               nodeStatus.putIfAbsent(
                   dataNodeLocation.getDataNodeId(), NodeStatus.Unknown.toString()));
-      return new TShowClusterResp(
-          status, configNodeLocations, dataNodeLocations, nodeStatus, nodeVersionInfo);
+
+      return new TShowClusterResp()
+          .setStatus(status)
+          .setConfigNodeList(configNodeLocations)
+          .setDataNodeList(dataNodeLocations)
+          .setNodeStatus(nodeStatus)
+          .setNodeVersionInfo(nodeVersionInfo);
     } else {
-      return new TShowClusterResp(
-          status, new ArrayList<>(), new ArrayList<>(), new HashMap<>(), new HashMap<>());
+      return new TShowClusterResp()
+          .setStatus(status)
+          .setConfigNodeList(Collections.emptyList())
+          .setDataNodeList(Collections.emptyList())
+          .setNodeStatus(Collections.emptyMap())
+          .setNodeVersionInfo(Collections.emptyMap());
     }
   }
 
@@ -589,7 +606,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
+  public TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.setDatabase(databaseSchemaPlan, false);
@@ -983,7 +1000,7 @@ public class ConfigManager implements IManager {
         dataPartitionRespString);
   }
 
-  private TSStatus confirmLeader() {
+  protected TSStatus confirmLeader() {
     // Make sure the consensus layer has been initialized
     if (getConsensusManager() == null) {
       return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode())
@@ -1263,7 +1280,7 @@ public class ConfigManager implements IManager {
 
     for (int i = 0; i < rpcTimeoutInMS / retryIntervalInMS; i++) {
       try {
-        if (consensusManager.get() == null) {
+        if (consensusManager.get() == null || !consensusManager.get().isInitialized()) {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMS);
         } else {
           // When add non Seed-ConfigNode to the ConfigNodeGroup, the parameter should be emptyList
