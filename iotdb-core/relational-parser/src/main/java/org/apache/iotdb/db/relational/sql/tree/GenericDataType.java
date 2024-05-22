@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nonnull;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
@@ -84,5 +89,23 @@ public final class GenericDataType extends DataType {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  // =============== serialize =================
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.GENERIC_DATA_TYPE;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    Expression.serialize(name, stream);
+    ReadWriteIOUtils.write(arguments.size(), stream);
+  }
+
+  public GenericDataType(ByteBuffer byteBuffer) {
+    super(null);
+    this.name = (Identifier) Expression.deserialize(byteBuffer);
+    this.arguments = null;
   }
 }

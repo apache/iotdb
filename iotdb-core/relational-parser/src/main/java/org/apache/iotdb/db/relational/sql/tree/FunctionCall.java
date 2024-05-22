@@ -19,8 +19,14 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -109,5 +115,32 @@ public class FunctionCall extends Expression {
     FunctionCall otherFunction = (FunctionCall) other;
 
     return name.equals(otherFunction.name) && distinct == otherFunction.distinct;
+  }
+
+  // =============== serialize =================
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.FUNCTION_CALL;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    this.name.serialize(stream);
+    ReadWriteIOUtils.write(this.distinct, stream);
+    ReadWriteIOUtils.write(arguments.size(), stream);
+    for (Expression argument : arguments) {
+      Expression.serialize(argument, stream);
+    }
+  }
+
+  public FunctionCall(ByteBuffer byteBuffer) {
+    super(null);
+    this.name = QualifiedName.deserialize(byteBuffer);
+    this.distinct = ReadWriteIOUtils.readBool(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    this.arguments = new ArrayList<>(size);
+    while (size-- > 0) {
+      arguments.add(Expression.deserialize(byteBuffer));
+    }
   }
 }
