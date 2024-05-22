@@ -91,6 +91,18 @@ public abstract class Expression extends Node {
       case 6:
         expression = new IsNullPredicate(byteBuffer);
         break;
+      case 7:
+        expression = new FunctionCall(byteBuffer);
+        break;
+      case 8:
+        expression = new Identifier(byteBuffer);
+        break;
+      case 9:
+        expression = new Cast(byteBuffer);
+        break;
+      case 10:
+        expression = new GenericDataType(byteBuffer);
+        break;
       case 11:
         expression = new BetweenPredicate(byteBuffer);
         break;
