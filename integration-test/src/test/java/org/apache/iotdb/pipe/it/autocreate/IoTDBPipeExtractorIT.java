@@ -632,8 +632,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
               "insert into root.db.d1 (time, at1) values (2, 11)",
               "insert into root.db.d2 (time, at1) values (2, 21)",
               "insert into root.db.d3 (time, at1) values (2, 31)",
-              "insert into root.db.d4 (time, at1) values (2, 41)",
-              "flush"))) {
+              "insert into root.db.d4 (time, at1) values (2, 41), (3, 51)"))) {
         return;
       }
 
@@ -646,7 +645,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select count(*) from root.** where time >= 2",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
-          Collections.singleton("1,1,0,"));
+          Collections.singleton("2,1,0,"));
     }
   }
 
