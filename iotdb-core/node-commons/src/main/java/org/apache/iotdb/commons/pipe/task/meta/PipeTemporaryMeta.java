@@ -25,14 +25,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public class PipeTemporaryMeta {
-  private final ConcurrentMap<Integer, Integer> completedDataNode = new ConcurrentHashMap<>();
 
-  public void putDataNodeCompletion(final int dataNodeId) {
-    completedDataNode.put(dataNodeId, dataNodeId);
+  private final ConcurrentMap<Integer, Integer> completedDataNodeIds = new ConcurrentHashMap<>();
+
+  public void markDataNodeCompleted(final int dataNodeId) {
+    completedDataNodeIds.put(dataNodeId, dataNodeId);
   }
 
-  public Set<Integer> getCompletedDataNode() {
-    return completedDataNode.keySet();
+  public Set<Integer> getCompletedDataNodeIds() {
+    return completedDataNodeIds.keySet();
   }
 
   @Override
@@ -43,17 +44,17 @@ public class PipeTemporaryMeta {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final PipeTemporaryMeta pipeTemporaryMeta = (PipeTemporaryMeta) o;
-    return Objects.equals(completedDataNode, pipeTemporaryMeta.completedDataNode);
+    final PipeTemporaryMeta that = (PipeTemporaryMeta) o;
+    return Objects.equals(this.completedDataNodeIds, that.completedDataNodeIds);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(completedDataNode);
+    return Objects.hash(completedDataNodeIds);
   }
 
   @Override
   public String toString() {
-    return "PipeMeta{" + "completedDataNode=" + completedDataNode + '}';
+    return "PipeTemporaryMeta{" + "completedDataNodeIds=" + completedDataNodeIds + '}';
   }
 }

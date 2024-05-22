@@ -140,11 +140,11 @@ public class PipeHeartbeatParser {
       final boolean pipeCompletedFromAgent = singlePipeHeartbeat.isCompleted();
       if (Boolean.TRUE.equals(pipeCompletedFromAgent)) {
         final PipeTemporaryMeta temporaryMeta = pipeMetaFromCoordinator.getTemporaryMeta();
-        temporaryMeta.putDataNodeCompletion(nodeId);
+        temporaryMeta.markDataNodeCompleted(nodeId);
 
         final Set<Integer> dataNodeIds =
             configManager.getNodeManager().getRegisteredDataNodeLocations().keySet();
-        dataNodeIds.removeAll(temporaryMeta.getCompletedDataNode());
+        dataNodeIds.removeAll(temporaryMeta.getCompletedDataNodeIds());
         if (dataNodeIds.isEmpty()) {
           pipeTaskInfo.get().removePipeMeta(pipeMetaFromCoordinator.getStaticMeta().getPipeName());
           needWriteConsensusOnConfigNodes.set(true);
