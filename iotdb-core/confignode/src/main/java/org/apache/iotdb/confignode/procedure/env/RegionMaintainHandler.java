@@ -417,7 +417,7 @@ public class RegionMaintainHandler {
         taskId,
         dataNodeLocation,
         CommonDateTimeUtils.convertMillisecondToDurationStr(
-            (System.nanoTime() - lastReportTime) / 1000));
+            TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastReportTime)));
     TRegionMigrateResult report = new TRegionMigrateResult();
     report.setTaskStatus(TRegionMaintainTaskStatus.FAIL);
     report.setFailedNodeAndReason(new HashMap<>());
