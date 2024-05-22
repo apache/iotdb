@@ -200,6 +200,10 @@ public class PatternTreeMapTest {
         patternTreeMap,
         new PartialPath("root.sg1.d1.t1.d3"),
         Arrays.asList(
+            new Deletion(new PartialPath("root.**.s1"), 5, 10, 100),
+            new Deletion(new PartialPath("root.**.s2"), 4, 4, 6),
+            new Deletion(new PartialPath("root.**.s1"), 10, 100, 200),
+            new Deletion(new PartialPath("root.**"), 5, 10, 100),
             new Deletion(new PartialPath("root.sg1.d1.*.d3.s5"), 2, 4, 6),
             new Deletion(new PartialPath("root.sg1.d1.*.d3.s4"), 3, 4, 6)));
   }
