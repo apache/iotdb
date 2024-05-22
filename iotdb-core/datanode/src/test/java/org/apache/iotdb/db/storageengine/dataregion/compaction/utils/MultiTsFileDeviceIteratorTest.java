@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
@@ -42,7 +42,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -165,7 +164,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     // sort the deviceId in lexicographical order from small to large
     List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add(new PlainDeviceID("root.testsg.d" + i));
+      deviceIds.add(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d" + i));
     }
     deviceIds.sort(IDeviceID::compareTo);
 
@@ -195,7 +194,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       deviceIds.add(
-          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              "root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
     deviceIds.sort(IDeviceID::compareTo);
 
@@ -233,7 +233,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     // sort the deviceId in lexicographical order from small to large
     List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
-      deviceIds.add(new PlainDeviceID("root.testsg.d" + i));
+      deviceIds.add(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d" + i));
     }
     deviceIds.sort(IDeviceID::compareTo);
 
@@ -271,7 +271,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       deviceIds.add(
-          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              "root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
     deviceIds.sort(IDeviceID::compareTo);
 
@@ -322,7 +323,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       deviceIds.add(
-          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              "root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
     deviceIds.sort(IDeviceID::compareTo);
 
@@ -373,7 +375,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       deviceIds.add(
-          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              "root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
     deviceIds.sort(IDeviceID::compareTo);
 
@@ -383,7 +386,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
+        if (Integer.parseInt(deviceInfo.left.toString().substring(13)) < 10) {
           Assert.assertTrue(deviceInfo.right);
         } else {
           Assert.assertFalse(deviceInfo.right);
@@ -432,7 +435,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       deviceIds.add(
-          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              "root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
     deviceIds.sort(IDeviceID::compareTo);
 
@@ -442,7 +446,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
+        if (Integer.parseInt(deviceInfo.left.toString().substring(13)) < 10) {
           Assert.assertTrue(deviceInfo.right);
         } else {
           Assert.assertFalse(deviceInfo.right);
@@ -452,24 +456,26 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     }
     Assert.assertEquals(30, deviceNum);
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
         if (i < 10) {
           timeseriesPaths.add(
-              new AlignedPath(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+              new AlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                   Collections.singletonList("s" + j),
                   Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
         } else {
           timeseriesPaths.add(
-              new MeasurementPath(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                  TSDataType.INT64));
+              new NonAlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                  new MeasurementSchema(PATH_SEPARATOR + "s" + j, TSDataType.INT64)));
         }
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     InnerSpaceCompactionTask task =
@@ -505,9 +511,10 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
         timeseriesPaths.add(
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                TSDataType.INT64));
+            new NonAlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                new MeasurementSchema(PATH_SEPARATOR + "s" + j, TSDataType.INT64)));
       }
     }
     sourceData = readSourceFiles(timeseriesPaths, Collections.emptyList());
@@ -578,7 +585,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       deviceIds.add(
-          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              "root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
     deviceIds.sort(IDeviceID::compareTo);
 
@@ -588,7 +596,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
+        if (Integer.parseInt(deviceInfo.left.toString().substring(13)) < 10) {
           Assert.assertFalse(deviceInfo.right);
         } else {
           Assert.assertTrue(deviceInfo.right);
@@ -598,24 +606,26 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     }
     Assert.assertEquals(30, deviceNum);
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
         if (i >= 10) {
           timeseriesPaths.add(
-              new AlignedPath(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+              new AlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                   Collections.singletonList("s" + j),
                   Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
         } else {
           timeseriesPaths.add(
-              new MeasurementPath(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                  TSDataType.INT64));
+              new NonAlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                  new MeasurementSchema(PATH_SEPARATOR + "s" + j, TSDataType.INT64)));
         }
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     InnerSpaceCompactionTask task =
@@ -651,8 +661,9 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
         timeseriesPaths.add(
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
       }
@@ -723,7 +734,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       deviceIds.add(
-          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              "root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
     deviceIds.sort(IDeviceID::compareTo);
 
@@ -733,7 +745,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
+        if (Integer.parseInt(deviceInfo.left.toString().substring(13)) < 10) {
           Assert.assertTrue(deviceInfo.right);
         } else {
           Assert.assertFalse(deviceInfo.right);
@@ -743,24 +755,26 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     }
     Assert.assertEquals(30, deviceNum);
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
         if (i < 10) {
           timeseriesPaths.add(
-              new AlignedPath(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+              new AlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                   Collections.singletonList("s" + j),
                   Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
         } else {
           timeseriesPaths.add(
-              new MeasurementPath(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                  TSDataType.INT64));
+              new NonAlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                  new MeasurementSchema("s" + j, TSDataType.INT64)));
         }
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     InnerSpaceCompactionTask task =
@@ -796,9 +810,10 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
         timeseriesPaths.add(
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                TSDataType.INT64));
+            new NonAlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                new MeasurementSchema("s" + j, TSDataType.INT64)));
       }
     }
     sourceData = readSourceFiles(timeseriesPaths, Collections.emptyList());
@@ -868,7 +883,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       deviceIds.add(
-          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              "root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
     deviceIds.sort(IDeviceID::compareTo);
 
@@ -878,7 +894,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
+        if (Integer.parseInt(deviceInfo.left.toString().substring(13)) < 10) {
           Assert.assertFalse(deviceInfo.right);
         } else {
           Assert.assertTrue(deviceInfo.right);
@@ -888,24 +904,26 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     }
     Assert.assertEquals(30, deviceNum);
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
         if (i < 10) {
           timeseriesPaths.add(
-              new AlignedPath(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+              new AlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                   Collections.singletonList("s" + j),
                   Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
         } else {
           timeseriesPaths.add(
-              new MeasurementPath(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                  TSDataType.INT64));
+              new NonAlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                  new MeasurementSchema("s" + j, TSDataType.INT64)));
         }
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     InnerSpaceCompactionTask task =
@@ -941,8 +959,9 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
         timeseriesPaths.add(
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
       }
@@ -953,7 +972,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       deviceIds.add(
-          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              "root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
     deviceIds.sort(IDeviceID::compareTo);
 
@@ -1022,7 +1042,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       deviceIds.add(
-          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              "root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
     deviceIds.sort(IDeviceID::compareTo);
 
@@ -1032,7 +1053,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
+        if (Integer.parseInt(deviceInfo.left.toString().substring(13)) < 10) {
           Assert.assertTrue(deviceInfo.right);
         } else {
           Assert.assertFalse(deviceInfo.right);
@@ -1042,24 +1063,26 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     }
     Assert.assertEquals(30, deviceNum);
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
         if (i < 10) {
           timeseriesPaths.add(
-              new AlignedPath(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+              new AlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                   Collections.singletonList("s" + j),
                   Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
         } else {
           timeseriesPaths.add(
-              new MeasurementPath(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                  TSDataType.INT64));
+              new NonAlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                  new MeasurementSchema("s" + j, TSDataType.INT64)));
         }
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     InnerSpaceCompactionTask task =
@@ -1095,9 +1118,10 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
         timeseriesPaths.add(
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                TSDataType.INT64));
+            new NonAlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                new MeasurementSchema("s" + j, TSDataType.INT64)));
       }
     }
     sourceData = readSourceFiles(timeseriesPaths, Collections.emptyList());
@@ -1167,7 +1191,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     List<IDeviceID> deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       deviceIds.add(
-          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              "root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
     deviceIds.sort(IDeviceID::compareTo);
 
@@ -1177,7 +1202,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       while (multiTsFileDeviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> deviceInfo = multiTsFileDeviceIterator.nextDevice();
         Assert.assertEquals(deviceIds.get(deviceNum), deviceInfo.left);
-        if (Integer.parseInt(((PlainDeviceID) deviceInfo.left).toStringID().substring(13)) < 10) {
+        if (Integer.parseInt(deviceInfo.left.toString().substring(13)) < 10) {
           Assert.assertFalse(deviceInfo.right);
         } else {
           Assert.assertTrue(deviceInfo.right);
@@ -1187,24 +1212,26 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     }
     Assert.assertEquals(30, deviceNum);
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
         if (i < 10) {
           timeseriesPaths.add(
-              new AlignedPath(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+              new AlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                   Collections.singletonList("s" + j),
                   Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
         } else {
           timeseriesPaths.add(
-              new MeasurementPath(
-                  COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                  TSDataType.INT64));
+              new NonAlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                  new MeasurementSchema("s" + j, TSDataType.INT64)));
         }
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     InnerSpaceCompactionTask task =
@@ -1240,8 +1267,9 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     for (int i = 0; i < 30; i++) {
       for (int j = 0; j < 15; j++) {
         timeseriesPaths.add(
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
       }
@@ -1252,7 +1280,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
     deviceIds = new ArrayList<>();
     for (int i = 0; i < 30; i++) {
       deviceIds.add(
-          new PlainDeviceID("root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              "root.testsg.d" + (i + TsFileGeneratorUtils.getAlignDeviceOffset())));
     }
     deviceIds.sort(IDeviceID::compareTo);
 

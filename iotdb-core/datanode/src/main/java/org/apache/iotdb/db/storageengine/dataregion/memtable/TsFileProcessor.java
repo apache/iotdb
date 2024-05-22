@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -1406,18 +1407,18 @@ public class TsFileProcessor {
    * @param seriesPaths selected paths
    */
   public void query(
-      List<PartialPath> seriesPaths,
+      List<IFullPath> seriesPaths,
       QueryContext context,
       List<TsFileResource> tsfileResourcesForQuery)
       throws IOException {
     long startTime = System.nanoTime();
     try {
-      Map<PartialPath, List<IChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
-      Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
+      Map<IFullPath, List<IChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
+      Map<IFullPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
 
       flushQueryLock.readLock().lock();
       try {
-        for (PartialPath seriesPath : seriesPaths) {
+        for (IFullPath seriesPath : seriesPaths) {
           List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
           for (IMemTable flushingMemTable : flushingMemTables) {
             if (flushingMemTable.isSignalMemTable()) {

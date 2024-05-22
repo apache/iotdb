@@ -108,6 +108,7 @@ import org.apache.iotdb.db.utils.columngenerator.parameter.SlidingTimeColumnGene
 
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -236,10 +237,10 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLast(Analysis analysis, Ordering timeseriesOrdering) {
-    Set<String> deviceAlignedSet = new HashSet<>();
-    Set<String> deviceExistViewSet = new HashSet<>();
+    Set<IDeviceID> deviceAlignedSet = new HashSet<>();
+    Set<IDeviceID> deviceExistViewSet = new HashSet<>();
     // <Device, <Measurement, Expression>>
-    Map<String, Map<String, Expression>> outputPathToSourceExpressionMap = new LinkedHashMap<>();
+    Map<IDeviceID, Map<String, Expression>> outputPathToSourceExpressionMap = new LinkedHashMap<>();
 
     for (Expression sourceExpression : analysis.getLastQueryBaseExpressions()) {
       MeasurementPath outputPath =
@@ -247,7 +248,7 @@ public class LogicalPlanBuilder {
               (sourceExpression.isViewExpression()
                   ? sourceExpression.getViewPath()
                   : ((TimeSeriesOperand) sourceExpression).getPath());
-      String outputDevice = outputPath.getDevice();
+      IDeviceID outputDevice = outputPath.getIDeviceID();
       outputPathToSourceExpressionMap
           .computeIfAbsent(
               outputDevice,
@@ -265,9 +266,9 @@ public class LogicalPlanBuilder {
     }
 
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    for (Map.Entry<String, Map<String, Expression>> deviceMeasurementExpressionEntry :
+    for (Map.Entry<IDeviceID, Map<String, Expression>> deviceMeasurementExpressionEntry :
         outputPathToSourceExpressionMap.entrySet()) {
-      String outputDevice = deviceMeasurementExpressionEntry.getKey();
+      IDeviceID outputDevice = deviceMeasurementExpressionEntry.getKey();
       Map<String, Expression> measurementToExpressionsOfDevice =
           deviceMeasurementExpressionEntry.getValue();
       if (deviceExistViewSet.contains(outputDevice)) {
@@ -537,13 +538,13 @@ public class LogicalPlanBuilder {
     }
 
     if (COUNT_TIME.equalsIgnoreCase(sourceExpression.getFunctionName())) {
-      Map<String, Pair<List<String>, List<IMeasurementSchema>>> map = new HashMap<>();
+      Map<IDeviceID, Pair<List<String>, List<IMeasurementSchema>>> map = new HashMap<>();
       for (Expression expression : sourceExpression.getCountTimeExpressions()) {
         TimeSeriesOperand ts = (TimeSeriesOperand) expression;
         PartialPath path = ts.getPath();
         Pair<List<String>, List<IMeasurementSchema>> pair =
             map.computeIfAbsent(
-                path.getDevice(), k -> new Pair<>(new ArrayList<>(), new ArrayList<>()));
+                path.getIDeviceID(), k -> new Pair<>(new ArrayList<>(), new ArrayList<>()));
         pair.left.add(path.getMeasurement());
         try {
           pair.right.add(path.getMeasurementSchema());
@@ -552,8 +553,9 @@ public class LogicalPlanBuilder {
         }
       }
 
-      for (Map.Entry<String, Pair<List<String>, List<IMeasurementSchema>>> entry : map.entrySet()) {
-        String device = entry.getKey();
+      for (Map.Entry<IDeviceID, Pair<List<String>, List<IMeasurementSchema>>> entry :
+          map.entrySet()) {
+        IDeviceID device = entry.getKey();
         Pair<List<String>, List<IMeasurementSchema>> pair = entry.getValue();
         AlignedPath alignedPath = null;
         try {

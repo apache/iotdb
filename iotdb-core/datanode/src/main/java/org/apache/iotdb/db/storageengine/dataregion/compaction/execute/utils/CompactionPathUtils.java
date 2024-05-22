@@ -25,7 +25,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDeviceP
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 
 public class CompactionPathUtils {
 
@@ -34,11 +33,11 @@ public class CompactionPathUtils {
   public static PartialPath getPath(IDeviceID device, String measurement)
       throws IllegalPathException {
     PartialPath path;
-    String plainDeviceId = ((PlainDeviceID) device).toStringID();
+    String plainDeviceId = device.toString();
     if (plainDeviceId.contains(TsFileConstant.BACK_QUOTE_STRING)) {
       path = DataNodeDevicePathCache.getInstance().getPartialPath(plainDeviceId);
     } else {
-      path = new PartialPath(((PlainDeviceID) device).toStringID().split("\\."));
+      path = new PartialPath(device.toString().split("\\."));
     }
     return path.concatNode(measurement);
   }

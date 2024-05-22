@@ -23,13 +23,13 @@ import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.MeasurementGroup;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
 import org.junit.After;
@@ -58,8 +58,8 @@ public class TsFileSketchToolTest {
           .concat(File.separator)
           .concat("1-0-0-0.tsfile");
   String sketchOut = "sketch.out";
-  IDeviceID device = new PlainDeviceID("root.device_0");
-  IDeviceID alignedDevice = new PlainDeviceID("root.device_1");
+  IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("root.device_0");
+  IDeviceID alignedDevice = IDeviceID.Factory.DEFAULT_FACTORY.create("root.device_1");
   String sensorPrefix = "sensor_";
   // the number of rows to include in the tablet
   int rowNum = 1000000;
@@ -76,7 +76,7 @@ public class TsFileSketchToolTest {
 
       Schema schema = new Schema();
 
-      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
         MeasurementSchema measurementSchema =
@@ -87,8 +87,8 @@ public class TsFileSketchToolTest {
             new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
       }
       // add aligned measurements into file schema
-      List<MeasurementSchema> schemas = new ArrayList<>();
-      List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
+      List<IMeasurementSchema> schemas = new ArrayList<>();
+      List<IMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
       for (int i = 0; i < sensorNum; i++) {
         MeasurementSchema schema1 =
             new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.RLE);
@@ -102,7 +102,7 @@ public class TsFileSketchToolTest {
 
         // add measurements into TSFileWriter
         // construct the tablet
-        Tablet tablet = new Tablet(((PlainDeviceID) device).toStringID(), measurementSchemas);
+        Tablet tablet = new Tablet(device.toString(), measurementSchemas);
         long[] timestamps = tablet.timestamps;
         Object[] values = tablet.values;
         long timestamp = 1;
@@ -128,8 +128,7 @@ public class TsFileSketchToolTest {
 
         // add aligned measurements into TSFileWriter
         // construct the tablet
-        tablet =
-            new Tablet(((PlainDeviceID) alignedDevice).toStringID(), alignedMeasurementSchemas);
+        tablet = new Tablet(alignedDevice.toString(), alignedMeasurementSchemas);
         timestamps = tablet.timestamps;
         values = tablet.values;
         timestamp = 1;

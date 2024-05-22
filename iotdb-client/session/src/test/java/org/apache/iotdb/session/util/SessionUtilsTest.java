@@ -28,6 +28,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
@@ -41,7 +42,7 @@ public class SessionUtilsTest {
 
   @Test
   public void testGetTimeBuffer() {
-    List<MeasurementSchema> schemas = new ArrayList<>();
+    List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -58,7 +59,7 @@ public class SessionUtilsTest {
 
   @Test
   public void testGetValueBuffer() {
-    List<MeasurementSchema> schemas = new ArrayList<>();
+    List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.INT32);

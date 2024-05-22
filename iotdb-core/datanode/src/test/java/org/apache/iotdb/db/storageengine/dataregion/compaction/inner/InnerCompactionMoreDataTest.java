@@ -21,8 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
@@ -36,13 +36,14 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -106,7 +107,7 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (String deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
@@ -121,8 +122,8 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
                   String.valueOf(i + valueOffset + k)));
         }
         fileWriter.write(record);
-        tsFileResource.updateStartTime(new PlainDeviceID(deviceIds[j]), i);
-        tsFileResource.updateEndTime(new PlainDeviceID(deviceIds[j]), i);
+        tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIds[j]), i);
+        tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIds[j]), i);
       }
       if ((i + 1) % flushInterval == 0) {
         fileWriter.flushAllChunkGroups();
@@ -163,10 +164,9 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
     }
     CompactionTaskManager.getInstance().waitAllCompactionFinish();
 
-    MeasurementPath path =
-        new MeasurementPath(
-            new PartialPath(deviceIds[0], measurementSchemas[2688].getMeasurementId()),
-            measurementSchemas[2688].getType());
+    IFullPath path =
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIds[0]), measurementSchemas[2688]);
     IDataBlockReader tsFilesReader =
         new SeriesDataBlockReader(
             path,

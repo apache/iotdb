@@ -25,7 +25,6 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,10 +63,7 @@ public class TsFileEpochManager {
         event,
         epoch,
         resource.getDevices().stream()
-            .collect(
-                Collectors.toMap(
-                    device -> ((PlainDeviceID) device).toStringID(),
-                    device -> EMPTY_MEASUREMENT_ARRAY)),
+            .collect(Collectors.toMap(Object::toString, device -> EMPTY_MEASUREMENT_ARRAY)),
         event.getPipePattern());
   }
 

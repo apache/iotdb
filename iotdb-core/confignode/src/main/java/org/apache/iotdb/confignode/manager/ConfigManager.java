@@ -647,11 +647,11 @@ public class ConfigManager implements IManager {
     }
     PartialPath innerPath = innerPathList.get(0);
     // The innerPath contains `*` and the only `*` is not in last level
-    if (innerPath.getDevice().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+    if (innerPath.getIDeviceID().toString().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       return new ArrayList<>();
     }
     return Collections.singletonList(
-        getPartitionManager().getSeriesPartitionSlot(innerPath.getDevice()));
+        getPartitionManager().getSeriesPartitionSlot(innerPath.getIDeviceID().toString()));
   }
 
   @Override

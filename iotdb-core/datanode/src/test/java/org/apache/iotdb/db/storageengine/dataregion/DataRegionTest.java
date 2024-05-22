@@ -25,7 +25,9 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.ShutdownException;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -58,7 +60,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -89,7 +91,13 @@ public class DataRegionTest {
   private String storageGroup = "root.vehicle.d0";
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
   private String deviceId = "root.vehicle.d0";
+
+  private IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId);
   private String measurementId = "s0";
+
+  private NonAlignedFullPath nonAlignedFullPath =
+      new NonAlignedFullPath(device, new MeasurementSchema(measurementId, TSDataType.INT32));
+
   private DataRegion dataRegion;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
@@ -184,13 +192,14 @@ public class DataRegionTest {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     for (TsFileProcessor tsfileProcessor : dataRegion.getWorkUnsequenceTsFileProcessors()) {
       tsfileProcessor.query(
-          Collections.singletonList(fullPath),
+          Collections.singletonList(IFullPath.convertToIFullPath(fullPath)),
           EnvironmentUtils.TEST_QUERY_CONTEXT,
           tsfileResourcesForQuery);
     }
 
     Assert.assertEquals(1, tsfileResourcesForQuery.size());
-    List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath);
+    List<ReadOnlyMemChunk> memChunks =
+        tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(IFullPath.convertToIFullPath(fullPath));
     long time = 16;
     for (ReadOnlyMemChunk memChunk : memChunks) {
       IPointReader iterator = memChunk.getPointReader();
@@ -217,10 +226,13 @@ public class DataRegionTest {
       e.printStackTrace();
     }
     dataRegion.syncCloseAllWorkingTsFileProcessors();
+    IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId);
     QueryDataSource queryDataSource =
         dataRegion.query(
-            Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
+            Collections.singletonList(
+                new NonAlignedFullPath(
+                    device, new MeasurementSchema(measurementId, TSDataType.INT32))),
+            device,
             context,
             null,
             null);
@@ -296,11 +308,7 @@ public class DataRegionTest {
 
     QueryDataSource queryDataSource =
         dataRegion.query(
-            Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
-            context,
-            null,
-            null);
+            Collections.singletonList(nonAlignedFullPath), device, context, null, null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(1, queryDataSource.getUnseqResources().size());
@@ -378,11 +386,7 @@ public class DataRegionTest {
 
     QueryDataSource queryDataSource =
         dataRegion.query(
-            Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
-            context,
-            null,
-            null);
+            Collections.singletonList(nonAlignedFullPath), device, context, null, null);
 
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -459,11 +463,7 @@ public class DataRegionTest {
 
     QueryDataSource queryDataSource =
         dataRegion.query(
-            Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
-            context,
-            null,
-            null);
+            Collections.singletonList(nonAlignedFullPath), device, context, null, null);
 
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -494,11 +494,7 @@ public class DataRegionTest {
 
     QueryDataSource queryDataSource =
         dataRegion.query(
-            Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
-            context,
-            null,
-            null);
+            Collections.singletonList(nonAlignedFullPath), device, context, null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -535,11 +531,7 @@ public class DataRegionTest {
 
     QueryDataSource queryDataSource =
         dataRegion.query(
-            Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
-            context,
-            null,
-            null);
+            Collections.singletonList(nonAlignedFullPath), device, context, null, null);
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -579,11 +571,7 @@ public class DataRegionTest {
 
     QueryDataSource queryDataSource =
         dataRegion.query(
-            Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
-            context,
-            null,
-            null);
+            Collections.singletonList(nonAlignedFullPath), device, context, null, null);
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
     Assert.assertEquals(20, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -669,11 +657,7 @@ public class DataRegionTest {
 
     QueryDataSource queryDataSource =
         dataRegion.query(
-            Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
-            context,
-            null,
-            null);
+            Collections.singletonList(nonAlignedFullPath), device, context, null, null);
 
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
     Assert.assertEquals(2, queryDataSource.getUnseqResources().size());
@@ -758,11 +742,7 @@ public class DataRegionTest {
 
     QueryDataSource queryDataSource =
         dataRegion.query(
-            Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
-            context,
-            null,
-            null);
+            Collections.singletonList(nonAlignedFullPath), device, context, null, null);
 
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
     Assert.assertEquals(2, queryDataSource.getUnseqResources().size());
@@ -847,11 +827,7 @@ public class DataRegionTest {
 
     QueryDataSource queryDataSource =
         dataRegion.query(
-            Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
-            context,
-            null,
-            null);
+            Collections.singletonList(nonAlignedFullPath), device, context, null, null);
 
     Assert.assertEquals(0, queryDataSource.getSeqResources().size());
     Assert.assertEquals(2, queryDataSource.getUnseqResources().size());
@@ -882,10 +858,13 @@ public class DataRegionTest {
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""), indexList, nodes);
     dataRegion1.insert(insertRowsNode);
     dataRegion1.syncCloseAllWorkingTsFileProcessors();
+    IDeviceID tmpDeviceId = IDeviceID.Factory.DEFAULT_FACTORY.create("root.Rows");
     QueryDataSource queryDataSource =
         dataRegion1.query(
-            Collections.singletonList(new PartialPath("root.Rows", measurementId)),
-            "root.Rows",
+            Collections.singletonList(
+                new NonAlignedFullPath(
+                    tmpDeviceId, new MeasurementSchema(measurementId, TSDataType.INT32))),
+            tmpDeviceId,
             context,
             null,
             null);
@@ -917,11 +896,13 @@ public class DataRegionTest {
     for (TsFileProcessor tsfileProcessor : dataRegion1.getWorkUnsequenceTsFileProcessors()) {
       tsfileProcessor.syncFlush();
     }
-
+    IDeviceID tmpDeviceId = IDeviceID.Factory.DEFAULT_FACTORY.create("root.ln22");
     QueryDataSource queryDataSource =
         dataRegion1.query(
-            Collections.singletonList(new PartialPath("root.ln22", measurementId)),
-            "root.ln22",
+            Collections.singletonList(
+                new NonAlignedFullPath(
+                    tmpDeviceId, new MeasurementSchema(measurementId, TSDataType.INT32))),
+            tmpDeviceId,
             context,
             null,
             null);
@@ -993,11 +974,7 @@ public class DataRegionTest {
 
     QueryDataSource queryDataSource =
         dataRegion.query(
-            Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
-            context,
-            null,
-            null);
+            Collections.singletonList(nonAlignedFullPath), device, context, null, null);
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
@@ -1380,7 +1357,9 @@ public class DataRegionTest {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertFalse(tsFileResource.getModFile().exists());
     Assert.assertFalse(
-        tsFileResource.getDevices().contains(new PlainDeviceID("root.vehicle.d199")));
+        tsFileResource
+            .getDevices()
+            .contains(IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d199")));
   }
 
   @Test

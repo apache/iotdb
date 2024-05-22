@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -36,7 +36,7 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
   @SuppressWarnings("squid:S107")
   public AlignedSeriesAggregationScanOperator(
       PlanNodeId sourceId,
-      AlignedPath seriesPath,
+      AlignedFullPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       OperatorContext context,
@@ -59,7 +59,7 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
 
   public AlignedSeriesAggregationScanOperator(
       PlanNodeId sourceId,
-      AlignedPath seriesPath,
+      AlignedFullPath seriesPath,
       Ordering scanOrder,
       boolean outputEndTime,
       SeriesScanOptions scanOptions,

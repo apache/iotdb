@@ -32,12 +32,12 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.BooleanDataPoint;
 import org.apache.tsfile.write.record.datapoint.IntDataPoint;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -50,7 +50,8 @@ import java.util.List;
 
 public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
   private final String oldThreadName = Thread.currentThread().getName();
-  private final IDeviceID device = new PlainDeviceID(COMPACTION_TEST_SG + ".d1");
+  private final IDeviceID device =
+      IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + ".d1");
 
   @Before
   public void setUp()
@@ -172,7 +173,7 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
 
   private void generateDataTypeNotMatchFilesWithAlignedSeries()
       throws IOException, WriteProcessException {
-    List<MeasurementSchema> measurementSchemas1 = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemas1 = new ArrayList<>();
     measurementSchemas1.add(new MeasurementSchema("s1", TSDataType.INT32));
     measurementSchemas1.add(new MeasurementSchema("s2", TSDataType.INT32));
 
@@ -191,7 +192,7 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     resource1.serialize();
     seqResources.add(resource1);
 
-    List<MeasurementSchema> measurementSchemas2 = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemas2 = new ArrayList<>();
     measurementSchemas2.add(new MeasurementSchema("s1", TSDataType.BOOLEAN));
     measurementSchemas2.add(new MeasurementSchema("s2", TSDataType.BOOLEAN));
     TsFileResource resource2 = createEmptyFileAndResource(true);
