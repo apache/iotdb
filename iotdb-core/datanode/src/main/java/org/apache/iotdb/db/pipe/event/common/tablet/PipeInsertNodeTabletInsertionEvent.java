@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -303,7 +304,15 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     final InsertNode node = getInsertNodeViaCacheIfPossible();
     return super.shouldParsePattern()
         && Objects.nonNull(pipePattern)
-        && (Objects.isNull(node) || !pipePattern.coversDevice(node.getDevicePath().getFullPath()));
+        && (Objects.isNull(node)
+            || (node.getType() == PlanNodeType.INSERT_ROWS
+                ? ((InsertRowsNode) node)
+                    .getInsertRowNodeList().stream()
+                        .anyMatch(
+                            insertRowNode ->
+                                !pipePattern.coversDevice(
+                                    insertRowNode.getDevicePath().getFullPath()))
+                : !pipePattern.coversDevice(node.getDevicePath().getFullPath())));
   }
 
   public List<PipeRawTabletInsertionEvent> toRawTabletInsertionEvents() {
