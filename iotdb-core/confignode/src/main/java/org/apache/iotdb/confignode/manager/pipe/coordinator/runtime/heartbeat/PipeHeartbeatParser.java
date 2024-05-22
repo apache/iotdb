@@ -141,10 +141,11 @@ public class PipeHeartbeatParser {
       }
 
       // Remove completed pipes
-      final Boolean pipeCompletedFromAgent =
+      final Boolean isPipeCompletedFromAgent =
           pipeHeartbeat.isCompleted(pipeMetaFromCoordinator.getStaticMeta());
-      if (Boolean.TRUE.equals(pipeCompletedFromAgent)) {
+      if (Boolean.TRUE.equals(isPipeCompletedFromAgent)) {
         final PipeTemporaryMeta temporaryMeta = pipeMetaFromCoordinator.getTemporaryMeta();
+
         temporaryMeta.markDataNodeCompleted(nodeId);
 
         final Set<Integer> uncompletedDataNodeIds =
