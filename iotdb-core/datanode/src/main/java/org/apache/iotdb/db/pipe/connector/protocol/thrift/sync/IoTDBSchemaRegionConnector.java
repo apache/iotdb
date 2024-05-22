@@ -101,16 +101,16 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     try {
       TPipeTransferReq req =
-      compressIfNeeded(
-        PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
-            // The pattern is surely Non-null
-            snapshotEvent.getPatternString(),
-            mTreeSnapshotFile.getName(),
-            mTreeSnapshotFile.length(),
-            Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
-            Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
-            snapshotEvent.getDatabaseName(),
-            snapshotEvent.toSealTypeString()));
+          compressIfNeeded(
+              PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
+                  // The pattern is surely Non-null
+                  snapshotEvent.getPatternString(),
+                  mTreeSnapshotFile.getName(),
+                  mTreeSnapshotFile.length(),
+                  Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.getName() : null,
+                  Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
+                  snapshotEvent.getDatabaseName(),
+                  snapshotEvent.toSealTypeString()));
 
       rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
 

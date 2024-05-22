@@ -190,16 +190,17 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     final TPipeTransferResp resp;
     try {
-      TPipeTransferReq req = compressIfNeeded(
-        PipeTransferConfigSnapshotSealReq.toTPipeTransferReq(
-            // The pattern is surely Non-null
-            snapshotEvent.getPatternString(),
-            snapshotFile.getName(),
-            snapshotFile.length(),
-            Objects.nonNull(templateFile) ? templateFile.getName() : null,
-            Objects.nonNull(templateFile) ? templateFile.length() : 0,
-            snapshotEvent.getFileType(),
-            snapshotEvent.toSealTypeString()));
+      TPipeTransferReq req =
+          compressIfNeeded(
+              PipeTransferConfigSnapshotSealReq.toTPipeTransferReq(
+                  // The pattern is surely Non-null
+                  snapshotEvent.getPatternString(),
+                  snapshotFile.getName(),
+                  snapshotFile.length(),
+                  Objects.nonNull(templateFile) ? templateFile.getName() : null,
+                  Objects.nonNull(templateFile) ? templateFile.length() : 0,
+                  snapshotEvent.getFileType(),
+                  snapshotEvent.toSealTypeString()));
       rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
 
       resp = clientAndStatus.getLeft().pipeTransfer(req);
