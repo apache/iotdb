@@ -71,8 +71,26 @@ public abstract class Expression extends Node {
   public static Expression deserialize(ByteBuffer byteBuffer) {
     short type = ReadWriteIOUtils.readShort(byteBuffer);
 
-    Expression expression;
+    Expression expression = null;
     switch (type) {
+      case 1:
+        expression = new ArithmeticBinaryExpression(byteBuffer);
+        break;
+      case 2:
+        expression = new ArithmeticUnaryExpression(byteBuffer);
+        break;
+      case 3:
+        expression = new LikePredicate(byteBuffer);
+        break;
+      case 4:
+        expression = new InListExpression(byteBuffer);
+        break;
+      case 5:
+        expression = new IsNotNullPredicate(byteBuffer);
+        break;
+      case 6:
+        expression = new IsNullPredicate(byteBuffer);
+        break;
       case 11:
         expression = new BetweenPredicate(byteBuffer);
         break;
