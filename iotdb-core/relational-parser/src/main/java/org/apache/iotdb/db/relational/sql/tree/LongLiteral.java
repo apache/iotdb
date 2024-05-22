@@ -20,6 +20,11 @@
 package org.apache.iotdb.db.relational.sql.tree;
 
 import org.apache.iotdb.db.relational.sql.parser.ParsingException;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import static java.util.Objects.requireNonNull;
 
@@ -105,5 +110,22 @@ public class LongLiteral extends Literal {
     } else {
       return Long.parseLong(value);
     }
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.LONG_LITERAL;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(this.value, stream);
+    ReadWriteIOUtils.write(this.parsedValue, stream);
+  }
+
+  public LongLiteral(ByteBuffer byteBuffer) {
+    super(null);
+    this.value = ReadWriteIOUtils.readString(byteBuffer);
+    this.parsedValue = ReadWriteIOUtils.readLong(byteBuffer);
   }
 }
