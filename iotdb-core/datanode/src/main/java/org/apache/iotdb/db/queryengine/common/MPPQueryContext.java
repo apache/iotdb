@@ -82,7 +82,8 @@ public class MPPQueryContext {
 
   private long bytesToBeReservedForFrontEnd = 0;
 
-  // To avoid reserving memory too frequently, we choose to do it in batches. This is upper limit
+  // To avoid reserving memory too frequently, we choose to do it in batches. This is the lower
+  // bound
   // for each batch.
   private static final long MEMORY_BATCH_THRESHOLD = 1024L * 1024L;
 

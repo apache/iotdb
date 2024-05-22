@@ -129,6 +129,8 @@ public class TemplatedAnalyze {
               TimeSeriesOperand measurementPath =
                   new TimeSeriesOperand(
                       new MeasurementPath(new String[] {measurementName}, measurementSchema));
+              // reserve memory for this expression
+              context.reserveMemoryForFrontEnd(measurementPath.ramBytesUsed());
               outputExpressions.add(new Pair<>(measurementPath, null));
               paginationController.consumeLimit();
             } else {
@@ -150,6 +152,8 @@ public class TemplatedAnalyze {
               TimeSeriesOperand measurementPath =
                   new TimeSeriesOperand(
                       new MeasurementPath(new String[] {measurementName}, measurementSchema));
+              // reserve memory for this expression
+              context.reserveMemoryForFrontEnd(measurementPath.ramBytesUsed());
               outputExpressions.add(new Pair<>(measurementPath, resultColumn.getAlias()));
             } else {
               break;

@@ -410,7 +410,9 @@ public class ExpressionAnalyzer {
    *     expressions
    */
   public static List<Expression> bindSchemaForExpression(
-      Expression expression, ISchemaTree schemaTree, MPPQueryContext queryContext) {
+      final Expression expression,
+      final ISchemaTree schemaTree,
+      final MPPQueryContext queryContext) {
     return new BindSchemaForExpressionVisitor()
         .process(expression, new BindSchemaForExpressionVisitor.Context(schemaTree, queryContext));
   }
@@ -425,11 +427,11 @@ public class ExpressionAnalyzer {
    * @return the expression list with full path and after binding schema
    */
   public static List<Expression> bindSchemaForPredicate(
-      Expression predicate,
-      List<PartialPath> prefixPaths,
-      ISchemaTree schemaTree,
-      boolean isRoot,
-      MPPQueryContext queryContext) {
+      final Expression predicate,
+      final List<PartialPath> prefixPaths,
+      final ISchemaTree schemaTree,
+      final boolean isRoot,
+      final MPPQueryContext queryContext) {
     return new BindSchemaForPredicateVisitor()
         .process(
             predicate,
