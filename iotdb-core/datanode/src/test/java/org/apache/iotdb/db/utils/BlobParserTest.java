@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-
 import org.junit.Test;
 
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertThrows;
 
 public class BlobParserTest {
 
@@ -53,18 +51,10 @@ public class BlobParserTest {
   @Test
   public void testInvalidHexString() {
     String invalidHex1 = "X'1g'";
-    try {
-      CommonUtils.parseBlobStringToByteArray(invalidHex1);
-      fail("Expected an IllegalArgumentException for invalid hex character");
-    } catch (SemanticException e) {
-      // Test passes
-    }
+    assertThrows(
+        IllegalArgumentException.class, () -> CommonUtils.parseBlobStringToByteArray(invalidHex1));
     String invalidHex2 = "X'GG'";
-    try {
-      CommonUtils.parseBlobStringToByteArray(invalidHex2);
-      fail("Expected an IllegalArgumentException for non-hex characters");
-    } catch (SemanticException e) {
-      // Test passes
-    }
+    assertThrows(
+        IllegalArgumentException.class, () -> CommonUtils.parseBlobStringToByteArray(invalidHex2));
   }
 }

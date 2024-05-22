@@ -56,24 +56,23 @@ public class PrimitiveArrayManager {
           / AMPLIFICATION_FACTOR;
 
   /** TSDataType#serialize() -> ArrayDeque<Array>, VECTOR and UNKNOWN are ignored */
-  private static final ArrayDeque[] POOLED_ARRAYS = new ArrayDeque[TSDataType.values().length - 2];
+  private static final ArrayDeque[] POOLED_ARRAYS = new ArrayDeque[TSDataType.values().length];
 
   /** TSDataType#serialize() -> max size of ArrayDeque<Array>, VECTOR and UNKNOWN are ignored */
-  private static final int[] LIMITS = new int[TSDataType.values().length - 2];
+  private static final int[] LIMITS = new int[TSDataType.values().length];
 
   /** LIMITS should be updated if (TOTAL_ALLOCATION_REQUEST_COUNT.get() > limitUpdateThreshold) */
   private static long limitUpdateThreshold;
 
   /** TSDataType#serialize() -> count of allocation requests, VECTOR is ignored */
   private static final AtomicLong[] ALLOCATION_REQUEST_COUNTS =
-      new AtomicLong[] {
-        new AtomicLong(0),
-        new AtomicLong(0),
-        new AtomicLong(0),
-        new AtomicLong(0),
-        new AtomicLong(0),
-        new AtomicLong(0)
-      };
+      new AtomicLong[TSDataType.values().length];
+
+  static {
+    for (int i = 0; i < ALLOCATION_REQUEST_COUNTS.length; ++i) {
+      ALLOCATION_REQUEST_COUNTS[i] = new AtomicLong(0);
+    }
+  }
 
   private static final AtomicLong TOTAL_ALLOCATION_REQUEST_COUNT = new AtomicLong(0);
 
