@@ -70,7 +70,12 @@ get_properties_value() {
     local file_name=$1
     local property_name=$2
     local default_value=$3
-    local property_value=$(sed "/^${property_name}=/!d;s/.*=//" "${IOTDB_HOME}/conf/${file_name}.properties")
+    if [ -f "${IOTDB_HOME}/conf/iotdb-system.properties" ]; then
+            local file_path="${IOTDB_HOME}/conf/iotdb-system.properties"
+    else
+            local file_path="${IOTDB_HOME}/conf/${file_name}.properties"
+    fi
+    local property_value=$(sed "/^${property_name}=/!d;s/.*=//" "${file_path}")
     if [ -z "$property_value" ]; then
             property_value="$default_value"
     fi
