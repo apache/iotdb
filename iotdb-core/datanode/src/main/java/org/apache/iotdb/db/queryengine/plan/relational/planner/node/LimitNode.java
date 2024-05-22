@@ -62,6 +62,10 @@ public class LimitNode extends SingleChildProcessNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
 
+  public static LimitNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
   @Override
   public List<Symbol> getOutputSymbols() {
     return child.getOutputSymbols();

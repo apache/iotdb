@@ -79,7 +79,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTag
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
@@ -218,7 +217,17 @@ public enum PlanNodeType {
   CREATE_TABLE_DEVICE((short) 92),
   TABLE_DEVICE_SCAN((short) 93),
   TABLE_DEVICE_FETCH((short) 94),
-  DELETE_TABLE_DEVICE((short) 95);
+  DELETE_TABLE_DEVICE((short) 95),
+
+  TABLE_SCAN_NODE((short) 1000),
+  TABLE_FILTER_NODE((short) 1001),
+  TABLE_PROJECT_NODE((short) 1002),
+  TABLE_OUTPUT_NODE((short) 1003),
+  TABLE_LIMIT_NODE((short) 1004),
+  TABLE_OFFSET_NODE((short) 1005),
+  TABLE_SORT_NODE((short) 1006),
+  TABLE_MERGESORT_NODE((short) 1007),
+  TABLE_TOPK_NODE((short) 1008);
 
   public static final int BYTES = Short.BYTES;
 
@@ -400,7 +409,8 @@ public enum PlanNodeType {
       case 65:
         return SingleDeviceViewNode.deserialize(buffer);
       case 66:
-        return MergeSortNode.deserialize(buffer);
+        return org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode
+            .deserialize(buffer);
       case 67:
         return ShowQueriesNode.deserialize(buffer);
       case 68:
@@ -457,6 +467,32 @@ public enum PlanNodeType {
         return TableDeviceFetchNode.deserialize(buffer);
       case 95:
         return DeleteTableDeviceNode.deserialize(buffer);
+      case 1000:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode
+            .deserialize(buffer);
+      case 1001:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode.deserialize(
+            buffer);
+      case 1002:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode.deserialize(
+            buffer);
+      case 1003:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode.deserialize(
+            buffer);
+      case 1004:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode.deserialize(
+            buffer);
+      case 1005:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode.deserialize(
+            buffer);
+      case 1006:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode.deserialize(
+            buffer);
+      case 1007:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode
+            .deserialize(buffer);
+      case 1008:
+        return TopKNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

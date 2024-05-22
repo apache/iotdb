@@ -60,6 +60,10 @@ public class FilterNode extends SingleChildProcessNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
 
+  public static FilterNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
   public Expression getPredicate() {
     return predicate;
   }

@@ -20,14 +20,18 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class MergeSortNode extends MultiChildProcessNode {
@@ -57,10 +61,35 @@ public class MergeSortNode extends MultiChildProcessNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_MERGESORT_NODE.serialize(byteBuffer);
+    orderingScheme.serialize(byteBuffer);
+    ReadWriteIOUtils.write(outputSymbols.size(), byteBuffer);
+    for (Symbol symbol : outputSymbols) {
+      Symbol.serialize(symbol, byteBuffer);
+    }
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TABLE_MERGESORT_NODE.serialize(stream);
+    orderingScheme.serialize(stream);
+    ReadWriteIOUtils.write(outputSymbols.size(), stream);
+    for (Symbol symbol : outputSymbols) {
+      Symbol.serialize(symbol, stream);
+    }
+  }
+
+  public static MergeSortNode deserialize(ByteBuffer byteBuffer) {
+    OrderingScheme orderingScheme = OrderingScheme.deserialize(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Symbol> outputSymbols = new ArrayList<>(size);
+    while (size-- > 0) {
+      outputSymbols.add(Symbol.deserialize(byteBuffer));
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new MergeSortNode(planNodeId, orderingScheme, outputSymbols);
+  }
 
   @Override
   public List<Symbol> getOutputSymbols() {

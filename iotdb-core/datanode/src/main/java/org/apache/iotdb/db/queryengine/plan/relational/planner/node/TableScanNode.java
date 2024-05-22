@@ -17,6 +17,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -26,12 +27,15 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -64,6 +68,8 @@ public class TableScanNode extends SourceNode {
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
+  private List<TRegionReplicaSet> regionReplicaSetList;
+
   public TableScanNode(
       PlanNodeId id,
       String qualifiedTableName,
@@ -73,6 +79,25 @@ public class TableScanNode extends SourceNode {
     this.qualifiedTableName = qualifiedTableName;
     this.outputSymbols = outputSymbols;
     this.assignments = assignments;
+  }
+
+  public TableScanNode(
+      PlanNodeId id,
+      String qualifiedTableName,
+      List<Symbol> outputSymbols,
+      Map<Symbol, ColumnSchema> assignments,
+      List<DeviceEntry> deviceEntries,
+      Map<Symbol, Integer> idAndAttributeIndexMap,
+      Ordering scanOrder,
+      Expression pushDownPredicate) {
+    super(id);
+    this.qualifiedTableName = qualifiedTableName;
+    this.outputSymbols = outputSymbols;
+    this.assignments = assignments;
+    this.deviceEntries = deviceEntries;
+    this.idAndAttributeIndexMap = idAndAttributeIndexMap;
+    this.scanOrder = scanOrder;
+    this.pushDownPredicate = pushDownPredicate;
   }
 
   @Override
@@ -89,8 +114,16 @@ public class TableScanNode extends SourceNode {
   public void addChild(PlanNode child) {}
 
   @Override
-  public PlanNode clone() {
-    return null;
+  public TableScanNode clone() {
+    return new TableScanNode(
+        getPlanNodeId(),
+        qualifiedTableName,
+        outputSymbols,
+        assignments,
+        deviceEntries,
+        idAndAttributeIndexMap,
+        scanOrder,
+        pushDownPredicate);
   }
 
   @Override
@@ -104,10 +137,105 @@ public class TableScanNode extends SourceNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_SCAN_NODE.serialize(byteBuffer);
+    ReadWriteIOUtils.write(qualifiedTableName, byteBuffer);
+
+    ReadWriteIOUtils.write(outputSymbols.size(), byteBuffer);
+    outputSymbols.forEach(symbol -> ReadWriteIOUtils.write(symbol.getName(), byteBuffer));
+
+    ReadWriteIOUtils.write(assignments.size(), byteBuffer);
+    for (Map.Entry<Symbol, ColumnSchema> entry : assignments.entrySet()) {
+      Symbol.serialize(entry.getKey(), byteBuffer);
+      ColumnSchema.serialize(entry.getValue(), byteBuffer);
+    }
+
+    ReadWriteIOUtils.write(deviceEntries.size(), byteBuffer);
+    for (DeviceEntry entry : deviceEntries) {
+      entry.serialize(byteBuffer);
+    }
+
+    ReadWriteIOUtils.write(idAndAttributeIndexMap.size(), byteBuffer);
+    for (Map.Entry<Symbol, Integer> entry : idAndAttributeIndexMap.entrySet()) {
+      Symbol.serialize(entry.getKey(), byteBuffer);
+      ReadWriteIOUtils.write(entry.getValue(), byteBuffer);
+    }
+
+    ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TABLE_SCAN_NODE.serialize(stream);
+    ReadWriteIOUtils.write(qualifiedTableName, stream);
+
+    ReadWriteIOUtils.write(outputSymbols.size(), stream);
+    for (Symbol symbol : outputSymbols) {
+      ReadWriteIOUtils.write(symbol.getName(), stream);
+    }
+
+    ReadWriteIOUtils.write(assignments.size(), stream);
+    for (Map.Entry<Symbol, ColumnSchema> entry : assignments.entrySet()) {
+      Symbol.serialize(entry.getKey(), stream);
+      ColumnSchema.serialize(entry.getValue(), stream);
+    }
+
+    ReadWriteIOUtils.write(deviceEntries.size(), stream);
+    for (DeviceEntry entry : deviceEntries) {
+      entry.serialize(stream);
+    }
+
+    ReadWriteIOUtils.write(idAndAttributeIndexMap.size(), stream);
+    for (Map.Entry<Symbol, Integer> entry : idAndAttributeIndexMap.entrySet()) {
+      Symbol.serialize(entry.getKey(), stream);
+      ReadWriteIOUtils.write(entry.getValue(), stream);
+    }
+
+    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+  }
+
+  public static TableScanNode deserialize(ByteBuffer byteBuffer) {
+    String qualifiedTableName = ReadWriteIOUtils.readString(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+
+    List<Symbol> outputSymbols = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      outputSymbols.add(Symbol.deserialize(byteBuffer));
+    }
+
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    Map<Symbol, ColumnSchema> assignments = new HashMap<>(size);
+    for (int i = 0; i < size; i++) {
+      assignments.put(Symbol.deserialize(byteBuffer), ColumnSchema.deserialize(byteBuffer));
+    }
+
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<DeviceEntry> deviceEntries = new ArrayList<>(size);
+    while (size-- > 0) {
+      deviceEntries.add(DeviceEntry.deserialize(byteBuffer));
+    }
+
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>(size);
+    while (size-- > 0) {
+      idAndAttributeIndexMap.put(
+          Symbol.deserialize(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+    }
+
+    Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+
+    return new TableScanNode(
+        planNodeId,
+        qualifiedTableName,
+        outputSymbols,
+        assignments,
+        deviceEntries,
+        idAndAttributeIndexMap,
+        scanOrder,
+        null);
+  }
 
   @Override
   public List<Symbol> getOutputSymbols() {
@@ -184,6 +312,14 @@ public class TableScanNode extends SourceNode {
 
   public TRegionReplicaSet getRegionReplicaSet() {
     return this.regionReplicaSet;
+  }
+
+  public List<TRegionReplicaSet> getRegionReplicaSetList() {
+    return regionReplicaSetList;
+  }
+
+  public void setRegionReplicaSetList(List<TRegionReplicaSet> regionReplicaSetList) {
+    this.regionReplicaSetList = regionReplicaSetList;
   }
 
   public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {

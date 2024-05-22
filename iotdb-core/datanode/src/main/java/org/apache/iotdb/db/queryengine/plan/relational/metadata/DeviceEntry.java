@@ -20,7 +20,13 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class DeviceEntry {
@@ -39,6 +45,32 @@ public class DeviceEntry {
 
   public List<String> getAttributeColumnValues() {
     return attributeColumnValues;
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    deviceID.serialize(byteBuffer);
+    ReadWriteIOUtils.write(attributeColumnValues.size(), byteBuffer);
+    for (String value : attributeColumnValues) {
+      ReadWriteIOUtils.write(value, byteBuffer);
+    }
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    deviceID.serialize(stream);
+    ReadWriteIOUtils.write(attributeColumnValues.size(), stream);
+    for (String value : attributeColumnValues) {
+      ReadWriteIOUtils.write(value, stream);
+    }
+  }
+
+  public static DeviceEntry deserialize(ByteBuffer byteBuffer) {
+    IDeviceID iDeviceID = StringArrayDeviceID.deserialize(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> attributeColumnValues = new ArrayList<>(size);
+    while (size-- > 0) {
+      attributeColumnValues.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
+    return new DeviceEntry(iDeviceID, attributeColumnValues);
   }
 
   @Override

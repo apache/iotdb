@@ -34,7 +34,7 @@ public enum TsTableColumnCategory {
 
   private final byte category;
 
-  private TsTableColumnCategory(byte category) {
+  TsTableColumnCategory(byte category) {
     this.category = category;
   }
 
@@ -44,6 +44,10 @@ public enum TsTableColumnCategory {
 
   public void serialize(OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(category, stream);
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(category, byteBuffer);
   }
 
   public static TsTableColumnCategory deserialize(InputStream stream) throws IOException {

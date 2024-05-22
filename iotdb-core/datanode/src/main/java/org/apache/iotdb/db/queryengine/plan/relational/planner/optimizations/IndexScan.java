@@ -17,6 +17,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -135,20 +136,19 @@ public class IndexScan implements RelationalPlanOptimizer {
         context.getAnalysis().setFinishQueryAfterAnalyze();
       } else {
         // TODO add the real impl
-        TRegionReplicaSet regionReplicaSet =
-            dataPartition
-                .getDataPartitionMap()
-                .values()
-                .iterator()
-                .next()
-                .values()
-                .iterator()
-                .next()
-                .values()
-                .iterator()
-                .next()
-                .get(0);
-        node.setRegionReplicaSet(regionReplicaSet);
+        Set<TRegionReplicaSet> regionReplicaSet = new HashSet<>();
+        for (Map.Entry<
+                String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+            e1 : dataPartition.getDataPartitionMap().entrySet()) {
+          for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+              e2 : e1.getValue().entrySet()) {
+            for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> e3 :
+                e2.getValue().entrySet()) {
+              regionReplicaSet.addAll(e3.getValue());
+            }
+          }
+        }
+        node.setRegionReplicaSetList(new ArrayList<>(regionReplicaSet));
       }
 
       return node;
@@ -157,31 +157,32 @@ public class IndexScan implements RelationalPlanOptimizer {
 
   private static List<Expression> getConjunctionExpressions(
       Expression predicate, TableScanNode node) {
-    if (predicate != null) {
+    if (predicate == null) {
+      return Collections.emptyList();
+    }
+
+    Set<String> idOrAttributeColumnNames =
+        node.getIdAndAttributeIndexMap().keySet().stream()
+            .map(Symbol::getName)
+            .collect(Collectors.toSet());
+    if (predicate instanceof LogicalExpression
+        && ((LogicalExpression) predicate).getOperator() == LogicalExpression.Operator.AND) {
       List<Expression> resultExpressions = new ArrayList<>();
-      Set<String> idOrAttributeColumnNames =
-          node.getIdAndAttributeIndexMap().keySet().stream()
-              .map(Symbol::getName)
-              .collect(Collectors.toSet());
-      if (predicate instanceof LogicalExpression) {
-        for (Expression subExpression : ((LogicalExpression) predicate).getTerms()) {
-          if (Boolean.TRUE.equals(
-              new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames)
-                  .process(subExpression))) {
-            resultExpressions.add(subExpression);
-          }
-        }
-      } else {
-        if (Boolean.FALSE.equals(
-            new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames).process(predicate))) {
-          resultExpressions = Collections.emptyList();
-        } else {
-          resultExpressions = Collections.singletonList(predicate);
+      for (Expression subExpression : ((LogicalExpression) predicate).getTerms()) {
+        if (Boolean.TRUE.equals(
+            new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames)
+                .process(subExpression))) {
+          resultExpressions.add(subExpression);
         }
       }
       return resultExpressions;
-    } else {
+    }
+
+    if (Boolean.FALSE.equals(
+        new PredicatePushIntoIndexScanChecker(idOrAttributeColumnNames).process(predicate))) {
       return Collections.emptyList();
+    } else {
+      return Collections.singletonList(predicate);
     }
   }
 

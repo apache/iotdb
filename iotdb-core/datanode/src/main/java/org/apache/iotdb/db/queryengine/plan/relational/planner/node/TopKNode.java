@@ -75,6 +75,10 @@ public class TopKNode extends MultiChildProcessNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {}
 
+  public static TopKNode deserialize(ByteBuffer byteBuffer) {
+    return null;
+  }
+
   @Override
   public List<Symbol> getOutputSymbols() {
     return outputSymbols;
