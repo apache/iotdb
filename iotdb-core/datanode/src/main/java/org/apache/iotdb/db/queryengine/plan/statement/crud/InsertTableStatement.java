@@ -122,7 +122,7 @@ public class InsertTableStatement extends Statement implements ITableDeviceSchem
           hasColumn
               ? columnNameList.get(i).getValue()
               : table.getColumnList().get(i).getColumnName();
-      if (columnName.equalsIgnoreCase("time")){
+      if (columnName.equalsIgnoreCase("time")) {
         columnName = "Time";
       }
       TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
@@ -130,7 +130,7 @@ public class InsertTableStatement extends Statement implements ITableDeviceSchem
         throw new SemanticException(String.format("Unknown Column %s", columnName));
       }
       TsTableColumnCategory category = table.getColumnSchema(columnName).getColumnCategory();
-      if (values.get(i) instanceof NullLiteral){
+      if (values.get(i) instanceof NullLiteral) {
         continue;
       }
       if (category.equals(TsTableColumnCategory.ID)) {

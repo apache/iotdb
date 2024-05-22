@@ -75,11 +75,11 @@ public class TableDeviceSchemaCache {
     }
   }
 
-  public void invalidate(String database, String tableName){
+  public void invalidate(String database, String tableName) {
     readWriteLock.writeLock().lock();
     try {
       dualKeyCache.invalidateAll();
-    }finally {
+    } finally {
       readWriteLock.writeLock().unlock();
     }
   }

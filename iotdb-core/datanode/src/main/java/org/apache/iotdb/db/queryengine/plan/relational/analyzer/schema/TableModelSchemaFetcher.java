@@ -69,7 +69,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -106,7 +105,7 @@ public class TableModelSchemaFetcher {
     // do nothing
   }
 
-  public void invalidateDeviceCache(String database, String tableName){
+  public void invalidateDeviceCache(String database, String tableName) {
     cache.invalidate(database, tableName);
   }
 

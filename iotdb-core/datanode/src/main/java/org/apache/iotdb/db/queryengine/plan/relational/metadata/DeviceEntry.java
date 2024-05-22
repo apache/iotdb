@@ -79,7 +79,8 @@ public class DeviceEntry {
     if (this == o) return true;
     if (!(o instanceof DeviceEntry)) return false;
     DeviceEntry that = (DeviceEntry) o;
-    return Objects.equals(deviceID, that.deviceID) && Objects.equals(attributeColumnValues, that.attributeColumnValues);
+    return Objects.equals(deviceID, that.deviceID)
+        && Objects.equals(attributeColumnValues, that.attributeColumnValues);
   }
 
   @Override
