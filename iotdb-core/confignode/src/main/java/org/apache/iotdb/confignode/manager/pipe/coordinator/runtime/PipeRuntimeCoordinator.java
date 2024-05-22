@@ -26,6 +26,8 @@ import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatist
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat.PipeHeartbeat;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat.PipeHeartbeatScheduler;
 
 import javax.validation.constraints.NotNull;
 
@@ -108,6 +110,6 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
       /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent) {
     pipeHeartbeatScheduler.parseHeartbeat(
         dataNodeId,
-        new NodePipeHeartbeat(pipeMetaByteBufferListFromDataNode, pipeCompletedListFromAgent));
+        new PipeHeartbeat(pipeMetaByteBufferListFromDataNode, pipeCompletedListFromAgent));
   }
 }

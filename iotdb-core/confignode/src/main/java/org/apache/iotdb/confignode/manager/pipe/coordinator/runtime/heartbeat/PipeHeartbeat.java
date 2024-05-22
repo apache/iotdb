@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime;
+package org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
@@ -30,23 +30,32 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-class NodePipeHeartbeat {
-  private final Map<PipeStaticMeta, SinglePipeHeartbeat> pipeHeartbeatMap = new HashMap<>();
+public class PipeHeartbeat {
 
-  NodePipeHeartbeat(
+  private final Map<PipeStaticMeta, PipeMeta> pipeMetaMap = new HashMap<>();
+  private final Map<PipeStaticMeta, Boolean> isCompletedMap = new HashMap<>();
+
+  public PipeHeartbeat(
       @NotNull final List<ByteBuffer> pipeMetaByteBufferListFromAgent,
       /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent) {
     for (int i = 0; i < pipeMetaByteBufferListFromAgent.size(); ++i) {
       final PipeMeta pipeMeta = PipeMeta.deserialize(pipeMetaByteBufferListFromAgent.get(i));
-      pipeHeartbeatMap.put(
+      pipeMetaMap.put(pipeMeta.getStaticMeta(), pipeMeta);
+      isCompletedMap.put(
           pipeMeta.getStaticMeta(),
-          new SinglePipeHeartbeat(
-              pipeMeta,
-              Objects.nonNull(pipeCompletedListFromAgent) && pipeCompletedListFromAgent.get(i)));
+          Objects.nonNull(pipeCompletedListFromAgent) && pipeCompletedListFromAgent.get(i));
     }
   }
 
-  Map<PipeStaticMeta, SinglePipeHeartbeat> getPipeHeartbeatMap() {
-    return pipeHeartbeatMap;
+  public PipeMeta getPipeMeta(PipeStaticMeta pipeStaticMeta) {
+    return pipeMetaMap.get(pipeStaticMeta);
+  }
+
+  public Boolean isCompleted(PipeStaticMeta pipeStaticMeta) {
+    return isCompletedMap.get(pipeStaticMeta);
+  }
+
+  public boolean isEmpty() {
+    return pipeMetaMap.isEmpty();
   }
 }
