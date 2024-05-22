@@ -170,6 +170,10 @@ public class ClusterSchemaManager {
                   isGeneratedByPipe
                       ? new PipeEnrichedPlan(databaseSchemaPlan)
                       : databaseSchemaPlan);
+      // set ttl
+      if (databaseSchemaPlan.getSchema().isSetTTL()) {
+        result = configManager.getTTLManager().setTTL(databaseSchemaPlan);
+      }
       // Bind Database metrics
       PartitionMetrics.bindDatabaseRelatedMetricsWhenUpdate(
           MetricService.getInstance(),

@@ -301,7 +301,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TSStatus errorResp = null;
     boolean isSystemDatabase = databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
 
-    if (databaseSchema.getTTL() <= 0) {
+    if (databaseSchema.getTTL() < 0) {
       errorResp =
           new TSStatus(TSStatusCode.DATABASE_CONFIG_ERROR.getStatusCode())
               .setMessage("Failed to create database. The TTL should be positive.");

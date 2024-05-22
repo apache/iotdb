@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.persistence.TTLInfo;
@@ -37,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATER_NO_REGEX;
 
 public class TTLManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TTLManager.class);
@@ -52,6 +54,25 @@ public class TTLManager {
     this.ttlInfo = ttlInfo;
   }
 
+  /** Set ttl when creating database. */
+  public TSStatus setTTL(DatabaseSchemaPlan databaseSchemaPlan) {
+    long ttl = databaseSchemaPlan.getSchema().getTTL();
+    if (ttl <= 0) {
+      TSStatus errorStatus = new TSStatus(TSStatusCode.TTL_CONFIG_ERROR.getStatusCode());
+      errorStatus.setMessage("The TTL should be positive.");
+      return errorStatus;
+    }
+    ttl =
+        CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    ttl = ttl <= 0 ? Long.MAX_VALUE : ttl;
+    SetTTLPlan setTTLPlan =
+        new SetTTLPlan(
+            databaseSchemaPlan.getSchema().getName().split(PATH_SEPARATER_NO_REGEX), ttl);
+    setTTLPlan.setDataBase(true);
+    return configManager.getProcedureManager().setTTL(setTTLPlan);
+  }
+
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
     PartialPath path = new PartialPath(setTTLPlan.getPathPattern());
     if (!checkIsPathValidated(path)) {
@@ -63,7 +84,7 @@ public class TTLManager {
       return errorStatus;
     }
     if (setTTLPlan.getTTL() <= 0) {
-      TSStatus errorStatus = new TSStatus(TSStatusCode.OVERSIZE_TTL.getStatusCode());
+      TSStatus errorStatus = new TSStatus(TSStatusCode.TTL_CONFIG_ERROR.getStatusCode());
       errorStatus.setMessage("The TTL should be positive.");
       return errorStatus;
     }

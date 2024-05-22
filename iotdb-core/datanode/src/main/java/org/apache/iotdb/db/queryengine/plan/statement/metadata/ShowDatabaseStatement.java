@@ -97,7 +97,12 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
                   storageGroup
                       + IoTDBConstant.PATH_SEPARATOR
                       + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
-      String ttlStr = ttl == TTLCache.NULL_TTL ? "null" : String.valueOf(ttl);
+      String ttlStr = String.valueOf(ttl);
+      if (ttl == TTLCache.NULL_TTL) {
+        ttlStr = "null";
+      } else if (ttl == Long.MAX_VALUE) {
+        ttlStr = IoTDBConstant.TTL_INFINITE;
+      }
       builder.getTimeColumnBuilder().writeLong(0L);
       builder
           .getColumnBuilder(0)

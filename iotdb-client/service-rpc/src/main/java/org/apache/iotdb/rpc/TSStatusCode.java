@@ -95,6 +95,7 @@ public enum TSStatusCode {
   WAL_ERROR(610),
   DISK_SPACE_INSUFFICIENT(611),
   OVERSIZE_TTL(612),
+  TTL_CONFIG_ERROR(613),
 
   // Query Engine
   SQL_PARSE_ERROR(700),
