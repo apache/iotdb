@@ -16,15 +16,20 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.relational.sql.tree.Expression;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ProjectNode extends SingleChildProcessNode {
   private final Assignments assignments;
@@ -54,13 +59,33 @@ public class ProjectNode extends SingleChildProcessNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_PROJECT_NODE.serialize(byteBuffer);
+    ReadWriteIOUtils.write(assignments.getMap().size(), byteBuffer);
+    for (Map.Entry<Symbol, Expression> entry : assignments.getMap().entrySet()) {
+      Symbol.serialize(entry.getKey(), byteBuffer);
+      Expression.serialize(entry.getValue(), byteBuffer);
+    }
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TABLE_PROJECT_NODE.serialize(stream);
+    ReadWriteIOUtils.write(assignments.getMap().size(), stream);
+    for (Map.Entry<Symbol, Expression> entry : assignments.getMap().entrySet()) {
+      Symbol.serialize(entry.getKey(), stream);
+      Expression.serialize(entry.getValue(), stream);
+    }
+  }
 
   public static ProjectNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    Map<Symbol, Expression> map = new HashMap<>(size);
+    while (size-- > 0) {
+      map.put(Symbol.deserialize(byteBuffer), Expression.deserialize(byteBuffer));
+    }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new ProjectNode(planNodeId, null, new Assignments(map));
   }
 
   @Override

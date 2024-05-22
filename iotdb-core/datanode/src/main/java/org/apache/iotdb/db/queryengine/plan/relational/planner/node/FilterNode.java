@@ -56,7 +56,10 @@ public class FilterNode extends SingleChildProcessNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_FILTER_NODE.serialize(byteBuffer);
+    Expression.serialize(predicate, byteBuffer);
+  }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
