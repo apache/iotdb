@@ -39,9 +39,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PipeExtractorMetrics implements IMetricSet {
+public class PipeDataRegionExtractorMetrics implements IMetricSet {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeExtractorMetrics.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PipeDataRegionExtractorMetrics.class);
 
   private volatile AbstractMetricService metricService;
 
@@ -62,23 +63,23 @@ public class PipeExtractorMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(AbstractMetricService metricService) {
+  public void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
-    ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
-    for (String taskID : taskIDs) {
+    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
+    for (final String taskID : taskIDs) {
       createMetrics(taskID);
     }
   }
 
-  private void createMetrics(String taskID) {
+  private void createMetrics(final String taskID) {
     createAutoGauge(taskID);
     createRate(taskID);
     createGauge(taskID);
   }
 
-  private void createAutoGauge(String taskID) {
-    IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
-    // pending event count
+  private void createAutoGauge(final String taskID) {
+    final IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
+    // Pending event count
     metricService.createAutoGauge(
         Metric.UNPROCESSED_HISTORICAL_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
@@ -87,7 +88,7 @@ public class PipeExtractorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         extractor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getDataRegionId()),
+        String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(extractor.getCreationTime()));
     metricService.createAutoGauge(
@@ -98,7 +99,7 @@ public class PipeExtractorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         extractor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getDataRegionId()),
+        String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(extractor.getCreationTime()));
     metricService.createAutoGauge(
@@ -109,7 +110,7 @@ public class PipeExtractorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         extractor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getDataRegionId()),
+        String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(extractor.getCreationTime()));
     metricService.createAutoGauge(
@@ -120,14 +121,14 @@ public class PipeExtractorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         extractor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getDataRegionId()),
+        String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(extractor.getCreationTime()));
   }
 
-  private void createRate(String taskID) {
-    IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
-    // supply event rate
+  private void createRate(final String taskID) {
+    final IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
+    // Supply event rate
     tabletRateMap.put(
         taskID,
         metricService.getOrCreateRate(
@@ -136,7 +137,7 @@ public class PipeExtractorMetrics implements IMetricSet {
             Tag.NAME.toString(),
             extractor.getPipeName(),
             Tag.REGION.toString(),
-            String.valueOf(extractor.getDataRegionId()),
+            String.valueOf(extractor.getRegionId()),
             Tag.CREATION_TIME.toString(),
             String.valueOf(extractor.getCreationTime())));
     tsFileRateMap.put(
@@ -147,7 +148,7 @@ public class PipeExtractorMetrics implements IMetricSet {
             Tag.NAME.toString(),
             extractor.getPipeName(),
             Tag.REGION.toString(),
-            String.valueOf(extractor.getDataRegionId()),
+            String.valueOf(extractor.getRegionId()),
             Tag.CREATION_TIME.toString(),
             String.valueOf(extractor.getCreationTime())));
     pipeHeartbeatRateMap.put(
@@ -158,14 +159,14 @@ public class PipeExtractorMetrics implements IMetricSet {
             Tag.NAME.toString(),
             extractor.getPipeName(),
             Tag.REGION.toString(),
-            String.valueOf(extractor.getDataRegionId()),
+            String.valueOf(extractor.getRegionId()),
             Tag.CREATION_TIME.toString(),
             String.valueOf(extractor.getCreationTime())));
   }
 
-  private void createGauge(String taskID) {
-    IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
-    // tsfile epoch state
+  private void createGauge(final String taskID) {
+    final IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
+    // Tsfile epoch state
     recentProcessedTsFileEpochStateMap.put(
         taskID,
         metricService.getOrCreateGauge(
@@ -174,15 +175,15 @@ public class PipeExtractorMetrics implements IMetricSet {
             Tag.NAME.toString(),
             extractor.getPipeName(),
             Tag.REGION.toString(),
-            String.valueOf(extractor.getDataRegionId()),
+            String.valueOf(extractor.getRegionId()),
             Tag.CREATION_TIME.toString(),
             String.valueOf(extractor.getCreationTime())));
   }
 
   @Override
-  public void unbindFrom(AbstractMetricService metricService) {
-    ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
-    for (String taskID : taskIDs) {
+  public void unbindFrom(final AbstractMetricService metricService) {
+    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
+    for (final String taskID : taskIDs) {
       deregister(taskID);
     }
     if (!extractorMap.isEmpty()) {
@@ -190,14 +191,14 @@ public class PipeExtractorMetrics implements IMetricSet {
     }
   }
 
-  private void removeMetrics(String taskID) {
+  private void removeMetrics(final String taskID) {
     removeAutoGauge(taskID);
     removeRate(taskID);
     removeGauge(taskID);
   }
 
-  private void removeAutoGauge(String taskID) {
-    IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
+  private void removeAutoGauge(final String taskID) {
+    final IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
     // pending event count
     metricService.remove(
         MetricType.AUTO_GAUGE,
@@ -205,7 +206,7 @@ public class PipeExtractorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         extractor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getDataRegionId()),
+        String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(extractor.getCreationTime()));
     metricService.remove(
@@ -214,7 +215,7 @@ public class PipeExtractorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         extractor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getDataRegionId()),
+        String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(extractor.getCreationTime()));
     metricService.remove(
@@ -223,7 +224,7 @@ public class PipeExtractorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         extractor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getDataRegionId()),
+        String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(extractor.getCreationTime()));
     metricService.remove(
@@ -232,13 +233,13 @@ public class PipeExtractorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         extractor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getDataRegionId()),
+        String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(extractor.getCreationTime()));
   }
 
-  private void removeRate(String taskID) {
-    IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
+  private void removeRate(final String taskID) {
+    final IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
     // supply event rate
     metricService.remove(
         MetricType.RATE,
@@ -246,7 +247,7 @@ public class PipeExtractorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         extractor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getDataRegionId()),
+        String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(extractor.getCreationTime()));
     metricService.remove(
@@ -255,7 +256,7 @@ public class PipeExtractorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         extractor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getDataRegionId()),
+        String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(extractor.getCreationTime()));
     metricService.remove(
@@ -264,7 +265,7 @@ public class PipeExtractorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         extractor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getDataRegionId()),
+        String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(extractor.getCreationTime()));
     tabletRateMap.remove(taskID);
@@ -272,34 +273,34 @@ public class PipeExtractorMetrics implements IMetricSet {
     pipeHeartbeatRateMap.remove(taskID);
   }
 
-  private void removeGauge(String taskID) {
-    IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
-    // tsfile epoch state
+  private void removeGauge(final String taskID) {
+    final IoTDBDataRegionExtractor extractor = extractorMap.get(taskID);
+    // Tsfile epoch state
     metricService.remove(
         MetricType.GAUGE,
         Metric.PIPE_EXTRACTOR_TSFILE_EPOCH_STATE.toString(),
         Tag.NAME.toString(),
         extractor.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getDataRegionId()),
+        String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),
         String.valueOf(extractor.getCreationTime()));
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(@NonNull IoTDBDataRegionExtractor extractor) {
-    String taskID = extractor.getTaskID();
+  public void register(@NonNull final IoTDBDataRegionExtractor extractor) {
+    final String taskID = extractor.getTaskID();
     extractorMap.putIfAbsent(taskID, extractor);
     if (Objects.nonNull(metricService)) {
       createMetrics(taskID);
     }
   }
 
-  public void deregister(String taskID) {
+  public void deregister(final String taskID) {
     if (!extractorMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe extractor metrics, IoTDBDataRegionExtractor({}) does not exist",
+          "Failed to deregister pipe data region extractor metrics, IoTDBDataRegionExtractor({}) does not exist",
           taskID);
       return;
     }
@@ -309,53 +310,54 @@ public class PipeExtractorMetrics implements IMetricSet {
     extractorMap.remove(taskID);
   }
 
-  public void markTabletEvent(String taskID) {
+  public void markTabletEvent(final String taskID) {
     if (Objects.isNull(metricService)) {
       return;
     }
-    Rate rate = tabletRateMap.get(taskID);
+    final Rate rate = tabletRateMap.get(taskID);
     if (rate == null) {
       LOGGER.warn(
-          "Failed to mark pipe extractor tablet event, IoTDBDataRegionExtractor({}) does not exist",
+          "Failed to mark pipe data region extractor tablet event, IoTDBDataRegionExtractor({}) does not exist",
           taskID);
       return;
     }
     rate.mark();
   }
 
-  public void markTsFileEvent(String taskID) {
+  public void markTsFileEvent(final String taskID) {
     if (Objects.isNull(metricService)) {
       return;
     }
-    Rate rate = tsFileRateMap.get(taskID);
+    final Rate rate = tsFileRateMap.get(taskID);
     if (rate == null) {
       LOGGER.warn(
-          "Failed to mark pipe extractor tsfile event, IoTDBDataRegionExtractor({}) does not exist",
+          "Failed to mark pipe data region extractor tsfile event, IoTDBDataRegionExtractor({}) does not exist",
           taskID);
       return;
     }
     rate.mark();
   }
 
-  public void markPipeHeartbeatEvent(String taskID) {
+  public void markPipeHeartbeatEvent(final String taskID) {
     if (Objects.isNull(metricService)) {
       return;
     }
-    Rate rate = pipeHeartbeatRateMap.get(taskID);
+    final Rate rate = pipeHeartbeatRateMap.get(taskID);
     if (rate == null) {
       LOGGER.warn(
-          "Failed to mark pipe extractor heartbeat event, IoTDBDataRegionExtractor({}) does not exist",
+          "Failed to mark pipe data region extractor heartbeat event, IoTDBDataRegionExtractor({}) does not exist",
           taskID);
       return;
     }
     rate.mark();
   }
 
-  public void setRecentProcessedTsFileEpochState(String taskID, TsFileEpoch.State state) {
+  public void setRecentProcessedTsFileEpochState(
+      final String taskID, final TsFileEpoch.State state) {
     if (Objects.isNull(metricService)) {
       return;
     }
-    Gauge gauge = recentProcessedTsFileEpochStateMap.get(taskID);
+    final Gauge gauge = recentProcessedTsFileEpochStateMap.get(taskID);
     if (gauge == null) {
       LOGGER.warn(
           "Failed to set recent processed tsfile epoch state, PipeRealtimeDataRegionExtractor({}) does not exist",
@@ -369,18 +371,19 @@ public class PipeExtractorMetrics implements IMetricSet {
 
   private static class PipeExtractorMetricsHolder {
 
-    private static final PipeExtractorMetrics INSTANCE = new PipeExtractorMetrics();
+    private static final PipeDataRegionExtractorMetrics INSTANCE =
+        new PipeDataRegionExtractorMetrics();
 
     private PipeExtractorMetricsHolder() {
-      // empty constructor
+      // Empty constructor
     }
   }
 
-  public static PipeExtractorMetrics getInstance() {
-    return PipeExtractorMetrics.PipeExtractorMetricsHolder.INSTANCE;
+  public static PipeDataRegionExtractorMetrics getInstance() {
+    return PipeDataRegionExtractorMetrics.PipeExtractorMetricsHolder.INSTANCE;
   }
 
-  private PipeExtractorMetrics() {
-    // empty constructor
+  private PipeDataRegionExtractorMetrics() {
+    // Empty constructor
   }
 }

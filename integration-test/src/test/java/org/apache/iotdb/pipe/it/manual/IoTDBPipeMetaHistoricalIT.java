@@ -74,8 +74,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
         .setDataReplicationFactor(2);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment(3, 3);
@@ -97,6 +97,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
           senderEnv,
           Arrays.asList(
               "create database root.ln",
+              "create database root.db",
               "set ttl to root.ln 3600000",
               "create user `thulab` 'passwd'",
               "create role `admin`",
@@ -104,7 +105,9 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
               "grant read on root.** to role `admin`",
               "create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
               "set schema template t1 to root.ln.wf01",
+              "set schema template t1 to root.db.wf01",
               "create timeseries using schema template on root.ln.wf01.wt01",
+              "create timeseries using schema template on root.db.wf01.wt01",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               // Insert large timestamp to avoid deletion by ttl
               "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
@@ -118,6 +121,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
       extractorAttributes.put("extractor.inclusion", "data, schema");
       extractorAttributes.put(
           "extractor.inclusion.exclusion", "schema.timeseries.ordinary, schema.ttl");
+      extractorAttributes.put("extractor.path", "root.ln.**");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);

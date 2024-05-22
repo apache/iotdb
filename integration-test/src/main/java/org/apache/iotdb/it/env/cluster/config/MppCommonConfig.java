@@ -432,6 +432,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     return this;
   }
 
+  @Override
+  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
+    setProperty("cn_connection_timeout_ms", String.valueOf(connectionTimeoutMs));
+    return this;
+  }
+
   // For part of the log directory
   public String getClusterConfigStr() {
     return fromConsensusFullNameToAbbr(properties.getProperty(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS))

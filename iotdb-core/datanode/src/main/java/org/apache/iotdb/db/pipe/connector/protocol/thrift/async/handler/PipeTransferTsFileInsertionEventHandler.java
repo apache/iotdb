@@ -124,10 +124,13 @@ public class PipeTransferTsFileInsertionEventHandler
         isSealSignalSent.set(true);
 
         TPipeTransferReq req =
-            transferMod
-                ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
-                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
+        PipeTransferCompressedReq.toTPipeTransferReq(
+          transferMod
+              ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                  modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
+              : PipeTransferTsFileSealReq.toTPipeTransferReq(
+                  tsFile.getName(), tsFile.length()),
+          connector.getCompressors());
 
         connector.rateLimitIfNeeded(client.getEndPoint(), req.getBody().length);
 
@@ -141,23 +144,22 @@ public class PipeTransferTsFileInsertionEventHandler
             ? readBuffer
             : Arrays.copyOfRange(readBuffer, 0, readLength);
     final TPipeTransferReq uncompressedReq =
-        PipeTransferCompressedReq.toTPipeTransferReq(
-            transferMod
-                ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
-                    currentFile.getName(), position, payload)
-                : PipeTransferTsFilePieceReq.toTPipeTransferReq(
-                    currentFile.getName(), position, payload),
-            connector.getCompressors());
+        transferMod
+            ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
+                currentFile.getName(), position, payload)
+            : PipeTransferTsFilePieceReq.toTPipeTransferReq(
+                currentFile.getName(), position, payload);
 
-    TPipeTransferReq req =
-        connector.isRpcCompressionEnabled()
-            ? PipeTransferCompressedReq.toTPipeTransferReq(
-                uncompressedReq, connector.getCompressors())
-            : uncompressedReq;
+    final TPipeTransferReq req =
+    connector.isRpcCompressionEnabled()
+    ? PipeTransferCompressedReq.toTPipeTransferReq(
+        uncompressedReq, connector.getCompressors())
+    : uncompressedReq;
 
     connector.rateLimitIfNeeded(client.getEndPoint(), req.getBody().length);
 
-    client.pipeTransfer(req, this);
+    client.pipeTransfer(req);
+    
     position += readLength;
   }
 

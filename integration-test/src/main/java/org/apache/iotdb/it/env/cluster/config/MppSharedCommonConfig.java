@@ -438,4 +438,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setTagAttributeTotalSize(tagAttributeTotalSize);
     return this;
   }
+
+  @Override
+  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
+    dnConfig.setCnConnectionTimeoutMs(connectionTimeoutMs);
+    cnConfig.setCnConnectionTimeoutMs(connectionTimeoutMs);
+    return this;
+  }
 }

@@ -606,7 +606,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public synchronized TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
+  public TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.setDatabase(databaseSchemaPlan, false);
@@ -1280,7 +1280,7 @@ public class ConfigManager implements IManager {
 
     for (int i = 0; i < rpcTimeoutInMS / retryIntervalInMS; i++) {
       try {
-        if (consensusManager.get() == null) {
+        if (consensusManager.get() == null || !consensusManager.get().isInitialized()) {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMS);
         } else {
           // When add non Seed-ConfigNode to the ConfigNodeGroup, the parameter should be emptyList
