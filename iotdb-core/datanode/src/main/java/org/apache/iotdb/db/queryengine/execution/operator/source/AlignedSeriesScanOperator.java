@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
@@ -48,7 +48,7 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
   public AlignedSeriesScanOperator(
       OperatorContext context,
       PlanNodeId sourceId,
-      AlignedPath seriesPath,
+      AlignedFullPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions,
       boolean queryAllSensors,

@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.util.Collections;
@@ -55,8 +56,8 @@ public class VirtualDataRegion implements IDataRegionForQuery {
 
   @Override
   public QueryDataSource query(
-      List<PartialPath> pathList,
-      String singleDeviceId,
+      List<IFullPath> pathList,
+      IDeviceID singleDeviceId,
       QueryContext context,
       Filter globalTimeFilter,
       List<Long> timePartitions)

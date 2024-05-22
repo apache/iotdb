@@ -29,12 +29,11 @@ import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -71,13 +70,17 @@ public class TsFileResourceProgressIndexTest {
   @Before
   public void setUp() {
     IntStream.range(0, DEVICE_NUM)
-        .forEach(i -> deviceToIndex.put(new PlainDeviceID("root.sg.d" + i), i));
-    DeviceTimeIndex deviceTimeIndex = new DeviceTimeIndex(deviceToIndex, startTimes, endTimes);
+        .forEach(
+            i -> deviceToIndex.put(IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i));
+    ArrayDeviceTimeIndex deviceTimeIndex =
+        new ArrayDeviceTimeIndex(deviceToIndex, startTimes, endTimes);
     IntStream.range(0, DEVICE_NUM)
         .forEach(
             i -> {
-              deviceTimeIndex.updateStartTime(new PlainDeviceID("root.sg.d" + i), i);
-              deviceTimeIndex.updateEndTime(new PlainDeviceID("root.sg.d" + i), i + 1);
+              deviceTimeIndex.updateStartTime(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i);
+              deviceTimeIndex.updateEndTime(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i + 1);
             });
     tsFileResource.setTimeIndex(deviceTimeIndex);
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);

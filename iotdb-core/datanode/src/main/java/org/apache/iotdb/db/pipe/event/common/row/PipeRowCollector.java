@@ -29,7 +29,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,7 +55,7 @@ public class PipeRowCollector implements RowCollector {
     }
 
     final PipeRow pipeRow = (PipeRow) row;
-    final MeasurementSchema[] measurementSchemaArray = pipeRow.getMeasurementSchemaList();
+    final IMeasurementSchema[] measurementSchemaArray = pipeRow.getMeasurementSchemaList();
 
     // Trigger collection when a PipeResetTabletRow is encountered
     if (row instanceof PipeResetTabletRow) {
@@ -64,7 +64,7 @@ public class PipeRowCollector implements RowCollector {
 
     if (tablet == null) {
       final String deviceId = pipeRow.getDeviceId();
-      final List<MeasurementSchema> measurementSchemaList =
+      final List<IMeasurementSchema> measurementSchemaList =
           new ArrayList<>(Arrays.asList(measurementSchemaArray));
       tablet =
           new Tablet(

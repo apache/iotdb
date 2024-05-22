@@ -21,6 +21,15 @@ package org.apache.iotdb.confignode.manager.load.subscriber;
 
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 
+import org.apache.tsfile.read.common.type.BinaryType;
+import org.apache.tsfile.read.common.type.BooleanType;
+import org.apache.tsfile.read.common.type.DoubleType;
+import org.apache.tsfile.read.common.type.FloatType;
+import org.apache.tsfile.read.common.type.IntType;
+import org.apache.tsfile.read.common.type.LongType;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeEnum;
+import org.apache.tsfile.read.common.type.UnknownType;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.Map;
@@ -38,5 +47,27 @@ public class NodeStatisticsChangeEvent {
 
   public Map<Integer, Pair<NodeStatistics, NodeStatistics>> getDifferentNodeStatisticsMap() {
     return differentNodeStatisticsMap;
+  }
+
+  public static Type getType(TypeEnum typeEnum) {
+    switch (typeEnum) {
+      case INT32:
+        return IntType.getInstance();
+      case INT64:
+        return LongType.getInstance();
+      case FLOAT:
+        return FloatType.getInstance();
+      case DOUBLE:
+        return DoubleType.getInstance();
+      case BOOLEAN:
+        return BooleanType.getInstance();
+      case TEXT:
+        return BinaryType.getInstance();
+      case UNKNOWN:
+        return UnknownType.getInstance();
+      default:
+        throw new UnsupportedOperationException(
+            String.format("Invalid TypeEnum for TypeFactory: %s", typeEnum));
+    }
   }
 }

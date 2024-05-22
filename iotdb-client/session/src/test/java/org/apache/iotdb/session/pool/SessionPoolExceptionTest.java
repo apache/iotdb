@@ -30,6 +30,7 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -117,7 +118,7 @@ public class SessionPoolExceptionTest {
     Mockito.doThrow(new IoTDBConnectionException(""))
         .when(session)
         .insertTablet(any(Tablet.class), anyBoolean());
-    List<MeasurementSchema> schemas = new ArrayList<>();
+    List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -136,7 +137,7 @@ public class SessionPoolExceptionTest {
     Mockito.doThrow(new IoTDBConnectionException(""))
         .when(session)
         .insertTablets(anyMap(), anyBoolean());
-    List<MeasurementSchema> schemas = new ArrayList<>();
+    List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -178,7 +179,7 @@ public class SessionPoolExceptionTest {
     Mockito.doThrow(new IoTDBConnectionException(""))
         .when(session)
         .insertAlignedTablets(anyMap(), anyBoolean());
-    List<MeasurementSchema> schemas = new ArrayList<>();
+    List<IMeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);

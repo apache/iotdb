@@ -21,8 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
@@ -2147,16 +2149,17 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                TSDataType.INT64));
+            new NonAlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                new MeasurementSchema("s" + j, TSDataType.INT64)));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2219,16 +2222,17 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                TSDataType.INT64));
+            new NonAlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                new MeasurementSchema("s" + j, TSDataType.INT64)));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2292,16 +2296,17 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                TSDataType.INT64));
+            new NonAlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                new MeasurementSchema("s" + j, TSDataType.INT64)));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2366,16 +2371,17 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                TSDataType.INT64));
+            new NonAlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                new MeasurementSchema("s" + j, TSDataType.INT64)));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2445,17 +2451,18 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2524,17 +2531,18 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2604,17 +2612,18 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2685,17 +2694,18 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
