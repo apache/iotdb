@@ -31,11 +31,12 @@ public class PipeDataNodeTask implements PipeTask {
 
   private final String pipeName;
   private final int regionId;
-  private volatile boolean isCompleted = false;
 
   private final PipeTaskStage extractorStage;
   private final PipeTaskStage processorStage;
   private final PipeTaskStage connectorStage;
+
+  private volatile boolean isCompleted = false;
 
   public PipeDataNodeTask(
       final String pipeName,
@@ -99,20 +100,20 @@ public class PipeDataNodeTask implements PipeTask {
         System.currentTimeMillis() - startTime);
   }
 
-  public boolean isCompleted() {
-    return isCompleted;
-  }
-
-  public void markCompleted() {
-    this.isCompleted = true;
-  }
-
   public int getRegionId() {
     return regionId;
   }
 
   public String getPipeName() {
     return pipeName;
+  }
+
+  public boolean isCompleted() {
+    return isCompleted;
+  }
+
+  public void markCompleted() {
+    this.isCompleted = true;
   }
 
   @Override
