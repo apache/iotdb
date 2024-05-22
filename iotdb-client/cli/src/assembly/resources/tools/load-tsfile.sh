@@ -30,7 +30,7 @@ export IOTDB_HOME="${IOTDB_HOME}"
 eval set -- "$VARS"
 
 
-HELP="Usage: $0 -f <file_path> -cfd <copy_fail_dir> [--sgLevel <sg_level>] [--verify <true/false>] [--onSuccess <none/delete>] [-h <ip>] [-p <port>] [-u <username>] [-pw <password>]"
+HELP="Usage: $0 -f <file_path> [-fd <fail_dir>] [--sgLevel <sg_level>] [--verify <true/false>] [--onSuccess <none/delete>] [-h <ip>] [-p <port>] [-u <username>] [-pw <password>]"
 
 # Added parameters when default parameters are missing
 user_param="-u root"
@@ -60,7 +60,7 @@ while true; do
             load_dir_param="$2"
             shift 2
         ;;
-        -cfd)
+        -fd)
             fail_dir_param="$2"
             shift 2
         ;;
@@ -140,18 +140,7 @@ traverse_files() {
     for file in "$folder"/*; do
         if [ -f "$file" ]; then
             if [[ $file == *.tsfile ]]; then
-               LOAD_SQL="load '$file' ${LOAD_SQL_PART}"
-               PARAMETERS="${PARAMETERS_PART} \"${LOAD_SQL}\""
-               "$JAVA" $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
-               exit_code=$?
-               if [ $exit_code -ne 0 ]; then
-                 if [ ! -z "${fail_dir_param}" ]; then
-                    if [ ! -d "${fail_dir_param}" ]; then
-                        mkdir -p "${fail_dir_param}"
-                    fi
-                    cp ${file} ${fail_dir_param}
-                 fi
-               fi
+              load_file "$file"
             fi
         elif [ -d "$file" ]; then
             traverse_files "$file"
@@ -159,20 +148,24 @@ traverse_files() {
     done
 }
 
-if [ -f "$load_dir_param" ]; then
-    LOAD_SQL="load '$load_dir_param' ${LOAD_SQL_PART}"
-    PARAMETERS="${PARAMETERS_PART} \"${LOAD_SQL}\""
-    "$JAVA" $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
-    exit_code=$?
-
-    if [ $exit_code -ne 0 ]; then
-      if [ ! -z "${fail_dir_param}" ]; then
-         if [ ! -d "${fail_dir_param}" ]; then
-             mkdir -p "${fail_dir_param}"
-         fi
-         cp ${load_dir_param} ${fail_dir_param}
-      fi
+load_file() {
+  file=$1
+  LOAD_SQL="load '$file' ${LOAD_SQL_PART}"
+  PARAMETERS="${PARAMETERS_PART} \"${LOAD_SQL}\""
+  "$JAVA" $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
+  exit_code=$?
+  if [ $exit_code -ne 0 ]; then
+    if [ ! -z "${fail_dir_param}" ]; then
+       if [ ! -d "${fail_dir_param}" ]; then
+           mkdir -p "${fail_dir_param}"
+       fi
+       cp ${file} ${fail_dir_param}
     fi
+  fi
+}
+
+if [ -f "$load_dir_param" ]; then
+    load_file "$load_dir_param"
 elif [ -d "$load_dir_param" ]; then
     traverse_files "$load_dir_param"
 fi

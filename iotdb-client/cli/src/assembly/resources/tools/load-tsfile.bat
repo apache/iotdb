@@ -50,6 +50,7 @@ set u_parameter=-u root
 set p_parameter=-p 6667
 set h_parameter=-h 127.0.0.1
 set cli_load_file_parameter=-e "load '
+set fail_dir_parameter=
 set sg_level_parameter=
 set verify_parameter=
 set on_success_parameter=
@@ -69,11 +70,11 @@ if %param%!== ! (
 	set p_parameter=%1 %2
 ) else if "%param%"=="-h" (
 	set h_parameter=%1 %2
+) else if "%param%"=="-fd" (
+  	set fail_dir_parameter=%2
 ) else if "%param%"=="-f" (
 	if "%2"=="" goto :load_err
 	set load_dir_parameter=%2
-) else if "%param%"=="-cfd" (
- 	set fail_dir_parameter=%2
 ) else if "%param%"=="--sgLevel" (
 	set sg_level_parameter=sgLevel=%2
 ) else if "%param%"=="--verify" (
@@ -107,7 +108,7 @@ if exist "%load_dir_parameter%" (
         call :recursiveFunction %load_dir_parameter%
     )
 ) else (
-    echo %load_dir_parameter% is not valid.
+    echo the load_dir_parameter: %load_dir_parameter% is not valid.
     exit /b 1
 )
 
@@ -130,11 +131,9 @@ set PARAMETERS=%h_parameter% %p_parameter% %u_parameter% %pw_parameter% %cli_loa
 
 if !errorlevel! neq 0 (
     if not "%fail_dir_parameter%"=="" (
-         REM 校验文件夹是否存在，不存在则创建文件夹
          if not exist "%fail_dir_parameter%\." (
              md "%fail_dir_parameter%"
          )
-         REM 拷贝文件a到此文件夹
          copy "%1" "%fail_dir_parameter%"
     )
 )
