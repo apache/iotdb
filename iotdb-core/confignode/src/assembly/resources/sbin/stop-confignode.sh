@@ -20,7 +20,7 @@
 
 CONFIGNODE_CONF="$(dirname "$0")/../conf"
 
-if [ -f "${CONFIG_DIR}/iotdb-system.properties" ]; then
+if [ -f "${CONFIGNODE_CONF}/iotdb-system.properties" ]; then
     cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-system.properties)
 else
     cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)

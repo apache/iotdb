@@ -29,13 +29,11 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.COMMON_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_INIT_HEAP_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_MAX_DIRECT_MEMORY_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_MAX_HEAP_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_NODE_NAME;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_NODE_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_FACTOR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_COMMON_PROPERTIES;
@@ -53,6 +51,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_SYNC_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_SYSTEM_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_TRACING_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_WAL_DIRS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOTDB_SYSTEM_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAIN_CLASS_NAME;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_HOST;
@@ -125,12 +124,12 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected String getTargetNodeConfigPath() {
-    return workDirFilePath("conf", DATA_NODE_PROPERTIES_FILE);
+    return workDirFilePath("conf", IOTDB_SYSTEM_PROPERTIES_FILE);
   }
 
   @Override
   protected String getTargetCommonConfigPath() {
-    return workDirFilePath("conf", COMMON_PROPERTIES_FILE);
+    return workDirFilePath("conf", IOTDB_SYSTEM_PROPERTIES_FILE);
   }
 
   @Override

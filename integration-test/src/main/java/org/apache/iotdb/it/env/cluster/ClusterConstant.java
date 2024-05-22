@@ -118,6 +118,7 @@ public class ClusterConstant {
   public static final String CONFIG_NODE_PROPERTIES_FILE = "iotdb-confignode.properties";
   public static final String DATA_NODE_PROPERTIES_FILE = "iotdb-datanode.properties";
   public static final String COMMON_PROPERTIES_FILE = "iotdb-common.properties";
+  public static final String IOTDB_SYSTEM_PROPERTIES_FILE = "iotdb-system.properties";
 
   public static final String SYSTEM_PROPERTIES_FILE = "system.properties";
   public static final String CONFIG_NODE_SYSTEM_PROPERTIES_FILE = "confignode-system.properties";
