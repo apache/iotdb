@@ -20,6 +20,12 @@
 package org.apache.iotdb.db.relational.sql.tree;
 
 public enum TableExpressionType {
+  ARITHMETIC_BINARY((short) 1),
+  ARITHMETIC_UNARY((short) 2),
+  LIKE_PREDICATE((short) 3),
+  IN_LIST((short) 4),
+  IS_NOT_NULL_PREDICATE((short) 5),
+  IS_NULL_PREDICATE((short) 6),
   SYMBOL_REFERENCE((short) 24),
   COMPARISON((short) 15),
   STRING_LITERAL((short) 23);

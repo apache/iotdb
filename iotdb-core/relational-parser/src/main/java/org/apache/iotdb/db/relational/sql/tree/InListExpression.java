@@ -19,8 +19,14 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -42,6 +48,28 @@ public class InListExpression extends Expression {
     requireNonNull(values, "values is null");
     checkArgument(!values.isEmpty(), "values cannot be empty");
     this.values = ImmutableList.copyOf(values);
+  }
+
+  public InListExpression(ByteBuffer byteBuffer) {
+    super(null);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    this.values = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      values.add(Expression.deserialize(byteBuffer));
+    }
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.IN_LIST;
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(values.size(), stream);
+    for (Expression expression : values) {
+      Expression.serialize(expression, stream);
+    }
   }
 
   public List<Expression> getValues() {
