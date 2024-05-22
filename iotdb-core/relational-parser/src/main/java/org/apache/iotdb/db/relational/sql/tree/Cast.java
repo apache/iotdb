@@ -145,7 +145,7 @@ public final class Cast extends Expression {
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     Expression.serialize(this.expression, stream);
-    // ReadWriteIOUtils.write(this.type, stream);
+    Expression.serialize(this.type, stream);
     ReadWriteIOUtils.write(this.safe, stream);
     ReadWriteIOUtils.write(this.typeOnly, stream);
   }
@@ -153,7 +153,7 @@ public final class Cast extends Expression {
   public Cast(ByteBuffer byteBuffer) {
     super(null);
     this.expression = Expression.deserialize(byteBuffer);
-    this.type = null;
+    this.type = (DataType) Expression.deserialize(byteBuffer);
     this.safe = ReadWriteIOUtils.readBool(byteBuffer);
     this.typeOnly = ReadWriteIOUtils.readBool(byteBuffer);
   }

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nonnull;
@@ -28,6 +26,7 @@ import javax.annotation.Nonnull;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -100,12 +99,13 @@ public final class GenericDataType extends DataType {
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     Expression.serialize(name, stream);
-    ReadWriteIOUtils.write(arguments.size(), stream);
+    // ReadWriteIOUtils.write(arguments.size(), stream);
   }
 
   public GenericDataType(ByteBuffer byteBuffer) {
     super(null);
     this.name = (Identifier) Expression.deserialize(byteBuffer);
-    this.arguments = null;
+    // arguments are always empty now
+    this.arguments = Collections.emptyList();
   }
 }

@@ -68,6 +68,19 @@ public class QualifiedName {
     return new QualifiedName(ImmutableList.copyOf(originalParts));
   }
 
+  public QualifiedName(
+      List<Identifier> originalParts,
+      List<String> parts,
+      String name,
+      @Nullable QualifiedName prefix,
+      String suffix) {
+    this.originalParts = ImmutableList.copyOf(originalParts);
+    this.parts = ImmutableList.copyOf(parts);
+    this.name = requireNonNull(name, "name is null");
+    this.prefix = prefix;
+    this.suffix = suffix;
+  }
+
   private QualifiedName(List<Identifier> originalParts) {
     this.originalParts = originalParts;
     // Iteration instead of stream for performance reasons
@@ -149,45 +162,46 @@ public class QualifiedName {
       Expression.serialize(identifier, stream);
     }
 
-    //    ReadWriteIOUtils.write(parts.size(), stream);
-    //    for (String part : parts) {
-    //     ReadWriteIOUtils.write(part, stream);
-    //    }
-    //
-    //    ReadWriteIOUtils.write(name, stream);
-    //
-    //    if (prefix != null) {
-    //      ReadWriteIOUtils.write((byte)1, stream);
-    //      prefix.serialize(stream);
-    //    } else {
-    //      ReadWriteIOUtils.write((byte)0, stream);
-    //    }
-    //
-    //    ReadWriteIOUtils.write(suffix, stream);
+    ReadWriteIOUtils.write(parts.size(), stream);
+    for (String part : parts) {
+      ReadWriteIOUtils.write(part, stream);
+    }
+
+    ReadWriteIOUtils.write(name, stream);
+
+    if (prefix != null) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      prefix.serialize(stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    }
+
+    ReadWriteIOUtils.write(suffix, stream);
   }
 
   public static QualifiedName deserialize(ByteBuffer byteBuffer) {
-    int size = ReadWriteIOUtils.read(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<Identifier> originalParts = new ArrayList<>(size);
     while (size-- > 0) {
       originalParts.add((Identifier) Expression.deserialize(byteBuffer));
     }
 
-    //    String name = ReadWriteIOUtils.readString(byteBuffer);
-    //
-    //    size = ReadWriteIOUtils.read(byteBuffer);
-    //    List<String> parts = new ArrayList<>(size);
-    //    while (size -- > 0) {
-    //      parts.add(ReadWriteIOUtils.readString(byteBuffer));
-    //    }
-    //
-    //    byte hasPrefixByte = ReadWriteIOUtils.readByte(byteBuffer);
-    //    if (hasPrefixByte == 1) {
-    //      QualifiedName prefix = QualifiedName.deserialize(byteBuffer);
-    //    }
-    //
-    //    String suffix = ReadWriteIOUtils.readString(byteBuffer);
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> parts = new ArrayList<>(size);
+    while (size-- > 0) {
+      parts.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
 
-    return new QualifiedName(originalParts);
+    String name = ReadWriteIOUtils.readString(byteBuffer);
+
+    byte hasPrefixByte = ReadWriteIOUtils.readByte(byteBuffer);
+    QualifiedName prefix = null;
+    if (hasPrefixByte == 1) {
+      prefix = QualifiedName.deserialize(byteBuffer);
+    }
+
+    String suffix = ReadWriteIOUtils.readString(byteBuffer);
+
+    return new QualifiedName(originalParts, parts, name, prefix, suffix);
   }
 }
