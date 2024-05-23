@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -220,16 +221,23 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         .listeningSchemaRegionIds()
         .forEach(
             schemaRegionId -> {
-              if (!validSchemaRegionIds.contains(schemaRegionId.getId())
-                  && PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)) {
-                try {
-                  SchemaRegionConsensusImpl.getInstance()
-                      .write(
-                          schemaRegionId,
-                          new PipeOperateSchemaQueueNode(new PlanNodeId(""), false));
-                } catch (final ConsensusException e) {
-                  throw new PipeException(
-                      "Failed to close listening queue for SchemaRegion " + schemaRegionId, e);
+              if (!validSchemaRegionIds.contains(schemaRegionId.getId())) {
+                if (!SchemaEngine.getInstance().getAllSchemaRegionIds().contains(schemaRegionId)) {
+                  // Close locally if the schema region does not exist
+                  PipeAgent.runtime().schemaListener(schemaRegionId).close();
+                }
+                if (PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)) {
+                  try {
+                    SchemaRegionConsensusImpl.getInstance()
+                        .write(
+                            schemaRegionId,
+                            new PipeOperateSchemaQueueNode(new PlanNodeId(""), false));
+                  } catch (final ConsensusGroupNotExistException e) {
+                    // Ignore
+                  } catch (final ConsensusException e) {
+                    throw new PipeException(
+                        "Failed to close listening queue for SchemaRegion " + schemaRegionId, e);
+                  }
                 }
               }
             });

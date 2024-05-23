@@ -172,7 +172,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
   }
 
   @Override
-  public synchronized void close() throws IOException {
+  public synchronized void close() {
     isClosed.set(true);
 
     try (final ConcurrentIterableLinkedQueue<E>.DynamicIterator iterator =

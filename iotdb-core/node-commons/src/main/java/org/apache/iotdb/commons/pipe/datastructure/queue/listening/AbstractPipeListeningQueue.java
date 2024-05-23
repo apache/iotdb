@@ -30,7 +30,6 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -108,7 +107,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   /////////////////////////////// Close ///////////////////////////////
 
   @Override
-  public synchronized void close() throws IOException {
+  public synchronized void close() {
     clearSnapshots();
     super.close();
   }
