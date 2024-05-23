@@ -91,9 +91,13 @@ public class AggregationPushDown implements PlanOptimizer {
 
     RewriterContext rewriterContext =
         new RewriterContext(analysis, context, queryStatement.isAlignByDevice());
-    PlanNode node = plan.accept(new Rewriter(), rewriterContext);
-    // release the last batch of memory
-    rewriterContext.releaseMemoryForFrontEndImmediately();
+    PlanNode node;
+    try {
+      node = plan.accept(new Rewriter(), rewriterContext);
+    } finally {
+      // release the last batch of memory
+      rewriterContext.releaseMemoryForFrontEndImmediately();
+    }
     return node;
   }
 
