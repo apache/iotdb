@@ -21,7 +21,6 @@ package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.SessionConfig;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -198,7 +197,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// open & close ///////////////////////////////
 
-  public synchronized void open() throws SubscriptionException, IoTDBConnectionException {
+  public synchronized void open() throws SubscriptionException {
     if (!isClosed.get()) {
       return;
     }
@@ -206,8 +205,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     // open subscription providers
     subscriptionProviders.acquireWriteLock();
     try {
-      subscriptionProviders.openProviders(
-          this); // throw SubscriptionException or IoTDBConnectionException
+      subscriptionProviders.openProviders(this); // throw SubscriptionException
     } finally {
       subscriptionProviders.releaseWriteLock();
     }
@@ -222,7 +220,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   @Override
-  public synchronized void close() throws SubscriptionException, IoTDBConnectionException {
+  public synchronized void close() {
     if (isClosed.get()) {
       return;
     }
@@ -240,8 +238,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       // close subscription providers
       subscriptionProviders.acquireWriteLock();
       try {
-        subscriptionProviders
-            .closeProviders(); // throw SubscriptionException or IoTDBConnectionException
+        subscriptionProviders.closeProviders();
       } finally {
         subscriptionProviders.releaseWriteLock();
       }

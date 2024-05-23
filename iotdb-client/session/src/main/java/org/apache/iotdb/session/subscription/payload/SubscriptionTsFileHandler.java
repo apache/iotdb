@@ -26,12 +26,12 @@ import java.io.IOException;
 
 public class SubscriptionTsFileHandler extends SubscriptionFileHandler {
 
-  public SubscriptionTsFileHandler(final String filePath) {
-    super(filePath);
+  public SubscriptionTsFileHandler(final String absolutePath) {
+    super(absolutePath);
   }
 
   public TsFileReader openReader() throws IOException {
-    return new TsFileReader(new TsFileSequenceReader(filePath));
+    return new TsFileReader(new TsFileSequenceReader(absolutePath));
   }
 
   @Override

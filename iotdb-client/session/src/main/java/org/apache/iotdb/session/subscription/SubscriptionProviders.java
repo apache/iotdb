@@ -73,8 +73,7 @@ final class SubscriptionProviders {
   /////////////////////////////// CRUD ///////////////////////////////
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void openProviders(final SubscriptionConsumer consumer)
-      throws SubscriptionException, IoTDBConnectionException {
+  void openProviders(final SubscriptionConsumer consumer) throws SubscriptionException {
     // close stale providers
     closeProviders();
 
@@ -129,9 +128,12 @@ final class SubscriptionProviders {
   }
 
   /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void closeProviders() throws SubscriptionException, IoTDBConnectionException {
+  void closeProviders() {
     for (final SubscriptionProvider provider : getAllProviders()) {
-      provider.close();
+      try {
+        provider.close();
+      } catch (final Exception ignored) {
+      }
     }
     subscriptionProviders.clear();
   }

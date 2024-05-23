@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
@@ -92,7 +91,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// open & close ///////////////////////////////
 
-  public synchronized void open() throws IoTDBConnectionException {
+  public synchronized void open() throws SubscriptionException {
     if (!isClosed.get()) {
       return;
     }
@@ -107,7 +106,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   }
 
   @Override
-  public synchronized void close() throws IoTDBConnectionException {
+  public synchronized void close() {
     if (isClosed.get()) {
       return;
     }

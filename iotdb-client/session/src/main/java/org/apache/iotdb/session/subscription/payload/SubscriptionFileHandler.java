@@ -30,71 +30,71 @@ import java.nio.file.StandardCopyOption;
 
 public abstract class SubscriptionFileHandler implements SubscriptionMessageHandler {
 
-  protected final String filePath;
+  protected final String absolutePath;
 
-  public SubscriptionFileHandler(final String filePath) {
-    this.filePath = filePath;
+  public SubscriptionFileHandler(final String absolutePath) {
+    this.absolutePath = absolutePath;
   }
 
   /**
    * @return a new File instance of the corresponding file
    */
   public File getFile() {
-    return new File(filePath);
+    return new File(absolutePath);
   }
 
   /**
    * @return a new Path instance of the corresponding file
    */
   public Path getPath() {
-    return Paths.get(filePath);
+    return Paths.get(absolutePath);
   }
 
   /**
+   * @return the path to the source file
    * @throws IOException if an I/O error occurs
    */
-  public void deleteFile() throws IOException {
-    Files.delete(getPath());
+  public Path deleteFile() throws IOException {
+    final Path sourcePath = getPath();
+    Files.delete(sourcePath);
+    return sourcePath;
   }
 
   /**
-   * @param targetFilePath the path to the target file
+   * @param target the path to the target file
    * @return the path to the target file
    * @throws IOException if an I/O error occurs
    */
-  public Path moveFile(final String targetFilePath) throws IOException {
-    return this.moveFile(Paths.get(targetFilePath));
+  public Path moveFile(final String target) throws IOException {
+    return this.moveFile(Paths.get(target));
   }
 
   /**
-   * @param targetFilePath the path to the target file
+   * @param target the path to the target file
    * @return the path to the target file
    * @throws IOException if an I/O error occurs
    */
-  public Path moveFile(final Path targetFilePath) throws IOException {
-    return Files.move(getPath(), targetFilePath, StandardCopyOption.REPLACE_EXISTING);
+  public Path moveFile(final Path target) throws IOException {
+    return Files.move(getPath(), target, StandardCopyOption.REPLACE_EXISTING);
   }
 
   /**
-   * @param targetFilePath the path to the target file
+   * @param target the path to the target file
    * @return the path to the target file
    * @throws IOException if an I/O error occurs
    */
-  public Path copyFile(final String targetFilePath) throws IOException {
-    return this.copyFile(Paths.get(targetFilePath));
+  public Path copyFile(final String target) throws IOException {
+    return this.copyFile(Paths.get(target));
   }
 
   /**
-   * @param targetFilePath the path to the target file
+   * @param target the path to the target file
    * @return the path to the target file
    * @throws IOException if an I/O error occurs
    */
-  public Path copyFile(final Path targetFilePath) throws IOException {
+  public Path copyFile(final Path target) throws IOException {
     return Files.copy(
-        getPath(),
-        targetFilePath,
-        StandardCopyOption.REPLACE_EXISTING,
-        StandardCopyOption.COPY_ATTRIBUTES);
+        getPath(), target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
   }
 
   @Override

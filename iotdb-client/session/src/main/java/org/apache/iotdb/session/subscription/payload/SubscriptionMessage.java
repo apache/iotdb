@@ -42,10 +42,11 @@ public class SubscriptionMessage
     this.handler = new SubscriptionSessionDataSetsHandler(tablets);
   }
 
-  public SubscriptionMessage(final SubscriptionCommitContext commitContext, final String filePath) {
+  public SubscriptionMessage(
+      final SubscriptionCommitContext commitContext, final String absolutePath) {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.SUBSCRIPTION_TS_FILE_HANDLER.getType();
-    this.handler = new SubscriptionTsFileHandler(filePath);
+    this.handler = new SubscriptionTsFileHandler(absolutePath);
   }
 
   public SubscriptionCommitContext getCommitContext() {
