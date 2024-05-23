@@ -92,6 +92,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsSta
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTableStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
@@ -105,6 +106,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSche
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.relational.sql.tree.Insert;
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -338,17 +340,29 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
         queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
 
-        // TODO audit log, quota, StatementType
-        result =
-            COORDINATOR.executeForTableModel(
-                s,
-                relationSqlParser,
-                clientSession,
-                queryId,
-                SESSION_MANAGER.getSessionInfo(clientSession),
-                statement,
-                metadata,
-                req.getTimeout());
+        if (s instanceof Insert) {
+          result =
+              COORDINATOR.executeForTreeModel(
+                  new InsertTableStatement(clientSession, (Insert) s),
+                  queryId,
+                  SESSION_MANAGER.getSessionInfo(clientSession),
+                  statement,
+                  partitionFetcher,
+                  schemaFetcher,
+                  req.getTimeout());
+        } else {
+          // TODO audit log, quota, StatementType
+          result =
+              COORDINATOR.executeForTableModel(
+                  s,
+                  relationSqlParser,
+                  clientSession,
+                  queryId,
+                  SESSION_MANAGER.getSessionInfo(clientSession),
+                  statement,
+                  metadata,
+                  req.getTimeout());
+        }
       }
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()

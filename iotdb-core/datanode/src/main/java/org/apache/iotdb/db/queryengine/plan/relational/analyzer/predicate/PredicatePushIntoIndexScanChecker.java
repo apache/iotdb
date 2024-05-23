@@ -60,7 +60,7 @@ public class PredicatePushIntoIndexScanChecker extends PredicateVisitor<Boolean,
 
   @Override
   protected Boolean visitIsNullPredicate(IsNullPredicate node, Void context) {
-    return Boolean.FALSE;
+    return isIdOrAttributeColumn(node.getValue());
   }
 
   @Override

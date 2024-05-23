@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTableStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -121,6 +122,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaSta
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.table.CreateTableDeviceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.table.FetchTableDevicesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.table.ShowTableDevicesStatement;
 
 /**
  * This class provides a visitor of {@link StatementNode}, which can be extended to create a visitor
@@ -599,5 +603,22 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowCurrentTimestamp(
       ShowCurrentTimestampStatement showCurrentTimestampStatement, C context) {
     return visitStatement(showCurrentTimestampStatement, context);
+  }
+
+  public R visitInsertTable(InsertTableStatement insertTableStatement, C context) {
+    return visitStatement(insertTableStatement, context);
+  }
+
+  public R visitCreateTableDevice(
+      CreateTableDeviceStatement createTableDeviceStatement, C context) {
+    return visitStatement(createTableDeviceStatement, context);
+  }
+
+  public R visitShowTableDevices(ShowTableDevicesStatement statement, C context) {
+    return visitStatement(statement, context);
+  }
+
+  public R visitFetchTableDevices(FetchTableDevicesStatement statement, C context) {
+    return visitStatement(statement, context);
   }
 }

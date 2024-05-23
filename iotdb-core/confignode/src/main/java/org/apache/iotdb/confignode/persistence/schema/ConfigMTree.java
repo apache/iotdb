@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
@@ -703,6 +704,81 @@ public class ConfigMTree {
       }
     }
     return result;
+  }
+
+  public TsTable getTable(PartialPath database, String tableName) throws MetadataException {
+    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    return tableNode.getTable();
+  }
+
+  public void preDropTable(PartialPath database, String tableName) throws MetadataException {
+    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    if (!tableNode.getStatus().equals(TableNodeStatus.USING)) {
+      throw new IllegalStateException();
+    }
+    tableNode.setStatus(TableNodeStatus.PRE_DELETE);
+  }
+
+  public void rollbackDropTable(PartialPath database, String tableName) throws MetadataException {
+    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    if (!tableNode.getStatus().equals(TableNodeStatus.PRE_DELETE)) {
+      throw new IllegalStateException();
+    }
+    tableNode.setStatus(TableNodeStatus.USING);
+  }
+
+  public void commitDropTable(PartialPath database, String tableName) throws MetadataException {
+    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    if (!tableNode.getStatus().equals(TableNodeStatus.PRE_DELETE)) {
+      throw new IllegalStateException();
+    }
+    databaseNode.deleteChild(tableName);
+  }
+
+  public void addTableColumn(
+      PartialPath database, String tableName, List<TsTableColumnSchema> columnSchemaList)
+      throws MetadataException {
+    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    TsTable table = tableNode.getTable();
+    columnSchemaList.forEach(table::addColumnSchema);
+  }
+
+  public void rollbackAddTableColumn(
+      PartialPath database, String tableName, List<TsTableColumnSchema> columnSchemaList)
+      throws MetadataException {
+    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
+    TsTable table = tableNode.getTable();
+    columnSchemaList.forEach(o -> table.removeColumnSchema(o.getColumnName()));
   }
 
   // endregion

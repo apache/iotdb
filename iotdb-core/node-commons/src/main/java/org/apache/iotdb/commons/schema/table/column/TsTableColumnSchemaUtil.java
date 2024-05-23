@@ -21,10 +21,13 @@ package org.apache.iotdb.commons.schema.table.column;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TsTableColumnSchemaUtil {
 
@@ -76,5 +79,39 @@ public class TsTableColumnSchemaUtil {
       default:
         throw new IllegalArgumentException();
     }
+  }
+
+  public static byte[] serialize(List<TsTableColumnSchema> columnSchemaList) {
+    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    try {
+      serialize(columnSchemaList, stream);
+    } catch (IOException ignored) {
+      // won't happen
+    }
+    return stream.toByteArray();
+  }
+
+  public static void serialize(List<TsTableColumnSchema> columnSchemaList, OutputStream stream)
+      throws IOException {
+    if (columnSchemaList == null) {
+      ReadWriteIOUtils.write(-1, stream);
+      return;
+    }
+    ReadWriteIOUtils.write(columnSchemaList.size(), stream);
+    for (TsTableColumnSchema columnSchema : columnSchemaList) {
+      serialize(columnSchema, stream);
+    }
+  }
+
+  public static List<TsTableColumnSchema> deserializeColumnSchemaList(ByteBuffer buffer) {
+    int size = ReadWriteIOUtils.readInt(buffer);
+    if (size == -1) {
+      return null;
+    }
+    List<TsTableColumnSchema> columnSchemaList = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      columnSchemaList.add(deserialize(buffer));
+    }
+    return columnSchemaList;
   }
 }

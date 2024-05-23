@@ -26,6 +26,11 @@ public enum SchemaFilterType {
   VIEW_TYPE((short) 4),
   AND((short) 5),
   TEMPLATE_FILTER((short) 6),
+
+  DEVICE_ID((short) 7),
+  DEVICE_ATTRIBUTE((short) 8),
+
+  OR((short) 9),
   ;
 
   private final short code;
@@ -54,6 +59,12 @@ public enum SchemaFilterType {
         return AND;
       case 6:
         return TEMPLATE_FILTER;
+      case 7:
+        return DEVICE_ID;
+      case 8:
+        return DEVICE_ATTRIBUTE;
+      case 9:
+        return OR;
       default:
         throw new IllegalArgumentException("Invalid input: " + code);
     }

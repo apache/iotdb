@@ -380,11 +380,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitShowDevicesStatement(RelationalSqlParser.ShowDevicesStatementContext ctx) {
-    return super.visitShowDevicesStatement(ctx);
-  }
-
-  @Override
   public Node visitCountDevicesStatement(RelationalSqlParser.CountDevicesStatementContext ctx) {
     return super.visitCountDevicesStatement(ctx);
   }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.schemaengine.table;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -141,6 +142,64 @@ public class DataNodeTableCache implements ITableCache {
           .put(tableName, table);
       removeTableFromPreCreateMap(database, tableName);
       LOGGER.info("Commit-create table {}.{} successfully", database, tableName);
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public void invalidateTable(String database, String tableName) {
+    readWriteLock.writeLock().lock();
+    try {
+      databaseTableMap.compute(
+          database,
+          (db, map) -> {
+            if (map == null) {
+              return null;
+            }
+            map.remove(tableName);
+            if (map.isEmpty()) {
+              return null;
+            } else {
+              return map;
+            }
+          });
+      LOGGER.info("Invalidate table {}.{} successfully", database, tableName);
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public void invalidateTable(String database) {
+    readWriteLock.writeLock().lock();
+    try {
+      databaseTableMap.remove(database);
+      preCreateTableMap.remove(database);
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public void addTableColumn(
+      String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
+    readWriteLock.writeLock().lock();
+    try {
+      TsTable table = databaseTableMap.get(database).get(tableName);
+      columnSchemaList.forEach(table::addColumnSchema);
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public void rollbackAddColumn(
+      String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
+    readWriteLock.writeLock().lock();
+    try {
+      TsTable table = databaseTableMap.get(database).get(tableName);
+      columnSchemaList.forEach(o -> table.removeColumnSchema(o.getColumnName()));
     } finally {
       readWriteLock.writeLock().unlock();
     }

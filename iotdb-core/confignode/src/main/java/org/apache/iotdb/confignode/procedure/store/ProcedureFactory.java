@@ -45,7 +45,9 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProced
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
@@ -181,6 +183,12 @@ public class ProcedureFactory implements IProcedureFactory {
       case CREATE_TABLE_PROCEDURE:
         procedure = new CreateTableProcedure();
         break;
+      case DROP_TABLE_PROCEDURE:
+        procedure = new DropTableProcedure();
+        break;
+      case ADD_TABLE_COLUMN_PROCEDURE:
+        procedure = new AddTableColumnProcedure();
+        break;
       case CREATE_PIPE_PLUGIN_PROCEDURE:
         procedure = new CreatePipePluginProcedure();
         break;
@@ -308,6 +316,10 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.UNSET_TEMPLATE_PROCEDURE;
     } else if (procedure instanceof CreateTableProcedure) {
       return ProcedureType.CREATE_TABLE_PROCEDURE;
+    } else if (procedure instanceof DropTableProcedure) {
+      return ProcedureType.DROP_TABLE_PROCEDURE;
+    } else if (procedure instanceof AddTableColumnProcedure) {
+      return ProcedureType.ADD_TABLE_COLUMN_PROCEDURE;
     } else if (procedure instanceof CreatePipePluginProcedure) {
       return ProcedureType.CREATE_PIPE_PLUGIN_PROCEDURE;
     } else if (procedure instanceof DropPipePluginProcedure) {

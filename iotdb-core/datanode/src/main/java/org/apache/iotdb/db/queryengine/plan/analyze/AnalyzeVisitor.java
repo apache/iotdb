@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -79,6 +80,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByVariationParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.TableModelSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -101,6 +103,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTableStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -140,6 +143,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatemen
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.table.CreateTableDeviceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.table.FetchTableDevicesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.table.ShowTableDevicesStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
@@ -2719,6 +2725,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private void validateSchema(
       Analysis analysis, InsertBaseStatement insertStatement, MPPQueryContext context) {
+    if (context.isSkipSchemaValidate()) {
+      return;
+    }
     final long startTime = System.nanoTime();
     try {
       SchemaValidator.validate(schemaFetcher, insertStatement, context);
@@ -3642,6 +3651,127 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setStatement(showCurrentTimestampStatement);
     analysis.setFinishQueryAfterAnalyze(true);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowCurrentTimestampHeader());
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitInsertTable(
+      InsertTableStatement insertTableStatement, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+
+    try {
+      insertTableStatement.setTableSchema(
+          TableModelSchemaFetcher.getInstance()
+              .validateTableHeaderSchema(
+                  insertTableStatement.getDatabase(),
+                  insertTableStatement.getTableSchema(),
+                  context));
+    } catch (SemanticException e) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      if (e.getCause() instanceof IoTDBException) {
+        IoTDBException exception = (IoTDBException) e.getCause();
+        analysis.setFailStatus(
+            RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
+      } else {
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
+      }
+    }
+
+    InsertRowStatement insertRowStatement = insertTableStatement.getInsertRowStatement();
+
+    try {
+      TableModelSchemaFetcher.getInstance().validateDeviceSchema(insertTableStatement, context);
+    } catch (SemanticException e) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      if (e.getCause() instanceof IoTDBException) {
+        IoTDBException exception = (IoTDBException) e.getCause();
+        analysis.setFailStatus(
+            RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
+      } else {
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
+      }
+    }
+
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
+    context.setSkipSchemaValidate(true);
+    return insertRowStatement.accept(this, context);
+  }
+
+  @Override
+  public Analysis visitCreateTableDevice(
+      CreateTableDeviceStatement createTableDeviceStatement, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(createTableDeviceStatement);
+
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath devicePath : createTableDeviceStatement.getPaths()) {
+      patternTree.appendFullPath(devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
+    }
+    SchemaPartition partition =
+        partitionFetcher.getOrCreateSchemaPartition(
+            patternTree, context.getSession().getUserName());
+
+    analysis.setSchemaPartitionInfo(partition);
+
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitShowTableDevices(
+      ShowTableDevicesStatement statement, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(statement);
+
+    String database = statement.getDatabase();
+    String tableName = statement.getTableName();
+
+    List<PartialPath> devicePatternList =
+        DeviceFilterUtil.convertToDevicePattern(
+            database,
+            DataNodeTableCache.getInstance().getTable(database, tableName),
+            statement.getIdDeterminedFilterList());
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath devicePattern : devicePatternList) {
+      patternTree.appendFullPath(devicePattern, ONE_LEVEL_PATH_WILDCARD);
+    }
+
+    SchemaPartition partition =
+        partitionFetcher.getOrCreateSchemaPartition(
+            patternTree, context.getSession().getUserName());
+
+    analysis.setSchemaPartitionInfo(partition);
+
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitFetchTableDevices(
+      FetchTableDevicesStatement statement, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(statement);
+
+    String database = statement.getDatabase();
+    String tableName = statement.getTableName();
+
+    List<PartialPath> devicePatternList =
+        DeviceFilterUtil.convertToDevicePath(database, tableName, statement.getDeviceIdList());
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath devicePattern : devicePatternList) {
+      patternTree.appendFullPath(devicePattern, ONE_LEVEL_PATH_WILDCARD);
+    }
+
+    SchemaPartition partition =
+        partitionFetcher.getOrCreateSchemaPartition(
+            patternTree, context.getSession().getUserName());
+
+    analysis.setSchemaPartitionInfo(partition);
+
     return analysis;
   }
 }

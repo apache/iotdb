@@ -75,6 +75,8 @@ public class MPPQueryContext {
 
   QueryPlanStatistics queryPlanStatistics = null;
 
+  private boolean skipSchemaValidate = false;
+
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = new LinkedList<>();
@@ -289,5 +291,13 @@ public class MPPQueryContext {
       queryPlanStatistics = new QueryPlanStatistics();
     }
     queryPlanStatistics.setLogicalOptimizationCost(logicalOptimizeCost);
+  }
+
+  public boolean isSkipSchemaValidate() {
+    return skipSchemaValidate;
+  }
+
+  public void setSkipSchemaValidate(boolean skipSchemaValidate) {
+    this.skipSchemaValidate = skipSchemaValidate;
   }
 }

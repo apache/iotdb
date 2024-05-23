@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -123,6 +124,8 @@ public class SimpleNFA implements IPatternFA {
     if (patternNodes[nextIndex] == null) {
       if (nextIndex == rawNodes.length) {
         patternNodes[nextIndex] = new PrefixMatchNode(nextIndex, currentNode.getTracebackNode());
+      } else if (rawNodes[nextIndex] == null) {
+        patternNodes[nextIndex] = new NameMatchNode(nextIndex, currentNode.getTracebackNode());
       } else if (rawNodes[nextIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
         patternNodes[nextIndex] = new MultiLevelWildcardMatchNode(nextIndex);
       } else if (rawNodes[nextIndex].equals(ONE_LEVEL_PATH_WILDCARD)) {
@@ -439,7 +442,7 @@ public class SimpleNFA implements IPatternFA {
 
     @Override
     public boolean isMatch(String event) {
-      return rawNodes[patternIndex].equals(event);
+      return Objects.equals(rawNodes[patternIndex], event);
     }
 
     @Override
