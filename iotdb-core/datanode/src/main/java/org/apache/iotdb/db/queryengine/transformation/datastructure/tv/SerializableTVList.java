@@ -287,6 +287,11 @@ public class SerializableTVList implements SerializableList {
 
   // endregion
 
+  public int getColumnSize(int index) {
+    assert index < columnSizes.size();
+    return columnSizes.get(index);
+  }
+
   public int getColumnIndex(int pointIndex) {
     assert pointIndex < size;
 

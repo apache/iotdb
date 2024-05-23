@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.datastructure.iterator;
 
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableTVList;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
@@ -75,7 +76,8 @@ public class TVListForwardIterator implements ListForwardIterator {
   @Override
   public void next() throws IOException {
     // Move forward iterator
-    if (internalIndex + 1 == tvList.getSerializableTVList(externalIndex).getColumnCount()) {
+    SerializableTVList tvList = this.tvList.getSerializableTVList(externalIndex);
+    if (internalIndex + 1 == tvList.getColumnCount()) {
       internalIndex = 0;
       externalIndex++;
     } else {
@@ -83,7 +85,7 @@ public class TVListForwardIterator implements ListForwardIterator {
     }
 
     // Assume we already consume all data in this block
-    endPointIndex += tvList.getTimeColumn(externalIndex, internalIndex).getPositionCount();
+    endPointIndex += tvList.getColumnSize(internalIndex);
   }
 
   // When tvList apply new memory control strategy, the origin iterators become invalid.
