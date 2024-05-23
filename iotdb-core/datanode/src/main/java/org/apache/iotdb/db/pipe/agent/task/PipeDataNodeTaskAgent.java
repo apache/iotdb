@@ -69,6 +69,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -78,6 +79,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY;
 
 public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
@@ -275,7 +280,13 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       return;
     }
 
+    final Set<Integer> dataRegionIds =
+        StorageEngine.getInstance().getAllDataRegionIds().stream()
+            .map(DataRegionId::getId)
+            .collect(Collectors.toSet());
+
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    final List<Boolean> pipeCompletedList = new ArrayList<>();
     try {
       final Optional<Logger> logger =
           PipeResourceManager.log()
@@ -286,13 +297,44 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                   pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
-        logger.ifPresent(l -> l.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage()));
+
+        final Map<Integer, PipeTask> pipeTaskMap =
+            pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
+        final boolean isAllDataRegionCompleted =
+            pipeTaskMap == null
+                || pipeTaskMap.entrySet().stream()
+                    .filter(entry -> dataRegionIds.contains(entry.getKey()))
+                    .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted());
+        // If the "source.history.terminate-pipe-on-all-consumed" is false or the pipe does
+        // not include data transfer, we should not terminate the pipe.
+        final boolean includeDataAndNeedDrop =
+            DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
+                        pipeMeta.getStaticMeta().getExtractorParameters())
+                    .getLeft()
+                && pipeMeta
+                    .getStaticMeta()
+                    .getExtractorParameters()
+                    .getBooleanOrDefault(
+                        Arrays.asList(
+                            SOURCE_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY,
+                            EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY),
+                        EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_DEFAULT_VALUE);
+
+        pipeCompletedList.add(isAllDataRegionCompleted && includeDataAndNeedDrop);
+
+        logger.ifPresent(
+            l ->
+                l.info(
+                    "Reporting pipe meta: {}, isCompleted: {}",
+                    pipeMeta.coreReportMessage(),
+                    includeDataAndNeedDrop));
       }
       LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
-    } catch (final IOException e) {
+    } catch (final IOException | IllegalPathException e) {
       throw new TException(e);
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
+    resp.setPipeCompletedList(pipeCompletedList);
   }
 
   @Override
@@ -304,7 +346,13 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
     LOGGER.info("Received pipe heartbeat request {} from config node.", req.heartbeatId);
 
+    final Set<Integer> dataRegionIds =
+        StorageEngine.getInstance().getAllDataRegionIds().stream()
+            .map(DataRegionId::getId)
+            .collect(Collectors.toSet());
+
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    final List<Boolean> pipeCompletedList = new ArrayList<>();
     try {
       final Optional<Logger> logger =
           PipeResourceManager.log()
@@ -315,14 +363,44 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                   pipeMetaKeeper.getPipeMetaCount());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
-        logger.ifPresent(l -> l.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage()));
+
+        final Map<Integer, PipeTask> pipeTaskMap =
+            pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
+        final boolean isAllDataRegionCompleted =
+            pipeTaskMap == null
+                || pipeTaskMap.entrySet().stream()
+                    .filter(entry -> dataRegionIds.contains(entry.getKey()))
+                    .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted());
+        // If the "source.history.terminate-pipe-on-all-consumed" is false or the pipe does
+        // not include data transfer, we should not terminate the pipe.
+        final boolean includeDataAndNeedDrop =
+            DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
+                        pipeMeta.getStaticMeta().getExtractorParameters())
+                    .getLeft()
+                && pipeMeta
+                    .getStaticMeta()
+                    .getExtractorParameters()
+                    .getBooleanOrDefault(
+                        Arrays.asList(
+                            SOURCE_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY,
+                            EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY),
+                        EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_DEFAULT_VALUE);
+
+        pipeCompletedList.add(isAllDataRegionCompleted && includeDataAndNeedDrop);
+
+        logger.ifPresent(
+            l ->
+                l.info(
+                    "Reporting pipe meta: {}, isCompleted: {}",
+                    pipeMeta.coreReportMessage(),
+                    includeDataAndNeedDrop));
       }
       LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
-    } catch (final IOException e) {
+    } catch (final IOException | IllegalPathException e) {
       throw new TException(e);
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
-
+    resp.setPipeCompletedList(pipeCompletedList);
     PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 
@@ -475,6 +553,25 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     // Set pipe meta status to STOPPED
     pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+  }
+
+  ///////////////////////// Terminate Logic /////////////////////////
+
+  public void markCompleted(final String pipeName, final int regionId) {
+    acquireWriteLock();
+    try {
+      if (pipeMetaKeeper.containsPipeMeta(pipeName)) {
+        final PipeDataNodeTask pipeDataNodeTask =
+            ((PipeDataNodeTask)
+                pipeTaskManager.getPipeTask(
+                    pipeMetaKeeper.getPipeMeta(pipeName).getStaticMeta(), regionId));
+        if (Objects.nonNull(pipeDataNodeTask)) {
+          pipeDataNodeTask.markCompleted();
+        }
+      }
+    } finally {
+      releaseWriteLock();
+    }
   }
 
   ///////////////////////// Utils /////////////////////////
