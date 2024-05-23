@@ -163,6 +163,7 @@ public enum Metric {
   UNTRANSFERRED_CONFIG_COUNT("untransferred_config_count"),
   PIPE_CONNECTOR_CONFIG_TRANSFER("pipe_connector_config_transfer"),
   PIPE_CONFIGNODE_REMAINING_TIME("pipe_confignode_remaining_time"),
+  PIPE_GLOBAL_REMAINING_TIME("pipe_global_remaining_time"),
   // load related
   LOAD_MEM("load_mem");
 

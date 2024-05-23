@@ -21,6 +21,8 @@ package org.apache.iotdb.confignode.manager.pipe.metric;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
+import org.apache.iotdb.confignode.service.ConfigNode;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.ExponentialMovingAverages;
@@ -28,6 +30,7 @@ import com.codahale.metrics.Meter;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 class PipeConfigNodeRemainingTimeOperator {
 
@@ -56,17 +59,52 @@ class PipeConfigNodeRemainingTimeOperator {
   //////////////////////////// Remaining time calculation ////////////////////////////
 
   /**
-   * This will calculate the estimated remaining time of pipe.
+   * This will calculate the estimated remaining time of pipe globally.
    *
    * <p>Notes:
    *
-   * <p>1. The events in pipe assigner are omitted.
+   * <p>1. This may suffer from high latency because the value is updated per heartbeat.
    *
-   * <p>2. Other pipes' events sharing the same connectorSubtasks may be over-calculated.
+   * <p>2. If the lock can not be acquired, it will give up and return 0 to avoid blocking the
+   * normal function of pipe.
    *
    * @return The estimated remaining time
    */
-  double getRemainingTime() {
+  double getGlobalRemainingTime() {
+    final AtomicReference<PipeTaskInfo> pipeTaskInfo =
+        ConfigNode.getInstance()
+            .getConfigManager()
+            .getPipeManager()
+            .getPipeTaskCoordinator()
+            .tryLock();
+    if (pipeTaskInfo == null) {
+      return 0;
+    }
+    try {
+      return pipeTaskInfo
+          .get()
+          .getPipeMetaByPipeName(pipeName)
+          .getTemporaryMeta()
+          .getNodeId2RemainingTimeMap()
+          .values()
+          .stream()
+          .reduce(Math::max)
+          .orElse(0d);
+    } finally {
+      ConfigNode.getInstance()
+          .getConfigManager()
+          .getPipeManager()
+          .getPipeTaskCoordinator()
+          .unlock();
+    }
+  }
+
+  /**
+   * This will calculate the estimated remaining time of the given pipe's config region subTask.
+   *
+   * @return The estimated remaining time
+   */
+  double getConfigRegionRemainingTime() {
     final double pipeRemainingTimeCommitRateSmoothingFactor =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateSmoothingFactor();
 

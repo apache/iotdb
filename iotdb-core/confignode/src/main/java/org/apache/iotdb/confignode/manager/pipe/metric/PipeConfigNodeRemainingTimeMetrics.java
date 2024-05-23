@@ -65,7 +65,16 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
         Metric.PIPE_CONFIGNODE_REMAINING_TIME.toString(),
         MetricLevel.IMPORTANT,
         operator,
-        PipeConfigNodeRemainingTimeOperator::getRemainingTime,
+        PipeConfigNodeRemainingTimeOperator::getConfigRegionRemainingTime,
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+    metricService.createAutoGauge(
+        Metric.PIPE_GLOBAL_REMAINING_TIME.toString(),
+        MetricLevel.IMPORTANT,
+        operator,
+        PipeConfigNodeRemainingTimeOperator::getGlobalRemainingTime,
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
@@ -90,6 +99,13 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_CONFIGNODE_REMAINING_TIME.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_GLOBAL_REMAINING_TIME.toString(),
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
@@ -153,7 +169,7 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     return remainingTimeOperatorMap
         .computeIfAbsent(
             pipeName + "_" + creationTime, k -> new PipeConfigNodeRemainingTimeOperator())
-        .getRemainingTime();
+        .getConfigRegionRemainingTime();
   }
 
   //////////////////////////// singleton ////////////////////////////
