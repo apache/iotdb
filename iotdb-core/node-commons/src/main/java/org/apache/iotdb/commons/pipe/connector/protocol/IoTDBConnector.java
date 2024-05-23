@@ -362,7 +362,7 @@ public abstract class IoTDBConnector implements PipeConnector {
   }
 
   public void rateLimitIfNeeded(TEndPoint endPoint, long bytesLength) {
-    if (isPipeEndPointRateLimitModeEnabled) {
+    if (endPoint != null && isPipeEndPointRateLimitModeEnabled) {
       getPipeEndPointRateLimiter(endPoint).acquire(bytesLength);
     }
 

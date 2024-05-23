@@ -267,9 +267,12 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       return false;
     }
 
+    // avoid calling Arrays.toString() methods frequently bring performance overhead when isPipeEndPointRateLimitModeEnabled is false
     rateLimitIfNeeded(
-        new TEndPoint(
-            Arrays.toString(socket.getLocalAddress().getAddress()), socket.getLocalPort()),
+        isPipeEndPointRateLimitModeEnabled
+            ? new TEndPoint(
+                Arrays.toString(socket.getLocalAddress().getAddress()), socket.getLocalPort())
+            : null,
         bytes.length);
 
     final BufferedOutputStream outputStream = new BufferedOutputStream(socket.getOutputStream());
