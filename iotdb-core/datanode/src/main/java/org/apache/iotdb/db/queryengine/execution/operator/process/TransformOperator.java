@@ -254,6 +254,7 @@ public class TransformOperator implements ProcessOperator {
         TsBlock ret = outputColumns[0];
         transformers[0].consumedAll();
         outputColumns[0] = null;
+        inputLayer.updateRowRecordListEvictionUpperBound();
 
         return ret;
       }
