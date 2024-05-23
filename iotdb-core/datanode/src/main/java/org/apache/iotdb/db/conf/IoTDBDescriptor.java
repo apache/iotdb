@@ -1721,6 +1721,16 @@ public class IoTDBDescriptor {
                   "load_write_throughput_bytes_per_second",
                   String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
 
+      // update pipe config
+      commonDescriptor
+          .getConfig()
+          .setPipeAllSinksRateLimitBytesPerSecond(
+              Double.parseDouble(
+                  properties.getProperty(
+                      "pipe_all_sinks_rate_limit_bytes_per_second",
+                      String.valueOf(
+                          commonDescriptor.getConfig().getPipeAllSinksRateLimitBytesPerSecond()))));
+
       // update merge_threshold_of_explain_analyze
       conf.setMergeThresholdOfExplainAnalyze(
           Integer.parseInt(

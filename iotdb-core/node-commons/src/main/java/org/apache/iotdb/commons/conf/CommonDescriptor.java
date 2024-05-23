@@ -547,6 +547,12 @@ public class CommonDescriptor {
             properties.getProperty(
                 "two_stage_aggregate_sender_end_points_cache_in_ms",
                 String.valueOf(config.getTwoStageAggregateSenderEndPointsCacheInMs()))));
+
+    config.setPipeAllSinksRateLimitBytesPerSecond(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_all_sinks_rate_limit_bytes_per_second",
+                String.valueOf(config.getPipeAllSinksRateLimitBytesPerSecond()))));
   }
 
   private void loadSubscriptionProps(Properties properties) {

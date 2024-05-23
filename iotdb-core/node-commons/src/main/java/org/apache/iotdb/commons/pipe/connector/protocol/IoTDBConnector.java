@@ -20,11 +20,13 @@
 package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorFactory;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
-import org.apache.iotdb.commons.pipe.connector.rateLimiter.ConnectorRateLimiter;
+import org.apache.iotdb.commons.pipe.connector.rateLimiter.PipeAllConnectorsRateLimiter;
+import org.apache.iotdb.commons.pipe.connector.rateLimiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -102,9 +104,9 @@ public abstract class IoTDBConnector implements PipeConnector {
 
   protected boolean isTabletBatchModeEnabled = true;
 
-  protected boolean isRateLimitModeEnabled = false;
-  protected double rateLimitBytesPerSecond = 0;
-  protected Map<TEndPoint, ConnectorRateLimiter> endPointConnectorRateLimiterMap;
+  protected boolean isPipeEndPointRateLimitModeEnabled = false;
+  protected double endPointRateLimitBytesPerSecond = 0;
+  protected Map<TEndPoint, PipeEndPointRateLimiter> pipeEndPointsRateLimitersMap;
 
   protected PipeReceiverStatusHandler receiverStatusHandler;
 
@@ -179,21 +181,22 @@ public abstract class IoTDBConnector implements PipeConnector {
         compressors.size());
     isRpcCompressionEnabled = !compressors.isEmpty();
 
-    final double rateLimit =
+    final double pipeEndPointRateLimit =
         parameters.getDoubleOrDefault(
             Arrays.asList(CONNECTOR_RATE_LIMIT_KEY, SINK_RATE_LIMIT_KEY),
             CONNECTOR_RATE_LIMIT_DEFAULT_VALUE);
 
     validator.validate(
-        arg -> rateLimit >= 0 && rateLimit <= Double.MAX_VALUE,
+        arg -> pipeEndPointRateLimit > 0 && pipeEndPointRateLimit <= Double.MAX_VALUE,
         String.format(
-            "Rate limit should be in the range [0, %f], but got %f.", Double.MAX_VALUE, rateLimit),
-        rateLimit);
+            "Rate limit should be in the range (0, %f], but got %f.",
+            Double.MAX_VALUE, pipeEndPointRateLimit),
+        pipeEndPointRateLimit);
 
-    if (rateLimit > 0) {
-      isRateLimitModeEnabled = true;
-      endPointConnectorRateLimiterMap = new ConcurrentHashMap<>();
-      rateLimitBytesPerSecond = rateLimit;
+    if (pipeEndPointRateLimit > 0) {
+      isPipeEndPointRateLimitModeEnabled = true;
+      pipeEndPointsRateLimitersMap = new ConcurrentHashMap<>();
+      endPointRateLimitBytesPerSecond = pipeEndPointRateLimit;
     }
 
     validator.validate(
@@ -353,14 +356,22 @@ public abstract class IoTDBConnector implements PipeConnector {
     return receiverStatusHandler;
   }
 
-  private ConnectorRateLimiter getRateLimiter(TEndPoint endPoint) {
-    return endPointConnectorRateLimiterMap.computeIfAbsent(
-        endPoint, endpoint -> new ConnectorRateLimiter(rateLimitBytesPerSecond));
+  private PipeEndPointRateLimiter getPipeEndPointRateLimiter(TEndPoint endPoint) {
+    return pipeEndPointsRateLimitersMap.computeIfAbsent(
+        endPoint, endpoint -> new PipeEndPointRateLimiter(endPointRateLimitBytesPerSecond));
   }
 
   public void rateLimitIfNeeded(TEndPoint endPoint, long bytesLength) {
-    if (isRateLimitModeEnabled) {
-      getRateLimiter(endPoint).acquire(bytesLength);
+    if (isPipeEndPointRateLimitModeEnabled) {
+      getPipeEndPointRateLimiter(endPoint).acquire(bytesLength);
     }
+
+    if (isGlobalRateLimitModeEnabled()) {
+      PipeAllConnectorsRateLimiter.getInstance().acquire(bytesLength);
+    }
+  }
+
+  private boolean isGlobalRateLimitModeEnabled() {
+    return PipeConfig.getInstance().getPipeAllConnectorsRateLimitBytesPerSecond() > 0;
   }
 }

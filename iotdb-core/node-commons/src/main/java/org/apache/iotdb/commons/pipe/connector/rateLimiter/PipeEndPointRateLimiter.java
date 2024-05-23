@@ -21,11 +21,11 @@ package org.apache.iotdb.commons.pipe.connector.rateLimiter;
 
 import com.google.common.util.concurrent.RateLimiter;
 
-public class ConnectorRateLimiter {
+public class PipeEndPointRateLimiter {
 
   private final RateLimiter rateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
-  public ConnectorRateLimiter(double transferDataSizeBytesPerSecond) {
+  public PipeEndPointRateLimiter(double transferDataSizeBytesPerSecond) {
     rateLimiter.setRate(
         transferDataSizeBytesPerSecond <= 0 ? Double.MAX_VALUE : transferDataSizeBytesPerSecond);
   }

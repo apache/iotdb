@@ -139,6 +139,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeRemainingTimeCommitRateSmoothingFactor();
   }
 
+  public double getPipeAllConnectorsRateLimitBytesPerSecond() {
+    return COMMON_CONFIG.getPipeAllSinksRateLimitBytesPerSecond();
+  }
+
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
   public boolean isSeperatedPipeHeartbeatEnabled() {
