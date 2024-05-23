@@ -60,12 +60,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -92,14 +91,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  private final PriorityBlockingQueue<Event> retryEventQueue =
-      new PriorityBlockingQueue<>(
-          11,
-          Comparator.comparing(
-              e ->
-                  // Non-enriched events will be put at the front of the queue,
-                  // because they are more likely to be lost and need to be retried first.
-                  e instanceof EnrichedEvent ? ((EnrichedEvent) e).getCommitId() : 0));
+  private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
 
   private final BlockingQueue<Event> transferBuffer =
       new LinkedBlockingDeque<>(COMMON_CONFIG.getPipeConsensusEventBufferSize());
@@ -381,16 +373,23 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    // Just in case. To avoid the case that exception occurred when constructing the handler.
-    if (!pipeTsFileInsertionEvent.getTsFile().exists()) {
-      throw new FileNotFoundException(pipeTsFileInsertionEvent.getTsFile().getAbsolutePath());
+    try {
+      // Just in case. To avoid the case that exception occurred when constructing the handler.
+      if (!pipeTsFileInsertionEvent.getTsFile().exists()) {
+        throw new FileNotFoundException(pipeTsFileInsertionEvent.getTsFile().getAbsolutePath());
+      }
+
+      final PipeConsensusTsFileInsertionEventHandler pipeConsensusTsFileInsertionEventHandler =
+          new PipeConsensusTsFileInsertionEventHandler(
+              pipeTsFileInsertionEvent, this, tCommitId, tConsensusGroupId, thisDataNodeId);
+
+      transfer(pipeConsensusTsFileInsertionEventHandler);
+    } catch (Exception e) {
+      // Just in case. To avoid the case that exception occurred when constructing the handler.
+      pipeTsFileInsertionEvent.decreaseReferenceCount(
+          PipeConsensusAsyncConnector.class.getName(), false);
+      throw e;
     }
-
-    final PipeConsensusTsFileInsertionEventHandler pipeConsensusTsFileInsertionEventHandler =
-        new PipeConsensusTsFileInsertionEventHandler(
-            pipeTsFileInsertionEvent, this, tCommitId, tConsensusGroupId, thisDataNodeId);
-
-    transfer(pipeConsensusTsFileInsertionEventHandler);
   }
 
   private void transfer(
@@ -443,43 +442,49 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
    */
   private synchronized void syncTransferQueuedEventsIfNecessary() throws Exception {
     while (!retryEventQueue.isEmpty()) {
-      final Event peekedEvent = retryEventQueue.peek();
-      // do transfer
-      if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
-      } else if (peekedEvent instanceof PipeRawTabletInsertionEvent) {
-        retryConnector.transfer((PipeRawTabletInsertionEvent) peekedEvent);
-      } else if (peekedEvent instanceof PipeTsFileInsertionEvent) {
-        retryConnector.transfer((PipeTsFileInsertionEvent) peekedEvent);
-      } else {
-        if (LOGGER.isWarnEnabled()) {
-          LOGGER.warn(
-              "PipeConsensusAsyncConnector does not support transfer generic event: {}.",
-              peekedEvent);
+      synchronized (this) {
+        if (isClosed.get() || retryEventQueue.isEmpty()) {
+          return;
         }
-      }
-      // release resource
-      if (peekedEvent instanceof EnrichedEvent) {
-        ((EnrichedEvent) peekedEvent)
-            .decreaseReferenceCount(PipeConsensusAsyncConnector.class.getName(), true);
-      }
 
-      final Event polledEvent = retryEventQueue.poll();
-      if (polledEvent != peekedEvent) {
-        if (LOGGER.isErrorEnabled()) {
-          LOGGER.error(
-              "The event polled from the queue is not the same as the event peeked from the queue. "
-                  + "Peeked event: {}, polled event: {}.",
-              peekedEvent,
-              polledEvent);
+        final Event peekedEvent = retryEventQueue.peek();
+        // do transfer
+        if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+          retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
+        } else if (peekedEvent instanceof PipeRawTabletInsertionEvent) {
+          retryConnector.transfer((PipeRawTabletInsertionEvent) peekedEvent);
+        } else if (peekedEvent instanceof PipeTsFileInsertionEvent) {
+          retryConnector.transfer((PipeTsFileInsertionEvent) peekedEvent);
+        } else {
+          if (LOGGER.isWarnEnabled()) {
+            LOGGER.warn(
+                "PipeConsensusAsyncConnector does not support transfer generic event: {}.",
+                peekedEvent);
+          }
         }
-      }
-      if (polledEvent != null && LOGGER.isDebugEnabled()) {
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug("Polled event {} from retry queue.", polledEvent);
+        // release resource
+        if (peekedEvent instanceof EnrichedEvent) {
+          ((EnrichedEvent) peekedEvent)
+              .decreaseReferenceCount(PipeConsensusAsyncConnector.class.getName(), true);
         }
-        // poll it from transferBuffer
-        removeEventFromBuffer(polledEvent);
+
+        final Event polledEvent = retryEventQueue.poll();
+        if (polledEvent != peekedEvent) {
+          if (LOGGER.isErrorEnabled()) {
+            LOGGER.error(
+                "The event polled from the queue is not the same as the event peeked from the queue. "
+                    + "Peeked event: {}, polled event: {}.",
+                peekedEvent,
+                polledEvent);
+          }
+        }
+        if (polledEvent != null && LOGGER.isDebugEnabled()) {
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Polled event {} from retry queue.", polledEvent);
+          }
+          // poll it from transferBuffer
+          removeEventFromBuffer(polledEvent);
+        }
       }
     }
   }
@@ -489,7 +494,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
    *
    * @param event event to retry
    */
-  public synchronized void addFailureEventToRetryQueue(final Event event) {
+  public void addFailureEventToRetryQueue(final Event event) {
     if (isClosed.get()) {
       if (event instanceof EnrichedEvent) {
         ((EnrichedEvent) event).clearReferenceCount(PipeConsensusAsyncConnector.class.getName());
@@ -501,6 +506,12 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Added event {} to retry queue.", event);
     }
+
+    if (isClosed.get()) {
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event).clearReferenceCount(PipeConsensusAsyncConnector.class.getName());
+      }
+    }
   }
 
   /**
@@ -508,7 +519,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
    *
    * @param events events to retry
    */
-  public synchronized void addFailureEventsToRetryQueue(final Iterable<Event> events) {
+  public void addFailureEventsToRetryQueue(final Iterable<Event> events) {
     for (final Event event : events) {
       addFailureEventToRetryQueue(event);
     }
