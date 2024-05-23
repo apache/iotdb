@@ -100,7 +100,7 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
     }
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     try {
-      TPipeTransferReq req =
+      final TPipeTransferReq req =
           compressIfNeeded(
               PipeTransferSchemaSnapshotSealReq.toTPipeTransferReq(
                   // The pattern is surely Non-null

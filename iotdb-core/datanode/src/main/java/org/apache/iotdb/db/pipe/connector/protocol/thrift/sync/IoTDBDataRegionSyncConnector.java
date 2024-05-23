@@ -177,7 +177,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
     final TPipeTransferResp resp;
     try {
-      TPipeTransferReq req = compressIfNeeded(batchToTransfer.toTPipeTransferReq());
+      final TPipeTransferReq req = compressIfNeeded(batchToTransfer.toTPipeTransferReq());
       rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
 
       resp = clientAndStatus.getLeft().pipeTransfer(req);
@@ -245,7 +245,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                 ? clientManager.getClient(insertNode.getDevicePath().getFullPath())
                 : clientManager.getClient();
 
-        TPipeTransferReq req =
+        final TPipeTransferReq req =
             compressIfNeeded(PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode));
 
         rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
@@ -253,7 +253,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         resp = clientAndStatus.getLeft().pipeTransfer(req);
       } else {
         clientAndStatus = clientManager.getClient();
-        TPipeTransferReq req =
+        final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTabletBinaryReq.toTPipeTransferReq(
                     pipeInsertNodeTabletInsertionEvent.getByteBuffer()));
@@ -313,7 +313,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     final TPipeTransferResp resp;
 
     try {
-      TPipeTransferReq req =
+      final TPipeTransferReq req =
           compressIfNeeded(
               PipeTransferTabletRawReq.toTPipeTransferReq(
                   pipeRawTabletInsertionEvent.convertToTablet(),
@@ -375,7 +375,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       transferFilePieces(tsFile, clientAndStatus, true);
       // 2. Transfer file seal signal with mod, which means the file is transferred completely
       try {
-        TPipeTransferReq req =
+        final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
                     modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length()));
@@ -393,7 +393,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       transferFilePieces(tsFile, clientAndStatus, false);
       // 2. Transfer file seal signal without mod, which means the file is transferred completely
       try {
-        TPipeTransferReq req =
+        final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
         rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);

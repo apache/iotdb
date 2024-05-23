@@ -33,15 +33,6 @@ public class LoadTsFileRateLimiter {
       new AtomicDouble(CONFIG.getLoadWriteThroughputBytesPerSecond());
   private final RateLimiter loadWriteRateLimiter;
 
-  private LoadTsFileRateLimiter() {
-    final double throughputBytesPerSecondLimit = throughputBytesPerSecond.get();
-    loadWriteRateLimiter =
-        // if throughput <= 0, disable rate limiting
-        throughputBytesPerSecondLimit <= 0
-            ? RateLimiter.create(Double.MAX_VALUE)
-            : RateLimiter.create(throughputBytesPerSecondLimit);
-  }
-
   public void acquire(long bytes) {
     if (throughputBytesPerSecond.get() != CONFIG.getLoadWriteThroughputBytesPerSecond()) {
       final double newThroughputBytesPerSecond = CONFIG.getLoadWriteThroughputBytesPerSecond();
@@ -63,6 +54,15 @@ public class LoadTsFileRateLimiter {
   }
 
   //////////////////////////// Singleton ////////////////////////////
+
+  private LoadTsFileRateLimiter() {
+    final double throughputBytesPerSecondLimit = throughputBytesPerSecond.get();
+    loadWriteRateLimiter =
+        // if throughput <= 0, disable rate limiting
+        throughputBytesPerSecondLimit <= 0
+            ? RateLimiter.create(Double.MAX_VALUE)
+            : RateLimiter.create(throughputBytesPerSecondLimit);
+  }
 
   private static class LoadTsFileRateLimiterHolder {
 

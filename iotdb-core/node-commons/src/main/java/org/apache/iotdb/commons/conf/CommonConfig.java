@@ -194,7 +194,7 @@ public class CommonConfig {
   private int pipeAsyncConnectorSelectorNumber = 4;
   private int pipeAsyncConnectorMaxClientNumber = 16;
 
-  private double pipeAllSinksRateLimitBytesPerSecond = Double.MAX_VALUE;
+  private double pipeAllSinksRateLimitBytesPerSecond = -1;
 
   private boolean isSeperatedPipeHeartbeatEnabled = true;
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;

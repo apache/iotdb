@@ -124,7 +124,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
     final TPipeTransferResp resp;
     try {
-      TPipeTransferReq req =
+      final TPipeTransferReq req =
           compressIfNeeded(
               PipeTransferConfigPlanReq.toTPipeTransferReq(
                   pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()));
@@ -190,7 +190,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     final TPipeTransferResp resp;
     try {
-      TPipeTransferReq req =
+      final TPipeTransferReq req =
           compressIfNeeded(
               PipeTransferConfigSnapshotSealReq.toTPipeTransferReq(
                   // The pattern is surely Non-null

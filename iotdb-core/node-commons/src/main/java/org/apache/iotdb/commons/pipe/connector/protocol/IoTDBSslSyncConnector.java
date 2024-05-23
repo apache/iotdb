@@ -162,7 +162,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
                 : Arrays.copyOfRange(readBuffer, 0, readLength);
         final PipeTransferFilePieceResp resp;
         try {
-          TPipeTransferReq req =
+          final TPipeTransferReq req =
               compressIfNeeded(
                   isMultiFile
                       ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)

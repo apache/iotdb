@@ -114,7 +114,7 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
 
     final TPipeTransferResp resp;
     try {
-      TPipeTransferReq req =
+      final TPipeTransferReq req =
           compressIfNeeded(
               PipeTransferPlanNodeReq.toTPipeTransferReq(
                   pipeSchemaRegionWritePlanEvent.getPlanNode()));

@@ -267,7 +267,8 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       return false;
     }
 
-    // avoid calling Arrays.toString() methods frequently bring performance overhead when isPipeEndPointRateLimitModeEnabled is false
+    // avoid calling Arrays.toString() methods frequently bring performance overhead when
+    // isPipeEndPointRateLimitModeEnabled is false.
     rateLimitIfNeeded(
         isPipeEndPointRateLimitModeEnabled
             ? new TEndPoint(
