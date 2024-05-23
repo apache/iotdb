@@ -130,6 +130,14 @@ public class SerializableRowList implements SerializableList {
     return blockSizes.size() + additional_null_block;
   }
 
+  public int getBlockSize(int index) {
+    if (prefixNullCount != 0) {
+      return index == 0 ? prefixNullCount : blockSizes.get(index - 1);
+    } else {
+      return blockSizes.get(index);
+    }
+  }
+
   // region single data methods
   public long getTime(int index) {
     // Never access null row's time
@@ -244,9 +252,12 @@ public class SerializableRowList implements SerializableList {
   // endregion
 
   public int getColumnIndex(int index) {
-    assert index >= prefixNullCount;
-
-    return getColumnIndexSkipPrefixNulls(index - prefixNullCount);
+    // Fall into first null column
+    if (index < prefixNullCount) {
+      return 0;
+    }
+    int addition = prefixNullCount == 0 ? 0 : 1;
+    return addition + getColumnIndexSkipPrefixNulls(index - prefixNullCount);
   }
 
   private int getColumnIndexSkipPrefixNulls(int index) {

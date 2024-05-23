@@ -407,7 +407,9 @@ public class ElasticSerializableRowList {
   @TestOnly
   public boolean fieldsHasAnyNull(int index) throws IOException {
     Object[] row =
-        cache.get(index / internalRowListCapacity).getRow(index % internalRowListCapacity);
+        internalRowList
+            .get(index / internalRowListCapacity)
+            .getRow(index % internalRowListCapacity);
     for (Object field : row) {
       if (field == null) {
         return true;

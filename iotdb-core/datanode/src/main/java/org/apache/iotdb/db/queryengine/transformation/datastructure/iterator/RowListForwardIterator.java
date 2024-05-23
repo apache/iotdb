@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.datastructure.iterator;
 
 import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.row.SerializableRowList;
 
 import org.apache.tsfile.block.column.Column;
 
@@ -69,15 +70,18 @@ public class RowListForwardIterator implements ListForwardIterator {
   @Override
   public void next() throws IOException {
     // Move forward iterator
-    if (internalIndex + 1 == rowList.getSerializableRowList(externalIndex).getBlockCount()) {
+    SerializableRowList rowList = this.rowList.getSerializableRowList(externalIndex);
+    if (internalIndex + 1 == rowList.getBlockCount()) {
       internalIndex = 0;
       externalIndex++;
+      // Update RowList due to externalIndex increasing
+      rowList = this.rowList.getSerializableRowList(externalIndex);
     } else {
       internalIndex++;
     }
 
     // Assume we already consume all data in this block
-    endRowIndex += rowList.getColumns(externalIndex, internalIndex)[0].getPositionCount();
+    endRowIndex += rowList.getBlockSize(internalIndex);
   }
 
   // When rowList apply new memory control strategy, the origin iterators become invalid.
@@ -90,7 +94,7 @@ public class RowListForwardIterator implements ListForwardIterator {
     int internalRowIndex = endRowIndex % capacity;
     // endPointIndex is not closed, i.e. endPointIndex)
     int internalColumnIndex =
-        rowList.getSerializableRowList(externalIndex).getColumnIndex(internalRowIndex - 1);
+        rowList.getSerializableRowList(externalColumnIndex).getColumnIndex(internalRowIndex - 1);
 
     this.externalIndex = externalColumnIndex;
     this.internalIndex = internalColumnIndex;

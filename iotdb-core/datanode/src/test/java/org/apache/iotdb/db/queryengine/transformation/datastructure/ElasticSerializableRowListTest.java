@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.iterator.RowListForwardIterator;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
 
 import org.apache.tsfile.block.column.Column;
@@ -244,61 +245,60 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
           generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
       rowList.put(columns);
       rowList.setEvictionUpperBound(rowList.size());
-
-      for (int i = 0; i < ITERATION_TIMES; i++) {
-        if (i % 7 == 0) {
-          assertTrue(rowList.fieldsHasAnyNull(i));
-        } else {
-          assertFalse(rowList.fieldsHasAnyNull(i));
-        }
-      }
+      RowListForwardIterator iterator = rowList.constructIterator();
+      testRowList(iterator);
 
       byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 16;
       byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 32;
       columns = generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
       rowList.put(columns);
       rowList.setEvictionUpperBound(rowList.size());
-
-      for (int i = 0; i < ITERATION_TIMES; i++) {
-        if (i % 7 == 0) {
-          assertTrue(rowList.fieldsHasAnyNull(i + ITERATION_TIMES));
-        } else {
-          assertFalse(rowList.fieldsHasAnyNull(i + ITERATION_TIMES));
-        }
-      }
+      testRowList(iterator);
 
       byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 256;
       byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 512;
       columns = generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
       rowList.put(columns);
       rowList.setEvictionUpperBound(rowList.size());
-
-      for (int i = 0; i < ITERATION_TIMES; i++) {
-        if (i % 7 == 0) {
-          assertTrue(rowList.fieldsHasAnyNull(i + 2 * ITERATION_TIMES));
-        } else {
-          assertFalse(rowList.fieldsHasAnyNull(i + 2 * ITERATION_TIMES));
-        }
-      }
+      testRowList(iterator);
 
       columns =
           generateColumnsWithRandomBinaries(2 * ITERATION_TIMES, byteLengthMin, byteLengthMax);
       rowList.put(columns);
       rowList.setEvictionUpperBound(rowList.size());
-
-      for (int i = 0; i < ITERATION_TIMES; i++) {
-        if (i % 7 == 0) {
-          assertTrue(rowList.fieldsHasAnyNull(i + 3 * ITERATION_TIMES));
-        } else {
-          assertFalse(rowList.fieldsHasAnyNull(i + 3 * ITERATION_TIMES));
-        }
-      }
+      testRowList(iterator);
 
       assertEquals(ITERATION_TIMES * 5, rowList.size());
     } catch (QueryProcessException | IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  private void testRowList(RowListForwardIterator iterator) throws IOException {
+    int index = 0;
+
+    while (iterator.hasNext()) {
+      iterator.next();
+      Column[] columns = iterator.currentBlock();
+      int count = columns[0].getPositionCount();
+      for (int i = 0; i < count; i++, index++) {
+        if (index % 7 == 0) {
+          assertTrue(fieldHasAnyNull(columns, i));
+        } else {
+          assertFalse(fieldHasAnyNull(columns, i));
+        }
+      }
+    }
+  }
+
+  private boolean fieldHasAnyNull(Column[] columns, int index) {
+    for (Column column : columns) {
+      if (column.isNull(index)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private Column[] generateColumnsWithRandomBinaries(

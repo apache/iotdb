@@ -80,6 +80,8 @@ public class TVListForwardIterator implements ListForwardIterator {
     if (internalIndex + 1 == tvList.getColumnCount()) {
       internalIndex = 0;
       externalIndex++;
+      // Update TVList due to externalIndex increasing
+      tvList = this.tvList.getSerializableTVList(externalIndex);
     } else {
       internalIndex++;
     }
