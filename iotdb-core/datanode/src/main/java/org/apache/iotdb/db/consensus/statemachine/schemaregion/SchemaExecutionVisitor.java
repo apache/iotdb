@@ -527,34 +527,29 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitPipeEnrichedWritePlanNode(
-      PipeEnrichedWritePlanNode node, ISchemaRegion schemaRegion) {
+      final PipeEnrichedWritePlanNode node, final ISchemaRegion schemaRegion) {
     return node.getWritePlanNode().accept(this, schemaRegion);
   }
 
   @Override
   public TSStatus visitPipeEnrichedNonWritePlanNode(
-      PipeEnrichedNonWritePlanNode node, ISchemaRegion schemaRegion) {
+      final PipeEnrichedNonWritePlanNode node, final ISchemaRegion schemaRegion) {
     return node.getNonWritePlanNode().accept(this, schemaRegion);
   }
 
   @Override
   public TSStatus visitPipeOperateSchemaQueueNode(
-      PipeOperateSchemaQueueNode node, ISchemaRegion schemaRegion) {
+      final PipeOperateSchemaQueueNode node, final ISchemaRegion schemaRegion) {
     final SchemaRegionId id = schemaRegion.getSchemaRegionId();
     final SchemaRegionListeningQueue queue = PipeAgent.runtime().schemaListener(id);
-    try {
-      if (node.isOpen() && !queue.isOpened()) {
-        logger.info("Opened pipe listening queue on schema region {}", id);
-        queue.open();
-      } else if (!node.isOpen() && queue.isOpened()) {
-        logger.info("Closed pipe listening queue on schema region {}", id);
-        queue.close();
-      }
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (IOException e) {
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-          .setMessage("Failed to clear the queue, because " + e.getMessage());
+    if (node.isOpen() && !queue.isOpened()) {
+      logger.info("Opened pipe listening queue on schema region {}", id);
+      queue.open();
+    } else if (!node.isOpen() && queue.isOpened()) {
+      logger.info("Closed pipe listening queue on schema region {}", id);
+      queue.close();
     }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

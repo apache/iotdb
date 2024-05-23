@@ -36,6 +36,7 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -203,6 +204,7 @@ public class DataNodeRegionManager {
   public TSStatus deleteSchemaRegion(SchemaRegionId schemaRegionId) {
     try {
       schemaEngine.deleteSchemaRegion(schemaRegionId);
+      PipeAgent.runtime().schemaListener(schemaRegionId).close();
       schemaRegionLockMap.remove(schemaRegionId);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
     } catch (MetadataException e) {
