@@ -359,26 +359,29 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         continue;
       }
 
-      if (!extractors.get(0).isStreamMode()
-          || extractors.stream()
-              .noneMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)) {
-        // Extractors of this pipe might not pin too much MemTables,
-        // still need to check if linked-and-deleted TsFile count exceeds limit.
-        if ((CONFIG.isEnableSeqSpaceCompaction()
-                || CONFIG.isEnableUnseqSpaceCompaction()
-                || CONFIG.isEnableCrossSpaceCompaction())
-            && mayDeletedTsFileSizeReachDangerousThreshold()) {
-          LOGGER.warn(
-              "Pipe {} needs to restart because too many TsFiles are out-of-date.",
-              pipeMeta.getStaticMeta());
-          stuckPipes.add(pipeMeta);
-        }
+      // Extractors of this pipe might not pin too much MemTables,
+      // still need to check if linked-and-deleted TsFile count exceeds limit.
+      // Typically, if deleted tsFiles are too abundant all pipes may need to restart.
+      if ((CONFIG.isEnableSeqSpaceCompaction()
+              || CONFIG.isEnableUnseqSpaceCompaction()
+              || CONFIG.isEnableCrossSpaceCompaction())
+          && mayDeletedTsFileSizeReachDangerousThreshold()) {
+        LOGGER.warn(
+            "Pipe {} needs to restart because too many TsFiles are out-of-date.",
+            pipeMeta.getStaticMeta());
+        stuckPipes.add(pipeMeta);
         continue;
       }
 
-      if (mayMemTablePinnedCountReachDangerousThreshold() || mayWalSizeReachThrottleThreshold()) {
-        // Extractors of this pipe may be stuck and pinning too much MemTables.
-        LOGGER.warn("Pipe {} may be stuck.", pipeMeta.getStaticMeta());
+      // Only restart the stream mode pipes for releasing memTables.
+      if (extractors.get(0).isStreamMode()
+          && extractors.stream().anyMatch(IoTDBDataRegionExtractor::hasConsumedAllHistoricalTsFiles)
+          && (mayMemTablePinnedCountReachDangerousThreshold()
+              || mayWalSizeReachThrottleThreshold())) {
+        // Extractors of this pipe may be stuck and is pinning too many MemTables.
+        LOGGER.warn(
+            "Pipe {} needs to restart because too many memTables are pinned.",
+            pipeMeta.getStaticMeta());
         stuckPipes.add(pipeMeta);
       }
     }
@@ -406,7 +409,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           && linkedButDeletedTsFileSize
               > PipeConfig.getInstance().getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage()
                   * totalDisk;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn("Failed to judge if deleted TsFile size reaches dangerous threshold.", e);
       return false;
     }

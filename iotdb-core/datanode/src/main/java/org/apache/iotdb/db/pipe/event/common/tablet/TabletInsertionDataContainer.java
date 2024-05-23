@@ -89,10 +89,10 @@ public class TabletInsertionDataContainer {
   }
 
   public TabletInsertionDataContainer(
-      PipeTaskMeta pipeTaskMeta,
-      EnrichedEvent sourceEvent,
-      InsertNode insertNode,
-      PipePattern pattern) {
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent,
+      final InsertNode insertNode,
+      final PipePattern pattern) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
 
@@ -107,11 +107,11 @@ public class TabletInsertionDataContainer {
   }
 
   public TabletInsertionDataContainer(
-      PipeTaskMeta pipeTaskMeta,
-      EnrichedEvent sourceEvent,
-      Tablet tablet,
-      boolean isAligned,
-      PipePattern pattern) {
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent,
+      final Tablet tablet,
+      final boolean isAligned,
+      final PipePattern pattern) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
 
@@ -119,7 +119,7 @@ public class TabletInsertionDataContainer {
   }
 
   @TestOnly
-  public TabletInsertionDataContainer(InsertNode insertNode, PipePattern pattern) {
+  public TabletInsertionDataContainer(final InsertNode insertNode, final PipePattern pattern) {
     this(null, null, insertNode, pattern);
   }
 
@@ -133,7 +133,7 @@ public class TabletInsertionDataContainer {
 
   //////////////////////////// parse ////////////////////////////
 
-  private void parse(InsertRowNode insertRowNode, PipePattern pattern) {
+  private void parse(final InsertRowNode insertRowNode, final PipePattern pattern) {
     final int originColumnSize = insertRowNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -200,7 +200,7 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  private void parse(InsertTabletNode insertTabletNode, PipePattern pattern) {
+  private void parse(final InsertTabletNode insertTabletNode, final PipePattern pattern) {
     final int originColumnSize = insertTabletNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -283,7 +283,7 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  private void parse(Tablet tablet, boolean isAligned, PipePattern pattern) {
+  private void parse(final Tablet tablet, final boolean isAligned, final PipePattern pattern) {
     final int originColumnSize = tablet.getSchemas().size();
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -375,9 +375,9 @@ public class TabletInsertionDataContainer {
   }
 
   private void generateColumnIndexMapper(
-      String[] originMeasurementList,
-      PipePattern pattern,
-      Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
+      final String[] originMeasurementList,
+      final PipePattern pattern,
+      final Integer[] originColumnIndex2FilteredColumnIndexMapperList) {
     final int originColumnSize = originMeasurementList.length;
 
     // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
 
 import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -79,34 +81,70 @@ public class QueryContext {
     this.timeout = timeout;
   }
 
+  private boolean checkIfModificationExists(TsFileResource tsFileResource) {
+    if (nonExistentModFiles.contains(tsFileResource.getTsFileID())) {
+      return false;
+    }
+
+    ModificationFile modFile = tsFileResource.getModFile();
+    if (!modFile.exists()) {
+      nonExistentModFiles.add(tsFileResource.getTsFileID());
+      return false;
+    }
+    return true;
+  }
+
+  private PatternTreeMap<Modification, ModsSerializer> getAllModifications(
+      ModificationFile modFile) {
+    return fileModCache.computeIfAbsent(
+        modFile.getFilePath(),
+        k -> {
+          PatternTreeMap<Modification, ModsSerializer> modifications =
+              PatternTreeMapFactory.getModsPatternTreeMap();
+          for (Modification modification : modFile.getModificationsIter()) {
+            modifications.append(modification.getPath(), modification);
+          }
+          return modifications;
+        });
+  }
+
+  public List<Modification> getPathModifications(
+      TsFileResource tsFileResource, IDeviceID deviceID, String measurement)
+      throws IllegalPathException {
+    // if the mods file does not exist, do not add it to the cache
+    if (!checkIfModificationExists(tsFileResource)) {
+      return Collections.emptyList();
+    }
+
+    return ModificationFile.sortAndMerge(
+        getAllModifications(tsFileResource.getModFile())
+            .getOverlapped(new PartialPath(deviceID, measurement)));
+  }
+
+  public List<Modification> getPathModifications(TsFileResource tsFileResource, IDeviceID deviceID)
+      throws IllegalPathException {
+    // if the mods file does not exist, do not add it to the cache
+    if (!checkIfModificationExists(tsFileResource)) {
+      return Collections.emptyList();
+    }
+
+    return ModificationFile.sortAndMerge(
+        getAllModifications(tsFileResource.getModFile())
+            .getDeviceOverlapped(new PartialPath(deviceID)));
+  }
+
   /**
    * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
    */
   public List<Modification> getPathModifications(TsFileResource tsFileResource, PartialPath path) {
     // if the mods file does not exist, do not add it to the cache
-    if (nonExistentModFiles.contains(tsFileResource.getTsFileID())) {
+    if (!checkIfModificationExists(tsFileResource)) {
       return Collections.emptyList();
     }
 
-    ModificationFile modFile = tsFileResource.getModFile();
-    if (!modFile.exists()) {
-      nonExistentModFiles.add(tsFileResource.getTsFileID());
-      return Collections.emptyList();
-    }
-
-    PatternTreeMap<Modification, ModsSerializer> allModifications =
-        fileModCache.computeIfAbsent(
-            modFile.getFilePath(),
-            k -> {
-              PatternTreeMap<Modification, ModsSerializer> modifications =
-                  PatternTreeMapFactory.getModsPatternTreeMap();
-              for (Modification modification : modFile.getModificationsIter()) {
-                modifications.append(modification.getPath(), modification);
-              }
-              return modifications;
-            });
-    return ModificationFile.sortAndMerge(allModifications.getOverlapped(path));
+    return ModificationFile.sortAndMerge(
+        getAllModifications(tsFileResource.getModFile()).getOverlapped(path));
   }
 
   /**

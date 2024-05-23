@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.extractor.dataregion;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBExtractor;
+import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -94,6 +95,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   private boolean hasNoExtractionNeed = true;
   private boolean shouldExtractInsertion = false;
+  private boolean shouldExtractDeletion = false;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -108,6 +110,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     }
     hasNoExtractionNeed = false;
     shouldExtractInsertion = insertionDeletionListeningOptionPair.getLeft();
+    shouldExtractDeletion = insertionDeletionListeningOptionPair.getRight();
 
     if (insertionDeletionListeningOptionPair.getLeft().equals(true)
         && IoTDBDescriptor.getInstance()
@@ -213,6 +216,16 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
   private void validatePattern(final PipePattern pattern) {
     if (!pattern.isLegal()) {
       throw new IllegalArgumentException(String.format("Pattern \"%s\" is illegal.", pattern));
+    }
+
+    if (shouldExtractDeletion
+        && !(pattern instanceof IoTDBPipePattern
+            && (((IoTDBPipePattern) pattern).isPrefix()
+                || ((IoTDBPipePattern) pattern).isFullPath()))) {
+      throw new IllegalArgumentException(
+          String.format(
+              "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
+              pattern));
     }
   }
 
