@@ -490,15 +490,14 @@ public abstract class AbstractMemTable implements IMemTable {
       List<Pair<Modification, IMemTable>> modsToMemTabled) {
 
     IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(fullPath.getDevicePath());
-    String measurementId = fullPath.getMeasurement();
-    Map<IDeviceID, IWritableMemChunkGroup> memTableMap = getMemTableMap();
-
-    // check If MemTable Contains this path
-    if (!memTableMap.containsKey(deviceID) || !memTableMap.get(deviceID).contains(measurementId)) {
-      return;
-    }
 
     if (fullPath instanceof MeasurementPath) {
+      String measurementId = fullPath.getMeasurement();
+      // check If MemTable Contains this path
+      if (!memTableMap.containsKey(deviceID)
+          || !memTableMap.get(deviceID).contains(measurementId)) {
+        return;
+      }
       List<TimeRange> deletionList = new ArrayList<>();
       if (modsToMemTabled != null) {
         deletionList =
@@ -508,6 +507,9 @@ public abstract class AbstractMemTable implements IMemTable {
       getMemChunkHandleFromMemTable(
           deviceID, measurementId, chunkMetaDataMap, memChunkHandleMap, deletionList);
     } else {
+      if (!memTableMap.containsKey(deviceID)) {
+        return;
+      }
       List<List<TimeRange>> deletionList = new ArrayList<>();
       if (modsToMemTabled != null) {
         deletionList =
