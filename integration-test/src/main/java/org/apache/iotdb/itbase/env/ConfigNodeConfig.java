@@ -24,6 +24,4 @@ import java.util.List;
 /** This interface is used to handle properties in iotdb-confignode.properties. */
 public interface ConfigNodeConfig {
   ConfigNodeConfig setMetricReporterType(List<String> metricReporterTypes);
-
-  ConfigNodeConfig setConnectionTimeoutMs(long connectionTimeoutMs);
 }

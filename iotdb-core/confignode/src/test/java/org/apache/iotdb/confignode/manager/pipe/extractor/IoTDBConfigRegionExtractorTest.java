@@ -30,9 +30,8 @@ import java.util.HashMap;
 
 public class IoTDBConfigRegionExtractorTest {
   @Test
-  public void testIoTDBSchemaExtractor() {
-    IoTDBConfigRegionExtractor extractor = new IoTDBConfigRegionExtractor();
-    try {
+  public void testIoTDBConfigExtractor() {
+    try (final IoTDBConfigRegionExtractor extractor = new IoTDBConfigRegionExtractor()) {
       extractor.validate(
           new PipeParameterValidator(
               new PipeParameters(
@@ -52,7 +51,7 @@ public class IoTDBConfigRegionExtractorTest {
                           PipeExtractorConstant.EXTRACTOR_INCLUSION_DEFAULT_VALUE);
                     }
                   })));
-    } catch (Exception e) {
+    } catch (final Exception e) {
       Assert.fail();
     }
   }

@@ -195,6 +195,8 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
               .pipeTransfer(
                   compressIfNeeded(
                       PipeTransferConfigSnapshotSealReq.toTPipeTransferReq(
+                          // The pattern is surely Non-null
+                          snapshotEvent.getPatternString(),
                           snapshotFile.getName(),
                           snapshotFile.length(),
                           Objects.nonNull(templateFile) ? templateFile.getName() : null,

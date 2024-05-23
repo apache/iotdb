@@ -1891,13 +1891,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (timeIndex == -1 && rows.size() != 1) {
       throw new SemanticException("need timestamps when insert multi rows");
     }
-    List<String[]> valuesList = new ArrayList<>();
+    List<Object[]> valuesList = new ArrayList<>();
     long[] timeArray = new long[rows.size()];
     for (int i = 0, size = rows.size(); i < size; i++) {
       IoTDBSqlParser.RowContext row = rows.get(i);
       // parse timestamp
       long timestamp;
-      List<String> valueList = new ArrayList<>();
+      List<Object> valueList = new ArrayList<>();
       // using now() instead
       if (timeIndex == -1) {
         timestamp = CommonDateTimeUtils.currentTime();
@@ -1919,7 +1919,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         }
       }
 
-      valuesList.add(valueList.toArray(new String[0]));
+      valuesList.add(valueList.toArray(new Object[0]));
     }
     insertStatement.setTimes(timeArray);
     insertStatement.setValuesList(valuesList);

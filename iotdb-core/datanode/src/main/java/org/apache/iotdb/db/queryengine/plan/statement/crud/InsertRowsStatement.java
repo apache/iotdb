@@ -130,6 +130,13 @@ public class InsertRowsStatement extends InsertBaseStatement {
   }
 
   @Override
+  public void semanticCheck() {
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      insertRowStatement.semanticCheck();
+    }
+  }
+
+  @Override
   public long getMinTime() {
     throw new NotImplementedException();
   }

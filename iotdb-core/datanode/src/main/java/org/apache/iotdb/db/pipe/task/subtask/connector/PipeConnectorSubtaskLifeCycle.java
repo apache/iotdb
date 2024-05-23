@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.connector;
 
-import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.execution.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -32,7 +32,7 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
 
   protected final PipeConnectorSubtaskExecutor executor;
   protected final PipeConnectorSubtask subtask;
-  private final BoundedBlockingPendingQueue<Event> pendingQueue;
+  private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
   private int runningTaskCount;
   private int registeredTaskCount;
@@ -40,7 +40,7 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
   public PipeConnectorSubtaskLifeCycle(
       PipeConnectorSubtaskExecutor executor,
       PipeConnectorSubtask subtask,
-      BoundedBlockingPendingQueue<Event> pendingQueue) {
+      UnboundedBlockingPendingQueue<Event> pendingQueue) {
     this.executor = executor;
     this.subtask = subtask;
     this.pendingQueue = pendingQueue;
@@ -53,7 +53,7 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
     return subtask;
   }
 
-  public BoundedBlockingPendingQueue<Event> getPendingQueue() {
+  public UnboundedBlockingPendingQueue<Event> getPendingQueue() {
     return pendingQueue;
   }
 
