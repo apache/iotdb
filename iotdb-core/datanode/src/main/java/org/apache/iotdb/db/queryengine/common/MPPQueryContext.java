@@ -344,7 +344,7 @@ public class MPPQueryContext {
         bytesToRelease = bytes - bytesToBeReservedForFrontEnd;
         bytesToBeReservedForFrontEnd = 0;
         LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(bytesToRelease);
-        reservedBytesInTotalForFrontEnd -= bytes;
+        reservedBytesInTotalForFrontEnd -= bytesToRelease;
       }
     }
   }
