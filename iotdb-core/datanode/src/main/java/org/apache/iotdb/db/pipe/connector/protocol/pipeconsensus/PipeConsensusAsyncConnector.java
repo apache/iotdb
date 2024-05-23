@@ -33,6 +33,7 @@ import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.client.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTabletBatchEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTabletInsertNodeEventHandler;
@@ -43,7 +44,6 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletRawReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -108,6 +108,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
 
   private final AtomicInteger alreadySentEventsInTransferBuffer = new AtomicInteger(0);
 
+  private final int thisDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+
   private String consensusGroupId;
 
   private PipeConsensusSyncConnector retryConnector;
@@ -131,7 +133,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
     // `nodeUrls` here actually is a singletonList that contains one peer's TEndPoint. But here we
     // retain the implementation of list to cope with possible future expansion
-    retryConnector = new PipeConsensusSyncConnector(nodeUrls, consensusGroupId);
+    retryConnector = new PipeConsensusSyncConnector(nodeUrls, consensusGroupId, thisDataNodeId);
     retryConnector.customize(parameters, configuration);
     asyncTransferClientManager =
         ((PipeConsensus) DataRegionConsensusImpl.getInstance()).getAsyncClientManager();
@@ -141,7 +143,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
           new PipeConsensusAsyncBatchReqBuilder(
               parameters,
               new TConsensusGroupId(
-                  TConsensusGroupType.DataRegion, Integer.parseInt(consensusGroupId)));
+                  TConsensusGroupType.DataRegion, Integer.parseInt(consensusGroupId)),
+              thisDataNodeId);
     }
 
     // currently, tablet batch is false by default in PipeConsensus;
@@ -270,9 +273,10 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
                     pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
                     tCommitId,
                     tConsensusGroupId,
-                    progressIndex)
+                    progressIndex,
+                    thisDataNodeId)
                 : PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
-                    insertNode, tCommitId, tConsensusGroupId, progressIndex);
+                    insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId);
         final PipeConsensusTabletInsertNodeEventHandler pipeConsensusInsertNodeReqHandler =
             new PipeConsensusTabletInsertNodeEventHandler(
                 pipeInsertNodeTabletInsertionEvent, pipeConsensusTransferReq, this);
@@ -299,7 +303,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
                 pipeRawTabletInsertionEvent.convertToTablet(),
                 pipeRawTabletInsertionEvent.isAligned(),
                 tCommitId,
-                tConsensusGroupId);
+                tConsensusGroupId,
+                thisDataNodeId);
         final PipeConsensusTabletRawEventHandler pipeConsensusTabletRawEventHandler =
             new PipeConsensusTabletRawEventHandler(
                 pipeRawTabletInsertionEvent, pipeConsensusTabletRawReq, this);
@@ -383,7 +388,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
 
     final PipeConsensusTsFileInsertionEventHandler pipeConsensusTsFileInsertionEventHandler =
         new PipeConsensusTsFileInsertionEventHandler(
-            pipeTsFileInsertionEvent, this, tCommitId, tConsensusGroupId);
+            pipeTsFileInsertionEvent, this, tCommitId, tConsensusGroupId, thisDataNodeId);
 
     transfer(pipeConsensusTsFileInsertionEventHandler);
   }

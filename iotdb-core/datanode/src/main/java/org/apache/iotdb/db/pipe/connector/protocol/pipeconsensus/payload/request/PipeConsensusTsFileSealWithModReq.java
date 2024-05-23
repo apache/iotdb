@@ -50,7 +50,8 @@ public class PipeConsensusTsFileSealWithModReq extends PipeConsensusTransferFile
       long tsFileLength,
       TCommitId commitId,
       TConsensusGroupId consensusGroupId,
-      ProgressIndex progressIndex)
+      ProgressIndex progressIndex,
+      int thisDataNodeId)
       throws IOException {
     return (PipeConsensusTsFileSealWithModReq)
         new PipeConsensusTsFileSealWithModReq()
@@ -60,7 +61,8 @@ public class PipeConsensusTsFileSealWithModReq extends PipeConsensusTransferFile
                 new HashMap<>(),
                 commitId,
                 consensusGroupId,
-                progressIndex);
+                progressIndex,
+                thisDataNodeId);
   }
 
   public static PipeConsensusTsFileSealWithModReq fromTPipeConsensusTransferReq(

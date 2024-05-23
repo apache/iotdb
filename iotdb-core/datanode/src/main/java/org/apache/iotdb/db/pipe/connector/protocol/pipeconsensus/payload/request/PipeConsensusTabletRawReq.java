@@ -42,11 +42,16 @@ public class PipeConsensusTabletRawReq extends TPipeConsensusTransferReq {
   /////////////////////////////// WriteBack & Batch ///////////////////////////////
 
   public static PipeConsensusTabletRawReq toTPipeConsensusTransferRawReq(
-      Tablet tablet, boolean isAligned, TCommitId commitId, TConsensusGroupId consensusGroupId) {
+      Tablet tablet,
+      boolean isAligned,
+      TCommitId commitId,
+      TConsensusGroupId consensusGroupId,
+      int thisDataNodeId) {
     final PipeConsensusTabletRawReq tabletReq = new PipeConsensusTabletRawReq();
 
     tabletReq.commitId = commitId;
     tabletReq.consensusGroupId = consensusGroupId;
+    tabletReq.dataNodeId = thisDataNodeId;
     tabletReq.tablet = tablet;
     tabletReq.isAligned = isAligned;
 
@@ -56,7 +61,11 @@ public class PipeConsensusTabletRawReq extends TPipeConsensusTransferReq {
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeConsensusTabletRawReq toTPipeConsensusTransferReq(
-      Tablet tablet, boolean isAligned, TCommitId commitId, TConsensusGroupId consensusGroupId)
+      Tablet tablet,
+      boolean isAligned,
+      TCommitId commitId,
+      TConsensusGroupId consensusGroupId,
+      int thisDataNodeId)
       throws IOException {
     final PipeConsensusTabletRawReq tabletReq = new PipeConsensusTabletRawReq();
 
@@ -65,6 +74,7 @@ public class PipeConsensusTabletRawReq extends TPipeConsensusTransferReq {
 
     tabletReq.commitId = commitId;
     tabletReq.consensusGroupId = consensusGroupId;
+    tabletReq.dataNodeId = thisDataNodeId;
     tabletReq.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     tabletReq.type = PipeConsensusRequestType.TRANSFER_TABLET_RAW.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -89,6 +99,7 @@ public class PipeConsensusTabletRawReq extends TPipeConsensusTransferReq {
     tabletReq.type = transferReq.type;
     tabletReq.body = transferReq.body;
     tabletReq.commitId = transferReq.commitId;
+    tabletReq.dataNodeId = transferReq.dataNodeId;
     tabletReq.consensusGroupId = transferReq.consensusGroupId;
 
     return tabletReq;
@@ -111,11 +122,22 @@ public class PipeConsensusTabletRawReq extends TPipeConsensusTransferReq {
         && type == that.type
         && Objects.equals(body, that.body)
         && Objects.equals(commitId, that.commitId)
-        && Objects.equals(consensusGroupId, that.consensusGroupId);
+        && Objects.equals(consensusGroupId, that.consensusGroupId)
+        && Objects.equals(dataNodeId, that.dataNodeId)
+        && Objects.equals(progressIndex, that.progressIndex);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tablet, isAligned, version, type, body, commitId, consensusGroupId);
+    return Objects.hash(
+        tablet,
+        isAligned,
+        version,
+        type,
+        body,
+        commitId,
+        consensusGroupId,
+        progressIndex,
+        dataNodeId);
   }
 }

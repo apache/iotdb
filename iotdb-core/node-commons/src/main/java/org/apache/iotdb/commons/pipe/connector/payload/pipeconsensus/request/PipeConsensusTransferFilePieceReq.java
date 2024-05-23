@@ -60,7 +60,8 @@ public abstract class PipeConsensusTransferFilePieceReq extends TPipeConsensusTr
       long startWritingOffset,
       byte[] snapshotPiece,
       TCommitId commitId,
-      TConsensusGroupId consensusGroupId)
+      TConsensusGroupId consensusGroupId,
+      int thisDataNodeId)
       throws IOException {
 
     this.fileName = snapshotName;
@@ -69,6 +70,7 @@ public abstract class PipeConsensusTransferFilePieceReq extends TPipeConsensusTr
 
     this.commitId = commitId;
     this.consensusGroupId = consensusGroupId;
+    this.dataNodeId = thisDataNodeId;
     this.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     this.type = getPlanType().getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -93,6 +95,7 @@ public abstract class PipeConsensusTransferFilePieceReq extends TPipeConsensusTr
     type = transferReq.type;
     body = transferReq.body;
     commitId = transferReq.commitId;
+    dataNodeId = transferReq.dataNodeId;
     consensusGroupId = transferReq.consensusGroupId;
 
     return this;
@@ -116,7 +119,8 @@ public abstract class PipeConsensusTransferFilePieceReq extends TPipeConsensusTr
         && type == that.type
         && body.equals(that.body)
         && Objects.equals(commitId, that.commitId)
-        && Objects.equals(consensusGroupId, that.consensusGroupId);
+        && Objects.equals(consensusGroupId, that.consensusGroupId)
+        && Objects.equals(dataNodeId, that.dataNodeId);
   }
 
   @Override
@@ -129,6 +133,7 @@ public abstract class PipeConsensusTransferFilePieceReq extends TPipeConsensusTr
         type,
         body,
         commitId,
-        consensusGroupId);
+        consensusGroupId,
+        dataNodeId);
   }
 }

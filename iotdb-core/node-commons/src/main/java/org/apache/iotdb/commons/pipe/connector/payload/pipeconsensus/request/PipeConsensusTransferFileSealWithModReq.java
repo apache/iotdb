@@ -64,7 +64,8 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
       Map<String, String> parameters,
       TCommitId commitId,
       TConsensusGroupId consensusGroupId,
-      ProgressIndex progressIndex)
+      ProgressIndex progressIndex,
+      int thisDataNodeId)
       throws IOException {
 
     this.fileNames = fileNames;
@@ -73,6 +74,7 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
 
     this.commitId = commitId;
     this.consensusGroupId = consensusGroupId;
+    this.dataNodeId = thisDataNodeId;
     this.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     this.type = getPlanType().getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -128,6 +130,7 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
     type = req.type;
     body = req.body;
     commitId = req.commitId;
+    dataNodeId = req.dataNodeId;
     consensusGroupId = req.consensusGroupId;
     progressIndex = req.progressIndex;
 
@@ -152,12 +155,23 @@ public abstract class PipeConsensusTransferFileSealWithModReq extends TPipeConse
         && Objects.equals(type, that.type)
         && Objects.equals(body, that.body)
         && Objects.equals(commitId, that.commitId)
-        && Objects.equals(consensusGroupId, that.consensusGroupId);
+        && Objects.equals(consensusGroupId, that.consensusGroupId)
+        && Objects.equals(progressIndex, that.progressIndex)
+        && Objects.equals(dataNodeId, that.dataNodeId);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        fileNames, fileLengths, parameters, version, type, body, commitId, consensusGroupId);
+        fileNames,
+        fileLengths,
+        parameters,
+        version,
+        type,
+        body,
+        commitId,
+        consensusGroupId,
+        dataNodeId,
+        progressIndex);
   }
 }

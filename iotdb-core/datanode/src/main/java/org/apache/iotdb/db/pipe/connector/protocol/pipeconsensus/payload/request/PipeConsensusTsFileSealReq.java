@@ -41,11 +41,17 @@ public class PipeConsensusTsFileSealReq extends PipeConsensusTransferFileSealReq
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeConsensusTsFileSealReq toTPipeConsensusTransferReq(
-          String fileName, long fileLength, TCommitId commitId, TConsensusGroupId consensusGroupId, ProgressIndex progressIndex)
+      String fileName,
+      long fileLength,
+      TCommitId commitId,
+      TConsensusGroupId consensusGroupId,
+      ProgressIndex progressIndex,
+      int thisDataNodeId)
       throws IOException {
     return (PipeConsensusTsFileSealReq)
         new PipeConsensusTsFileSealReq()
-            .convertToTPipeConsensusTransferReq(fileName, fileLength, commitId, consensusGroupId, progressIndex);
+            .convertToTPipeConsensusTransferReq(
+                fileName, fileLength, commitId, consensusGroupId, progressIndex, thisDataNodeId);
   }
 
   public static PipeConsensusTsFileSealReq fromTPipeConsensusTransferReq(

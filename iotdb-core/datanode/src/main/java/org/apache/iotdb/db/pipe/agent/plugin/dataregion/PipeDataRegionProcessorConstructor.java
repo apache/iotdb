@@ -66,6 +66,7 @@ class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.COUNT_POINT_PROCESSOR.getPipePluginName(), TwoStageCountProcessor::new);
     pluginConstructors.put(
-            BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName(), PipeConsensusProcessor::new);
+        BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName(),
+        PipeConsensusProcessor::new);
   }
 }

@@ -25,9 +25,11 @@ import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.Pip
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeReceiver;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -41,6 +43,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
 
@@ -49,8 +52,16 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
   private static final Map<Byte, BiFunction<PipeConsensus, ConsensusGroupId, PipeConsensusReceiver>>
       RECEIVER_CONSTRUCTORS = new HashMap<>();
 
-  private final Map<ConsensusGroupId, AtomicReference<PipeConsensusReceiver>> replicaReceiverMap =
-      new ConcurrentHashMap<>();
+  private final int thisNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+
+  // For each consensus Pipe task, there is an independent receiver. So for every replica, it has
+  // (n-1) receivers, n is the num of replicas.
+  // 1 DataNode --has--> 1 PipeConsensusReceiverAgent & n replicas
+  // 1 PipeConsensusReceiverAgent --manage--> n replicas' receivers
+  // 1 replica --has--> (n-1) receivers
+  private final Map<
+          ConsensusGroupId, Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>>>
+      replicaReceiverMap = new ConcurrentHashMap<>();
 
   private PipeConsensus pipeConsensus;
 
@@ -77,7 +88,7 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
       final ConsensusGroupId consensusGroupId =
           ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
-      return getReceiver(consensusGroupId, reqVersion).receive(req);
+      return getReceiver(consensusGroupId, req.getDataNodeId(), reqVersion).receive(req);
     } else {
       final TSStatus status =
           RpcUtils.getStatus(
@@ -89,12 +100,19 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     }
   }
 
-  private PipeConsensusReceiver getReceiver(ConsensusGroupId consensusGroupId, byte reqVersion) {
+  private PipeConsensusReceiver getReceiver(
+      ConsensusGroupId consensusGroupId, int leaderDataNodeId, byte reqVersion) {
+    // 1. Route to given consensusGroup's receiver map
+    Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>> consensusPipe2ReciverMap =
+        replicaReceiverMap.computeIfAbsent(consensusGroupId, key -> new ConcurrentHashMap<>());
+    // 2. Route to given consensusPipeTask's receiver
     AtomicReference<PipeConsensusReceiver> receiverReference =
-        replicaReceiverMap.computeIfAbsent(consensusGroupId, key -> new AtomicReference<>(null));
+        consensusPipe2ReciverMap.computeIfAbsent(
+            new ConsensusPipeName(consensusGroupId, leaderDataNodeId, thisNodeId),
+            key -> new AtomicReference<>(null));
 
     if (receiverReference.get() == null) {
-      return internalSetAndGetReceiver(consensusGroupId, reqVersion);
+      return internalSetAndGetReceiver(consensusGroupId, leaderDataNodeId, reqVersion);
     }
 
     final byte receiverThreadLocalVersion = receiverReference.get().getVersion().getVersion();
@@ -105,16 +123,21 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
           receiverThreadLocalVersion,
           reqVersion);
       receiverReference.set(null);
-      return internalSetAndGetReceiver(consensusGroupId, reqVersion);
+      return internalSetAndGetReceiver(consensusGroupId, leaderDataNodeId, reqVersion);
     }
 
     return receiverReference.get();
   }
 
   private PipeConsensusReceiver internalSetAndGetReceiver(
-      ConsensusGroupId consensusGroupId, byte reqVersion) {
-    AtomicReference<PipeConsensusReceiver> receiverReference =
+      ConsensusGroupId consensusGroupId, int leaderDataNodeId, byte reqVersion) {
+    // 1. Route to given consensusGroup's receiver map
+    Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>> consensusPipe2ReciverMap =
         replicaReceiverMap.get(consensusGroupId);
+    // 2. Route to given consensusPipeTask's receiver
+    AtomicReference<PipeConsensusReceiver> receiverReference =
+        consensusPipe2ReciverMap.get(
+            new ConsensusPipeName(consensusGroupId, leaderDataNodeId, thisNodeId));
 
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
       receiverReference.set(
@@ -127,9 +150,14 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
   }
 
   public final void handleClientExit() {
-    final Collection<AtomicReference<PipeConsensusReceiver>> allReceiver =
-        replicaReceiverMap.values();
-    allReceiver.forEach(
+    // 1. Get all consensusPipeTask
+    final Collection<Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>>>
+        allReceiverMap = replicaReceiverMap.values();
+    // 2. Collect all receiver from every consensusPipeTask
+    final Collection<AtomicReference<PipeConsensusReceiver>> allReceivers =
+        allReceiverMap.stream().flatMap(map -> map.values().stream()).collect(Collectors.toList());
+    // 3. exit
+    allReceivers.forEach(
         receiver -> {
           if (receiver.get() != null) {
             receiver.get().handleExit();
@@ -138,6 +166,7 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
         });
   }
 
+  // TODO: will implement them when construct UT.
   @TestOnly
   public void resetReceiver() {
     // changed to reset given receiver

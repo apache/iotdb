@@ -27,8 +27,8 @@ import java.util.List;
 
 public class PipeConsensusAsyncBatchReqBuilder extends PipeConsensusTransferBatchReqBuilder {
   public PipeConsensusAsyncBatchReqBuilder(
-      PipeParameters parameters, TConsensusGroupId consensusGroupId) {
-    super(parameters, consensusGroupId);
+      PipeParameters parameters, TConsensusGroupId consensusGroupId, int thisDataNodeId) {
+    super(parameters, consensusGroupId, thisDataNodeId);
   }
 
   public List<Long> deepCopyRequestCommitIds() {

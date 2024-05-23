@@ -45,12 +45,18 @@ public class PipeConsensusTsFilePieceWithModReq extends PipeConsensusTransferFil
       long startWritingOffset,
       byte[] filePiece,
       TCommitId commitId,
-      TConsensusGroupId consensusGroupId)
+      TConsensusGroupId consensusGroupId,
+      int thisDataNodeId)
       throws IOException {
     return (PipeConsensusTsFilePieceWithModReq)
         new PipeConsensusTsFilePieceWithModReq()
             .convertToTPipeConsensusTransferReq(
-                fileName, startWritingOffset, filePiece, commitId, consensusGroupId);
+                fileName,
+                startWritingOffset,
+                filePiece,
+                commitId,
+                consensusGroupId,
+                thisDataNodeId);
   }
 
   public static PipeConsensusTsFilePieceWithModReq fromTPipeConsensusTransferReq(

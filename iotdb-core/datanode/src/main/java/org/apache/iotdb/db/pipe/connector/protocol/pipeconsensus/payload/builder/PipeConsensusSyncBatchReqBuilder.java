@@ -27,8 +27,8 @@ import org.apache.iotdb.pipe.api.event.Event;
 public class PipeConsensusSyncBatchReqBuilder extends PipeConsensusTransferBatchReqBuilder {
 
   public PipeConsensusSyncBatchReqBuilder(
-      PipeParameters parameters, TConsensusGroupId consensusGroupId) {
-    super(parameters, consensusGroupId);
+      PipeParameters parameters, TConsensusGroupId consensusGroupId, int thisDataNodeId) {
+    super(parameters, consensusGroupId, thisDataNodeId);
   }
 
   @Override

@@ -120,8 +120,7 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
 
   @Override
   public ProgressIndex assignProgressIndex(ConsensusGroupId consensusGroupId) {
-    final ProgressIndex progressIndex =
-        PipeAgent.runtime().assignProgressIndexForPipeConsensus();
+    final ProgressIndex progressIndex = PipeAgent.runtime().assignProgressIndexForPipeConsensus();
     groupId2MaxProgressIndex.put(
         consensusGroupId,
         progressIndex.updateToMinimumEqualOrIsAfterProgressIndex(

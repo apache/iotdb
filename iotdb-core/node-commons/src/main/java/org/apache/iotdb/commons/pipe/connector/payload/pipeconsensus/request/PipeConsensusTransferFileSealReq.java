@@ -51,7 +51,12 @@ public abstract class PipeConsensusTransferFileSealReq
   /////////////////////////////// Thrift ///////////////////////////////
 
   protected PipeConsensusTransferFileSealReq convertToTPipeConsensusTransferReq(
-          String fileName, long fileLength, TCommitId commitId, TConsensusGroupId consensusGroupId, ProgressIndex progressIndex)
+      String fileName,
+      long fileLength,
+      TCommitId commitId,
+      TConsensusGroupId consensusGroupId,
+      ProgressIndex progressIndex,
+      int thisDataNodeId)
       throws IOException {
 
     this.fileName = fileName;
@@ -59,6 +64,7 @@ public abstract class PipeConsensusTransferFileSealReq
 
     this.commitId = commitId;
     this.consensusGroupId = consensusGroupId;
+    this.dataNodeId = thisDataNodeId;
     this.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     this.type = getPlanType().getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -68,10 +74,10 @@ public abstract class PipeConsensusTransferFileSealReq
       this.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       progressIndex.serialize(outputStream);
       this.progressIndex =
-              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
     return this;
@@ -87,6 +93,7 @@ public abstract class PipeConsensusTransferFileSealReq
     type = req.type;
     body = req.body;
     commitId = req.commitId;
+    dataNodeId = req.dataNodeId;
     consensusGroupId = req.consensusGroupId;
     progressIndex = req.progressIndex;
 
@@ -110,11 +117,22 @@ public abstract class PipeConsensusTransferFileSealReq
         && type == that.type
         && body.equals(that.body)
         && Objects.equals(commitId, that.commitId)
-        && Objects.equals(consensusGroupId, that.consensusGroupId);
+        && Objects.equals(consensusGroupId, that.consensusGroupId)
+        && Objects.equals(dataNodeId, that.dataNodeId)
+        && Objects.equals(progressIndex, that.progressIndex);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(fileName, fileLength, version, type, body, commitId, consensusGroupId);
+    return Objects.hash(
+        fileName,
+        fileLength,
+        version,
+        type,
+        body,
+        commitId,
+        consensusGroupId,
+        dataNodeId,
+        progressIndex);
   }
 }

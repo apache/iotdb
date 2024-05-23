@@ -69,6 +69,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
   // limit in delayed time
   protected final int maxDelayInMs;
   protected final TConsensusGroupId consensusGroupId;
+  protected final int thisDataNodeId;
   protected long firstEventProcessingTime = Long.MIN_VALUE;
 
   // limit in buffer size
@@ -76,7 +77,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
   protected long totalBufferSize = 0;
 
   protected PipeConsensusTransferBatchReqBuilder(
-      PipeParameters parameters, TConsensusGroupId consensusGroupId) {
+      PipeParameters parameters, TConsensusGroupId consensusGroupId, int thisDataNodeId) {
     maxDelayInMs =
         parameters.getIntOrDefault(
                 Arrays.asList(CONNECTOR_IOTDB_BATCH_DELAY_KEY, SINK_IOTDB_BATCH_DELAY_KEY),
@@ -84,6 +85,7 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
             * 1000;
 
     this.consensusGroupId = consensusGroupId;
+    this.thisDataNodeId = thisDataNodeId;
 
     final long requestMaxBatchSizeInBytes =
         parameters.getLongOrDefault(
@@ -199,12 +201,12 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
         buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
         batchReqs.add(
             PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
-                buffer, commitId, consensusGroupId, progressIndex));
+                buffer, commitId, consensusGroupId, progressIndex, thisDataNodeId));
       } else {
         buffer = insertNode.serializeToByteBuffer();
         batchReqs.add(
             PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
-                insertNode, commitId, consensusGroupId, progressIndex));
+                insertNode, commitId, consensusGroupId, progressIndex, thisDataNodeId));
       }
     } else {
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
@@ -225,7 +227,8 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
               pipeRawTabletInsertionEvent.convertToTablet(),
               pipeRawTabletInsertionEvent.isAligned(),
               commitId,
-              consensusGroupId));
+              consensusGroupId,
+              thisDataNodeId));
     }
 
     return buffer.limit();

@@ -57,6 +57,7 @@ public class PipeConsensusTsFileInsertionEventHandler
   private final PipeConsensusAsyncConnector connector;
   private final TCommitId commitId;
   private final TConsensusGroupId consensusGroupId;
+  private final int thisDataNodeId;
   private final File tsFile;
   private final File modFile;
   private File currentFile;
@@ -77,12 +78,14 @@ public class PipeConsensusTsFileInsertionEventHandler
       final PipeTsFileInsertionEvent event,
       final PipeConsensusAsyncConnector connector,
       final TCommitId commitId,
-      final TConsensusGroupId consensusGroupId)
+      final TConsensusGroupId consensusGroupId,
+      final int thisDataNodeId)
       throws FileNotFoundException {
     this.event = event;
     this.connector = connector;
     this.commitId = commitId;
     this.consensusGroupId = consensusGroupId;
+    this.thisDataNodeId = thisDataNodeId;
 
     tsFile = event.getTsFile();
     modFile = event.getModFile();
@@ -130,13 +133,15 @@ public class PipeConsensusTsFileInsertionEventHandler
                     tsFile.length(),
                     commitId,
                     consensusGroupId,
-                    event.getProgressIndex())
+                    event.getProgressIndex(),
+                    thisDataNodeId)
                 : PipeConsensusTsFileSealReq.toTPipeConsensusTransferReq(
                     tsFile.getName(),
                     tsFile.length(),
                     commitId,
                     consensusGroupId,
-                    event.getProgressIndex()),
+                    event.getProgressIndex(),
+                    thisDataNodeId),
             this);
       }
       return;
@@ -150,9 +155,19 @@ public class PipeConsensusTsFileInsertionEventHandler
     client.pipeConsensusTransfer(
         transferMod
             ? PipeConsensusTsFilePieceWithModReq.toTPipeConsensusTransferReq(
-                currentFile.getName(), position, payload, commitId, consensusGroupId)
+                currentFile.getName(),
+                position,
+                payload,
+                commitId,
+                consensusGroupId,
+                thisDataNodeId)
             : PipeConsensusTsFilePieceReq.toTPipeConsensusTransferReq(
-                currentFile.getName(), position, payload, commitId, consensusGroupId),
+                currentFile.getName(),
+                position,
+                payload,
+                commitId,
+                consensusGroupId,
+                thisDataNodeId),
         this);
     position += readLength;
   }

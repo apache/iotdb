@@ -37,6 +37,13 @@ public class ConsensusPipeName {
     this.receiverDataNodeId = recieverPeer.getNodeId();
   }
 
+  public ConsensusPipeName(
+      ConsensusGroupId consensusGroupId, int senderDataNodeId, int receiverNodeId) {
+    this.consensusGroupId = consensusGroupId;
+    this.senderDataNodeId = senderDataNodeId;
+    this.receiverDataNodeId = receiverNodeId;
+  }
+
   public ConsensusPipeName(String pipeName) throws IllegalArgumentException {
     if (!pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
       throw new IllegalArgumentException("Invalid pipe name: " + pipeName);

@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+
 import org.apache.tsfile.utils.PublicBAOS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,12 +56,14 @@ public class PipeConsensusTabletInsertNodeReq extends TPipeConsensusTransferReq 
       InsertNode insertNode,
       TCommitId commitId,
       TConsensusGroupId consensusGroupId,
-      ProgressIndex progressIndex) {
+      ProgressIndex progressIndex,
+      int thisDataNodeId) {
     final PipeConsensusTabletInsertNodeReq req = new PipeConsensusTabletInsertNodeReq();
 
     req.insertNode = insertNode;
     req.commitId = commitId;
     req.consensusGroupId = consensusGroupId;
+    req.dataNodeId = thisDataNodeId;
 
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -80,13 +83,15 @@ public class PipeConsensusTabletInsertNodeReq extends TPipeConsensusTransferReq 
       InsertNode insertNode,
       TCommitId commitId,
       TConsensusGroupId consensusGroupId,
-      ProgressIndex progressIndex) {
+      ProgressIndex progressIndex,
+      int thisDataNodeId) {
     final PipeConsensusTabletInsertNodeReq req = new PipeConsensusTabletInsertNodeReq();
 
     req.insertNode = insertNode;
 
     req.commitId = commitId;
     req.consensusGroupId = consensusGroupId;
+    req.dataNodeId = thisDataNodeId;
     req.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     req.type = PipeConsensusRequestType.TRANSFER_TABLET_INSERT_NODE.getType();
     req.body = insertNode.serializeToByteBuffer();
@@ -113,6 +118,7 @@ public class PipeConsensusTabletInsertNodeReq extends TPipeConsensusTransferReq 
     insertNodeReq.type = transferReq.type;
     insertNodeReq.body = transferReq.body;
     insertNodeReq.commitId = transferReq.commitId;
+    insertNodeReq.dataNodeId = transferReq.dataNodeId;
     insertNodeReq.consensusGroupId = transferReq.consensusGroupId;
     insertNodeReq.progressIndex = transferReq.progressIndex;
 
@@ -135,11 +141,14 @@ public class PipeConsensusTabletInsertNodeReq extends TPipeConsensusTransferReq 
         && type == that.type
         && Objects.equals(body, that.body)
         && Objects.equals(commitId, that.commitId)
-        && Objects.equals(consensusGroupId, that.consensusGroupId);
+        && Objects.equals(consensusGroupId, that.consensusGroupId)
+        && Objects.equals(progressIndex, that.progressIndex)
+        && Objects.equals(dataNodeId, that.dataNodeId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(insertNode, version, type, body, commitId, consensusGroupId);
+    return Objects.hash(
+        insertNode, version, type, body, commitId, consensusGroupId, dataNodeId, progressIndex);
   }
 }
