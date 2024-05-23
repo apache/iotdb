@@ -159,7 +159,7 @@ public class ConfigRegionListeningFilter {
   }
 
   public static Set<ConfigPhysicalPlanType> parseListeningPlanTypeSet(PipeParameters parameters)
-      throws IllegalPathException, IllegalArgumentException {
+      throws IllegalPathException {
     Set<ConfigPhysicalPlanType> planTypes = new HashSet<>();
     Set<PartialPath> inclusionOptions =
         parseOptions(

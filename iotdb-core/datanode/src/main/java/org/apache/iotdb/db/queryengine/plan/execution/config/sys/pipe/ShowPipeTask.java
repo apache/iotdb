@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -37,6 +38,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -88,12 +90,25 @@ public class ShowPipeTask implements IConfigTask {
       builder
           .getColumnBuilder(6)
           .writeBinary(new Binary(tPipeInfo.getExceptionMessage(), TSFileConfig.STRING_CHARSET));
+
+      // Optional, default 0/0.0
+      long remainingEventCount = tPipeInfo.getRemainingEventCount();
+      double remainingTime = tPipeInfo.getEstimatedRemainingTime();
+
+      if (remainingEventCount == -1 && remainingTime == -1) {
+        final Pair<Long, Double> remainingEventAndTime =
+            PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+                .getRemainingEventAndTime(tPipeInfo.getId(), tPipeInfo.getCreationTime());
+        remainingEventCount = remainingEventAndTime.getLeft();
+        remainingTime = remainingEventAndTime.getRight();
+      }
+
       builder
           .getColumnBuilder(7)
           .writeBinary(
               new Binary(
                   tPipeInfo.isSetRemainingEventCount()
-                      ? String.valueOf(tPipeInfo.getRemainingEventCount())
+                      ? String.valueOf(remainingEventCount)
                       : "Unknown",
                   TSFileConfig.STRING_CHARSET));
       builder
@@ -101,7 +116,7 @@ public class ShowPipeTask implements IConfigTask {
           .writeBinary(
               new Binary(
                   tPipeInfo.isSetEstimatedRemainingTime()
-                      ? String.format("%.2f", tPipeInfo.getEstimatedRemainingTime())
+                      ? String.format("%.2f", remainingTime)
                       : "Unknown",
                   TSFileConfig.STRING_CHARSET));
       builder.declarePosition();

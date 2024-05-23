@@ -97,7 +97,7 @@ public class SchemaRegionListeningFilter {
   }
 
   public static Set<PlanNodeType> parseListeningPlanTypeSet(PipeParameters parameters)
-      throws IllegalPathException, IllegalArgumentException {
+      throws IllegalPathException {
     Set<PlanNodeType> planTypes = new HashSet<>();
     Set<PartialPath> inclusionOptions =
         parseOptions(

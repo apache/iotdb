@@ -20,15 +20,18 @@
 package org.apache.iotdb.confignode.consensus.response.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTemporaryMeta;
+import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningFilter;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 
@@ -134,19 +137,37 @@ public class PipeTableResp implements DataSet {
               staticMeta.getConnectorParameters().toString(),
               exceptionMessageBuilder.toString());
       final PipeTemporaryMeta temporaryMeta = pipeMeta.getTemporaryMeta();
+      final boolean canCalculateOnLocal = canCalculateOnLocal(pipeMeta);
+
       showPipeInfo.setRemainingEventCount(
-          temporaryMeta.getNodeId2RemainingEventMap().values().stream()
-              .reduce(Long::sum)
-              .orElse(0L));
+          canCalculateOnLocal
+              ? -1
+              : temporaryMeta.getNodeId2RemainingEventMap().values().stream()
+                  .reduce(Long::sum)
+                  .orElse(0L));
       showPipeInfo.setEstimatedRemainingTime(
-          temporaryMeta.getNodeId2RemainingTimeMap().values().stream()
-              .reduce(Math::max)
-              .orElse(0d));
+          canCalculateOnLocal
+              ? -1
+              : temporaryMeta.getNodeId2RemainingTimeMap().values().stream()
+                  .reduce(Math::max)
+                  .orElse(0d));
       showPipeInfoList.add(showPipeInfo);
     }
 
     // sorted by pipe name
     showPipeInfoList.sort(Comparator.comparing(pipeInfo -> pipeInfo.id));
     return new TShowPipeResp().setStatus(status).setPipeInfoList(showPipeInfoList);
+  }
+
+  private boolean canCalculateOnLocal(final PipeMeta pipeMeta) {
+    try {
+      return ConfigNode.getInstance().getConfigManager().getNodeManager().getRegisteredNodeCount()
+              == 1
+          && ConfigRegionListeningFilter.parseListeningPlanTypeSet(
+                  pipeMeta.getStaticMeta().getExtractorParameters())
+              .isEmpty();
+    } catch (final IllegalPathException e) {
+      return false;
+    }
   }
 }
