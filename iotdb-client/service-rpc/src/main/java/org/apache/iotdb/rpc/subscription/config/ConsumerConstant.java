@@ -43,7 +43,8 @@ public class ConsumerConstant {
   public static final long ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE = 5_000;
 
   public static final String FILE_SAVE_DIR_KEY = "file-save-dir";
-  public static final String FILE_SAVE_DIR_DEFAULT_VALUE = System.getProperty("user.dir");
+  public static final String FILE_SAVE_DIR_DEFAULT_VALUE =
+      System.getProperty("user.dir") + "iotdb-subscription";
 
   /////////////////////////////// pull consumer ///////////////////////////////
 
