@@ -111,8 +111,6 @@ check_running_process() {
     done
     if [ ${#iotdb_listening_ports[@]} -gt 0 ]; then
           echo " Please stop IoTDB"  >&2
-          echo " Exit..."  >&2
-          echo ""
           exit 1
     fi
 }
@@ -131,4 +129,6 @@ if [ ! -d "$logs_dir" ]; then
     mkdir "$logs_dir"
 fi
 
-nohup "$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@" > ${logs_dir}/iotdb-data-back.log 2>&1 &
+IOTDB_CLI_CONF=${IOTDB_HOME}/conf
+iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-backup.xml"
+exec nohup "$JAVA" -DIOTDB_HOME=${IOTDB_HOME} $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" "$@" >/dev/null 2>&1 <&- &

@@ -45,8 +45,11 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
 
   @Override
   public void initTProcessor()
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException,
-          NoSuchMethodException, InvocationTargetException {
+      throws ClassNotFoundException,
+          IllegalAccessException,
+          InstantiationException,
+          NoSuchMethodException,
+          InvocationTargetException {
     impl =
         (IClientRPCServiceWithHandler)
             Class.forName(IoTDBDescriptor.getInstance().getConfig().getRpcImplClassName())

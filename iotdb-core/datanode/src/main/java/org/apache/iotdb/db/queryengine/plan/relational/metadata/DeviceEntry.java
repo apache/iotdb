@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -29,7 +31,10 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DeviceEntry {
+public class DeviceEntry implements Accountable {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DeviceEntry.class);
 
   private final IDeviceID deviceID;
   private final List<String> attributeColumnValues;
@@ -81,5 +86,12 @@ public class DeviceEntry {
         + ", attributeColumnValues="
         + attributeColumnValues
         + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + deviceID.ramBytesUsed()
+        + RamUsageEstimator.sizeOfCollection(attributeColumnValues);
   }
 }

@@ -492,7 +492,8 @@ public class ImportData extends AbstractDataTool {
           try {
             writer.flush();
             writer.close();
-          } catch (IOException e) {;
+          } catch (IOException e) {
+            ;
           }
         }
       }

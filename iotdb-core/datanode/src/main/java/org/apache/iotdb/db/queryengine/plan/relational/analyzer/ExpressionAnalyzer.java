@@ -950,7 +950,9 @@ public class ExpressionAnalyzer {
       return type;
     }
 
-    /** @return the common supertype between the value type and subquery type */
+    /**
+     * @return the common supertype between the value type and subquery type
+     */
     private Type analyzePredicateWithSubquery(
         Expression node,
         Type declaredValueType,
@@ -1004,7 +1006,10 @@ public class ExpressionAnalyzer {
       Scope subqueryScope = Scope.builder().withParent(context.getContext().getScope()).build();
 
       List<RowType.Field> fields =
-          analyzer.analyze(node.getSubquery(), subqueryScope).getRelationType().getAllFields()
+          analyzer
+              .analyze(node.getSubquery(), subqueryScope)
+              .getRelationType()
+              .getAllFields()
               .stream()
               .map(
                   field -> {

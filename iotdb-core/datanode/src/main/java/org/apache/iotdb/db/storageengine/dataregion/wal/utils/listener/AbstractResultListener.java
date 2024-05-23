@@ -30,6 +30,7 @@ public abstract class AbstractResultListener {
   protected final boolean wait;
 
   protected volatile Status status;
+
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   protected volatile Exception cause;

@@ -74,6 +74,7 @@ public class HybridTimeseriesSessionExample {
 
     dataSet.closeOperationHandle();
   }
+
   /** Method 1 for insert tablet with aligned timeseries */
   private static void insertTabletWithAlignedTimeseriesMethod(int minTime, int maxTime)
       throws IoTDBConnectionException, StatementExecutionException {

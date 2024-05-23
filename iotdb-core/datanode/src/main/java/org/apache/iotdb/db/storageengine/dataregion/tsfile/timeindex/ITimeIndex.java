@@ -72,7 +72,9 @@ public interface ITimeIndex {
    */
   Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource);
 
-  /** @return whether end time is empty (Long.MIN_VALUE) */
+  /**
+   * @return whether end time is empty (Long.MIN_VALUE)
+   */
   boolean endTimeEmpty();
 
   /**
@@ -81,7 +83,9 @@ public interface ITimeIndex {
    */
   boolean stillLives(long ttlLowerBound);
 
-  /** @return Calculate file index ram size */
+  /**
+   * @return Calculate file index ram size
+   */
   long calculateRamSize();
 
   /**

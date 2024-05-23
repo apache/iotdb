@@ -224,6 +224,7 @@ public class CommonDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "time_partition_interval", String.valueOf(config.getTimePartitionInterval()))));
+
     config.setDatabaseLimitThreshold(
         Integer.parseInt(
             properties.getProperty(
@@ -353,13 +354,6 @@ public class CommonDescriptor {
                     properties.getProperty(
                         "pipe_connector_retry_interval_ms",
                         String.valueOf(config.getPipeConnectorRetryIntervalMs())))));
-    config.setPipeConnectorPendingQueueSize(
-        Integer.parseInt(
-            Optional.ofNullable(properties.getProperty("pipe_sink_pending_queue_size"))
-                .orElse(
-                    properties.getProperty(
-                        "pipe_connector_pending_queue_size",
-                        String.valueOf(config.getPipeConnectorPendingQueueSize())))));
     config.setPipeConnectorRPCThriftCompressionEnabled(
         Boolean.parseBoolean(
             Optional.ofNullable(properties.getProperty("pipe_sink_rpc_thrift_compression_enabled"))
@@ -424,6 +418,11 @@ public class CommonDescriptor {
                 "pipe_air_gap_receiver_port",
                 Integer.toString(config.getPipeAirGapReceiverPort()))));
 
+    config.setPipeMaxAllowedHistoricalTsFilePerDataRegion(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_max_allowed_historical_tsfile_per_data_region",
+                String.valueOf(config.getPipeMaxAllowedHistoricalTsFilePerDataRegion()))));
     config.setPipeMaxAllowedPendingTsFileEpochPerDataRegion(
         Integer.parseInt(
             properties.getProperty(
@@ -439,6 +438,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_max_allowed_linked_tsfile_count",
                 String.valueOf(config.getPipeMaxAllowedLinkedTsFileCount()))));
+    config.setPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage(
+        Float.parseFloat(
+            properties.getProperty(
+                "pipe_max_allowed_linked_deleted_tsfile_disk_usage_percentage",
+                String.valueOf(config.getPipeMaxAllowedLinkedDeletedTsFileDiskUsagePercentage()))));
     config.setPipeStuckRestartIntervalSeconds(
         Long.parseLong(
             properties.getProperty(
@@ -522,6 +526,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_snapshot_execution_max_batch_size",
                 String.valueOf(config.getPipeSnapshotExecutionMaxBatchSize()))));
+    config.setPipeRemainingTimeCommitRateSmoothingFactor(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_remaining_time_commit_rate_smoothing_factor",
+                String.valueOf(config.getPipeRemainingTimeCommitRateSmoothingFactor()))));
 
     config.setTwoStageAggregateMaxCombinerLiveTimeInMs(
         Long.parseLong(

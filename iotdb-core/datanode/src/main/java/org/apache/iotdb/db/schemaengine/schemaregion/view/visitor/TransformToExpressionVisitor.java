@@ -125,6 +125,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   public Expression visitTimeStampOperand(TimestampViewOperand timestampOperand, Void context) {
     return new TimestampOperand();
   }
+
   // endregion
 
   // region Unary Expressions
@@ -180,6 +181,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
         regularExpression.getPattern(),
         regularExpression.isNot());
   }
+
   // endregion
 
   @Override
@@ -231,6 +233,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
         this.getExpressionsForBinaryExpression(subtractionExpression);
     return new SubtractionExpression(pair.left, pair.right);
   }
+
   // endregion
 
   // region Binary: Compare Binary Expression
@@ -275,6 +278,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
     Pair<Expression, Expression> pair = this.getExpressionsForBinaryExpression(nonEqualExpression);
     return new NonEqualExpression(pair.left, pair.right);
   }
+
   // endregion
 
   // region Binary : Logic Binary Expression
@@ -293,6 +297,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
     Pair<Expression, Expression> pair = this.getExpressionsForBinaryExpression(logicOrExpression);
     return new LogicOrExpression(pair.left, pair.right);
   }
+
   // endregion
 
   // endregion
@@ -311,6 +316,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
     return new org.apache.iotdb.db.queryengine.plan.expression.ternary.BetweenExpression(
         first, second, third, betweenViewExpression.isNotBetween());
   }
+
   // endregion
 
   // region FunctionExpression

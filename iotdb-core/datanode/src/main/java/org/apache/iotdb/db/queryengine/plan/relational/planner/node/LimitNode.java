@@ -33,6 +33,7 @@ public class LimitNode extends SingleChildProcessNode {
   private final long count;
   // TODO what's the meaning?
   private final Optional<OrderingScheme> tiesResolvingScheme;
+
   // private final boolean partial;
   // private final List<Symbol> preSortedInputs;
 

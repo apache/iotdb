@@ -69,6 +69,7 @@ public abstract class BasicUserManager implements IUserManager {
   public boolean preVersion() {
     return this.preVersion;
   }
+
   // FOR PRE VERSION DONE ------
 
   /**

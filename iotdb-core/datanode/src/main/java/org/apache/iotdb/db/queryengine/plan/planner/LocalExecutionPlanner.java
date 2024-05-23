@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateM
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
@@ -43,9 +44,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
- * Operator tree, but in the future, we may split one fragment instance into multiple pipeline to
- * run a fragment instance parallel and take full advantage of multi-cores
+ * Used to plan a fragment instance. One fragment instance could be split into multiple pipelines so
+ * that a fragment instance could be run in parallel, and thus we can take full advantages of
+ * multi-cores.
  */
 public class LocalExecutionPlanner {
 
@@ -98,8 +99,13 @@ public class LocalExecutionPlanner {
         throw new IllegalArgumentException(String.format("Unknown sql dialect: %s", sqlDialect));
     }
 
+    PipelineMemoryEstimator memoryEstimator =
+        context.constructPipelineMemoryEstimator(root, null, plan, -1);
+    // set the map to null for gc
+    context.invalidateParentPlanNodeIdToMemoryEstimator();
+
     // check whether current free memory is enough to execute current query
-    long estimatedMemorySize = checkMemory(root, instanceContext.getStateMachine());
+    long estimatedMemorySize = checkMemory(memoryEstimator, instanceContext.getStateMachine());
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
 
@@ -121,8 +127,13 @@ public class LocalExecutionPlanner {
 
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
+    PipelineMemoryEstimator memoryEstimator =
+        context.constructPipelineMemoryEstimator(root, null, plan, -1);
+    // set the map to null for gc
+    context.invalidateParentPlanNodeIdToMemoryEstimator();
+
     // check whether current free memory is enough to execute current query
-    checkMemory(root, instanceContext.getStateMachine());
+    checkMemory(memoryEstimator, instanceContext.getStateMachine());
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
 
@@ -132,7 +143,8 @@ public class LocalExecutionPlanner {
     return context.getPipelineDriverFactories();
   }
 
-  private long checkMemory(Operator root, FragmentInstanceStateMachine stateMachine)
+  private long checkMemory(
+      final PipelineMemoryEstimator memoryEstimator, FragmentInstanceStateMachine stateMachine)
       throws MemoryNotEnoughException {
 
     // if it is disabled, just return
@@ -141,7 +153,8 @@ public class LocalExecutionPlanner {
       return 0;
     }
 
-    long estimatedMemorySize = root.calculateMaxPeekMemoryWithCounter();
+    long estimatedMemorySize = memoryEstimator.getEstimatedMemoryUsageInBytes();
+
     QueryRelatedResourceMetricSet.getInstance().updateEstimatedMemory(estimatedMemorySize);
 
     synchronized (this) {

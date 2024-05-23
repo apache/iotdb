@@ -183,6 +183,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private int cursor = 0;
 
+  private boolean isFirstInitiated;
+
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   ClientManager<ConfigRegionId, ConfigNodeClient> clientManager;
@@ -199,6 +201,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     this.clientManager = clientManager;
     // Set the first configNode as configLeader for a tentative connection
     this.configLeader = this.configNodes.get(0);
+    this.isFirstInitiated = true;
 
     connectAndSync();
   }
@@ -298,21 +301,27 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   private boolean updateConfigNodeLeader(TSStatus status) {
-    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-      if (status.isSetRedirectNode()) {
-        configLeader =
-            new TEndPoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
-      } else {
-        configLeader = null;
+    try {
+      if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        if (status.isSetRedirectNode()) {
+          configLeader =
+              new TEndPoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
+        } else {
+          configLeader = null;
+        }
+        if (!isFirstInitiated) {
+          logger.info(
+              "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not "
+                  + "leader or not ready yet, will try again later",
+              configNode,
+              config.getAddressAndPort());
+        }
+        return true;
       }
-      logger.warn(
-          "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not "
-              + "leader or not ready yet, will try again later",
-          configNode,
-          config.getAddressAndPort());
-      return true;
+      return false;
+    } finally {
+      isFirstInitiated = false;
     }
-    return false;
   }
 
   /**

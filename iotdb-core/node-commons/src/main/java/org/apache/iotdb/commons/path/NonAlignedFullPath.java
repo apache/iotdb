@@ -21,11 +21,15 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.Objects;
 
 public class NonAlignedFullPath implements IFullPath {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(NonAlignedFullPath.class);
 
   private final IDeviceID deviceID;
 
@@ -80,5 +84,12 @@ public class NonAlignedFullPath implements IFullPath {
         + ", measurementSchema="
         + measurementSchema
         + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + deviceID.ramBytesUsed()
+        + RamUsageEstimator.sizeOf(measurementSchema.getMeasurementId());
   }
 }

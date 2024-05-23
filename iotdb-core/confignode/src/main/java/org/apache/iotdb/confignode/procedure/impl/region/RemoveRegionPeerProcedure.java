@@ -89,13 +89,13 @@ public class RemoveRegionPeerProcedure
               getProcId(),
               consensusGroupId.getId(),
               targetDataNode.getDataNodeId());
-          handler.updateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
+          handler.forceUpdateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
           handler.transferRegionLeader(consensusGroupId, targetDataNode);
           KillPoint.setKillPoint(state);
           setNextState(REMOVE_REGION_PEER);
           break;
         case REMOVE_REGION_PEER:
-          handler.updateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
+          handler.forceUpdateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
           tsStatus =
               handler.submitRemoveRegionPeerTask(
                   this.getProcId(), targetDataNode, consensusGroupId, coordinator);
@@ -106,7 +106,7 @@ public class RemoveRegionPeerProcedure
                 getProcId(),
                 state);
             setNextState(DELETE_OLD_REGION_PEER);
-            break;
+            return Flow.HAS_MORE_STATE;
           }
           TRegionMigrateResult removeRegionPeerResult =
               handler.waitTaskFinish(this.getProcId(), coordinator);
@@ -115,11 +115,13 @@ public class RemoveRegionPeerProcedure
                 "[pid{}][RemoveRegion] {} executed failed, procedure will continue. You should manually clear peer list.",
                 getProcId(),
                 state);
+            setNextState(DELETE_OLD_REGION_PEER);
+            return Flow.HAS_MORE_STATE;
           }
           setNextState(DELETE_OLD_REGION_PEER);
           break;
         case DELETE_OLD_REGION_PEER:
-          handler.updateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
+          handler.forceUpdateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
           tsStatus =
               handler.submitDeleteOldRegionPeerTask(
                   this.getProcId(), targetDataNode, consensusGroupId);
@@ -129,7 +131,7 @@ public class RemoveRegionPeerProcedure
                 "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER task submitted failed, procedure will continue. You should manually delete region file.",
                 getProcId());
             setNextState(REMOVE_REGION_LOCATION_CACHE);
-            break;
+            return Flow.HAS_MORE_STATE;
           }
           TRegionMigrateResult deleteOldRegionPeerResult =
               handler.waitTaskFinish(this.getProcId(), targetDataNode);
@@ -137,6 +139,8 @@ public class RemoveRegionPeerProcedure
             LOGGER.warn(
                 "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER executed failed, procedure will continue. You should manually delete region file.",
                 getProcId());
+            setNextState(REMOVE_REGION_LOCATION_CACHE);
+            return Flow.HAS_MORE_STATE;
           }
           setNextState(REMOVE_REGION_LOCATION_CACHE);
           break;

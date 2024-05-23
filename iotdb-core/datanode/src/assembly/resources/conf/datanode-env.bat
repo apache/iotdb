@@ -40,8 +40,8 @@ if %JMX_LOCAL% == "false" (
   -Djava.rmi.server.randomIDs=true^
   -Dcom.sun.management.jmxremote.ssl=false^
   -Dcom.sun.management.jmxremote.authenticate=false^
-  -Dcom.sun.management.jmxremote.password.file=%IOTDB_CONF%\jmx.password^
-  -Dcom.sun.management.jmxremote.access.file=%IOTDB_CONF%\jmx.access^
+  -Dcom.sun.management.jmxremote.password.file="%IOTDB_CONF%\jmx.password"^
+  -Dcom.sun.management.jmxremote.access.file="%IOTDB_CONF%\jmx.acces"s^
   -Djava.rmi.server.hostname=%JMX_IP%
 ) else (
   echo "setting local JMX..."
@@ -59,9 +59,9 @@ for /f  %%b in ('wmic ComputerSystem get TotalPhysicalMemory ^| findstr "[0-9]"'
 	set system_memory=%%b
 )
 
-echo wsh.echo FormatNumber(cdbl(%system_memory%)/(1024*1024), 0) > %IOTDB_HOME%\sbin\tmp.vbs
-for /f "tokens=*" %%a in ('cscript //nologo %IOTDB_HOME%\sbin\tmp.vbs') do set system_memory_in_mb=%%a
-del %IOTDB_HOME%\sbin\tmp.vbs
+echo wsh.echo FormatNumber(cdbl(%system_memory%)/(1024*1024), 0) > "%IOTDB_HOME%\sbin\tmp.vbs"
+for /f "tokens=*" %%a in ('cscript //nologo "%IOTDB_HOME%\sbin\tmp.vbs"') do set system_memory_in_mb=%%a
+del "%IOTDB_HOME%\sbin\tmp.vbs"
 set system_memory_in_mb=%system_memory_in_mb:,=%
 
 set /a suggest_=%system_memory_in_mb%/2
@@ -123,6 +123,9 @@ set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Djdk.nio.maxCachedBufferSize=%MAX_CACHED_
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+CrashOnOutOfMemoryError
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+UseAdaptiveSizePolicy
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Xss512k
+@REM options below try to optimize safepoint stw time.
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+UnlockDiagnosticVMOptions
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:GuaranteedSafepointInterval=0
 @REM these two options print safepoints with pauses longer than 1000ms to the standard output. You can see these logs via redirection when starting in the background like "start-datanode.sh > log_datanode_safepoint.txt"
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:SafepointTimeoutDelay=1000
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+SafepointTimeout
@@ -154,13 +157,13 @@ set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+SafepointTimeout
 @REM set gc log.
 IF "%1" equ "printgc" (
 	IF "%JAVA_VERSION%" == "8" (
-	    md %IOTDB_HOME%\logs
+	    md "%IOTDB_HOME%\logs"
 		set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Xloggc:"%IOTDB_HOME%\logs\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
 		@REM For more detailed GC information, you can uncomment option below.
         @REM NOTE: more detailed GC information may bring larger GC log files.
         @REM set IOTDB_JMX_OPTS=%IOTDB_JMX_OPTS% -Xloggc:"%IOTDB_HOME%\logs\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:+PrintTenuringDistribution -XX:+PrintHeapAtGC -XX:+PrintReferenceGC -XX:+PrintSafepointStatistics -XX:PrintSafepointStatisticsCount=1 -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M
 	) ELSE (
-		md %IOTDB_HOME%\logs
+		md "%IOTDB_HOME%\logs"
 		set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS%  -Xlog:gc=info,heap*=trace,age*=debug,safepoint=info,promotion*=trace:file="%IOTDB_HOME%\logs\gc.log":time,uptime,pid,tid,level:filecount=10,filesize=10485760
 		@REM For more detailed GC information, you can uncomment option below.
         @REM NOTE: more detailed GC information may bring larger GC log files.

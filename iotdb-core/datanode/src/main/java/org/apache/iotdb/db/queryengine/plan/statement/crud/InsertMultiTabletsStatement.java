@@ -49,6 +49,14 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     this.insertTabletStatementList = insertTabletStatementList;
   }
 
+  public List<PartialPath> getDevicePaths() {
+    List<PartialPath> partialPaths = new ArrayList<>();
+    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
+      partialPaths.add(insertTabletStatement.devicePath);
+    }
+    return partialPaths;
+  }
+
   public List<String[]> getMeasurementsList() {
     List<String[]> measurementsList = new ArrayList<>();
     for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
@@ -100,6 +108,13 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
     return false;
+  }
+
+  @Override
+  public void semanticCheck() {
+    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
+      insertTabletStatement.semanticCheck();
+    }
   }
 
   @Override

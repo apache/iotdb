@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
 public class UpdateViewPathLastCacheOperator extends UpdateLastCacheOperator {
@@ -55,5 +56,10 @@ public class UpdateViewPathLastCacheOperator extends UpdateLastCacheOperator {
   protected void appendLastValueToTsBlockBuilder(long lastTime, TsPrimitiveType lastValue) {
     LastQueryUtil.appendLastValue(
         tsBlockBuilder, lastTime, outputViewPath, lastValue.getStringValue(), dataType);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return super.ramBytesUsed() + RamUsageEstimator.sizeOf(outputViewPath);
   }
 }

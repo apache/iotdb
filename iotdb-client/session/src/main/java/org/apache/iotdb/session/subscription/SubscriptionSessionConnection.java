@@ -91,14 +91,12 @@ public class SubscriptionSessionConnection extends SessionConnection {
     return endPoints;
   }
 
-  public int handshake(ConsumerConfig consumerConfig)
+  public PipeSubscribeHandshakeResp handshake(ConsumerConfig consumerConfig)
       throws TException, IOException, StatementExecutionException {
     TPipeSubscribeResp resp =
         client.pipeSubscribe(PipeSubscribeHandshakeReq.toTPipeSubscribeReq(consumerConfig));
     RpcUtils.verifySuccess(resp.status);
-    PipeSubscribeHandshakeResp handshakeResp =
-        PipeSubscribeHandshakeResp.fromTPipeSubscribeResp(resp);
-    return handshakeResp.getDataNodeId();
+    return PipeSubscribeHandshakeResp.fromTPipeSubscribeResp(resp);
   }
 
   public void heartbeat() throws TException, StatementExecutionException {

@@ -53,6 +53,10 @@ public class PipeConnectorConstant {
   public static final int CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE =
       PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum();
 
+  public static final String CONNECTOR_REALTIME_FIRST_KEY = "connector.realtime-first";
+  public static final String SINK_REALTIME_FIRST_KEY = "sink.realtime-first";
+  public static final boolean CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE = false;
+
   public static final String CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY = "connector.batch.enable";
   public static final String SINK_IOTDB_BATCH_MODE_ENABLE_KEY = "sink.batch.enable";
   public static final boolean CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE = true;
@@ -154,6 +158,24 @@ public class PipeConnectorConstant {
                   CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY,
                   CONNECTOR_LOAD_BALANCE_RANDOM_STRATEGY,
                   CONNECTOR_LOAD_BALANCE_PRIORITY_STRATEGY)));
+
+  public static final String CONNECTOR_COMPRESSOR_KEY = "connector.compressor";
+  public static final String SINK_COMPRESSOR_KEY = "sink.compressor";
+  public static final String CONNECTOR_COMPRESSOR_DEFAULT_VALUE = "";
+  public static final String CONNECTOR_COMPRESSOR_SNAPPY = "snappy";
+  public static final String CONNECTOR_COMPRESSOR_GZIP = "gzip";
+  public static final String CONNECTOR_COMPRESSOR_LZ4 = "lz4";
+  public static final String CONNECTOR_COMPRESSOR_ZSTD = "zstd";
+  public static final String CONNECTOR_COMPRESSOR_LZMA2 = "lzma2";
+  public static final Set<String> CONNECTOR_COMPRESSOR_SET =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  CONNECTOR_COMPRESSOR_SNAPPY,
+                  CONNECTOR_COMPRESSOR_GZIP,
+                  CONNECTOR_COMPRESSOR_LZ4,
+                  CONNECTOR_COMPRESSOR_ZSTD,
+                  CONNECTOR_COMPRESSOR_LZMA2)));
 
   public static final String SINK_TOPIC_KEY = "sink.topic";
   public static final String SINK_CONSUMER_GROUP_KEY = "sink.consumer-group";

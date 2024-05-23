@@ -61,7 +61,8 @@ public class UDTFJexl implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
-      throws UDFInputSeriesDataTypeNotValidException, UDFOutputSeriesDataTypeNotValidException,
+      throws UDFInputSeriesDataTypeNotValidException,
+          UDFOutputSeriesDataTypeNotValidException,
           MetadataException {
     String expr = parameters.getString("expr");
     JexlEngine jexl = new JexlBuilder().create();
@@ -148,7 +149,8 @@ public class UDTFJexl implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector)
-      throws IOException, UDFOutputSeriesDataTypeNotValidException,
+      throws IOException,
+          UDFOutputSeriesDataTypeNotValidException,
           UDFInputSeriesDataTypeNotValidException {
     switch (outputDataType) {
       case DOUBLE:

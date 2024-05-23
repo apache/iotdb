@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.join;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AbstractConsumeAllOperator;
@@ -34,6 +35,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +44,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class FullOuterTimeJoinOperator extends AbstractConsumeAllOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(FullOuterTimeJoinOperator.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TimeSelector.class);
 
   /** Start index for each input TsBlocks and size of it is equal to inputTsBlocks. */
   private final int[] inputIndex;
@@ -290,7 +296,9 @@ public class FullOuterTimeJoinOperator extends AbstractConsumeAllOperator {
         || children.get(currentChildIndex) == null;
   }
 
-  /** @param currentInputIndex index of the input TsBlock */
+  /**
+   * @param currentInputIndex index of the input TsBlock
+   */
   @Override
   protected void processCurrentInputTsBlock(int currentInputIndex) {
     updateTimeSelector(currentInputIndex);
@@ -329,5 +337,19 @@ public class FullOuterTimeJoinOperator extends AbstractConsumeAllOperator {
   protected boolean isEmpty(int columnIndex) {
     return inputTsBlocks[columnIndex] == null
         || inputTsBlocks[columnIndex].getPositionCount() == inputIndex[columnIndex];
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + children.stream()
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
+            .sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + RamUsageEstimator.sizeOf(canCallNext)
+        + RamUsageEstimator.sizeOf(noMoreTsBlocks)
+        + RamUsageEstimator.sizeOf(inputIndex)
+        + RamUsageEstimator.sizeOf(shadowInputIndex)
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 }

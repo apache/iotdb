@@ -314,7 +314,9 @@ public class ExportTsFile extends AbstractTsFileTool {
     "squid:S6541"
   }) // Suppress high Cognitive Complexity warning, Suppress many task in one method warning
   public static void writeTsFileFile(SessionDataSet sessionDataSet, String filePath)
-      throws IOException, IoTDBConnectionException, StatementExecutionException,
+      throws IOException,
+          IoTDBConnectionException,
+          StatementExecutionException,
           WriteProcessException {
     List<String> columnNames = sessionDataSet.getColumnNames();
     List<String> columnTypes = sessionDataSet.getColumnTypes();

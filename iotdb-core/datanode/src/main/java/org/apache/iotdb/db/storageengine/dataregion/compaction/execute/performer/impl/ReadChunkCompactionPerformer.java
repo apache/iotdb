@@ -67,7 +67,10 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
 
   @Override
   public void perform()
-      throws IOException, MetadataException, InterruptedException, StorageEngineException,
+      throws IOException,
+          MetadataException,
+          InterruptedException,
+          StorageEngineException,
           PageException {
     // size for file writer is 5% of per compaction task memory budget
     long sizeForFileWriter =

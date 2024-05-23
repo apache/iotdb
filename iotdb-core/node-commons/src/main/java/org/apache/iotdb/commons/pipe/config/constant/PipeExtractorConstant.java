@@ -61,6 +61,12 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_MODS_ENABLE_KEY = "extractor.mods.enable";
   public static final String SOURCE_MODS_ENABLE_KEY = "source.mods.enable";
   public static final boolean EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE = false;
+  public static final String EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY =
+      "extractor.history.terminate-pipe-on-all-consumed";
+  public static final String SOURCE_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY =
+      "source.history.terminate-pipe-on-all-consumed";
+  public static final boolean EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_DEFAULT_VALUE =
+      false;
 
   public static final String EXTRACTOR_REALTIME_ENABLE_KEY = "extractor.realtime.enable";
   public static final String SOURCE_REALTIME_ENABLE_KEY = "source.realtime.enable";

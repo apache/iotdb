@@ -53,6 +53,7 @@ public class DeviceIDFactory {
   private DeviceIDFactory() {
     getDeviceIDFunction = IDeviceID.Factory.DEFAULT_FACTORY::create;
   }
+
   // endregion
 
   /**

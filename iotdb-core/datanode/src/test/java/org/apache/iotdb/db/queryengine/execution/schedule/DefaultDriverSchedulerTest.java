@@ -56,7 +56,8 @@ public class DefaultDriverSchedulerTest {
 
   private final DriverScheduler manager = DriverScheduler.getInstance();
   private ExecutorService instanceNotificationExecutor =
-      IoTDBThreadPoolFactory.newFixedThreadPool(1, "test");;
+      IoTDBThreadPoolFactory.newFixedThreadPool(1, "test");
+  ;
 
   @After
   public void tearDown() throws IOException {

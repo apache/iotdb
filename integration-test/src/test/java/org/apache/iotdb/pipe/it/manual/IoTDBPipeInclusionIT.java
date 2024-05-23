@@ -36,6 +36,7 @@ import org.junit.runner.RunWith;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
@@ -145,6 +146,54 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
   }
 
   @Test
+  public void testAuthInclusionWithPattern() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+
+      extractorAttributes.put("extractor.inclusion", "auth");
+      extractorAttributes.put("path", "root.ln.**");
+
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "create user `ln_write_user` 'write_pwd'",
+              "GRANT READ_DATA, WRITE_DATA ON root.** TO USER ln_write_user;"))) {
+        return;
+      }
+
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv,
+          "LIST PRIVILEGES OF USER ln_write_user",
+          "ROLE,PATH,PRIVILEGES,GRANT OPTION,",
+          new HashSet<>(
+              Arrays.asList(",root.ln.**,READ_DATA,false,", ",root.ln.**,WRITE_DATA,false,")));
+    }
+  }
+
+  @Test
   public void testPureDeleteInclusion() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
@@ -180,7 +229,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
           senderEnv,
           Arrays.asList(
               "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
-              "insert into root.ln.wf01.wt01(time, status) values(0, 1)",
+              "insert into root.ln.wf01.wt01(time, status) values(0, true)",
               "flush"))) {
         return;
       }
@@ -191,7 +240,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
           receiverEnv,
           Arrays.asList(
               "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-              "insert into root.ln.wf01.wt01(time, status1) values(0, 1)",
+              "insert into root.ln.wf01.wt01(time, status1) values(0, true)",
               "flush"))) {
         return;
       }
@@ -206,8 +255,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
           receiverEnv,
           "select * from root.**",
           "Time,root.ln.wf01.wt01.status1,",
-          Collections.emptySet(),
-          10);
+          Collections.emptySet());
     }
   }
 }
