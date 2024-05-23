@@ -49,7 +49,8 @@ public class PipeTransferTabletInsertNodeEventHandler
   protected void updateLeaderCache(TSStatus status) {
     final InsertNode insertNode =
         ((PipeInsertNodeTabletInsertionEvent) event).getInsertNodeViaCacheIfPossible();
-    if (insertNode != null) {
+    // insertNode.getDevicePath() is null for InsertRowsNode
+    if (insertNode != null && insertNode.getDevicePath() != null) {
       connector.updateLeaderCache(
           insertNode.getDevicePath().getFullPath(), status.getRedirectNode());
     }

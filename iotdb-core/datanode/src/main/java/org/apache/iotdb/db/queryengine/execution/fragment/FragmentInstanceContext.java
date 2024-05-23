@@ -29,11 +29,15 @@ import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegionScan;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +45,6 @@ import org.slf4j.LoggerFactory;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -64,8 +67,11 @@ public class FragmentInstanceContext extends QueryContext {
 
   // it will only be used once, after sharedQueryDataSource being inited, it will be set to null
   private List<PartialPath> sourcePaths;
+  // Used for region scan, relating methods are to be added.
+  private Map<IDeviceID, Boolean> devicePathsToAligned;
+
   // Shared by all scan operators in this fragment instance to avoid memory problem
-  private QueryDataSource sharedQueryDataSource;
+  private IQueryDataSource sharedQueryDataSource;
 
   /** closed tsfile used in this fragment instance. */
   private Set<TsFileResource> closedFilePaths;
@@ -79,6 +85,8 @@ public class FragmentInstanceContext extends QueryContext {
   // null for all time partitions
   // empty for zero time partitions
   private List<Long> timePartitions;
+
+  private QueryDataSourceType queryDataSourceType = QueryDataSourceType.SERIES_SCAN;
 
   private final AtomicLong startNanos = new AtomicLong();
   private final AtomicLong endNanos = new AtomicLong();
@@ -151,6 +159,10 @@ public class FragmentInstanceContext extends QueryContext {
 
   public static FragmentInstanceContext createFragmentInstanceContextForCompaction(long queryId) {
     return new FragmentInstanceContext(queryId);
+  }
+
+  public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
+    this.queryDataSourceType = queryDataSourceType;
   }
 
   @TestOnly
@@ -374,8 +386,8 @@ public class FragmentInstanceContext extends QueryContext {
       if (sharedQueryDataSource != null) {
         closedFilePaths = new HashSet<>();
         unClosedFilePaths = new HashSet<>();
-        addUsedFilesForQuery(sharedQueryDataSource);
-        sharedQueryDataSource.setSingleDevice(selectedDeviceIdSet.size() == 1);
+        addUsedFilesForQuery((QueryDataSource) sharedQueryDataSource);
+        ((QueryDataSource) sharedQueryDataSource).setSingleDevice(selectedDeviceIdSet.size() == 1);
       }
     } finally {
       setInitQueryDataSourceCost(System.nanoTime() - startTime);
@@ -383,50 +395,134 @@ public class FragmentInstanceContext extends QueryContext {
     }
   }
 
-  public synchronized QueryDataSource getSharedQueryDataSource() throws QueryProcessException {
+  public void initRegionScanQueryDataSource(Map<IDeviceID, Boolean> devicePathToAligned)
+      throws QueryProcessException {
+    long startTime = System.nanoTime();
+    dataRegion.readLock();
+    try {
+      this.sharedQueryDataSource =
+          dataRegion.queryForDeviceRegionScan(
+              devicePathToAligned,
+              this,
+              globalTimeFilter != null ? globalTimeFilter.copy() : null,
+              timePartitions);
+
+      if (sharedQueryDataSource != null) {
+        closedFilePaths = new HashSet<>();
+        unClosedFilePaths = new HashSet<>();
+        addUsedFilesForRegionQuery((QueryDataSourceForRegionScan) sharedQueryDataSource);
+      }
+    } finally {
+      setInitQueryDataSourceCost(System.nanoTime() - startTime);
+      dataRegion.readUnlock();
+    }
+  }
+
+  public void initRegionScanQueryDataSource(List<PartialPath> pathList)
+      throws QueryProcessException {
+    long startTime = System.nanoTime();
+    dataRegion.readLock();
+    try {
+      this.sharedQueryDataSource =
+          dataRegion.queryForSeriesRegionScan(
+              pathList,
+              this,
+              globalTimeFilter != null ? globalTimeFilter.copy() : null,
+              timePartitions);
+
+      if (sharedQueryDataSource != null) {
+        closedFilePaths = new HashSet<>();
+        unClosedFilePaths = new HashSet<>();
+        addUsedFilesForRegionQuery((QueryDataSourceForRegionScan) sharedQueryDataSource);
+      }
+    } finally {
+      setInitQueryDataSourceCost(System.nanoTime() - startTime);
+      dataRegion.readUnlock();
+    }
+  }
+
+  public synchronized IQueryDataSource getSharedQueryDataSource() throws QueryProcessException {
     if (sharedQueryDataSource == null) {
-      initQueryDataSource(sourcePaths);
-      // friendly for gc
-      sourcePaths = null;
+      switch (queryDataSourceType) {
+        case SERIES_SCAN:
+          initQueryDataSource(sourcePaths);
+          // Friendly for gc
+          sourcePaths = null;
+          break;
+        case DEVICE_REGION_SCAN:
+          initRegionScanQueryDataSource(devicePathsToAligned);
+          devicePathsToAligned = null;
+          break;
+        case TIME_SERIES_REGION_SCAN:
+          initRegionScanQueryDataSource(sourcePaths);
+          sourcePaths = null;
+          break;
+        default:
+          throw new QueryProcessException(
+              "Unsupported query data source type: " + queryDataSourceType);
+      }
     }
     return sharedQueryDataSource;
+  }
+
+  /** Lock and check if tsFileResource is deleted */
+  private boolean processTsFileResource(TsFileResource tsFileResource, boolean isClosed) {
+    addFilePathToMap(tsFileResource, isClosed);
+    // this file may be deleted just before we lock it
+    if (tsFileResource.isDeleted()) {
+      Set<TsFileResource> pathSet = isClosed ? closedFilePaths : unClosedFilePaths;
+      // This resource may be removed by other threads of this query.
+      if (pathSet.remove(tsFileResource)) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
+      }
+      return true;
+    } else {
+      return false;
+    }
   }
 
   /** Add the unique file paths to closeddFilePathsMap and unClosedFilePathsMap. */
   private void addUsedFilesForQuery(QueryDataSource dataSource) {
 
     // sequence data
-    addUsedFilesForQuery(dataSource.getSeqResources());
+    dataSource
+        .getSeqResources()
+        .removeIf(
+            tsFileResource -> processTsFileResource(tsFileResource, tsFileResource.isClosed()));
 
     // Record statistics of seqFiles
     unclosedSeqFileNum = unClosedFilePaths.size();
     closedSeqFileNum = closedFilePaths.size();
 
     // unsequence data
-    addUsedFilesForQuery(dataSource.getUnseqResources());
+    dataSource
+        .getUnseqResources()
+        .removeIf(
+            tsFileResource -> processTsFileResource(tsFileResource, tsFileResource.isClosed()));
 
     // Record statistics of files of unseqFiles
     unclosedUnseqFileNum = unClosedFilePaths.size() - unclosedSeqFileNum;
     closedUnseqFileNum = closedFilePaths.size() - closedSeqFileNum;
   }
 
-  private void addUsedFilesForQuery(List<TsFileResource> resources) {
-    Iterator<TsFileResource> iterator = resources.iterator();
-    while (iterator.hasNext()) {
-      TsFileResource tsFileResource = iterator.next();
-      boolean isClosed = tsFileResource.isClosed();
-      addFilePathToMap(tsFileResource, isClosed);
+  private void addUsedFilesForRegionQuery(QueryDataSourceForRegionScan dataSource) {
+    dataSource
+        .getSeqFileScanHandles()
+        .removeIf(
+            fileScanHandle ->
+                processTsFileResource(fileScanHandle.getTsResource(), fileScanHandle.isClosed()));
 
-      // this file may be deleted just before we lock it
-      if (tsFileResource.isDeleted()) {
-        Set<TsFileResource> pathSet = isClosed ? closedFilePaths : unClosedFilePaths;
-        // This resource may be removed by other threads of this query.
-        if (pathSet.remove(tsFileResource)) {
-          FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
-        }
-        iterator.remove();
-      }
-    }
+    unclosedSeqFileNum = unClosedFilePaths.size();
+    closedSeqFileNum = closedFilePaths.size();
+
+    dataSource
+        .getUnseqFileScanHandles()
+        .removeIf(
+            fileScanHandle ->
+                processTsFileResource(fileScanHandle.getTsResource(), fileScanHandle.isClosed()));
+
+    unclosedUnseqFileNum = unClosedFilePaths.size() - unclosedSeqFileNum;
+    closedUnseqFileNum = closedFilePaths.size() - closedSeqFileNum;
   }
 
   /**

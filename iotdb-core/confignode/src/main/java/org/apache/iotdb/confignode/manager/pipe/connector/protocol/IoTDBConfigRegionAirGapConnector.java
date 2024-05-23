@@ -201,6 +201,8 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
         socket,
         compressIfNeeded(
             PipeTransferConfigSnapshotSealReq.toTPipeTransferBytes(
+                // The pattern is surely Non-null
+                pipeConfigRegionSnapshotEvent.getPatternString(),
                 snapshot.getName(),
                 snapshot.length(),
                 Objects.nonNull(templateFile) ? templateFile.getName() : null,

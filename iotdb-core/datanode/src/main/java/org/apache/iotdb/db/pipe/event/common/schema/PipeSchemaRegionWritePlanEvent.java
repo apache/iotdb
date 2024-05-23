@@ -88,14 +88,14 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
 
   @Override
   public String toString() {
-    return String.format("PipeConfigRegionWritePlanEvent{planNode=%s}", planNode)
+    return String.format("PipeSchemaRegionWritePlanEvent{planNode=%s}", planNode)
         + " - "
         + super.toString();
   }
 
   @Override
   public String coreReportMessage() {
-    return String.format("PipeConfigRegionWritePlanEvent{planNode=%s}", planNode)
+    return String.format("PipeSchemaRegionWritePlanEvent{planNode=%s}", planNode)
         + " - "
         + super.coreReportMessage();
   }
