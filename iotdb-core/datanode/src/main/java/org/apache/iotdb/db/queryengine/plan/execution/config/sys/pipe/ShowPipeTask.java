@@ -45,24 +45,24 @@ public class ShowPipeTask implements IConfigTask {
 
   private final ShowPipesStatement showPipesStatement;
 
-  public ShowPipeTask(ShowPipesStatement showPipesStatement) {
+  public ShowPipeTask(final ShowPipesStatement showPipesStatement) {
     this.showPipesStatement = showPipesStatement;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.showPipes(showPipesStatement);
   }
 
   public static void buildTSBlock(
-      List<TShowPipeInfo> pipeInfoList, SettableFuture<ConfigTaskResult> future) {
-    List<TSDataType> outputDataTypes =
+      final List<TShowPipeInfo> pipeInfoList, final SettableFuture<ConfigTaskResult> future) {
+    final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showPipeColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
-    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (TShowPipeInfo tPipeInfo : pipeInfoList) {
+    final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    for (final TShowPipeInfo tPipeInfo : pipeInfoList) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder
           .getColumnBuilder(0)
@@ -88,9 +88,25 @@ public class ShowPipeTask implements IConfigTask {
       builder
           .getColumnBuilder(6)
           .writeBinary(new Binary(tPipeInfo.getExceptionMessage(), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(7)
+          .writeBinary(
+              new Binary(
+                  tPipeInfo.isSetRemainingEventCount()
+                      ? String.valueOf(tPipeInfo.getRemainingEventCount())
+                      : "Unknown",
+                  TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(8)
+          .writeBinary(
+              new Binary(
+                  tPipeInfo.isSetEstimatedRemainingTime()
+                      ? String.format("%.2f", tPipeInfo.getEstimatedRemainingTime())
+                      : "Unknown",
+                  TSFileConfig.STRING_CHARSET));
       builder.declarePosition();
     }
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeHeader();
+    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

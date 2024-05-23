@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTemporaryMeta;
@@ -130,8 +131,8 @@ public class PipeHeartbeatParser {
       final int nodeId,
       final PipeHeartbeat pipeHeartbeat) {
     for (final PipeMeta pipeMetaFromCoordinator : pipeTaskInfo.get().getPipeMetaList()) {
-      final PipeMeta pipeMetaFromAgent =
-          pipeHeartbeat.getPipeMeta(pipeMetaFromCoordinator.getStaticMeta());
+      final PipeStaticMeta staticMeta = pipeMetaFromCoordinator.getStaticMeta();
+      final PipeMeta pipeMetaFromAgent = pipeHeartbeat.getPipeMeta(staticMeta);
       if (pipeMetaFromAgent == null) {
         LOGGER.info(
             "PipeRuntimeCoordinator meets error in updating pipeMetaKeeper, "
@@ -140,11 +141,11 @@ public class PipeHeartbeatParser {
         continue;
       }
 
+      final PipeTemporaryMeta temporaryMeta = pipeMetaFromCoordinator.getTemporaryMeta();
+
       // Remove completed pipes
-      final Boolean isPipeCompletedFromAgent =
-          pipeHeartbeat.isCompleted(pipeMetaFromCoordinator.getStaticMeta());
+      final Boolean isPipeCompletedFromAgent = pipeHeartbeat.isCompleted(staticMeta);
       if (Boolean.TRUE.equals(isPipeCompletedFromAgent)) {
-        final PipeTemporaryMeta temporaryMeta = pipeMetaFromCoordinator.getTemporaryMeta();
 
         temporaryMeta.markDataNodeCompleted(nodeId);
 
@@ -158,6 +159,10 @@ public class PipeHeartbeatParser {
           continue;
         }
       }
+
+      // Record statistics
+      temporaryMeta.setRemainingEvent(nodeId, pipeHeartbeat.getRemainingEventCount(staticMeta));
+      temporaryMeta.setRemainingTime(nodeId, pipeHeartbeat.getRemainingTime(staticMeta));
 
       final Map<Integer, PipeTaskMeta> pipeTaskMetaMapFromCoordinator =
           pipeMetaFromCoordinator.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();

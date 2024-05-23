@@ -119,7 +119,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
 
   public void register(final IoTDBDataRegionExtractor extractor) {
     // The metric is global thus the regionId is omitted
-    final String pipeID = getPipeID(extractor.getPipeName(), extractor.getCreationTime());
+    final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
         .register(extractor);
@@ -131,7 +131,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
   public void register(
       final PipeConnectorSubtask connectorSubtask, final String pipeName, final long creationTime) {
     // The metric is global thus the regionId is omitted
-    final String pipeID = getPipeID(pipeName, creationTime);
+    final String pipeID = pipeName + "_" + creationTime;
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
         .register(connectorSubtask, pipeName, creationTime);
@@ -142,7 +142,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
 
   public void register(final IoTDBSchemaRegionExtractor extractor) {
     // The metric is global thus the regionId is omitted
-    final String pipeID = getPipeID(extractor.getPipeName(), extractor.getCreationTime());
+    final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
         .register(extractor);
@@ -168,7 +168,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     final String pipeName = pipeTaskRuntimeEnvironment.getPipeName();
     final int regionId = pipeTaskRuntimeEnvironment.getRegionId();
     final long creationTime = pipeTaskRuntimeEnvironment.getCreationTime();
-    final String pipeID = getPipeID(pipeName, creationTime);
+    final String pipeID = pipeName + "_" + creationTime;
 
     if (Objects.isNull(metricService)) {
       return;
@@ -198,18 +198,13 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
-  private static String getPipeID(final String pipeName, final long creationTime) {
-    return pipeName + "_" + creationTime;
-  }
-
   //////////////////////////// Show pipes ////////////////////////////
 
   public Pair<Long, Double> getRemainingEventAndTime(
       final String pipeName, final long creationTime) {
     final PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.computeIfAbsent(
-            getPipeID(pipeName, creationTime),
-            k -> new PipeDataNodeRemainingEventAndTimeOperator());
+            pipeName + "_" + creationTime, k -> new PipeDataNodeRemainingEventAndTimeOperator());
     return new Pair<>(operator.getRemainingEvents(), operator.getRemainingTime());
   }
 
