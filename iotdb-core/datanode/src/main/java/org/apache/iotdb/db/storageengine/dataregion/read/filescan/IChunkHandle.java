@@ -17,11 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.source;
+package org.apache.iotdb.db.storageengine.dataregion.read.filescan;
 
-import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
+import java.io.IOException;
 
-public interface DataSourceOperator extends SourceOperator {
+/** This interface is used to handle the scan of chunks in TSFile. */
+public interface IChunkHandle {
 
-  void initQueryDataSource(IQueryDataSource dataSource);
+  /**
+   * Check If there is more pages to be scanned in Chunk. If so, move to next page and return true
+   */
+  boolean hasNextPage() throws IOException;
+
+  /** Skip the current page */
+  void skipCurrentPage();
+
+  /**
+   * Get the statistics time of page in Chunk.
+   *
+   * @return start time and end time of page.
+   */
+  long[] getPageStatisticsTime();
+
+  /**
+   * Scan the data in the page and get the timestamp. It will cause disk IO if tsFile is not in
+   * memory.
+   *
+   * @return the iterator of timestamp.
+   */
+  long[] getDataTime() throws IOException;
 }

@@ -16,12 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.storageengine.dataregion.read;
 
-package org.apache.iotdb.db.queryengine.execution.operator.source;
-
-import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
-
-public interface DataSourceOperator extends SourceOperator {
-
-  void initQueryDataSource(IQueryDataSource dataSource);
+public enum QueryDataSourceType {
+  SERIES_SCAN,
+  DEVICE_REGION_SCAN,
+  TIME_SERIES_REGION_SCAN
 }

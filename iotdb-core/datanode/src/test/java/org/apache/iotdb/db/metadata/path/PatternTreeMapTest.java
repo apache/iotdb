@@ -55,6 +55,11 @@ public class PatternTreeMapTest {
     patternTreeMap.append(new PartialPath("root.**"), "J");
     patternTreeMap.append(new PartialPath("root.**.**"), "K");
 
+    checkOverlappedByDevice(
+        patternTreeMap,
+        new PartialPath("root.sg1.d1"),
+        Arrays.asList("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"));
+
     checkOverlapped(
         patternTreeMap,
         new PartialPath("root.sg1.d1.s1"),
@@ -160,6 +165,47 @@ public class PatternTreeMapTest {
         patternTreeMap,
         new PartialPath("root.sg1.d1.s2"),
         Collections.singletonList(new Deletion(new PartialPath("root.**"), 5, 10, 100)));
+
+    patternTreeMap.append(
+        new PartialPath("root.sg1.d2.s1"),
+        new Deletion(new PartialPath("root.sg1.d2.s1"), 4, 4, 6));
+    patternTreeMap.append(
+        new PartialPath("root.**.s2"), new Deletion(new PartialPath("root.**.s2"), 4, 4, 6));
+    patternTreeMap.append(
+        new PartialPath("root.sg1.d1.s3"),
+        new Deletion(new PartialPath("root.sg1.d1.s3"), 4, 5, 6));
+    patternTreeMap.append(
+        new PartialPath("root.sg1.d1.*"), new Deletion(new PartialPath("root.sg1.d1.*"), 8, 4, 6));
+    patternTreeMap.append(
+        new PartialPath("root.sg1.d1.*.d3.s5"),
+        new Deletion(new PartialPath("root.sg1.d1.*.d3.s5"), 2, 4, 6));
+    patternTreeMap.append(
+        new PartialPath("root.sg1.d1.*.d3.s4"),
+        new Deletion(new PartialPath("root.sg1.d1.*.d3.s4"), 3, 4, 6));
+
+    checkOverlappedByDevice(
+        patternTreeMap,
+        new PartialPath("root.sg1.d1"),
+        Arrays.asList(
+            new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 1, 3),
+            new Deletion(new PartialPath("root.sg1.d1.s1"), 1, 6, 10),
+            new Deletion(new PartialPath("root.**.s1"), 5, 10, 100),
+            new Deletion(new PartialPath("root.**.s2"), 4, 4, 6),
+            new Deletion(new PartialPath("root.sg1.d1.s3"), 4, 5, 6),
+            new Deletion(new PartialPath("root.**.s1"), 10, 100, 200),
+            new Deletion(new PartialPath("root.sg1.d1.*"), 8, 4, 6),
+            new Deletion(new PartialPath("root.**"), 5, 10, 100)));
+
+    checkOverlappedByDevice(
+        patternTreeMap,
+        new PartialPath("root.sg1.d1.t1.d3"),
+        Arrays.asList(
+            new Deletion(new PartialPath("root.**.s1"), 5, 10, 100),
+            new Deletion(new PartialPath("root.**.s2"), 4, 4, 6),
+            new Deletion(new PartialPath("root.**.s1"), 10, 100, 200),
+            new Deletion(new PartialPath("root.**"), 5, 10, 100),
+            new Deletion(new PartialPath("root.sg1.d1.*.d3.s5"), 2, 4, 6),
+            new Deletion(new PartialPath("root.sg1.d1.*.d3.s4"), 3, 4, 6)));
   }
 
   private <T> void checkOverlapped(
@@ -185,6 +231,15 @@ public class PatternTreeMapTest {
       for (T o : expectedSubList) {
         Assert.assertTrue(actualSubSet.contains(o));
       }
+    }
+  }
+
+  private <T> void checkOverlappedByDevice(
+      PatternTreeMap<T, ?> patternTreeMap, PartialPath devicePath, List<T> expectedList) {
+    Set<T> resultSet = new HashSet<>(patternTreeMap.getDeviceOverlapped(devicePath));
+    Assert.assertEquals(expectedList.size(), resultSet.size());
+    for (T o : expectedList) {
+      Assert.assertTrue(resultSet.contains(o));
     }
   }
 }

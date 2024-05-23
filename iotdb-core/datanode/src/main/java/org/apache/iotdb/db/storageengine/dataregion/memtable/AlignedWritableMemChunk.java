@@ -537,4 +537,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     AlignedTVList list = (AlignedTVList) TVList.deserialize(stream);
     return new AlignedWritableMemChunk(schemaList, list);
   }
+
+  public List<IMeasurementSchema> getSchemaList() {
+    return schemaList;
+  }
 }

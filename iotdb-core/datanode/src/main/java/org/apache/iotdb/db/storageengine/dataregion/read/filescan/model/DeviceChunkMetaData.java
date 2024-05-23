@@ -17,11 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.source;
+package org.apache.iotdb.db.storageengine.dataregion.read.filescan.model;
 
-import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
 
-public interface DataSourceOperator extends SourceOperator {
+import java.util.List;
 
-  void initQueryDataSource(IQueryDataSource dataSource);
+public class DeviceChunkMetaData extends AbstractDeviceChunkMetaData {
+
+  private final List<IChunkMetadata> measurementChunkMetadata;
+
+  public DeviceChunkMetaData(
+      IDeviceID devicePath, List<IChunkMetadata> measurementChunkMetadataMap) {
+    super(devicePath);
+    this.measurementChunkMetadata = measurementChunkMetadataMap;
+  }
+
+  public List<IChunkMetadata> getMeasurementChunkMetadataMap() {
+    return measurementChunkMetadata;
+  }
+
+  @Override
+  public boolean isAligned() {
+    return false;
+  }
 }

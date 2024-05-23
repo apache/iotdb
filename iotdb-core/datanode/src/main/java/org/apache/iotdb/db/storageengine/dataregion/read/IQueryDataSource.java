@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.source;
+package org.apache.iotdb.db.storageengine.dataregion.read;
 
-import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
+public interface IQueryDataSource {
 
-public interface DataSourceOperator extends SourceOperator {
+  IQueryDataSource clone();
 
-  void initQueryDataSource(IQueryDataSource dataSource);
+  long getDataTTL();
 }

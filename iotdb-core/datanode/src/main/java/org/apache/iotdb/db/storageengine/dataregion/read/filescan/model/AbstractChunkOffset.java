@@ -17,11 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.source;
+package org.apache.iotdb.db.storageengine.dataregion.read.filescan.model;
 
-import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 
-public interface DataSourceOperator extends SourceOperator {
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 
-  void initQueryDataSource(IQueryDataSource dataSource);
+import java.io.Serializable;
+
+public abstract class AbstractChunkOffset {
+
+  private final IDeviceID devicePath;
+  private final long offSet;
+
+  protected AbstractChunkOffset(long offSet, IDeviceID devicePath) {
+    this.offSet = offSet;
+    this.devicePath = devicePath;
+  }
+
+  public abstract IChunkHandle generateChunkHandle(
+      String filePath, Statistics<? extends Serializable> statistics);
+
+  public IDeviceID getDevicePath() {
+    return devicePath;
+  }
+
+  public long getOffSet() {
+    return offSet;
+  }
 }
