@@ -24,8 +24,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum SubscriptionMessageType {
-  SUBSCRIPTION_SESSION_DATA_SETS_HANDLER((short) 0),
-  SUBSCRIPTION_TS_FILE_HANDLER((short) 1),
+  SESSION_DATA_SETS_HANDLER((short) 0),
+  TS_FILE_HANDLER((short) 1),
   ;
 
   private final short type;

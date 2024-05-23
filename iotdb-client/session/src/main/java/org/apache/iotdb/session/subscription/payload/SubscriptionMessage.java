@@ -38,14 +38,14 @@ public class SubscriptionMessage
   public SubscriptionMessage(
       final SubscriptionCommitContext commitContext, final List<Tablet> tablets) {
     this.commitContext = commitContext;
-    this.messageType = SubscriptionMessageType.SUBSCRIPTION_SESSION_DATA_SETS_HANDLER.getType();
+    this.messageType = SubscriptionMessageType.SESSION_DATA_SETS_HANDLER.getType();
     this.handler = new SubscriptionSessionDataSetsHandler(tablets);
   }
 
   public SubscriptionMessage(
       final SubscriptionCommitContext commitContext, final String absolutePath) {
     this.commitContext = commitContext;
-    this.messageType = SubscriptionMessageType.SUBSCRIPTION_TS_FILE_HANDLER.getType();
+    this.messageType = SubscriptionMessageType.TS_FILE_HANDLER.getType();
     this.handler = new SubscriptionTsFileHandler(absolutePath);
   }
 

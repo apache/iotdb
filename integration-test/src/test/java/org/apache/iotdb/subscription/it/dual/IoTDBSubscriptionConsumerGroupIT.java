@@ -938,7 +938,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                       final short messageType = message.getMessageType();
                       if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                         switch (SubscriptionMessageType.valueOf(messageType)) {
-                          case SUBSCRIPTION_SESSION_DATA_SETS_HANDLER:
+                          case SESSION_DATA_SETS_HANDLER:
                             {
                               for (final SubscriptionSessionDataSet dataSet :
                                   message.getSessionDataSetsHandler()) {
@@ -954,7 +954,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                               }
                               break;
                             }
-                          case SUBSCRIPTION_TS_FILE_HANDLER:
+                          case TS_FILE_HANDLER:
                             {
                               try (final TsFileReader tsFileReader =
                                   message.getTsFileHandler().openReader()) {
