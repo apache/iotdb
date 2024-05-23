@@ -2077,6 +2077,67 @@ public class TsFileSequenceReader implements AutoCloseable {
     return getChunkMetadataList(path, false);
   }
 
+  public List<AlignedChunkMetadata> getAlignedChunkMetadata(
+      String device, MetadataIndexNode metadataIndexNode) throws IOException {
+    TimeseriesMetadata firstTimeseriesMetadata = tryToGetFirstTimeseriesMetadata(metadataIndexNode);
+    if (firstTimeseriesMetadata == null) {
+      throw new IOException("Timeseries of device {" + device + "} are not aligned");
+    }
+
+    Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
+    List<MetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
+
+    for (int i = 0; i < metadataIndexEntryList.size(); i++) {
+      MetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
+      long endOffset = metadataIndexNode.getEndOffset();
+      if (i != metadataIndexEntryList.size() - 1) {
+        endOffset = metadataIndexEntryList.get(i + 1).getOffset();
+      }
+      ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
+      if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+        List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+        while (buffer.hasRemaining()) {
+          timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer, true));
+        }
+        timeseriesMetadataMap
+            .computeIfAbsent(device, k -> new ArrayList<>())
+            .addAll(timeseriesMetadataList);
+      } else {
+        generateMetadataIndex(
+            metadataIndexEntry,
+            buffer,
+            device,
+            metadataIndexNode.getNodeType(),
+            timeseriesMetadataMap,
+            true);
+      }
+    }
+
+    if (timeseriesMetadataMap.values().size() != 1) {
+      throw new IOException(
+          String.format(
+              "Error when reading timeseriesMetadata of device %s in file %s: should only one timeseriesMetadataList in one device, actual: %d",
+              device, file, timeseriesMetadataMap.values().size()));
+    }
+
+    List<TimeseriesMetadata> timeseriesMetadataList =
+        timeseriesMetadataMap.values().iterator().next();
+    TimeseriesMetadata timeseriesMetadata = timeseriesMetadataList.get(0);
+    List<TimeseriesMetadata> valueTimeseriesMetadataList = new ArrayList<>();
+
+    for (int i = 1; i < timeseriesMetadataList.size(); i++) {
+      valueTimeseriesMetadataList.add(timeseriesMetadataList.get(i));
+    }
+
+    AlignedTimeSeriesMetadata alignedTimeSeriesMetadata =
+        new AlignedTimeSeriesMetadata(timeseriesMetadata, valueTimeseriesMetadataList);
+    List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
+    for (IChunkMetadata chunkMetadata : readIChunkMetaDataList(alignedTimeSeriesMetadata)) {
+      chunkMetadataList.add((AlignedChunkMetadata) chunkMetadata);
+    }
+    return chunkMetadataList;
+  }
+
   /**
    * Get AlignedChunkMetadata of sensors under one device. Notice: if all the value chunks is empty
    * chunk, then return empty list.

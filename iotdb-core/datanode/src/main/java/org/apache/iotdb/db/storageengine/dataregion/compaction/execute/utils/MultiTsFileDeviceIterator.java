@@ -31,6 +31,7 @@ import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -354,9 +355,11 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       if (!currentDevice.equals(iterator.current())) {
         continue;
       }
+      MetadataIndexNode firstMeasurementNodeOfCurrentDevice =
+          iterator.getFirstMeasurementNodeOfCurrentDevice();
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
       List<AlignedChunkMetadata> alignedChunkMetadataList =
-          reader.getAlignedChunkMetadata(currentDevice.left);
+          reader.getAlignedChunkMetadata(currentDevice.left, firstMeasurementNodeOfCurrentDevice);
       applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
       readerAndChunkMetadataList.add(new Pair<>(reader, alignedChunkMetadataList));
     }
