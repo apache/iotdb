@@ -41,8 +41,8 @@ abstract class AbstractSubscriptionDualIT {
     receiverEnv.getConfig().getCommonConfig().setPipeAirGapReceiverEnabled(true);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();

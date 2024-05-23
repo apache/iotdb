@@ -193,4 +193,14 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
   public synchronized boolean isOpened() {
     return !isClosed.get();
   }
+
+  /////////////////////////////// APIs provided for metric framework ///////////////////////////////
+
+  public long getSize() {
+    return queue.size();
+  }
+
+  public long getTailIndex() {
+    return queue.getTailIndex();
+  }
 }

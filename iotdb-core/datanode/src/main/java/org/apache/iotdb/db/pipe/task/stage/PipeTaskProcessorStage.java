@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeC
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
-import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
@@ -65,7 +65,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
       PipeParameters pipeProcessorParameters,
       int regionId,
       EventSupplier pipeExtractorInputEventSupplier,
-      BoundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue,
+      UnboundedBlockingPendingQueue<Event> pipeConnectorOutputPendingQueue,
       PipeProcessorSubtaskExecutor executor,
       PipeTaskMeta pipeTaskMeta) {
     final PipeProcessorRuntimeConfiguration runtimeConfiguration =

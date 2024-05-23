@@ -21,8 +21,8 @@ package org.apache.iotdb.metrics.core.reporter;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.core.IoTDBMetricManager;
-import org.apache.iotdb.metrics.core.uitls.IoTDBMetricObjNameFactory;
-import org.apache.iotdb.metrics.core.uitls.ObjectNameFactory;
+import org.apache.iotdb.metrics.core.utils.IoTDBMetricObjNameFactory;
+import org.apache.iotdb.metrics.core.utils.ObjectNameFactory;
 import org.apache.iotdb.metrics.reporter.JmxReporter;
 import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.utils.MetricInfo;

@@ -27,8 +27,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -119,6 +121,23 @@ public interface IMemTable extends WALEntryValue {
       QueryContext context,
       PartialPath fullPath,
       long ttlLowerBound,
+      List<Pair<Modification, IMemTable>> modsToMemtabled)
+      throws IOException, QueryProcessException, MetadataException;
+
+  void queryForSeriesRegionScan(
+      PartialPath fullPath,
+      long ttlLowerBound,
+      Map<String, List<IChunkMetadata>> chunkMetadataMap,
+      Map<String, List<IChunkHandle>> memChunkHandleMap,
+      List<Pair<Modification, IMemTable>> modsToMemtabled)
+      throws IOException, QueryProcessException, MetadataException;
+
+  void queryForDeviceRegionScan(
+      IDeviceID deviceID,
+      boolean isAligned,
+      long ttlLowerBound,
+      Map<String, List<IChunkMetadata>> chunkMetadataMap,
+      Map<String, List<IChunkHandle>> memChunkHandleMap,
       List<Pair<Modification, IMemTable>> modsToMemtabled)
       throws IOException, QueryProcessException, MetadataException;
 

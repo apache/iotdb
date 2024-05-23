@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 
 import com.google.common.util.concurrent.SettableFuture;
 
@@ -68,13 +68,15 @@ public class DataDriver extends Driver {
   }
 
   /**
-   * Init seq file list and unseq file list in {@link QueryDataSource} and set it into each
+   * Init seq file list and unseq file list in {@link
+   * org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource} and set it into each
    * SourceNode.
    *
    * @throws QueryProcessException while failed to init query resource, QueryProcessException will
    *     be thrown
-   * @throws IllegalStateException if {@link QueryDataSource} is null after initialization,
-   *     IllegalStateException will be thrown
+   * @throws IllegalStateException if {@link
+   *     org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource} is null after
+   *     initialization, IllegalStateException will be thrown
    */
   private void initialize() throws QueryProcessException {
     long startTime = System.nanoTime();
@@ -82,7 +84,7 @@ public class DataDriver extends Driver {
       List<DataSourceOperator> sourceOperators =
           ((DataDriverContext) driverContext).getSourceOperators();
       if (sourceOperators != null && !sourceOperators.isEmpty()) {
-        QueryDataSource dataSource = initQueryDataSource();
+        IQueryDataSource dataSource = initQueryDataSource();
         if (dataSource == null) {
           // If this driver is being initialized, meanwhile the whole FI was aborted or cancelled
           // for some reasons, we may get null QueryDataSource here.
@@ -92,14 +94,7 @@ public class DataDriver extends Driver {
         sourceOperators.forEach(
             sourceOperator -> {
               // Construct QueryDataSource for source operator
-              QueryDataSource queryDataSource =
-                  new QueryDataSource(dataSource.getSeqResources(), dataSource.getUnseqResources());
-
-              queryDataSource.setSingleDevice(dataSource.isSingleDevice());
-
-              queryDataSource.setDataTTL(dataSource.getDataTTL());
-
-              sourceOperator.initQueryDataSource(queryDataSource);
+              sourceOperator.initQueryDataSource(dataSource.clone());
             });
       }
 
@@ -118,12 +113,12 @@ public class DataDriver extends Driver {
 
   /**
    * The method is called in mergeLock() when executing query. This method will get all the {@link
-   * QueryDataSource} needed for this query.
+   * org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource} needed for this query.
    *
    * @throws QueryProcessException while failed to init query resource, QueryProcessException will
    *     be thrown
    */
-  private QueryDataSource initQueryDataSource() throws QueryProcessException {
+  private IQueryDataSource initQueryDataSource() throws QueryProcessException {
     return ((DataDriverContext) driverContext).getSharedQueryDataSource();
   }
 

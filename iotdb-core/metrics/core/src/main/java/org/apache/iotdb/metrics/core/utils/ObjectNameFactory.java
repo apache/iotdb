@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.core.uitls;
+package org.apache.iotdb.metrics.core.utils;
 
 import javax.management.ObjectName;
 

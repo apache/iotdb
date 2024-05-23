@@ -111,10 +111,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeConnectorRetryIntervalMs();
   }
 
-  public int getPipeConnectorPendingQueueSize() {
-    return COMMON_CONFIG.getPipeConnectorPendingQueueSize();
-  }
-
   public boolean isPipeConnectorRPCThriftCompressionEnabled() {
     return COMMON_CONFIG.isPipeConnectorRPCThriftCompressionEnabled();
   }
@@ -137,6 +133,10 @@ public class PipeConfig {
 
   public int getPipeSnapshotExecutionMaxBatchSize() {
     return COMMON_CONFIG.getPipeSnapshotExecutionMaxBatchSize();
+  }
+
+  public double getPipeRemainingTimeCommitRateSmoothingFactor() {
+    return COMMON_CONFIG.getPipeRemainingTimeCommitRateSmoothingFactor();
   }
 
   /////////////////////////////// Meta Consistency ///////////////////////////////
@@ -308,7 +308,6 @@ public class PipeConfig {
     LOGGER.info("PipeConnectorTransferTimeoutMs: {}", getPipeConnectorTransferTimeoutMs());
     LOGGER.info("PipeConnectorReadFileBufferSize: {}", getPipeConnectorReadFileBufferSize());
     LOGGER.info("PipeConnectorRetryIntervalMs: {}", getPipeConnectorRetryIntervalMs());
-    LOGGER.info("PipeConnectorPendingQueueSize: {}", getPipeConnectorPendingQueueSize());
     LOGGER.info(
         "PipeConnectorRPCThriftCompressionEnabled: {}",
         isPipeConnectorRPCThriftCompressionEnabled());
@@ -318,6 +317,9 @@ public class PipeConfig {
         "PipeListeningQueueTransferSnapshotThreshold: {}",
         getPipeListeningQueueTransferSnapshotThreshold());
     LOGGER.info("PipeSnapshotExecutionMaxBatchSize: {}", getPipeSnapshotExecutionMaxBatchSize());
+    LOGGER.info(
+        "PipeRemainingTimeCommitRateSmoothingFactor: {}",
+        getPipeRemainingTimeCommitRateSmoothingFactor());
 
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());

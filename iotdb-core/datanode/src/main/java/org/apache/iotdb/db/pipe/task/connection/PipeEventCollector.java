@@ -20,12 +20,16 @@
 package org.apache.iotdb.db.pipe.task.connection;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -34,34 +38,27 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.LinkedList;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class PipeEventCollector implements EventCollector, AutoCloseable {
+public class PipeEventCollector implements EventCollector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCollector.class);
 
-  private final BoundedBlockingPendingQueue<Event> pendingQueue;
-
-  private final EnrichedDeque<Event> bufferQueue;
+  private final UnboundedBlockingPendingQueue<Event> pendingQueue;
 
   private final long creationTime;
 
   private final int regionId;
 
-  private final AtomicBoolean isClosed = new AtomicBoolean(false);
-
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
 
   public PipeEventCollector(
-      final BoundedBlockingPendingQueue<Event> pendingQueue,
+      final UnboundedBlockingPendingQueue<Event> pendingQueue,
       final long creationTime,
       final int regionId) {
     this.pendingQueue = pendingQueue;
     this.creationTime = creationTime;
     this.regionId = regionId;
-    bufferQueue = new EnrichedDeque<>(new LinkedList<>());
   }
 
   @Override
@@ -73,7 +70,9 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
         parseAndCollectEvent((PipeRawTabletInsertionEvent) event);
       } else if (event instanceof PipeTsFileInsertionEvent) {
         parseAndCollectEvent((PipeTsFileInsertionEvent) event);
-      } else {
+      } else if (event instanceof PipeSchemaRegionWritePlanEvent) {
+        parseAndCollectEvent((PipeSchemaRegionWritePlanEvent) event);
+      } else if (!(event instanceof ProgressReportEvent)) {
         collectEvent(event);
       }
     } catch (final PipeException e) {
@@ -127,7 +126,21 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
     }
   }
 
-  private synchronized void collectEvent(final Event event) {
+  private void parseAndCollectEvent(final PipeSchemaRegionWritePlanEvent deleteDataEvent) {
+    IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
+        .process(deleteDataEvent.getPlanNode(), (IoTDBPipePattern) deleteDataEvent.getPipePattern())
+        .map(
+            planNode ->
+                new PipeSchemaRegionWritePlanEvent(
+                    planNode,
+                    deleteDataEvent.getPipeName(),
+                    deleteDataEvent.getPipeTaskMeta(),
+                    deleteDataEvent.getPipePattern(),
+                    deleteDataEvent.isGeneratedByPipe()))
+        .ifPresent(this::collectEvent);
+  }
+
+  private void collectEvent(final Event event) {
     collectInvocationCount.incrementAndGet();
 
     if (event instanceof EnrichedEvent) {
@@ -137,32 +150,12 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
       PipeEventCommitManager.getInstance()
           .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
     }
+
     if (event instanceof PipeHeartbeatEvent) {
-      ((PipeHeartbeatEvent) event).recordBufferQueueSize(bufferQueue);
       ((PipeHeartbeatEvent) event).recordConnectorQueueSize(pendingQueue);
     }
 
-    while (!isClosed.get() && !bufferQueue.isEmpty()) {
-      final Event bufferedEvent = bufferQueue.peek();
-      // Try to put already buffered events into pending queue, if pending queue is full, wait for
-      // pending queue to be available with timeout.
-      if (pendingQueue.waitedOffer(bufferedEvent)) {
-        bufferQueue.poll();
-      } else {
-        // We can NOT keep too many PipeHeartbeatEvent in bufferQueue because they may cause OOM.
-        if (event instanceof PipeHeartbeatEvent
-            && bufferQueue.peekLast() instanceof PipeHeartbeatEvent) {
-          ((EnrichedEvent) event).decreaseReferenceCount(PipeEventCollector.class.getName(), false);
-        } else {
-          bufferQueue.offer(event);
-        }
-        return;
-      }
-    }
-
-    if (!pendingQueue.waitedOffer(event)) {
-      bufferQueue.offer(event);
-    }
+    pendingQueue.directOffer(event);
   }
 
   public void resetCollectInvocationCount() {
@@ -171,56 +164,5 @@ public class PipeEventCollector implements EventCollector, AutoCloseable {
 
   public boolean hasNoCollectInvocationAfterReset() {
     return collectInvocationCount.get() == 0;
-  }
-
-  public boolean isBufferQueueEmpty() {
-    return bufferQueue.isEmpty();
-  }
-
-  /**
-   * Try to collect buffered events into {@link PipeEventCollector#pendingQueue}.
-   *
-   * @return {@code true} if there are still buffered events after this operation, {@code false}
-   *     otherwise.
-   */
-  public synchronized boolean tryCollectBufferedEvents() {
-    while (!isClosed.get() && !bufferQueue.isEmpty()) {
-      final Event bufferedEvent = bufferQueue.peek();
-      if (pendingQueue.waitedOffer(bufferedEvent)) {
-        bufferQueue.poll();
-      } else {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  public void close() {
-    isClosed.set(true);
-    doClose();
-  }
-
-  private synchronized void doClose() {
-    bufferQueue.forEach(
-        event -> {
-          if (event instanceof EnrichedEvent) {
-            ((EnrichedEvent) event).clearReferenceCount(PipeEventCollector.class.getName());
-          }
-        });
-    bufferQueue.clear();
-  }
-
-  //////////////////////////// APIs provided for metric framework ////////////////////////////
-
-  public int getTabletInsertionEventCount() {
-    return bufferQueue.getTabletInsertionEventCount();
-  }
-
-  public int getTsFileInsertionEventCount() {
-    return bufferQueue.getTsFileInsertionEventCount();
-  }
-
-  public int getPipeHeartbeatEventCount() {
-    return bufferQueue.getPipeHeartbeatEventCount();
   }
 }

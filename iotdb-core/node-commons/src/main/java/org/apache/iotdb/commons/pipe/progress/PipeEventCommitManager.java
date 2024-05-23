@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.progress;
 
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCommitMetrics;
 
@@ -26,16 +27,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 public class PipeEventCommitManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitManager.class);
 
-  // key: pipeName_dataRegionId
+  // key: pipeName_regionId
   private final Map<String, PipeEventCommitter> eventCommitterMap = new ConcurrentHashMap<>();
 
-  public void register(String pipeName, long creationTime, int regionId, String pipePluginName) {
+  private Consumer<PipeTaskRuntimeEnvironment> commitRateMarker;
+
+  public void register(
+      final String pipeName,
+      final long creationTime,
+      final int regionId,
+      final String pipePluginName) {
     if (pipeName == null || pipePluginName == null) {
       return;
     }
@@ -43,20 +52,21 @@ public class PipeEventCommitManager {
     final String committerKey = generateCommitterKey(pipeName, creationTime, regionId);
     if (eventCommitterMap.containsKey(committerKey)) {
       LOGGER.warn(
-          "Pipe with same name is already registered on this data region, overwriting: {}",
+          "Pipe with same name is already registered on this region, overwriting: {}",
           committerKey);
     }
-    PipeEventCommitter eventCommitter = new PipeEventCommitter(pipeName, creationTime, regionId);
+    final PipeEventCommitter eventCommitter =
+        new PipeEventCommitter(pipeName, creationTime, regionId);
     eventCommitterMap.put(committerKey, eventCommitter);
     PipeEventCommitMetrics.getInstance().register(eventCommitter, committerKey);
-    LOGGER.info("Pipe committer registered for pipe on data region: {}", committerKey);
+    LOGGER.info("Pipe committer registered for pipe on region: {}", committerKey);
   }
 
-  public void deregister(String pipeName, long creationTime, int regionId) {
+  public void deregister(final String pipeName, final long creationTime, final int regionId) {
     final String committerKey = generateCommitterKey(pipeName, creationTime, regionId);
     eventCommitterMap.remove(committerKey);
     PipeEventCommitMetrics.getInstance().deregister(committerKey);
-    LOGGER.info("Pipe committer deregistered for pipe on data region: {}", committerKey);
+    LOGGER.info("Pipe committer deregistered for pipe on region: {}", committerKey);
   }
 
   /**
@@ -64,7 +74,7 @@ public class PipeEventCommitManager {
    * calling this.
    */
   public void enrichWithCommitterKeyAndCommitId(
-      EnrichedEvent event, long creationTime, int regionId) {
+      final EnrichedEvent event, final long creationTime, final int regionId) {
     if (event == null || event.getPipeName() == null || !event.needToCommit()) {
       return;
     }
@@ -77,15 +87,15 @@ public class PipeEventCommitManager {
     event.setCommitterKeyAndCommitId(committerKey, committer.generateCommitId());
   }
 
-  public void commit(EnrichedEvent event, String committerKey) {
-    if (event == null
+  public void commit(final EnrichedEvent event, final String committerKey) {
+    if (committerKey == null
+        || event == null
         || !event.needToCommit()
-        || event.getCommitId() <= EnrichedEvent.NO_COMMIT_ID
-        || committerKey == null) {
+        || event.getCommitId() <= EnrichedEvent.NO_COMMIT_ID) {
       return;
     }
-
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
+
     if (committer == null) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
@@ -96,11 +106,31 @@ public class PipeEventCommitManager {
       }
       return;
     }
+
     committer.commit(event);
+    if (Objects.nonNull(commitRateMarker)) {
+      try {
+        commitRateMarker.accept(
+            new PipeTaskRuntimeEnvironment(
+                committer.getPipeName(), committer.getCreationTime(), committer.getRegionId()));
+      } catch (Exception e) {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "Failed to mark commit rate for pipe: {}, stack trace: {}",
+              committerKey,
+              Thread.currentThread().getStackTrace());
+        }
+      }
+    }
   }
 
-  private static String generateCommitterKey(String pipeName, long creationTime, int regionId) {
+  private static String generateCommitterKey(
+      final String pipeName, final long creationTime, final int regionId) {
     return String.format("%s_%s_%s", pipeName, regionId, creationTime);
+  }
+
+  public void setCommitRateMarker(final Consumer<PipeTaskRuntimeEnvironment> commitRateMarker) {
+    this.commitRateMarker = commitRateMarker;
   }
 
   private PipeEventCommitManager() {
