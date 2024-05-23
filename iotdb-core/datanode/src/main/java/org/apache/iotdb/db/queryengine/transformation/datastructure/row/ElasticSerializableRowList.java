@@ -27,7 +27,6 @@ import org.apache.iotdb.db.queryengine.transformation.datastructure.iterator.Row
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.BitMap;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,9 +44,6 @@ public class ElasticSerializableRowList {
 
   protected LRUCache cache;
   protected List<SerializableRowList> internalRowList;
-
-  /** Mark bitMaps of correct index when one row has at least one null field. */
-  protected List<BitMap> bitMaps;
 
   protected int rowCount;
   protected int lastRowCount;
@@ -91,7 +87,6 @@ public class ElasticSerializableRowList {
 
     cache = new ElasticSerializableRowList.LRUCache(numCacheBlock);
     internalRowList = new ArrayList<>();
-    bitMaps = new ArrayList<>();
 
     rowCount = 0;
     evictionUpperBound = 0;
@@ -133,7 +128,6 @@ public class ElasticSerializableRowList {
 
     cache = new ElasticSerializableRowList.LRUCache(numCacheBlock);
     internalRowList = new ArrayList<>();
-    bitMaps = new ArrayList<>();
 
     rowCount = 0;
     evictionUpperBound = 0;
@@ -211,9 +205,8 @@ public class ElasticSerializableRowList {
 
       end += consumed;
 
-      // Fill row record list and bitmap
+      // Fill row record list
       cache.get(rowCount / internalRowListCapacity).putColumns(insertedColumns);
-      markBitMapByColumns(insertedColumns);
 
       total -= consumed;
       rowCount += consumed;
@@ -250,7 +243,6 @@ public class ElasticSerializableRowList {
     while (total > 0) {
       int consumed = Math.min(total, internalRowListCapacity);
       cache.get(rowCount / internalRowListCapacity).putNulls(consumed);
-      markAllBitMap(consumed);
 
       total -= consumed;
       rowCount += consumed;
@@ -320,29 +312,6 @@ public class ElasticSerializableRowList {
 
   private void doExpansion() {
     internalRowList.add(SerializableRowList.construct(queryId, dataTypes));
-    bitMaps.add(new BitMap(internalRowListCapacity));
-  }
-
-  private void markBitMapByColumns(Column[] columns) {
-    BitMap bitmap = bitMaps.get(rowCount / internalRowListCapacity);
-
-    int offset = rowCount % internalRowListCapacity;
-    for (int i = 0; i < columns[0].getPositionCount(); i++) {
-      for (Column column : columns) {
-        if (column.isNull(i)) {
-          bitmap.mark(offset + i);
-          break;
-        }
-      }
-    }
-  }
-
-  private void markAllBitMap(int count) {
-    BitMap bitmap = bitMaps.get(rowCount / internalRowListCapacity);
-
-    for (int i = 0; i < count; i++) {
-      bitmap.mark(i);
-    }
   }
 
   protected void checkMemoryUsage() throws IOException, QueryProcessException {
@@ -405,7 +374,6 @@ public class ElasticSerializableRowList {
     int internalListEvictionUpperBound = evictionUpperBound / newInternalRowRecordListCapacity;
     for (int i = 0; i < internalListEvictionUpperBound; ++i) {
       newESRowList.internalRowList.add(null);
-      newESRowList.bitMaps.add(null);
     }
     // Put all null columns to middle list
     newESRowList.rowCount = internalListEvictionUpperBound * newInternalRowRecordListCapacity;
@@ -420,7 +388,6 @@ public class ElasticSerializableRowList {
     internalRowListCapacity = newInternalRowRecordListCapacity;
     cache = newESRowList.cache;
     internalRowList = newESRowList.internalRowList;
-    bitMaps = newESRowList.bitMaps;
     // Update metrics
     byteArrayLengthForMemoryControl = newByteArrayLengthForMemoryControl;
     rowByteArrayLength = (long) byteArrayLengthForMemoryControl * indexListOfTextFields.length;
@@ -438,8 +405,16 @@ public class ElasticSerializableRowList {
 
   /** true if any field except the timestamp in the current row is null. */
   @TestOnly
-  public boolean fieldsHasAnyNull(int index) {
-    return bitMaps.get(index / internalRowListCapacity).isMarked(index % internalRowListCapacity);
+  public boolean fieldsHasAnyNull(int index) throws IOException {
+    Object[] row =
+        cache.get(index / internalRowListCapacity).getRow(index % internalRowListCapacity);
+    for (Object field : row) {
+      if (field == null) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   public int getLastRowIndex(int externalIndex, int internalIndex) {
@@ -471,7 +446,6 @@ public class ElasticSerializableRowList {
           int lastIndex = getLast();
           if (lastIndex < evictionUpperBound / internalRowListCapacity) {
             internalRowList.set(lastIndex, null);
-            bitMaps.set(lastIndex, null);
           } else {
             internalRowList.get(lastIndex).serialize();
           }
