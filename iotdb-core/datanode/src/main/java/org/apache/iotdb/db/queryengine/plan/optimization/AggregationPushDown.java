@@ -293,23 +293,24 @@ public class AggregationPushDown implements PlanOptimizer {
 
         // After pushing down the predicate, the original scan nodes are no longer needed, we should
         // release the memory that they occupied.
-        releaseMemoryForOldScanNodes(node, context.getContext());
+        context.getContext().releaseMemoryForFrontEnd(getRamBytesUsedOfOldScanNodes(child));
         return resultNode;
       }
       // cannot push down
       return node;
     }
 
-    private void releaseMemoryForOldScanNodes(PlanNode node, MPPQueryContext queryContext) {
+    private long getRamBytesUsedOfOldScanNodes(final PlanNode node) {
       if (node == null) {
-        return;
+        return 0L;
       }
       if (node instanceof SeriesScanSourceNode) {
         SeriesScanSourceNode scanNode = (SeriesScanSourceNode) node;
-        queryContext.releaseMemoryForFrontEnd(scanNode.ramBytesUsed());
+        return scanNode.ramBytesUsed();
       } else if (node instanceof FullOuterTimeJoinNode) {
-        node.getChildren().forEach(child -> releaseMemoryForOldScanNodes(child, queryContext));
+        return node.getChildren().stream().mapToLong(this::getRamBytesUsedOfOldScanNodes).sum();
       }
+      return 0L;
     }
 
     private void createAggregationDescriptor(

@@ -306,6 +306,8 @@ public class MPPQueryContext {
     queryPlanStatistics.setLogicalOptimizationCost(logicalOptimizeCost);
   }
 
+  // region =========== FE memory related, make sure its not called concurrently ===========
+
   /**
    * This method does not require concurrency control because the query plan is generated in a
    * single-threaded manner.
@@ -318,18 +320,34 @@ public class MPPQueryContext {
   }
 
   public void reserveMemoryForFrontEndImmediately() {
-    LOCAL_EXECUTION_PLANNER.reserveMemoryForQueryFrontEnd(
-        bytesToBeReservedForFrontEnd, reservedBytesInTotalForFrontEnd, queryId.getId());
-    this.reservedBytesInTotalForFrontEnd += bytesToBeReservedForFrontEnd;
-    this.bytesToBeReservedForFrontEnd = 0;
+    if (bytesToBeReservedForFrontEnd != 0) {
+      LOCAL_EXECUTION_PLANNER.reserveMemoryForQueryFrontEnd(
+          bytesToBeReservedForFrontEnd, reservedBytesInTotalForFrontEnd, queryId.getId());
+      this.reservedBytesInTotalForFrontEnd += bytesToBeReservedForFrontEnd;
+      this.bytesToBeReservedForFrontEnd = 0;
+    }
   }
 
   public void releaseMemoryForFrontEnd() {
-    releaseMemoryForFrontEnd(reservedBytesInTotalForFrontEnd);
+    if (reservedBytesInTotalForFrontEnd != 0) {
+      LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(reservedBytesInTotalForFrontEnd);
+      reservedBytesInTotalForFrontEnd = 0;
+    }
   }
 
   public void releaseMemoryForFrontEnd(final long bytes) {
-    LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(bytes);
-    reservedBytesInTotalForFrontEnd -= bytes;
+    if (bytes != 0) {
+      long bytesToRelease;
+      if (bytes <= bytesToBeReservedForFrontEnd) {
+        bytesToBeReservedForFrontEnd -= bytes;
+      } else {
+        bytesToRelease = bytes - bytesToBeReservedForFrontEnd;
+        bytesToBeReservedForFrontEnd = 0;
+        LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(bytesToRelease);
+        reservedBytesInTotalForFrontEnd -= bytes;
+      }
+    }
   }
+
+  // endregion
 }
