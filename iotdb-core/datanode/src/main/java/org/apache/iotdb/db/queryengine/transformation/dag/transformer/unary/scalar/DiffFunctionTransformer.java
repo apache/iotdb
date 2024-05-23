@@ -74,6 +74,7 @@ public class DiffFunctionTransformer extends UnaryTransformer {
     for (int i = 0; i < count; i++) {
       if (columns[0].isNull(i)) {
         lastValueIsNull |= !ignoreNull;
+        builder.appendNull();
       } else {
         double currentValue = columns[0].getInt(i);
 
@@ -97,6 +98,7 @@ public class DiffFunctionTransformer extends UnaryTransformer {
     for (int i = 0; i < count; i++) {
       if (columns[0].isNull(i)) {
         lastValueIsNull |= !ignoreNull;
+        builder.appendNull();
       } else {
         double currentValue = columns[0].getLong(i);
 
@@ -120,6 +122,7 @@ public class DiffFunctionTransformer extends UnaryTransformer {
     for (int i = 0; i < count; i++) {
       if (columns[0].isNull(i)) {
         lastValueIsNull |= !ignoreNull;
+        builder.appendNull();
       } else {
         double currentValue = columns[0].getFloat(i);
 
@@ -143,6 +146,7 @@ public class DiffFunctionTransformer extends UnaryTransformer {
     for (int i = 0; i < count; i++) {
       if (columns[0].isNull(i)) {
         lastValueIsNull |= !ignoreNull;
+        builder.appendNull();
       } else {
         double currentValue = columns[0].getDouble(i);
 

@@ -317,7 +317,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         builder = new FloatColumnBuilder(null, count);
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
-            builder.writeDouble(CastFunctionHelper.castDoubleToFloat(values[i]));
+            builder.writeFloat(CastFunctionHelper.castDoubleToFloat(values[i]));
           } else {
             builder.appendNull();
           }
@@ -387,7 +387,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         builder = new FloatColumnBuilder(null, count);
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
-            builder.writeDouble(values[i] ? 1.0f : 0);
+            builder.writeFloat(values[i] ? 1.0f : 0);
           } else {
             builder.appendNull();
           }
@@ -460,7 +460,7 @@ public class CastFunctionTransformer extends UnaryTransformer {
         for (int i = 0; i < count; i++) {
           if (!isNulls[i]) {
             String str = values[i].getStringValue(TSFileConfig.STRING_CHARSET);
-            builder.writeDouble(CastFunctionHelper.castTextToFloat(str));
+            builder.writeFloat(CastFunctionHelper.castTextToFloat(str));
           } else {
             builder.appendNull();
           }
