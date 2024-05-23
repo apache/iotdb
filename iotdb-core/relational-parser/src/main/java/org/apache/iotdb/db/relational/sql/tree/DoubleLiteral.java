@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 import static java.util.Objects.requireNonNull;
 
 public class DoubleLiteral extends Literal {
@@ -76,5 +82,20 @@ public class DoubleLiteral extends Literal {
     }
 
     return value == ((DoubleLiteral) other).value;
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.DOUBLE_LITERAL;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(this.value, stream);
+  }
+
+  public DoubleLiteral(ByteBuffer byteBuffer) {
+    super(null);
+    this.value = ReadWriteIOUtils.readDouble(byteBuffer);
   }
 }

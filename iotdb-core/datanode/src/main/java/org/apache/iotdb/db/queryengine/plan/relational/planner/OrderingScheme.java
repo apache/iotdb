@@ -17,7 +17,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -57,6 +63,49 @@ public class OrderingScheme {
   public SortOrder getOrdering(Symbol symbol) {
     checkArgument(orderings.containsKey(symbol), "No ordering for symbol: %s", symbol);
     return orderings.get(symbol);
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(orderBy.size(), byteBuffer);
+    for (Symbol symbol : orderBy) {
+      Symbol.serialize(symbol, byteBuffer);
+    }
+
+    ReadWriteIOUtils.write(orderings.size(), byteBuffer);
+    for (Map.Entry<Symbol, SortOrder> entry : orderings.entrySet()) {
+      Symbol.serialize(entry.getKey(), byteBuffer);
+      ReadWriteIOUtils.write(entry.getValue().ordinal(), byteBuffer);
+    }
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(orderBy.size(), stream);
+    for (Symbol symbol : orderBy) {
+      Symbol.serialize(symbol, stream);
+    }
+
+    ReadWriteIOUtils.write(orderings.size(), stream);
+    for (Map.Entry<Symbol, SortOrder> entry : orderings.entrySet()) {
+      Symbol.serialize(entry.getKey(), stream);
+      ReadWriteIOUtils.write(entry.getValue().ordinal(), stream);
+    }
+  }
+
+  public static OrderingScheme deserialize(ByteBuffer byteBuffer) {
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Symbol> orderBy = new ArrayList<>(size);
+    while (size-- > 0) {
+      orderBy.add(Symbol.deserialize(byteBuffer));
+    }
+
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    Map<Symbol, SortOrder> orderings = new HashMap<>(size);
+    while (size-- > 0) {
+      orderings.put(
+          Symbol.deserialize(byteBuffer), SortOrder.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
+    }
+
+    return new OrderingScheme(orderBy, orderings);
   }
 
   @Override

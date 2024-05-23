@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -55,10 +56,22 @@ public class FilterNode extends SingleChildProcessNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_FILTER_NODE.serialize(byteBuffer);
+    Expression.serialize(predicate, byteBuffer);
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TABLE_FILTER_NODE.serialize(stream);
+    Expression.serialize(predicate, stream);
+  }
+
+  public static FilterNode deserialize(ByteBuffer byteBuffer) {
+    Expression predicate = Expression.deserialize(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new FilterNode(planNodeId, null, predicate);
+  }
 
   public Expression getPredicate() {
     return predicate;

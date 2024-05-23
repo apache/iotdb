@@ -22,6 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
@@ -73,5 +79,17 @@ public class Symbol implements Comparable<Symbol> {
   @Override
   public int compareTo(Symbol o) {
     return name.compareTo(o.name);
+  }
+
+  public static void serialize(Symbol symbol, ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(symbol.getName(), byteBuffer);
+  }
+
+  public static void serialize(Symbol symbol, DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(symbol.getName(), stream);
+  }
+
+  public static Symbol deserialize(ByteBuffer byteBuffer) {
+    return new Symbol(ReadWriteIOUtils.readString(byteBuffer));
   }
 }

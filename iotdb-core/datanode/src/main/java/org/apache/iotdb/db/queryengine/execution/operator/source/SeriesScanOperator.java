@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
@@ -44,7 +44,7 @@ public class SeriesScanOperator extends AbstractDataSourceOperator {
   public SeriesScanOperator(
       OperatorContext context,
       PlanNodeId sourceId,
-      PartialPath seriesPath,
+      IFullPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions seriesScanOptions) {
     this.sourceId = sourceId;

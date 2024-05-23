@@ -310,12 +310,15 @@ public class Analysis implements IAnalysis {
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
-    return dataPartition.getDataRegionReplicaSetWithTimeFilter(seriesPath.getDevice(), timefilter);
+    return dataPartition.getDataRegionReplicaSetWithTimeFilter(
+        seriesPath.getIDeviceID().toString(), timefilter);
   }
 
   public TRegionReplicaSet getPartitionInfo(
       PartialPath seriesPath, TTimePartitionSlot tTimePartitionSlot) {
-    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), tTimePartitionSlot).get(0);
+    return dataPartition
+        .getDataRegionReplicaSet(seriesPath.getIDeviceID().toString(), tTimePartitionSlot)
+        .get(0);
   }
 
   /**
@@ -324,7 +327,7 @@ public class Analysis implements IAnalysis {
    */
   public List<List<TTimePartitionSlot>> getTimePartitionRange(
       PartialPath seriesPath, Filter timefilter) {
-    return dataPartition.getTimePartitionRange(seriesPath.getDevice(), timefilter);
+    return dataPartition.getTimePartitionRange(seriesPath.getIDeviceID().toString(), timefilter);
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {

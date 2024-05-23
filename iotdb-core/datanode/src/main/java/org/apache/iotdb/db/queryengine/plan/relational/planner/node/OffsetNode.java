@@ -16,9 +16,11 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -49,10 +51,22 @@ public class OffsetNode extends SingleChildProcessNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_OFFSET_NODE.serialize(byteBuffer);
+    ReadWriteIOUtils.write(count, byteBuffer);
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TABLE_OFFSET_NODE.serialize(stream);
+    ReadWriteIOUtils.write(count, stream);
+  }
+
+  public static OffsetNode deserialize(ByteBuffer byteBuffer) {
+    long count = ReadWriteIOUtils.read(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new OffsetNode(planNodeId, null, count);
+  }
 
   @Override
   public List<Symbol> getOutputSymbols() {

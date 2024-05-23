@@ -23,6 +23,9 @@ import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -55,6 +58,25 @@ public class LikePredicate extends Expression {
     this.value = requireNonNull(value, "value is null");
     this.pattern = requireNonNull(pattern, "pattern is null");
     this.escape = requireNonNull(escape, "escape is null");
+  }
+
+  public LikePredicate(ByteBuffer byteBuffer) {
+    super(null);
+    this.value = Expression.deserialize(byteBuffer);
+    this.pattern = Expression.deserialize(byteBuffer);
+    this.escape = Expression.deserialize(byteBuffer);
+  }
+
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.LIKE_PREDICATE;
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    Expression.serialize(value, stream);
+    Expression.serialize(pattern, stream);
+    Expression.serialize(escape, stream);
   }
 
   public Expression getValue() {

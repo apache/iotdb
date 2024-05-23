@@ -34,6 +34,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
@@ -63,7 +64,7 @@ public class LocalExecutionPlanContext {
   private final DriverContext driverContext;
   private final AtomicInteger nextOperatorId;
   private final TypeProvider typeProvider;
-  private final Map<String, Set<String>> allSensorsMap;
+  private final Map<IDeviceID, Set<String>> allSensorsMap;
   private int degreeOfParallelism =
       IoTDBDescriptor.getInstance().getConfig().getDegreeOfParallelism();
   // this is shared with all subContexts
@@ -222,7 +223,7 @@ public class LocalExecutionPlanContext {
             exchangeOperator.getSourceHandle().setMaxBytesCanReserve(maxBytesOneHandleCanReserve));
   }
 
-  public Set<String> getAllSensors(String deviceId, String sensorId) {
+  public Set<String> getAllSensors(IDeviceID deviceId, String sensorId) {
     Set<String> allSensors = allSensorsMap.computeIfAbsent(deviceId, k -> new HashSet<>());
     allSensors.add(sensorId);
     return allSensors;
