@@ -148,7 +148,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
       // in this case, all data can be matched without checking the measurements
-      if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceStr)) {
+      if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
         if (!entry.getValue().isEmpty()) {
           filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
         }
@@ -156,11 +156,11 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
       // case 2: for example, pattern is root.a.b.c and device is root.a.b
       // in this case, we need to check the full path
-      else if (pattern.mayOverlapWithDevice(deviceStr)) {
+      else if (pattern.mayOverlapWithDevice(deviceId)) {
         final List<String> filteredMeasurements = new ArrayList<>();
 
         for (final String measurement : entry.getValue()) {
-          if (pattern.matchesMeasurement(deviceStr, measurement)) {
+          if (pattern.matchesMeasurement(deviceId, measurement)) {
             filteredMeasurements.add(measurement);
           } else {
             // Parse pattern iff there are measurements filtered out
