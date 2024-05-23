@@ -34,6 +34,7 @@ public class IoTDBSyncClient extends IClientRPCService.Client
 
   private final String ipAddress;
   private final int port;
+  private final TEndPoint endPoint;
 
   public IoTDBSyncClient(
       ThriftClientProperty property,
@@ -58,6 +59,7 @@ public class IoTDBSyncClient extends IClientRPCService.Client
                         ipAddress, port, property.getConnectionTimeoutMs())));
     this.ipAddress = ipAddress;
     this.port = port;
+    this.endPoint = new TEndPoint(ipAddress, port);
     final TTransport transport = getInputProtocol().getTransport();
     if (!transport.isOpen()) {
       transport.open();
@@ -73,7 +75,7 @@ public class IoTDBSyncClient extends IClientRPCService.Client
   }
 
   public TEndPoint getEndPoint() {
-    return new TEndPoint(ipAddress, port);
+    return endPoint;
   }
 
   public void setTimeout(int timeout) {

@@ -158,7 +158,7 @@ public class PipeTransferTsFileInsertionEventHandler
 
     connector.rateLimitIfNeeded(client.getEndPoint(), req.getBody().length);
 
-    client.pipeTransfer(req);
+    client.pipeTransfer(req, this);
 
     position += readLength;
   }
