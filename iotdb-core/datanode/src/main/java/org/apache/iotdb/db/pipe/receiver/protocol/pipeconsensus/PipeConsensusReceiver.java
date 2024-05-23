@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensusServerImpl;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
@@ -89,20 +90,28 @@ public class PipeConsensusReceiver {
   private final PipeConsensus pipeConsensus;
   private final ConsensusGroupId consensusGroupId;
   // Used to buffer TsFile when transfer TsFile asynchronously.
-  private static final String[] RECEIVER_FILE_BASE_DIRS =
-      IoTDBDescriptor.getInstance().getConfig().getPipeConsensusReceiverFileDirs();
+  private final List<String> receiverBaseDirsName;
   private final TsFileDiskBufferPool tsFileDiskBufferPool = new TsFileDiskBufferPool();
   private final AtomicReference<File> receiverFileDirWithIdSuffix = new AtomicReference<>();
   private FolderManager folderManager;
 
-  public PipeConsensusReceiver(PipeConsensus pipeConsensus, ConsensusGroupId consensusGroupId) {
+  public PipeConsensusReceiver(
+      PipeConsensus pipeConsensus,
+      ConsensusGroupId consensusGroupId,
+      ConsensusPipeName consensusPipeName) {
     this.pipeConsensus = pipeConsensus;
     this.consensusGroupId = consensusGroupId;
 
+    // Each pipeConsensusReceiver has its own base directories. for example, a default dir path is
+    // data/datanode/system/pipe/consensus/receiver/consensus{consensusGroupId}_{leaderDataNodeId}_{followerDataNodeId}
+    receiverBaseDirsName =
+        Arrays.stream(IoTDBDescriptor.getInstance().getConfig().getPipeConsensusReceiverFileDirs())
+            .map(s -> s + File.separator + consensusPipeName)
+            .collect(Collectors.toList());
+
     try {
       this.folderManager =
-          new FolderManager(
-              Arrays.asList(RECEIVER_FILE_BASE_DIRS), DirectoryStrategyType.SEQUENCE_STRATEGY);
+          new FolderManager(receiverBaseDirsName, DirectoryStrategyType.SEQUENCE_STRATEGY);
       initiateTsFileBufferFolder();
     } catch (DiskSpaceInsufficientException e) {
       LOGGER.error(
@@ -819,7 +828,7 @@ public class PipeConsensusReceiver {
       if (Objects.isNull(receiverFileBaseDir)) {
         LOGGER.warn(
             "Failed to init pipeConsensus receiver file folder manager because all disks of folders are full.");
-        throw new DiskSpaceInsufficientException(Arrays.asList(RECEIVER_FILE_BASE_DIRS));
+        throw new DiskSpaceInsufficientException(receiverBaseDirsName);
       }
       // Create a new receiver file dir
       final File newReceiverDir = new File(receiverFileBaseDir, consensusGroupId.toString());
@@ -828,7 +837,7 @@ public class PipeConsensusReceiver {
             "PipeConsensus-ConsensusGroupId-{}: Failed to create receiver file dir {}.",
             newReceiverDir.getPath(),
             consensusGroupId.getId());
-        throw new DiskSpaceInsufficientException(Arrays.asList(RECEIVER_FILE_BASE_DIRS));
+        throw new DiskSpaceInsufficientException(receiverBaseDirsName);
       }
       receiverFileDirWithIdSuffix.set(newReceiverDir);
 

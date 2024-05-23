@@ -340,9 +340,11 @@ public abstract class EnrichedEvent implements Event {
     return isReleased.get();
   }
 
-  /** Used for pipeConsensus */
-  @Override
-  public boolean equals(Object o) {
+  /**
+   * Used for pipeConsensus. In PipeConsensus, we only need commiterKey, commitId and rebootTimes to
+   * uniquely identify an event
+   */
+  public boolean equalsInPipeConsensus(Object o) {
     if (this == o) {
       return true;
     }

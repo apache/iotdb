@@ -34,6 +34,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.lang3.function.TriFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,14 +43,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusReceiverAgent.class);
 
-  private static final Map<Byte, BiFunction<PipeConsensus, ConsensusGroupId, PipeConsensusReceiver>>
+  private static final Map<
+          Byte,
+          TriFunction<PipeConsensus, ConsensusGroupId, ConsensusPipeName, PipeConsensusReceiver>>
       RECEIVER_CONSTRUCTORS = new HashMap<>();
 
   private final int thisNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
@@ -106,13 +108,14 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>> consensusPipe2ReciverMap =
         replicaReceiverMap.computeIfAbsent(consensusGroupId, key -> new ConcurrentHashMap<>());
     // 2. Route to given consensusPipeTask's receiver
+    ConsensusPipeName consensusPipeName =
+        new ConsensusPipeName(consensusGroupId, leaderDataNodeId, thisNodeId);
     AtomicReference<PipeConsensusReceiver> receiverReference =
         consensusPipe2ReciverMap.computeIfAbsent(
-            new ConsensusPipeName(consensusGroupId, leaderDataNodeId, thisNodeId),
-            key -> new AtomicReference<>(null));
+            consensusPipeName, key -> new AtomicReference<>(null));
 
     if (receiverReference.get() == null) {
-      return internalSetAndGetReceiver(consensusGroupId, leaderDataNodeId, reqVersion);
+      return internalSetAndGetReceiver(consensusGroupId, consensusPipeName, reqVersion);
     }
 
     final byte receiverThreadLocalVersion = receiverReference.get().getVersion().getVersion();
@@ -123,25 +126,25 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
           receiverThreadLocalVersion,
           reqVersion);
       receiverReference.set(null);
-      return internalSetAndGetReceiver(consensusGroupId, leaderDataNodeId, reqVersion);
+      return internalSetAndGetReceiver(consensusGroupId, consensusPipeName, reqVersion);
     }
-
     return receiverReference.get();
   }
 
   private PipeConsensusReceiver internalSetAndGetReceiver(
-      ConsensusGroupId consensusGroupId, int leaderDataNodeId, byte reqVersion) {
+      ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName, byte reqVersion) {
     // 1. Route to given consensusGroup's receiver map
     Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>> consensusPipe2ReciverMap =
         replicaReceiverMap.get(consensusGroupId);
     // 2. Route to given consensusPipeTask's receiver
     AtomicReference<PipeConsensusReceiver> receiverReference =
-        consensusPipe2ReciverMap.get(
-            new ConsensusPipeName(consensusGroupId, leaderDataNodeId, thisNodeId));
+        consensusPipe2ReciverMap.get(consensusPipeName);
 
     if (RECEIVER_CONSTRUCTORS.containsKey(reqVersion)) {
       receiverReference.set(
-          RECEIVER_CONSTRUCTORS.get(reqVersion).apply(pipeConsensus, consensusGroupId));
+          RECEIVER_CONSTRUCTORS
+              .get(reqVersion)
+              .apply(pipeConsensus, consensusGroupId, consensusPipeName));
     } else {
       throw new UnsupportedOperationException(
           String.format("Unsupported pipeConsensus request version %d", reqVersion));
