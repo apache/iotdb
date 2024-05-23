@@ -30,7 +30,6 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,7 +56,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
   /////////////////////////////// Plan ///////////////////////////////
 
-  protected synchronized void tryListen(EnrichedEvent event) {
+  protected synchronized void tryListen(final EnrichedEvent event) {
     if (super.tryListen(event)) {
       event.increaseReferenceCount(AbstractPipeListeningQueue.class.getName());
     }
@@ -65,7 +64,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
 
   /////////////////////////////// Snapshot Cache ///////////////////////////////
 
-  protected synchronized void tryListen(List<PipeSnapshotEvent> events) {
+  protected synchronized void tryListen(final List<PipeSnapshotEvent> events) {
     if (!isClosed.get()) {
       clearSnapshots();
       queueTailIndex2SnapshotsCache.setLeft(queue.getTailIndex());
@@ -87,7 +86,7 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   }
 
   @Override
-  public synchronized long removeBefore(long newFirstIndex) {
+  public synchronized long removeBefore(final long newFirstIndex) {
     final long result = super.removeBefore(newFirstIndex);
     if (queueTailIndex2SnapshotsCache.getLeft() < result) {
       clearSnapshots();
@@ -108,13 +107,13 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
   /////////////////////////////// Close ///////////////////////////////
 
   @Override
-  public synchronized void close() throws IOException {
+  public synchronized void close() {
     clearSnapshots();
     super.close();
   }
 
   @Override
-  protected void releaseResource(Event event) {
+  protected void releaseResource(final Event event) {
     if (event instanceof EnrichedEvent) {
       ((EnrichedEvent) event)
           .decreaseReferenceCount(AbstractPipeListeningQueue.class.getName(), false);
