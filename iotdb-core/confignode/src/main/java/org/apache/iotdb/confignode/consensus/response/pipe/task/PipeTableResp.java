@@ -161,7 +161,10 @@ public class PipeTableResp implements DataSet {
 
   private boolean canCalculateOnLocal(final PipeMeta pipeMeta) {
     try {
-      return ConfigNode.getInstance().getConfigManager().getNodeManager().getRegisteredNodeCount()
+      return ConfigNode.getInstance()
+                  .getConfigManager()
+                  .getNodeManager()
+                  .getRegisteredDataNodeCount()
               == 1
           && ConfigRegionListeningFilter.parseListeningPlanTypeSet(
                   pipeMeta.getStaticMeta().getExtractorParameters())

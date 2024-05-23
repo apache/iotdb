@@ -54,12 +54,12 @@ public class PipeHeartbeat {
           pipeMeta.getStaticMeta(),
           Objects.nonNull(pipeCompletedListFromAgent)
               ? pipeRemainingEventCountListFromAgent.get(i)
-              : 0);
+              : 0L);
       remainingTimeMap.put(
           pipeMeta.getStaticMeta(),
           Objects.nonNull(pipeRemainingTimeListFromAgent)
               ? pipeRemainingTimeListFromAgent.get(i)
-              : 0);
+              : 0d);
     }
   }
 
