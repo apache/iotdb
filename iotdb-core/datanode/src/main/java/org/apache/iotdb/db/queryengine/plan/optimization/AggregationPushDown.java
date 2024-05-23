@@ -88,8 +88,13 @@ public class AggregationPushDown implements PlanOptimizer {
         || cannotUseStatistics(queryStatement, analysis)) {
       return plan;
     }
-    return plan.accept(
-        new Rewriter(), new RewriterContext(analysis, context, queryStatement.isAlignByDevice()));
+
+    RewriterContext rewriterContext =
+        new RewriterContext(analysis, context, queryStatement.isAlignByDevice());
+    PlanNode node = plan.accept(new Rewriter(), rewriterContext);
+    // release the last batch of memory
+    rewriterContext.releaseMemoryForFrontEndImmediately();
+    return node;
   }
 
   private boolean cannotUseStatistics(QueryStatement queryStatement, Analysis analysis) {
@@ -293,7 +298,7 @@ public class AggregationPushDown implements PlanOptimizer {
 
         // After pushing down the predicate, the original scan nodes are no longer needed, we should
         // release the memory that they occupied.
-        context.getContext().releaseMemoryForFrontEnd(getRamBytesUsedOfOldScanNodes(child));
+        context.releaseMemoryForFrontEnd(getRamBytesUsedOfOldScanNodes(child));
         return resultNode;
       }
       // cannot push down
@@ -480,11 +485,15 @@ public class AggregationPushDown implements PlanOptimizer {
 
   private static class RewriterContext {
 
+    private static final long RELEASE_BATCH_SIZE = 1024L * 1024L;
+
     private final Analysis analysis;
     private final MPPQueryContext context;
     private final boolean isAlignByDevice;
 
     private String curDevice;
+
+    private long bytesToBeReleased = 0;
 
     public RewriterContext(Analysis analysis, MPPQueryContext context, boolean isAlignByDevice) {
       this.analysis = analysis;
@@ -514,6 +523,20 @@ public class AggregationPushDown implements PlanOptimizer {
         return analysis.getDeviceToAggregationExpressions().get(curDevice);
       }
       return analysis.getAggregationExpressions();
+    }
+
+    public void releaseMemoryForFrontEnd(final long bytes) {
+      bytesToBeReleased += bytes;
+      if (bytesToBeReleased >= RELEASE_BATCH_SIZE) {
+        releaseMemoryForFrontEndImmediately();
+      }
+    }
+
+    public void releaseMemoryForFrontEndImmediately() {
+      if (bytesToBeReleased > 0) {
+        context.releaseMemoryForFrontEnd(bytesToBeReleased);
+        bytesToBeReleased = 0;
+      }
     }
   }
 }
