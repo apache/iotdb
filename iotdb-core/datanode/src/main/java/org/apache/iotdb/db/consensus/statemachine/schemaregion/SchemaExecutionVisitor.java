@@ -527,19 +527,19 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitPipeEnrichedWritePlanNode(
-      PipeEnrichedWritePlanNode node, ISchemaRegion schemaRegion) {
+      final PipeEnrichedWritePlanNode node, final ISchemaRegion schemaRegion) {
     return node.getWritePlanNode().accept(this, schemaRegion);
   }
 
   @Override
   public TSStatus visitPipeEnrichedNonWritePlanNode(
-      PipeEnrichedNonWritePlanNode node, ISchemaRegion schemaRegion) {
+      final PipeEnrichedNonWritePlanNode node, final ISchemaRegion schemaRegion) {
     return node.getNonWritePlanNode().accept(this, schemaRegion);
   }
 
   @Override
   public TSStatus visitPipeOperateSchemaQueueNode(
-      PipeOperateSchemaQueueNode node, ISchemaRegion schemaRegion) {
+      final PipeOperateSchemaQueueNode node, final ISchemaRegion schemaRegion) {
     final SchemaRegionId id = schemaRegion.getSchemaRegionId();
     final SchemaRegionListeningQueue queue = PipeAgent.runtime().schemaListener(id);
     if (node.isOpen() && !queue.isOpened()) {
