@@ -127,6 +127,7 @@ public class MPPQueryContext {
 
   public void prepareForRetry() {
     this.initResultNodeContext();
+    this.releaseMemoryForFrontEnd();
   }
 
   private void initResultNodeContext() {
@@ -310,17 +311,25 @@ public class MPPQueryContext {
    * single-threaded manner.
    */
   public void reserveMemoryForFrontEnd(final long bytes) {
-    bytesToBeReservedForFrontEnd += bytes;
-    if (bytesToBeReservedForFrontEnd >= MEMORY_BATCH_THRESHOLD) {
-      LOCAL_EXECUTION_PLANNER.reserveMemoryForQueryFrontEnd(
-          bytesToBeReservedForFrontEnd, reservedBytesInTotalForFrontEnd, queryId.getId());
-      reservedBytesInTotalForFrontEnd += bytesToBeReservedForFrontEnd;
-      bytesToBeReservedForFrontEnd = 0;
+    this.bytesToBeReservedForFrontEnd += bytes;
+    if (this.bytesToBeReservedForFrontEnd >= MEMORY_BATCH_THRESHOLD) {
+      reserveMemoryForFrontEndImmediately();
     }
   }
 
+  public void reserveMemoryForFrontEndImmediately() {
+    LOCAL_EXECUTION_PLANNER.reserveMemoryForQueryFrontEnd(
+        bytesToBeReservedForFrontEnd, reservedBytesInTotalForFrontEnd, queryId.getId());
+    this.reservedBytesInTotalForFrontEnd += bytesToBeReservedForFrontEnd;
+    this.bytesToBeReservedForFrontEnd = 0;
+  }
+
   public void releaseMemoryForFrontEnd() {
-    LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(reservedBytesInTotalForFrontEnd);
-    reservedBytesInTotalForFrontEnd = 0;
+    releaseMemoryForFrontEnd(reservedBytesInTotalForFrontEnd);
+  }
+
+  public void releaseMemoryForFrontEnd(final long bytes) {
+    LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(bytes);
+    reservedBytesInTotalForFrontEnd -= bytes;
   }
 }
