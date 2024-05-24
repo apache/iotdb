@@ -55,6 +55,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
+
 /** Import Schema CSV file. */
 public class ImportSchema extends AbstractSchemaTool {
 
@@ -357,15 +359,15 @@ public class ImportSchema extends AbstractSchemaTool {
             compressors.clear();
             measurementAlias.clear();
           }
-          String path = recordObj.get(headerNames.indexOf(headColumns.get(0)));
-          String alias = recordObj.get(headerNames.indexOf(headColumns.get(1)));
-          String dataTypeRaw = recordObj.get(headerNames.indexOf(headColumns.get(2)));
+          String path = recordObj.get(headerNames.indexOf(HEAD_COLUMNS.get(0)));
+          String alias = recordObj.get(headerNames.indexOf(HEAD_COLUMNS.get(1)));
+          String dataTypeRaw = recordObj.get(headerNames.indexOf(HEAD_COLUMNS.get(2)));
           TSDataType dataType = typeInfer(dataTypeRaw);
-          String encodingTypeRaw = recordObj.get(headerNames.indexOf(headColumns.get(3)));
+          String encodingTypeRaw = recordObj.get(headerNames.indexOf(HEAD_COLUMNS.get(3)));
           TSEncoding encodingType = encodingInfer(encodingTypeRaw);
-          String compressionTypeRaw = recordObj.get(headerNames.indexOf(headColumns.get(4)));
+          String compressionTypeRaw = recordObj.get(headerNames.indexOf(HEAD_COLUMNS.get(4)));
           CompressionType compressionType = compressInfer(compressionTypeRaw);
-          if (StringUtils.isBlank(path) || path.trim().startsWith(systemPathPrefix)) {
+          if (StringUtils.isBlank(path) || path.trim().startsWith(SYSTEM_DATABASE)) {
             ioTPrinter.println(
                 String.format(
                     "Line '%s', column '%s': illegal path %s",
@@ -429,9 +431,9 @@ public class ImportSchema extends AbstractSchemaTool {
 
   private static boolean checkHeader(List<String> headerNames) {
     if (CollectionUtils.isNotEmpty(headerNames)
-        && new HashSet<>(headerNames).size() == headColumns.size()) {
+        && new HashSet<>(headerNames).size() == HEAD_COLUMNS.size()) {
       List<String> strangers =
-          headerNames.stream().filter(t -> !headColumns.contains(t)).collect(Collectors.toList());
+          headerNames.stream().filter(t -> !HEAD_COLUMNS.contains(t)).collect(Collectors.toList());
       if (CollectionUtils.isNotEmpty(strangers)) {
         ioTPrinter.println(
             "The header of the CSV file to be imported is illegal. The correct format is \"Timeseries, Alibaba, DataType, Encoding, Compression\"!");

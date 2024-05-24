@@ -21,8 +21,6 @@ package org.apache.iotdb.tool;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
 import org.apache.commons.cli.CommandLine;
@@ -37,7 +35,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -74,14 +71,11 @@ public abstract class AbstractSchemaTool {
   protected static String port;
   protected static String username;
   protected static String password;
-  protected static ZoneId zoneId;
 
-  protected static String timeZoneID;
   protected static String aligned;
   protected static Session session;
 
-  protected static final String systemPathPrefix = "root.__system";
-  protected static final List<String> headColumns =
+  protected static final List<String> HEAD_COLUMNS =
       Arrays.asList("Timeseries", "Alias", "DataType", "Encoding", "Compression");
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSchemaTool.class);
@@ -154,13 +148,6 @@ public abstract class AbstractSchemaTool {
             .build();
     options.addOption(opPassword);
     return options;
-  }
-
-  protected static void setTimeZone() throws IoTDBConnectionException, StatementExecutionException {
-    if (timeZoneID != null) {
-      session.setTimeZone(timeZoneID);
-    }
-    zoneId = ZoneId.of(session.getTimeZone());
   }
 
   /**

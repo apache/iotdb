@@ -47,6 +47,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.List;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
+
 /** Export Schema CSV file. */
 public class ExportSchema extends AbstractSchemaTool {
 
@@ -76,9 +78,9 @@ public class ExportSchema extends AbstractSchemaTool {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
-  private static final String baseViewType = "BASE";
-  private static final String headerViewType = "ViewType";
-  private static final String headerTimeseries = "Timeseries";
+  private static final String BASE_VIEW_TYPE = "BASE";
+  private static final String HEADER_VIEW_TYPE = "ViewType";
+  private static final String HEADER_TIMESERIES = "Timeseries";
 
   @SuppressWarnings({
     "squid:S3776",
@@ -285,8 +287,8 @@ public class ExportSchema extends AbstractSchemaTool {
   public static void writeCsvFile(
       SessionDataSet sessionDataSet, String filePath, List<String> headers, int linesPerFile)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
-    int viewTypeIndex = headers.indexOf(headerViewType);
-    int timeseriesIndex = headers.indexOf(headerTimeseries);
+    int viewTypeIndex = headers.indexOf(HEADER_VIEW_TYPE);
+    int timeseriesIndex = headers.indexOf(HEADER_TIMESERIES);
 
     int fileIndex = 0;
     boolean hasNext = true;
@@ -294,16 +296,16 @@ public class ExportSchema extends AbstractSchemaTool {
       int i = 0;
       final String finalFilePath = filePath + "_" + fileIndex + ".csv";
       final CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(finalFilePath);
-      csvPrinterWrapper.printRecord(headColumns);
+      csvPrinterWrapper.printRecord(HEAD_COLUMNS);
       while (i++ < linesPerFile) {
         if (sessionDataSet.hasNext()) {
           RowRecord rowRecord = sessionDataSet.next();
           List<Field> fields = rowRecord.getFields();
-          if (fields.get(timeseriesIndex).getStringValue().startsWith(systemPathPrefix)
-              || !fields.get(viewTypeIndex).getStringValue().equals(baseViewType)) {
+          if (fields.get(timeseriesIndex).getStringValue().startsWith(SYSTEM_DATABASE)
+              || !fields.get(viewTypeIndex).getStringValue().equals(BASE_VIEW_TYPE)) {
             continue;
           }
-          headColumns.forEach(
+          HEAD_COLUMNS.forEach(
               column -> {
                 Field field = fields.get(headers.indexOf(column));
                 String fieldStringValue = field.getStringValue();
