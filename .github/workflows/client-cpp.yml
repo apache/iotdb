@@ -55,8 +55,8 @@ jobs:
           source ~/.bash_profile && export LDFLAGS="-L/opt/homebrew/opt/bison/lib"
       - name: Install CPP Dependencies (Windows)
         if: matrix.os == 'windows-latest'
-        run: |
         shell: bash
+        run: |
           choco install winflexbison3
           choco install boost-msvc-14.3 --version=1.84.0.1
           ./mvnw -D"boost.include.dir"="C:\local\boost_1_84_0" -D"boost.library.dir"="C:\local\boost_1_84_0\stage\lib"
