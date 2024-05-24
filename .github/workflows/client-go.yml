@@ -55,5 +55,5 @@ jobs:
         run: |
           cd iotdb-client/client-go/ 
           git config pull.rebase false
-          git pull origin main
+          git pull origin main --allow-unrelated-histories
           make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
