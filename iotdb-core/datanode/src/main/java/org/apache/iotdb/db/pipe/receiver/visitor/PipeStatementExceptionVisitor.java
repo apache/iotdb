@@ -96,9 +96,12 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
 
   private TSStatus visitGeneralCreateTimeSeries(
       final Statement statement, final Exception context) {
-    if (context instanceof SemanticException || isAutoCreateConflict(context)) {
+    if (context instanceof SemanticException) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
+    } else if (isAutoCreateConflict(context)) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getCause().getMessage());
     }
     return visitStatement(statement, context);
   }
@@ -121,11 +124,12 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
 
   private TSStatus visitGeneralActivateTemplate(
       final Statement activateTemplateStatement, final Exception context) {
-    if (context instanceof MetadataException
-        || context instanceof StatementAnalyzeException
-        || isAutoCreateConflict(context)) {
+    if (context instanceof MetadataException || context instanceof StatementAnalyzeException) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
+    } else if (isAutoCreateConflict(context)) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+          .setMessage(context.getCause().getMessage());
     }
     return visitStatement(activateTemplateStatement, context);
   }
