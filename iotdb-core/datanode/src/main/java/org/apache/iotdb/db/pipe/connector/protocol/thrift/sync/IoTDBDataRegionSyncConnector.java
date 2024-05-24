@@ -235,18 +235,20 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
     Pair<IoTDBSyncClient, Boolean> clientAndStatus = null;
     try {
-      final InsertNode insertNode =
-          pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
       // getDeviceId() may return null for InsertRowsNode, will be equal to getClient(null)
       clientAndStatus = clientManager.getClient(pipeInsertNodeTabletInsertionEvent.getDeviceId());
 
+      final InsertNode insertNode =
+          pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
       final TPipeTransferReq req =
           insertNode != null
               ? compressIfNeeded(PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode))
               : compressIfNeeded(
                   PipeTransferTabletBinaryReq.toTPipeTransferReq(
                       pipeInsertNodeTabletInsertionEvent.getByteBuffer()));
+
       rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
+
       resp = clientAndStatus.getLeft().pipeTransfer(req);
     } catch (final Exception e) {
       if (clientAndStatus != null) {
@@ -270,7 +272,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
               pipeInsertNodeTabletInsertionEvent.coreReportMessage(), status),
           pipeInsertNodeTabletInsertionEvent.toString());
     }
-    // insertNode.getDevicePath() is null for InsertRowsNode
+    // pipeInsertNodeTabletInsertionEvent.getDeviceId() is null for InsertRowsNode
     if (Objects.nonNull(pipeInsertNodeTabletInsertionEvent.getDeviceId())
         && status.isSetRedirectNode()) {
       clientManager.updateLeaderCache(
