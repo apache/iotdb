@@ -34,12 +34,18 @@ public class LoadTsFileRateLimiter {
   private final RateLimiter loadWriteRateLimiter;
 
   public void acquire(long bytes) {
-    if (throughputBytesPerSecond.get() != CONFIG.getLoadWriteThroughputBytesPerSecond()) {
-      final double newThroughputBytesPerSecond = CONFIG.getLoadWriteThroughputBytesPerSecond();
-      throughputBytesPerSecond.set(newThroughputBytesPerSecond);
+    final double throughputBytesPerSecondLimit = CONFIG.getLoadWriteThroughputBytesPerSecond();
+
+    if (throughputBytesPerSecond.get() != throughputBytesPerSecondLimit) {
+      throughputBytesPerSecond.set(throughputBytesPerSecondLimit);
       loadWriteRateLimiter.setRate(
           // if throughput <= 0, disable rate limiting
-          newThroughputBytesPerSecond <= 0 ? Double.MAX_VALUE : newThroughputBytesPerSecond);
+          throughputBytesPerSecondLimit <= 0 ? Double.MAX_VALUE : throughputBytesPerSecondLimit);
+    }
+
+    // For performance, we don't need to acquire rate limiter if throughput <= 0
+    if (throughputBytesPerSecondLimit <= 0) {
+      return;
     }
 
     while (bytes > 0) {
