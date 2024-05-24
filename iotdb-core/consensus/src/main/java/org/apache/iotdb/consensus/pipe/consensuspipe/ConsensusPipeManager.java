@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.pipe.consensuspipe;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig;
+import org.apache.iotdb.consensus.config.PipeConsensusConfig.ReplicateMode;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -35,17 +36,18 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_HYBRID_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_KEY;
 
 public class ConsensusPipeManager {
   private final PipeConsensusConfig.Pipe config;
+  private final ReplicateMode replicateMode;
   private final ConsensusPipeDispatcher dispatcher;
   private final ConsensusPipeSelector selector;
 
-  public ConsensusPipeManager(PipeConsensusConfig.Pipe config) {
+  public ConsensusPipeManager(PipeConsensusConfig.Pipe config, ReplicateMode replicateMode) {
     this.config = config;
+    this.replicateMode = replicateMode;
     this.dispatcher = config.getConsensusPipeDispatcher();
     this.selector = config.getConsensusPipeSelector();
   }
@@ -65,7 +67,7 @@ public class ConsensusPipeManager {
             .put(
                 EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY,
                 String.valueOf(consensusPipeName.getReceiverDataNodeId()))
-            .put(EXTRACTOR_REALTIME_MODE_KEY, EXTRACTOR_REALTIME_MODE_HYBRID_VALUE)
+            .put(EXTRACTOR_REALTIME_MODE_KEY, replicateMode.getValue())
             .build(),
         ImmutableMap.<String, String>builder()
             .put(PROCESSOR_KEY, config.getProcessorPluginName())

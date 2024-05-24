@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -101,7 +102,10 @@ public class PipeConsensus implements IConsensus {
     this.config = config.getPipeConsensusConfig();
     this.registry = registry;
     this.rpcService = new PipeConsensusRPCService(thisNode, config.getPipeConsensusConfig());
-    this.consensusPipeManager = new ConsensusPipeManager(config.getPipeConsensusConfig().getPipe());
+    this.consensusPipeManager =
+        new ConsensusPipeManager(
+            config.getPipeConsensusConfig().getPipe(),
+            config.getPipeConsensusConfig().getReplicateMode());
     this.consensusPipeGuardian =
         config.getPipeConsensusConfig().getPipe().getConsensusPipeGuardian();
     this.asyncClientManager =
@@ -160,7 +164,7 @@ public class PipeConsensus implements IConsensus {
   }
 
   @Override
-  public synchronized void stop() throws IOException {
+  public synchronized void stop() {
     asyncClientManager.close();
     syncClientManager.close();
     registerManager.deregisterAll();
@@ -178,7 +182,9 @@ public class PipeConsensus implements IConsensus {
                     Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
     try {
       stateMachineMapLock.lock();
-      stateMachineMap.entrySet().parallelStream()
+      stateMachineMap
+          .entrySet()
+          .parallelStream()
           .forEach(
               entry ->
                   entry
@@ -471,5 +477,11 @@ public class PipeConsensus implements IConsensus {
 
   public PipeConsensusServerImpl getImpl(ConsensusGroupId groupId) {
     return stateMachineMap.get(groupId);
+  }
+
+  //////////////////////////// APIs provided for Test ////////////////////////////
+  @TestOnly
+  public int getPipeCount() {
+    return this.consensusPipeManager.getAllConsensusPipe().size();
   }
 }
