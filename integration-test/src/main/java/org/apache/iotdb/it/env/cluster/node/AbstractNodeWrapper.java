@@ -301,6 +301,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       outputNodeConfig.updateProperties(immutableNodeProperties);
 
       // Persistent
+      Files.deleteIfExists(new File(getTargetNodeConfigPath()).toPath());
       outputCommonConfig.persistent(getTargetCommonConfigPath());
       outputNodeConfig.persistent(getTargetNodeConfigPath());
     } catch (IOException ex) {
