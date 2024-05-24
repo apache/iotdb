@@ -218,7 +218,7 @@
                             <sourcePath>${project.build.directory}/build/test</sourcePath>
                             <targetPath>${project.build.directory}/build/test</targetPath>
                             <options>
-                                <option>-BOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
                             </options>
                         </configuration>
                     </execution>
