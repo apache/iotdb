@@ -406,6 +406,21 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
                       ((FileInitPayload) pollResponse.getPayload()).getFileName())
                   .ifPresent(messages::add);
               break;
+            case ERROR:
+              final ErrorPayload payload = (ErrorPayload) pollResponse.getPayload();
+              final String errorMessage = payload.getErrorMessage();
+              final boolean critical = payload.isCritical();
+              LOGGER.warn(
+                  "Error occurred when SubscriptionConsumer {} polling topics {}: {}, critical: {}",
+                  this,
+                  topicNames,
+                  errorMessage,
+                  critical);
+              if (critical) {
+                throw new SubscriptionRuntimeCriticalException(errorMessage);
+              } else {
+                throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+              }
             default:
               LOGGER.warn("unexpected response type: {}", responseType);
               break;

@@ -52,7 +52,7 @@ public class TopicConfig extends PipeParameters {
 
   /////////////////////////////// utilities ///////////////////////////////
 
-  public Map<String, String> getAttributesWithSourcePathOrPattern() {
+  public Map<String, String> getAttributesWithPathOrPattern() {
     if (attributes.containsKey(TopicConstant.PATTERN_KEY)) {
       return Collections.singletonMap(
           TopicConstant.PATTERN_KEY, attributes.get(TopicConstant.PATTERN_KEY));
@@ -65,6 +65,8 @@ public class TopicConfig extends PipeParameters {
 
   public Map<String, String> getAttributesWithTimeRange(final long creationTime) {
     final Map<String, String> attributesWithTimeRange = new HashMap<>();
+
+    // parse start time
     final String startTime =
         attributes.getOrDefault(TopicConstant.START_TIME_KEY, String.valueOf(Long.MIN_VALUE));
     if (TopicConstant.NOW_TIME_VALUE.equals(startTime)) {
@@ -72,6 +74,8 @@ public class TopicConfig extends PipeParameters {
     } else {
       attributesWithTimeRange.put(TopicConstant.START_TIME_KEY, startTime);
     }
+
+    // parse end time
     final String endTime =
         attributes.getOrDefault(TopicConstant.END_TIME_KEY, String.valueOf(Long.MAX_VALUE));
     if (TopicConstant.NOW_TIME_VALUE.equals(endTime)) {
@@ -79,10 +83,18 @@ public class TopicConfig extends PipeParameters {
     } else {
       attributesWithTimeRange.put(TopicConstant.END_TIME_KEY, endTime);
     }
+
+    // enable loose range when using tsfile format
+    if (TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(
+        attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))) {
+      attributesWithTimeRange.put("history.loose-range", "time");
+      attributesWithTimeRange.put("realtime.loose-range", "time");
+    }
+
     return attributesWithTimeRange;
   }
 
-  public Map<String, String> getAttributesWithSourceRealtimeMode() {
+  public Map<String, String> getAttributesWithRealtimeMode() {
     return TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(
             attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))
         ? Collections.singletonMap("realtime.mode", "batch")
@@ -98,40 +110,5 @@ public class TopicConfig extends PipeParameters {
           }
         });
     return attributesWithProcessorPrefix;
-  }
-
-  public boolean isValid() {
-    if (!TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(
-        attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))) {
-      return true;
-    }
-
-    // check processor
-    if (!getAttributesWithProcessorPrefix().isEmpty()) {
-      return false;
-    }
-
-    // check time range
-    final String startTime =
-        attributes.getOrDefault(TopicConstant.START_TIME_KEY, String.valueOf(Long.MIN_VALUE));
-    if (!String.valueOf(Long.MIN_VALUE).equals(startTime)) {
-      return false;
-    }
-    final String endTime =
-        attributes.getOrDefault(TopicConstant.END_TIME_KEY, String.valueOf(Long.MAX_VALUE));
-    if (!String.valueOf(Long.MAX_VALUE).equals(endTime)) {
-      return false;
-    }
-
-    // check path or pattern
-    if (!TopicConstant.PATH_DEFAULT_VALUE.equals(
-            attributes.getOrDefault(TopicConstant.PATH_KEY, TopicConstant.PATH_DEFAULT_VALUE))
-        || !TopicConstant.PATTERN_DEFAULT_VALUE.equals(
-            attributes.getOrDefault(
-                TopicConstant.PATTERN_KEY, TopicConstant.PATTERN_DEFAULT_VALUE))) {
-      return false;
-    }
-
-    return true;
   }
 }

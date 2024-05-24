@@ -27,6 +27,7 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
@@ -52,6 +53,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
 import static org.junit.Assert.fail;
@@ -494,7 +496,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
   }
 
-  public void testTopicInvalidConfig() throws Exception {
+  @Test
+  public void testTopicInvalidTimeRangeConfig() throws Exception {
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
 
@@ -521,39 +524,117 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     } catch (final Exception ignored) {
     }
     assertTopicCount(0);
+  }
 
-    // Scenario 3: test when 'format' is 'TsFileReader'
-    final List<Properties> configs = new ArrayList<>();
-    {
-      final Properties config = new Properties();
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-      config.put(TopicConstant.PATH_KEY, "root.db.*.s");
-      configs.add(config);
+  @Test
+  public void testTopicInvalidPathConfig() throws Exception {
+    // Test invalid path when using tsfile format
+    final Properties config = new Properties();
+    config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+    config.put(TopicConstant.PATH_KEY, "root.db.*.s");
+    testTopicInvalidRuntimeConfigTemplate("topic3", config);
+  }
+
+  @Test
+  public void testTopicInvalidProcessorConfig() throws Exception {
+    // Test invalid processor when using tsfile format
+    final Properties config = new Properties();
+    config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+    config.put("processor", "tumbling-time-sampling-processor");
+    config.put("processor.tumbling-time.interval-seconds", "1");
+    config.put("processor.down-sampling.split-file", "true");
+    testTopicInvalidRuntimeConfigTemplate("topic4", config);
+  }
+
+  private void testTopicInvalidRuntimeConfigTemplate(
+      final String topicName, final Properties config) throws Exception {
+    // Create topic
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      session.createTopic(topicName, config);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
-    {
-      final Properties config = new Properties();
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-      config.put(TopicConstant.START_TIME_KEY, System.currentTimeMillis());
-      configs.add(config);
-    }
-    {
-      final Properties config = new Properties();
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-      config.put("processor", "tumbling-time-sampling-processor");
-      config.put("processor.tumbling-time.interval-seconds", "1");
-      config.put("processor.down-sampling.split-file", "true");
-      configs.add(config);
+    assertTopicCount(1);
+
+    final AtomicBoolean dataPrepared = new AtomicBoolean(false);
+    final AtomicBoolean topicSubscribed = new AtomicBoolean(false);
+    final AtomicBoolean result = new AtomicBoolean(false);
+    final List<Thread> threads = new ArrayList<>();
+
+    // Subscribe on sender
+    threads.add(
+        new Thread(
+            () -> {
+              final AtomicInteger retryCount = new AtomicInteger();
+              final int maxRetryTimes = 32;
+              try (final SubscriptionPullConsumer consumer =
+                  new SubscriptionPullConsumer.Builder()
+                      .host(host)
+                      .port(port)
+                      .consumerId("c1")
+                      .consumerGroupId("cg1")
+                      .autoCommit(false)
+                      .buildPullConsumer()) {
+                consumer.open();
+                consumer.subscribe(topicName);
+                topicSubscribed.set(true);
+                while (retryCount.getAndIncrement() < maxRetryTimes) {
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
+                  if (dataPrepared.get()) {
+                    final List<SubscriptionMessage> messages =
+                        consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
+                    consumer.commitSync(messages);
+                  }
+                }
+                consumer.unsubscribe(topicName);
+              } catch (final SubscriptionRuntimeCriticalException e) {
+                result.set(true);
+              } catch (final Exception e) {
+                e.printStackTrace();
+                // Avoid failure
+              } finally {
+                LOGGER.info("consumer exiting...");
+              }
+            }));
+
+    // Insert some realtime data on sender
+    threads.add(
+        new Thread(
+            () -> {
+              while (!topicSubscribed.get()) {
+                LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
+              }
+              try (final ISession session = senderEnv.getSessionConnection()) {
+                for (int i = 0; i < 100; ++i) {
+                  session.executeNonQueryStatement(
+                      String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
+                }
+                session.executeNonQueryStatement("flush");
+              } catch (final Exception e) {
+                e.printStackTrace();
+                fail(e.getMessage());
+              }
+              dataPrepared.set(true);
+            }));
+
+    for (final Thread thread : threads) {
+      thread.start();
     }
 
-    for (final Properties config : configs) {
-      try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
-        session.open();
-        session.createTopic("topic3", config);
-        fail();
-      } catch (final Exception ignored) {
-      }
+    Awaitility.await()
+        .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+        .pollInterval(IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+        .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
+        // The expected SubscriptionRuntimeCriticalException was not thrown if result is false
+        .untilTrue(result);
+
+    for (final Thread thread : threads) {
+      thread.join();
     }
-    assertTopicCount(0);
   }
 
   private void assertTopicCount(final int count) throws Exception {

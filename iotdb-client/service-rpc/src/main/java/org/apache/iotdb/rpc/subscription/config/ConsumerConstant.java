@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.rpc.subscription.config;
 
+import java.nio.file.Paths;
+
 public class ConsumerConstant {
 
   /////////////////////////////// common ///////////////////////////////
@@ -44,7 +46,7 @@ public class ConsumerConstant {
 
   public static final String FILE_SAVE_DIR_KEY = "file-save-dir";
   public static final String FILE_SAVE_DIR_DEFAULT_VALUE =
-      System.getProperty("user.dir") + "iotdb-subscription";
+      Paths.get(System.getProperty("user.dir"), "iotdb-subscription").toString();
 
   /////////////////////////////// pull consumer ///////////////////////////////
 

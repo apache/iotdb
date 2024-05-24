@@ -21,7 +21,6 @@ package org.apache.iotdb;
 
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.util.Version;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.Session;
@@ -194,7 +193,7 @@ public class SubscriptionSessionExample {
                     consumer2.commitSync(messages);
                   }
                   consumer2.unsubscribe(TOPIC_2);
-                } catch (IOException | IoTDBConnectionException e) {
+                } catch (final IOException e) {
                   throw new RuntimeException(e);
                 }
               });

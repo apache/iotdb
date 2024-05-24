@@ -215,7 +215,6 @@ import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.trigger.api.Trigger;
@@ -1944,17 +1943,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       LOGGER.info("Failed to validate create topic statement, because {}", e.getMessage(), e);
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode()));
-      return future;
-    }
-
-    final TopicConfig topicConfig = new TopicConfig(topicAttributes);
-    if (!topicConfig.isValid()) {
-      final String exceptionMessage =
-          String.format(
-              "Failed to create topic %s, topic config %s is invalid.", topicName, topicConfig);
-      LOGGER.warn(exceptionMessage);
-      future.setException(
-          new IoTDBException(exceptionMessage, TSStatusCode.CREATE_TOPIC_ERROR.getStatusCode()));
       return future;
     }
 

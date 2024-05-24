@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionTsFileEvent;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
@@ -77,6 +78,15 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     Event event;
     while (Objects.nonNull(
         event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll()))) {
+      if (event instanceof TabletInsertionEvent) {
+        final String errorMessage =
+            String.format(
+                "A TabletInsertionEvent was pulled from topic %s which is formatted as TsFile by SubscriptionPrefetchingTsFileQueue %s. This event %s will be ignored. Please check the topic configuration.",
+                topicName, this, event);
+        LOGGER.warn(errorMessage);
+        return generateSubscriptionPollErrorResponse(errorMessage, true);
+      }
+
       if (!(event instanceof PipeTsFileInsertionEvent)) {
         LOGGER.warn(
             "Subscription: SubscriptionPrefetchingTsFileQueue {} only support poll PipeTsFileInsertionEvent. Ignore {}.",
