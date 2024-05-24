@@ -205,4 +205,45 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
       searchOverlapped(child, deviceNodes, pos + 1, measurements, resultSet);
     }
   }
+
+  /**
+   * Get a list of value lists related to PathPattern that overlapped with device.
+   *
+   * <p>Attention!: The results may contain imprecise and redundant values. Values that appear in
+   * the result set are not necessarily belong to current device, but those that do not appear are
+   * definitely not included.
+   *
+   * @param devicePath device path without wildcard
+   * @return de-duplicated value list
+   */
+  public List<V> getDeviceOverlapped(PartialPath devicePath) {
+    Set<V> resultSet = new HashSet<>();
+    searchDeviceOverlapped(root, devicePath.getNodes(), 0, resultSet);
+    return new ArrayList<>(resultSet);
+  }
+
+  /**
+   * Recursive method for search overlapped pattern for devicePath.
+   *
+   * @param node current PathPatternNode
+   * @param deviceNodes pathNodes of device
+   * @param pos current index of deviceNodes
+   * @param resultSet result set
+   */
+  private void searchDeviceOverlapped(
+      PathPatternNode<V, VSerializer> node, String[] deviceNodes, int pos, Set<V> resultSet) {
+    if (pos == deviceNodes.length - 1) {
+      resultSet.addAll(node.getValues());
+      for (PathPatternNode<V, VSerializer> child : node.getChildren().values()) {
+        resultSet.addAll(child.getValues());
+      }
+      return;
+    }
+    if (node.isMultiLevelWildcard()) {
+      searchDeviceOverlapped(node, deviceNodes, pos + 1, resultSet);
+    }
+    for (PathPatternNode<V, VSerializer> child : node.getMatchChildren(deviceNodes[pos + 1])) {
+      searchDeviceOverlapped(child, deviceNodes, pos + 1, resultSet);
+    }
+  }
 }

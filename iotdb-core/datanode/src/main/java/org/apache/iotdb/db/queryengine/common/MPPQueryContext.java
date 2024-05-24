@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -75,6 +76,19 @@ public class MPPQueryContext {
 
   QueryPlanStatistics queryPlanStatistics = null;
 
+  // To avoid query front-end from consuming too much memory, it needs to reserve memory when
+  // constructing some Expression and PlanNode.
+  private long reservedBytesInTotalForFrontEnd = 0;
+
+  private long bytesToBeReservedForFrontEnd = 0;
+
+  // To avoid reserving memory too frequently, we choose to do it in batches. This is the lower
+  // bound
+  // for each batch.
+  private static final long MEMORY_BATCH_THRESHOLD = 1024L * 1024L;
+
+  private final LocalExecutionPlanner LOCAL_EXECUTION_PLANNER = LocalExecutionPlanner.getInstance();
+
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
     this.endPointBlackList = new LinkedList<>();
@@ -113,6 +127,7 @@ public class MPPQueryContext {
 
   public void prepareForRetry() {
     this.initResultNodeContext();
+    this.releaseMemoryForFrontEnd();
   }
 
   private void initResultNodeContext() {
@@ -290,4 +305,49 @@ public class MPPQueryContext {
     }
     queryPlanStatistics.setLogicalOptimizationCost(logicalOptimizeCost);
   }
+
+  // region =========== FE memory related, make sure its not called concurrently ===========
+
+  /**
+   * This method does not require concurrency control because the query plan is generated in a
+   * single-threaded manner.
+   */
+  public void reserveMemoryForFrontEnd(final long bytes) {
+    this.bytesToBeReservedForFrontEnd += bytes;
+    if (this.bytesToBeReservedForFrontEnd >= MEMORY_BATCH_THRESHOLD) {
+      reserveMemoryForFrontEndImmediately();
+    }
+  }
+
+  public void reserveMemoryForFrontEndImmediately() {
+    if (bytesToBeReservedForFrontEnd != 0) {
+      LOCAL_EXECUTION_PLANNER.reserveMemoryForQueryFrontEnd(
+          bytesToBeReservedForFrontEnd, reservedBytesInTotalForFrontEnd, queryId.getId());
+      this.reservedBytesInTotalForFrontEnd += bytesToBeReservedForFrontEnd;
+      this.bytesToBeReservedForFrontEnd = 0;
+    }
+  }
+
+  public void releaseMemoryForFrontEnd() {
+    if (reservedBytesInTotalForFrontEnd != 0) {
+      LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(reservedBytesInTotalForFrontEnd);
+      reservedBytesInTotalForFrontEnd = 0;
+    }
+  }
+
+  public void releaseMemoryForFrontEnd(final long bytes) {
+    if (bytes != 0) {
+      long bytesToRelease;
+      if (bytes <= bytesToBeReservedForFrontEnd) {
+        bytesToBeReservedForFrontEnd -= bytes;
+      } else {
+        bytesToRelease = bytes - bytesToBeReservedForFrontEnd;
+        bytesToBeReservedForFrontEnd = 0;
+        LOCAL_EXECUTION_PLANNER.releaseToFreeMemoryForOperators(bytesToRelease);
+        reservedBytesInTotalForFrontEnd -= bytesToRelease;
+      }
+    }
+  }
+
+  // endregion
 }

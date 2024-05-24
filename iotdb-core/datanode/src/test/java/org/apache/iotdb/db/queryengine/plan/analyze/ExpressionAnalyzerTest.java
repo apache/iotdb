@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 
 import org.junit.Test;
@@ -55,7 +57,8 @@ public class ExpressionAnalyzerTest {
             and(gt(timeSeries("s1"), intValue("1")), gt(timeSeries("s2"), intValue("1"))),
             prefixPaths,
             fakeSchemaTree,
-            true));
+            true,
+            new MPPQueryContext(new QueryId("test"))));
 
     assertEquals(
         Arrays.asList(
@@ -79,6 +82,7 @@ public class ExpressionAnalyzerTest {
             count(and(gt(timeSeries("s1"), intValue("1")), gt(timeSeries("s2"), intValue("1")))),
             prefixPaths,
             fakeSchemaTree,
-            true));
+            true,
+            new MPPQueryContext(new QueryId("test"))));
   }
 }

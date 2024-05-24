@@ -391,13 +391,13 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
         ((PipeSetTTLPlan)
                 IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
                     .visitTTL(
-                        new SetTTLPlan(Arrays.asList("root", "*", "device", "s1"), Long.MAX_VALUE),
+                        new SetTTLPlan(Arrays.asList("root", "db", "**"), Long.MAX_VALUE),
                         prefixPathPattern)
                     .orElseThrow(AssertionError::new))
             .getSetTTLPlans();
 
     Assert.assertEquals(
-        Collections.singletonList(new PartialPath("root.db.device.s1")),
+        Collections.singletonList(new PartialPath("root.db.device.**")),
         plans.stream()
             .map(setTTLPlan -> new PartialPath(setTTLPlan.getDatabasePathPattern()))
             .collect(Collectors.toList()));

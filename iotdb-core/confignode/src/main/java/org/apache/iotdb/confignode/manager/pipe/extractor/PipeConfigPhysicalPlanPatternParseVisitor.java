@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -269,8 +270,11 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitTTL(
       final SetTTLPlan setTTLPlan, final IoTDBPipePattern pattern) {
+    final PartialPath databasePath = new PartialPath(setTTLPlan.getDatabasePathPattern());
     final List<PartialPath> intersectionList =
-        pattern.getIntersection(new PartialPath(setTTLPlan.getDatabasePathPattern()));
+        pattern.matchPrefixPath(databasePath.getFullPath())
+            ? Collections.singletonList(databasePath)
+            : pattern.getIntersection(databasePath);
     return !intersectionList.isEmpty()
         ? Optional.of(
             new PipeSetTTLPlan(

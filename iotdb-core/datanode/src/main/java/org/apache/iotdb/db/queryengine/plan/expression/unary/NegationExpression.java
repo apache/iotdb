@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.unary;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
@@ -27,9 +28,14 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.nio.ByteBuffer;
 
 public class NegationExpression extends UnaryExpression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(NegationExpression.class);
 
   public NegationExpression(Expression expression) {
     super(expression);
@@ -69,5 +75,10 @@ public class NegationExpression extends UnaryExpression {
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitNegationExpression(this, context);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression);
   }
 }
