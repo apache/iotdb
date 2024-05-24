@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import com.google.common.util.concurrent.AtomicDouble;
 import com.google.common.util.concurrent.RateLimiter;
 
-/** PipeGlobalRateLimiter is a global rate limiter for all connectors. */
-public class PipeGlobalRateLimiter {
+/** This is a global rate limiter for all connectors. */
+public class GlobalRateLimiter {
 
   private static final PipeConfig CONFIG = PipeConfig.getInstance();
 
@@ -62,7 +62,7 @@ public class PipeGlobalRateLimiter {
 
   ///////////////////////////  SINGLETON  ///////////////////////////
 
-  private PipeGlobalRateLimiter() {
+  private GlobalRateLimiter() {
     final double throughputBytesPerSecondLimit = throughputBytesPerSecond.get();
     rateLimiter =
         throughputBytesPerSecondLimit <= 0
@@ -70,11 +70,11 @@ public class PipeGlobalRateLimiter {
             : RateLimiter.create(throughputBytesPerSecondLimit);
   }
 
-  private static class PipeGlobalRateLimiterHolder {
-    private static final PipeGlobalRateLimiter INSTANCE = new PipeGlobalRateLimiter();
+  private static class GlobalRateLimiterHolder {
+    private static final GlobalRateLimiter INSTANCE = new GlobalRateLimiter();
   }
 
   public static void acquire(long bytes) {
-    PipeGlobalRateLimiterHolder.INSTANCE.doAcquire(bytes);
+    GlobalRateLimiterHolder.INSTANCE.doAcquire(bytes);
   }
 }

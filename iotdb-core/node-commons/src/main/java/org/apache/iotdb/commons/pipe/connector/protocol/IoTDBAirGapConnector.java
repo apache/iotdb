@@ -331,6 +331,8 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         isSocketAlive.set(i, false);
       }
     }
+
+    super.close();
   }
 
   /////////////////////// Strategies for load balance //////////////////////////

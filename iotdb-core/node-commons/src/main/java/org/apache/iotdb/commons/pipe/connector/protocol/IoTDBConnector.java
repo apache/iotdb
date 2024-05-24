@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorFactory;
 import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
-import org.apache.iotdb.commons.pipe.connector.limiter.PipeGlobalRateLimiter;
+import org.apache.iotdb.commons.pipe.connector.limiter.GlobalRateLimiter;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -102,7 +102,7 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected final List<PipeCompressor> compressors = new ArrayList<>();
 
   protected double endPointRateLimitBytesPerSecond = -1;
-  protected final Map<TEndPoint, PipeEndPointRateLimiter> endPoint2RateLimiterMap =
+  protected static final Map<String, PipeEndPointRateLimiter> pipeName2EndPointRateLimiterMap =
       new ConcurrentHashMap<>();
 
   protected boolean isTabletBatchModeEnabled = true;
@@ -324,6 +324,12 @@ public abstract class IoTDBConnector implements PipeConnector {
     }
   }
 
+  @Override
+  public void close() {
+    // TODO: Not all the limiters should be closed here, but it's fine for now.
+    pipeName2EndPointRateLimiterMap.clear();
+  }
+
   protected TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
     return isRpcCompressionEnabled
         ? PipeTransferCompressedReq.toTPipeTransferReq(req, compressors)
@@ -344,15 +350,15 @@ public abstract class IoTDBConnector implements PipeConnector {
     return compressors;
   }
 
-  public void rateLimitIfNeeded(final TEndPoint endPoint, final long bytesLength) {
+  public void rateLimitIfNeeded(final String pipeName, final TEndPoint endPoint, final long bytesLength) {
     if (endPointRateLimitBytesPerSecond > 0) {
-      endPoint2RateLimiterMap
+      pipeName2EndPointRateLimiterMap
           .computeIfAbsent(
-              endPoint, endpoint -> new PipeEndPointRateLimiter(endPointRateLimitBytesPerSecond))
-          .acquire(bytesLength);
+              pipeName, endpoint -> new PipeEndPointRateLimiter(endPointRateLimitBytesPerSecond))
+          .acquire(endPoint, bytesLength);
     }
 
-    PipeGlobalRateLimiter.acquire(bytesLength);
+    GlobalRateLimiter.acquire(bytesLength);
   }
 
   public PipeReceiverStatusHandler statusHandler() {

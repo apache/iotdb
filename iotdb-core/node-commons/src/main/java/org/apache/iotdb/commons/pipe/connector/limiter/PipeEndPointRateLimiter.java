@@ -20,16 +20,30 @@
 package org.apache.iotdb.commons.pipe.connector.limiter;
 
 import com.google.common.util.concurrent.RateLimiter;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class PipeEndPointRateLimiter {
 
-  private final RateLimiter rateLimiter = RateLimiter.create(Double.MAX_VALUE);
+  private final double bytesPerSecondLimit;
 
-  public PipeEndPointRateLimiter(double bytesPerSecond) {
-    rateLimiter.setRate(bytesPerSecond <= 0 ? Double.MAX_VALUE : bytesPerSecond);
+  private final ConcurrentMap<TEndPoint, RateLimiter> endPointRateLimiterMap;
+
+  public PipeEndPointRateLimiter(double bytesPerSecondLimit) {
+    this.bytesPerSecondLimit = bytesPerSecondLimit;
+    endPointRateLimiterMap = new ConcurrentHashMap<>();
   }
 
-  public void acquire(long bytes) {
+  public void acquire(final TEndPoint endPoint, long bytes) {
+    if (endPoint == null) {
+      return;
+    }
+
+    final RateLimiter rateLimiter = endPointRateLimiterMap.computeIfAbsent(endPoint,
+        e -> RateLimiter.create(bytesPerSecondLimit));
+
     while (bytes > 0) {
       if (bytes > Integer.MAX_VALUE) {
         rateLimiter.acquire(Integer.MAX_VALUE);

@@ -128,7 +128,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
           compressIfNeeded(
               PipeTransferConfigPlanReq.toTPipeTransferReq(
                   pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()));
-      rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
+      rateLimitIfNeeded(pipeConfigRegionWritePlanEvent.getPipeName(), clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
       resp = clientAndStatus.getLeft().pipeTransfer(req);
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
@@ -200,7 +200,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
                   Objects.nonNull(templateFile) ? templateFile.length() : 0,
                   snapshotEvent.getFileType(),
                   snapshotEvent.toSealTypeString()));
-      rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
+      rateLimitIfNeeded(snapshotEvent.getPipeName(), clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
       resp = clientAndStatus.getLeft().pipeTransfer(req);
     } catch (final Exception e) {
       clientAndStatus.setRight(false);

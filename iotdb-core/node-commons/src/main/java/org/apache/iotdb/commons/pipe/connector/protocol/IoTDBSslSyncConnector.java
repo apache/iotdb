@@ -219,5 +219,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
     if (clientManager != null) {
       clientManager.close();
     }
+
+    super.close();
   }
 }
