@@ -58,11 +58,29 @@ import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
 
 public abstract class IoTDBAirGapConnector extends IoTDBConnector {
 
+  protected static class AirGapSocket extends Socket {
+
+    private final TEndPoint endPoint;
+
+    public AirGapSocket(String ip, int port) {
+      this.endPoint = new TEndPoint(ip, port);
+    }
+
+    public TEndPoint getEndPoint() {
+      return endPoint;
+    }
+
+    @Override
+    public String toString() {
+      return "AirGapSocket{" + "endPoint=" + endPoint + "} (" + super.toString() + ")";
+    }
+  }
+
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapConnector.class);
 
   protected static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
-  protected final List<Socket> sockets = new ArrayList<>();
+  protected final List<AirGapSocket> sockets = new ArrayList<>();
   protected final List<Boolean> isSocketAlive = new ArrayList<>();
 
   private LoadBalancer loadBalancer;
@@ -148,7 +166,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         }
       }
 
-      final Socket socket = new Socket();
+      final AirGapSocket socket = new AirGapSocket(ip, port);
 
       try {
         socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
@@ -177,7 +195,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         String.format("All target servers %s are not available.", nodeUrls));
   }
 
-  protected void sendHandshakeReq(Socket socket) throws IOException {
+  protected void sendHandshakeReq(AirGapSocket socket) throws IOException {
     socket.setSoTimeout(handshakeTimeoutMs);
     // Try to handshake by PipeTransferHandshakeV2Req. If failed, retry to handshake by
     // PipeTransferHandshakeV1Req. If failed again, throw PipeConnectionException.
@@ -209,7 +227,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     }
   }
 
-  protected void transferFilePieces(File file, Socket socket, boolean isMultiFile)
+  protected void transferFilePieces(File file, AirGapSocket socket, boolean isMultiFile)
       throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
@@ -261,21 +279,14 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     return loadBalancer.nextSocketIndex();
   }
 
-  protected boolean send(Socket socket, byte[] bytes) throws IOException {
+  protected boolean send(AirGapSocket socket, byte[] bytes) throws IOException {
     if (!socket.isConnected()) {
       return false;
     }
 
     bytes = compressIfNeeded(bytes);
 
-    // avoid calling Arrays.toString() methods frequently bring performance overhead when
-    // isPipeEndPointRateLimitModeEnabled is false.
-    rateLimitIfNeeded(
-        isPipeEndPointRateLimitModeEnabled
-            ? new TEndPoint(
-                Arrays.toString(socket.getLocalAddress().getAddress()), socket.getLocalPort())
-            : null,
-        bytes.length);
+    rateLimitIfNeeded(socket.getEndPoint(), bytes.length);
 
     final BufferedOutputStream outputStream = new BufferedOutputStream(socket.getOutputStream());
     bytes = enrichWithLengthAndChecksum(bytes);

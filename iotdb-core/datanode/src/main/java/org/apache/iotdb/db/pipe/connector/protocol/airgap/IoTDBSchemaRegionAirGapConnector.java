@@ -38,7 +38,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.Socket;
 import java.util.Objects;
 
 public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnector {
@@ -61,7 +60,7 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
   @Override
   public void transfer(final Event event) throws Exception {
     final int socketIndex = nextSocketIndex();
-    final Socket socket = sockets.get(socketIndex);
+    final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
       if (event instanceof PipeSchemaRegionWritePlanEvent) {
@@ -85,7 +84,7 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
   }
 
   private void doTransferWrapper(
-      final Socket socket, final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
+      final AirGapSocket socket, final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
       throws PipeException, IOException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
@@ -101,7 +100,7 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
   }
 
   private void doTransfer(
-      final Socket socket, final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
+      final AirGapSocket socket, final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
       throws PipeException, IOException {
     final File mtreeSnapshotFile = pipeSchemaRegionSnapshotEvent.getMTreeSnapshotFile();
     final File tagLogSnapshotFile = pipeSchemaRegionSnapshotEvent.getTagLogSnapshotFile();

@@ -101,9 +101,9 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected boolean isRpcCompressionEnabled;
   protected final List<PipeCompressor> compressors = new ArrayList<>();
 
-  protected boolean isPipeEndPointRateLimitModeEnabled = false;
-  protected double endPointRateLimitBytesPerSecond = 0;
-  protected Map<TEndPoint, PipeEndPointRateLimiter> pipeEndPointsRateLimitersMap;
+  protected double endPointRateLimitBytesPerSecond = -1;
+  protected final Map<TEndPoint, PipeEndPointRateLimiter> endPoint2RateLimiterMap =
+      new ConcurrentHashMap<>();
 
   protected boolean isTabletBatchModeEnabled = true;
 
@@ -180,23 +180,16 @@ public abstract class IoTDBConnector implements PipeConnector {
         compressors.size());
     isRpcCompressionEnabled = !compressors.isEmpty();
 
-    final double pipeEndPointRateLimit =
+    endPointRateLimitBytesPerSecond =
         parameters.getDoubleOrDefault(
             Arrays.asList(CONNECTOR_RATE_LIMIT_KEY, SINK_RATE_LIMIT_KEY),
             CONNECTOR_RATE_LIMIT_DEFAULT_VALUE);
-
     validator.validate(
-        arg -> pipeEndPointRateLimit <= Double.MAX_VALUE,
+        arg -> endPointRateLimitBytesPerSecond <= Double.MAX_VALUE,
         String.format(
             "Rate limit should be in the range (0, %f], but got %f.",
-            Double.MAX_VALUE, pipeEndPointRateLimit),
-        pipeEndPointRateLimit);
-
-    if (pipeEndPointRateLimit > 0) {
-      isPipeEndPointRateLimitModeEnabled = true;
-      pipeEndPointsRateLimitersMap = new ConcurrentHashMap<>();
-      endPointRateLimitBytesPerSecond = pipeEndPointRateLimit;
-    }
+            Double.MAX_VALUE, endPointRateLimitBytesPerSecond),
+        endPointRateLimitBytesPerSecond);
 
     validator.validate(
         arg -> arg.equals("retry") || arg.equals("ignore"),
@@ -352,8 +345,8 @@ public abstract class IoTDBConnector implements PipeConnector {
   }
 
   public void rateLimitIfNeeded(final TEndPoint endPoint, final long bytesLength) {
-    if (endPoint != null && isPipeEndPointRateLimitModeEnabled) {
-      pipeEndPointsRateLimitersMap
+    if (endPointRateLimitBytesPerSecond > 0) {
+      endPoint2RateLimiterMap
           .computeIfAbsent(
               endPoint, endpoint -> new PipeEndPointRateLimiter(endPointRateLimitBytesPerSecond))
           .acquire(bytesLength);
