@@ -90,7 +90,7 @@ public class PipeTemporaryMetaMetrics implements IMetricSet {
     ImmutableSet.copyOf(pipeTemporaryMetaMap.keySet()).forEach(this::deregister);
     if (!pipeTemporaryMetaMap.isEmpty()) {
       LOGGER.warn(
-          "Failed to unbind from pipe remaining time metrics, RemainingTimeOperator map not empty");
+          "Failed to unbind from pipe temporary meta metrics, PipeTemporaryMeta map not empty");
     }
   }
 
@@ -131,7 +131,7 @@ public class PipeTemporaryMetaMetrics implements IMetricSet {
   public void deregister(final String pipeID) {
     if (!pipeTemporaryMetaMap.containsKey(pipeID)) {
       LOGGER.warn(
-          "Failed to deregister pipe remaining time metrics, RemainingTimeOperator({}) does not exist",
+          "Failed to deregister pipe temporary meta metrics, PipeTemporaryMeta({}) does not exist",
           pipeID);
       return;
     }
