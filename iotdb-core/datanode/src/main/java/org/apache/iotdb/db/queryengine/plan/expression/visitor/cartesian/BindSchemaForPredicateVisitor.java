@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -32,6 +33,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
+import org.apache.commons.lang3.Validate;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -39,9 +42,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructBinaryExpressionsWithMemoryCheck;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressionsWithMemoryCheck;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperandsWithMemoryCheck;
 import static org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForBuiltinAggregationNonSeriesInputExpressions;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
@@ -61,7 +64,8 @@ public class BindSchemaForPredicateVisitor
       resultExpressions.addAll(rightExpressions);
       return resultExpressions;
     }
-    return reconstructBinaryExpressions(binaryExpression, leftExpressions, rightExpressions);
+    return reconstructBinaryExpressionsWithMemoryCheck(
+        binaryExpression, leftExpressions, rightExpressions, context.getQueryContext());
   }
 
   @Override
@@ -86,7 +90,11 @@ public class BindSchemaForPredicateVisitor
       extendedExpressions.add(
           process(
               suffixExpression,
-              new Context(context.getPrefixPaths(), context.getSchemaTree(), false)));
+              new Context(
+                  context.getPrefixPaths(),
+                  context.getSchemaTree(),
+                  false,
+                  context.getQueryContext())));
 
       // We just process first input Expression of Count_IF,
       // keep other input Expressions as origin and bind Type
@@ -99,7 +107,8 @@ public class BindSchemaForPredicateVisitor
     }
     List<List<Expression>> childExpressionsList = new ArrayList<>();
     cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
-    return reconstructFunctionExpressions(predicate, childExpressionsList);
+    return reconstructFunctionExpressionsWithMemoryCheck(
+        predicate, childExpressionsList, context.getQueryContext());
   }
 
   @Override
@@ -130,7 +139,8 @@ public class BindSchemaForPredicateVisitor
       }
     }
     List<Expression> reconstructTimeSeriesOperands =
-        reconstructTimeSeriesOperands(predicate, nonViewPathList);
+        reconstructTimeSeriesOperandsWithMemoryCheck(
+            predicate, nonViewPathList, context.getQueryContext());
     for (MeasurementPath measurementPath : viewPathList) {
       Expression replacedExpression = transformViewPath(measurementPath, context.getSchemaTree());
       replacedExpression.setViewPath(measurementPath);
@@ -150,19 +160,27 @@ public class BindSchemaForPredicateVisitor
     return Collections.singletonList(constantOperand);
   }
 
-  public static class Context {
+  public static class Context implements QueryContextProvider {
     private final List<PartialPath> prefixPaths;
     private final ISchemaTree schemaTree;
     private final boolean isRoot;
 
-    public Context(List<PartialPath> prefixPaths, ISchemaTree schemaTree, boolean isRoot) {
+    private final MPPQueryContext queryContext;
+
+    public Context(
+        final List<PartialPath> prefixPaths,
+        final ISchemaTree schemaTree,
+        final boolean isRoot,
+        final MPPQueryContext queryContext) {
       this.prefixPaths = prefixPaths;
       this.schemaTree = schemaTree;
       this.isRoot = isRoot;
+      Validate.notNull(queryContext, "QueryContext is null");
+      this.queryContext = queryContext;
     }
 
     public Context notRootClone() {
-      return new Context(this.prefixPaths, this.schemaTree, false);
+      return new Context(this.prefixPaths, this.schemaTree, false, queryContext);
     }
 
     public List<PartialPath> getPrefixPaths() {
@@ -175,6 +193,11 @@ public class BindSchemaForPredicateVisitor
 
     public boolean isRoot() {
       return isRoot;
+    }
+
+    @Override
+    public MPPQueryContext getQueryContext() {
+      return queryContext;
     }
   }
 }

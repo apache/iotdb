@@ -76,8 +76,10 @@ public class MemoryEstimationHelper {
       totalSize += MEASUREMENT_PATH_INSTANCE_SIZE;
       MeasurementPath measurementPath = (MeasurementPath) partialPath;
       totalSize += RamUsageEstimator.sizeOf(measurementPath.getMeasurementAlias());
-      totalSize +=
-          RamUsageEstimator.sizeOf(measurementPath.getMeasurementSchema().getMeasurementId());
+      if (measurementPath.getMeasurementSchema() != null) {
+        totalSize +=
+            RamUsageEstimator.sizeOf(measurementPath.getMeasurementSchema().getMeasurementId());
+      }
     } else {
       totalSize += PARTIAL_PATH_INSTANCE_SIZE;
       totalSize += RamUsageEstimator.sizeOf(partialPath.getMeasurement());

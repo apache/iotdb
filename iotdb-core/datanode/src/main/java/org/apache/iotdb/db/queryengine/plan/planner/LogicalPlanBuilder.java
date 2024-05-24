@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -82,6 +83,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
@@ -139,6 +141,7 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder(Analysis analysis, MPPQueryContext context) {
     this.analysis = analysis;
+    Validate.notNull(context, "Query context cannot be null");
     this.context = context;
   }
 
@@ -196,27 +199,26 @@ public class LogicalPlanBuilder {
     for (PartialPath path : groupedPaths) {
       if (path instanceof MeasurementPath) {
         // non-aligned series
-        SeriesScanNode seriesScanNode =
-            new SeriesScanNode(
-                context.getQueryId().genPlanNodeId(),
-                (MeasurementPath) path,
-                scanOrder,
-                limit,
-                offset,
-                null);
-        sourceNodeList.add(seriesScanNode);
+        sourceNodeList.add(
+            reserveMemoryForSeriesSourceNode(
+                new SeriesScanNode(
+                    context.getQueryId().genPlanNodeId(),
+                    (MeasurementPath) path,
+                    scanOrder,
+                    limit,
+                    offset,
+                    null)));
       } else if (path instanceof AlignedPath) {
-        // aligned series
-        AlignedSeriesScanNode alignedSeriesScanNode =
-            new AlignedSeriesScanNode(
-                context.getQueryId().genPlanNodeId(),
-                (AlignedPath) path,
-                scanOrder,
-                limit,
-                offset,
-                null,
-                lastLevelUseWildcard);
-        sourceNodeList.add(alignedSeriesScanNode);
+        sourceNodeList.add(
+            reserveMemoryForSeriesSourceNode(
+                new AlignedSeriesScanNode(
+                    context.getQueryId().genPlanNodeId(),
+                    (AlignedPath) path,
+                    scanOrder,
+                    limit,
+                    offset,
+                    null,
+                    lastLevelUseWildcard)));
       } else {
         throw new IllegalArgumentException("Unexpected path type");
       }
@@ -275,14 +277,16 @@ public class LogicalPlanBuilder {
 
           if (selectedPath.isUnderAlignedEntity()) { // aligned series
             sourceNodeList.add(
-                new AlignedLastQueryScanNode(
-                    context.getQueryId().genPlanNodeId(),
-                    new AlignedPath(selectedPath),
-                    outputViewPath));
+                reserveMemoryForSeriesSourceNode(
+                    new AlignedLastQueryScanNode(
+                        context.getQueryId().genPlanNodeId(),
+                        new AlignedPath(selectedPath),
+                        outputViewPath)));
           } else { // non-aligned series
             sourceNodeList.add(
-                new LastQueryScanNode(
-                    context.getQueryId().genPlanNodeId(), selectedPath, outputViewPath));
+                reserveMemoryForSeriesSourceNode(
+                    new LastQueryScanNode(
+                        context.getQueryId().genPlanNodeId(), selectedPath, outputViewPath)));
           }
         }
       } else {
@@ -297,15 +301,18 @@ public class LogicalPlanBuilder {
             alignedPath.addMeasurement(measurementPath);
           }
           sourceNodeList.add(
-              new AlignedLastQueryScanNode(
-                  context.getQueryId().genPlanNodeId(), alignedPath, null));
+              reserveMemoryForSeriesSourceNode(
+                  new AlignedLastQueryScanNode(
+                      context.getQueryId().genPlanNodeId(), alignedPath, null)));
         } else {
           // non-aligned series
           for (Expression sourceExpression : measurementToExpressionsOfDevice.values()) {
             MeasurementPath selectedPath =
                 (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
             sourceNodeList.add(
-                new LastQueryScanNode(context.getQueryId().genPlanNodeId(), selectedPath, null));
+                reserveMemoryForSeriesSourceNode(
+                    new LastQueryScanNode(
+                        context.getQueryId().genPlanNodeId(), selectedPath, null)));
           }
         }
       }
@@ -1358,5 +1365,16 @@ public class LogicalPlanBuilder {
     timeseriesRegionScanNode.setDeviceToTimeseriesSchemaInfo(deviceToTimeseriesSchemaInfo);
     this.root = timeseriesRegionScanNode;
     return this;
+  }
+
+  /**
+   * There could be a lot of SeriesSourceNodes if there are too many series involved in one query.
+   * We need to check the memory used by SeriesSourceNodes.(Number of other PlanNodes are rather
+   * small compared to SourceNodes and could be safely ignored for now.)
+   */
+  private PlanNode reserveMemoryForSeriesSourceNode(final SeriesSourceNode sourceNode) {
+    this.context.reserveMemoryForFrontEnd(
+        MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceNode));
+    return sourceNode;
   }
 }

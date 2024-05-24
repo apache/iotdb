@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.CompleteMeasureme
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.TransformToExpressionVisitor;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
+import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
@@ -43,20 +45,21 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressionsWithMemoryCheck;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForBuiltinAggregationNonSeriesInputExpressions;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
-public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISchemaTree> {
+public class BindSchemaForExpressionVisitor
+    extends CartesianProductVisitor<BindSchemaForExpressionVisitor.Context> {
 
   @Override
   public List<Expression> visitFunctionExpression(
-      FunctionExpression functionExpression, ISchemaTree schemaTree) {
+      FunctionExpression functionExpression, Context context) {
 
     if (COUNT_TIME.equalsIgnoreCase(functionExpression.getFunctionName())) {
       List<Expression> usedExpressions =
           functionExpression.getExpressions().stream()
-              .flatMap(e -> process(e, schemaTree).stream())
+              .flatMap(e -> process(e, context).stream())
               .collect(Collectors.toList());
 
       Expression countTimeExpression =
@@ -73,7 +76,7 @@ public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISch
     // to collect the produced expressions.
     List<List<Expression>> extendedExpressions = new ArrayList<>();
     for (Expression originExpression : functionExpression.getExpressions()) {
-      List<Expression> actualExpressions = process(originExpression, schemaTree);
+      List<Expression> actualExpressions = process(originExpression, context);
       if (actualExpressions.isEmpty()) {
         // Let's ignore the eval of the function which has at least one non-existence series as
         // input. See IOTDB-1212: https://github.com/apache/iotdb/pull/3101
@@ -96,15 +99,16 @@ public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISch
     List<List<Expression>> childExpressionsList = new ArrayList<>();
     cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
 
-    return reconstructFunctionExpressions(functionExpression, childExpressionsList);
+    return reconstructFunctionExpressionsWithMemoryCheck(
+        functionExpression, childExpressionsList, context.getQueryContext());
   }
 
   @Override
   public List<Expression> visitTimeSeriesOperand(
-      TimeSeriesOperand timeSeriesOperand, ISchemaTree schemaTree) {
+      TimeSeriesOperand timeSeriesOperand, Context context) {
     PartialPath timeSeriesOperandPath = timeSeriesOperand.getPath();
     List<MeasurementPath> actualPaths =
-        schemaTree.searchMeasurementPaths(timeSeriesOperandPath).left;
+        context.getSchemaTree().searchMeasurementPaths(timeSeriesOperandPath).left;
     // process logical view
     List<MeasurementPath> nonViewActualPaths = new ArrayList<>();
     List<MeasurementPath> viewPaths = new ArrayList<>();
@@ -116,10 +120,11 @@ public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISch
       }
     }
     List<Expression> reconstructTimeSeriesOperands =
-        ExpressionUtils.reconstructTimeSeriesOperands(timeSeriesOperand, nonViewActualPaths);
+        ExpressionUtils.reconstructTimeSeriesOperandsWithMemoryCheck(
+            timeSeriesOperand, nonViewActualPaths, context.getQueryContext());
     // handle logical views
     for (MeasurementPath measurementPath : viewPaths) {
-      Expression replacedExpression = transformViewPath(measurementPath, schemaTree);
+      Expression replacedExpression = transformViewPath(measurementPath, context.getSchemaTree());
       replacedExpression.setViewPath(measurementPath);
       reconstructTimeSeriesOperands.add(replacedExpression);
     }
@@ -128,13 +133,12 @@ public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISch
 
   @Override
   public List<Expression> visitTimeStampOperand(
-      TimestampOperand timestampOperand, ISchemaTree schemaTree) {
+      TimestampOperand timestampOperand, Context context) {
     return Collections.singletonList(timestampOperand);
   }
 
   @Override
-  public List<Expression> visitConstantOperand(
-      ConstantOperand constantOperand, ISchemaTree schemaTree) {
+  public List<Expression> visitConstantOperand(ConstantOperand constantOperand, Context context) {
     return Collections.singletonList(constantOperand);
   }
 
@@ -151,5 +155,25 @@ public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISch
     Expression expression = new TransformToExpressionVisitor().process(viewExpression, null);
     expression = new CompleteMeasurementSchemaVisitor().process(expression, schemaTree);
     return expression;
+  }
+
+  public static class Context implements QueryContextProvider {
+    private final ISchemaTree schemaTree;
+    private final MPPQueryContext queryContext;
+
+    public Context(final ISchemaTree schemaTree, final MPPQueryContext queryContext) {
+      this.schemaTree = schemaTree;
+      Validate.notNull(queryContext, "QueryContext is null");
+      this.queryContext = queryContext;
+    }
+
+    public ISchemaTree getSchemaTree() {
+      return schemaTree;
+    }
+
+    @Override
+    public MPPQueryContext getQueryContext() {
+      return queryContext;
+    }
   }
 }
