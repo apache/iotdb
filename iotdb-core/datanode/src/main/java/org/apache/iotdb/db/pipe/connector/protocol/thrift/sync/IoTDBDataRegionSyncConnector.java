@@ -57,6 +57,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Objects;
 
 public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
@@ -178,7 +179,11 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     final TPipeTransferResp resp;
     try {
       final TPipeTransferReq req = compressIfNeeded(batchToTransfer.toTPipeTransferReq());
-      rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
+      for (final Map.Entry<String, Long> entry :
+          batchToTransfer.getPipeName2BytesAccumulated().entrySet()) {
+        rateLimitIfNeeded(
+            entry.getKey(), clientAndStatus.getLeft().getEndPoint(), entry.getValue());
+      }
       resp = clientAndStatus.getLeft().pipeTransfer(req);
     } catch (final Exception e) {
       clientAndStatus.setRight(false);

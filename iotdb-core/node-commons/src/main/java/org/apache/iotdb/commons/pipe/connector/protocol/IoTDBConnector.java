@@ -362,10 +362,6 @@ public abstract class IoTDBConnector implements PipeConnector {
     GlobalRateLimiter.acquire(bytesLength);
   }
 
-  public void rateLimitIfNeeded(final TEndPoint endPoint, final long bytesLength) {
-    rateLimitIfNeeded(null, endPoint, bytesLength);
-  }
-
   public PipeReceiverStatusHandler statusHandler() {
     return receiverStatusHandler;
   }
