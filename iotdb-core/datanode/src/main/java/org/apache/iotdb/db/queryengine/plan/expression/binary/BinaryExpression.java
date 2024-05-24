@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.expression.binary;
 
 import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssi
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -37,6 +39,9 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class BinaryExpression extends Expression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(BinaryExpression.class);
 
   protected Expression leftExpression;
   protected Expression rightExpression;
@@ -154,6 +159,13 @@ public abstract class BinaryExpression extends Expression {
     String right = this.getRightExpression().getOutputSymbol();
 
     return buildExpression(left, right);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(leftExpression)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(rightExpression);
   }
 
   private String buildExpression(String left, String right) {

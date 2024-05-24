@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
@@ -48,7 +49,8 @@ public class ConcatPathRewriter {
     return patternTree;
   }
 
-  public Statement rewrite(Statement statement, PathPatternTree patternTree)
+  public Statement rewrite(
+      Statement statement, PathPatternTree patternTree, MPPQueryContext queryContext)
       throws StatementAnalyzeException {
     QueryStatement queryStatement = (QueryStatement) statement;
     this.patternTree = patternTree;
@@ -75,7 +77,7 @@ public class ConcatPathRewriter {
     } else {
       // concat SELECT with FROM
       List<ResultColumn> resultColumns =
-          concatSelectWithFrom(queryStatement.getSelectComponent(), prefixPaths);
+          concatSelectWithFrom(queryStatement.getSelectComponent(), prefixPaths, queryContext);
       queryStatement.getSelectComponent().setResultColumns(resultColumns);
 
       // concat GROUP BY with FROM
@@ -85,12 +87,13 @@ public class ConcatPathRewriter {
             .setControlColumnExpression(
                 contactGroupByWithFrom(
                     queryStatement.getGroupByComponent().getControlColumnExpression(),
-                    prefixPaths));
+                    prefixPaths,
+                    queryContext));
       }
       if (queryStatement.hasOrderByExpression()) {
         List<Expression> sortItemExpressions = queryStatement.getExpressionSortItemList();
         sortItemExpressions.replaceAll(
-            expression -> contactOrderByWithFrom(expression, prefixPaths));
+            expression -> contactOrderByWithFrom(expression, prefixPaths, queryContext));
       }
     }
 
@@ -119,14 +122,16 @@ public class ConcatPathRewriter {
    * path pattern. And construct pattern tree.
    */
   private List<ResultColumn> concatSelectWithFrom(
-      SelectComponent selectComponent, List<PartialPath> prefixPaths)
+      final SelectComponent selectComponent,
+      final List<PartialPath> prefixPaths,
+      final MPPQueryContext queryContext)
       throws StatementAnalyzeException {
     // resultColumns after concat
     List<ResultColumn> resultColumns = new ArrayList<>();
     for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
       List<Expression> resultExpressions =
           ExpressionAnalyzer.concatExpressionWithSuffixPaths(
-              resultColumn.getExpression(), prefixPaths, patternTree);
+              resultColumn.getExpression(), prefixPaths, patternTree, queryContext);
       for (Expression resultExpression : resultExpressions) {
         resultColumns.add(
             new ResultColumn(
@@ -136,18 +141,26 @@ public class ConcatPathRewriter {
     return resultColumns;
   }
 
-  private Expression contactGroupByWithFrom(Expression expression, List<PartialPath> prefixPaths) {
+  private Expression contactGroupByWithFrom(
+      final Expression expression,
+      final List<PartialPath> prefixPaths,
+      final MPPQueryContext queryContext) {
     List<Expression> resultExpressions =
-        ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths, patternTree);
+        ExpressionAnalyzer.concatExpressionWithSuffixPaths(
+            expression, prefixPaths, patternTree, queryContext);
     if (resultExpressions.size() != 1) {
       throw new IllegalStateException("Expression in group by should indicate one value");
     }
     return resultExpressions.get(0);
   }
 
-  private Expression contactOrderByWithFrom(Expression expression, List<PartialPath> prefixPaths) {
+  private Expression contactOrderByWithFrom(
+      final Expression expression,
+      final List<PartialPath> prefixPaths,
+      final MPPQueryContext queryContext) {
     List<Expression> resultExpressions =
-        ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths, patternTree);
+        ExpressionAnalyzer.concatExpressionWithSuffixPaths(
+            expression, prefixPaths, patternTree, queryContext);
     if (resultExpressions.size() != 1) {
       throw new IllegalStateException("Expression in order by should indicate one value");
     }
