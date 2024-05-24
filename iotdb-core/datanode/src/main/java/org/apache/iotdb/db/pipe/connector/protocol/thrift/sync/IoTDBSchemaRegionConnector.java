@@ -111,7 +111,10 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
                   Objects.nonNull(tagLogSnapshotFile) ? tagLogSnapshotFile.length() : 0,
                   snapshotEvent.getDatabaseName(),
                   snapshotEvent.toSealTypeString()));
-      rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
+      rateLimitIfNeeded(
+          snapshotEvent.getPipeName(),
+          clientAndStatus.getLeft().getEndPoint(),
+          req.getBody().length);
       resp = clientAndStatus.getLeft().pipeTransfer(req);
     } catch (final Exception e) {
       clientAndStatus.setRight(false);

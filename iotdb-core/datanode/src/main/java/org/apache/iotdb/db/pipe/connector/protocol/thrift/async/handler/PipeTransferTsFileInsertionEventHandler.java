@@ -134,7 +134,8 @@ public class PipeTransferTsFileInsertionEventHandler
                     uncompressedReq, connector.getCompressors())
                 : uncompressedReq;
 
-        connector.rateLimitIfNeeded(client.getEndPoint(), req.getBody().length);
+        connector.rateLimitIfNeeded(
+            event.getPipeName(), client.getEndPoint(), req.getBody().length);
 
         client.pipeTransfer(req, this);
       }
@@ -157,7 +158,7 @@ public class PipeTransferTsFileInsertionEventHandler
                 uncompressedReq, connector.getCompressors())
             : uncompressedReq;
 
-    connector.rateLimitIfNeeded(client.getEndPoint(), req.getBody().length);
+    connector.rateLimitIfNeeded(event.getPipeName(), client.getEndPoint(), req.getBody().length);
 
     client.pipeTransfer(req, this);
 

@@ -23,8 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorFactory;
-import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.commons.pipe.connector.limiter.GlobalRateLimiter;
+import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -350,7 +350,19 @@ public abstract class IoTDBConnector implements PipeConnector {
     return compressors;
   }
 
-  public void rateLimitIfNeeded(final String pipeName, final TEndPoint endPoint, final long bytesLength) {
+  public void rateLimitIfNeeded(final TEndPoint endPoint, final long bytesLength) {
+    if (endPointRateLimitBytesPerSecond > 0) {
+      pipeName2EndPointRateLimiterMap
+          .computeIfAbsent(
+              null, endpoint -> new PipeEndPointRateLimiter(endPointRateLimitBytesPerSecond))
+          .acquire(endPoint, bytesLength);
+    }
+
+    GlobalRateLimiter.acquire(bytesLength);
+  }
+
+  public void rateLimitIfNeeded(
+      final String pipeName, final TEndPoint endPoint, final long bytesLength) {
     if (endPointRateLimitBytesPerSecond > 0) {
       pipeName2EndPointRateLimiterMap
           .computeIfAbsent(

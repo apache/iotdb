@@ -245,7 +245,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                   ? PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode)
                   : PipeTransferTabletBinaryReq.toTPipeTransferReq(
                       pipeInsertNodeTabletInsertionEvent.getByteBuffer()));
-      rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
+      rateLimitIfNeeded(
+          pipeInsertNodeTabletInsertionEvent.getPipeName(),
+          clientAndStatus.getLeft().getEndPoint(),
+          req.getBody().length);
       resp = clientAndStatus.getLeft().pipeTransfer(req);
     } catch (final Exception e) {
       if (clientAndStatus != null) {
@@ -304,7 +307,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
               PipeTransferTabletRawReq.toTPipeTransferReq(
                   pipeRawTabletInsertionEvent.convertToTablet(),
                   pipeRawTabletInsertionEvent.isAligned()));
-      rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
+      rateLimitIfNeeded(
+          pipeRawTabletInsertionEvent.getPipeName(),
+          clientAndStatus.getLeft().getEndPoint(),
+          req.getBody().length);
       resp = clientAndStatus.getLeft().pipeTransfer(req);
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
@@ -364,7 +370,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
             compressIfNeeded(
                 PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
                     modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length()));
-        rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
+        rateLimitIfNeeded(
+            pipeTsFileInsertionEvent.getPipeName(),
+            clientAndStatus.getLeft().getEndPoint(),
+            req.getBody().length);
         resp = clientAndStatus.getLeft().pipeTransfer(req);
       } catch (final Exception e) {
         clientAndStatus.setRight(false);
@@ -380,7 +389,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
-        rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
+        rateLimitIfNeeded(
+            pipeTsFileInsertionEvent.getPipeName(),
+            clientAndStatus.getLeft().getEndPoint(),
+            req.getBody().length);
         resp = clientAndStatus.getLeft().pipeTransfer(req);
       } catch (final Exception e) {
         clientAndStatus.setRight(false);
