@@ -168,7 +168,6 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
                       ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
                       : getTransferSingleFilePieceReq(file.getName(), position, payLoad));
           rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
-
           resp =
               PipeTransferFilePieceResp.fromTPipeTransferResp(
                   clientAndStatus.getLeft().pipeTransfer(req));
