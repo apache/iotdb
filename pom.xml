@@ -1852,7 +1852,7 @@
                 <plugin>
                     <groupId>com.googlecode.cmake-maven-project</groupId>
                     <artifactId>cmake-maven-plugin</artifactId>
-                    <version>3.26.3-b1</version>
+                    <version>3.29.3-b2</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -2485,7 +2485,7 @@
                 </os>
             </activation>
             <properties>
-                <cmake.generator>Visual Studio 17 2022</cmake.generator>
+                <cmake.generator>MinGW Makefiles</cmake.generator>
                 <os.classifier>windows-x86_64</os.classifier>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
             </properties>
@@ -2499,7 +2499,7 @@
                 </os>
             </activation>
             <properties>
-                <cmake.generator>Visual Studio 17 2022</cmake.generator>
+                <cmake.generator>MinGW Makefiles</cmake.generator>
                 <os.classifier>windows-aarch64</os.classifier>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
             </properties>
