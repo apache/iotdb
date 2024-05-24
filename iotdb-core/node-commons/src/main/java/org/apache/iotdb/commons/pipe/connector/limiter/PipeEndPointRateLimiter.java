@@ -25,9 +25,8 @@ public class PipeEndPointRateLimiter {
 
   private final RateLimiter rateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
-  public PipeEndPointRateLimiter(double transferDataSizeBytesPerSecond) {
-    rateLimiter.setRate(
-        transferDataSizeBytesPerSecond <= 0 ? Double.MAX_VALUE : transferDataSizeBytesPerSecond);
+  public PipeEndPointRateLimiter(double bytesPerSecond) {
+    rateLimiter.setRate(bytesPerSecond <= 0 ? Double.MAX_VALUE : bytesPerSecond);
   }
 
   public void acquire(long bytes) {
