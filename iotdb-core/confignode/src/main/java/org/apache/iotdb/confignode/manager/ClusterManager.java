@@ -63,7 +63,7 @@ public class ClusterManager {
         Thread.sleep(100);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("Unexpected interruption during waiting for configNode leader ready.");
+        LOGGER.warn("Unexpected interruption during waiting for get cluster id.");
         break;
       }
     }
