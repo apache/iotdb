@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePla
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMultiplePipesPlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
+import org.apache.iotdb.confignode.manager.pipe.metric.PipeTemporaryMetaMetrics;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -429,7 +430,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus dropPipe(final DropPipePlanV2 plan) {
     acquireWriteLock();
     try {
+      final PipeStaticMeta pipeStaticMeta =
+          pipeMetaKeeper.getPipeMeta(plan.getPipeName()).getStaticMeta();
       pipeMetaKeeper.removePipeMeta(plan.getPipeName());
+      PipeTemporaryMetaMetrics.getInstance()
+          .deregister(pipeStaticMeta.getPipeName() + "_" + pipeStaticMeta.getCreationTime());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       releaseWriteLock();

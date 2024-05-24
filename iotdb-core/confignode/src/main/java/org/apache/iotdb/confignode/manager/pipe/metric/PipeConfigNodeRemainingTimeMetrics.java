@@ -70,15 +70,6 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
         String.valueOf(operator.getCreationTime()));
-    metricService.createAutoGauge(
-        Metric.PIPE_GLOBAL_REMAINING_TIME.toString(),
-        MetricLevel.IMPORTANT,
-        operator,
-        PipeConfigNodeRemainingTimeOperator::getGlobalRemainingTime,
-        Tag.NAME.toString(),
-        operator.getPipeName(),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(operator.getCreationTime()));
   }
 
   @Override
@@ -99,13 +90,6 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_CONFIGNODE_REMAINING_TIME.toString(),
-        Tag.NAME.toString(),
-        operator.getPipeName(),
-        Tag.CREATION_TIME.toString(),
-        String.valueOf(operator.getCreationTime()));
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.PIPE_GLOBAL_REMAINING_TIME.toString(),
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
