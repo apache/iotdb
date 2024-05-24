@@ -66,20 +66,23 @@ public class PipeTemporaryMetaMetrics implements IMetricSet {
     final PipeTemporaryMeta pipeTemporaryMeta = pipeTemporaryMetaMap.get(pipeID);
     final String[] pipeNameAndCreationTime = pipeID.split("_");
     metricService.createAutoGauge(
-        Metric.PIPE_CONFIGNODE_REMAINING_TIME.toString(),
+        Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT.toString(),
         MetricLevel.IMPORTANT,
         pipeTemporaryMeta,
-        this::getGlobalRemainingTime,
+        PipeTemporaryMeta::getGlobalRemainingEvents,
         Tag.NAME.toString(),
         pipeNameAndCreationTime[0],
         Tag.CREATION_TIME.toString(),
         pipeNameAndCreationTime[1]);
-  }
-
-  private double getGlobalRemainingTime(final PipeTemporaryMeta temporaryMeta) {
-    return temporaryMeta.getNodeId2RemainingTimeMap().values().stream()
-        .reduce(Math::max)
-        .orElse(0d);
+    metricService.createAutoGauge(
+        Metric.PIPE_GLOBAL_REMAINING_TIME.toString(),
+        MetricLevel.IMPORTANT,
+        pipeTemporaryMeta,
+        PipeTemporaryMeta::getGlobalRemainingTime,
+        Tag.NAME.toString(),
+        pipeNameAndCreationTime[0],
+        Tag.CREATION_TIME.toString(),
+        pipeNameAndCreationTime[1]);
   }
 
   @Override
@@ -99,7 +102,14 @@ public class PipeTemporaryMetaMetrics implements IMetricSet {
     final String[] pipeNameAndCreationTime = pipeID.split("_");
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.PIPE_CONFIGNODE_REMAINING_TIME.toString(),
+        Metric.PIPE_GLOBAL_REMAINING_EVENT_COUNT.toString(),
+        Tag.NAME.toString(),
+        pipeNameAndCreationTime[0],
+        Tag.CREATION_TIME.toString(),
+        pipeNameAndCreationTime[1]);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.PIPE_GLOBAL_REMAINING_TIME.toString(),
         Tag.NAME.toString(),
         pipeNameAndCreationTime[0],
         Tag.CREATION_TIME.toString(),

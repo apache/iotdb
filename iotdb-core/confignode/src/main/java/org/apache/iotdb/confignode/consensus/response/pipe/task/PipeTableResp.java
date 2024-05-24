@@ -140,17 +140,9 @@ public class PipeTableResp implements DataSet {
       final boolean canCalculateOnLocal = canCalculateOnLocal(pipeMeta);
 
       showPipeInfo.setRemainingEventCount(
-          canCalculateOnLocal
-              ? -1
-              : temporaryMeta.getNodeId2RemainingEventMap().values().stream()
-                  .reduce(Long::sum)
-                  .orElse(0L));
+          canCalculateOnLocal ? -1 : temporaryMeta.getGlobalRemainingEvents());
       showPipeInfo.setEstimatedRemainingTime(
-          canCalculateOnLocal
-              ? -1
-              : temporaryMeta.getNodeId2RemainingTimeMap().values().stream()
-                  .reduce(Math::max)
-                  .orElse(0d));
+          canCalculateOnLocal ? -1 : temporaryMeta.getGlobalRemainingTime());
       showPipeInfoList.add(showPipeInfo);
     }
 

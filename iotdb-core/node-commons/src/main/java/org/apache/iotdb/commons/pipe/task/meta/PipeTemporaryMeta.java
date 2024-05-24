@@ -46,12 +46,12 @@ public class PipeTemporaryMeta {
     return completedDataNodeIds.keySet();
   }
 
-  public ConcurrentMap<Integer, Long> getNodeId2RemainingEventMap() {
-    return nodeId2RemainingEventMap;
+  public long getGlobalRemainingEvents() {
+    return nodeId2RemainingEventMap.values().stream().reduce(Long::sum).orElse(0L);
   }
 
-  public ConcurrentMap<Integer, Double> getNodeId2RemainingTimeMap() {
-    return nodeId2RemainingTimeMap;
+  public double getGlobalRemainingTime() {
+    return nodeId2RemainingTimeMap.values().stream().reduce(Math::max).orElse(0d);
   }
 
   @Override
