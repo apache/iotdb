@@ -217,8 +217,11 @@ public class ProcedureFactory implements IProcedureFactory {
       case PIPE_ENRICHED_AUTH_OPERATE_PROCEDURE:
         procedure = new AuthOperationProcedure(true);
         break;
+      case PIPE_ENRICHED_SET_TTL_PROCEDURE:
+        procedure = new SetTTLProcedure(true);
+        break;
       case SET_TTL_PROCEDURE:
-        procedure = new SetTTLProcedure();
+        procedure = new SetTTLProcedure(false);
         break;
       case CREATE_TOPIC_PROCEDURE:
         procedure = new CreateTopicProcedure();

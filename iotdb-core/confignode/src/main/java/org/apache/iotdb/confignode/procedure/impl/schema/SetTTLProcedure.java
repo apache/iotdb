@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -28,6 +29,7 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -47,17 +49,19 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 
 public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEnv, SetTTLState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(SetTTLProcedure.class);
 
   private SetTTLPlan plan;
 
-  public SetTTLProcedure() {
-    super();
+  public SetTTLProcedure(final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
   }
 
-  public SetTTLProcedure(SetTTLPlan plan) {
+  public SetTTLProcedure(SetTTLPlan plan, final boolean isGeneratedByPipe) {
+    super(isGeneratedByPipe);
     this.plan = plan;
   }
 
@@ -84,7 +88,10 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
   private void setConfigNodeTTL(ConfigNodeProcedureEnv env) {
     TSStatus res;
     try {
-      res = env.getConfigManager().getConsensusManager().write(this.plan);
+      res =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(isGeneratedByPipe ? new PipeEnrichedPlan(this.plan) : this.plan);
     } catch (ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -144,7 +151,10 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.SET_TTL_PROCEDURE.getTypeCode());
+    stream.writeShort(
+        isGeneratedByPipe
+            ? ProcedureType.PIPE_ENRICHED_SET_TTL_PROCEDURE.getTypeCode()
+            : ProcedureType.SET_TTL_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(plan.serializeToByteBuffer(), stream);
   }
@@ -168,6 +178,12 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    return this.plan.equals(((SetTTLProcedure) o).plan);
+    return this.plan.equals(((SetTTLProcedure) o).plan)
+        && this.isGeneratedByPipe == (((SetTTLProcedure) o).isGeneratedByPipe);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(plan, isGeneratedByPipe);
   }
 }

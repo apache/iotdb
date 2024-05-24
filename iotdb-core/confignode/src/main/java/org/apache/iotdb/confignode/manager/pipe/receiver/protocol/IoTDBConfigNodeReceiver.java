@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeReques
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -263,8 +264,10 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
         return configManager.dropTrigger(
             new TDropTriggerReq(((DeleteTriggerInTablePlan) plan).getTriggerName())
                 .setIsGeneratedByPipe(true));
-      case SetTTL: // TODO: Update with new TTL module
-        return configManager.getClusterSchemaManager().setTTL((SetTTLPlan) plan, true);
+      case SetTTL:
+        return ((SetTTLPlan) plan).getTTL() == TTLCache.NULL_TTL
+            ? configManager.getTTLManager().unsetTTL((SetTTLPlan) plan, true)
+            : configManager.getTTLManager().setTTL((SetTTLPlan) plan, true);
       case DropUser:
       case DropRole:
       case GrantRole:

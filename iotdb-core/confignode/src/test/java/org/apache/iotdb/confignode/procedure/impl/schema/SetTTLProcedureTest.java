@@ -43,7 +43,7 @@ public class SetTTLProcedureTest {
     // test1
     PartialPath path = new PartialPath("root.test.sg1.group1.group1.**");
     SetTTLPlan setTTLPlan = new SetTTLPlan(Arrays.asList(path.getNodes()), 1928300234200L);
-    SetTTLProcedure proc = new SetTTLProcedure(setTTLPlan);
+    SetTTLProcedure proc = new SetTTLProcedure(setTTLPlan, false);
 
     proc.serialize(outputStream);
     ByteBuffer buffer =
@@ -56,7 +56,7 @@ public class SetTTLProcedureTest {
     // test2
     path = new PartialPath("root.**");
     setTTLPlan = new SetTTLPlan(Arrays.asList(path.getNodes()), -1);
-    proc = new SetTTLProcedure(setTTLPlan);
+    proc = new SetTTLProcedure(setTTLPlan, false);
 
     proc.serialize(outputStream);
     buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
