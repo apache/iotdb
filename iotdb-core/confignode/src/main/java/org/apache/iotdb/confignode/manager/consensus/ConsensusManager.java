@@ -408,6 +408,7 @@ public class ConsensusManager {
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             LOGGER.warn("Unexpected interruption during waiting for configNode leader ready.");
+            break;
           }
         }
         result.setMessage(
