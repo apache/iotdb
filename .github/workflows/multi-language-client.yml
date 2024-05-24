@@ -1,4 +1,4 @@
-name: multi-language-client.yml
+name: Multi-Language Client
 on:
   push:
     branches:
