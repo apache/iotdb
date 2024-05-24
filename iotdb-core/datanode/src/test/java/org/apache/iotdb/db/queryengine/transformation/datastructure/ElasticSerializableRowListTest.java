@@ -262,14 +262,12 @@ public class ElasticSerializableRowListTest extends SerializableListTest {
       rowList.setEvictionUpperBound(rowList.size());
       testRowList(iterator);
 
-      columns =
-          generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
+      columns = generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
       rowList.put(columns);
       rowList.setEvictionUpperBound(rowList.size());
       testRowList(iterator);
 
-      columns =
-          generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
+      columns = generateColumnsWithRandomBinaries(ITERATION_TIMES, byteLengthMin, byteLengthMax);
       rowList.put(columns);
       rowList.setEvictionUpperBound(rowList.size());
       testRowList(iterator);
