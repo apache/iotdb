@@ -26,6 +26,8 @@ import org.apache.iotdb.confignode.manager.load.subscriber.ConsensusGroupStatist
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.NodeStatisticsChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatisticsChangeEvent;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat.PipeHeartbeat;
+import org.apache.iotdb.confignode.manager.pipe.coordinator.runtime.heartbeat.PipeHeartbeatScheduler;
 
 import javax.validation.constraints.NotNull;
 
@@ -45,7 +47,7 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   private final PipeMetaSyncer pipeMetaSyncer;
   private final PipeHeartbeatScheduler pipeHeartbeatScheduler;
 
-  public PipeRuntimeCoordinator(ConfigManager configManager) {
+  public PipeRuntimeCoordinator(final ConfigManager configManager) {
     if (procedureSubmitterHolder.get() == null) {
       synchronized (PipeRuntimeCoordinator.class) {
         if (procedureSubmitterHolder.get() == null) {
@@ -71,18 +73,18 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   }
 
   @Override
-  public void onNodeStatisticsChanged(NodeStatisticsChangeEvent event) {
+  public void onNodeStatisticsChanged(final NodeStatisticsChangeEvent event) {
     // Do nothing
   }
 
   @Override
-  public void onRegionGroupStatisticsChanged(RegionGroupStatisticsChangeEvent event) {
+  public void onRegionGroupStatisticsChanged(final RegionGroupStatisticsChangeEvent event) {
     // Do nothing
   }
 
   @Override
   public synchronized void onConsensusGroupStatisticsChanged(
-      ConsensusGroupStatisticsChangeEvent event) {
+      final ConsensusGroupStatisticsChangeEvent event) {
     pipeLeaderChangeHandler.onConsensusGroupStatisticsChanged(event);
   }
 
@@ -103,7 +105,11 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   }
 
   public void parseHeartbeat(
-      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
-    pipeHeartbeatScheduler.parseHeartbeat(dataNodeId, pipeMetaByteBufferListFromDataNode);
+      final int dataNodeId,
+      @NotNull final List<ByteBuffer> pipeMetaByteBufferListFromDataNode,
+      /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent) {
+    pipeHeartbeatScheduler.parseHeartbeat(
+        dataNodeId,
+        new PipeHeartbeat(pipeMetaByteBufferListFromDataNode, pipeCompletedListFromAgent));
   }
 }

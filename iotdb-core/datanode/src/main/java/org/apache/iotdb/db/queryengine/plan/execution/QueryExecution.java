@@ -179,6 +179,9 @@ public class QueryExecution implements IQueryExecution {
     PERFORMANCE_OVERVIEW_METRICS.recordPlanCost(System.nanoTime() - startTime);
     schedule();
 
+    // The last batch of memory reserved by the front end
+    context.reserveMemoryForFrontEndImmediately();
+
     // friendly for gc
     logicalPlan.clearUselessMemory();
 

@@ -236,9 +236,9 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
     try {
       insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
-
+      // getDeviceId() may return null for InsertRowsNode, will be equal to getClient(null)
+      clientAndStatus = clientManager.getClient(pipeInsertNodeTabletInsertionEvent.getDeviceId());
       if (insertNode != null) {
-        clientAndStatus = clientManager.getClient(insertNode.getDevicePath().getFullPath());
         resp =
             clientAndStatus
                 .getLeft()
@@ -246,7 +246,6 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                     compressIfNeeded(
                         PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode)));
       } else {
-        clientAndStatus = clientManager.getClient();
         resp =
             clientAndStatus
                 .getLeft()
@@ -277,7 +276,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
               pipeInsertNodeTabletInsertionEvent.coreReportMessage(), status),
           pipeInsertNodeTabletInsertionEvent.toString());
     }
-    if (insertNode != null && status.isSetRedirectNode()) {
+    // insertNode.getDevicePath() is null for InsertRowsNode
+    if (insertNode != null && insertNode.getDevicePath() != null && status.isSetRedirectNode()) {
       clientManager.updateLeaderCache(
           insertNode.getDevicePath().getFullPath(), status.getRedirectNode());
     }

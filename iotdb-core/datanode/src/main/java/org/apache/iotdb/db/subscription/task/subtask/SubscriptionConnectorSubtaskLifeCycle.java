@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.subscription.task.subtask;
 
-import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.execution.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtaskLifeCycle;
@@ -40,7 +40,7 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskL
   public SubscriptionConnectorSubtaskLifeCycle(
       PipeConnectorSubtaskExecutor executor, // SubscriptionSubtaskExecutor
       PipeConnectorSubtask subtask, // SubscriptionConnectorSubtask
-      BoundedBlockingPendingQueue<Event> pendingQueue) {
+      UnboundedBlockingPendingQueue<Event> pendingQueue) {
     super(executor, subtask, pendingQueue);
 
     runningTaskCount = 0;

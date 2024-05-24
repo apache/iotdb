@@ -30,7 +30,7 @@ env:
   GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
 jobs:
-  unix:
+  Test:
     runs-on: ubuntu-latest
 
     steps:

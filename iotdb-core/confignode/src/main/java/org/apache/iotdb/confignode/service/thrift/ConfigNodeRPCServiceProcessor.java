@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
-import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -545,52 +544,42 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus operatePermission(TAuthorizerReq req) {
+  public TSStatus operatePermission(final TAuthorizerReq req) {
     if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
-    AuthorPlan plan = null;
-    try {
-      plan =
-          new AuthorPlan(
-              ConfigPhysicalPlanType.values()[
-                  req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
-              req.getUserName(),
-              req.getRoleName(),
-              req.getPassword(),
-              req.getNewPassword(),
-              req.getPermissions(),
-              req.isGrantOpt(),
-              AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())));
-    } catch (AuthException e) {
-      LOGGER.error(e.getMessage());
-    }
-    return configManager.operatePermission(plan);
+    return configManager.operatePermission(
+        new AuthorPlan(
+            ConfigPhysicalPlanType.values()[
+                req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
+            req.getUserName(),
+            req.getRoleName(),
+            req.getPassword(),
+            req.getNewPassword(),
+            req.getPermissions(),
+            req.isGrantOpt(),
+            AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));
   }
 
   @Override
-  public TAuthorizerResp queryPermission(TAuthorizerReq req) {
+  public TAuthorizerResp queryPermission(final TAuthorizerReq req) {
     if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
-    AuthorPlan plan = null;
-    try {
-      plan =
-          new AuthorPlan(
-              ConfigPhysicalPlanType.values()[
-                  req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
-              req.getUserName(),
-              req.getRoleName(),
-              req.getPassword(),
-              req.getNewPassword(),
-              req.getPermissions(),
-              req.isGrantOpt(),
-              AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())));
-    } catch (AuthException e) {
-      LOGGER.error(e.getMessage());
-    }
-    PermissionInfoResp dataSet = (PermissionInfoResp) configManager.queryPermission(plan);
-    TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
+    final PermissionInfoResp dataSet =
+        (PermissionInfoResp)
+            configManager.queryPermission(
+                new AuthorPlan(
+                    ConfigPhysicalPlanType.values()[
+                        req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
+                    req.getUserName(),
+                    req.getRoleName(),
+                    req.getPassword(),
+                    req.getNewPassword(),
+                    req.getPermissions(),
+                    req.isGrantOpt(),
+                    AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));
+    final TAuthorizerResp resp = new TAuthorizerResp(dataSet.getStatus());
     resp.setMemberInfo(dataSet.getMemberList());
     resp.setPermissionInfo(dataSet.getPermissionInfoResp());
     resp.setTag(dataSet.getTag());
