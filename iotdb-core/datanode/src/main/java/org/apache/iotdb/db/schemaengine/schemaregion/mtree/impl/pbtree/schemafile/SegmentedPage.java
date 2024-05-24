@@ -343,6 +343,7 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
       return this.pageBuffer.slice();
     }
   }
+
   // endregion
 
   // region Segment Getters

@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate.Aggregat
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate.StandardStatisticsProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.aggregate.TumblingWindowingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.donothing.DoNothingProcessor;
+import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.ChangingValueSamplingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.SwingingDoorTrendingSamplingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.downsampling.TumblingTimeSamplingProcessor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.throwing.ThrowingExceptionProcessor;
@@ -59,6 +60,8 @@ public enum BuiltinPipePlugin {
   TUMBLING_TIME_SAMPLING_PROCESSOR(
       "tumbling-time-sampling-processor", TumblingTimeSamplingProcessor.class),
   SDT_SAMPLING_PROCESSOR("sdt-sampling-processor", SwingingDoorTrendingSamplingProcessor.class),
+  CHANGING_VALUE_SAMPLING_PROCESSOR(
+      "changing-value-sampling-processor", ChangingValueSamplingProcessor.class),
   THROWING_EXCEPTION_PROCESSOR("throwing-exception-processor", ThrowingExceptionProcessor.class),
   AGGREGATE_PROCESSOR("aggregate-processor", AggregateProcessor.class),
   COUNT_POINT_PROCESSOR("count-point-processor", TwoStageCountProcessor.class),
@@ -126,6 +129,7 @@ public enum BuiltinPipePlugin {
                   // Processors
                   TUMBLING_TIME_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   SDT_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
+                  CHANGING_VALUE_SAMPLING_PROCESSOR.getPipePluginName().toUpperCase(),
                   THROWING_EXCEPTION_PROCESSOR.getPipePluginName().toUpperCase(),
                   AGGREGATE_PROCESSOR.getPipePluginName().toUpperCase(),
                   STANDARD_STATISTICS_PROCESSOR.getPipePluginName().toUpperCase(),

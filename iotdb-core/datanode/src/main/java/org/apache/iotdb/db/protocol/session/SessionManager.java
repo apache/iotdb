@@ -61,6 +61,7 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNpeOrUnexpectedExce
 
 public class SessionManager implements SessionManagerMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
+
   // When the client abnormally exits, we can still know who to disconnect
   /** currSession can be only used in client-thread model services. */
   private final ThreadLocal<IClientSession> currSession = new ThreadLocal<>();

@@ -83,7 +83,9 @@ public class ConfigRegionListeningFilter {
           Collections.singletonList(ConfigPhysicalPlanType.DropSchemaTemplate));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.template.unset"),
-          Collections.singletonList(ConfigPhysicalPlanType.PipeUnsetTemplate));
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.UnsetTemplate, ConfigPhysicalPlanType.PipeUnsetTemplate)));
 
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.ordinary.drop"),
@@ -96,7 +98,9 @@ public class ConfigRegionListeningFilter {
           Collections.singletonList(ConfigPhysicalPlanType.PipeDeactivateTemplate));
 
       OPTION_PLAN_MAP.put(
-          new PartialPath("schema.ttl"), Collections.singletonList(ConfigPhysicalPlanType.SetTTL));
+          new PartialPath("schema.ttl"),
+          Collections.unmodifiableList(
+              Arrays.asList(ConfigPhysicalPlanType.SetTTL, ConfigPhysicalPlanType.PipeSetTTL)));
 
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.role.create"),

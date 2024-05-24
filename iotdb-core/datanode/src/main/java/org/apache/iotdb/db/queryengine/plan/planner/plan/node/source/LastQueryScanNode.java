@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.eclipse.jetty.util.StringUtil;
 
@@ -41,6 +43,9 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class LastQueryScanNode extends LastSeriesSourceNode {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LastQueryScanNode.class);
 
   public static final List<String> LAST_QUERY_HEADER_COLUMNS =
       ImmutableList.of(
@@ -228,5 +233,13 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
     } else {
       return outputViewPath;
     }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(id)
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(seriesPath)
+        + RamUsageEstimator.sizeOf(outputViewPath);
   }
 }

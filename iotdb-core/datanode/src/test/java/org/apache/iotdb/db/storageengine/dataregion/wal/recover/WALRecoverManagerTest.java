@@ -29,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
@@ -189,6 +190,11 @@ public class WALRecoverManagerTest {
             targetMemTable.getMemTableId(), getInsertRowNode(DEVICE2_NAME.toString(), 4L), true);
     walBuffer.write(walEntry);
     walEntry.getWalFlushListener().waitForResult();
+    walEntry =
+        new WALInfoEntry(
+            targetMemTable.getMemTableId(), getInsertRowsNode(DEVICE2_NAME.toString(), 5L), true);
+    walBuffer.write(walEntry);
+    walEntry.getWalFlushListener().waitForResult();
     // write .checkpoint file
     MemTableInfo memTableInfo =
         new MemTableInfo(targetMemTable, FILE_WITH_WAL_NAME, firstValidVersionId);
@@ -252,6 +258,15 @@ public class WALRecoverManagerTest {
     walBuffer.write(walEntry);
     walEntry.getWalFlushListener().waitForResult();
 
+    InsertRowsNode insertRowsNode = getInsertRowsNode(DEVICE2_NAME.toString(), 5L);
+    for (InsertRowNode node : insertRowsNode.getInsertRowNodeList()) {
+      targetMemTable.insert(node);
+    }
+
+    walEntry = new WALInfoEntry(targetMemTable.getMemTableId(), insertRowsNode, true);
+    walBuffer.write(walEntry);
+    walEntry.getWalFlushListener().waitForResult();
+
     walEntry = new WALInfoEntry(targetMemTable.getMemTableId(), targetMemTable, true);
     walBuffer.write(walEntry);
     walEntry.getWalFlushListener().waitForResult();
@@ -294,13 +309,13 @@ public class WALRecoverManagerTest {
     Chunk chunk = reader.readMemChunk(chunkMetadataList.get(0));
     assertEquals(3, chunk.getChunkStatistic().getEndTime());
     chunk = reader.readMemChunk(chunkMetadataList.get(1));
-    assertEquals(4, chunk.getChunkStatistic().getEndTime());
+    assertEquals(15, chunk.getChunkStatistic().getEndTime());
     reader.close();
     // check .resource file in memory
     assertEquals(1, tsFileWithWALResource.getStartTime(DEVICE1_NAME));
     assertEquals(2, tsFileWithWALResource.getEndTime(DEVICE1_NAME));
     assertEquals(3, tsFileWithWALResource.getStartTime(DEVICE2_NAME));
-    assertEquals(4, tsFileWithWALResource.getEndTime(DEVICE2_NAME));
+    assertEquals(15, tsFileWithWALResource.getEndTime(DEVICE2_NAME));
     // check file existence
     assertTrue(new File(FILE_WITH_WAL_NAME).exists());
     assertTrue(new File(FILE_WITH_WAL_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
@@ -348,6 +363,36 @@ public class WALRecoverManagerTest {
           new MeasurementSchema("s2", TSDataType.DOUBLE)
         });
     return insertRowNode;
+  }
+
+  private InsertRowsNode getInsertRowsNode(String devicePath, long time)
+      throws MetadataException, QueryProcessException {
+    TSDataType[] dataTypes = new TSDataType[] {TSDataType.FLOAT, TSDataType.DOUBLE};
+    Object[] columns = new Object[] {1.0f, 1.0d};
+    PartialPath path = new PartialPath(devicePath);
+    String[] measurements = new String[] {"s1", "s2"};
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId(""), path, false, measurements, dataTypes, time, columns, false);
+
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.FLOAT),
+          new MeasurementSchema("s2", TSDataType.DOUBLE)
+        });
+    InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
+    insertRowsNode.addOneInsertRowNode(insertRowNode, 0);
+    insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId(""), path, false, measurements, dataTypes, time + 10, columns, false);
+
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.FLOAT),
+          new MeasurementSchema("s2", TSDataType.DOUBLE)
+        });
+    insertRowsNode.addOneInsertRowNode(insertRowNode, 1);
+    return insertRowsNode;
   }
 
   private InsertTabletNode getInsertTabletNode(String devicePath) throws IllegalPathException {

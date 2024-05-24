@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -35,14 +38,27 @@ import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.flush.NotifyFlushMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.MemAlignedChunkHandleImpl;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.MemChunkHandleImpl;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.file.metadata.statistics.TimeStatistics;
+import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -50,6 +66,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +75,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 public abstract class AbstractMemTable implements IMemTable {
   /** Each memTable node has a unique int value identifier, init when recovering wal. */
@@ -74,8 +92,10 @@ public abstract class AbstractMemTable implements IMemTable {
   private volatile FlushStatus flushStatus = FlushStatus.WORKING;
   private final int avgSeriesPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+
   /** Memory size of data points, including TEXT values. */
   private long memSize = 0;
+
   /**
    * Memory usage of all TVLists memory usage regardless of whether these TVLists are full,
    * including TEXT values.
@@ -98,6 +118,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   /** this time is updated by the timed flush, same as createdTime when the feature is disabled. */
   private long updateTime = createdTime;
+
   /**
    * check whether this memTable has been updated since last timed flush check, update updateTime
    * when changed
@@ -397,6 +418,9 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public long getCurrentTVListSize(IDeviceID deviceId, String measurement) {
     IWritableMemChunkGroup memChunkGroup = memTableMap.get(deviceId);
+    if (null == memChunkGroup) {
+      return 0;
+    }
     return memChunkGroup.getCurrentTVListSize(measurement);
   }
 
@@ -458,6 +482,308 @@ public abstract class AbstractMemTable implements IMemTable {
       throws IOException, QueryProcessException {
     return ResourceByPathUtils.getResourceInstance(fullPath)
         .getReadOnlyMemChunkFromMemTable(context, this, modsToMemtable, ttlLowerBound);
+  }
+
+  @Override
+  public void queryForSeriesRegionScan(
+      IFullPath fullPath,
+      long ttlLowerBound,
+      Map<String, List<IChunkMetadata>> chunkMetaDataMap,
+      Map<String, List<IChunkHandle>> memChunkHandleMap,
+      List<Pair<Modification, IMemTable>> modsToMemTabled) {
+
+    IDeviceID deviceID = fullPath.getDeviceId();
+    if (fullPath instanceof NonAlignedFullPath) {
+      String measurementId = ((NonAlignedFullPath) fullPath).getMeasurement();
+
+      // check If MemTable Contains this path
+      if (!memTableMap.containsKey(deviceID)
+          || !memTableMap.get(deviceID).contains(measurementId)) {
+        return;
+      }
+      List<TimeRange> deletionList = new ArrayList<>();
+      if (modsToMemTabled != null) {
+        deletionList =
+            ModificationUtils.constructDeletionList(
+                fullPath.getDeviceId(), measurementId, this, modsToMemTabled, ttlLowerBound);
+      }
+      getMemChunkHandleFromMemTable(
+          deviceID, measurementId, chunkMetaDataMap, memChunkHandleMap, deletionList);
+    } else {
+      // check If MemTable Contains this path
+      if (!memTableMap.containsKey(deviceID)) {
+        return;
+      }
+      List<List<TimeRange>> deletionList = new ArrayList<>();
+      if (modsToMemTabled != null) {
+        deletionList =
+            ModificationUtils.constructDeletionList(
+                deviceID,
+                ((AlignedFullPath) fullPath).getMeasurementList(),
+                this,
+                modsToMemTabled,
+                ttlLowerBound);
+      }
+
+      getMemAlignedChunkHandleFromMemTable(
+          deviceID,
+          ((AlignedFullPath) fullPath).getSchemaList(),
+          chunkMetaDataMap,
+          memChunkHandleMap,
+          deletionList);
+    }
+  }
+
+  @Override
+  public void queryForDeviceRegionScan(
+      IDeviceID deviceID,
+      boolean isAligned,
+      long ttlLowerBound,
+      Map<String, List<IChunkMetadata>> chunkMetadataMap,
+      Map<String, List<IChunkHandle>> memChunkHandleMap,
+      List<Pair<Modification, IMemTable>> modsToMemTabled)
+      throws MetadataException {
+
+    Map<IDeviceID, IWritableMemChunkGroup> memTableMap = getMemTableMap();
+
+    // check If MemTable Contains this path
+    if (!memTableMap.containsKey(deviceID)) {
+      return;
+    }
+
+    IWritableMemChunkGroup writableMemChunkGroup = memTableMap.get(deviceID);
+    if (isAligned) {
+      getMemAlignedChunkHandleFromMemTable(
+          deviceID,
+          (AlignedWritableMemChunkGroup) writableMemChunkGroup,
+          chunkMetadataMap,
+          memChunkHandleMap,
+          ttlLowerBound,
+          modsToMemTabled);
+    } else {
+      getMemChunkHandleFromMemTable(
+          deviceID,
+          (WritableMemChunkGroup) writableMemChunkGroup,
+          chunkMetadataMap,
+          memChunkHandleMap,
+          ttlLowerBound,
+          modsToMemTabled);
+    }
+  }
+
+  private void getMemChunkHandleFromMemTable(
+      IDeviceID deviceID,
+      String measurementId,
+      Map<String, List<IChunkMetadata>> chunkMetadataMap,
+      Map<String, List<IChunkHandle>> memChunkHandleMap,
+      List<TimeRange> deletionList) {
+
+    IWritableMemChunk memChunk = memTableMap.get(deviceID).getMemChunkMap().get(measurementId);
+
+    TVList tvListCopy = memChunk.getSortedTvListForQuery();
+    long[] timestamps = filterDeletedTimestamp(tvListCopy, deletionList);
+
+    chunkMetadataMap
+        .computeIfAbsent(measurementId, k -> new ArrayList<>())
+        .add(
+            buildChunkMetaDataForMemoryChunk(
+                measurementId,
+                timestamps[0],
+                timestamps[timestamps.length - 1],
+                Collections.emptyList()));
+    memChunkHandleMap
+        .computeIfAbsent(measurementId, k -> new ArrayList<>())
+        .add(new MemChunkHandleImpl(timestamps));
+  }
+
+  private void getMemAlignedChunkHandleFromMemTable(
+      IDeviceID deviceID,
+      List<IMeasurementSchema> schemaList,
+      Map<String, List<IChunkMetadata>> chunkMetadataList,
+      Map<String, List<IChunkHandle>> memChunkHandleMap,
+      List<List<TimeRange>> deletionList) {
+
+    AlignedWritableMemChunk alignedMemChunk =
+        ((AlignedWritableMemChunkGroup) memTableMap.get(deviceID)).getAlignedMemChunk();
+
+    boolean containsMeasurement = false;
+    for (IMeasurementSchema measurementSchema : schemaList) {
+      if (alignedMemChunk.containsMeasurement(measurementSchema.getMeasurementId())) {
+        containsMeasurement = true;
+        break;
+      }
+    }
+    if (!containsMeasurement) {
+      return;
+    }
+
+    AlignedTVList alignedTVListCopy =
+        (AlignedTVList) alignedMemChunk.getSortedTvListForQuery(schemaList);
+
+    buildAlignedMemChunkHandle(
+        alignedTVListCopy, deletionList, schemaList, chunkMetadataList, memChunkHandleMap);
+  }
+
+  private void getMemAlignedChunkHandleFromMemTable(
+      IDeviceID deviceID,
+      AlignedWritableMemChunkGroup writableMemChunkGroup,
+      Map<String, List<IChunkMetadata>> chunkMetadataList,
+      Map<String, List<IChunkHandle>> memChunkHandleMap,
+      long ttlLowerBound,
+      List<Pair<Modification, IMemTable>> modsToMemTabled)
+      throws IllegalPathException {
+
+    AlignedWritableMemChunk memChunk = writableMemChunkGroup.getAlignedMemChunk();
+    List<IMeasurementSchema> schemaList = memChunk.getSchemaList();
+
+    AlignedTVList alignedTVListCopy = (AlignedTVList) memChunk.getSortedTvListForQuery(schemaList);
+
+    List<List<TimeRange>> deletionList = new ArrayList<>();
+    if (modsToMemTabled != null) {
+      for (IMeasurementSchema schema : schemaList) {
+        deletionList.add(
+            ModificationUtils.constructDeletionList(
+                deviceID, schema.getMeasurementId(), this, modsToMemTabled, ttlLowerBound));
+      }
+    }
+    buildAlignedMemChunkHandle(
+        alignedTVListCopy, deletionList, schemaList, chunkMetadataList, memChunkHandleMap);
+  }
+
+  private void getMemChunkHandleFromMemTable(
+      IDeviceID deviceID,
+      WritableMemChunkGroup writableMemChunkGroup,
+      Map<String, List<IChunkMetadata>> chunkMetadataMap,
+      Map<String, List<IChunkHandle>> memChunkHandleMap,
+      long ttlLowerBound,
+      List<Pair<Modification, IMemTable>> modsToMemTabled)
+      throws IllegalPathException {
+
+    for (Entry<String, IWritableMemChunk> entry :
+        writableMemChunkGroup.getMemChunkMap().entrySet()) {
+
+      String measurementId = entry.getKey();
+      IWritableMemChunk writableMemChunk = entry.getValue();
+      TVList tvListCopy = writableMemChunk.getSortedTvListForQuery();
+
+      List<TimeRange> deletionList = new ArrayList<>();
+      if (modsToMemTabled != null) {
+        deletionList =
+            ModificationUtils.constructDeletionList(
+                deviceID, measurementId, this, modsToMemTabled, ttlLowerBound);
+      }
+      long[] timestamps = filterDeletedTimestamp(tvListCopy, deletionList);
+      chunkMetadataMap
+          .computeIfAbsent(measurementId, k -> new ArrayList<>())
+          .add(
+              buildChunkMetaDataForMemoryChunk(
+                  measurementId,
+                  timestamps[0],
+                  timestamps[timestamps.length - 1],
+                  Collections.emptyList()));
+      memChunkHandleMap
+          .computeIfAbsent(measurementId, k -> new ArrayList<>())
+          .add(new MemChunkHandleImpl(timestamps));
+    }
+  }
+
+  private void buildAlignedMemChunkHandle(
+      AlignedTVList alignedTVList,
+      List<List<TimeRange>> deletionList,
+      List<IMeasurementSchema> schemaList,
+      Map<String, List<IChunkMetadata>> chunkMetadataList,
+      Map<String, List<IChunkHandle>> chunkHandleMap) {
+
+    List<List<BitMap>> bitMaps = alignedTVList.getBitMaps();
+    long[] timestamps =
+        alignedTVList.getTimestamps().stream().flatMapToLong(LongStream::of).toArray();
+    for (int i = 0; i < schemaList.size(); i++) {
+      String measurement = schemaList.get(i).getMeasurementId();
+      long[] startEndTime = calculateStartEndTime(timestamps, bitMaps.get(i));
+      chunkMetadataList
+          .computeIfAbsent(measurement, k -> new ArrayList<>())
+          .add(
+              buildChunkMetaDataForMemoryChunk(
+                  measurement, startEndTime[0], startEndTime[1], deletionList.get(i)));
+      chunkHandleMap
+          .computeIfAbsent(measurement, k -> new ArrayList<>())
+          .add(
+              new MemAlignedChunkHandleImpl(
+                  timestamps, bitMaps.get(i), deletionList.get(i), startEndTime));
+    }
+  }
+
+  private long[] calculateStartEndTime(long[] timestamps, List<BitMap> bitMaps) {
+    long startTime = -1;
+    for (int i = 0; i < bitMaps.size(); i++) {
+      BitMap bitMap = bitMaps.get(i);
+      for (int j = 0; j < bitMap.getSize(); j++) {
+        if (!bitMap.isMarked(j)) {
+          startTime = timestamps[i];
+          break;
+        }
+      }
+      if (startTime != -1) {
+        break;
+      }
+    }
+
+    long endTime = -1;
+    for (int i = bitMaps.size() - 1; i >= 0; i--) {
+      BitMap bitMap = bitMaps.get(i);
+      for (int j = bitMap.getSize() - 1; j >= 0; j--) {
+        if (!bitMap.isMarked(j)) {
+          endTime = timestamps[i];
+          break;
+        }
+      }
+      if (endTime != -1) {
+        break;
+      }
+    }
+    return new long[] {startTime, endTime};
+  }
+
+  private IChunkMetadata buildChunkMetaDataForMemoryChunk(
+      String measurement, long startTime, long endTime, List<TimeRange> deletionList) {
+    TimeStatistics timeStatistics = new TimeStatistics();
+    timeStatistics.setStartTime(startTime);
+    timeStatistics.setEndTime(endTime);
+
+    // ChunkMetaData for memory is only used to get time statistics, the dataType is irrelevant.
+    IChunkMetadata chunkMetadata =
+        new ChunkMetadata(
+            measurement,
+            TSDataType.UNKNOWN,
+            TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED,
+            0,
+            timeStatistics);
+    for (TimeRange timeRange : deletionList) {
+      chunkMetadata.insertIntoSortedDeletions(timeRange);
+    }
+    return chunkMetadata;
+  }
+
+  private long[] filterDeletedTimestamp(TVList tvList, List<TimeRange> deletionList) {
+    if (deletionList.isEmpty()) {
+      return tvList.getTimestamps().stream().flatMapToLong(LongStream::of).toArray();
+    }
+
+    long lastTime = -1;
+    int[] deletionCursor = {0};
+    int rowCount = tvList.rowCount();
+    List<Long> result = new ArrayList<>();
+
+    for (int i = 0; i < rowCount; i++) {
+      long curTime = tvList.getTime(i);
+      if (!ModificationUtils.isPointDeleted(curTime, deletionList, deletionCursor)
+          && (i == rowCount - 1 || curTime != lastTime)) {
+        result.add(curTime);
+      }
+      lastTime = curTime;
+    }
+    return result.stream().mapToLong(Long::longValue).toArray();
   }
 
   /**

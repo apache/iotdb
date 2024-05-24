@@ -32,7 +32,12 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PipeTaskExtractorStage extends PipeTaskStage {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskExtractorStage.class);
 
   private final PipeExtractor pipeExtractor;
 
@@ -60,6 +65,14 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
                   pipeName, creationTime, regionId, pipeTaskMeta));
       pipeExtractor.customize(extractorParameters, runtimeConfiguration);
     } catch (Exception e) {
+      try {
+        pipeExtractor.close();
+      } catch (Exception closeException) {
+        LOGGER.warn(
+            "Failed to close extractor after failed to initialize extractor. "
+                + "Ignore this exception.",
+            closeException);
+      }
       throw new PipeException(e.getMessage(), e);
     }
   }

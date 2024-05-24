@@ -27,8 +27,10 @@ import java.util.Map;
 public abstract class StorageGroupCacheResult<V> {
   /** the result */
   private boolean success = true;
+
   /** the list of devices that miss */
   private List<String> missedDevices = new ArrayList<>();
+
   /** result map, Notice: this map will be empty when failed */
   protected Map<String, V> map = new HashMap<>();
 

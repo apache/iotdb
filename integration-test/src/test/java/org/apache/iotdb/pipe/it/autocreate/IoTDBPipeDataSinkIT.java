@@ -36,13 +36,14 @@ import org.junit.runner.RunWith;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
   @Test
-  public void testThriftConnector() throws Exception {
+  public void testThriftConnectorWithRealtimeFirst() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -50,6 +51,15 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+
+      // Do not fail if the failure has nothing to do with pipe
+      // Because the failures will randomly generate due to resource limitation
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"))) {
+        return;
+      }
+
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
@@ -60,6 +70,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      connectorAttributes.put("connector.realtime-first", "true");
 
       final TSStatus status =
           client.createPipe(
@@ -76,7 +87,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
       // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"))) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"))) {
         return;
       }
 
@@ -84,7 +95,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select * from root.**",
           "Time,root.vehicle.d0.s1,",
-          Collections.singleton("0,1.0,"));
+          Collections.unmodifiableSet(new HashSet<>(Arrays.asList("0,1.0,", "1,1.0,"))));
     }
   }
 

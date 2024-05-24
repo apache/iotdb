@@ -89,7 +89,9 @@ public class SeriesScanOptions {
     this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, dataTTL);
   }
 
-  /** @return an updated filter concerning TTL */
+  /**
+   * @return an updated filter concerning TTL
+   */
   public static Filter updateFilterUsingTTL(Filter filter, long dataTTL) {
     if (dataTTL != Long.MAX_VALUE) {
       if (filter != null) {

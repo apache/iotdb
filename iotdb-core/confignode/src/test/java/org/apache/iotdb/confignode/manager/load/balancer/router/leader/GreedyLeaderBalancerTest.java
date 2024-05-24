@@ -35,9 +35,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class GreedyLeaderBalancerTest {
 
@@ -45,7 +47,7 @@ public class GreedyLeaderBalancerTest {
 
   @Test
   public void optimalLeaderDistributionTest() {
-    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new TreeMap<>();
+    Map<TConsensusGroupId, Set<Integer>> regionReplicaSetMap = new TreeMap<>();
     Map<TConsensusGroupId, Integer> regionLeaderMap = new TreeMap<>();
     Map<Integer, NodeStatistics> dataNodeStatisticsMap = new TreeMap<>();
     Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap = new TreeMap<>();
@@ -67,7 +69,11 @@ public class GreedyLeaderBalancerTest {
         regionStatistics.put(j, new RegionStatistics(RegionStatus.Running));
       }
       TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet(regionGroupId, dataNodeLocations);
-      regionReplicaSetMap.put(regionGroupId, regionReplicaSet);
+      regionReplicaSetMap.put(
+          regionGroupId,
+          regionReplicaSet.getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toSet()));
       regionLeaderMap.put(regionGroupId, random.nextInt(3));
       regionStatisticsMap.put(regionGroupId, regionStatistics);
     }
@@ -83,7 +89,11 @@ public class GreedyLeaderBalancerTest {
         regionStatistics.put(j, new RegionStatistics(RegionStatus.Running));
       }
       TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet(regionGroupId, dataNodeLocations);
-      regionReplicaSetMap.put(regionGroupId, regionReplicaSet);
+      regionReplicaSetMap.put(
+          regionGroupId,
+          regionReplicaSet.getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toSet()));
       regionLeaderMap.put(regionGroupId, 3 + random.nextInt(3));
       regionStatisticsMap.put(regionGroupId, regionStatistics);
     }
@@ -110,7 +120,7 @@ public class GreedyLeaderBalancerTest {
 
   @Test
   public void disableTest() {
-    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new TreeMap<>();
+    Map<TConsensusGroupId, Set<Integer>> regionReplicaSetMap = new TreeMap<>();
     Map<TConsensusGroupId, Integer> regionLeaderMap = new TreeMap<>();
     Map<Integer, NodeStatistics> dataNodeStatisticsMap = new TreeMap<>();
     Map<TConsensusGroupId, Map<Integer, RegionStatistics>> regionStatisticsMap = new TreeMap<>();
@@ -135,7 +145,11 @@ public class GreedyLeaderBalancerTest {
             j, new RegionStatistics(j == 1 ? RegionStatus.Unknown : RegionStatus.Running));
       }
       TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet(regionGroupId, dataNodeLocations);
-      regionReplicaSetMap.put(regionGroupId, regionReplicaSet);
+      regionReplicaSetMap.put(
+          regionGroupId,
+          regionReplicaSet.getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toSet()));
       regionLeaderMap.put(regionGroupId, 1);
       regionStatisticsMap.put(regionGroupId, regionStatistics);
     }
@@ -152,7 +166,11 @@ public class GreedyLeaderBalancerTest {
             j, new RegionStatistics(j == 4 ? RegionStatus.ReadOnly : RegionStatus.Running));
       }
       TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet(regionGroupId, dataNodeLocations);
-      regionReplicaSetMap.put(regionGroupId, regionReplicaSet);
+      regionReplicaSetMap.put(
+          regionGroupId,
+          regionReplicaSet.getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toSet()));
       regionLeaderMap.put(regionGroupId, 4);
       regionStatisticsMap.put(regionGroupId, regionStatistics);
     }

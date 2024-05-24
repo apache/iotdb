@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
+import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -147,6 +148,8 @@ public class ErrorHandlingUtils {
             ((IoTDBException) t.getCause()).getErrorCode(), rootCause.getMessage());
       }
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
+    } else if (t instanceof MemoryNotEnoughException) {
+      return RpcUtils.getStatus(TSStatusCode.QUOTA_MEM_QUERY_NOT_ENOUGH, rootCause.getMessage());
     }
 
     if (t instanceof RuntimeException && rootCause instanceof IoTDBException) {

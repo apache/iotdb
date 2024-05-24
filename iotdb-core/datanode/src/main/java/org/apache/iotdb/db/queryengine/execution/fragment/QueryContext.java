@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -78,35 +80,55 @@ public class QueryContext {
     this.timeout = timeout;
   }
 
-  /**
-   * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
-   * them from 'modFile' and put then into the cache.
-   */
-  public List<Modification> getPathModifications(
-      TsFileResource tsFileResource, IDeviceID deviceID, String measurementId) {
-    // if the mods file does not exist, do not add it to the cache
+  // if the mods file does not exist, do not add it to the cache
+  private boolean checkIfModificationExists(TsFileResource tsFileResource) {
     if (nonExistentModFiles.contains(tsFileResource.getTsFileID())) {
-      return Collections.emptyList();
+      return false;
     }
 
     ModificationFile modFile = tsFileResource.getModFile();
     if (!modFile.exists()) {
       nonExistentModFiles.add(tsFileResource.getTsFileID());
+      return false;
+    }
+    return true;
+  }
+
+  private PatternTreeMap<Modification, ModsSerializer> getAllModifications(
+      ModificationFile modFile) {
+    return fileModCache.computeIfAbsent(
+        modFile.getFilePath(),
+        k -> {
+          PatternTreeMap<Modification, ModsSerializer> modifications =
+              PatternTreeMapFactory.getModsPatternTreeMap();
+          for (Modification modification : modFile.getModificationsIter()) {
+            modifications.append(modification.getPath(), modification);
+          }
+          return modifications;
+        });
+  }
+
+  public List<Modification> getPathModifications(
+      TsFileResource tsFileResource, IDeviceID deviceID, String measurement) {
+    // if the mods file does not exist, do not add it to the cache
+    if (!checkIfModificationExists(tsFileResource)) {
       return Collections.emptyList();
     }
 
-    PatternTreeMap<Modification, ModsSerializer> allModifications =
-        fileModCache.computeIfAbsent(
-            modFile.getFilePath(),
-            k -> {
-              PatternTreeMap<Modification, ModsSerializer> modifications =
-                  PatternTreeMapFactory.getModsPatternTreeMap();
-              for (Modification modification : modFile.getModificationsIter()) {
-                modifications.append(modification.getPath(), modification);
-              }
-              return modifications;
-            });
-    return ModificationFile.sortAndMerge(allModifications.getOverlapped(deviceID, measurementId));
+    return ModificationFile.sortAndMerge(
+        getAllModifications(tsFileResource.getModFile()).getOverlapped(deviceID, measurement));
+  }
+
+  public List<Modification> getPathModifications(TsFileResource tsFileResource, IDeviceID deviceID)
+      throws IllegalPathException {
+    // if the mods file does not exist, do not add it to the cache
+    if (!checkIfModificationExists(tsFileResource)) {
+      return Collections.emptyList();
+    }
+
+    return ModificationFile.sortAndMerge(
+        getAllModifications(tsFileResource.getModFile())
+            .getDeviceOverlapped(new PartialPath(deviceID)));
   }
 
   /**

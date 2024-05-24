@@ -24,10 +24,13 @@ import org.apache.iotdb.isession.INodeSupplier;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 public class DummyNodesSupplier implements INodeSupplier {
 
   private final List<TEndPoint> availableNodes;
+
+  private final QueryEndPointPolicy policy = new RoundRobinPolicy();
 
   public DummyNodesSupplier(List<TEndPoint> availableNodes) {
     this.availableNodes = Collections.unmodifiableList(availableNodes);
@@ -36,6 +39,15 @@ public class DummyNodesSupplier implements INodeSupplier {
   @Override
   public void close() {
     // do nothing
+  }
+
+  @Override
+  public Optional<TEndPoint> getQueryEndPoint() {
+    if (availableNodes == null || availableNodes.isEmpty()) {
+      return Optional.empty();
+    } else {
+      return Optional.of(policy.chooseOne(availableNodes));
+    }
   }
 
   @Override

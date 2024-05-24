@@ -30,6 +30,10 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimatorFactory;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -42,9 +46,12 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -92,6 +99,10 @@ public class LocalExecutionPlanContext {
   // use AtomicReference not for thread-safe, just for updating same field in different pipeline
   private AtomicReference<List<Long>> timePartitions = new AtomicReference<>();
 
+  /** Records the parent of each pipeline. The order of each list does not matter for now. */
+  private Map<PlanNodeId, List<PipelineMemoryEstimator>> parentPlanNodeIdToMemoryEstimator =
+      new ConcurrentHashMap<>();
+
   // for data region
   public LocalExecutionPlanContext(
       TypeProvider typeProvider,
@@ -123,6 +134,7 @@ public class LocalExecutionPlanContext {
         parentContext.getDriverContext().createSubDriverContext(getNextPipelineId());
     this.dataNodeQueryContext = parentContext.dataNodeQueryContext;
     this.timePartitions = parentContext.timePartitions;
+    this.parentPlanNodeIdToMemoryEstimator = parentContext.parentPlanNodeIdToMemoryEstimator;
   }
 
   // for schema region
@@ -145,6 +157,38 @@ public class LocalExecutionPlanContext {
       Operator operation, DriverContext driverContext, long estimatedMemorySize) {
     pipelineDriverFactories.add(
         new PipelineDriverFactory(operation, driverContext, estimatedMemorySize));
+  }
+
+  /**
+   * Each time we construct a pipeline, we should also construct the memory estimator for the
+   * pipeline.
+   *
+   * @param operation the root operator of the pipeline
+   * @param parentPlanNodeId the parent plan node id of the root of the pipeline
+   * @param root the root node of the pipeline
+   * @param dependencyPipelineIndex the index of the dependency pipeline, -1 if no dependency
+   */
+  public PipelineMemoryEstimator constructPipelineMemoryEstimator(
+      final Operator operation,
+      @Nullable final PlanNodeId parentPlanNodeId,
+      final PlanNode root,
+      final int dependencyPipelineIndex) {
+    PipelineMemoryEstimator currentPipelineMemoryEstimator =
+        PipelineMemoryEstimatorFactory.createPipelineMemoryEstimator(
+            operation, root, dependencyPipelineIndex);
+    // As OperatorTreeGenerator traverse the tree in a post-order way, all the children of current
+    // pipeline have been recorded in the map.
+    List<PipelineMemoryEstimator> childrenMemoryEstimators =
+        parentPlanNodeIdToMemoryEstimator.get(root.getPlanNodeId());
+    if (childrenMemoryEstimators != null) {
+      currentPipelineMemoryEstimator.addChildren(childrenMemoryEstimators);
+    }
+    if (parentPlanNodeId != null) {
+      parentPlanNodeIdToMemoryEstimator
+          .computeIfAbsent(parentPlanNodeId, k -> new LinkedList<>())
+          .add(currentPipelineMemoryEstimator);
+    }
+    return currentPipelineMemoryEstimator;
   }
 
   public LocalExecutionPlanContext createSubContext() {
@@ -305,5 +349,13 @@ public class LocalExecutionPlanContext {
 
   public TemplatedInfo getTemplatedInfo() {
     return typeProvider.getTemplatedInfo();
+  }
+
+  public Map<PlanNodeId, List<PipelineMemoryEstimator>> getParentPlanNodeIdToMemoryEstimator() {
+    return parentPlanNodeIdToMemoryEstimator;
+  }
+
+  public void invalidateParentPlanNodeIdToMemoryEstimator() {
+    parentPlanNodeIdToMemoryEstimator = null;
   }
 }

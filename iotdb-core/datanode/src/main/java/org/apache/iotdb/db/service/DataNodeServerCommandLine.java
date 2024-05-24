@@ -167,8 +167,11 @@ public class DataNodeServerCommandLine extends ServerCommandLine {
             continue;
           }
           List<TDataNodeLocation> nodeLocationResult =
-              client.getDataNodeConfiguration(Integer.parseInt(id)).getDataNodeConfigurationMap()
-                  .values().stream()
+              client
+                  .getDataNodeConfiguration(Integer.parseInt(id))
+                  .getDataNodeConfigurationMap()
+                  .values()
+                  .stream()
                   .map(TDataNodeConfiguration::getLocation)
                   .collect(Collectors.toList());
           if (nodeLocationResult.isEmpty()) {

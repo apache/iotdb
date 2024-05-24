@@ -40,8 +40,8 @@ if %JMX_LOCAL% == "false" (
   -Djava.rmi.server.randomIDs=true^
   -Dcom.sun.management.jmxremote.ssl=false^
   -Dcom.sun.management.jmxremote.authenticate=false^
-  -Dcom.sun.management.jmxremote.password.file=%CONFIGNODE_CONF%\jmx.password^
-  -Dcom.sun.management.jmxremote.access.file=%CONFIGNODE_CONF%\jmx.access^
+  -Dcom.sun.management.jmxremote.password.file="%CONFIGNODE_CONF%\jmx.password"^
+  -Dcom.sun.management.jmxremote.access.file="%CONFIGNODE_CONF%\jmx.access"^
   -Djava.rmi.server.hostname=%JMX_IP%
 ) else (
   echo "setting local JMX..."
@@ -59,9 +59,9 @@ for /f  %%b in ('wmic ComputerSystem get TotalPhysicalMemory ^| findstr "[0-9]"'
 	set system_memory=%%b
 )
 
-echo wsh.echo FormatNumber(cdbl(%system_memory%)/(1024*1024), 0) > %CONFIGNODE_HOME%\sbin\tmp.vbs
-for /f "tokens=*" %%a in ('cscript //nologo %CONFIGNODE_HOME%\sbin\tmp.vbs') do set system_memory_in_mb=%%a
-del %CONFIGNODE_HOME%\sbin\tmp.vbs
+echo wsh.echo FormatNumber(cdbl(%system_memory%)/(1024*1024), 0) > "%CONFIGNODE_HOME%\sbin\tmp.vbs"
+for /f "tokens=*" %%a in ('cscript //nologo "%CONFIGNODE_HOME%\sbin\tmp.vbs"') do set system_memory_in_mb=%%a
+del "%CONFIGNODE_HOME%\sbin\tmp.vbs"
 set system_memory_in_mb=%system_memory_in_mb:,=%
 
 @REM suggest using memory, system memory 3 / 10
@@ -132,10 +132,10 @@ set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:+CrashOnOutOfMemoryError
 @REM set gc log.
 IF "%1" equ "printgc" (
 	IF "%JAVA_VERSION%" == "8" (
-	    md %CONFIGNODE_HOME%\logs
+	    md "%CONFIGNODE_HOME%\logs"
 		set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -Xloggc:"%CONFIGNODE_HOME%\logs\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails  -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
 	) ELSE (
-		md %CONFIGNODE_HOME%\logs
+		md "%CONFIGNODE_HOME%\logs"
 		set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS%  -Xlog:gc=info,heap*=trace,age*=debug,safepoint=info,promotion*=trace:file="%CONFIGNODE_HOME%\logs\gc.log":time,uptime,pid,tid,level:filecount=10,filesize=10485760
 	)
 )

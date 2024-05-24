@@ -124,6 +124,12 @@ public class AlignedPath extends PartialPath {
     schemaList = new ArrayList<>();
   }
 
+  public AlignedPath(String[] nodes, List<String> measurementList) {
+    super(nodes);
+    this.measurementList = measurementList;
+    this.schemaList = new ArrayList<>();
+  }
+
   /**
    * This method is used by last read. Comparator<Binary> and Comparator<String> behaves differently
    * and that is why we use Comparator<Binary> here.

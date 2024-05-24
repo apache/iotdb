@@ -113,7 +113,9 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
             : new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
   }
 
-  /** @return {@code true} if the {@link PipeSubtask} should be stopped, {@code false} otherwise */
+  /**
+   * @return {@code true} if the {@link PipeSubtask} should be stopped, {@code false} otherwise
+   */
   private boolean onPipeConnectionException(Throwable throwable) {
     LOGGER.warn(
         "PipeConnectionException occurred, {} retries to handshake with the target system.",

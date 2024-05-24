@@ -36,7 +36,7 @@ import java.util.Objects;
 
 public class ProjectNode extends SingleChildProcessNode {
 
-  private final List<String> outputColumnNames;
+  private List<String> outputColumnNames;
 
   public ProjectNode(PlanNodeId id, List<String> outputColumnNames) {
     super(id);
@@ -61,6 +61,10 @@ public class ProjectNode extends SingleChildProcessNode {
   @Override
   public List<String> getOutputColumnNames() {
     return outputColumnNames;
+  }
+
+  public void setOutputColumnNames(List<String> outputColumnNames) {
+    this.outputColumnNames = outputColumnNames;
   }
 
   @Override

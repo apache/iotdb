@@ -24,6 +24,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssigner;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -31,6 +33,9 @@ import java.util.List;
 import java.util.Map;
 
 public class NullOperand extends LeafOperand {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(NullOperand.class);
+
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitNullOperand(this, context);
@@ -70,5 +75,10 @@ public class NullOperand extends LeafOperand {
   @Override
   protected void serialize(DataOutputStream stream) throws IOException {
     // do nothing
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE;
   }
 }

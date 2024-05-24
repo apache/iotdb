@@ -68,6 +68,7 @@ public class ColumnHeaderConstant {
   public static final String VERSION = "Version";
   public static final String BUILD_INFO = "BuildInfo";
   public static final String PATHS = "Paths";
+  public static final String PATH = "Path";
   public static final String VARIABLE = "Variable";
 
   // column names for count statement
@@ -204,6 +205,9 @@ public class ColumnHeaderConstant {
   public static final String COLUMN_DATA_TYPE = "DataType";
   public static final String COLUMN_CATEGORY = "Category";
   public static final String TABLE_NAME = "TableName";
+  public static final String PRIVILEGES = "Privileges";
+
+  public static final String GRANT_OPTION = "GrantOption";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -512,4 +516,10 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(TABLE_NAME, TSDataType.TEXT),
           new ColumnHeader(COLUMN_TTL, TSDataType.INT64));
+  public static final List<ColumnHeader> LIST_USER_PRIVILEGES_Column_HEADERS =
+      ImmutableList.of(
+          new ColumnHeader(ROLE, TSDataType.TEXT),
+          new ColumnHeader(PATH, TSDataType.TEXT),
+          new ColumnHeader(PRIVILEGES, TSDataType.TEXT),
+          new ColumnHeader(GRANT_OPTION, TSDataType.BOOLEAN));
 }

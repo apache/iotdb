@@ -86,6 +86,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
   public static final String ROLE_SUFFIX = "_role";
 
   private final String userDirPath;
+
   /**
    * Reused buffer for primitive types encoding/decoding, which aim to reduce memory fragments. Use
    * ThreadLocal for thread safety.

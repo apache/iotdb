@@ -21,8 +21,9 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Accountable;
 
-public interface IFullPath {
+public interface IFullPath extends Accountable {
 
   IDeviceID getDeviceId();
 

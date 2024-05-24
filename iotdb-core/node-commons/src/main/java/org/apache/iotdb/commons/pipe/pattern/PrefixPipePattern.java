@@ -31,7 +31,7 @@ import java.util.Arrays;
 
 public class PrefixPipePattern extends PipePattern {
 
-  public PrefixPipePattern(String pattern) {
+  public PrefixPipePattern(final String pattern) {
     super(pattern);
   }
 
@@ -48,25 +48,25 @@ public class PrefixPipePattern extends PipePattern {
 
     try {
       PathUtils.isLegalPath(pattern);
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       try {
         if ("root".equals(pattern) || "root.".equals(pattern)) {
           return true;
         }
 
         // Split the pattern to nodes.
-        String[] pathNodes = StringUtils.splitPreserveAllTokens(pattern, "\\.");
+        final String[] pathNodes = StringUtils.splitPreserveAllTokens(pattern, "\\.");
 
         // Check whether the pattern without last node is legal.
         PathUtils.splitPathToDetachedNodes(
             String.join(".", Arrays.copyOfRange(pathNodes, 0, pathNodes.length - 1)));
-        String lastNode = pathNodes[pathNodes.length - 1];
+        final String lastNode = pathNodes[pathNodes.length - 1];
 
         // Check whether the last node is legal.
         if (!"".equals(lastNode)) {
           Double.parseDouble(lastNode);
         }
-      } catch (Exception ignored) {
+      } catch (final Exception ignored) {
         return false;
       }
     }
@@ -74,7 +74,7 @@ public class PrefixPipePattern extends PipePattern {
   }
 
   @Override
-  public boolean coversDb(String db) {
+  public boolean coversDb(final String db) {
     return pattern.length() <= db.length() && db.startsWith(pattern);
   }
 
@@ -110,7 +110,7 @@ public class PrefixPipePattern extends PipePattern {
     // For example, pattern is "root.a.b.c", device is "root.a.b",
     // then measurements "c" and "cc" can be matched,
     // measurements "d" or "dc" can't be matched.
-    String dotAndMeasurement = TsFileConstant.PATH_SEPARATOR + measurement;
+    final String dotAndMeasurement = TsFileConstant.PATH_SEPARATOR + measurement;
     return
     // low cost check comes first
     pattern.length() <= deviceStr.length() + dotAndMeasurement.length()

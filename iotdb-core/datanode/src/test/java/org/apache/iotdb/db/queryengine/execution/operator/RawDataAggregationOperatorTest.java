@@ -730,6 +730,7 @@ public class RawDataAggregationOperatorTest {
 
     assertEquals(6, count);
   }
+
   /** 0 - 199 200 - 259 260 - 299 300 - 379 380 - 399 400 - 499 */
   @Test
   public void groupByEventRawDataTest4() throws Exception {

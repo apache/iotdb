@@ -25,6 +25,11 @@ CONFIGNODE="iotdb-confignode"
 if [ -z "${IOTDB_HOME}" ]; then
     export IOTDB_HOME="`dirname "$0"`/.."
 fi
+ulimit_value=""
+
+system_settings_pre_check(){
+  ulimit_value=$(ulimit -n)
+}
 
 source "${IOTDB_HOME}/sbin/iotdb-common.sh"
 
@@ -43,6 +48,10 @@ while [[ $# -gt 0 ]]; do
         -o)
             shift
             operate=$1
+            ;;
+        --help)
+            echo "${HELP}"
+            exit 1
             ;;
         *)
             echo "Unrecognized options:$1"
@@ -322,16 +331,16 @@ local_mem_check() {
 
   total_memory=$(free -h | awk '/Mem:/ {print $2}')
   confignode_memory=$(echo "scale=2; $memory_size_in_mb / 1024" | bc)
-
+  confignode_memory_formatted=$(printf "%.2f" "$confignode_memory")
   source "${IOTDB_HOME}/conf/datanode-env.sh" >/dev/null 2>&1
   datanode_memory=$(echo "scale=2; $memory_size_in_mb / 1024" | bc)
-
+  datanode_memory_formatted=$(printf "%.2f" "$datanode_memory")
   if [ -n "$confignode_memory" ] && [ -n "$datanode_memory" ]; then
-    echo "Result: Total Memory ${total_memory}, ${confignode_memory} G allocated to IoTDB ConfigNode, ${datanode_memory} G allocated to IoTDB DataNode"
+    echo "Result: Total Memory ${total_memory}, ${confignode_memory_formatted} G allocated to IoTDB ConfigNode, ${datanode_memory_formatted} G allocated to IoTDB DataNode"
   elif [ -n "$confignode_memory" ]; then
-    echo "Result: Total Memory ${total_memory}, ${confignode_memory} G allocated to IoTDB ConfigNode"
+    echo "Result: Total Memory ${total_memory}, ${confignode_memory_formatted} G allocated to IoTDB ConfigNode"
   elif [ -n "$datanode_memory" ]; then
-    echo "Result: Total Memory ${total_memory}, ${datanode_memory} G allocated to IoTDB DataNode"
+    echo "Result: Total Memory ${total_memory}, ${datanode_memory_formatted} G allocated to IoTDB DataNode"
   else
     echo "Result: Total Memory ${total_memory}."
   fi
@@ -343,7 +352,7 @@ system_settings_check() {
   echo "Requirement: >= 65535"
 
   # Get the maximum open file limit for the current user
-  ulimit_value=$(ulimit -n)
+
   echo "Result: $ulimit_value"
 
   echo ""
@@ -360,6 +369,7 @@ system_settings_check() {
 
 if [ -n "$operate" ]; then
     if [ "$operate" == "local" ]; then
+        system_settings_pre_check
         local_jdk_check
         local_mem_check
         local_dirs_check
@@ -368,6 +378,7 @@ if [ -n "$operate" ]; then
     elif [ "$operate" == "remote" ]; then
         remote_ports_check
     elif  [ "$operate" == "all" ]; then
+        system_settings_pre_check
         local_jdk_check
         local_mem_check
         local_dirs_check
@@ -379,6 +390,7 @@ if [ -n "$operate" ]; then
         exit 1
     fi
 else
+    system_settings_pre_check
     local_jdk_check
     local_mem_check
     local_dirs_check

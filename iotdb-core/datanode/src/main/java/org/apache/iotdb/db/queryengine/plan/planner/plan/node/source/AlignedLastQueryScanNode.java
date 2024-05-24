@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.eclipse.jetty.util.StringUtil;
 
@@ -43,6 +45,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode.LAST_QUERY_HEADER_COLUMNS;
 
 public class AlignedLastQueryScanNode extends LastSeriesSourceNode {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AlignedLastQueryScanNode.class);
+
   // The path of the target series which will be scanned.
   private final AlignedPath seriesPath;
 
@@ -228,5 +233,13 @@ public class AlignedLastQueryScanNode extends LastSeriesSourceNode {
   @Override
   public PartialPath getPartitionPath() {
     return getSeriesPath();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(id)
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(seriesPath)
+        + RamUsageEstimator.sizeOf(outputViewPath);
   }
 }

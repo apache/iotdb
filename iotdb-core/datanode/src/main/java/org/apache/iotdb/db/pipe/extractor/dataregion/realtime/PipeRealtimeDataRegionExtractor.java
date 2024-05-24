@@ -111,7 +111,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   }
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     final PipeParameters parameters = validator.getParameters();
 
     try {
@@ -134,14 +134,15 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
                 SOURCE_END_TIME_KEY,
                 EXTRACTOR_END_TIME_KEY));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       // compatible with the current validation framework
       throw new PipeParameterNotValidException(e.getMessage());
     }
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     final PipeTaskExtractorRuntimeEnvironment environment =
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
@@ -232,8 +233,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         });
   }
 
-  /** @param event the {@link Event} from the {@link StorageEngine} */
-  public final void extract(PipeRealtimeEvent event) {
+  /**
+   * @param event the {@link Event} from the {@link StorageEngine}
+   */
+  public final void extract(final PipeRealtimeEvent event) {
     if (isDbNameCoveredByPattern) {
       event.skipParsingPattern();
     }
@@ -268,9 +271,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  protected abstract void doExtract(PipeRealtimeEvent event);
+  protected abstract void doExtract(final PipeRealtimeEvent event);
 
-  protected void extractHeartbeat(PipeRealtimeEvent event) {
+  protected void extractHeartbeat(final PipeRealtimeEvent event) {
     // Bind extractor so that the heartbeat event can later inform the extractor of queue size
     ((PipeHeartbeatEvent) event.getEvent()).bindExtractor(this);
 
@@ -306,7 +309,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  protected void extractDeletion(PipeRealtimeEvent event) {
+  protected void extractDeletion(final PipeRealtimeEvent event) {
     if (!pendingQueue.waitedOffer(event)) {
       // This would not happen, but just in case.
       // Pending is unbounded, so it should never reach capacity.
@@ -323,11 +326,11 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  protected Event supplyHeartbeat(PipeRealtimeEvent event) {
+  protected Event supplyHeartbeat(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName())) {
       return event.getEvent();
     } else {
-      // this would not happen, but just in case.
+      // This would not happen, but just in case.
       LOGGER.error(
           "Heartbeat Event {} can not be supplied because "
               + "the reference count can not be increased",
@@ -340,7 +343,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  protected Event supplyDeletion(PipeRealtimeEvent event) {
+  protected Event supplyDeletion(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName())) {
       return event.getEvent();
     } else {
@@ -391,7 +394,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     return realtimeDataExtractionEndTime;
   }
 
-  public void setDataRegionTimePartitionIdBound(@NonNull Pair<Long, Long> timePartitionIdBound) {
+  public void setDataRegionTimePartitionIdBound(
+      @NonNull final Pair<Long, Long> timePartitionIdBound) {
     LOGGER.info(
         "PipeRealtimeDataRegionExtractor({}) observed data region {} time partition growth, recording time partition id bound: {}.",
         taskID,
@@ -442,6 +446,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public int getPipeHeartbeatEventCount() {
     return pendingQueue.getPipeHeartbeatEventCount();
+  }
+
+  public int getEventCount() {
+    return pendingQueue.size();
   }
 
   public String getTaskID() {

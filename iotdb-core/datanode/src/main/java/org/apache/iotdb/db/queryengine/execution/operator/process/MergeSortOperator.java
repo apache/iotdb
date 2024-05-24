@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
@@ -32,6 +33,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -41,6 +43,9 @@ import java.util.concurrent.TimeUnit;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class MergeSortOperator extends AbstractConsumeAllOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(MergeSortOperator.class);
 
   private final List<TSDataType> dataTypes;
   private final TsBlockBuilder tsBlockBuilder;
@@ -214,6 +219,18 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
     return currentRetainedSize - minChildReturnSize;
   }
 
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + children.stream()
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
+            .sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + RamUsageEstimator.sizeOf(canCallNext)
+        + RamUsageEstimator.sizeOf(noMoreTsBlocks)
+        + tsBlockBuilder.getRetainedSizeInBytes();
+  }
+
   // region helper function used in prepareInput
 
   /**
@@ -227,7 +244,9 @@ public class MergeSortOperator extends AbstractConsumeAllOperator {
         || children.get(currentChildIndex) == null;
   }
 
-  /** @param currentInputIndex index of the input TsBlock */
+  /**
+   * @param currentInputIndex index of the input TsBlock
+   */
   @Override
   protected void processCurrentInputTsBlock(int currentInputIndex) {
     mergeSortHeap.push(new MergeSortKey(inputTsBlocks[currentInputIndex], 0, currentInputIndex));

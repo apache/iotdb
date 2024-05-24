@@ -33,7 +33,6 @@ import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
-import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -111,6 +110,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeac
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeSetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
@@ -145,6 +145,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPla
 import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.RollbackPreUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
@@ -166,6 +167,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 
@@ -560,11 +562,12 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void AuthorPlanTest() throws IOException, AuthException, IllegalPathException {
-
+  public void AuthorPlanTest() throws IOException, IllegalPathException {
     AuthorPlan req0;
     AuthorPlan req1;
     Set<Integer> permissions = new HashSet<>();
+    permissions.add(1);
+    permissions.add(2);
 
     // create user
     req0 =
@@ -964,6 +967,20 @@ public class ConfigPhysicalPlanSerDeTest {
     List<CompressionType> compressors =
         Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY);
     return new Template(name, measurements, dataTypes, encodings, compressors);
+  }
+
+  @Test
+  public void ExtendSchemaTemplatePlanTest() throws IOException {
+    final ExtendSchemaTemplatePlan plan =
+        new ExtendSchemaTemplatePlan(
+            new TemplateExtendInfo(
+                "template_name",
+                Arrays.asList(
+                    "template_name" + "_" + "temperature", "template_name" + "_" + "status"),
+                Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN),
+                Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN),
+                Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY)));
+    Assert.assertEquals(plan, ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer()));
   }
 
   @Test
@@ -1869,72 +1886,78 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void pipeEnrichedPlanTest() throws IOException {
-    DatabaseSchemaPlan req0 =
-        new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.CreateDatabase,
-            new TDatabaseSchema()
-                .setName("sg")
-                .setTTL(Long.MAX_VALUE)
-                .setSchemaReplicationFactor(3)
-                .setDataReplicationFactor(3)
-                .setTimePartitionInterval(604800));
-    PipeEnrichedPlan plan = new PipeEnrichedPlan(req0);
-    PipeEnrichedPlan plan1 =
-        (PipeEnrichedPlan) ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer());
-    Assert.assertEquals(plan, plan1);
+    final PipeEnrichedPlan plan =
+        new PipeEnrichedPlan(
+            new DatabaseSchemaPlan(
+                ConfigPhysicalPlanType.CreateDatabase,
+                new TDatabaseSchema()
+                    .setName("sg")
+                    .setTTL(Long.MAX_VALUE)
+                    .setSchemaReplicationFactor(3)
+                    .setDataReplicationFactor(3)
+                    .setTimePartitionInterval(604800)));
+    Assert.assertEquals(plan, ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer()));
   }
 
   @Test
   public void pipeUnsetSchemaTemplatePlanTest() throws IOException {
-    PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan =
+    final PipeUnsetSchemaTemplatePlan pipeUnsetSchemaTemplatePlan =
         new PipeUnsetSchemaTemplatePlan("template0", "root.sg");
-    PipeUnsetSchemaTemplatePlan deserializedPlan =
-        (PipeUnsetSchemaTemplatePlan)
-            ConfigPhysicalPlan.Factory.create(pipeUnsetSchemaTemplatePlan.serializeToByteBuffer());
-    Assert.assertEquals(pipeUnsetSchemaTemplatePlan, deserializedPlan);
+    Assert.assertEquals(
+        pipeUnsetSchemaTemplatePlan,
+        ConfigPhysicalPlan.Factory.create(pipeUnsetSchemaTemplatePlan.serializeToByteBuffer()));
   }
 
   @Test
   public void pipeDeleteTimeSeriesPlanTest() throws IOException, IllegalPathException {
-    PathPatternTree patternTree = new PathPatternTree();
+    final PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.**.s1"));
     patternTree.constructTree();
 
-    PipeDeleteTimeSeriesPlan pipeDeleteTimeSeriesPlan =
+    final PipeDeleteTimeSeriesPlan pipeDeleteTimeSeriesPlan =
         new PipeDeleteTimeSeriesPlan(patternTree.serialize());
-    PipeDeleteTimeSeriesPlan deserializedPlan =
-        (PipeDeleteTimeSeriesPlan)
-            ConfigPhysicalPlan.Factory.create(pipeDeleteTimeSeriesPlan.serializeToByteBuffer());
-    Assert.assertEquals(pipeDeleteTimeSeriesPlan, deserializedPlan);
+    Assert.assertEquals(
+        pipeDeleteTimeSeriesPlan,
+        ConfigPhysicalPlan.Factory.create(pipeDeleteTimeSeriesPlan.serializeToByteBuffer()));
   }
 
   @Test
   public void pipeDeleteLogicalViewPlanTest() throws IOException, IllegalPathException {
-    PathPatternTree patternTree = new PathPatternTree();
+    final PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.**.s1"));
     patternTree.constructTree();
 
-    PipeDeleteLogicalViewPlan pipeDeleteLogicalViewPlan =
+    final PipeDeleteLogicalViewPlan pipeDeleteLogicalViewPlan =
         new PipeDeleteLogicalViewPlan(patternTree.serialize());
-    PipeDeleteLogicalViewPlan deserializedPlan =
-        (PipeDeleteLogicalViewPlan)
-            ConfigPhysicalPlan.Factory.create(pipeDeleteLogicalViewPlan.serializeToByteBuffer());
-    Assert.assertEquals(pipeDeleteLogicalViewPlan, deserializedPlan);
+    Assert.assertEquals(
+        pipeDeleteLogicalViewPlan,
+        ConfigPhysicalPlan.Factory.create(pipeDeleteLogicalViewPlan.serializeToByteBuffer()));
   }
 
   @Test
   public void pipeDeactivateTemplatePlanTest() throws IllegalPathException, IOException {
-    Map<PartialPath, List<Template>> templateSetInfo = new HashMap<>();
-    templateSetInfo.put(
-        new PartialPath("root.**.s1"),
-        Collections.singletonList(newSchemaTemplate("template_name")));
+    final PipeDeactivateTemplatePlan pipeDeactivateTemplatePlan =
+        new PipeDeactivateTemplatePlan(
+            new HashMap<PartialPath, List<Template>>() {
+              {
+                put(
+                    new PartialPath("root.**.s1"),
+                    Collections.singletonList(newSchemaTemplate("template_name")));
+              }
+            });
+    Assert.assertEquals(
+        pipeDeactivateTemplatePlan,
+        ConfigPhysicalPlan.Factory.create(pipeDeactivateTemplatePlan.serializeToByteBuffer()));
+  }
 
-    PipeDeactivateTemplatePlan pipeDeactivateTemplatePlan =
-        new PipeDeactivateTemplatePlan(templateSetInfo);
-    PipeDeactivateTemplatePlan deserializedPlan =
-        (PipeDeactivateTemplatePlan)
-            ConfigPhysicalPlan.Factory.create(pipeDeactivateTemplatePlan.serializeToByteBuffer());
-    Assert.assertEquals(pipeDeactivateTemplatePlan, deserializedPlan);
+  @Test
+  public void pipeSetTTLPlanTest() throws IOException {
+    final PipeSetTTLPlan plan =
+        new PipeSetTTLPlan(
+            Arrays.asList(
+                new SetTTLPlan(Arrays.asList("root", "db", "**", "a", "**"), Long.MAX_VALUE),
+                new SetTTLPlan(Arrays.asList("root", "db", "a", "**"), Long.MAX_VALUE)));
+    Assert.assertEquals(plan, ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer()));
   }
 
   @Test

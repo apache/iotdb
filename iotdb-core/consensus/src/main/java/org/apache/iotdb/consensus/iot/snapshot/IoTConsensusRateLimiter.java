@@ -31,7 +31,10 @@ public class IoTConsensusRateLimiter {
   private IoTConsensusRateLimiter() {}
 
   public void init(long regionMigrationSpeedLimitBytesPerSecond) {
-    rateLimiter.setRate(regionMigrationSpeedLimitBytesPerSecond);
+    rateLimiter.setRate(
+        regionMigrationSpeedLimitBytesPerSecond <= 0
+            ? Double.MAX_VALUE
+            : regionMigrationSpeedLimitBytesPerSecond);
   }
 
   /**

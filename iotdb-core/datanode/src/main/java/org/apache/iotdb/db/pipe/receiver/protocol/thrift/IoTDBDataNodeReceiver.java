@@ -25,8 +25,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -49,6 +51,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipePlanToStatementVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementExceptionVisitor;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementPatternParseVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTSStatusVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementToBatchVisitor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -111,6 +114,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       new PipeStatementTSStatusVisitor();
   private static final PipeStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
       new PipeStatementExceptionVisitor();
+  private static final PipeStatementPatternParseVisitor STATEMENT_PATTERN_PARSE_VISITOR =
+      new PipeStatementPatternParseVisitor();
   private final PipeStatementToBatchVisitor batchVisitor = new PipeStatementToBatchVisitor();
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
@@ -188,6 +193,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             // Config requests will first be received by the DataNode receiver,
             // then transferred to ConfigNode receiver to execute.
             return handleTransferConfigPlan(req);
+          case TRANSFER_COMPRESSED:
+            return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
           default:
             break;
         }
@@ -204,7 +211,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           receiverId.get(),
           status);
       return new TPipeTransferResp(status);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       final String error =
           String.format("Exception %s encountered while handling request %s.", e.getMessage(), req);
       LOGGER.warn("Receiver id = {}: {}", receiverId.get(), error, e);
@@ -245,10 +252,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             Stream.of(
                     statementPair.getLeft().isEmpty()
                         ? RpcUtils.SUCCESS_STATUS
-                        : executeStatementAndClassifyExceptions(statementPair.getLeft()),
+                        : executeStatementAndAddRedirectInfo(statementPair.getLeft()),
                     statementPair.getRight().isEmpty()
                         ? RpcUtils.SUCCESS_STATUS
-                        : executeStatementAndClassifyExceptions(statementPair.getRight()))
+                        : executeStatementAndAddRedirectInfo(statementPair.getRight()))
                 .collect(Collectors.toList())));
   }
 
@@ -300,6 +307,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final Set<StatementType> executionTypes =
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
+    final IoTDBPipePattern pattern =
+        new IoTDBPipePattern(parameters.get(ColumnHeaderConstant.PATH_PATTERN));
 
     // Clear to avoid previous exceptions
     batchVisitor.clear();
@@ -313,8 +322,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       // The statements do not contain AlterLogicalViewStatements
       // Here we apply the statements as many as possible
       // Even if there are failed statements
-      batchVisitor
-          .process(originalStatement, null)
+      STATEMENT_PATTERN_PARSE_VISITOR
+          .process(originalStatement, pattern)
+          .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
           .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
     }
     batchVisitor.getRemainBatches().stream()
@@ -353,10 +363,55 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return configReceiverId.get();
   }
 
+  /**
+   * For {@link InsertRowsStatement} and {@link InsertMultiTabletsStatement}, the returned {@link
+   * TSStatus} will use sub-status to record the endpoint for redirection. Each sub-status records
+   * the redirection endpoint for one device path, and the order is the same as the order of the
+   * device paths in the statement. However, this order is not guaranteed to be the same as in the
+   * request. So for each sub-status which needs to redirect, we record the device path using the
+   * message field.
+   */
+  private TSStatus executeStatementAndAddRedirectInfo(final InsertBaseStatement statement) {
+    final TSStatus result = executeStatementAndClassifyExceptions(statement);
+
+    if (result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+        && result.getSubStatusSize() > 0) {
+      final List<PartialPath> devicePaths;
+      if (statement instanceof InsertRowsStatement) {
+        devicePaths = ((InsertRowsStatement) statement).getDevicePaths();
+      } else if (statement instanceof InsertMultiTabletsStatement) {
+        devicePaths = ((InsertMultiTabletsStatement) statement).getDevicePaths();
+      } else {
+        LOGGER.warn(
+            "Receiver id = {}: Unsupported statement type {} for redirection.",
+            receiverId.get(),
+            statement);
+        return result;
+      }
+
+      if (devicePaths.size() == result.getSubStatusSize()) {
+        for (int i = 0; i < devicePaths.size(); ++i) {
+          if (result.getSubStatus().get(i).isSetRedirectNode()) {
+            result.getSubStatus().get(i).setMessage(devicePaths.get(i).getFullPath());
+          }
+        }
+      } else {
+        LOGGER.warn(
+            "Receiver id = {}: The number of device paths is not equal to sub-status in statement {}: {}.",
+            receiverId.get(),
+            statement,
+            result);
+      }
+    }
+
+    return result;
+  }
+
   private TSStatus executeStatementAndClassifyExceptions(final Statement statement) {
     try {
       final TSStatus result = executeStatement(statement);
-      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return result;
       } else {
         LOGGER.warn(

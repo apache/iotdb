@@ -119,6 +119,7 @@ public class CreateLogicalViewNode extends WritePlanNode implements ICreateLogic
   public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
     return visitor.visitCreateLogicalView(this, schemaRegion);
   }
+
   // endregion
 
   // region Interfaces in WritePlanNode or PlanNode

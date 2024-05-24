@@ -194,6 +194,17 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     columns[index] = null;
   }
 
+  @Override
+  public void semanticCheck() {
+    super.semanticCheck();
+    if (measurements.length != columns.length) {
+      throw new SemanticException(
+          String.format(
+              "the measurementList's size %d is not consistent with the columnList's size %d",
+              measurements.length, columns.length));
+    }
+  }
+
   public boolean isNeedSplit() {
     return hasLogicalViewNeedProcess();
   }

@@ -248,7 +248,9 @@ public class TTLTest {
 
   @Test
   public void testTTLRemoval()
-      throws StorageEngineException, WriteProcessException, QueryProcessException,
+      throws StorageEngineException,
+          WriteProcessException,
+          QueryProcessException,
           IllegalPathException {
     prepareData();
 
