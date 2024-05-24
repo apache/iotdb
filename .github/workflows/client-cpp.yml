@@ -58,8 +58,7 @@ jobs:
         run: |
           choco install winflexbison3
           choco install boost-msvc-14.3 --version=1.84.0.1
-          $env:PATH="$env:PATH;C:\local\boost_1_84_0"
-          echo "##vso[task.prependpath]C:\local\boost_1_84_0"
+          echo C:\\local\\boost_1_84_0 >> $env:GITHUB_PATH
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
