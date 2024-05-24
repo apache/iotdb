@@ -180,14 +180,15 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
   private void doTransfer(final PipeConfigRegionSnapshotEvent snapshotEvent)
       throws PipeException, IOException {
+    final String pipeName = snapshotEvent.getPipeName();
     final File snapshotFile = snapshotEvent.getSnapshotFile();
     final File templateFile = snapshotEvent.getTemplateFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
 
     // 1. Transfer snapshotFile, and template File if exists
-    transferFilePieces(snapshotFile, clientAndStatus, true);
+    transferFilePieces(pipeName, snapshotFile, clientAndStatus, true);
     if (Objects.nonNull(templateFile)) {
-      transferFilePieces(templateFile, clientAndStatus, true);
+      transferFilePieces(pipeName, templateFile, clientAndStatus, true);
     }
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     final TPipeTransferResp resp;

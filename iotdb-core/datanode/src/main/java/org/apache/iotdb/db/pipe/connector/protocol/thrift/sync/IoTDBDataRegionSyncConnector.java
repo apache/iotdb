@@ -355,6 +355,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
+    final String pipeName = pipeTsFileInsertionEvent.getPipeName();
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
     final File modFile = pipeTsFileInsertionEvent.getModFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
@@ -362,8 +363,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
     // 1. Transfer tsFile, and mod file if exists and receiver's version >= 2
     if (pipeTsFileInsertionEvent.isWithMod() && clientManager.supportModsIfIsDataNodeReceiver()) {
-      transferFilePieces(modFile, clientAndStatus, true);
-      transferFilePieces(tsFile, clientAndStatus, true);
+      transferFilePieces(pipeName, modFile, clientAndStatus, true);
+      transferFilePieces(pipeName, tsFile, clientAndStatus, true);
       // 2. Transfer file seal signal with mod, which means the file is transferred completely
       try {
         final TPipeTransferReq req =
@@ -383,7 +384,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
             e);
       }
     } else {
-      transferFilePieces(tsFile, clientAndStatus, false);
+      transferFilePieces(pipeName, tsFile, clientAndStatus, false);
       // 2. Transfer file seal signal without mod, which means the file is transferred completely
       try {
         final TPipeTransferReq req =

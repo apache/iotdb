@@ -144,7 +144,10 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   }
 
   protected void transferFilePieces(
-      File file, Pair<IoTDBSyncClient, Boolean> clientAndStatus, boolean isMultiFile)
+      String pipeName,
+      File file,
+      Pair<IoTDBSyncClient, Boolean> clientAndStatus,
+      boolean isMultiFile)
       throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
@@ -167,7 +170,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
                   isMultiFile
                       ? getTransferMultiFilePieceReq(file.getName(), position, payLoad)
                       : getTransferSingleFilePieceReq(file.getName(), position, payLoad));
-          rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
+          rateLimitIfNeeded(
+              pipeName, clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
           resp =
               PipeTransferFilePieceResp.fromTPipeTransferResp(
                   clientAndStatus.getLeft().pipeTransfer(req));
