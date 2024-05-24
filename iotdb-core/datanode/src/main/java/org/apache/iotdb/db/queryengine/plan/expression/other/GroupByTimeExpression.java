@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssi
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.utils.TimeDuration;
 
@@ -40,6 +41,9 @@ import java.util.Map;
 
 /** Only used for representing GROUP BY TIME filter. */
 public class GroupByTimeExpression extends Expression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(GroupByTimeExpression.class);
 
   // [startTime, endTime]
   private final long startTime;
@@ -156,5 +160,10 @@ public class GroupByTimeExpression extends Expression {
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitGroupByTimeExpression(this, context);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE;
   }
 }

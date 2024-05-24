@@ -17,21 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.exception;
+package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 
-import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-public class MemoryNotEnoughExceptionTest {
-
-  @Test
-  public void testMemoryNotEnoughExceptionStatusCode() {
-    MemoryNotEnoughException e = new MemoryNotEnoughException("test");
-    assertEquals(TSStatusCode.QUOTA_MEM_QUERY_NOT_ENOUGH.getStatusCode(), e.getErrorCode());
-    assertTrue(e.isUserException());
-  }
+public interface QueryContextProvider {
+  MPPQueryContext getQueryContext();
 }
