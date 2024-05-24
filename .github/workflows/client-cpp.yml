@@ -58,8 +58,8 @@ jobs:
         run: |
           choco install winflexbison3
           choco install boost-msvc-14.3 --version=1.84.0.1
-          echo boost.include.dir=C:\local\boost_1_84_0 >> .mvn\wrapper\maven-wrapper.properties
-          echo boost.library.dir=C:\local\boost_1_84_0\stage\lib >> .mvn\wrapper\maven-wrapper.properties
+          Add-Content -Path ".mvn\wrapper\maven-wrapper.properties" -Value "boost.include.dir=C:\local\boost_1_84_0"
+          Add-Content -Path ".mvn\wrapper\maven-wrapper.properties" -Value "boost.library.dir=C:\local\boost_1_84_0\stage\lib"
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
