@@ -344,12 +344,13 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   /** Update wal disk cost of active memTables. */
-  public void updateCostOfActiveMemTables(Map<Long, Long> memTableId2WalDiskUsage) {
+  public void updateCostOfActiveMemTables(
+      Map<Long, Long> memTableId2WalDiskUsage, double compressionRate) {
     for (Map.Entry<Long, Long> memTableWalUsage : memTableId2WalDiskUsage.entrySet()) {
       memTableId2Info.computeIfPresent(
           memTableWalUsage.getKey(),
           (k, v) -> {
-            v.addWalDiskUsage(memTableWalUsage.getValue());
+            v.addWalDiskUsage((long) (memTableWalUsage.getValue() * compressionRate));
             return v;
           });
     }

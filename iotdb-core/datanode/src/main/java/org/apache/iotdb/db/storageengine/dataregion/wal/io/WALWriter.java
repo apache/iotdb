@@ -51,11 +51,11 @@ public class WALWriter extends LogWriter {
    *
    * @throws IOException when failing to write
    */
-  public void write(ByteBuffer buffer, WALMetaData metaData) throws IOException {
+  public double write(ByteBuffer buffer, WALMetaData metaData) throws IOException {
     // update metadata
     updateMetaData(metaData);
     // flush buffer
-    write(buffer);
+    return write(buffer);
   }
 
   public void updateMetaData(WALMetaData metaData) {

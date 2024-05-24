@@ -72,13 +72,14 @@ public abstract class LogWriter implements ILogWriter {
   }
 
   @Override
-  public void write(ByteBuffer buffer) throws IOException {
+  public double write(ByteBuffer buffer) throws IOException {
     int bufferSize = buffer.position();
     buffer.flip();
     boolean compressed = false;
     int uncompressedSize = bufferSize;
     if (compressionAlg != CompressionType.UNCOMPRESSED
-        && bufferSize > MIN_COMPRESS_SIZE /* Do not compress buffer that is less than 512KB */) {
+        /* Do not compress buffer that is less than min size */
+        && bufferSize > MIN_COMPRESS_SIZE) {
       compressedByteBuffer.clear();
       compressor.compress(buffer, compressedByteBuffer);
       buffer = compressedByteBuffer;
@@ -103,12 +104,12 @@ public abstract class LogWriter implements ILogWriter {
     size += 5;
     try {
       headerBuffer.flip();
-      long before = logChannel.position();
       logChannel.write(headerBuffer);
       logChannel.write(buffer);
     } catch (ClosedChannelException e) {
       logger.warn("Cannot write to {}", logFile, e);
     }
+    return ((double) bufferSize / uncompressedSize);
   }
 
   @Override
