@@ -62,9 +62,9 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
     events = batch.deepCopyEvents();
     req =
         connector.isRpcCompressionEnabled()
-            ? batch.toTPipeTransferReq()
-            : PipeTransferCompressedReq.toTPipeTransferReq(
-                batch.toTPipeTransferReq(), connector.getCompressors());
+            ? PipeTransferCompressedReq.toTPipeTransferReq(
+                batch.toTPipeTransferReq(), connector.getCompressors())
+            : batch.toTPipeTransferReq();
 
     this.connector = connector;
   }

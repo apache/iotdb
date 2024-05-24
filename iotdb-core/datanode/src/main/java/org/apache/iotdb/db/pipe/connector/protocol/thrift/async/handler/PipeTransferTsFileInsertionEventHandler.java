@@ -123,14 +123,16 @@ public class PipeTransferTsFileInsertionEventHandler
       } else if (currentFile == tsFile) {
         isSealSignalSent.set(true);
 
-        TPipeTransferReq req =
-            PipeTransferCompressedReq.toTPipeTransferReq(
-                transferMod
-                    ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                        modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
-                    : PipeTransferTsFileSealReq.toTPipeTransferReq(
-                        tsFile.getName(), tsFile.length()),
-                connector.getCompressors());
+        final TPipeTransferReq uncompressedReq =
+            transferMod
+                ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                    modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
+                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
+        final TPipeTransferReq req =
+            connector.isRpcCompressionEnabled()
+                ? PipeTransferCompressedReq.toTPipeTransferReq(
+                    uncompressedReq, connector.getCompressors())
+                : uncompressedReq;
 
         connector.rateLimitIfNeeded(client.getEndPoint(), req.getBody().length);
 
@@ -149,7 +151,6 @@ public class PipeTransferTsFileInsertionEventHandler
                 currentFile.getName(), position, payload)
             : PipeTransferTsFilePieceReq.toTPipeTransferReq(
                 currentFile.getName(), position, payload);
-
     final TPipeTransferReq req =
         connector.isRpcCompressionEnabled()
             ? PipeTransferCompressedReq.toTPipeTransferReq(
