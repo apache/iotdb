@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALInputStream;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 
 import org.apache.tsfile.utils.Pair;
@@ -100,11 +101,11 @@ public class WALEntryPosition {
     if (!canRead()) {
       throw new IOException("Target file hasn't been specified.");
     }
-    try (FileChannel channel = openReadFileChannel()) {
+    try (WALInputStream is = openReadFileStream()) {
+      is.skipToGivenPosition(position);
       ByteBuffer buffer = ByteBuffer.allocate(size);
-      channel.position(position);
-      channel.read(buffer);
-      buffer.clear();
+      is.read(buffer);
+      buffer.flip();
       return buffer;
     }
   }
@@ -128,6 +129,26 @@ public class WALEntryPosition {
         if (isInSealedFile()) {
           walFile = walNode.getWALFile(walFileVersionId);
           return FileChannel.open(walFile.toPath(), StandardOpenOption.READ);
+        } else {
+          throw e;
+        }
+      }
+    }
+  }
+
+  public WALInputStream openReadFileStream() throws IOException {
+    if (isInSealedFile()) {
+      walFile = walNode.getWALFile(walFileVersionId);
+      return new WALInputStream(walFile);
+    } else {
+      try {
+        walFile = walNode.getWALFile(walFileVersionId);
+        return new WALInputStream(walFile);
+      } catch (IOException e) {
+        // unsealed file may be renamed after sealed, so we should try again
+        if (isInSealedFile()) {
+          walFile = walNode.getWALFile(walFileVersionId);
+          return new WALInputStream(walFile);
         } else {
           throw e;
         }

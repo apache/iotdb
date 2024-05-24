@@ -37,6 +37,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES + 1);
   private final ByteBuffer compressedHeader = ByteBuffer.allocate(Integer.BYTES);
   private ByteBuffer dataBuffer = null;
+  private long fileSize;
   File logFile;
 
   enum FileVersion {
@@ -49,6 +50,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   public WALInputStream(File logFile) throws IOException {
     channel = FileChannel.open(logFile.toPath());
+    fileSize = channel.size();
     analyzeFileVersion();
     this.logFile = logFile;
   }
@@ -111,7 +113,11 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   @Override
   public int available() throws IOException {
-    return (int) (channel.size() - channel.position());
+    long size = (channel.size() - channel.position());
+    if (!Objects.isNull(dataBuffer)) {
+      size += dataBuffer.limit() - dataBuffer.position();
+    }
+    return (int) size;
   }
 
   private void loadNextSegment() throws IOException {
@@ -126,6 +132,14 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   private void loadNextSegmentV1() throws IOException {
     // just read raw data as input
+    if (channel.position() >= fileSize) {
+      throw new IOException("Unexpected end of file");
+    }
+    if (Objects.isNull(dataBuffer)) {
+      // read 128 KB
+      dataBuffer = ByteBuffer.allocate(128 * 1024);
+    }
+    dataBuffer.clear();
     channel.read(dataBuffer);
     dataBuffer.flip();
   }
@@ -178,6 +192,43 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     if (version == FileVersion.UNKNOWN) {
       loadNextSegmentV1();
       version = FileVersion.V1;
+    }
+  }
+
+  public void skipToGivenPosition(long pos) throws IOException {
+    if (version == FileVersion.V2) {
+      channel.position(WALWriter.MAGIC_STRING_BYTES);
+      ByteBuffer buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
+      long posRemain = pos;
+      int currSegmentSize = 0;
+      while (posRemain > 0) {
+        buffer.clear();
+        channel.read(buffer);
+        buffer.flip();
+        buffer.get();
+        currSegmentSize = buffer.getInt();
+        if (posRemain >= currSegmentSize) {
+          posRemain -= currSegmentSize;
+        } else {
+          break;
+        }
+      }
+      dataBuffer = ByteBuffer.allocate(currSegmentSize);
+      channel.read(dataBuffer);
+      dataBuffer.position((int) posRemain);
+    } else {
+      dataBuffer.clear();
+      channel.position(pos);
+    }
+  }
+
+  public void read(ByteBuffer buffer) throws IOException {
+    int totalBytesToBeRead = buffer.remaining();
+    int currReadBytes = Math.min(dataBuffer.remaining(), buffer.remaining());
+    dataBuffer.get(buffer.array(), buffer.position(), currReadBytes);
+    if (totalBytesToBeRead - currReadBytes > 0) {
+      loadNextSegment();
+      read(buffer);
     }
   }
 }
