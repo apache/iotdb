@@ -213,7 +213,7 @@ public class IoTDBSessionSimpleIT {
       expected.add(IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType().name());
       expected.add(IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType().name());
       expected.add(IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType().name());
-      expected.add(TSDataType.TEXT.name());
+      expected.add(TSDataType.STRING.name());
 
       Set<String> actual = new HashSet<>();
       SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.**");
