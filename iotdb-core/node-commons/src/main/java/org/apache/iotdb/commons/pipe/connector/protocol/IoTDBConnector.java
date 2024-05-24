@@ -187,7 +187,7 @@ public abstract class IoTDBConnector implements PipeConnector {
             CONNECTOR_RATE_LIMIT_DEFAULT_VALUE);
 
     validator.validate(
-        arg -> pipeEndPointRateLimit > 0 && pipeEndPointRateLimit <= Double.MAX_VALUE,
+        arg -> pipeEndPointRateLimit <= Double.MAX_VALUE,
         String.format(
             "Rate limit should be in the range (0, %f], but got %f.",
             Double.MAX_VALUE, pipeEndPointRateLimit),
