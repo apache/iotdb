@@ -315,7 +315,6 @@ public class PipeConsensusReceiver {
       }
 
       writingFileWriter.write(req.getFilePiece());
-      writingFileWriter.getFD().sync();
       return PipeConsensusTransferFilePieceResp.toTPipeConsensusTransferResp(
           RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
     } catch (Exception e) {
@@ -370,7 +369,6 @@ public class PipeConsensusReceiver {
       // updateWritingFileIfNeeded#isFileExistedAndNameCorrect, and continue to write to the already
       // loaded file. Since the writing file writer has already been closed, it will throw a Stream
       // Close exception.
-      writingFileWriter.getFD().sync();
       writingFileWriter.close();
       diskBuffer.setWritingFileWriter(null);
 
@@ -475,7 +473,6 @@ public class PipeConsensusReceiver {
       // updateWritingFileIfNeeded#isFileExistedAndNameCorrect, and continue to write to the already
       // loaded file. Since the writing file writer has already been closed, it will throw a Stream
       // Close exception.
-      writingFileWriter.getFD().sync();
       writingFileWriter.close();
       diskBuffer.setWritingFileWriter(null);
 
