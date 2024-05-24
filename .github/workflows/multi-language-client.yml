@@ -26,7 +26,7 @@ env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
 
 jobs:
-  Cpp:
+  cpp:
     strategy:
       fail-fast: false
       max-parallel: 20
@@ -78,7 +78,7 @@ jobs:
           path: iotdb-client/client-cpp/target/build/test/Testing
           retention-days: 1
 
-  Go:
+  go:
     runs-on: ubuntu-latest
 
     steps:
@@ -99,7 +99,7 @@ jobs:
         run: |
           cd iotdb-client/client-go/ && make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
 
-  Python:
+  python:
     runs-on: ubuntu-latest
 
     steps:
