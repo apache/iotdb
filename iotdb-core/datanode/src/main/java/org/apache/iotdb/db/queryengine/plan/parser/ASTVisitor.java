@@ -1911,7 +1911,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       List<ConstantContext> values = row.constant();
       for (int j = 0, columnCount = values.size(); j < columnCount; j++) {
         if (j != timeIndex) {
-          if (values.get(j).STRING_LITERAL() != null) {
+          if (values.get(j).dateExpression() != null) {
+            valueList.add(
+                parseDateExpression(
+                    values.get(j).dateExpression(), CommonDateTimeUtils.currentTime()));
+          } else if (values.get(j).STRING_LITERAL() != null) {
             valueList.add(parseStringLiteralInInsertValue(values.get(j).getText()));
           } else {
             valueList.add(values.get(j).getText());

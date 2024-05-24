@@ -647,6 +647,8 @@ public class IoTDBConfig {
   /** register time series as which type when receiving a floating number string "6.7" */
   private TSDataType floatingStringInferType = TSDataType.DOUBLE;
 
+  private int inferStringMaxLength = 512;
+
   /**
    * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT
    * or TEXT
@@ -2282,6 +2284,10 @@ public class IoTDBConfig {
 
   public TSDataType getFloatingStringInferType() {
     return floatingStringInferType;
+  }
+
+  public int getInferStringMaxLength() {
+    return inferStringMaxLength;
   }
 
   public void setFloatingStringInferType(TSDataType floatingNumberStringInferType) {

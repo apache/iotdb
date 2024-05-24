@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScal
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.util.Collections;
@@ -52,10 +53,20 @@ public class TypeInferenceUtils {
   private static final TSDataType nanStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
 
+  private static final int inferStringMaxLength =
+      IoTDBDescriptor.getInstance().getConfig().getInferStringMaxLength();
+
   private TypeInferenceUtils() {}
 
   private static boolean isBlob(String s) {
     return s.length() >= 3 && s.startsWith("X'") && s.endsWith("'");
+  }
+
+  private static boolean isString(String s) {
+    if (s.getBytes(TSFileConfig.STRING_CHARSET).length <= inferStringMaxLength) {
+      return true;
+    }
+    return false;
   }
 
   static boolean isNumber(String s) {
@@ -122,8 +133,9 @@ public class TypeInferenceUtils {
         return nanStringInferType;
       } else if (isBlob(strValue)) {
         return TSDataType.BLOB;
+      } else if (isString(strValue)) {
+        return TSDataType.STRING;
       } else {
-        // TODO: use string as default data type
         return TSDataType.TEXT;
       }
     }
