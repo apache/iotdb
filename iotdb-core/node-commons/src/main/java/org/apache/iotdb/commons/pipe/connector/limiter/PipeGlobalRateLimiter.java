@@ -17,18 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.rateLimiter;
+package org.apache.iotdb.commons.pipe.connector.limiter;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 import com.google.common.util.concurrent.AtomicDouble;
 import com.google.common.util.concurrent.RateLimiter;
 
-/**
- * PipeAllConnectorsRateLimiter is a singleton class that controls all connectors' rate limit in one
- * node.
- */
-public class PipeAllConnectorsRateLimiter {
+/** PipeGlobalRateLimiter is a global rate limiter for all connectors. */
+public class PipeGlobalRateLimiter {
 
   private static final PipeConfig CONFIG = PipeConfig.getInstance();
 
@@ -36,14 +33,20 @@ public class PipeAllConnectorsRateLimiter {
       new AtomicDouble(CONFIG.getPipeAllConnectorsRateLimitBytesPerSecond());
   private final RateLimiter rateLimiter;
 
-  public void acquire(long bytes) {
-    if (throughputBytesPerSecond.get() != CONFIG.getPipeAllConnectorsRateLimitBytesPerSecond()) {
-      final double newThroughputBytesPerSecond =
-          CONFIG.getPipeAllConnectorsRateLimitBytesPerSecond();
-      throughputBytesPerSecond.set(newThroughputBytesPerSecond);
+  private void doAcquire(long bytes) {
+    final double throughputBytesPerSecondLimit =
+        CONFIG.getPipeAllConnectorsRateLimitBytesPerSecond();
+
+    if (throughputBytesPerSecond.get() != throughputBytesPerSecondLimit) {
+      throughputBytesPerSecond.set(throughputBytesPerSecondLimit);
       rateLimiter.setRate(
           // if throughput <= 0, disable rate limiting
-          newThroughputBytesPerSecond <= 0 ? Double.MAX_VALUE : newThroughputBytesPerSecond);
+          throughputBytesPerSecondLimit <= 0 ? Double.MAX_VALUE : throughputBytesPerSecondLimit);
+    }
+
+    // For performance, we don't need to acquire rate limiter if throughput <= 0
+    if (throughputBytesPerSecondLimit <= 0) {
+      return;
     }
 
     while (bytes > 0) {
@@ -59,7 +62,7 @@ public class PipeAllConnectorsRateLimiter {
 
   ///////////////////////////  SINGLETON  ///////////////////////////
 
-  private PipeAllConnectorsRateLimiter() {
+  private PipeGlobalRateLimiter() {
     final double throughputBytesPerSecondLimit = throughputBytesPerSecond.get();
     rateLimiter =
         throughputBytesPerSecondLimit <= 0
@@ -67,11 +70,11 @@ public class PipeAllConnectorsRateLimiter {
             : RateLimiter.create(throughputBytesPerSecondLimit);
   }
 
-  private static class PipeAllConnectorsRateLimiterHolder {
-    private static final PipeAllConnectorsRateLimiter INSTANCE = new PipeAllConnectorsRateLimiter();
+  private static class PipeGlobalRateLimiterHolder {
+    private static final PipeGlobalRateLimiter INSTANCE = new PipeGlobalRateLimiter();
   }
 
-  public static PipeAllConnectorsRateLimiter getInstance() {
-    return PipeAllConnectorsRateLimiterHolder.INSTANCE;
+  public static void acquire(long bytes) {
+    PipeGlobalRateLimiterHolder.INSTANCE.doAcquire(bytes);
   }
 }

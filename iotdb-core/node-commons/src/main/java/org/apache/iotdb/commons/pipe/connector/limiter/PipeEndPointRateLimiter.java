@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.connector.rateLimiter;
+package org.apache.iotdb.commons.pipe.connector.limiter;
 
 import com.google.common.util.concurrent.RateLimiter;
 

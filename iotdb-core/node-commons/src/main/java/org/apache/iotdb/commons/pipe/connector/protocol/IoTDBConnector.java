@@ -20,13 +20,12 @@
 package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorFactory;
+import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
+import org.apache.iotdb.commons.pipe.connector.limiter.PipeGlobalRateLimiter;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
-import org.apache.iotdb.commons.pipe.connector.rateLimiter.PipeAllConnectorsRateLimiter;
-import org.apache.iotdb.commons.pipe.connector.rateLimiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -352,23 +351,15 @@ public abstract class IoTDBConnector implements PipeConnector {
     return compressors;
   }
 
-  private PipeEndPointRateLimiter getPipeEndPointRateLimiter(TEndPoint endPoint) {
-    return pipeEndPointsRateLimitersMap.computeIfAbsent(
-        endPoint, endpoint -> new PipeEndPointRateLimiter(endPointRateLimitBytesPerSecond));
-  }
-
-  public void rateLimitIfNeeded(TEndPoint endPoint, long bytesLength) {
+  public void rateLimitIfNeeded(final TEndPoint endPoint, final long bytesLength) {
     if (endPoint != null && isPipeEndPointRateLimitModeEnabled) {
-      getPipeEndPointRateLimiter(endPoint).acquire(bytesLength);
+      pipeEndPointsRateLimitersMap
+          .computeIfAbsent(
+              endPoint, endpoint -> new PipeEndPointRateLimiter(endPointRateLimitBytesPerSecond))
+          .acquire(bytesLength);
     }
 
-    if (isGlobalRateLimitModeEnabled()) {
-      PipeAllConnectorsRateLimiter.getInstance().acquire(bytesLength);
-    }
-  }
-
-  private boolean isGlobalRateLimitModeEnabled() {
-    return PipeConfig.getInstance().getPipeAllConnectorsRateLimitBytesPerSecond() > 0;
+    PipeGlobalRateLimiter.acquire(bytesLength);
   }
 
   public PipeReceiverStatusHandler statusHandler() {
