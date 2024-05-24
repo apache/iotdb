@@ -231,37 +231,23 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   private void doTransfer(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException {
-    final InsertNode insertNode;
-    Pair<IoTDBSyncClient, Boolean> clientAndStatus = null;
     final TPipeTransferResp resp;
 
+    Pair<IoTDBSyncClient, Boolean> clientAndStatus = null;
     try {
-      insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      final InsertNode insertNode =
+          pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      // getDeviceId() may return null for InsertRowsNode, will be equal to getClient(null)
+      clientAndStatus = clientManager.getClient(pipeInsertNodeTabletInsertionEvent.getDeviceId());
 
-      if (insertNode != null) {
-        clientAndStatus =
-            // insertNode.getDevicePath() is null for InsertRowsNode
-            Objects.nonNull(insertNode.getDevicePath())
-                ? clientManager.getClient(insertNode.getDevicePath().getFullPath())
-                : clientManager.getClient();
-
-        final TPipeTransferReq req =
-            compressIfNeeded(PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode));
-
-        rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
-
-        resp = clientAndStatus.getLeft().pipeTransfer(req);
-      } else {
-        clientAndStatus = clientManager.getClient();
-        final TPipeTransferReq req =
-            compressIfNeeded(
-                PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                    pipeInsertNodeTabletInsertionEvent.getByteBuffer()));
-
-        rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
-
-        resp = clientAndStatus.getLeft().pipeTransfer(req);
-      }
+      final TPipeTransferReq req =
+          insertNode != null
+              ? compressIfNeeded(PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode))
+              : compressIfNeeded(
+                  PipeTransferTabletBinaryReq.toTPipeTransferReq(
+                      pipeInsertNodeTabletInsertionEvent.getByteBuffer()));
+      rateLimitIfNeeded(clientAndStatus.getLeft().getEndPoint(), req.getBody().length);
+      resp = clientAndStatus.getLeft().pipeTransfer(req);
     } catch (final Exception e) {
       if (clientAndStatus != null) {
         clientAndStatus.setRight(false);
@@ -285,9 +271,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           pipeInsertNodeTabletInsertionEvent.toString());
     }
     // insertNode.getDevicePath() is null for InsertRowsNode
-    if (insertNode != null && insertNode.getDevicePath() != null && status.isSetRedirectNode()) {
+    if (Objects.nonNull(pipeInsertNodeTabletInsertionEvent.getDeviceId())
+        && status.isSetRedirectNode()) {
       clientManager.updateLeaderCache(
-          insertNode.getDevicePath().getFullPath(), status.getRedirectNode());
+          pipeInsertNodeTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
     }
   }
 

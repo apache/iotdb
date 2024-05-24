@@ -46,12 +46,16 @@ import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
 public class TreeModelPlanner implements IPlanner {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TreeModelPlanner.class);
 
   private final Statement statement;
 
@@ -159,9 +163,16 @@ public class TreeModelPlanner implements IPlanner {
   public void setRedirectInfo(
       IAnalysis iAnalysis, TEndPoint localEndPoint, TSStatus tsstatus, TSStatusCode statusCode) {
     Analysis analysis = (Analysis) iAnalysis;
-    if (analysis.getStatement() instanceof InsertBaseStatement
+
+    // Get the inner statement of PipeEnrichedStatement
+    Statement statementToRedirect =
+        analysis.getStatement() instanceof PipeEnrichedStatement
+            ? ((PipeEnrichedStatement) analysis.getStatement()).getInnerStatement()
+            : analysis.getStatement();
+
+    if (statementToRedirect instanceof InsertBaseStatement
         && !analysis.isFinishQueryAfterAnalyze()) {
-      InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
+      InsertBaseStatement insertStatement = (InsertBaseStatement) statementToRedirect;
       List<TEndPoint> redirectNodeList = analysis.getRedirectNodeList();
       if (insertStatement instanceof InsertRowsStatement
           || insertStatement instanceof InsertMultiTabletsStatement) {
