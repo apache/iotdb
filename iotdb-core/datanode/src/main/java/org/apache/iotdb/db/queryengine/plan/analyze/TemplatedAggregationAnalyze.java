@@ -64,7 +64,8 @@ public class TemplatedAggregationAnalyze {
       MPPQueryContext context,
       Template template) {
 
-    if (queryStatement.hasOrderByExpression()) {
+    // not support order by expression and non-aligned template
+    if (queryStatement.hasOrderByExpression() || !template.isDirectAligned()) {
       return false;
     }
 

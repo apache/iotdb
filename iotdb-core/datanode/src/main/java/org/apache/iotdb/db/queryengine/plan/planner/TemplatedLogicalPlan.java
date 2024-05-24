@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.enums.TSDataType;
@@ -158,7 +159,7 @@ public class TemplatedLogicalPlan {
                 analysis.getDeviceTemplate().getSchemaMap(),
                 filterLayoutMap,
                 null,
-                null,
+                true,
                 analysis.getGroupByTimeParameter(),
                 queryStatement.isOutputEndTime()));
   }
@@ -216,7 +217,7 @@ public class TemplatedLogicalPlan {
                 analysis.getDeviceTemplate().getSchemaMap(),
                 filterLayoutMap,
                 null,
-                null,
+                false,
                 analysis.getGroupByTimeParameter(),
                 queryStatement.isOutputEndTime()));
   }
@@ -316,10 +317,22 @@ public class TemplatedLogicalPlan {
         new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList);
     Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
     aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
-    context
-        .getTypeProvider()
-        .getTemplatedInfo()
-        .setAggregationDescriptorList(aggregationDescriptorList);
+
+    boolean needCheckAscending = queryStatement.isGroupByTime();
+    List<AggregationDescriptor> ascendingDescriptors = new ArrayList<>();
+    List<AggregationDescriptor> descendingDescriptors = new ArrayList<>();
+    for (AggregationDescriptor aggregationDescriptor : aggregationDescriptorList) {
+      if (needCheckAscending
+          || SchemaUtils.isConsistentWithScanOrder(
+              aggregationDescriptor.getAggregationType(), queryStatement.getResultTimeOrder())) {
+        ascendingDescriptors.add(aggregationDescriptor);
+      } else {
+        descendingDescriptors.add(aggregationDescriptor);
+      }
+    }
+    context.getTypeProvider().getTemplatedInfo().setAscendingDescriptorList(ascendingDescriptors);
+    context.getTypeProvider().getTemplatedInfo().setDescendingDescriptorList(descendingDescriptors);
+
     for (PartialPath devicePath : analysis.getDeviceList()) {
       String deviceName = devicePath.getFullPath();
       PlanNode rootNode = visitDeviceAggregationBody(devicePath, curStep);

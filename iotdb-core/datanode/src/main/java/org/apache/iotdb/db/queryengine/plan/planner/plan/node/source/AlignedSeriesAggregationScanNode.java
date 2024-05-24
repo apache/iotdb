@@ -55,6 +55,12 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
+  // this variable is only used in aggregation align by device query, with all devices in one
+  // template,
+  // 0 represent ascending descriptors, 1 represent descending descriptors, 2 represent count_time
+  // descriptors
+  private byte descriptorType;
+
   public AlignedSeriesAggregationScanNode(
       PlanNodeId id,
       AlignedPath alignedPath,
@@ -97,7 +103,8 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
       boolean outputEndTime,
       @Nullable Expression pushDownPredicate,
       @Nullable GroupByTimeParameter groupByTimeParameter,
-      TRegionReplicaSet dataRegionReplicaSet) {
+      TRegionReplicaSet dataRegionReplicaSet,
+      byte descriptorType) {
     this(
         id,
         alignedPath,
@@ -107,6 +114,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
         groupByTimeParameter,
         dataRegionReplicaSet);
     setOutputEndTime(outputEndTime);
+    setDescriptorType(descriptorType);
   }
 
   public AlignedPath getAlignedPath() {
@@ -117,9 +125,12 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
     this.alignedPath = alignedPath;
   }
 
-  @Override
-  public Ordering getScanOrder() {
-    return scanOrder;
+  public byte getDescriptorType() {
+    return this.descriptorType;
+  }
+
+  public void setDescriptorType(byte descriptorType) {
+    this.descriptorType = descriptorType;
   }
 
   @Override
@@ -173,7 +184,8 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
         isOutputEndTime(),
         getPushDownPredicate(),
         getGroupByTimeParameter(),
-        getRegionReplicaSet());
+        getRegionReplicaSet(),
+        getDescriptorType());
   }
 
   @Override
@@ -257,7 +269,8 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
         outputEndTime,
         pushDownPredicate,
         groupByTimeParameter,
-        null);
+        null,
+        (byte) 0);
   }
 
   @Override
@@ -269,6 +282,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
     for (String node : alignedPath.getNodes()) {
       ReadWriteIOUtils.write(node, stream);
     }
+    ReadWriteIOUtils.write(descriptorType, stream);
   }
 
   public static AlignedSeriesAggregationScanNode deserializeUseTemplate(
@@ -283,16 +297,24 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
     AlignedPath alignedPath = new AlignedPath(new PartialPath(nodes));
     alignedPath.setMeasurementList(typeProvider.getTemplatedInfo().getMeasurementList());
     alignedPath.addSchemas(typeProvider.getTemplatedInfo().getSchemaList());
+    byte descriptorType = ReadWriteIOUtils.readByte(byteBuffer);
+    List<AggregationDescriptor> aggregationDescriptorList = null;
+    if (descriptorType == 0 || descriptorType == 2) {
+      aggregationDescriptorList = typeProvider.getTemplatedInfo().getAscendingDescriptorList();
+    } else if (descriptorType == 1) {
+      aggregationDescriptorList = typeProvider.getTemplatedInfo().getDescendingDescriptorList();
+    }
 
     return new AlignedSeriesAggregationScanNode(
         planNodeId,
         alignedPath,
-        typeProvider.getTemplatedInfo().getAggregationDescriptorList(),
+        aggregationDescriptorList,
         typeProvider.getTemplatedInfo().getScanOrder(),
         typeProvider.getTemplatedInfo().isOutputEndTime(),
         typeProvider.getTemplatedInfo().getPushDownPredicate(),
         typeProvider.getTemplatedInfo().getGroupByTimeParameter(),
-        null);
+        null,
+        descriptorType);
   }
 
   @Override

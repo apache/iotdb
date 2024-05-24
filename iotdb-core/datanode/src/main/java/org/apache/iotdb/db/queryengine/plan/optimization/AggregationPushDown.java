@@ -288,7 +288,7 @@ public class AggregationPushDown implements PlanOptimizer {
                   context);
         } else {
           sourceNodeList =
-              constructSourceNodeFromAggregationDescriptors(
+              constructSourceNodeFromAggregationsDescriptors(
                   sourceToAscendingAggregationsMap,
                   sourceToDescendingAggregationsMap,
                   sourceToCountTimeAggregationsMap,
@@ -381,7 +381,7 @@ public class AggregationPushDown implements PlanOptimizer {
       }
     }
 
-    private List<PlanNode> constructSourceNodeFromAggregationDescriptors(
+    private List<PlanNode> constructSourceNodeFromAggregationsDescriptors(
         Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations,
         Map<PartialPath, List<AggregationDescriptor>> descendingAggregations,
         Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations,
@@ -404,7 +404,8 @@ public class AggregationPushDown implements PlanOptimizer {
                 pathAggregationsEntry.getValue(),
                 scanOrder,
                 groupByTimeParameter,
-                context));
+                context,
+                countTimeAggregations.isEmpty() ? (byte) 0 : (byte) 2));
       }
 
       boolean needCheckAscending = groupByTimeParameter == null;
@@ -419,7 +420,8 @@ public class AggregationPushDown implements PlanOptimizer {
                   pathAggregationsEntry.getValue(),
                   scanOrder.reverse(),
                   null,
-                  context));
+                  context,
+                  (byte) 1));
         }
       }
       return sourceNodeList;
@@ -454,7 +456,12 @@ public class AggregationPushDown implements PlanOptimizer {
         if (!aggregationDescriptors.isEmpty()) {
           sourceNodeList.add(
               createAggregationScanNode(
-                  alignedPath, aggregationDescriptors, scanOrder, groupByTimeParameter, context));
+                  alignedPath,
+                  aggregationDescriptors,
+                  scanOrder,
+                  groupByTimeParameter,
+                  context,
+                  (byte) 0));
         }
 
         if (needCheckAscending && !descendingAggregations.isEmpty()) {
@@ -464,42 +471,12 @@ public class AggregationPushDown implements PlanOptimizer {
                   .collect(Collectors.toList());
           sourceNodeList.add(
               createAggregationScanNode(
-                  alignedPath, aggregationDescriptors, scanOrder, groupByTimeParameter, context));
+                  alignedPath, aggregationDescriptors, scanOrder, null, context, (byte) 1));
         }
       } else {
-        // TODO verify the rightness of non-aligned series
-        for (int i = 0; i < measurementList.size(); i++) {
-          MeasurementPath measurementPath =
-              new MeasurementPath(
-                  devicePath.concatNode(measurementList.get(i)), measurementSchemaList.get(i));
-          for (List<AggregationDescriptor> aggregationDescriptorList :
-              descendingAggregations.values()) {
-            sourceNodeList.add(
-                createAggregationScanNode(
-                    measurementPath,
-                    aggregationDescriptorList,
-                    scanOrder,
-                    groupByTimeParameter,
-                    context));
-          }
-
-          if (needCheckAscending) {
-            for (List<AggregationDescriptor> aggregationDescriptorList :
-                descendingAggregations.values()) {
-              sourceNodeList.add(
-                  createAggregationScanNode(
-                      measurementPath,
-                      aggregationDescriptorList,
-                      scanOrder,
-                      groupByTimeParameter,
-                      context));
-            }
-          }
-        }
+        throw new IllegalStateException(
+            "Aggregation descriptors with non aligned template are not supported");
       }
-
-      // TODO count(s1+s2) is not supported
-      // TODO count_time is not supported
 
       return sourceNodeList;
     }
@@ -509,7 +486,8 @@ public class AggregationPushDown implements PlanOptimizer {
         List<AggregationDescriptor> aggregationDescriptorList,
         Ordering scanOrder,
         GroupByTimeParameter groupByTimeParameter,
-        RewriterContext context) {
+        RewriterContext context,
+        byte descriptorType) {
       if (selectPath instanceof MeasurementPath) { // non-aligned series
         return new SeriesAggregationScanNode(
             context.genPlanNodeId(),
@@ -518,12 +496,15 @@ public class AggregationPushDown implements PlanOptimizer {
             scanOrder,
             groupByTimeParameter);
       } else if (selectPath instanceof AlignedPath) { // aligned series
-        return new AlignedSeriesAggregationScanNode(
-            context.genPlanNodeId(),
-            (AlignedPath) selectPath,
-            aggregationDescriptorList,
-            scanOrder,
-            groupByTimeParameter);
+        AlignedSeriesAggregationScanNode aggScanNode =
+            new AlignedSeriesAggregationScanNode(
+                context.genPlanNodeId(),
+                (AlignedPath) selectPath,
+                aggregationDescriptorList,
+                scanOrder,
+                groupByTimeParameter);
+        aggScanNode.setDescriptorType(descriptorType);
+        return aggScanNode;
       } else {
         throw new IllegalArgumentException("unexpected path type");
       }

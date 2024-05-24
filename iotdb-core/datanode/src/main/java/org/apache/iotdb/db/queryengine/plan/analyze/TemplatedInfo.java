@@ -80,9 +80,11 @@ public class TemplatedInfo {
   private Expression pushDownPredicate;
 
   // variables related to aggregation
-  private List<AggregationDescriptor> aggregationDescriptorList;
+  private final boolean aggregationQuery;
   private final GroupByTimeParameter groupByTimeParameter;
   private final boolean outputEndTime;
+  private List<AggregationDescriptor> ascendingDescriptorList;
+  private List<AggregationDescriptor> descendingDescriptorList;
 
   public TemplatedInfo(
       List<String> measurementList,
@@ -99,7 +101,7 @@ public class TemplatedInfo {
       Map<String, IMeasurementSchema> schemaMap,
       Map<String, List<InputLocation>> filterLayoutMap,
       Expression pushDownPredicate,
-      List<AggregationDescriptor> aggregationDescriptorList,
+      boolean aggregationQuery,
       GroupByTimeParameter groupByTimeParameter,
       boolean outputEndTime) {
     this.measurementList = measurementList;
@@ -117,9 +119,9 @@ public class TemplatedInfo {
       this.filterLayoutMap = filterLayoutMap;
     }
     this.pushDownPredicate = pushDownPredicate;
-
     this.schemaMap = schemaMap;
-    this.aggregationDescriptorList = aggregationDescriptorList;
+
+    this.aggregationQuery = aggregationQuery;
     this.groupByTimeParameter = groupByTimeParameter;
     this.outputEndTime = outputEndTime;
   }
@@ -199,12 +201,8 @@ public class TemplatedInfo {
     return projectExpressions;
   }
 
-  public void setAggregationDescriptorList(List<AggregationDescriptor> aggregationDescriptorList) {
-    this.aggregationDescriptorList = aggregationDescriptorList;
-  }
-
-  public List<AggregationDescriptor> getAggregationDescriptorList() {
-    return this.aggregationDescriptorList;
+  public boolean isAggregationQuery() {
+    return aggregationQuery;
   }
 
   public GroupByTimeParameter getGroupByTimeParameter() {
@@ -213,6 +211,22 @@ public class TemplatedInfo {
 
   public boolean isOutputEndTime() {
     return outputEndTime;
+  }
+
+  public List<AggregationDescriptor> getAscendingDescriptorList() {
+    return this.ascendingDescriptorList;
+  }
+
+  public void setAscendingDescriptorList(List<AggregationDescriptor> ascendingDescriptorList) {
+    this.ascendingDescriptorList = ascendingDescriptorList;
+  }
+
+  public List<AggregationDescriptor> getDescendingDescriptorList() {
+    return this.descendingDescriptorList;
+  }
+
+  public void setDescendingDescriptorList(List<AggregationDescriptor> descendingDescriptorList) {
+    this.descendingDescriptorList = descendingDescriptorList;
   }
 
   public static Map<String, List<InputLocation>> makeLayout(List<String> measurementList) {
@@ -273,13 +287,6 @@ public class TemplatedInfo {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     }
 
-    if (aggregationDescriptorList != null) {
-      ReadWriteIOUtils.write(aggregationDescriptorList.size(), byteBuffer);
-      aggregationDescriptorList.forEach(d -> d.serialize(byteBuffer));
-    } else {
-      ReadWriteIOUtils.write(0, byteBuffer);
-    }
-
     if (groupByTimeParameter != null) {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       groupByTimeParameter.serialize(byteBuffer);
@@ -332,23 +339,29 @@ public class TemplatedInfo {
       ReadWriteIOUtils.write((byte) 0, stream);
     }
 
-    if (aggregationDescriptorList != null) {
-      ReadWriteIOUtils.write(aggregationDescriptorList.size(), stream);
-      for (AggregationDescriptor descriptor : aggregationDescriptorList) {
+    if (aggregationQuery) {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      if (groupByTimeParameter != null) {
+        ReadWriteIOUtils.write((byte) 1, stream);
+        groupByTimeParameter.serialize(stream);
+      } else {
+        ReadWriteIOUtils.write((byte) 0, stream);
+      }
+
+      ReadWriteIOUtils.write(outputEndTime, stream);
+
+      ReadWriteIOUtils.write(ascendingDescriptorList.size(), stream);
+      for (AggregationDescriptor descriptor : ascendingDescriptorList) {
+        descriptor.serialize(stream);
+      }
+
+      ReadWriteIOUtils.write(descendingDescriptorList.size(), stream);
+      for (AggregationDescriptor descriptor : descendingDescriptorList) {
         descriptor.serialize(stream);
       }
     } else {
-      ReadWriteIOUtils.write(0, stream);
-    }
-
-    if (groupByTimeParameter != null) {
-      ReadWriteIOUtils.write((byte) 1, stream);
-      groupByTimeParameter.serialize(stream);
-    } else {
       ReadWriteIOUtils.write((byte) 0, stream);
     }
-
-    ReadWriteIOUtils.write(outputEndTime, stream);
   }
 
   public static TemplatedInfo deserialize(ByteBuffer byteBuffer) {
@@ -415,40 +428,52 @@ public class TemplatedInfo {
       pushDownPredicate = Expression.deserialize(byteBuffer);
     }
 
-    List<AggregationDescriptor> aggregationDescriptorList = null;
-    listSize = ReadWriteIOUtils.readInt(byteBuffer);
-    if (listSize > 0) {
-      aggregationDescriptorList = new ArrayList<>(listSize);
-      while (listSize-- > 0) {
-        aggregationDescriptorList.add(AggregationDescriptor.deserialize(byteBuffer));
+    boolean aggregationQuery = ReadWriteIOUtils.readBool(byteBuffer);
+    GroupByTimeParameter groupByTimeParameter = null;
+    boolean outputEndTime = ReadWriteIOUtils.readBool(byteBuffer);
+    List<AggregationDescriptor> ascendingDescriptorList = null;
+    List<AggregationDescriptor> descendingDescriptorList = null;
+
+    if (aggregationQuery) {
+      byte hasGroupByTime = ReadWriteIOUtils.readByte(byteBuffer);
+      if (hasGroupByTime == 1) {
+        groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
+      }
+
+      int size = ReadWriteIOUtils.readInt(byteBuffer);
+      ascendingDescriptorList = new ArrayList<>(size);
+      while (size-- > 0) {
+        ascendingDescriptorList.add(AggregationDescriptor.deserialize(byteBuffer));
+      }
+
+      size = ReadWriteIOUtils.readInt(byteBuffer);
+      descendingDescriptorList = new ArrayList<>(size);
+      while (size-- > 0) {
+        descendingDescriptorList.add(AggregationDescriptor.deserialize(byteBuffer));
       }
     }
 
-    byte hasGroupByTime = ReadWriteIOUtils.readByte(byteBuffer);
-    GroupByTimeParameter groupByTimeParameter = null;
-    if (hasGroupByTime == 1) {
-      groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
-    }
-
-    boolean outputEndTime = ReadWriteIOUtils.readBool(byteBuffer);
-
-    return new TemplatedInfo(
-        measurementList,
-        measurementSchemaList,
-        dataTypeList,
-        scanOrder,
-        queryAllSensors,
-        selectMeasurements,
-        deviceToMeasurementIndexes,
-        offsetValue,
-        limitValue,
-        predicate,
-        keepNull,
-        measurementSchemaMap,
-        filterLayoutMap,
-        pushDownPredicate,
-        aggregationDescriptorList,
-        groupByTimeParameter,
-        outputEndTime);
+    TemplatedInfo templatedInfo =
+        new TemplatedInfo(
+            measurementList,
+            measurementSchemaList,
+            dataTypeList,
+            scanOrder,
+            queryAllSensors,
+            selectMeasurements,
+            deviceToMeasurementIndexes,
+            offsetValue,
+            limitValue,
+            predicate,
+            keepNull,
+            measurementSchemaMap,
+            filterLayoutMap,
+            pushDownPredicate,
+            aggregationQuery,
+            groupByTimeParameter,
+            outputEndTime);
+    templatedInfo.setAscendingDescriptorList(ascendingDescriptorList);
+    templatedInfo.setDescendingDescriptorList(descendingDescriptorList);
+    return templatedInfo;
   }
 }

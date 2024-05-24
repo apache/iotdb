@@ -494,7 +494,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<String> inputColumnNames;
     List<String> outputColumnNames = node.getOutputColumnNames();
     if (outputColumnNames == null) {
-      if (context.getTypeProvider().getTemplatedInfo().getAggregationDescriptorList() != null) {
+      if (context.getTypeProvider().getTemplatedInfo().isAggregationQuery()) {
         // TODO fix it
         // outputColumnNames is aggregation expression
         outputColumnNames = context.getTypeProvider().getTemplatedInfo().getDeviceViewOutputNames();
@@ -601,10 +601,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       AlignedSeriesAggregationScanNode node, LocalExecutionPlanContext context) {
     if (context.isBuildPlanUseTemplate()) {
       // TODO template situation, variables such as aggregator, scanOptions may be serialized once
+      List<AggregationDescriptor> aggregationDescriptors = null;
+      if (node.getDescriptorType() == 0 || node.getDescriptorType() == 2) {
+        aggregationDescriptors = context.getTemplatedInfo().getAscendingDescriptorList();
+      } else {
+        aggregationDescriptors = context.getTemplatedInfo().getDescendingDescriptorList();
+      }
+
       return constructAlignedSeriesAggregationScanOperator(
           node.getPlanNodeId(),
           node.getAlignedPath(),
-          context.getTemplatedInfo().getAggregationDescriptorList(),
+          aggregationDescriptors,
           context.getTemplatedInfo().getPushDownPredicate(),
           context.getTemplatedInfo().getScanOrder(),
           context.getTemplatedInfo().getGroupByTimeParameter(),
