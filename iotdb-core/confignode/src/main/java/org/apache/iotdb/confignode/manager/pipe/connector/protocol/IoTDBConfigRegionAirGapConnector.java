@@ -56,9 +56,8 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
 
   @Override
   protected byte[] generateHandShakeV1Payload() throws IOException {
-    return compressIfNeeded(
-        PipeTransferConfigNodeHandshakeV1Req.toTPipeTransferBytes(
-            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+    return PipeTransferConfigNodeHandshakeV1Req.toTPipeTransferBytes(
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
   @Override
@@ -71,7 +70,7 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
-    return compressIfNeeded(PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferBytes(params));
+    return PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferBytes(params);
   }
 
   @Override
@@ -151,9 +150,8 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
       throws PipeException, IOException {
     if (!send(
         socket,
-        compressIfNeeded(
-            PipeTransferConfigPlanReq.toTPipeTransferBytes(
-                pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan())))) {
+        PipeTransferConfigPlanReq.toTPipeTransferBytes(
+            pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()))) {
       final String errorMessage =
           String.format(
               "Transfer config region write plan %s error. Socket: %s.",
@@ -199,16 +197,15 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     if (!send(
         socket,
-        compressIfNeeded(
-            PipeTransferConfigSnapshotSealReq.toTPipeTransferBytes(
-                // The pattern is surely Non-null
-                pipeConfigRegionSnapshotEvent.getPatternString(),
-                snapshot.getName(),
-                snapshot.length(),
-                Objects.nonNull(templateFile) ? templateFile.getName() : null,
-                Objects.nonNull(templateFile) ? templateFile.length() : 0,
-                pipeConfigRegionSnapshotEvent.getFileType(),
-                pipeConfigRegionSnapshotEvent.toSealTypeString())))) {
+        PipeTransferConfigSnapshotSealReq.toTPipeTransferBytes(
+            // The pattern is surely Non-null
+            pipeConfigRegionSnapshotEvent.getPatternString(),
+            snapshot.getName(),
+            snapshot.length(),
+            Objects.nonNull(templateFile) ? templateFile.getName() : null,
+            Objects.nonNull(templateFile) ? templateFile.length() : 0,
+            pipeConfigRegionSnapshotEvent.getFileType(),
+            pipeConfigRegionSnapshotEvent.toSealTypeString()))) {
       final String errorMessage =
           String.format("Seal config region snapshot %s error. Socket %s.", snapshot, socket);
       // Send handshake because we don't know whether the receiver side configNode

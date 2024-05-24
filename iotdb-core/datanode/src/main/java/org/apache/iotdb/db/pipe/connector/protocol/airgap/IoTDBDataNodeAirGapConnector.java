@@ -88,9 +88,8 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
 
   @Override
   protected byte[] generateHandShakeV1Payload() throws IOException {
-    return compressIfNeeded(
-        PipeTransferDataNodeHandshakeV1Req.toTPipeTransferBytes(
-            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+    return PipeTransferDataNodeHandshakeV1Req.toTPipeTransferBytes(
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
   @Override
@@ -103,7 +102,7 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
-    return compressIfNeeded(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferBytes(params));
+    return PipeTransferDataNodeHandshakeV2Req.toTPipeTransferBytes(params);
   }
 
   protected void doTransferWrapper(
@@ -127,9 +126,8 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
       throws PipeException, IOException {
     if (!send(
         socket,
-        compressIfNeeded(
-            PipeTransferPlanNodeReq.toTPipeTransferBytes(
-                pipeSchemaRegionWritePlanEvent.getPlanNode())))) {
+        PipeTransferPlanNodeReq.toTPipeTransferBytes(
+            pipeSchemaRegionWritePlanEvent.getPlanNode()))) {
       final String errorMessage =
           String.format(
               "Transfer data node write plan %s error. Socket: %s.",

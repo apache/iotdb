@@ -227,10 +227,9 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
                 : Arrays.copyOfRange(readBuffer, 0, readLength);
         if (!send(
             socket,
-            compressIfNeeded(
-                isMultiFile
-                    ? getTransferMultiFilePieceBytes(file.getName(), position, payload)
-                    : getTransferSingleFilePieceBytes(file.getName(), position, payload)))) {
+            isMultiFile
+                ? getTransferMultiFilePieceBytes(file.getName(), position, payload)
+                : getTransferSingleFilePieceBytes(file.getName(), position, payload))) {
           final String errorMessage =
               String.format("Transfer file %s error. Socket %s.", file, socket);
           if (mayNeedHandshakeWhenFail()) {
@@ -266,6 +265,8 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     if (!socket.isConnected()) {
       return false;
     }
+
+    bytes = compressIfNeeded(bytes);
 
     // avoid calling Arrays.toString() methods frequently bring performance overhead when
     // isPipeEndPointRateLimitModeEnabled is false.

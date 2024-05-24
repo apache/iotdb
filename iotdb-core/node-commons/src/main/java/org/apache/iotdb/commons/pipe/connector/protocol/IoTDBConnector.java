@@ -102,11 +102,11 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected boolean isRpcCompressionEnabled;
   protected final List<PipeCompressor> compressors = new ArrayList<>();
 
-  protected boolean isTabletBatchModeEnabled = true;
-
   protected boolean isPipeEndPointRateLimitModeEnabled = false;
   protected double endPointRateLimitBytesPerSecond = 0;
   protected Map<TEndPoint, PipeEndPointRateLimiter> pipeEndPointsRateLimitersMap;
+
+  protected boolean isTabletBatchModeEnabled = true;
 
   protected PipeReceiverStatusHandler receiverStatusHandler;
 
@@ -352,10 +352,6 @@ public abstract class IoTDBConnector implements PipeConnector {
     return compressors;
   }
 
-  public PipeReceiverStatusHandler statusHandler() {
-    return receiverStatusHandler;
-  }
-
   private PipeEndPointRateLimiter getPipeEndPointRateLimiter(TEndPoint endPoint) {
     return pipeEndPointsRateLimitersMap.computeIfAbsent(
         endPoint, endpoint -> new PipeEndPointRateLimiter(endPointRateLimitBytesPerSecond));
@@ -373,5 +369,9 @@ public abstract class IoTDBConnector implements PipeConnector {
 
   private boolean isGlobalRateLimitModeEnabled() {
     return PipeConfig.getInstance().getPipeAllConnectorsRateLimitBytesPerSecond() > 0;
+  }
+
+  public PipeReceiverStatusHandler statusHandler() {
+    return receiverStatusHandler;
   }
 }
