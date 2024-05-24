@@ -1,10 +1,4 @@
-# This workflow will build a Java project with Maven
-# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
-
-# CPP compiling is too slow, so let's do it in parallel with testing other modules.
-# As there is no Java client, we just use one JDK.
-name: C++ Client
-
+name: multi-language-client.yml
 on:
   push:
     branches:
@@ -23,6 +17,7 @@ on:
   # allow manually run the action:
   workflow_dispatch:
 
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -31,7 +26,7 @@ env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
 
 jobs:
-  Test:
+  client-cpp:
     strategy:
       fail-fast: false
       max-parallel: 20
@@ -82,4 +77,53 @@ jobs:
           name: cpp-IT-${{ runner.os }}
           path: iotdb-client/client-cpp/target/build/test/Testing
           retention-days: 1
+
+  client-go:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{secrets.GITHUB_TOKEN}}
+          submodules: recursive
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Compile IoTDB Server
+        run: mvn clean package -pl distribution -am -DskipTests
+      - name: Integration test
+        shell: bash
+        run: |
+          cd iotdb-client/client-go/ && make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
+
+  client-py:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Build IoTDB server distribution zip and python client
+        run: mvn -B clean install -pl distribution,iotdb-client/client-py -am -DskipTests
+      - name: Build IoTDB server docker image
+        run: |
+          docker build . -f docker/src/main/Dockerfile-1c1d -t "iotdb:dev"
+          docker images
+      - name: Install IoTDB python client requirements
+        run: pip3 install -r iotdb-client/client-py/requirements_dev.txt
+      - name: Check code style
+        shell: bash
+        run: black iotdb-client/client-py/ --check --diff
+      - name: Integration test
+        shell: bash
+        run: |
+          cd iotdb-client/client-py/ && pytest .
+
 
