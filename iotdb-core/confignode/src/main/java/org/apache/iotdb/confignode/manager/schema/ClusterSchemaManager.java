@@ -172,7 +172,7 @@ public class ClusterSchemaManager {
                       : databaseSchemaPlan);
       // set ttl
       if (databaseSchemaPlan.getSchema().isSetTTL()) {
-        result = configManager.getTTLManager().setTTL(databaseSchemaPlan);
+        result = configManager.getTTLManager().setTTL(databaseSchemaPlan, isGeneratedByPipe);
       }
       // Bind Database metrics
       PartitionMetrics.bindDatabaseRelatedMetricsWhenUpdate(
