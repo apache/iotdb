@@ -2485,6 +2485,7 @@
                 </os>
             </activation>
             <properties>
+                <boost.include.dir>C:\local\boost_*</boost.include.dir>
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <os.classifier>windows-x86_64</os.classifier>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
