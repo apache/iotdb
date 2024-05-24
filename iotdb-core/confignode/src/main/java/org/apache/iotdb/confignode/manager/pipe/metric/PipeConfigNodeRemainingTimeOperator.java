@@ -60,7 +60,7 @@ class PipeConfigNodeRemainingTimeOperator {
    *
    * @return The estimated remaining time
    */
-  double getConfigRegionRemainingTime() {
+  double getRemainingTime() {
     final double pipeRemainingTimeCommitRateSmoothingFactor =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateSmoothingFactor();
 

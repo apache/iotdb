@@ -65,7 +65,7 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
         Metric.PIPE_CONFIGNODE_REMAINING_TIME.toString(),
         MetricLevel.IMPORTANT,
         operator,
-        PipeConfigNodeRemainingTimeOperator::getConfigRegionRemainingTime,
+        PipeConfigNodeRemainingTimeOperator::getRemainingTime,
         Tag.NAME.toString(),
         operator.getPipeName(),
         Tag.CREATION_TIME.toString(),
@@ -153,7 +153,7 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     return remainingTimeOperatorMap
         .computeIfAbsent(
             pipeName + "_" + creationTime, k -> new PipeConfigNodeRemainingTimeOperator())
-        .getConfigRegionRemainingTime();
+        .getRemainingTime();
   }
 
   //////////////////////////// singleton ////////////////////////////
