@@ -1152,7 +1152,7 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus setTTL(SetTTLPlan setTTLPlan, boolean isGeneratedByPipe) {
+  public TSStatus setTTL(SetTTLPlan setTTLPlan, final boolean isGeneratedByPipe) {
     long procedureId = executor.submitProcedure(new SetTTLProcedure(setTTLPlan, isGeneratedByPipe));
 
     List<TSStatus> procedureStatus = new ArrayList<>();
