@@ -323,7 +323,20 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    */
   public MeasurementIterator iterateNotAlignedSeries(
       String device, boolean derserializeTimeseriesMetadata) throws IOException {
-    return new MeasurementIterator(readerMap, device, derserializeTimeseriesMetadata);
+    Map<TsFileResource, MetadataIndexNode> deviceMeasurementMetadataIndexNodeMap = new HashMap<>();
+    for (TsFileResource resource : tsFileResourcesSortedByAsc) {
+      if (!deviceIteratorMap.containsKey(resource)) {
+        continue;
+      }
+      TsFileDeviceIterator deviceIterator = deviceIteratorMap.get(resource);
+      if (!currentDevice.equals(deviceIterator.current())) {
+        continue;
+      }
+      deviceMeasurementMetadataIndexNodeMap.put(
+          resource, deviceIterator.getFirstMeasurementNodeOfCurrentDevice());
+    }
+    return new MeasurementIterator(
+        readerMap, device, deviceMeasurementMetadataIndexNodeMap, derserializeTimeseriesMetadata);
   }
 
   /**
@@ -442,6 +455,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     private MeasurementIterator(
         Map<TsFileResource, TsFileSequenceReader> readerMap,
         String device,
+        Map<TsFileResource, MetadataIndexNode> deviceMeasurementMetadataIndexNodeMap,
         boolean needDeserializeTimeseries)
         throws IOException {
       this.readerMap = readerMap;
@@ -450,8 +464,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       if (needDeserializeTimeseries) {
         for (TsFileResource resource : tsFileResourcesSortedByAsc) {
           TsFileSequenceReader reader = readerMap.get(resource);
-          chunkMetadataIteratorMap.put(
-              resource, reader.getMeasurementChunkMetadataListMapIterator(device));
+          if (deviceMeasurementMetadataIndexNodeMap.containsKey(resource)) {
+            chunkMetadataIteratorMap.put(
+                resource,
+                reader.getMeasurementChunkMetadataListMapIterator(
+                    deviceMeasurementMetadataIndexNodeMap.get(resource)));
+          } else {
+            chunkMetadataIteratorMap.put(
+                resource, reader.getEmptyMeasurementChunkMetadataListMapIterator());
+          }
           chunkMetadataCacheMap.put(reader, new TreeMap<>());
         }
       }

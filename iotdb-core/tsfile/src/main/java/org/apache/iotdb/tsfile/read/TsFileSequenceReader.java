@@ -2379,23 +2379,35 @@ public class TsFileSequenceReader implements AutoCloseable {
         getMetadataAndEndOffset(metadataIndexNode, device, true, true);
 
     if (metadataIndexPair == null) {
-      return new Iterator<Map<String, List<ChunkMetadata>>>() {
-
-        @Override
-        public boolean hasNext() {
-          return false;
-        }
-
-        @Override
-        public LinkedHashMap<String, List<ChunkMetadata>> next() {
-          throw new NoSuchElementException();
-        }
-      };
+      return getEmptyMeasurementChunkMetadataListMapIterator();
     }
 
-    Queue<Pair<Long, Long>> queue = new LinkedList<>();
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
-    collectEachLeafMeasurementNodeOffsetRange(buffer, queue);
+    MetadataIndexNode deviceMeasurementMetadataIndexNode =
+        MetadataIndexNode.deserializeFrom(buffer);
+    return getMeasurementChunkMetadataListMapIterator(deviceMeasurementMetadataIndexNode);
+  }
+
+  public Iterator<Map<String, List<ChunkMetadata>>>
+      getEmptyMeasurementChunkMetadataListMapIterator() {
+    return new Iterator<Map<String, List<ChunkMetadata>>>() {
+
+      @Override
+      public boolean hasNext() {
+        return false;
+      }
+
+      @Override
+      public LinkedHashMap<String, List<ChunkMetadata>> next() {
+        throw new NoSuchElementException();
+      }
+    };
+  }
+
+  public Iterator<Map<String, List<ChunkMetadata>>> getMeasurementChunkMetadataListMapIterator(
+      MetadataIndexNode deviceMeasurementMetadataIndexNode) throws IOException {
+    Queue<Pair<Long, Long>> queue = new LinkedList<>();
+    collectEachLeafMeasurementNodeOffsetRange(deviceMeasurementMetadataIndexNode, queue);
 
     return new Iterator<Map<String, List<ChunkMetadata>>>() {
 
@@ -2436,9 +2448,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   private void collectEachLeafMeasurementNodeOffsetRange(
-      ByteBuffer buffer, Queue<Pair<Long, Long>> queue) throws IOException {
+      MetadataIndexNode metadataIndexNode, Queue<Pair<Long, Long>> queue) throws IOException {
     try {
-      final MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
       final MetadataIndexNodeType metadataIndexNodeType = metadataIndexNode.getNodeType();
       final int metadataIndexListSize = metadataIndexNode.getChildren().size();
       for (int i = 0; i < metadataIndexListSize; ++i) {
@@ -2451,7 +2462,8 @@ public class TsFileSequenceReader implements AutoCloseable {
           queue.add(new Pair<>(startOffset, endOffset));
           continue;
         }
-        collectEachLeafMeasurementNodeOffsetRange(readData(startOffset, endOffset), queue);
+        collectEachLeafMeasurementNodeOffsetRange(
+            MetadataIndexNode.deserializeFrom(readData(startOffset, endOffset)), queue);
       }
     } catch (Exception e) {
       logger.error(
