@@ -93,7 +93,7 @@ public class TsFileEpochManager {
     return insertRowsNode.getInsertRowNodeList().stream()
         .collect(
             Collectors.toMap(
-                    InsertNode::getDeviceID,
+                InsertNode::getDeviceID,
                 InsertNode::getMeasurements,
                 (oldMeasurements, newMeasurements) ->
                     Stream.of(Arrays.asList(oldMeasurements), Arrays.asList(newMeasurements))
