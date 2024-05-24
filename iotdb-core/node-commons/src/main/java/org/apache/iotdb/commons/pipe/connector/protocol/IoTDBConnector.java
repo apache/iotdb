@@ -350,20 +350,9 @@ public abstract class IoTDBConnector implements PipeConnector {
     return compressors;
   }
 
-  public void rateLimitIfNeeded(final TEndPoint endPoint, final long bytesLength) {
-    if (endPointRateLimitBytesPerSecond > 0) {
-      pipeName2EndPointRateLimiterMap
-          .computeIfAbsent(
-              null, endpoint -> new PipeEndPointRateLimiter(endPointRateLimitBytesPerSecond))
-          .acquire(endPoint, bytesLength);
-    }
-
-    GlobalRateLimiter.acquire(bytesLength);
-  }
-
   public void rateLimitIfNeeded(
       final String pipeName, final TEndPoint endPoint, final long bytesLength) {
-    if (endPointRateLimitBytesPerSecond > 0) {
+    if (pipeName != null && endPointRateLimitBytesPerSecond > 0) {
       pipeName2EndPointRateLimiterMap
           .computeIfAbsent(
               pipeName, endpoint -> new PipeEndPointRateLimiter(endPointRateLimitBytesPerSecond))
@@ -371,6 +360,10 @@ public abstract class IoTDBConnector implements PipeConnector {
     }
 
     GlobalRateLimiter.acquire(bytesLength);
+  }
+
+  public void rateLimitIfNeeded(final TEndPoint endPoint, final long bytesLength) {
+    rateLimitIfNeeded(null, endPoint, bytesLength);
   }
 
   public PipeReceiverStatusHandler statusHandler() {

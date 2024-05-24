@@ -227,7 +227,8 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     }
   }
 
-  protected void transferFilePieces(File file, AirGapSocket socket, boolean isMultiFile)
+  protected void transferFilePieces(
+      String pipeName, File file, AirGapSocket socket, boolean isMultiFile)
       throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
@@ -244,6 +245,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
                 ? readBuffer
                 : Arrays.copyOfRange(readBuffer, 0, readLength);
         if (!send(
+            pipeName,
             socket,
             isMultiFile
                 ? getTransferMultiFilePieceBytes(file.getName(), position, payload)
@@ -279,14 +281,14 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     return loadBalancer.nextSocketIndex();
   }
 
-  protected boolean send(AirGapSocket socket, byte[] bytes) throws IOException {
+  protected boolean send(String pipeName, AirGapSocket socket, byte[] bytes) throws IOException {
     if (!socket.isConnected()) {
       return false;
     }
 
     bytes = compressIfNeeded(bytes);
 
-    rateLimitIfNeeded(socket.getEndPoint(), bytes.length);
+    rateLimitIfNeeded(pipeName, socket.getEndPoint(), bytes.length);
 
     final BufferedOutputStream outputStream = new BufferedOutputStream(socket.getOutputStream());
     bytes = enrichWithLengthAndChecksum(bytes);
@@ -296,6 +298,10 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     final byte[] response = new byte[1];
     final int size = socket.getInputStream().read(response);
     return size > 0 && Arrays.equals(AirGapOneByteResponse.OK, response);
+  }
+
+  protected boolean send(AirGapSocket socket, byte[] bytes) throws IOException {
+    return send(null, socket, bytes);
   }
 
   private byte[] enrichWithLengthAndChecksum(byte[] bytes) {

@@ -102,16 +102,18 @@ public class IoTDBSchemaRegionAirGapConnector extends IoTDBDataNodeAirGapConnect
   private void doTransfer(
       final AirGapSocket socket, final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
       throws PipeException, IOException {
+    final String pipeName = pipeSchemaRegionSnapshotEvent.getPipeName();
     final File mtreeSnapshotFile = pipeSchemaRegionSnapshotEvent.getMTreeSnapshotFile();
     final File tagLogSnapshotFile = pipeSchemaRegionSnapshotEvent.getTagLogSnapshotFile();
 
     // 1. Transfer mTreeSnapshotFile, and tLog file if exists
-    transferFilePieces(mtreeSnapshotFile, socket, true);
+    transferFilePieces(pipeName, mtreeSnapshotFile, socket, true);
     if (Objects.nonNull(tagLogSnapshotFile)) {
-      transferFilePieces(tagLogSnapshotFile, socket, true);
+      transferFilePieces(pipeName, tagLogSnapshotFile, socket, true);
     }
     // 2. Transfer file seal signal, which means the snapshots is transferred completely
     if (!send(
+        pipeName,
         socket,
         PipeTransferSchemaSnapshotSealReq.toTPipeTransferBytes(
             // The pattern is surely Non-null
