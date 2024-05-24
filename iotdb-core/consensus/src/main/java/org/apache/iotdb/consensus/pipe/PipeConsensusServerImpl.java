@@ -103,9 +103,12 @@ public class PipeConsensusServerImpl {
       peerManager.recover();
     } else {
       // create consensus pipes
-      configuration.remove(thisNode);
-      final List<Peer> successfulPipes = createConsensusPipes(configuration);
-      if (successfulPipes.size() < configuration.size()) {
+      List<Peer> deepCopyPeersWithoutSelf =
+          configuration.stream()
+              .filter(peer -> !peer.equals(thisNode))
+              .collect(Collectors.toList());
+      final List<Peer> successfulPipes = createConsensusPipes(deepCopyPeersWithoutSelf);
+      if (successfulPipes.size() < deepCopyPeersWithoutSelf.size()) {
         // roll back
         updateConsensusPipesStatus(successfulPipes, PipeStatus.DROPPED);
         throw new IOException(String.format("%s cannot create all consensus pipes", thisNode));
