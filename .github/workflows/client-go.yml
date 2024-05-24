@@ -54,6 +54,6 @@ jobs:
         shell: bash
         run: |
           cd iotdb-client/client-go/ 
-          git config pull.ff only
+          git config pull.rebase false
           git pull origin main
           make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
