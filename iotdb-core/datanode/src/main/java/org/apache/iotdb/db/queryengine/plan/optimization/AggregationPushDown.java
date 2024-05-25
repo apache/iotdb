@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -60,6 +61,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -88,8 +90,17 @@ public class AggregationPushDown implements PlanOptimizer {
         || cannotUseStatistics(queryStatement, analysis)) {
       return plan;
     }
-    return plan.accept(
-        new Rewriter(), new RewriterContext(analysis, context, queryStatement.isAlignByDevice()));
+
+    RewriterContext rewriterContext =
+        new RewriterContext(analysis, context, queryStatement.isAlignByDevice());
+    PlanNode node;
+    try {
+      node = plan.accept(new Rewriter(), rewriterContext);
+    } finally {
+      // release the last batch of memory
+      rewriterContext.releaseMemoryForFrontEndImmediately();
+    }
+    return node;
   }
 
   private boolean cannotUseStatistics(QueryStatement queryStatement, Analysis analysis) {
@@ -313,10 +324,27 @@ public class AggregationPushDown implements PlanOptimizer {
 
         PlanNode resultNode = convergeWithTimeJoin(sourceNodeList, node.getScanOrder(), context);
         resultNode = planProject(resultNode, node, context);
+
+        // After pushing down the predicate, the original scan nodes are no longer needed, we should
+        // release the memory that they occupied.
+        context.releaseMemoryForFrontEnd(getRamBytesUsedOfOldScanNodes(child));
         return resultNode;
       }
       // cannot push down
       return node;
+    }
+
+    private long getRamBytesUsedOfOldScanNodes(final PlanNode node) {
+      if (node == null) {
+        return 0L;
+      }
+      if (node instanceof SeriesScanSourceNode) {
+        SeriesScanSourceNode scanNode = (SeriesScanSourceNode) node;
+        return scanNode.ramBytesUsed();
+      } else if (node instanceof FullOuterTimeJoinNode) {
+        return node.getChildren().stream().mapToLong(this::getRamBytesUsedOfOldScanNodes).sum();
+      }
+      return 0L;
     }
 
     private void createAggregationDescriptor(
@@ -489,12 +517,18 @@ public class AggregationPushDown implements PlanOptimizer {
         RewriterContext context,
         byte descriptorType) {
       if (selectPath instanceof MeasurementPath) { // non-aligned series
-        return new SeriesAggregationScanNode(
-            context.genPlanNodeId(),
-            (MeasurementPath) selectPath,
-            aggregationDescriptorList,
-            scanOrder,
-            groupByTimeParameter);
+        SeriesAggregationSourceNode node =
+            new SeriesAggregationScanNode(
+                context.genPlanNodeId(),
+                (MeasurementPath) selectPath,
+                aggregationDescriptorList,
+                scanOrder,
+                groupByTimeParameter);
+        context
+            .getContext()
+            .reserveMemoryForFrontEnd(
+                MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(node));
+        return node;
       } else if (selectPath instanceof AlignedPath) { // aligned series
         AlignedSeriesAggregationScanNode aggScanNode =
             new AlignedSeriesAggregationScanNode(
@@ -504,6 +538,10 @@ public class AggregationPushDown implements PlanOptimizer {
                 scanOrder,
                 groupByTimeParameter);
         aggScanNode.setDescriptorType(descriptorType);
+        context
+            .getContext()
+            .reserveMemoryForFrontEnd(
+                MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(aggScanNode));
         return aggScanNode;
       } else {
         throw new IllegalArgumentException("unexpected path type");
@@ -534,6 +572,8 @@ public class AggregationPushDown implements PlanOptimizer {
 
   private static class RewriterContext {
 
+    private static final long RELEASE_BATCH_SIZE = 1024L * 1024L;
+
     private final Analysis analysis;
     private final MPPQueryContext context;
     private final boolean isAlignByDevice;
@@ -541,8 +581,11 @@ public class AggregationPushDown implements PlanOptimizer {
     private String curDevice;
     private PartialPath curDevicePath;
 
+    private long bytesToBeReleased = 0;
+
     public RewriterContext(Analysis analysis, MPPQueryContext context, boolean isAlignByDevice) {
       this.analysis = analysis;
+      Validate.notNull(context, "Query context cannot be null.");
       this.context = context;
       this.isAlignByDevice = isAlignByDevice;
     }
@@ -563,6 +606,10 @@ public class AggregationPushDown implements PlanOptimizer {
       this.curDevicePath = devicePath;
     }
 
+    public MPPQueryContext getContext() {
+      return context;
+    }
+
     public Set<Expression> getAggregationExpressions() {
       if (isAlignByDevice) {
         if (analysis.allDevicesInOneTemplate()) {
@@ -572,6 +619,20 @@ public class AggregationPushDown implements PlanOptimizer {
         }
       }
       return analysis.getAggregationExpressions();
+    }
+
+    public void releaseMemoryForFrontEnd(final long bytes) {
+      bytesToBeReleased += bytes;
+      if (bytesToBeReleased >= RELEASE_BATCH_SIZE) {
+        releaseMemoryForFrontEndImmediately();
+      }
+    }
+
+    public void releaseMemoryForFrontEndImmediately() {
+      if (bytesToBeReleased > 0) {
+        context.releaseMemoryForFrontEnd(bytesToBeReleased);
+        bytesToBeReleased = 0;
+      }
     }
   }
 }

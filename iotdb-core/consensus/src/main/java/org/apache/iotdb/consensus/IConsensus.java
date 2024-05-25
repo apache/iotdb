@@ -43,7 +43,8 @@ import java.util.List;
 public interface IConsensus {
 
   /**
-   * Start the consensus module.
+   * Start the consensus module. Note: You should call this function immediately after initializing
+   * the instance, because calling other functions without start may produce unexpected errors
    *
    * @throws IOException when start consensus errors
    */

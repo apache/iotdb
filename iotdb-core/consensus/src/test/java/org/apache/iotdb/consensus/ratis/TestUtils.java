@@ -37,6 +37,7 @@ import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.consensus.ratis.utils.Retriable;
+import org.apache.iotdb.consensus.ratis.utils.Utils;
 
 import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
 import org.apache.ratis.util.FileUtils;
@@ -54,6 +55,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -440,6 +442,25 @@ public class TestUtils {
     DataSet readThrough(int serverIndex) throws ConsensusException {
       final ByteBufferConsensusRequest getReq = TestUtils.TestRequest.getRequest();
       return servers.get(serverIndex).read(gid, getReq);
+    }
+
+    boolean hasSnapshot(ConsensusGroupId gid, int serverIndex) {
+      try {
+        return Objects.requireNonNull(
+                    servers
+                        .get(serverIndex)
+                        .getServer()
+                        .getDivision(Utils.fromConsensusGroupIdToRaftGroupId(gid))
+                        .getRaftStorage()
+                        .getStorageDir()
+                        .getStateMachineDir()
+                        .listFiles())
+                .length
+            != 0;
+      } catch (IOException ioe) {
+        logger.error("caught IOException:", ioe);
+        return false; // required by the compiler
+      }
     }
   }
 

@@ -189,9 +189,6 @@ public class CommonConfig {
   private int pipeConnectorTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
-  // recommend to set this value to 3 * pipeSubtaskExecutorMaxThreadNum *
-  // pipeAsyncConnectorCoreClientNumber
-  private int pipeConnectorPendingQueueSize = 256;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
   private int pipeAsyncConnectorSelectorNumber = 4;
@@ -230,10 +227,11 @@ public class CommonConfig {
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
+  private double pipeRemainingTimeCommitRateSmoothingFactor = 0.5;
 
-  private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000; // 8 minutes
-  private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000; // 3 minutes
-  private long twoStageAggregateSenderEndPointsCacheInMs = 3 * 60 * 1000; // 3 minutes
+  private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
+  private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
+  private long twoStageAggregateSenderEndPointsCacheInMs = 3 * 60 * 1000L; // 3 minutes
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
@@ -757,14 +755,6 @@ public class CommonConfig {
     this.pipeConnectorRetryIntervalMs = pipeConnectorRetryIntervalMs;
   }
 
-  public int getPipeConnectorPendingQueueSize() {
-    return pipeConnectorPendingQueueSize;
-  }
-
-  public void setPipeConnectorPendingQueueSize(int pipeConnectorPendingQueueSize) {
-    this.pipeConnectorPendingQueueSize = pipeConnectorPendingQueueSize;
-  }
-
   public int getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount() {
     return pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount;
   }
@@ -1006,6 +996,15 @@ public class CommonConfig {
 
   public void setPipeSnapshotExecutionMaxBatchSize(int pipeSnapshotExecutionMaxBatchSize) {
     this.pipeSnapshotExecutionMaxBatchSize = pipeSnapshotExecutionMaxBatchSize;
+  }
+
+  public double getPipeRemainingTimeCommitRateSmoothingFactor() {
+    return pipeRemainingTimeCommitRateSmoothingFactor;
+  }
+
+  public void setPipeRemainingTimeCommitRateSmoothingFactor(
+      double pipeRemainingTimeCommitRateSmoothingFactor) {
+    this.pipeRemainingTimeCommitRateSmoothingFactor = pipeRemainingTimeCommitRateSmoothingFactor;
   }
 
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {

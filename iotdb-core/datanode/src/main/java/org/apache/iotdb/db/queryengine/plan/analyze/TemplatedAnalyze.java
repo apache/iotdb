@@ -121,46 +121,58 @@ public class TemplatedAnalyze {
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset());
-    for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
-      Expression expression = resultColumn.getExpression();
-      if ("*".equals(expression.getOutputSymbol())) {
-        for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
-          if (paginationController.hasCurOffset()) {
-            paginationController.consumeOffset();
-          } else if (paginationController.hasCurLimit()) {
-            String measurementName = entry.getKey();
-            IMeasurementSchema measurementSchema = entry.getValue();
-            TimeSeriesOperand measurementPath =
-                new TimeSeriesOperand(
-                    new MeasurementPath(new String[] {measurementName}, measurementSchema));
-            outputExpressions.add(new Pair<>(measurementPath, null));
-            paginationController.consumeLimit();
-          } else {
-            break;
+
+    if (template != null) {
+      for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+        Expression expression = resultColumn.getExpression();
+        if ("*".equals(expression.getOutputSymbol())) {
+          for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+            } else if (paginationController.hasCurLimit()) {
+              String measurementName = entry.getKey();
+              IMeasurementSchema measurementSchema = entry.getValue();
+              TimeSeriesOperand measurementPath =
+                  new TimeSeriesOperand(
+                      new MeasurementPath(new String[] {measurementName}, measurementSchema));
+              // reserve memory for this expression
+              context.reserveMemoryForFrontEnd(measurementPath.ramBytesUsed());
+              outputExpressions.add(new Pair<>(measurementPath, null));
+              paginationController.consumeLimit();
+            } else {
+              break;
+            }
           }
+          if (queryStatement.getSelectComponent().getResultColumns().size() == 1
+              && queryStatement.getSeriesOffset() == 0
+              && queryStatement.getSeriesLimit() == 0) {
+            analysis.setTemplateWildCardQuery();
+          }
+        } else if (expression instanceof TimeSeriesOperand) {
+          String measurementName = ((TimeSeriesOperand) expression).getPath().getMeasurement();
+          if (template.getSchemaMap().containsKey(measurementName)) {
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+            } else if (paginationController.hasCurLimit()) {
+              IMeasurementSchema measurementSchema = template.getSchemaMap().get(measurementName);
+              TimeSeriesOperand measurementPath =
+                  new TimeSeriesOperand(
+                      new MeasurementPath(new String[] {measurementName}, measurementSchema));
+              // reserve memory for this expression
+              context.reserveMemoryForFrontEnd(measurementPath.ramBytesUsed());
+              outputExpressions.add(new Pair<>(measurementPath, resultColumn.getAlias()));
+            } else {
+              break;
+            }
+          }
+        } else {
+          return false;
         }
         if (queryStatement.getSelectComponent().getResultColumns().size() == 1
             && queryStatement.getSeriesOffset() == 0
             && queryStatement.getSeriesLimit() == 0) {
           analysis.setTemplateWildCardQuery();
         }
-      } else if (expression instanceof TimeSeriesOperand) {
-        String measurementName = ((TimeSeriesOperand) expression).getPath().getMeasurement();
-        if (template.getSchemaMap().containsKey(measurementName)) {
-          if (paginationController.hasCurOffset()) {
-            paginationController.consumeOffset();
-          } else if (paginationController.hasCurLimit()) {
-            IMeasurementSchema measurementSchema = template.getSchemaMap().get(measurementName);
-            TimeSeriesOperand measurementPath =
-                new TimeSeriesOperand(
-                    new MeasurementPath(new String[] {measurementName}, measurementSchema));
-            outputExpressions.add(new Pair<>(measurementPath, resultColumn.getAlias()));
-          } else {
-            break;
-          }
-        }
-      } else {
-        return false;
       }
     }
 
@@ -186,7 +198,7 @@ public class TemplatedAnalyze {
     }
     analysis.setDeviceList(deviceList);
 
-    analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceList);
+    analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceList, context);
     analyzeDeviceToSourceTransform(analysis);
     analyzeDeviceToSource(analysis);
 
@@ -274,7 +286,8 @@ public class TemplatedAnalyze {
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
-      List<PartialPath> deviceSet) {
+      List<PartialPath> deviceSet,
+      MPPQueryContext queryContext) {
     if (!queryStatement.hasOrderByExpression()) {
       return;
     }
@@ -287,7 +300,8 @@ public class TemplatedAnalyze {
       Set<Expression> orderByExpressionsForOneDevice = new LinkedHashSet<>();
       for (Expression expressionForItem : queryStatement.getExpressionSortItemList()) {
         List<Expression> expressions =
-            concatDeviceAndBindSchemaForExpression(expressionForItem, device, schemaTree);
+            concatDeviceAndBindSchemaForExpression(
+                expressionForItem, device, schemaTree, queryContext);
         if (expressions.isEmpty()) {
           throw new SemanticException(
               String.format(

@@ -199,6 +199,21 @@ public abstract class InsertBaseStatement extends Statement {
 
   public abstract Object getFirstValueOfIndex(int index);
 
+  public void semanticCheck() {
+    Set<String> deduplicatedMeasurements = new HashSet<>();
+    for (String measurement : measurements) {
+      if (measurement == null || measurement.isEmpty()) {
+        throw new SemanticException(
+            "Measurement contains null or empty string: " + Arrays.toString(measurements));
+      }
+      if (deduplicatedMeasurements.contains(measurement)) {
+        throw new SemanticException("Insertion contains duplicated measurement: " + measurement);
+      } else {
+        deduplicatedMeasurements.add(measurement);
+      }
+    }
+  }
+
   // region partial insert
   /**
    * Mark failed measurement, measurements[index], dataTypes[index] and values/columns[index] would
@@ -310,7 +325,7 @@ public abstract class InsertBaseStatement extends Statement {
       }
     }
     // construct map from device to measurements and record the index of its measurement
-    // schemaengine
+    // schema
     Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
         new HashMap<>();
     for (int i = 0; i < this.measurements.length; i++) {

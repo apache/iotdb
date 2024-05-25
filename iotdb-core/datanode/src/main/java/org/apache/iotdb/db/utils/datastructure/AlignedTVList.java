@@ -47,6 +47,7 @@ import java.util.Objects;
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager.TVLIST_SORT_ALGORITHM;
 import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
+import static org.apache.iotdb.db.utils.ModificationUtils.isPointDeleted;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
@@ -939,7 +940,7 @@ public abstract class AlignedTVList extends TVList {
 
     // value columns
     for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
-      int deleteCursor = 0;
+      int[] deleteCursor = {0};
       // Pair of Time and Index
       Pair<Long, Integer> lastValidPointIndexForTimeDupCheck = null;
       if (Objects.nonNull(timeDuplicateInfo)) {
@@ -1259,5 +1260,9 @@ public abstract class AlignedTVList extends TVList {
     }
 
     return new BitMap(rowCount, rowBitsArr);
+  }
+
+  public List<List<BitMap>> getBitMaps() {
+    return bitMaps;
   }
 }

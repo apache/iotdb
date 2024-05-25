@@ -360,20 +360,6 @@ public abstract class TVList implements WALEntryValue {
       TSEncoding encoding,
       List<TimeRange> deletionList);
 
-  protected boolean isPointDeleted(
-      long timestamp, List<TimeRange> deletionList, Integer deleteCursor) {
-    while (deletionList != null && deleteCursor < deletionList.size()) {
-      if (deletionList.get(deleteCursor).contains(timestamp)) {
-        return true;
-      } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
-        deleteCursor++;
-      } else {
-        return false;
-      }
-    }
-    return false;
-  }
-
   protected float roundValueWithGivenPrecision(
       float value, int floatPrecision, TSEncoding encoding) {
     if (!Float.isNaN(value) && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
@@ -413,5 +399,9 @@ public abstract class TVList implements WALEntryValue {
         break;
     }
     return null;
+  }
+
+  public List<long[]> getTimestamps() {
+    return timestamps;
   }
 }

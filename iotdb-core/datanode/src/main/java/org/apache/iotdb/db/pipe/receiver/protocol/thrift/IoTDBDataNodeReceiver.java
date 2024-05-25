@@ -25,8 +25,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -49,6 +51,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipePlanToStatementVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementExceptionVisitor;
+import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementPatternParseVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementTSStatusVisitor;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementToBatchVisitor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -111,6 +114,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       new PipeStatementTSStatusVisitor();
   private static final PipeStatementExceptionVisitor STATEMENT_EXCEPTION_VISITOR =
       new PipeStatementExceptionVisitor();
+  private static final PipeStatementPatternParseVisitor STATEMENT_PATTERN_PARSE_VISITOR =
+      new PipeStatementPatternParseVisitor();
   private final PipeStatementToBatchVisitor batchVisitor = new PipeStatementToBatchVisitor();
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
@@ -188,6 +193,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             // Config requests will first be received by the DataNode receiver,
             // then transferred to ConfigNode receiver to execute.
             return handleTransferConfigPlan(req);
+          case TRANSFER_COMPRESSED:
+            return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
           default:
             break;
         }
@@ -204,7 +211,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           receiverId.get(),
           status);
       return new TPipeTransferResp(status);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       final String error =
           String.format("Exception %s encountered while handling request %s.", e.getMessage(), req);
       LOGGER.warn("Receiver id = {}: {}", receiverId.get(), error, e);
@@ -300,6 +307,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final Set<StatementType> executionTypes =
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
+    final IoTDBPipePattern pattern =
+        new IoTDBPipePattern(parameters.get(ColumnHeaderConstant.PATH_PATTERN));
 
     // Clear to avoid previous exceptions
     batchVisitor.clear();
@@ -313,8 +322,9 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       // The statements do not contain AlterLogicalViewStatements
       // Here we apply the statements as many as possible
       // Even if there are failed statements
-      batchVisitor
-          .process(originalStatement, null)
+      STATEMENT_PATTERN_PARSE_VISITOR
+          .process(originalStatement, pattern)
+          .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
           .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
     }
     batchVisitor.getRemainBatches().stream()
