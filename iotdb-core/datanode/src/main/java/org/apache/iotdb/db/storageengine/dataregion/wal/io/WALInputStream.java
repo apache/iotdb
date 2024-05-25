@@ -39,6 +39,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   private ByteBuffer dataBuffer = null;
   private long fileSize;
   File logFile;
+  private long endOffset = -1;
 
   enum FileVersion {
     V1,
@@ -52,7 +53,48 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     channel = FileChannel.open(logFile.toPath());
     fileSize = channel.size();
     analyzeFileVersion();
+    getEndOffset();
     this.logFile = logFile;
+  }
+
+  private void getEndOffset() throws IOException {
+    if (channel.size() < WALWriter.MAGIC_STRING_BYTES + Integer.BYTES) {
+      endOffset = channel.size();
+      return;
+    }
+    ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
+    long position;
+    try {
+      if (version == FileVersion.V2) {
+        ByteBuffer magicStringBuffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
+        channel.read(magicStringBuffer, channel.size() - WALWriter.MAGIC_STRING_BYTES);
+        magicStringBuffer.flip();
+        if (!new String(magicStringBuffer.array()).equals(WALWriter.MAGIC_STRING)) {
+          // this is a broken wal file
+          endOffset = channel.size();
+          return;
+        }
+        position = channel.size() - WALWriter.MAGIC_STRING_BYTES - Integer.BYTES;
+      } else {
+        ByteBuffer magicStringBuffer =
+            ByteBuffer.allocate(WALWriter.MAGIC_STRING_V1.getBytes().length);
+        channel.read(
+            magicStringBuffer, channel.size() - WALWriter.MAGIC_STRING_V1.getBytes().length);
+        magicStringBuffer.flip();
+        if (!new String(magicStringBuffer.array()).equals(WALWriter.MAGIC_STRING_V1)) {
+          // this is a broken wal file
+          endOffset = channel.size();
+          return;
+        }
+        position = channel.size() - WALWriter.MAGIC_STRING_V1.getBytes().length - Integer.BYTES;
+      }
+      channel.read(metadataSizeBuf, position);
+      metadataSizeBuf.flip();
+      int metadataSize = metadataSizeBuf.getInt();
+      endOffset = channel.size() - WALWriter.MAGIC_STRING_BYTES - Integer.BYTES - metadataSize - 1;
+    } finally {
+      channel.position(WALWriter.MAGIC_STRING_BYTES);
+    }
   }
 
   private void analyzeFileVersion() throws IOException {
@@ -113,7 +155,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   @Override
   public int available() throws IOException {
-    long size = (channel.size() - channel.position());
+    long size = (endOffset - channel.position());
     if (!Objects.isNull(dataBuffer)) {
       size += dataBuffer.limit() - dataBuffer.position();
     }
@@ -121,6 +163,9 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   }
 
   private void loadNextSegment() throws IOException {
+    if (channel.position() >= endOffset) {
+      throw new IOException("End of file");
+    }
     if (version == FileVersion.V2) {
       loadNextSegmentV2();
     } else if (version == FileVersion.V1) {
