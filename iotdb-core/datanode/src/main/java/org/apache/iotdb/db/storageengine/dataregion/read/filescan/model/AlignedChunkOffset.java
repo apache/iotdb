@@ -47,6 +47,6 @@ public class AlignedChunkOffset extends AbstractChunkOffset {
   public IChunkHandle generateChunkHandle(
       String filePath, Statistics<? extends Serializable> statistics) {
     return new DiskAlignedChunkHandleImpl(
-        filePath, true, getOffSet(), statistics, sharedTimeDataBuffer);
+        getDeviceID(), filePath, true, getOffSet(), statistics, sharedTimeDataBuffer);
   }
 }

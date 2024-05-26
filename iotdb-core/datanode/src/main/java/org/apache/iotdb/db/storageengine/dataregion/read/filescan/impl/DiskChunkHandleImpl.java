@@ -28,6 +28,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -42,6 +43,7 @@ import java.nio.ByteBuffer;
 /** It will receive a list of offset and execute sequential scan of TsFile for chunkData. */
 public class DiskChunkHandleImpl implements IChunkHandle {
   private final boolean tsFileClosed;
+  private final IDeviceID deviceID;
   private final String filePath;
   protected ChunkHeader currentChunkHeader;
   protected PageHeader currentPageHeader;
@@ -57,10 +59,12 @@ public class DiskChunkHandleImpl implements IChunkHandle {
   protected final Statistics<? extends Serializable> chunkStatistic;
 
   public DiskChunkHandleImpl(
+      IDeviceID deviceID,
       String filePath,
       boolean isTsFileClosed,
       long offset,
       Statistics<? extends Serializable> chunkStatistics) {
+    this.deviceID = deviceID;
     this.chunkStatistic = chunkStatistics;
     this.offset = offset;
     this.filePath = filePath;
@@ -124,6 +128,11 @@ public class DiskChunkHandleImpl implements IChunkHandle {
     timeBuffer.limit(timeBufferLength);
 
     return convertToTimeArray(timeBuffer);
+  }
+
+  @Override
+  public IDeviceID getDeviceID() {
+    return deviceID;
   }
 
   private long[] convertToTimeArray(ByteBuffer timeBuffer) throws IOException {

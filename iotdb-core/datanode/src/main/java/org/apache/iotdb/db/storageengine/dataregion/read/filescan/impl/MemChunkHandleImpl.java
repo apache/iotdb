@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 import java.io.IOException;
 
 public class MemChunkHandleImpl implements IChunkHandle {
@@ -28,7 +30,10 @@ public class MemChunkHandleImpl implements IChunkHandle {
 
   protected boolean hasRead = false;
 
-  public MemChunkHandleImpl(long[] dataOfTimestamp) {
+  protected IDeviceID deviceID;
+
+  public MemChunkHandleImpl(IDeviceID deviceID, long[] dataOfTimestamp) {
+    this.deviceID = deviceID;
     this.dataOfTimestamp = dataOfTimestamp;
   }
 
@@ -52,5 +57,10 @@ public class MemChunkHandleImpl implements IChunkHandle {
   public long[] getDataTime() throws IOException {
     hasRead = true;
     return dataOfTimestamp;
+  }
+
+  @Override
+  public IDeviceID getDeviceID() {
+    return deviceID;
   }
 }

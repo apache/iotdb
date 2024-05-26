@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 import java.io.IOException;
 
 /** This interface is used to handle the scan of chunks in TSFile. */
@@ -46,4 +48,6 @@ public interface IChunkHandle {
    * @return the iterator of timestamp.
    */
   long[] getDataTime() throws IOException;
+
+  IDeviceID getDeviceID();
 }

@@ -156,7 +156,7 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
     for (AbstractChunkOffset chunkOffsetInfo : chunkInfoList) {
       List<IChunkHandle> chunkHandle =
           deviceToMemChunkHandleMap
-              .get(chunkOffsetInfo.getDevicePath())
+              .get(chunkOffsetInfo.getDeviceID())
               .get(((ChunkOffset) chunkOffsetInfo).getMeasurement());
       chunkHandleList.addAll(chunkHandle);
     }

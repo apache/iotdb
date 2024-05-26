@@ -585,7 +585,7 @@ public abstract class AbstractMemTable implements IMemTable {
                 Collections.emptyList()));
     memChunkHandleMap
         .computeIfAbsent(measurementId, k -> new ArrayList<>())
-        .add(new MemChunkHandleImpl(timestamps));
+        .add(new MemChunkHandleImpl(deviceID, timestamps));
   }
 
   private void getMemAlignedChunkHandleFromMemTable(
@@ -613,7 +613,12 @@ public abstract class AbstractMemTable implements IMemTable {
         (AlignedTVList) alignedMemChunk.getSortedTvListForQuery(schemaList);
 
     buildAlignedMemChunkHandle(
-        alignedTVListCopy, deletionList, schemaList, chunkMetadataList, memChunkHandleMap);
+        deviceID,
+        alignedTVListCopy,
+        deletionList,
+        schemaList,
+        chunkMetadataList,
+        memChunkHandleMap);
   }
 
   private void getMemAlignedChunkHandleFromMemTable(
@@ -642,7 +647,12 @@ public abstract class AbstractMemTable implements IMemTable {
       }
     }
     buildAlignedMemChunkHandle(
-        alignedTVListCopy, deletionList, schemaList, chunkMetadataList, memChunkHandleMap);
+        deviceID,
+        alignedTVListCopy,
+        deletionList,
+        schemaList,
+        chunkMetadataList,
+        memChunkHandleMap);
   }
 
   private void getMemChunkHandleFromMemTable(
@@ -681,11 +691,12 @@ public abstract class AbstractMemTable implements IMemTable {
                   Collections.emptyList()));
       memChunkHandleMap
           .computeIfAbsent(measurementId, k -> new ArrayList<>())
-          .add(new MemChunkHandleImpl(timestamps));
+          .add(new MemChunkHandleImpl(deviceID, timestamps));
     }
   }
 
   private void buildAlignedMemChunkHandle(
+      IDeviceID deviceID,
       AlignedTVList alignedTVList,
       List<List<TimeRange>> deletionList,
       List<IMeasurementSchema> schemaList,
@@ -707,7 +718,7 @@ public abstract class AbstractMemTable implements IMemTable {
           .computeIfAbsent(measurement, k -> new ArrayList<>())
           .add(
               new MemAlignedChunkHandleImpl(
-                  timestamps, bitMaps.get(i), deletionList.get(i), startEndTime));
+                  deviceID, timestamps, bitMaps.get(i), deletionList.get(i), startEndTime));
     }
   }
 

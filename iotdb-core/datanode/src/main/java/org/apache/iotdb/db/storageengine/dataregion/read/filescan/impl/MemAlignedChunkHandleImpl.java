@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
 import org.apache.iotdb.db.utils.ModificationUtils;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.BitMap;
 
@@ -38,11 +39,12 @@ public class MemAlignedChunkHandleImpl extends MemChunkHandleImpl {
   private final long[] startEndTime;
 
   public MemAlignedChunkHandleImpl(
+      IDeviceID deviceID,
       long[] dataOfTimestamp,
       List<BitMap> bitMapOfValue,
       List<TimeRange> deletionList,
       long[] startEndTime) {
-    super(dataOfTimestamp);
+    super(deviceID, dataOfTimestamp);
     this.bitMapOfValue = bitMapOfValue;
     this.deletionList = deletionList;
     this.startEndTime = startEndTime;

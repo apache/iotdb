@@ -43,6 +43,6 @@ public class ChunkOffset extends AbstractChunkOffset {
   @Override
   public IChunkHandle generateChunkHandle(
       String filePath, Statistics<? extends Serializable> statistics) {
-    return new DiskChunkHandleImpl(filePath, true, getOffSet(), statistics);
+    return new DiskChunkHandleImpl(getDeviceID(), filePath, true, getOffSet(), statistics);
   }
 }
