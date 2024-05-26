@@ -147,8 +147,10 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
   private boolean addEvent2Buffer(Event event) {
     try {
       LOGGER.info(
-          "Debug only: no.{} event added to connector buffer",
-          ((EnrichedEvent) event).getCommitId());
+          "PipeConsensus-ConsensusGroup-{}: no.{} event-{} added to connector buffer",
+          consensusGroupId,
+          ((EnrichedEvent) event).getCommitId(),
+          event);
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             "PipeConsensus connector: one event enqueue, queue size = {}, limit size = {}",
@@ -177,12 +179,13 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
    * from transferBuffer in order to transfer other event.
    */
   public synchronized void removeEventFromBuffer(Event event) {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(
-          "PipeConsensus connector: one event removed from queue, queue size = {}, limit size = {}",
-          transferBuffer.size(),
-          COMMON_CONFIG.getPipeConsensusEventBufferSize());
-    }
+    LOGGER.info(
+        "PipeConsensus-ConsensusGroup-{}: one event-{} successfully received by the follower, will be removed from queue, queue size = {}, limit size = {}",
+        consensusGroupId,
+        event,
+        transferBuffer.size(),
+        COMMON_CONFIG.getPipeConsensusEventBufferSize());
+
     Iterator<Event> iterator = transferBuffer.iterator();
     Event current = iterator.next();
     while (!current.equals(event) && iterator.hasNext()) {
@@ -504,7 +507,10 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
 
     retryEventQueue.offer(event);
     if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Added event {} to retry queue.", event);
+      LOGGER.debug(
+          "PipeConsensus-ConsensusGroup-{}: Event {} transfer failed, will be added to retry queue.",
+          consensusGroupId,
+          event);
     }
 
     if (isClosed.get()) {

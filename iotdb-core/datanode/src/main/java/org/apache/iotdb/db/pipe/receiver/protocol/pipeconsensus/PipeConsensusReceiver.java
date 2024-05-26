@@ -247,18 +247,21 @@ public class PipeConsensusReceiver {
               String.format("Unknown PipeConsensusRequestType %s.", rawRequestType));
       LOGGER.warn(
           "PipeConsensus-ConsensusGroupId-{}: Unknown PipeRequestType, response status = {}.",
-          consensusGroupId.getId(),
+          consensusGroupId,
           status);
       return new TPipeConsensusTransferResp(status);
     } catch (Exception e) {
       final String error = String.format("Serialization error during pipe receiving, %s", e);
-      LOGGER.warn("PipeConsensus-ConsensusGroupId-{}: {}", consensusGroupId.getId(), error, e);
+      LOGGER.warn("PipeConsensus-ConsensusGroupId-{}: {}", consensusGroupId, error, e);
       return new TPipeConsensusTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
   }
 
   private TPipeConsensusTransferResp handleTransferTabletInsertNode(
       final PipeConsensusTabletInsertNodeReq req) throws ConsensusGroupNotExistException {
+    LOGGER.info(
+        "PipeConsensus-ConsensusGroupId-{}: starting to receive tablet insertNode",
+        consensusGroupId);
     PipeConsensusServerImpl impl =
         Optional.ofNullable(pipeConsensus.getImpl(consensusGroupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(consensusGroupId));
@@ -270,6 +273,8 @@ public class PipeConsensusReceiver {
 
   private TPipeConsensusTransferResp handleTransferTabletBinary(
       final PipeConsensusTabletBinaryReq req) throws ConsensusGroupNotExistException {
+    LOGGER.info(
+        "PipeConsensus-ConsensusGroupId-{}: starting to receive tablet binary", consensusGroupId);
     PipeConsensusServerImpl impl =
         Optional.ofNullable(pipeConsensus.getImpl(consensusGroupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(consensusGroupId));
@@ -281,6 +286,8 @@ public class PipeConsensusReceiver {
 
   private TPipeConsensusTransferResp handleTransferFilePiece(
       final PipeConsensusTransferFilePieceReq req, final boolean isSingleFile) {
+    LOGGER.info(
+        "PipeConsensus-ConsensusGroupId-{}: starting to receive tsFile pieces", consensusGroupId);
     TsFileTransferDiskBuffer diskBuffer =
         tsFileDiskBufferPool.borrowCorrespondingBuffer(req.getCommitId());
 
@@ -306,7 +313,7 @@ public class PipeConsensusReceiver {
                     req.getStartWritingOffset(), writingFileWriter.length()));
         LOGGER.warn(
             "PipeConsensus-ConsensusGroupId-{}: File offset reset requested by receiver, response status = {}.",
-            consensusGroupId.getId(),
+            consensusGroupId,
             status);
         return PipeConsensusTransferFilePieceResp.toTPipeConsensusTransferResp(
             status, writingFileWriter.length());
@@ -318,7 +325,7 @@ public class PipeConsensusReceiver {
     } catch (Exception e) {
       LOGGER.warn(
           "PipeConsensus-ConsensusGroupId-{}: Failed to write file piece from req {}.",
-          consensusGroupId.getId(),
+          consensusGroupId,
           req,
           e);
       final TSStatus status =
@@ -335,6 +342,8 @@ public class PipeConsensusReceiver {
   }
 
   private TPipeConsensusTransferResp handleTransferFileSeal(final PipeConsensusTsFileSealReq req) {
+    LOGGER.info(
+        "PipeConsensus-ConsensusGroupId-{}: starting to receive tsFile seal", consensusGroupId);
     TsFileTransferDiskBuffer diskBuffer =
         tsFileDiskBufferPool.borrowCorrespondingBuffer(req.getCommitId());
     File writingFile = diskBuffer.getWritingFile();
@@ -382,12 +391,12 @@ public class PipeConsensusReceiver {
         diskBuffer.returnSelf();
         LOGGER.info(
             "PipeConsensus-ConsensusGroupId-{}: Seal file {} successfully.",
-            consensusGroupId.getId(),
+            consensusGroupId,
             fileAbsolutePath);
       } else {
         LOGGER.warn(
             "PipeConsensus-ConsensusGroupId-{}: Failed to seal file {}, because {}.",
-            consensusGroupId.getId(),
+            consensusGroupId,
             fileAbsolutePath,
             status.getMessage());
       }
@@ -395,7 +404,7 @@ public class PipeConsensusReceiver {
     } catch (IOException e) {
       LOGGER.warn(
           "PipeConsensus-ConsensusGroupId-{}: Failed to seal file {} from req {}.",
-          consensusGroupId.getId(),
+          consensusGroupId,
           writingFile,
           req,
           e);
@@ -406,7 +415,7 @@ public class PipeConsensusReceiver {
     } catch (LoadFileException e) {
       LOGGER.warn(
           "PipeConsensus-ConsensusGroupId-{}: Failed to load file {} from req {}.",
-          consensusGroupId.getId(),
+          consensusGroupId,
           writingFile,
           req,
           e);
@@ -425,6 +434,9 @@ public class PipeConsensusReceiver {
 
   private TPipeConsensusTransferResp handleTransferFileSealWithMods(
       final PipeConsensusTsFileSealWithModReq req) {
+    LOGGER.info(
+        "PipeConsensus-ConsensusGroupId-{}: starting to receive tsFile seal with mods",
+        consensusGroupId);
     TsFileTransferDiskBuffer diskBuffer =
         tsFileDiskBufferPool.borrowCorrespondingBuffer(req.getCommitId());
     File writingFile = diskBuffer.getWritingFile();
@@ -490,12 +502,12 @@ public class PipeConsensusReceiver {
         diskBuffer.returnSelf();
         LOGGER.info(
             "PipeConsensus-ConsensusGroupId-{}: Seal file with mods {} successfully.",
-            consensusGroupId.getId(),
+            consensusGroupId,
             fileAbsolutePaths);
       } else {
         LOGGER.warn(
             "PipeConsensus-ConsensusGroupId-{}: Failed to seal file {}, status is {}.",
-            consensusGroupId.getId(),
+            consensusGroupId,
             fileAbsolutePaths,
             status);
       }
@@ -503,7 +515,7 @@ public class PipeConsensusReceiver {
     } catch (Exception e) {
       LOGGER.warn(
           "PipeConsensus-ConsensusGroupId-{}: Failed to seal file {} from req {}.",
-          consensusGroupId.getId(),
+          consensusGroupId,
           files,
           req,
           e);
@@ -537,7 +549,7 @@ public class PipeConsensusReceiver {
               String.format("Failed to seal file %s, the file does not exist.", fileName));
       LOGGER.warn(
           "PipeConsensus-ConsensusGroupId-{}: Failed to seal file {}, because the file does not exist.",
-          consensusGroupId.getId(),
+          consensusGroupId,
           fileName);
       return new TPipeConsensusTransferResp(status);
     }
@@ -553,7 +565,7 @@ public class PipeConsensusReceiver {
       LOGGER.warn(
           "PipeConsensus-ConsensusGroupId-{}: Failed to seal file {} when check non final seal, because the length of file is not correct. "
               + "The original file has length {}, but receiver file has length {}.",
-          consensusGroupId.getId(),
+          consensusGroupId,
           fileName,
           fileLength,
           writingFileWriter.length());
@@ -596,7 +608,7 @@ public class PipeConsensusReceiver {
       LOGGER.info(
           "PipeConsensus-ConsensusGroupId-{}: Writing file {} is not available. "
               + "Writing file is null: {}, writing file exists: {}, writing file writer is null: {}.",
-          consensusGroupId.getId(),
+          consensusGroupId,
           writingFile,
           writingFile == null,
           writingFile != null && writingFile.exists(),
@@ -619,7 +631,7 @@ public class PipeConsensusReceiver {
                   "Failed to seal file %s, because writing file is %s.", fileName, writingFile));
       LOGGER.warn(
           "PipeConsensus-ConsensusGroupId-{}: Failed to seal file {}, because writing file is {}.",
-          consensusGroupId.getId(),
+          consensusGroupId,
           fileName,
           writingFile);
       return new TPipeConsensusTransferResp(status);
@@ -636,7 +648,7 @@ public class PipeConsensusReceiver {
       LOGGER.warn(
           "PipeConsensus-ConsensusGroupId-{}: Failed to seal file {} when check final seal file, because the length of file is not correct. "
               + "The original file has length {}, but receiver file has length {}.",
-          consensusGroupId.getId(),
+          consensusGroupId,
           fileName,
           fileLength,
           writingFileWriter.length());
@@ -661,7 +673,7 @@ public class PipeConsensusReceiver {
     if (!offsetCorrect) {
       LOGGER.warn(
           "PipeConsensus-ConsensusGroupId-{}: Writing file {}'s offset is {}, but request sender's offset is {}.",
-          consensusGroupId.getId(),
+          consensusGroupId,
           writingFile.getPath(),
           writingFileWriter.length(),
           offset);
@@ -675,12 +687,12 @@ public class PipeConsensusReceiver {
         diskBuffer.getWritingFileWriter().close();
         LOGGER.info(
             "PipeConsensus-ConsensusGroupId-{}: Current writing file writer {} was closed.",
-            consensusGroupId.getId(),
+            consensusGroupId,
             diskBuffer.getWritingFile() == null ? "null" : diskBuffer.getWritingFile().getPath());
       } catch (IOException e) {
         LOGGER.warn(
             "PipeConsensus-ConsensusGroupId-{}: Failed to close current writing file writer {}, because {}.",
-            consensusGroupId.getId(),
+            consensusGroupId,
             diskBuffer.getWritingFile() == null ? "null" : diskBuffer.getWritingFile().getPath(),
             e.getMessage(),
             e);
@@ -701,12 +713,12 @@ public class PipeConsensusReceiver {
         FileUtils.delete(file);
         LOGGER.info(
             "PipeConsensus-ConsensusGroupId-{}: Original writing file {} was deleted.",
-            consensusGroupId.getId(),
+            consensusGroupId,
             file.getPath());
       } catch (IOException e) {
         LOGGER.warn(
             "PipeConsensus-ConsensusGroupId-{}: Failed to delete original writing file {}, because {}.",
-            consensusGroupId.getId(),
+            consensusGroupId,
             file.getPath(),
             e.getMessage(),
             e);
@@ -715,7 +727,7 @@ public class PipeConsensusReceiver {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             "PipeConsensus-ConsensusGroupId-{}: Original file {} is not existed. No need to delete.",
-            consensusGroupId.getId(),
+            consensusGroupId,
             file.getPath());
       }
     }
@@ -743,7 +755,7 @@ public class PipeConsensusReceiver {
     LOGGER.info(
         "PipeConsensus-ConsensusGroupId-{}: Writing file {} is not existed or name is not correct, try to create it. "
             + "Current writing file is {}.",
-        consensusGroupId.getId(),
+        consensusGroupId,
         fileName,
         diskBuffer.getWritingFile() == null ? "null" : diskBuffer.getWritingFile().getPath());
 
@@ -761,12 +773,12 @@ public class PipeConsensusReceiver {
       if (receiverFileDirWithIdSuffix.get().mkdirs()) {
         LOGGER.info(
             "PipeConsensus-ConsensusGroupId-{}: Receiver file dir {} was created.",
-            consensusGroupId.getId(),
+            consensusGroupId,
             receiverFileDirWithIdSuffix.get().getPath());
       } else {
         LOGGER.error(
             "PipeConsensus-ConsensusGroupId-{}: Failed to create receiver file dir {}.",
-            consensusGroupId.getId(),
+            consensusGroupId,
             receiverFileDirWithIdSuffix.get().getPath());
       }
     }
@@ -775,7 +787,7 @@ public class PipeConsensusReceiver {
     diskBuffer.setWritingFileWriter(new RandomAccessFile(diskBuffer.getWritingFile(), "rw"));
     LOGGER.info(
         "PipeConsensus-ConsensusGroupId-{}: Writing file {} was created. Ready to write file pieces.",
-        consensusGroupId.getId(),
+        consensusGroupId,
         diskBuffer.getWritingFile().getPath());
   }
 
@@ -792,12 +804,12 @@ public class PipeConsensusReceiver {
           FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
           LOGGER.info(
               "PipeConsensus-ConsensusGroupId-{}: Original receiver file dir {} was deleted successfully.",
-              consensusGroupId.getId(),
+              consensusGroupId,
               receiverFileDirWithIdSuffix.get().getPath());
         } catch (IOException e) {
           LOGGER.warn(
               "PipeConsensus-ConsensusGroupId-{}: Failed to delete original receiver file dir {}, because {}.",
-              consensusGroupId.getId(),
+              consensusGroupId,
               receiverFileDirWithIdSuffix.get().getPath(),
               e.getMessage(),
               e);
@@ -806,7 +818,7 @@ public class PipeConsensusReceiver {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
               "PipeConsensus-ConsensusGroupId-{}: Original receiver file dir {} is not existed. No need to delete.",
-              consensusGroupId.getId(),
+              consensusGroupId,
               receiverFileDirWithIdSuffix.get().getPath());
         }
       }
@@ -859,12 +871,12 @@ public class PipeConsensusReceiver {
           FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
           LOGGER.info(
               "PipeConsensus-ConsensusGroupId-{}: Handling exit: Original receiver file dir {} was deleted.",
-              consensusGroupId.getId(),
+              consensusGroupId,
               receiverFileDirWithIdSuffix.get().getPath());
         } catch (IOException e) {
           LOGGER.warn(
               "PipeConsensus-ConsensusGroupId-{}: Handling exit: Delete original receiver file dir {} error.",
-              consensusGroupId.getId(),
+              consensusGroupId,
               receiverFileDirWithIdSuffix.get().getPath(),
               e);
         }
@@ -872,7 +884,7 @@ public class PipeConsensusReceiver {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
               "PipeConsensus-ConsensusGroupId-{}: Handling exit: Original receiver file dir {} does not exist. No need to delete.",
-              consensusGroupId.getId(),
+              consensusGroupId,
               receiverFileDirWithIdSuffix.get().getPath());
         }
       }
@@ -935,7 +947,7 @@ public class PipeConsensusReceiver {
               } catch (Exception e) {
                 LOGGER.warn(
                     "PipeConsensus-ConsensusGroupId-{}: Handling exit: Close writing file writer error.",
-                    consensusGroupId.getId(),
+                    consensusGroupId,
                     e);
               }
               diskBuffer.setWritingFileWriter(null);
@@ -953,12 +965,12 @@ public class PipeConsensusReceiver {
                 FileUtils.delete(diskBuffer.getWritingFile());
                 LOGGER.info(
                     "PipeConsensus-ConsensusGroupId-{}: Handling exit: Writing file {} was deleted.",
-                    consensusGroupId.getId(),
+                    consensusGroupId,
                     diskBuffer.getWritingFile().getPath());
               } catch (Exception e) {
                 LOGGER.warn(
                     "PipeConsensus-ConsensusGroupId-{}: Handling exit: Delete writing file {} error.",
-                    consensusGroupId.getId(),
+                    consensusGroupId,
                     diskBuffer.getWritingFile().getPath(),
                     e);
               }
@@ -1051,7 +1063,7 @@ public class PipeConsensusReceiver {
     private void onSuccess(long nextSyncedCommitIndex) {
       LOGGER.info(
           "PipeConsensus-ConsensusGroupId-{}:: process no.{} event successfully!",
-          consensusGroupId.getId(),
+          consensusGroupId,
           nextSyncedCommitIndex);
       reqBuffer.pollFirst();
       onSyncedCommitIndex = nextSyncedCommitIndex;
@@ -1062,6 +1074,10 @@ public class PipeConsensusReceiver {
       lock.lock();
       try {
         WrappedRequest wrappedReq = new WrappedRequest(req);
+        LOGGER.info(
+            "PipeConsensus-ConsensusGroup-{}: start to receive no.{} event",
+            consensusGroupId,
+            wrappedReq.getCommitIndex());
         // if a req is deprecated, we will discard it
         // This case may happen in this scenario: leader has transferred {1,2} and is intending to
         // transfer {3, 4, 5, 6}. And in one moment, follower has received {4, 5, 6}, {3} is still
@@ -1077,6 +1093,9 @@ public class PipeConsensusReceiver {
                   RpcUtils.getStatus(
                       TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST,
                       "PipeConsensus receiver received a deprecated request, which may be sent before the connector restart. Consider to discard it"));
+          LOGGER.info(
+              "PipeConsensus-ConsensusGroup-{}: received a deprecated request, which may be sent before the connector restart. Consider to discard it",
+              consensusGroupId);
           return new TPipeConsensusTransferResp(status);
         }
         // Judge whether connector has rebooted or not, if the rebootTimes increases compared to
@@ -1161,7 +1180,8 @@ public class PipeConsensusReceiver {
               }
             } catch (InterruptedException e) {
               LOGGER.warn(
-                  "current waiting is interrupted. onSyncedCommitIndex: {}. Exception: ",
+                  "PipeConsensus-ConsensusGroup-{}: current waiting is interrupted. onSyncedCommitIndex: {}. Exception: ",
+                  consensusGroupId,
                   wrappedReq.getCommitIndex(),
                   e);
               Thread.currentThread().interrupt();
@@ -1183,6 +1203,9 @@ public class PipeConsensusReceiver {
      * when receiver identifies connector has rebooted.
      */
     private void resetWithNewestRebootTime(int connectorRebootTimes) {
+      LOGGER.info(
+          "PipeConsensus-ConsensusGroup-{}: receiver detected an newer rebootTimes, which indicates the leader has rebooted. receiver will reset all its data.",
+          consensusGroupId);
       this.reqBuffer.clear();
       this.onSyncedCommitIndex = -1;
       // sync the follower's connectorRebootTimes with connector's actual rebootTimes
