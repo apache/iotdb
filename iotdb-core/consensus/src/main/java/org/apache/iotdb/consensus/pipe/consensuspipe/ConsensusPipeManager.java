@@ -76,7 +76,7 @@ public class ConsensusPipeManager {
             .put(CONNECTOR_KEY, config.getConnectorPluginName())
             .put(
                 CONNECTOR_CONSENSUS_GROUP_ID_KEY,
-                consensusPipeName.getConsensusGroupId().toString())
+                String.valueOf(consensusPipeName.getConsensusGroupId().getId()))
             .put(CONNECTOR_IOTDB_IP_KEY, receiverPeer.getEndpoint().ip)
             .put(CONNECTOR_IOTDB_PORT_KEY, String.valueOf(receiverPeer.getEndpoint().port))
             .build());

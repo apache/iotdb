@@ -60,6 +60,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY;
 
 public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
 
@@ -151,7 +152,10 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               .convertToTConsensusGroupId();
 
       final int leaderDataNodeId =
-          env.getConfigManager().getLoadManager().getRegionLeaderMap().get(groupId);
+          Integer.parseInt(
+              createPipeRequest
+                  .getExtractorAttributes()
+                  .get(EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY));
       consensusGroupIdToTaskMetaMap.put(
           groupId.getId(),
           new PipeTaskMeta(
