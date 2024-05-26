@@ -538,7 +538,7 @@ public abstract class AlignedTVList extends TVList {
         int originRowIndex = getValueIndex(i);
         int arrayIndex = originRowIndex / ARRAY_SIZE;
         int elementIndex = originRowIndex % ARRAY_SIZE;
-        if (dataTypes.get(columnIndex) == TSDataType.TEXT) {
+        if (dataTypes.get(columnIndex).isBinary()) {
           Binary value = ((Binary[]) values.get(columnIndex).get(arrayIndex))[elementIndex];
           if (value != null) {
             memoryBinaryChunkSize[columnIndex] -= getBinarySize(value);

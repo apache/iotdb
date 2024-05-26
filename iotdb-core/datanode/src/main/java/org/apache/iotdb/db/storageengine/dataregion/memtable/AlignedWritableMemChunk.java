@@ -393,7 +393,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
                 long recordSize =
                     MemUtils.getRecordSize(
                         tsDataType,
-                        tsDataType == TSDataType.TEXT
+                        tsDataType.isBinary()
                             ? list.getBinaryByValueIndex(
                                 list.getValueIndex(sortedRowIndex), columnIndex)
                             : null,

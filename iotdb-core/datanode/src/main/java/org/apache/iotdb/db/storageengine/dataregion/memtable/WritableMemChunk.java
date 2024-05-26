@@ -343,9 +343,7 @@ public class WritableMemChunk implements IWritableMemChunk {
       if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
         long recordSize =
             MemUtils.getRecordSize(
-                tsDataType,
-                tsDataType == TSDataType.TEXT ? list.getBinary(sortedRowIndex) : null,
-                true);
+                tsDataType, tsDataType.isBinary() ? list.getBinary(sortedRowIndex) : null, true);
         CompressionRatio.decreaseDuplicatedMemorySize(recordSize);
         continue;
       }
