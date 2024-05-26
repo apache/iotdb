@@ -53,6 +53,9 @@ class PipeDataRegionConnectorConstructor extends PipeConnectorConstructor {
         BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName(),
         IoTDBDataRegionAsyncConnector::new);
     pluginConstructors.put(
+        BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName(),
+        PipeConsensusAsyncConnector::new);
+    pluginConstructors.put(
         BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName(),
         IoTDBLegacyPipeConnector::new);
     pluginConstructors.put(
@@ -95,7 +98,7 @@ class PipeDataRegionConnectorConstructor extends PipeConnectorConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.SUBSCRIPTION_SINK.getPipePluginName(), DoNothingConnector::new);
     pluginConstructors.put(
-        BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName(),
+        BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_SINK.getPipePluginName(),
         PipeConsensusAsyncConnector::new);
   }
 }

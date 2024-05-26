@@ -99,6 +99,7 @@ public enum BuiltinPipePlugin {
   OPC_UA_SINK("opc-ua-sink", OpcUaConnector.class),
   WRITE_BACK_SINK("write-back-sink", WriteBackConnector.class),
   SUBSCRIPTION_SINK("subscription-sink", DoNothingConnector.class),
+  PIPE_CONSENSUS_ASYNC_SINK("pipe-consensus-async-sink", PipeConsensusAsyncConnector.class),
   ;
 
   private final String pipePluginName;
