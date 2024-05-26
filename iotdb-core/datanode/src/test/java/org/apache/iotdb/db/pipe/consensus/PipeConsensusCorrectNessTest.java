@@ -118,7 +118,7 @@ public class PipeConsensusCorrectNessTest {
                           new IllegalArgumentException(
                               String.format(
                                   ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                                  ConsensusFactory.PIPE_CONSENSUS))));
+                                  ConsensusFactory.REAL_PIPE_CONSENSUS))));
       servers.get(i).start();
     }
   }

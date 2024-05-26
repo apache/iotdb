@@ -1062,7 +1062,7 @@ public class PipeConsensusReceiver {
 
     private void onSuccess(long nextSyncedCommitIndex) {
       LOGGER.info(
-          "PipeConsensus-ConsensusGroupId-{}:: process no.{} event successfully!",
+          "PipeConsensus-ConsensusGroupId-{}: process no.{} event successfully!",
           consensusGroupId,
           nextSyncedCommitIndex);
       reqBuffer.pollFirst();
