@@ -1037,7 +1037,7 @@ public class PipeConsensusReceiver {
     private final Lock lock;
     private final Condition condition;
     private long onSyncedCommitIndex = -1;
-    private int connectorRebootTimes = 1;
+    private int connectorRebootTimes = 0;
 
     public RequestExecutor() {
       reqBuffer =
