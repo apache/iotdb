@@ -41,7 +41,7 @@ for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_system_dir"
   set dn_system_dir=%%i
 )
 if "%dn_system_dir%"=="" (
-    set "dn_system_dir=data\confignode\system"
+    set "dn_system_dir=data\\datanode\\system"
 )
 setlocal enabledelayedexpansion
 set "dn_system_dir=!dn_system_dir:%delimiter%= !"
@@ -148,46 +148,6 @@ set "dn_sync_dir=%dn_sync_dir:"=%"
 
 set "dn_sync_dir=!dn_sync_dir:%delimiter%= !"
 for %%i in (%dn_sync_dir%) do (
-  set "var=%%i"
-    if "!var:~0,2!"=="\\" (
-      rmdir /s /q "%%i" 2>nul
-    ) else if "!var:~1,3!"==":\\" (
-      rmdir /s /q "%%i" 2>nul
-    ) else (
-      rmdir /s /q "%IOTDB_HOME%\%%i" 2>nul
-    )
-)
-
-for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^pipe_receiver_file_dirs"
-  %IOTDB_DATANODE_CONFIG%') do (
-  set pipe_receiver_file_dirs=%%i
-)
-if "%pipe_receiver_file_dirs%"=="" (
-    set "pipe_receiver_file_dirs=data\\datanode\\system\\pipe\\receiver"
-)
-
-set "pipe_receiver_file_dirs=!pipe_receiver_file_dirs:%delimiter%= !"
-for %%i in (%pipe_receiver_file_dirs%) do (
-  set "var=%%i"
-    if "!var:~0,2!"=="\\" (
-      rmdir /s /q "%%i" 2>nul
-    ) else if "!var:~1,3!"==":\\" (
-      rmdir /s /q "%%i" 2>nul
-    ) else (
-      rmdir /s /q "%IOTDB_HOME%\%%i" 2>nul
-    )
-)
-
-for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^pipe_consensus_receiver_file_dirs"
-  %IOTDB_DATANODE_CONFIG%') do (
-  set pipe_consensus_receiver_file_dirs=%%i
-)
-if "%pipe_consensus_receiver_file_dirs%"=="" (
-    set "pipe_consensus_receiver_file_dirs=data\\datanode\\system\\pipe\\consensus\\receiver"
-)
-
-set "pipe_consensus_receiver_file_dirs=!pipe_consensus_receiver_file_dirs:%delimiter%= !"
-for %%i in (%pipe_consensus_receiver_file_dirs%) do (
   set "var=%%i"
     if "!var:~0,2!"=="\\" (
       rmdir /s /q "%%i" 2>nul
