@@ -165,9 +165,9 @@ public class AddRegionPeerProcedure
       ConfigNodeProcedureEnv env, RegionMaintainHandler handler, String reason, Exception e)
       throws ProcedureException {
     if (e != null) {
-      LOGGER.warn("[pid{}][AddRegion] Start to roll back, because: {}", getRootProcId(), reason, e);
+      LOGGER.warn("[pid{}][AddRegion] Start to roll back, because: {}", getProcId(), reason, e);
     } else {
-      LOGGER.warn("[pid{}][AddRegion] Start to roll back, because: {}", getRootProcId(), reason);
+      LOGGER.warn("[pid{}][AddRegion] Start to roll back, because: {}", getProcId(), reason);
     }
     handler.removeRegionLocation(consensusGroupId, destDataNode);
 
