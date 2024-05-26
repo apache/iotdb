@@ -1138,7 +1138,7 @@ public class IoTDBConfig {
    */
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
-  private CompressionType WALCompressionAlgorithm = CompressionType.LZ4;
+  private CompressionType WALCompressionAlgorithm = CompressionType.UNCOMPRESSED;
 
   IoTDBConfig() {}
 
