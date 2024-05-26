@@ -160,7 +160,7 @@ public class DataRegionConsensusImpl {
                           .setExtractorPluginName(
                               BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
                           .setProcessorPluginName(
-                              BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
+                              BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName())
                           .setConnectorPluginName(
                               BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName())
                           // name
