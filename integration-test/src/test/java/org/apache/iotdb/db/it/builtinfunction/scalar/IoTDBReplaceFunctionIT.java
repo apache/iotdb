@@ -47,13 +47,19 @@ public class IoTDBReplaceFunctionIT {
         "CREATE DATABASE root.sg",
         "CREATE TIMESERIES root.sg.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
         "CREATE TIMESERIES root.sg.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.s2 WITH DATATYPE=INT64, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.s2 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.s2 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.s2 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "INSERT INTO root.sg(timestamp,s1,s2,s3,s4,s5,s6) values(1, 'abcd', 1, 1, 1, 1, true)",
+        "CREATE TIMESERIES root.sg.s3 WITH DATATYPE=INT64, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg.s4 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg.s5 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg.s6 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg.s7 WITH DATATYPE=DATE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg.s8 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg.s9 WITH DATATYPE=STRING, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg.s10 WITH DATATYPE=BLOB, ENCODING=PLAIN",
+        "INSERT INTO root.sg(timestamp,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd','abcd')",
         "INSERT INTO root.sg(timestamp,s1) values(2, 'test\\\\')",
         "INSERT INTO root.sg(timestamp,s1) values(3, 'abcd\\\\')",
+        "INSERT INTO root.sg(timestamp,s9) values(2, 'test\\\\')",
+        "INSERT INTO root.sg(timestamp,s9) values(3, 'abcd\\\\')",
         "flush"
       };
 
@@ -93,6 +99,19 @@ public class IoTDBReplaceFunctionIT {
         "select REPLACE(s1, 'ab', 'AB'), REPLACE(s1, '\\', 'a') from root.sg",
         expectedHeader,
         retArray);
+
+    String[] expectedHeader2 =
+        new String[] {
+          TIMESTAMP_STR, "REPLACE(root.sg.s9, 'ab', 'AB')", "REPLACE(root.sg.s9, '\\', 'a')"
+        };
+    String[] retArray2 =
+        new String[] {
+          "1,ABcd,abcd,", "2,test\\\\,testaa,", "3,ABcd\\\\,abcdaa,",
+        };
+    resultSetEqualTest(
+        "select REPLACE(s9, 'ab', 'AB'), REPLACE(s9, '\\', 'a') from root.sg",
+        expectedHeader2,
+        retArray2);
   }
 
   @Test
@@ -159,6 +178,24 @@ public class IoTDBReplaceFunctionIT {
 
       try {
         statement.execute("select REPLACE(s6, 'a', 'b') from root.sg");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute("select REPLACE(s7, 'a', 'b') from root.sg");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute("select REPLACE(s8, 'a', 'b') from root.sg");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute("select REPLACE(s10, 'a', 'b') from root.sg");
         fail();
       } catch (Exception ignored) {
       }
