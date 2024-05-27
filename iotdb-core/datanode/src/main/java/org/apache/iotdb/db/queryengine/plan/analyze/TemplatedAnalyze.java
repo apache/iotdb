@@ -372,7 +372,6 @@ public class TemplatedAnalyze {
     List<Integer> indexes = new ArrayList<>();
 
     if (queryStatement.isAggregationQuery()) {
-      // TODO verify the rightness of order
       for (int i = 1; i <= analysis.getAggregationExpressions().size(); i++) {
         indexes.add(i);
       }

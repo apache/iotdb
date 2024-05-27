@@ -291,6 +291,8 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.conver
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
+import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
+import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.DESC;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree. */
@@ -531,7 +533,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitSeriesAggregationScan(
       SeriesAggregationScanNode node, LocalExecutionPlanContext context) {
     PartialPath seriesPath = node.getSeriesPath();
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    boolean ascending = node.getScanOrder() == ASC;
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
     List<Aggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
@@ -600,11 +602,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, LocalExecutionPlanContext context) {
     if (context.isBuildPlanUseTemplate()) {
-      // TODO template situation, variables such as aggregator, scanOptions may be serialized once
+      Ordering scanOrder = ASC;
       List<AggregationDescriptor> aggregationDescriptors = null;
       if (node.getDescriptorType() == 0 || node.getDescriptorType() == 2) {
         aggregationDescriptors = context.getTemplatedInfo().getAscendingDescriptorList();
       } else {
+        scanOrder = DESC;
         aggregationDescriptors = context.getTemplatedInfo().getDescendingDescriptorList();
       }
 
@@ -613,7 +616,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           node.getAlignedPath(),
           aggregationDescriptors,
           context.getTemplatedInfo().getPushDownPredicate(),
-          context.getTemplatedInfo().getScanOrder(),
+          scanOrder,
           context.getTemplatedInfo().getGroupByTimeParameter(),
           context.getTemplatedInfo().isOutputEndTime(),
           context);
@@ -639,7 +642,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       GroupByTimeParameter groupByTimeParameter,
       boolean outputEndTime,
       LocalExecutionPlanContext context) {
-    boolean ascending = scanOrder == Ordering.ASC;
+    boolean ascending = scanOrder == ASC;
     List<Aggregator> aggregators = new ArrayList<>();
     for (AggregationDescriptor descriptor : aggregationDescriptorList) {
       checkArgument(
@@ -1438,7 +1441,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           node.isKeepNull(),
           context.getZoneId(),
           expressionTypes,
-          node.getScanOrder() == Ordering.ASC);
+          node.getScanOrder() == ASC);
     } catch (QueryProcessException e) {
       throw new RuntimeException(e);
     }
@@ -1625,7 +1628,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           isKeepNull,
           context.getZoneId(),
           expressionTypes,
-          scanOrder == Ordering.ASC);
+          scanOrder == ASC);
     } catch (QueryProcessException e) {
       throw new RuntimeException(e);
     }
@@ -1637,7 +1640,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         !node.getGroupByLevelDescriptors().isEmpty(),
         "GroupByLevel descriptorList cannot be empty");
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    boolean ascending = node.getScanOrder() == ASC;
     List<Aggregator> aggregators = new ArrayList<>();
     Map<String, List<InputLocation>> layout = makeLayout(node);
     List<CrossSeriesAggregationDescriptor> aggregationDescriptors =
@@ -1694,7 +1697,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
 
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    boolean ascending = node.getScanOrder() == ASC;
     Map<String, List<InputLocation>> layout = makeLayout(node);
     List<List<String>> groups = new ArrayList<>();
     List<List<Aggregator>> groupedAggregators = new ArrayList<>();
@@ -1767,7 +1770,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 SlidingWindowAggregationOperator.class.getSimpleName());
     Operator child = node.getChild().accept(this, context);
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    boolean ascending = node.getScanOrder() == ASC;
     List<Aggregator> aggregators = new ArrayList<>();
     Map<String, List<InputLocation>> layout = makeLayout(node);
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
@@ -1867,7 +1870,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         !node.getAggregationDescriptorList().isEmpty(),
         "Aggregation descriptorList cannot be empty");
     Operator child = node.getChild().accept(this, context);
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    boolean ascending = node.getScanOrder() == ASC;
     List<Aggregator> aggregators = new ArrayList<>();
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
     for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
@@ -1992,7 +1995,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         !node.getAggregationDescriptorList().isEmpty(),
         "Aggregation descriptorList cannot be empty");
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    boolean ascending = node.getScanOrder() == ASC;
     List<Aggregator> aggregators = new ArrayList<>();
     Map<String, List<InputLocation>> layout = makeLayout(node);
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
@@ -2275,7 +2278,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 FullOuterTimeJoinOperator.class.getSimpleName());
     TimeComparator timeComparator =
-        node.getMergeOrder() == Ordering.ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
+        node.getMergeOrder() == ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
     List<OutputColumn> outputColumns = generateOutputColumnsFromChildren(node);
     List<ColumnMerger> mergers = createColumnMergers(outputColumns, timeComparator);
     List<TSDataType> outputColumnTypes =
@@ -2305,7 +2308,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 InnerTimeJoinOperator.class.getSimpleName());
     TimeComparator timeComparator =
-        node.getMergeOrder() == Ordering.ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
+        node.getMergeOrder() == ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
     List<TSDataType> outputColumnTypes =
         context.getTypeProvider().getTemplatedInfo() != null
             ? getOutputColumnTypesOfTimeJoinNode(node)
@@ -2359,7 +2362,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 LeftOuterTimeJoinOperator.class.getSimpleName());
     TimeComparator timeComparator =
-        node.getMergeOrder() == Ordering.ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
+        node.getMergeOrder() == ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
     List<TSDataType> outputColumnTypes =
         context.getTypeProvider().getTemplatedInfo() != null
             ? getOutputColumnTypesOfTimeJoinNode(node)
@@ -2860,9 +2863,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     } else {
       // order by timeseries
       Comparator<Binary> comparator =
-          node.getTimeseriesOrdering() == Ordering.ASC
-              ? ASC_BINARY_COMPARATOR
-              : DESC_BINARY_COMPARATOR;
+          node.getTimeseriesOrdering() == ASC ? ASC_BINARY_COMPARATOR : DESC_BINARY_COMPARATOR;
       // sort values from last cache
       if (initSize > 0) {
         cachedLastValueAndPathList.sort(Comparator.comparing(Pair::getRight, comparator));
@@ -2906,7 +2907,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     Ordering timeseriesOrdering = node.getTimeseriesOrdering();
     Comparator<Binary> comparator =
-        (timeseriesOrdering == null || timeseriesOrdering == Ordering.ASC)
+        (timeseriesOrdering == null || timeseriesOrdering == ASC)
             ? ASC_BINARY_COMPARATOR
             : DESC_BINARY_COMPARATOR;
 

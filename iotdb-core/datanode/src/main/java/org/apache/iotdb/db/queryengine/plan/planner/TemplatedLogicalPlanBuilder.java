@@ -149,7 +149,6 @@ public class TemplatedLogicalPlanBuilder extends LogicalPlanBuilder {
       GroupByTimeParameter groupByTimeParameter,
       GroupByParameter groupByParameter,
       boolean outputEndTime,
-      AggregationStep curStep,
       Ordering scanOrder,
       List<AggregationDescriptor> deduplicatedAggregationDescriptorList) {
     if (aggregationExpressions == null) {

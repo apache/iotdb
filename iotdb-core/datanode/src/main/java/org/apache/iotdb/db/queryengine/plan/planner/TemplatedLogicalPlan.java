@@ -84,8 +84,6 @@ public class TemplatedLogicalPlan {
 
   List<AggregationDescriptor> aggregationDescriptorList;
 
-  List<AggregationDescriptor> deduplicatedDescriptors;
-
   public TemplatedLogicalPlan(
       Analysis analysis, QueryStatement queryStatement, MPPQueryContext context) {
     this.analysis = analysis;
@@ -128,7 +126,6 @@ public class TemplatedLogicalPlan {
         }
       }
 
-      // TODO fix aggregation filterLayoutMap
       filterLayoutMap = makeLayout(newMeasurementList);
 
       analysis
@@ -340,7 +337,7 @@ public class TemplatedLogicalPlan {
 
     for (PartialPath devicePath : analysis.getDeviceList()) {
       String deviceName = devicePath.getFullPath();
-      PlanNode rootNode = visitDeviceAggregationBody(devicePath, curStep);
+      PlanNode rootNode = visitDeviceAggregationBody(devicePath);
 
       LogicalPlanBuilder subPlanBuilder =
           new TemplatedLogicalPlanBuilder(analysis, context, measurementList, schemaList)
@@ -381,7 +378,7 @@ public class TemplatedLogicalPlan {
     return templatedPlanBuilder.getRoot();
   }
 
-  private PlanNode visitDeviceAggregationBody(PartialPath devicePath, AggregationStep curStep) {
+  private PlanNode visitDeviceAggregationBody(PartialPath devicePath) {
     TemplatedLogicalPlanBuilder templatedPlanBuilder =
         new TemplatedLogicalPlanBuilder(analysis, context, newMeasurementList, newSchemaList);
 
@@ -403,7 +400,6 @@ public class TemplatedLogicalPlan {
                 analysis.getGroupByTimeParameter(),
                 analysis.getGroupByParameter(),
                 queryStatement.isOutputEndTime(),
-                curStep,
                 queryStatement.getResultTimeOrder(),
                 aggregationDescriptorList)
             .planSlidingWindowAggregation(

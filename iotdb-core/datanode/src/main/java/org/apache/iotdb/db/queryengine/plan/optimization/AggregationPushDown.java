@@ -273,6 +273,10 @@ public class AggregationPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitRawDataAggregation(RawDataAggregationNode node, RewriterContext context) {
+      if (context.analysis.allDevicesInOneTemplate()) {
+        return visitRawDataAggregationTemplateCase(node, context);
+      }
+
       PlanNode child = node.getChild();
       if (child instanceof ProjectNode) {
         // remove ProjectNode
@@ -311,26 +315,14 @@ public class AggregationPushDown implements PlanOptimizer {
               sourceToCountTimeAggregationsMap);
         }
 
-        List<PlanNode> sourceNodeList;
-        if (context.analysis.allDevicesInOneTemplate()) {
-          sourceNodeList =
-              constructSourceNodeFromTemplateAggregationDescriptors(
-                  sourceToAscendingAggregationsMap,
-                  sourceToDescendingAggregationsMap,
-                  sourceToCountTimeAggregationsMap,
-                  node.getScanOrder(),
-                  node.getGroupByTimeParameter(),
-                  context);
-        } else {
-          sourceNodeList =
-              constructSourceNodeFromAggregationsDescriptors(
-                  sourceToAscendingAggregationsMap,
-                  sourceToDescendingAggregationsMap,
-                  sourceToCountTimeAggregationsMap,
-                  node.getScanOrder(),
-                  node.getGroupByTimeParameter(),
-                  context);
-        }
+        List<PlanNode> sourceNodeList =
+            constructSourceNodeFromAggregationsDescriptors(
+                sourceToAscendingAggregationsMap,
+                sourceToDescendingAggregationsMap,
+                sourceToCountTimeAggregationsMap,
+                node.getScanOrder(),
+                node.getGroupByTimeParameter(),
+                context);
 
         if (isSingleSource && ((SeriesScanSourceNode) child).getPushDownPredicate() != null) {
           Expression pushDownPredicate = ((SeriesScanSourceNode) child).getPushDownPredicate();
@@ -479,6 +471,69 @@ public class AggregationPushDown implements PlanOptimizer {
       return sourceNodeList;
     }
 
+    public PlanNode visitRawDataAggregationTemplateCase(
+        RawDataAggregationNode node, RewriterContext context) {
+      PlanNode child = node.getChild();
+
+      if (child instanceof ProjectNode) {
+        node.setChild(((ProjectNode) child).getChild());
+        return visitRawDataAggregation(node, context);
+      }
+
+      if (child instanceof FullOuterTimeJoinNode || child instanceof SeriesScanSourceNode) {
+        boolean isSingleSource = child instanceof SeriesScanSourceNode;
+        boolean needCheckAscending = node.getGroupByTimeParameter() == null;
+        if (isSingleSource && ((SeriesScanSourceNode) child).getPushDownPredicate() != null) {
+          needCheckAscending = false;
+          Expression pushDownPredicate = ((SeriesScanSourceNode) child).getPushDownPredicate();
+          if (!PredicateUtils.predicateCanPushIntoScan(pushDownPredicate)) {
+            // don't push down, simplify the BE side logic
+            return node;
+          }
+        }
+
+        List<PlanNode> sourceNodeList =
+            newConstructSourceNodeFromTemplateAggregationDescriptors(
+                context
+                    .getContext()
+                    .getTypeProvider()
+                    .getTemplatedInfo()
+                    .getAscendingDescriptorList(),
+                context
+                    .getContext()
+                    .getTypeProvider()
+                    .getTemplatedInfo()
+                    .getDescendingDescriptorList(),
+                node.getScanOrder(),
+                node.getGroupByTimeParameter(),
+                context);
+
+        if (isSingleSource && ((SeriesScanSourceNode) child).getPushDownPredicate() != null) {
+          Expression pushDownPredicate = ((SeriesScanSourceNode) child).getPushDownPredicate();
+          sourceNodeList.forEach(
+              sourceNode -> {
+                SeriesAggregationSourceNode aggregationSourceNode =
+                    (SeriesAggregationSourceNode) sourceNode;
+                aggregationSourceNode.setPushDownPredicate(pushDownPredicate);
+                if (aggregationSourceNode instanceof AlignedSeriesAggregationScanNode) {
+                  ((AlignedSeriesAggregationScanNode) aggregationSourceNode)
+                      .setAlignedPath(((AlignedSeriesScanNode) child).getAlignedPath());
+                }
+              });
+        }
+
+        PlanNode resultNode = convergeWithTimeJoin(sourceNodeList, node.getScanOrder(), context);
+        resultNode = planProject(resultNode, node, context);
+
+        // After pushing down the predicate, the original scan nodes are no longer needed, we should
+        // release the memory that they occupied.
+        context.releaseMemoryForFrontEnd(getRamBytesUsedOfOldScanNodes(child));
+        return resultNode;
+      }
+      // cannot push down
+      return node;
+    }
+
     private List<PlanNode> constructSourceNodeFromTemplateAggregationDescriptors(
         Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations,
         Map<PartialPath, List<AggregationDescriptor>> descendingAggregations,
@@ -528,6 +583,47 @@ public class AggregationPushDown implements PlanOptimizer {
       } else {
         throw new IllegalStateException(
             "Aggregation descriptors with non aligned template are not supported");
+      }
+
+      return sourceNodeList;
+    }
+
+    private List<PlanNode> newConstructSourceNodeFromTemplateAggregationDescriptors(
+        List<AggregationDescriptor> ascendingAggregations,
+        List<AggregationDescriptor> descendingAggregations,
+        Ordering scanOrder,
+        GroupByTimeParameter groupByTimeParameter,
+        RewriterContext context) {
+
+      List<PlanNode> sourceNodeList = new ArrayList<>();
+      PartialPath devicePath = context.curDevicePath;
+      List<String> measurementList = context.analysis.getMeasurementList();
+      List<IMeasurementSchema> measurementSchemaList = context.analysis.getMeasurementSchemaList();
+      boolean needCheckAscending = groupByTimeParameter == null;
+
+      if (!context.analysis.getDeviceTemplate().isDirectAligned()) {
+        throw new IllegalStateException(
+            "Aggregation descriptors with non aligned template are not supported");
+      }
+      AlignedPath alignedPath = new AlignedPath(devicePath);
+      alignedPath.setMeasurementList(measurementList);
+      alignedPath.addSchemas(measurementSchemaList);
+
+      if (!ascendingAggregations.isEmpty()) {
+        sourceNodeList.add(
+            createAggregationScanNode(
+                alignedPath,
+                ascendingAggregations,
+                scanOrder,
+                groupByTimeParameter,
+                context,
+                (byte) 0));
+      }
+
+      if (needCheckAscending && !descendingAggregations.isEmpty()) {
+        sourceNodeList.add(
+            createAggregationScanNode(
+                alignedPath, descendingAggregations, scanOrder, null, context, (byte) 1));
       }
 
       return sourceNodeList;

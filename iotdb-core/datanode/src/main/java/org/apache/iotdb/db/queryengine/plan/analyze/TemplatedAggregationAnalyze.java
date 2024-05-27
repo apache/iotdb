@@ -44,7 +44,6 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.DEVICE_EXPRESSION;
-import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.END_TIME_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeExpressionType;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeGroupByTime;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeOutput;
@@ -125,14 +124,13 @@ public class TemplatedAggregationAnalyze {
       Analysis analysis,
       List<Pair<Expression, String>> outputExpressions,
       Template template) {
-
-    analysis.setDeviceTemplate(template);
-
     LinkedHashSet<Expression> selectExpressions = new LinkedHashSet<>();
     selectExpressions.add(DEVICE_EXPRESSION);
     if (queryStatement.isOutputEndTime()) {
-      selectExpressions.add(END_TIME_EXPRESSION);
+      return false;
     }
+
+    analysis.setDeviceTemplate(template);
 
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
