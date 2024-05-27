@@ -229,7 +229,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
           senderEnv,
           Arrays.asList(
               "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
-              "insert into root.ln.wf01.wt01(time, status) values(0, 1)",
+              "insert into root.ln.wf01.wt01(time, status) values(0, true)",
               "flush"))) {
         return;
       }
@@ -240,7 +240,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualManualIT {
           receiverEnv,
           Arrays.asList(
               "create timeseries root.ln.wf01.wt01.status1 with datatype=BOOLEAN,encoding=PLAIN",
-              "insert into root.ln.wf01.wt01(time, status1) values(0, 1)",
+              "insert into root.ln.wf01.wt01(time, status1) values(0, true)",
               "flush"))) {
         return;
       }

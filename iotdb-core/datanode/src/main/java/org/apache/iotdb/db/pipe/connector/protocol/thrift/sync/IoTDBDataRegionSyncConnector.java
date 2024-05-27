@@ -236,13 +236,9 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
     try {
       insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
-
+      // getDeviceId() may return null for InsertRowsNode, will be equal to getClient(null)
+      clientAndStatus = clientManager.getClient(pipeInsertNodeTabletInsertionEvent.getDeviceId());
       if (insertNode != null) {
-        clientAndStatus =
-            // insertNode.getDevicePath() is null for InsertRowsNode
-            Objects.nonNull(insertNode.getDevicePath())
-                ? clientManager.getClient(insertNode.getDevicePath().getFullPath())
-                : clientManager.getClient();
         resp =
             clientAndStatus
                 .getLeft()
@@ -250,7 +246,6 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                     compressIfNeeded(
                         PipeTransferTabletInsertNodeReq.toTPipeTransferReq(insertNode)));
       } else {
-        clientAndStatus = clientManager.getClient();
         resp =
             clientAndStatus
                 .getLeft()
