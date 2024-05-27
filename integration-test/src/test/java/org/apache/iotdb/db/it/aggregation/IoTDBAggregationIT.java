@@ -353,7 +353,7 @@ public class IoTDBAggregationIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-
+      connection.setClientInfo("time_zone", "+00:00");
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(

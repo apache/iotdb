@@ -170,7 +170,7 @@ public class IoTDBSubStringFunctionIT {
     // Normal
     String[] expectedHeader2 =
         new String[] {
-          "Time,root.sg.s9,change_points(root.sg.s9),SUBSTRING(root.sg.s9,1),SUBSTRING(root.sg.s9,1,3),SUBSTRING(root.sg.s9 FROM 1),SUBSTRING(root.sg.s9 FROM 1 FOR 3)"
+          "Time,root.sg.s9,change_points(root.sg.s1),SUBSTRING(root.sg.s9,1),SUBSTRING(root.sg.s9,1,3),SUBSTRING(root.sg.s9 FROM 1),SUBSTRING(root.sg.s9 FROM 1 FOR 3)"
         };
     String[] retArray2 =
         new String[] {
