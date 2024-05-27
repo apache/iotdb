@@ -183,7 +183,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
 
     InsertNode result;
-    List<Integer> index = new ArrayList<>(size);
+    List<Integer> index = new ArrayList<>();
     int i = 0;
     switch (insertNodes.get(0).getType()) {
       case INSERT_TABLET:
