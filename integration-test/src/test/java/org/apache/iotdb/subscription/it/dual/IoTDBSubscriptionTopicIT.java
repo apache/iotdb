@@ -613,6 +613,14 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   session.executeNonQueryStatement(
                       String.format("insert into root.db.d1(time, s) values (%s, 1)", i));
                 }
+                for (int i = 0; i < 100; ++i) {
+                  session.executeNonQueryStatement(
+                      String.format("insert into root.db.d2(time, s) values (%s, 1)", i));
+                }
+                for (int i = 0; i < 100; ++i) {
+                  session.executeNonQueryStatement(
+                      String.format("insert into root.db.d3(time, t) values (%s, 1)", i));
+                }
                 session.executeNonQueryStatement("flush");
               } catch (final Exception e) {
                 e.printStackTrace();
