@@ -377,6 +377,12 @@ public class CommonDescriptor {
                         "pipe_async_connector_max_client_number",
                         String.valueOf(config.getPipeAsyncConnectorMaxClientNumber())))));
 
+    config.setPipeAllSinksRateLimitBytesPerSecond(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_all_sinks_rate_limit_bytes_per_second",
+                String.valueOf(config.getPipeAllSinksRateLimitBytesPerSecond()))));
+
     config.setSeperatedPipeHeartbeatEnabled(
         Boolean.parseBoolean(
             properties.getProperty(

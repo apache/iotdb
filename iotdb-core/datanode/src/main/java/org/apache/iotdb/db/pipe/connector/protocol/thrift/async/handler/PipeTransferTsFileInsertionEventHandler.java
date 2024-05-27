@@ -122,15 +122,22 @@ public class PipeTransferTsFileInsertionEventHandler
         transfer(clientManager, client);
       } else if (currentFile == tsFile) {
         isSealSignalSent.set(true);
-        client.pipeTransfer(
-            PipeTransferCompressedReq.toTPipeTransferReq(
-                transferMod
-                    ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                        modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
-                    : PipeTransferTsFileSealReq.toTPipeTransferReq(
-                        tsFile.getName(), tsFile.length()),
-                connector.getCompressors()),
-            this);
+
+        final TPipeTransferReq uncompressedReq =
+            transferMod
+                ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                    modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
+                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
+        final TPipeTransferReq req =
+            connector.isRpcCompressionEnabled()
+                ? PipeTransferCompressedReq.toTPipeTransferReq(
+                    uncompressedReq, connector.getCompressors())
+                : uncompressedReq;
+
+        connector.rateLimitIfNeeded(
+            event.getPipeName(), client.getEndPoint(), req.getBody().length);
+
+        client.pipeTransfer(req, this);
       }
       return;
     }
@@ -145,12 +152,16 @@ public class PipeTransferTsFileInsertionEventHandler
                 currentFile.getName(), position, payload)
             : PipeTransferTsFilePieceReq.toTPipeTransferReq(
                 currentFile.getName(), position, payload);
-    client.pipeTransfer(
+    final TPipeTransferReq req =
         connector.isRpcCompressionEnabled()
             ? PipeTransferCompressedReq.toTPipeTransferReq(
                 uncompressedReq, connector.getCompressors())
-            : uncompressedReq,
-        this);
+            : uncompressedReq;
+
+    connector.rateLimitIfNeeded(event.getPipeName(), client.getEndPoint(), req.getBody().length);
+
+    client.pipeTransfer(req, this);
+
     position += readLength;
   }
 
