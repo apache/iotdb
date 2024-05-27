@@ -63,6 +63,8 @@ public class ClusterManager {
         Thread.sleep(100);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
+        LOGGER.warn("Unexpected interruption during waiting for get cluster id.");
+        break;
       }
     }
     return clusterInfo.getClusterId();

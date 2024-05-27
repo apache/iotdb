@@ -17,21 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.exception;
+package org.apache.iotdb.db.storageengine.dataregion.read;
 
-import org.apache.iotdb.rpc.TSStatusCode;
+public interface IQueryDataSource {
 
-import org.junit.Test;
+  IQueryDataSource clone();
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-public class MemoryNotEnoughExceptionTest {
-
-  @Test
-  public void testMemoryNotEnoughExceptionStatusCode() {
-    MemoryNotEnoughException e = new MemoryNotEnoughException("test");
-    assertEquals(TSStatusCode.QUOTA_MEM_QUERY_NOT_ENOUGH.getStatusCode(), e.getErrorCode());
-    assertTrue(e.isUserException());
-  }
+  long getDataTTL();
 }
