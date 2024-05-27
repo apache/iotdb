@@ -200,15 +200,16 @@ public class ElasticSerializableTVList {
       end += consumed;
       begin = end;
       total -= consumed;
-      if (total > 0) {
-        doExpansion();
-      }
 
       // Fill row record list
       cache
           .get(pointCount / internalTVListCapacity)
           .putColumns(insertedTimeColumn, insertedValueColumn);
       pointCount += consumed;
+
+      if (total > 0) {
+        doExpansion();
+      }
     }
   }
 

@@ -209,13 +209,13 @@ public class ElasticSerializableRowList {
       end += consumed;
       begin = end;
       total -= consumed;
-      if (total > 0) {
-        doExpansion();
-      }
 
       // Fill row record list
       cache.get(rowCount / internalRowListCapacity).putColumns(insertedColumns);
       rowCount += consumed;
+      if (total > 0) {
+        doExpansion();
+      }
     }
 
     if (!disableMemoryControl) {
