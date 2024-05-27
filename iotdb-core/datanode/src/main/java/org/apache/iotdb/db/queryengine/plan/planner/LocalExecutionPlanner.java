@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateM
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -40,9 +41,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
- * Operator tree, but in the future, we may split one fragment instance into multiple pipeline to
- * run a fragment instance parallel and take full advantage of multi-cores
+ * Used to plan a fragment instance. One fragment instance could be split into multiple pipelines so
+ * that a fragment instance could be run in parallel, and thus we can take full advantages of
+ * multi-cores.
  */
 public class LocalExecutionPlanner {
 
@@ -82,8 +83,13 @@ public class LocalExecutionPlanner {
     // TODO Replace operator with operatorFactory to build multiple driver for one pipeline
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
+    PipelineMemoryEstimator memoryEstimator =
+        context.constructPipelineMemoryEstimator(root, null, plan, -1);
+    // set the map to null for gc
+    context.invalidateParentPlanNodeIdToMemoryEstimator();
+
     // check whether current free memory is enough to execute current query
-    long estimatedMemorySize = checkMemory(root, instanceContext.getStateMachine());
+    long estimatedMemorySize = checkMemory(memoryEstimator, instanceContext.getStateMachine());
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
 
@@ -105,8 +111,13 @@ public class LocalExecutionPlanner {
 
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
+    PipelineMemoryEstimator memoryEstimator =
+        context.constructPipelineMemoryEstimator(root, null, plan, -1);
+    // set the map to null for gc
+    context.invalidateParentPlanNodeIdToMemoryEstimator();
+
     // check whether current free memory is enough to execute current query
-    checkMemory(root, instanceContext.getStateMachine());
+    checkMemory(memoryEstimator, instanceContext.getStateMachine());
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
 
@@ -116,7 +127,8 @@ public class LocalExecutionPlanner {
     return context.getPipelineDriverFactories();
   }
 
-  private long checkMemory(Operator root, FragmentInstanceStateMachine stateMachine)
+  private long checkMemory(
+      final PipelineMemoryEstimator memoryEstimator, FragmentInstanceStateMachine stateMachine)
       throws MemoryNotEnoughException {
 
     // if it is disabled, just return
@@ -125,7 +137,8 @@ public class LocalExecutionPlanner {
       return 0;
     }
 
-    long estimatedMemorySize = root.calculateMaxPeekMemoryWithCounter();
+    long estimatedMemorySize = memoryEstimator.getEstimatedMemoryUsageInBytes();
+
     QueryRelatedResourceMetricSet.getInstance().updateEstimatedMemory(estimatedMemorySize);
 
     synchronized (this) {
@@ -200,7 +213,27 @@ public class LocalExecutionPlanner {
     }
   }
 
-  public synchronized void releaseToFreeMemoryForOperators(long memoryInBytes) {
+  public synchronized void reserveMemoryForQueryFrontEnd(
+      final long memoryInBytes, final long reservedBytes, final String queryId) {
+    if (memoryInBytes > freeMemoryForOperators) {
+      throw new MemoryNotEnoughException(
+          String.format(
+              "There is not enough memory for planning-stage of Query %s, "
+                  + "current remaining free memory is %dB, "
+                  + "estimated memory usage is %dB, reserved memory for FE of this query in total is %dB",
+              queryId, freeMemoryForOperators, memoryInBytes, reservedBytes));
+    } else {
+      freeMemoryForOperators -= memoryInBytes;
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "[ConsumeMemory] consume: {}, current remaining memory: {}",
+            memoryInBytes,
+            freeMemoryForOperators);
+      }
+    }
+  }
+
+  public synchronized void releaseToFreeMemoryForOperators(final long memoryInBytes) {
     freeMemoryForOperators += memoryInBytes;
   }
 

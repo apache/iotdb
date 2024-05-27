@@ -107,7 +107,7 @@ public class NodeManager {
   public static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
 
   private final IManager configManager;
-  private final NodeInfo nodeInfo;
+  protected final NodeInfo nodeInfo;
 
   private final ReentrantLock removeConfigNodeLock;
 
@@ -562,6 +562,10 @@ public class NodeManager {
 
     dataNodeInfoList.sort(Comparator.comparingInt(TDataNodeInfo::getDataNodeId));
     return dataNodeInfoList;
+  }
+
+  public int getDataNodeCpuCoreCount() {
+    return nodeInfo.getDataNodeTotalCpuCoreCount();
   }
 
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {

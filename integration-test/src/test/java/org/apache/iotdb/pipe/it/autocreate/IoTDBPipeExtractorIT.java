@@ -78,7 +78,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(p1_1);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
@@ -98,7 +98,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(p1_2);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
@@ -118,7 +118,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(p1_3);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
@@ -139,7 +139,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(p1_4);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
@@ -160,7 +160,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(p1_5);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
@@ -185,7 +185,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(p2_1);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
@@ -204,7 +204,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(p2_2);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
@@ -224,7 +224,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(p2_3);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
@@ -244,7 +244,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(p2_4);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
@@ -270,7 +270,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(p3_1);
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       fail(e.getMessage());
     }
 
@@ -305,7 +305,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
           final Statement statement = connection.createStatement()) {
         statement.execute(String.format(formatString, invalidStartTime));
         fail();
-      } catch (SQLException ignored) {
+      } catch (final SQLException ignored) {
       }
     }
     assertPipeCount(0);
@@ -328,7 +328,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
         final Statement statement = connection.createStatement()) {
       statement.execute(p2);
       fail();
-    } catch (SQLException ignored) {
+    } catch (final SQLException ignored) {
     }
     assertPipeCount(0);
 
@@ -351,7 +351,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
         final Statement statement = connection.createStatement()) {
       statement.execute(p3);
       fail();
-    } catch (SQLException ignored) {
+    } catch (final SQLException ignored) {
     }
     assertPipeCount(0);
 
@@ -372,7 +372,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
         final Statement statement = connection.createStatement()) {
       statement.execute(p4);
       fail();
-    } catch (SQLException ignored) {
+    } catch (final SQLException ignored) {
     }
     assertPipeCount(0);
   }
@@ -411,7 +411,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", null);
-      extractorAttributes.put("extractor.inclusion", "data");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -447,6 +447,14 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p" + i).getCode());
+        // We add flush here because the pipe may be created on the new IoT leader
+        // and the old leader's data may come as an unclosed historical tsfile
+        // and is skipped flush when the pipe starts. In this case, the "waitForTsFileClose()"
+        // may not return until a flush is executed, namely the data transfer relies
+        // on a flush operation.
+        if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
+          return;
+        }
         assertTimeseriesCountOnReceiver(receiverEnv, expectedTimeseriesCount.get(i));
       }
 
@@ -483,7 +491,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", "root.db1");
-      extractorAttributes.put("extractor.inclusion", "data");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -581,7 +589,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      extractorAttributes.put("extractor.inclusion", "data");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.pattern", "root.db.d2");
       extractorAttributes.put("extractor.history.enable", "false");
       extractorAttributes.put("extractor.realtime.enable", "true");
@@ -624,8 +632,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
               "insert into root.db.d1 (time, at1) values (2, 11)",
               "insert into root.db.d2 (time, at1) values (2, 21)",
               "insert into root.db.d3 (time, at1) values (2, 31)",
-              "insert into root.db.d4 (time, at1) values (2, 41)",
-              "flush"))) {
+              "insert into root.db.d4 (time, at1) values (2, 41), (3, 51)"))) {
         return;
       }
 
@@ -638,7 +645,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select count(*) from root.** where time >= 2",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
-          Collections.singleton("1,1,0,"));
+          Collections.singleton("2,1,0,"));
     }
   }
 
@@ -667,7 +674,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", "root.db.d1");
-      extractorAttributes.put("extractor.inclusion", "data");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.history.enable", "true");
       // 1970-01-01T08:00:02+08:00
       extractorAttributes.put("extractor.history.start-time", "2000");
@@ -817,7 +824,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("source.pattern", "root.db.d1");
-      extractorAttributes.put("source.inclusion", "data");
+      extractorAttributes.put("source.inclusion", "data.insert");
       extractorAttributes.put("source.start-time", "1970-01-01T08:00:02+08:00");
       // 1970-01-01T08:00:04+08:00
       extractorAttributes.put("source.end-time", "4000");

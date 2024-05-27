@@ -433,14 +433,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setTagAttributeMaxNum(int tagAttributeMaxNum) {
-    setProperty("tag_attribute_max_num", String.valueOf(tagAttributeMaxNum));
-    return this;
-  }
-
-  @Override
-  public CommonConfig setTagAttributeEntryMaxSize(int tagAttributeEntryMaxSize) {
-    setProperty("tag_attribute_entry_max_size", String.valueOf(tagAttributeEntryMaxSize));
+  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
+    setProperty("cn_connection_timeout_ms", String.valueOf(connectionTimeoutMs));
     return this;
   }
 

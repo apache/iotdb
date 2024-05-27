@@ -33,7 +33,7 @@ import java.util.TreeMap;
  * The QueryDataSource contains all the seq and unseq TsFileResources for one timeseries in one
  * read.
  */
-public class QueryDataSource {
+public class QueryDataSource implements IQueryDataSource {
 
   /**
    * TsFileResources used by read job.
@@ -85,6 +85,13 @@ public class QueryDataSource {
 
   public List<TsFileResource> getUnseqResources() {
     return unseqResources;
+  }
+
+  @Override
+  public IQueryDataSource clone() {
+    QueryDataSource queryDataSource = new QueryDataSource(getSeqResources(), getUnseqResources());
+    queryDataSource.setSingleDevice(isSingleDevice());
+    return queryDataSource;
   }
 
   public boolean hasNextSeqResource(int curIndex, boolean ascending, IDeviceID deviceID) {

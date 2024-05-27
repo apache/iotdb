@@ -138,7 +138,5 @@ public interface CommonConfig {
 
   CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize);
 
-  CommonConfig setTagAttributeMaxNum(int tagAttributeMaxNum);
-
-  CommonConfig setTagAttributeEntryMaxSize(int tagAttributeEntryMaxSize);
+  CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs);
 }

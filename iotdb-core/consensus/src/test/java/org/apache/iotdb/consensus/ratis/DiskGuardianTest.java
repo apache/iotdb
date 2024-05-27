@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.ratis.utils.Retriable;
-import org.apache.iotdb.consensus.ratis.utils.Utils;
 
 import org.apache.ratis.util.TimeDuration;
 import org.junit.After;
@@ -32,9 +31,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public class DiskGuardianTest {
@@ -90,32 +87,13 @@ public class DiskGuardianTest {
 
     miniCluster.waitUntilActiveLeaderElectedAndReady();
     miniCluster.writeManySerial(0, 10);
-    Assert.assertFalse(hasSnapshot(gid));
+    Assert.assertFalse(miniCluster.hasSnapshot(gid, 0));
     Retriable.attemptUntilTrue(
-        () -> hasSnapshot(gid),
+        () -> miniCluster.hasSnapshot(gid, 0),
         12,
         TimeDuration.valueOf(5, TimeUnit.SECONDS),
         "should take snapshot",
         logger);
-    Assert.assertTrue(hasSnapshot(gid));
-  }
-
-  private boolean hasSnapshot(ConsensusGroupId gid) {
-    try {
-      return Objects.requireNonNull(
-                  miniCluster
-                      .getServer(0)
-                      .getServer()
-                      .getDivision(Utils.fromConsensusGroupIdToRaftGroupId(gid))
-                      .getRaftStorage()
-                      .getStorageDir()
-                      .getStateMachineDir()
-                      .listFiles())
-              .length
-          != 0;
-    } catch (IOException ioe) {
-      Assert.fail("caught IOException:" + ioe);
-      return false; // required by the compiler
-    }
+    Assert.assertTrue(miniCluster.hasSnapshot(gid, 0));
   }
 }

@@ -440,16 +440,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setTagAttributeMaxNum(int tagAttributeMaxNum) {
-    dnConfig.setTagAttributeMaxNum(tagAttributeMaxNum);
-    cnConfig.setTagAttributeMaxNum(tagAttributeMaxNum);
-    return this;
-  }
-
-  @Override
-  public CommonConfig setTagAttributeEntryMaxSize(int tagAttributeEntryMaxSize) {
-    dnConfig.setTagAttributeEntryMaxSize(tagAttributeEntryMaxSize);
-    cnConfig.setTagAttributeEntryMaxSize(tagAttributeEntryMaxSize);
+  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
+    dnConfig.setCnConnectionTimeoutMs(connectionTimeoutMs);
+    cnConfig.setCnConnectionTimeoutMs(connectionTimeoutMs);
     return this;
   }
 }

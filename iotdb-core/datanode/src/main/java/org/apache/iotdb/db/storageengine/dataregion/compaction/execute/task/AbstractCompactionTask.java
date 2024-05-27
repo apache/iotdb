@@ -106,7 +106,7 @@ public abstract class AbstractCompactionTask {
   public boolean setSourceFilesToCompactionCandidate() {
     List<TsFileResource> files = getAllSourceTsFiles();
     for (int i = 0; i < files.size(); i++) {
-      if (!files.get(i).setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE)) {
+      if (!files.get(i).transformStatus(TsFileResourceStatus.COMPACTION_CANDIDATE)) {
         // rollback status to NORMAL
         for (int j = 0; j < i; j++) {
           files.get(j).setStatus(TsFileResourceStatus.NORMAL);
@@ -151,7 +151,8 @@ public abstract class AbstractCompactionTask {
       }
     } else if (e instanceof InterruptedException
         || Thread.interrupted()
-        || e instanceof StopReadTsFileByInterruptException) {
+        || e instanceof StopReadTsFileByInterruptException
+        || !tsFileManager.isAllowCompaction()) {
       logger.warn(
           "{}-{} [Compaction] {} task interrupted",
           storageGroupName,
@@ -237,7 +238,7 @@ public abstract class AbstractCompactionTask {
 
   public void transitSourceFilesToMerging() throws FileCannotTransitToCompactingException {
     for (TsFileResource f : getAllSourceTsFiles()) {
-      if (!f.setStatus(TsFileResourceStatus.COMPACTING)) {
+      if (!f.transformStatus(TsFileResourceStatus.COMPACTING)) {
         throw new FileCannotTransitToCompactingException(f);
       }
     }
@@ -302,6 +303,11 @@ public abstract class AbstractCompactionTask {
   }
 
   protected void handleRecoverException(Exception e) {
+    // all files in this data region may be deleted directly without acquire lock or transfer
+    // TsFileResourceStatus
+    if (!tsFileManager.isAllowCompaction()) {
+      return;
+    }
     LOGGER.error(
         "{} [Compaction][Recover] Failed to recover compaction. TaskInfo: {}, Exception: {}",
         dataRegionId,

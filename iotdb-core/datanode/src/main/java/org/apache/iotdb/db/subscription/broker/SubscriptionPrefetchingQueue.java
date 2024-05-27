@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
@@ -53,7 +53,7 @@ public class SubscriptionPrefetchingQueue {
 
   private final String brokerId; // consumer group id
   private final String topicName;
-  private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
+  private final UnboundedBlockingPendingQueue<Event> inputPendingQueue;
 
   private final Map<String, SerializedEnrichedEvent> uncommittedEvents;
   private final LinkedBlockingQueue<SerializedEnrichedEvent> prefetchingQueue;
@@ -61,7 +61,7 @@ public class SubscriptionPrefetchingQueue {
   private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
 
   public SubscriptionPrefetchingQueue(
-      String brokerId, String topicName, BoundedBlockingPendingQueue<Event> inputPendingQueue) {
+      String brokerId, String topicName, UnboundedBlockingPendingQueue<Event> inputPendingQueue) {
     this.brokerId = brokerId;
     this.topicName = topicName;
     this.inputPendingQueue = inputPendingQueue;

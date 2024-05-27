@@ -395,7 +395,7 @@ public class SystemInfo {
             ? Long.MAX_VALUE
             : (long)
                 (config.getMaxOffHeapMemoryBytes()
-                    * config.getMaxWalBufferOffHeapMemorySizeProportion());
+                    * config.getMaxDirectBufferOffHeapMemorySizeProportion());
     memorySizeForMemtable =
         (long)
             (config.getAllocateMemoryForStorageEngine() * config.getWriteProportionForMemtable());

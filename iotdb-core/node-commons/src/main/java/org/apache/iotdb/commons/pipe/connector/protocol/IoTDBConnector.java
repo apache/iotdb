@@ -21,23 +21,35 @@ package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
+import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
+import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorFactory;
+import org.apache.iotdb.commons.pipe.connector.limiter.GlobalRateLimiter;
+import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_SET;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_DEFAULT_VALUE;
@@ -57,6 +69,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_SET;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_RATE_LIMIT_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_RATE_LIMIT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_COMPRESSOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY;
@@ -68,6 +83,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LOAD_BALANCE_STRATEGY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_RATE_LIMIT_KEY;
 
 public abstract class IoTDBConnector implements PipeConnector {
 
@@ -81,6 +97,14 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected final List<TEndPoint> nodeUrls = new ArrayList<>();
 
   protected String loadBalanceStrategy;
+
+  private boolean isRpcCompressionEnabled;
+  private final List<PipeCompressor> compressors = new ArrayList<>();
+
+  private static final Map<String, PipeEndPointRateLimiter> PIPE_END_POINT_RATE_LIMITER_MAP =
+      new ConcurrentHashMap<>();
+  private double endPointRateLimitBytesPerSecond = -1;
+  private static final GlobalRateLimiter GLOBAL_RATE_LIMITER = new GlobalRateLimiter();
 
   protected boolean isTabletBatchModeEnabled = true;
 
@@ -126,6 +150,47 @@ public abstract class IoTDBConnector implements PipeConnector {
             "Load balance strategy should be one of %s, but got %s.",
             CONNECTOR_LOAD_BALANCE_STRATEGY_SET, loadBalanceStrategy),
         loadBalanceStrategy);
+
+    final String compressionTypes =
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(CONNECTOR_COMPRESSOR_KEY, SINK_COMPRESSOR_KEY),
+                CONNECTOR_COMPRESSOR_DEFAULT_VALUE)
+            .toLowerCase();
+    if (!compressionTypes.isEmpty()) {
+      for (final String compressionType : compressionTypes.split(",")) {
+        final String trimmedCompressionType = compressionType.trim();
+        if (trimmedCompressionType.isEmpty()) {
+          continue;
+        }
+
+        validator.validate(
+            arg -> CONNECTOR_COMPRESSOR_SET.contains(trimmedCompressionType),
+            String.format(
+                "Compressor should be one of %s, but got %s.",
+                CONNECTOR_COMPRESSOR_SET, trimmedCompressionType),
+            trimmedCompressionType);
+        compressors.add(PipeCompressorFactory.getCompressor(trimmedCompressionType));
+      }
+    }
+    validator.validate(
+        arg -> compressors.size() <= Byte.MAX_VALUE,
+        String.format(
+            "The number of compressors should be less than or equal to %d, but got %d.",
+            Byte.MAX_VALUE, compressors.size()),
+        compressors.size());
+    isRpcCompressionEnabled = !compressors.isEmpty();
+
+    endPointRateLimitBytesPerSecond =
+        parameters.getDoubleOrDefault(
+            Arrays.asList(CONNECTOR_RATE_LIMIT_KEY, SINK_RATE_LIMIT_KEY),
+            CONNECTOR_RATE_LIMIT_DEFAULT_VALUE);
+    validator.validate(
+        arg -> endPointRateLimitBytesPerSecond <= Double.MAX_VALUE,
+        String.format(
+            "Rate limit should be in the range (0, %f], but got %f.",
+            Double.MAX_VALUE, endPointRateLimitBytesPerSecond),
+        endPointRateLimitBytesPerSecond);
 
     validator.validate(
         arg -> arg.equals("retry") || arg.equals("ignore"),
@@ -258,6 +323,44 @@ public abstract class IoTDBConnector implements PipeConnector {
         throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
       }
     }
+  }
+
+  @Override
+  public void close() {
+    // TODO: Not all the limiters should be closed here, but it's fine for now.
+    PIPE_END_POINT_RATE_LIMITER_MAP.clear();
+  }
+
+  protected TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
+    return isRpcCompressionEnabled
+        ? PipeTransferCompressedReq.toTPipeTransferReq(req, compressors)
+        : req;
+  }
+
+  protected byte[] compressIfNeeded(byte[] reqInBytes) throws IOException {
+    return isRpcCompressionEnabled
+        ? PipeTransferCompressedReq.toTPipeTransferReqBytes(reqInBytes, compressors)
+        : reqInBytes;
+  }
+
+  public boolean isRpcCompressionEnabled() {
+    return isRpcCompressionEnabled;
+  }
+
+  public List<PipeCompressor> getCompressors() {
+    return compressors;
+  }
+
+  public void rateLimitIfNeeded(
+      final String pipeName, final TEndPoint endPoint, final long bytesLength) {
+    if (pipeName != null && endPointRateLimitBytesPerSecond > 0) {
+      PIPE_END_POINT_RATE_LIMITER_MAP
+          .computeIfAbsent(
+              pipeName, endpoint -> new PipeEndPointRateLimiter(endPointRateLimitBytesPerSecond))
+          .acquire(endPoint, bytesLength);
+    }
+
+    GLOBAL_RATE_LIMITER.acquire(bytesLength);
   }
 
   public PipeReceiverStatusHandler statusHandler() {
