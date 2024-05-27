@@ -430,7 +430,7 @@ public class TemplatedInfo {
 
     boolean aggregationQuery = ReadWriteIOUtils.readBool(byteBuffer);
     GroupByTimeParameter groupByTimeParameter = null;
-    boolean outputEndTime = ReadWriteIOUtils.readBool(byteBuffer);
+    boolean outputEndTime = false;
     List<AggregationDescriptor> ascendingDescriptorList = null;
     List<AggregationDescriptor> descendingDescriptorList = null;
 
@@ -439,6 +439,8 @@ public class TemplatedInfo {
       if (hasGroupByTime == 1) {
         groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
       }
+
+      outputEndTime = ReadWriteIOUtils.readBool(byteBuffer);
 
       int size = ReadWriteIOUtils.readInt(byteBuffer);
       ascendingDescriptorList = new ArrayList<>(size);

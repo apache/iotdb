@@ -92,13 +92,13 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
     expectedHeader = new String[] {"Device,max_time(s1),last_value(s1),last_value(s2)"};
     retArray =
         new String[] {
-          "root.sg1.d1,1314000000000,13.14,true,",
-          "root.sg1.d2,1314000000001,13.15,false,",
-          "root.sg1.d3,1314000000002,13.16,false,",
-          "root.sg1.d4,1314000000003,13.14,true,",
+          "root.sg2.d1,1314000000000,13.14,true,",
+          "root.sg2.d2,1314000000001,13.15,false,",
+          "root.sg2.d3,1314000000002,13.16,false,",
+          "root.sg2.d4,1314000000003,13.14,true,",
         };
     resultSetEqualTest(
-        "SELECT max_time(s1), last_value(s1), last_value(s2) FROM root.sg1.** align by device;",
+        "SELECT max_time(s1), last_value(s1), last_value(s2) FROM root.sg2.** align by device;",
         expectedHeader,
         retArray);
 

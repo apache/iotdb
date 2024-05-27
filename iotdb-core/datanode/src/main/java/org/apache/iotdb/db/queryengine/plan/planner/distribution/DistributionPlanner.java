@@ -210,9 +210,7 @@ public class DistributionPlanner {
     // Mark the root Fragment of root SubPlan as `root`
     subPlan.getPlanFragment().setRoot(true);
     List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);
-    for (FragmentInstance fragmentInstance : fragmentInstances) {
-      System.out.println("===" + fragmentInstance);
-    }
+
     // Only execute this step for READ operation
     if (context.getQueryType() == QueryType.READ) {
       setSinkForRootInstance(subPlan, fragmentInstances);
