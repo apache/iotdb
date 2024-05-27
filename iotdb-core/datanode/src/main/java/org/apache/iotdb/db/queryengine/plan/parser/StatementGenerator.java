@@ -112,6 +112,7 @@ import java.util.Map;
 
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
+
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
@@ -442,7 +443,10 @@ public class StatementGenerator {
     insertStatement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPath));
     List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     // req.timestamps sorted on session side
-    TimestampPrecisionUtils.checkTimestampPrecision(req.timestamps.get(req.timestamps.size() - 1));
+    if (req.timestamps.size() != 0) {
+      TimestampPrecisionUtils.checkTimestampPrecision(
+          req.timestamps.get(req.timestamps.size() - 1));
+    }
     for (int i = 0; i < req.timestamps.size(); i++) {
       InsertRowStatement statement = new InsertRowStatement();
       statement.setDevicePath(insertStatement.getDevicePath());

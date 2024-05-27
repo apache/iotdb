@@ -22,7 +22,6 @@ package org.apache.iotdb.db.consensus.statemachine.dataregion;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
@@ -46,6 +45,7 @@ import org.apache.iotdb.db.storageengine.dataregion.snapshot.SnapshotLoader;
 import org.apache.iotdb.db.storageengine.dataregion.snapshot.SnapshotTaker;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -183,29 +183,46 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
 
     InsertNode result;
-    // merge to InsertMultiTabletsNode
-    if (insertNodes.get(0) instanceof InsertTabletNode) {
-      List<Integer> index = new ArrayList<>(size);
-      List<InsertTabletNode> insertTabletNodes = new ArrayList<>(size);
-      int i = 0;
-      for (InsertNode insertNode : insertNodes) {
-        insertTabletNodes.add((InsertTabletNode) insertNode);
-        index.add(i);
-        i++;
-      }
-      result =
-          new InsertMultiTabletsNode(insertNodes.get(0).getPlanNodeId(), index, insertTabletNodes);
-    } else { // merge to InsertRowsNode
-      PartialPath device = insertNodes.get(0).getDevicePath();
-      List<Integer> index = new ArrayList<>(size);
-      List<InsertRowNode> insertRowNodes = new ArrayList<>(size);
-      int i = 0;
-      for (InsertNode insertNode : insertNodes) {
-        insertRowNodes.add((InsertRowNode) insertNode);
-        index.add(i);
-        i++;
-      }
-      result = new InsertRowsNode(insertNodes.get(0).getPlanNodeId(), index, insertRowNodes);
+    List<Integer> index = new ArrayList<>();
+    int i = 0;
+    switch (insertNodes.get(0).getType()) {
+      case INSERT_TABLET:
+        // merge to InsertMultiTabletsNode
+        List<InsertTabletNode> insertTabletNodes = new ArrayList<>(size);
+        for (InsertNode insertNode : insertNodes) {
+          insertTabletNodes.add((InsertTabletNode) insertNode);
+          index.add(i);
+          i++;
+        }
+        result =
+            new InsertMultiTabletsNode(
+                insertNodes.get(0).getPlanNodeId(), index, insertTabletNodes);
+        break;
+      case INSERT_ROW:
+        // merge to InsertRowsNode
+        List<InsertRowNode> insertRowNodes = new ArrayList<>(size);
+        for (InsertNode insertNode : insertNodes) {
+          insertRowNodes.add((InsertRowNode) insertNode);
+          index.add(i);
+          i++;
+        }
+        result = new InsertRowsNode(insertNodes.get(0).getPlanNodeId(), index, insertRowNodes);
+        break;
+      case INSERT_ROWS:
+        // merge to InsertRowsNode
+        List<InsertRowNode> list = new ArrayList<>();
+        for (InsertNode insertNode : insertNodes) {
+          for (InsertRowNode insertRowNode : ((InsertRowsNode) insertNode).getInsertRowNodeList()) {
+            list.add(insertRowNode);
+            index.add(i);
+            i++;
+          }
+        }
+        result = new InsertRowsNode(insertNodes.get(0).getPlanNodeId(), index, list);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            "Unsupported node type " + insertNodes.get(0).getType());
     }
     result.setSearchIndex(insertNodes.get(0).getSearchIndex());
     result.setDevicePath(insertNodes.get(0).getDevicePath());

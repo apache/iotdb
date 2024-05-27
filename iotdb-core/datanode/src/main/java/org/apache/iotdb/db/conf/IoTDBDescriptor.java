@@ -922,7 +922,7 @@ public class IoTDBDescriptor {
     conf.setLoadWriteThroughputBytesPerSecond(
         Double.parseDouble(
             properties.getProperty(
-                "load_write_throughput_bytes_per_sec",
+                "load_write_throughput_bytes_per_second",
                 String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
@@ -1187,6 +1187,40 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "compaction_read_throughput_mb_per_sec",
                 Integer.toString(conf.getCompactionReadThroughputMbPerSec()))));
+
+    // update max_inner_compaction_candidate_file_num
+    conf.setFileLimitPerInnerTask(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_inner_compaction_candidate_file_num",
+                Integer.toString(conf.getFileLimitPerInnerTask()))));
+
+    // update target_compaction_file_size
+    conf.setTargetCompactionFileSize(
+        Long.parseLong(
+            properties.getProperty(
+                "target_compaction_file_size", Long.toString(conf.getTargetCompactionFileSize()))));
+
+    // update max_cross_compaction_candidate_file_num
+    conf.setFileLimitPerCrossTask(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_cross_compaction_candidate_file_num",
+                Integer.toString(conf.getFileLimitPerCrossTask()))));
+
+    // update max_cross_compaction_candidate_file_size
+    conf.setMaxCrossCompactionCandidateFileSize(
+        Long.parseLong(
+            properties.getProperty(
+                "max_cross_compaction_candidate_file_size",
+                Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
+
+    // update min_cross_compaction_unseq_file_level
+    conf.setMinCrossCompactionUnseqFileLevel(
+        Integer.parseInt(
+            properties.getProperty(
+                "min_cross_compaction_unseq_file_level",
+                Integer.toString(conf.getMinCrossCompactionUnseqFileLevel()))));
 
     CompactionTaskManager.getInstance()
         .setCompactionReadOperationRate(conf.getCompactionReadOperationPerSec());
@@ -1718,8 +1752,18 @@ public class IoTDBDescriptor {
       conf.setLoadWriteThroughputBytesPerSecond(
           Double.parseDouble(
               properties.getProperty(
-                  "load_write_throughput_bytes_per_sec",
+                  "load_write_throughput_bytes_per_second",
                   String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
+
+      // update pipe config
+      commonDescriptor
+          .getConfig()
+          .setPipeAllSinksRateLimitBytesPerSecond(
+              Double.parseDouble(
+                  properties.getProperty(
+                      "pipe_all_sinks_rate_limit_bytes_per_second",
+                      String.valueOf(
+                          commonDescriptor.getConfig().getPipeAllSinksRateLimitBytesPerSecond()))));
 
       // update merge_threshold_of_explain_analyze
       conf.setMergeThresholdOfExplainAnalyze(

@@ -1672,7 +1672,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (createPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
-              "Failed to create pipe %s in config node, pipe name starting with \"%s\" are not allowed to be created",
+              "Failed to create pipe %s, pipe name starting with \"%s\" are not allowed to be created.",
               createPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
       LOGGER.warn(exceptionMessage);
       future.setException(
@@ -1727,7 +1727,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (alterPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
-              "Failed to alter pipe %s in config node, pipe name starting with \"%s\" are not allowed to be altered",
+              "Failed to alter pipe %s, pipe name starting with \"%s\" are not allowed to be altered.",
               alterPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
       LOGGER.warn(exceptionMessage);
       future.setException(
@@ -1783,7 +1783,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (startPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
-              "Failed to start pipe %s in config node, pipe name starting with \"%s\" are not allowed to be started",
+              "Failed to start pipe %s, pipe name starting with \"%s\" are not allowed to be started.",
               startPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
       LOGGER.warn(exceptionMessage);
       future.setException(
@@ -1815,7 +1815,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (dropPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
-              "Failed to drop pipe %s in config node, pipe name starting with \"%s\" are not allowed to be dropped",
+              "Failed to drop pipe %s, pipe name starting with \"%s\" are not allowed to be dropped.",
               dropPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
       LOGGER.warn(exceptionMessage);
       future.setException(
@@ -1847,7 +1847,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (stopPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
-              "Failed to stop pipe %s in config node, pipe name starting with \"%s\" are not allowed to be stopped",
+              "Failed to stop pipe %s, pipe name starting with \"%s\" are not allowed to be stopped.",
               stopPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
       LOGGER.warn(exceptionMessage);
       future.setException(

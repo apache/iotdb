@@ -23,24 +23,19 @@ import java.util.Objects;
 
 public class SubscriptionParameterNotValidException extends SubscriptionException {
 
-  public SubscriptionParameterNotValidException(String message) {
+  public SubscriptionParameterNotValidException(final String message) {
     super(message);
   }
 
-  protected SubscriptionParameterNotValidException(String message, long timeStamp) {
-    super(message, timeStamp);
+  public SubscriptionParameterNotValidException(final String message, final Throwable cause) {
+    super(message, cause);
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     return obj instanceof SubscriptionParameterNotValidException
         && Objects.equals(getMessage(), ((SubscriptionParameterNotValidException) obj).getMessage())
         && Objects.equals(
             getTimeStamp(), ((SubscriptionParameterNotValidException) obj).getTimeStamp());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(getMessage(), getTimeStamp());
   }
 }
