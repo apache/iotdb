@@ -76,16 +76,15 @@ public class RegionScanForActiveDeviceUtil {
 
       long startTime = deviceStartEndTime.getStartTime();
       long endTime = deviceStartEndTime.getEndTime();
-      if (!timeFilter.containStartEndTime(startTime, endTime)) {
+      if (!timeFilter.satisfyStartEndTime(startTime, endTime)) {
         // If the time range is filtered, the devicePath is not active in this time range.
         continue;
       }
       boolean[] isDeleted =
           curFileScanHandle.isDeviceTimeDeleted(
               deviceStartEndTime.getDevicePath(), new long[] {startTime, endTime});
-      if (isDeleted[0] || isDeleted[1]) {
+      if (!isDeleted[0] || !isDeleted[1]) {
         // Only if one time is not deleted, the devicePath is active in this time range.
-        targetDevices.remove(deviceID);
         activeDevices.add(deviceID);
       } else {
         // Else, we need more infos to check if the device is active in the following procedure
@@ -98,7 +97,7 @@ public class RegionScanForActiveDeviceUtil {
   public boolean filterChunkMetaData() throws IOException, IllegalPathException {
 
     if (deviceSetForCurrentTsFile.isEmpty()) {
-      return false;
+      return true;
     }
 
     if (deviceChunkMetaDataIterator == null) {
@@ -150,7 +149,7 @@ public class RegionScanForActiveDeviceUtil {
     // 2. check page statistics
     IDeviceID curDevice = currentChunkHandle.getDeviceID();
     long[] pageStatistics = currentChunkHandle.getPageStatisticsTime();
-    if (!timeFilter.containStartEndTime(pageStatistics[0], pageStatistics[1])) {
+    if (!timeFilter.satisfyStartEndTime(pageStatistics[0], pageStatistics[1])) {
       // All the data in current page is not valid, just skip.
       currentChunkHandle.skipCurrentPage();
       return false;
@@ -198,7 +197,7 @@ public class RegionScanForActiveDeviceUtil {
       IChunkMetadata valueChunkMetaData = deviceChunkMetaData.nextValueChunkMetadata();
       long startTime = valueChunkMetaData.getStartTime();
       long endTime = valueChunkMetaData.getEndTime();
-      if (!timeFilter.containStartEndTime(startTime, endTime)) {
+      if (!timeFilter.satisfyStartEndTime(startTime, endTime)) {
         continue;
       }
       boolean[] isDeleted =

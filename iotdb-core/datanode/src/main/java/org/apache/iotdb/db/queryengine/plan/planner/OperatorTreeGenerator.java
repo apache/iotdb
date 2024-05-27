@@ -256,6 +256,7 @@ import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -3366,7 +3367,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Filter filter = context.getGlobalTimeFilter();
     Map<IDeviceID, Boolean> deviceIDToAligned = new HashMap<>();
     for (Map.Entry<PartialPath, Boolean> entry : node.getDevicePathsToAligned().entrySet()) {
-      deviceIDToAligned.put(entry.getKey().getIDeviceID(), entry.getValue());
+      deviceIDToAligned.put(new PlainDeviceID(entry.getKey().getFullPath()), entry.getValue());
     }
     DeviceRegionScanOperator regionScanOperator =
         new DeviceRegionScanOperator(

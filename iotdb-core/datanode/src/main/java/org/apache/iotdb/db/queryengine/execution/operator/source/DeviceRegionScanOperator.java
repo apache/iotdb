@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -42,7 +43,6 @@ import java.util.concurrent.TimeUnit;
 public class DeviceRegionScanOperator extends AbstractRegionScanDataSourceOperator {
   private final RegionScanForActiveDeviceUtil regionScanUtil;
   private final Map<IDeviceID, Boolean> deviceToAlignedMap;
-  private final OperatorContext context;
   // targetDevices is the devices that need to be checked
   private final Set<IDeviceID> targetDevices;
   private boolean finished = false;
@@ -53,7 +53,7 @@ public class DeviceRegionScanOperator extends AbstractRegionScanDataSourceOperat
       Map<IDeviceID, Boolean> deviceToAlignedMap,
       Filter timeFilter) {
     this.sourceId = sourceId;
-    this.context = operatorContext;
+    this.operatorContext = operatorContext;
     this.deviceToAlignedMap = deviceToAlignedMap;
     this.targetDevices = deviceToAlignedMap.keySet();
     this.regionScanUtil = new RegionScanForActiveDeviceUtil(timeFilter);
@@ -123,14 +123,15 @@ public class DeviceRegionScanOperator extends AbstractRegionScanDataSourceOperat
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
 
     List<IDeviceID> activeDevices = regionScanUtil.getActiveDevices();
-    activeDevices.forEach(targetDevices::remove);
-
     for (IDeviceID deviceID : activeDevices) {
       timeColumnBuilder.writeLong(-1);
       columnBuilders[0].writeBinary(new Binary(deviceID.getBytes()));
-      columnBuilders[1].writeBoolean(deviceToAlignedMap.get(deviceID));
+      columnBuilders[1].writeBinary(
+          new Binary(
+              String.valueOf(deviceToAlignedMap.get(deviceID)), TSFileConfig.STRING_CHARSET));
       columnBuilders[2].appendNull();
       resultTsBlockBuilder.declarePosition();
+      targetDevices.remove(deviceID);
     }
   }
 
@@ -163,11 +164,6 @@ public class DeviceRegionScanOperator extends AbstractRegionScanDataSourceOperat
   @Override
   protected List<TSDataType> getResultDataTypes() {
     return Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT);
-  }
-
-  @Override
-  public OperatorContext getOperatorContext() {
-    return context;
   }
 
   @Override

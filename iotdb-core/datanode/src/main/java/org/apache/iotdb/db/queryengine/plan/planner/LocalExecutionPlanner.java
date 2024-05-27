@@ -195,10 +195,10 @@ public class LocalExecutionPlanner {
   }
 
   private Map<IDeviceID, Boolean> collectDevicePathsToAligned(LocalExecutionPlanContext context) {
-    Map<IDeviceID, Boolean> devicePathsToAligned =
-        ((DataDriverContext) context.getDriverContext()).getDeviceIDToAligned();
-    ((DataDriverContext) context.getDriverContext()).clearDeviceIDToAligned();
-    return devicePathsToAligned;
+    DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
+    Map<IDeviceID, Boolean> deviceToAlignedMap = dataDriverContext.getDeviceIDToAligned();
+    dataDriverContext.clearDeviceIDToAligned();
+    return deviceToAlignedMap;
   }
 
   private List<PartialPath> collectSourcePaths(LocalExecutionPlanContext context) {

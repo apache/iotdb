@@ -64,6 +64,11 @@ public class DataDriverContext extends DriverContext {
     this.deviceIDToAligned = deviceIDToAligned;
   }
 
+  public void clearDeviceIDToAligned() {
+    // friendly for gc
+    deviceIDToAligned = null;
+  }
+
   public void addPath(PartialPath path) {
     this.paths.add(path);
   }
@@ -87,11 +92,6 @@ public class DataDriverContext extends DriverContext {
   public void clearPaths() {
     // friendly for gc
     paths = null;
-  }
-
-  public void clearDeviceIDToAligned() {
-    // friendly for gc
-    deviceIDToAligned = null;
   }
 
   public IDataRegionForQuery getDataRegion() {

@@ -2967,7 +2967,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     DataPartition dataPartition =
         fetchDataPartitionByDevices(
             devicePathsToAlignedStatus.keySet().stream()
-                .map(PartialPath::getDevice)
+                .map(PartialPath::getFullPath)
                 .collect(Collectors.toSet()),
             schemaTree,
             context);
