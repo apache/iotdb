@@ -211,7 +211,7 @@ public class IoTDBMaxByIT {
               new String[] {"x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10"},
               new String[] {"y1", "y2", "y3", "y4", "y7", "y9", "y10"});
       String[] retArray =
-          new String[] {"3,3,3.0,3.0,false,3,3,0x33,2024-01-03,1970-01-01T08:00:00.003+08:00,"};
+          new String[] {"3,3,3.0,3.0,false,3,3,0x33,2024-01-03,1970-01-01T00:00:00.003Z,"};
       for (Map.Entry<String, String[]> expectedHeader : expectedHeaders.entrySet()) {
         String y = expectedHeader.getKey();
         resultSetEqualTest(
