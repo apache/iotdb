@@ -540,7 +540,8 @@ public class WALBuffer extends AbstractWALBuffer {
       boolean forceSuccess = false;
       // try to roll log writer
       if (info.rollWALFileWriterListener != null
-          || (forceFlag && currentWALFileWriter.size() >= config.getWalFileSizeThresholdInByte())) {
+          || (forceFlag
+              && currentWALFileWriter.oiginalSize() >= config.getWalFileSizeThresholdInByte())) {
         try {
           rollLogWriter(searchIndex, currentWALFileWriter.getWalFileStatus());
           forceSuccess = true;

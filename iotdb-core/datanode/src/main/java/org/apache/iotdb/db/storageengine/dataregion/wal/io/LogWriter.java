@@ -45,7 +45,8 @@ public abstract class LogWriter implements ILogWriter {
   protected final File logFile;
   protected final FileOutputStream logStream;
   protected final FileChannel logChannel;
-  protected long size;
+  protected long size = 0;
+  protected long originalSize = 0;
   private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES * 2 + 1);
   private static final CompressionType compressionAlg =
       IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm();
@@ -77,6 +78,7 @@ public abstract class LogWriter implements ILogWriter {
     if (bufferSize == 0) {
       return 1.0;
     }
+    originalSize += bufferSize;
     buffer.flip();
     boolean compressed = false;
     int uncompressedSize = bufferSize;
@@ -128,6 +130,10 @@ public abstract class LogWriter implements ILogWriter {
   @Override
   public long size() {
     return size;
+  }
+
+  public long oiginalSize() {
+    return originalSize;
   }
 
   @Override
