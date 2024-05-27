@@ -153,7 +153,8 @@ public class ExpressionTypeAnalyzer {
       checkInputExpressionDataType(
           likeExpression.getExpression().getExpressionString(),
           process(likeExpression.getExpression(), context),
-          TSDataType.TEXT);
+          TSDataType.TEXT,
+          TSDataType.STRING);
       return setExpressionType(likeExpression, TSDataType.BOOLEAN);
     }
 
@@ -163,7 +164,8 @@ public class ExpressionTypeAnalyzer {
       checkInputExpressionDataType(
           regularExpression.getExpression().getExpressionString(),
           process(regularExpression.getExpression(), context),
-          TSDataType.TEXT);
+          TSDataType.TEXT,
+          TSDataType.STRING);
       return setExpressionType(regularExpression, TSDataType.BOOLEAN);
     }
 

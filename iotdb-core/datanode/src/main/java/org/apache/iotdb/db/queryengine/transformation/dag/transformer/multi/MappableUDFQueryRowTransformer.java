@@ -94,9 +94,11 @@ public class MappableUDFQueryRowTransformer extends UDFQueryTransformer {
     }
     switch (tsDataType) {
       case INT32:
+      case DATE:
         cachedInt = (int) currentValue;
         break;
       case INT64:
+      case TIMESTAMP:
         cachedLong = (long) currentValue;
         break;
       case FLOAT:
@@ -109,6 +111,8 @@ public class MappableUDFQueryRowTransformer extends UDFQueryTransformer {
         cachedBoolean = (boolean) currentValue;
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         cachedBinary = (Binary) currentValue;
         break;
       default:

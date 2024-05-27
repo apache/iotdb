@@ -77,6 +77,10 @@ public class IoTDBNestedQueryIT {
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s2 with datatype=INT32,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s3 with datatype=TEXT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.vehicle.d1.s4 with datatype=STRING,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.vehicle.d1.s5 with datatype=DATE,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.vehicle.d1.s6 with datatype=TIMESTAMP,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d2.s1 with datatype=FLOAT,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d2.s2 with datatype=DOUBLE,encoding=PLAIN");
       statement.execute(
@@ -92,11 +96,15 @@ public class IoTDBNestedQueryIT {
       for (int i = 1; i <= ITERATION_TIMES; ++i) {
         statement.execute(
             String.format(
-                "insert into root.vehicle.d1(timestamp,s1,s2,s3) values(%d,%d,%d,%s)", i, i, i, i));
+                "insert into root.vehicle.d1(timestamp,s1,s2,s3,s4,s6) values(%d,%d,%d,%s,%s,%d)",
+                i, i, i, i, i, i));
         statement.execute(
             (String.format(
                 "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
       }
+      statement.execute("insert into root.vehicle.d1(timestamp,s5) values(1,'2024-01-01')");
+      statement.execute("insert into root.vehicle.d1(timestamp,s5) values(2,'2024-01-02')");
+      statement.execute("insert into root.vehicle.d1(timestamp,s5) values(3,'2024-01-03')");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -624,6 +632,36 @@ public class IoTDBNestedQueryIT {
         }
         Assert.assertFalse(rs.next());
       }
+
+      String query2 =
+          "SELECT s1 FROM root.vehicle.d1 WHERE s4 LIKE '_' && s4 REGEXP '[0-9]' && s4 IN ('4', '2', '3')";
+      try (ResultSet rs = statement.executeQuery(query2)) {
+        for (int i = 2; i <= 4; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+        }
+        Assert.assertFalse(rs.next());
+      }
+
+      String query3 =
+          "SELECT s1 FROM root.vehicle.d1 WHERE s5 IN ('2024-01-01', '2024-01-02', '2024-01-03')";
+      try (ResultSet rs = statement.executeQuery(query3)) {
+        for (int i = 1; i <= 3; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+        }
+        Assert.assertFalse(rs.next());
+      }
+
+      String query4 = "SELECT s1 FROM root.vehicle.d1 WHERE s6 IN (1, 2, 3)";
+      try (ResultSet rs = statement.executeQuery(query4)) {
+        for (int i = 1; i <= 3; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+        }
+        Assert.assertFalse(rs.next());
+      }
+
     } catch (SQLException e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());
