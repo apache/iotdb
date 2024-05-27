@@ -348,8 +348,8 @@ public class IoTDBAggregationIT {
   public void firstTest() {
     String[] retArray =
         new String[] {
-          "0,2000,2000,2000.0,2000,2000,X2000,2000-01-01,1970-01-01T08:00:02.000+08:00",
-          "0,500,500,500.0,500,500,X0500,0500-01-01,500"
+          "0,2000,2000,2000.0,2000,2000,0x2000,2000-01-01,1970-01-01T08:00:02.000+08:00",
+          "0,500,500,500.0,500,500,0x0500,1500-01-01,1970-01-01T08:00:00.500+08:00"
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -454,9 +454,9 @@ public class IoTDBAggregationIT {
   public void lastTest() {
     String[] retArray =
         new String[] {
-          "0,8499,8499.0,8499,X8499,8499-01-01,1970-01-01T08:00:08.499+08:00",
-          "0,1499,1499.0,1499,X1499,1499-01-01,1499",
-          "0,2200,2200.0,2200,X2200,2200-01-01,2200"
+          "0,8499,8499.0,8499,0x8499,8499-01-01,1970-01-01T08:00:08.499+08:00",
+          "0,1499,1499.0,1499,0x1499,1499-01-01,1970-01-01T08:00:01.499+08:00",
+          "0,2200,2200.0,2200,0x2200,2200-01-01,1970-01-01T08:00:02.200+08:00"
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -599,7 +599,7 @@ public class IoTDBAggregationIT {
   @Test
   public void maxminTimeTest() {
     String[] retArray =
-        new String[] {"0,8499,500,8499,500,X8499,X0500,8499,1000,8499,500,8499,500", "0,2499,2000"};
+        new String[] {"0,8499,500,8499,500,8499,500,8499,500,8499,500", "0,2499,2000"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -1123,7 +1123,7 @@ public class IoTDBAggregationIT {
                   "true",
                   "'" + i + "'",
                   "X'0" + i + "'",
-                  "'0" + i + "-01-01'",
+                  "'1" + i + "-01-01'",
                   i));
         } else {
           statement.addBatch(

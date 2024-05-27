@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -572,6 +573,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 SeriesAggregationScanOperator.class.getSimpleName());
+    boolean canUseStatistics =
+        !TSDataType.BLOB.equals(node.getSeriesPath().getSeriesType())
+            || (aggregationDescriptors.stream()
+                .noneMatch(o -> !judgeCanUseStatistics(o.getAggregationType(), TSDataType.BLOB)));
     SeriesAggregationScanOperator aggregateScanOperator =
         new SeriesAggregationScanOperator(
             node.getPlanNodeId(),
@@ -583,7 +588,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             aggregators,
             timeRangeIterator,
             node.getGroupByTimeParameter(),
-            maxReturnSize);
+            maxReturnSize,
+            canUseStatistics);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggregateScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
@@ -597,6 +603,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     AlignedPath seriesPath = node.getAlignedPath();
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<Aggregator> aggregators = new ArrayList<>();
+    boolean canUseStatistics = true;
     for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
       checkArgument(
           descriptor.getInputExpressions().size() == 1,
@@ -610,6 +617,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         int seriesIndex = seriesPath.getMeasurementList().indexOf(inputSeries);
         TSDataType seriesDataType =
             seriesPath.getMeasurementSchema().getSubMeasurementsTSDataTypeList().get(seriesIndex);
+        if (!judgeCanUseStatistics(descriptor.getAggregationType(), seriesDataType)) {
+          canUseStatistics = false;
+        }
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
@@ -683,13 +693,21 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             aggregators,
             timeRangeIterator,
             groupByTimeParameter,
-            maxReturnSize);
+            maxReturnSize,
+            canUseStatistics);
 
     ((DataDriverContext) context.getDriverContext())
         .addSourceOperator(seriesAggregationScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
     context.getDriverContext().setInputDriver(true);
     return seriesAggregationScanOperator;
+  }
+
+  private boolean judgeCanUseStatistics(
+      final TAggregationType aggregationType, final TSDataType seriesType) {
+    return !TSDataType.BLOB.equals(seriesType)
+        || (!TAggregationType.LAST_VALUE.equals(aggregationType)
+            && !TAggregationType.FIRST_VALUE.equals(aggregationType));
   }
 
   private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(LocalExecutionPlanContext context) {
@@ -2640,7 +2658,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             aggregators,
             timeRangeIterator,
             null,
-            maxReturnSize);
+            maxReturnSize,
+            !TSDataType.BLOB.equals(seriesPath.getSeriesType()));
     ((DataDriverContext) context.getDriverContext())
         .addSourceOperator(seriesAggregationScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
@@ -2651,9 +2670,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       AlignedLastQueryScanNode node, AlignedPath unCachedPath, LocalExecutionPlanContext context) {
     // last_time, last_value
     List<Aggregator> aggregators = new ArrayList<>();
+    boolean canUseStatistics = true;
     for (int i = 0; i < unCachedPath.getMeasurementList().size(); i++) {
-      aggregators.addAll(
-          LastQueryUtil.createAggregators(unCachedPath.getSchemaList().get(i).getType(), i));
+      TSDataType dataType = unCachedPath.getSchemaList().get(i).getType();
+      aggregators.addAll(LastQueryUtil.createAggregators(dataType, i));
+      if (TSDataType.BLOB.equals(dataType)) {
+        canUseStatistics = false;
+      }
     }
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(null, false, false);
     long maxReturnSize = calculateMaxAggregationResultSizeForLastQuery(aggregators);
@@ -2679,7 +2702,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             aggregators,
             timeRangeIterator,
             null,
-            maxReturnSize);
+            maxReturnSize,
+            canUseStatistics);
     ((DataDriverContext) context.getDriverContext())
         .addSourceOperator(seriesAggregationScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(unCachedPath);
