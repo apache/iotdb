@@ -408,26 +408,37 @@ public class LoadTsFileScheduler implements IScheduler {
     }
 
     // add metrics
-    if (!node.isGeneratedByConsensus()) {
-      DataRegion dataRegion =
-          StorageEngine.getInstance()
-              .getDataRegion(
-                  (DataRegionId)
-                      ConsensusGroupId.Factory.createFromTConsensusGroupId(
-                          node.getLocalRegionReplicaSet().getRegionId()));
+    DataRegion dataRegion =
+        StorageEngine.getInstance()
+            .getDataRegion(
+                (DataRegionId)
+                    ConsensusGroupId.Factory.createFromTConsensusGroupId(
+                        node.getLocalRegionReplicaSet().getRegionId()));
 
-      dataRegion
-          .getNonSystemDatabaseName()
-          .ifPresent(
-              databaseName -> {
-                // Report load tsFile points to IoTDB flush metrics
-                MemTableFlushTask.recordFlushPointsMetricInternal(
-                    node.getWritePointCount(), databaseName, dataRegion.getDataRegionId());
+    dataRegion
+        .getNonSystemDatabaseName()
+        .ifPresent(
+            databaseName -> {
+              // Report load tsFile points to IoTDB flush metrics
+              MemTableFlushTask.recordFlushPointsMetricInternal(
+                  node.getWritePointCount(), databaseName, dataRegion.getDataRegionId());
 
+              MetricService.getInstance()
+                  .count(
+                      node.getWritePointCount(),
+                      Metric.QUANTITY.toString(),
+                      MetricLevel.CORE,
+                      Tag.NAME.toString(),
+                      Metric.POINTS_IN.toString(),
+                      Tag.DATABASE.toString(),
+                      databaseName,
+                      Tag.REGION.toString(),
+                      dataRegion.getDataRegionId());
+              if (!node.isGeneratedByConsensus()) {
                 MetricService.getInstance()
                     .count(
                         node.getWritePointCount(),
-                        Metric.QUANTITY.toString(),
+                        Metric.LEADER_QUANTITY.toString(),
                         MetricLevel.CORE,
                         Tag.NAME.toString(),
                         Metric.POINTS_IN.toString(),
@@ -435,8 +446,9 @@ public class LoadTsFileScheduler implements IScheduler {
                         databaseName,
                         Tag.REGION.toString(),
                         dataRegion.getDataRegionId());
-              });
-    }
+              }
+            });
+
     return true;
   }
 
