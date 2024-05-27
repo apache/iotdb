@@ -39,6 +39,10 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionMaxTabletsPerPrefetching();
   }
 
+  public int getSubscriptionMaxTabletsSizeInBytesPerPrefetching() {
+    return COMMON_CONFIG.getSubscriptionMaxTabletsSizeInBytesPerPrefetching();
+  }
+
   public int getSubscriptionPollMaxBlockingTimeMs() {
     return COMMON_CONFIG.getSubscriptionPollMaxBlockingTimeMs();
   }
@@ -55,12 +59,8 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionRecycleUncommittedEventIntervalMs();
   }
 
-  public long getSubscriptionDefaultPollTimeoutMs() {
-    return COMMON_CONFIG.getSubscriptionDefaultPollTimeoutMs();
-  }
-
-  public long getSubscriptionMinPollTimeoutMs() {
-    return COMMON_CONFIG.getSubscriptionMinPollTimeoutMs();
+  public int getSubscriptionReadFileBufferSize() {
+    return COMMON_CONFIG.getSubscriptionReadFileBufferSize();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -73,6 +73,9 @@ public class SubscriptionConfig {
         getSubscriptionSubtaskExecutorMaxThreadNum());
     LOGGER.info(
         "SubscriptionMaxTabletsPerPrefetching: {}", getSubscriptionMaxTabletsPerPrefetching());
+    LOGGER.info(
+        "SubscriptionMaxTabletsSizeInBytesPerPrefetching: {}",
+        getSubscriptionMaxTabletsSizeInBytesPerPrefetching());
     LOGGER.info("SubscriptionPollMaxBlockingTimeMs: {}", getSubscriptionPollMaxBlockingTimeMs());
     LOGGER.info(
         "SubscriptionSerializeMaxBlockingTimeMs: {}", getSubscriptionSerializeMaxBlockingTimeMs());
@@ -80,8 +83,7 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionRecycleUncommittedEventIntervalMs: {}",
         getSubscriptionRecycleUncommittedEventIntervalMs());
-    LOGGER.info("SubscriptionDefaultPollTimeoutMs: {}", getSubscriptionDefaultPollTimeoutMs());
-    LOGGER.info("SubscriptionMinPollTimeoutMs: {}", getSubscriptionMinPollTimeoutMs());
+    LOGGER.info("SubscriptionReadFileBufferSize: {}", getSubscriptionReadFileBufferSize());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

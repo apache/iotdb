@@ -17,29 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.exception;
+package org.apache.iotdb.session.subscription.util;
 
-import java.util.Objects;
+import java.security.SecureRandom;
 
-public class SubscriptionPollTimeOutException extends SubscriptionException {
+public class RandomStringGenerator {
 
-  public SubscriptionPollTimeOutException(String message) {
-    super(message);
-  }
+  private static final String CHARACTERS =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  private static final SecureRandom RANDOM = new SecureRandom();
 
-  protected SubscriptionPollTimeOutException(String message, long timeStamp) {
-    super(message, timeStamp);
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    return obj instanceof SubscriptionPollTimeOutException
-        && Objects.equals(getMessage(), ((SubscriptionPollTimeOutException) obj).getMessage())
-        && Objects.equals(getTimeStamp(), ((SubscriptionPollTimeOutException) obj).getTimeStamp());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(getMessage(), getTimeStamp());
+  public static String generate(final int length) {
+    final StringBuilder sb = new StringBuilder(length);
+    for (int i = 0; i < length; i++) {
+      sb.append(CHARACTERS.charAt(RANDOM.nextInt(CHARACTERS.length())));
+    }
+    return sb.toString();
   }
 }
