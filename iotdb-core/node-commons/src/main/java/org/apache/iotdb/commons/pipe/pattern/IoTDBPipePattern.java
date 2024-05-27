@@ -120,14 +120,17 @@ public class IoTDBPipePattern extends PipePattern {
   }
 
   /**
-   * Check if the {@link PipePattern} matches the given prefix path.
-   *
-   * <p>NOTE: In schema transmission, {@link #mayOverlapWithDevice(String)} can be used to detect
-   * whether the given path can act as a parent path of the {@link PipePattern}, and to transmit
-   * possibly used schemas like database creation and template setting.
+   * Check if the {@link PipePattern} matches the given prefix path. In schema transmission, this
+   * can be used to detect whether the given path can act as a parent path of the {@link
+   * PipePattern}, and to transmit possibly used schemas like database creation and template
+   * setting.
    */
   public boolean matchPrefixPath(final String path) {
-    return mayOverlapWithDevice(path);
+    try {
+      return patternPartialPath.matchPrefixPath(new PartialPath(path));
+    } catch (final IllegalPathException e) {
+      return false;
+    }
   }
 
   /**
