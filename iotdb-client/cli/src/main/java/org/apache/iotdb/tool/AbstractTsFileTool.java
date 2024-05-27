@@ -22,6 +22,7 @@ package org.apache.iotdb.tool;
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -56,6 +57,7 @@ public abstract class AbstractTsFileTool {
   protected static String username;
   protected static String password;
   protected static Session session;
+  protected static SessionPool sessionPool;
 
   protected AbstractTsFileTool() {}
 

@@ -29,8 +29,8 @@ checkAllVariables
 export IOTDB_HOME="${IOTDB_HOME}"
 eval set -- "$VARS"
 
-
-HELP="Usage: $0 -f <file_path> [-fd <fail_dir>] [--sgLevel <sg_level>] [--verify <true/false>] [--onSuccess <none/delete>] [-h <ip>] [-p <port>] [-u <username>] [-pw <password>]"
+PARAMETERS=""
+HELP="Usage: $0 -f <file_path> [-fd <fail_dir>] [--onFailure <mv/cp>] [--thread <thread_num>] [--sgLevel <sg_level>] [--verify <true/false>] [--onSuccess <none/delete>] [-h <ip>] [-p <port>] [-u <username>] [-pw <password>]"
 
 # Added parameters when default parameters are missing
 user_param="-u root"
@@ -64,6 +64,14 @@ while true; do
             fail_dir_param="$2"
             shift 2
         ;;
+        --onFailure)
+            on_failure_param="$2"
+            shift 2
+        ;;
+        --thread)
+            thread_param="$2"
+            shift 2
+        ;;
         --sgLevel)
             sg_level_param="$2"
             shift 2
@@ -90,30 +98,42 @@ while true; do
 done
 
 if [ -z "${load_dir_param}" ]; then
-    echo "-f option must be set!"
+    echo "A Loading file path/directory path is required."
     echo "${HELP}"
+    exit 1
 fi
 
-echo "start loading TsFiles, please wait..."
+if [ ! -z "${fail_dir_param}" ] && [  -z "${on_failure_param}" ]; then
+    echo "Both -fd and --onFailure must be present or absent."
+    echo "${HELP}"
+    exit 1
+fi
 
-#absolute_path_load_dir_param=$(readlink -f $load_dir_param)
-
-LOAD_SQL_PART=" "
+PARAMETERS="-f ${load_dir_param}"
 if [ -n "${sg_level_param}" ]; then
-    LOAD_SQL_PART="${LOAD_SQL_PART} sgLevel=${sg_level_param}"
+    PARAMETERS="${PARAMETERS} --sgLevel ${sg_level_param}"
 fi
 if [ -n "${verify_param}" ]; then
-    LOAD_SQL_PART="${LOAD_SQL_PART} verify=${verify_param}"
+    PARAMETERS="${PARAMETERS} --verify ${verify_param}"
 fi
 if [ -n "${on_success_param}" ]; then
-    LOAD_SQL_PART="${LOAD_SQL_PART} onSuccess=${on_success_param}"
+    PARAMETERS="${PARAMETERS} --onSuccess ${on_success_param}"
+fi
+if [ -n "${on_failure_param}" ]; then
+    PARAMETERS="${PARAMETERS} --onFailure ${on_failure_param}"
+fi
+if [ -n "${fail_dir_param}" ]; then
+    PARAMETERS="${PARAMETERS} -fd ${fail_dir_param}"
+fi
+if [ -n "${thread_param}" ]; then
+    PARAMETERS="${PARAMETERS} -thread ${thread_param}"
 fi
 
-PARAMETERS_PART="$host_param $port_param $user_param $passwd_param $PARAMETERS -e "
+PARAMETERS="$host_param $port_param $user_param $passwd_param $PARAMETERS"
 
 IOTDB_CLI_CONF=${IOTDB_HOME}/conf
 
-MAIN_CLASS=org.apache.iotdb.cli.Cli
+MAIN_CLASS=org.apache.iotdb.tool.ImportTsFile
 
 CLASSPATH=""
 for f in ${IOTDB_HOME}/lib/*.jar; do
@@ -131,44 +151,10 @@ else
     JAVA=java
 fi
 
-iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-cli.xml"
+set -o noglob
+iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-tool.xml"
 
-traverse_files() {
+echo "start loading TsFiles, please wait..."
+exec "$JAVA" $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
 
-    local folder="$1"
-
-    for file in "$folder"/*; do
-        if [ -f "$file" ]; then
-            if [[ $file == *.tsfile ]]; then
-              load_file "$file"
-            fi
-        elif [ -d "$file" ]; then
-            traverse_files "$file"
-        fi
-    done
-}
-
-load_file() {
-  file=$1
-  LOAD_SQL="load '$file' ${LOAD_SQL_PART}"
-  PARAMETERS="${PARAMETERS_PART} \"${LOAD_SQL}\""
-  "$JAVA" $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
-  exit_code=$?
-  if [ $exit_code -ne 0 ]; then
-    if [ ! -z "${fail_dir_param}" ]; then
-       if [ ! -d "${fail_dir_param}" ]; then
-           mkdir -p "${fail_dir_param}"
-       fi
-       cp ${file} ${fail_dir_param}
-    fi
-  fi
-}
-
-if [ -f "$load_dir_param" ]; then
-    load_file "$load_dir_param"
-elif [ -d "$load_dir_param" ]; then
-    traverse_files "$load_dir_param"
-fi
-
-echo "end loading TsFiles"
-exit 0
+exit $?
