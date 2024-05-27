@@ -178,12 +178,22 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
     final TPipeTransferResp resp;
     try {
-      final TPipeTransferReq req = compressIfNeeded(batchToTransfer.toTPipeTransferReq());
+      final TPipeTransferReq uncompressedReq = batchToTransfer.toTPipeTransferReq();
+      final long uncompressedSize = uncompressedReq.getBody().length;
+
+      final TPipeTransferReq req = compressIfNeeded(uncompressedReq);
+      final long compressedSize = req.getBody().length;
+
+      final double compressionRatio = (double) compressedSize / uncompressedSize;
+
       for (final Map.Entry<String, Long> entry :
           batchToTransfer.getPipeName2BytesAccumulated().entrySet()) {
         rateLimitIfNeeded(
-            entry.getKey(), clientAndStatus.getLeft().getEndPoint(), entry.getValue());
+            entry.getKey(),
+            clientAndStatus.getLeft().getEndPoint(),
+            (long) (entry.getValue() * compressionRatio));
       }
+
       resp = clientAndStatus.getLeft().pipeTransfer(req);
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
