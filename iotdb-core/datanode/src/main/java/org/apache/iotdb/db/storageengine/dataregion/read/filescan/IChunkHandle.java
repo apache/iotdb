@@ -50,4 +50,6 @@ public interface IChunkHandle {
   long[] getDataTime() throws IOException;
 
   IDeviceID getDeviceID();
+
+  String getMeasurement();
 }

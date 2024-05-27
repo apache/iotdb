@@ -131,6 +131,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOpera
 import org.apache.iotdb.db.queryengine.execution.operator.sink.ShuffleHelperOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesAggregationScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.DeviceRegionScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
@@ -213,6 +214,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
@@ -240,6 +242,7 @@ import org.apache.iotdb.db.queryengine.statistics.StatisticsManager;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.utils.columngenerator.ColumnGenerator;
 import org.apache.iotdb.db.utils.columngenerator.ColumnGeneratorType;
 import org.apache.iotdb.db.utils.columngenerator.SlidingTimeColumnGenerator;
@@ -252,6 +255,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -3347,5 +3351,32 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 ExplainAnalyzeOperator.class.getSimpleName());
     return new ExplainAnalyzeOperator(
         operatorContext, operator, node.getQueryId(), node.isVerbose(), node.getTimeout());
+  }
+
+  @Override
+  public Operator visitDeviceRegionScan(
+      DeviceRegionScanNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                DeviceRegionScanOperator.class.getSimpleName());
+    Filter filter = context.getGlobalTimeFilter();
+    Map<IDeviceID, Boolean> deviceIDToAligned = new HashMap<>();
+    for (Map.Entry<PartialPath, Boolean> entry : node.getDevicePathsToAligned().entrySet()) {
+      deviceIDToAligned.put(entry.getKey().getIDeviceID(), entry.getValue());
+    }
+    DeviceRegionScanOperator regionScanOperator =
+        new DeviceRegionScanOperator(
+            operatorContext, node.getPlanNodeId(), deviceIDToAligned, filter);
+
+    DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
+    dataDriverContext.addSourceOperator(regionScanOperator);
+    dataDriverContext.setDeviceIDToAligned(deviceIDToAligned);
+    dataDriverContext.setQueryDataSourceType(QueryDataSourceType.DEVICE_REGION_SCAN);
+
+    return regionScanOperator;
   }
 }

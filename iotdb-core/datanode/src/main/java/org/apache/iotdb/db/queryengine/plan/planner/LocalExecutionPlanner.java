@@ -32,13 +32,16 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.utils.SetThreadName;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Used to plan a fragment instance. One fragment instance could be split into multiple pipelines so
@@ -94,6 +97,8 @@ public class LocalExecutionPlanner {
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
 
     instanceContext.setSourcePaths(collectSourcePaths(context));
+    instanceContext.setDevicePathsToAligned(collectDevicePathsToAligned(context));
+    instanceContext.setQueryDataSourceType(getQueryDataSourceType(context));
 
     context.getTimePartitions().ifPresent(instanceContext::setTimePartitions);
 
@@ -178,6 +183,22 @@ public class LocalExecutionPlanner {
           }
         });
     return estimatedMemorySize;
+  }
+
+  private QueryDataSourceType getQueryDataSourceType(LocalExecutionPlanContext context) {
+    QueryDataSourceType type =
+        ((DataDriverContext) context.getDriverContext()).getQueryDataSourceType();
+    if (type == null) {
+      return QueryDataSourceType.SERIES_SCAN;
+    }
+    return type;
+  }
+
+  private Map<IDeviceID, Boolean> collectDevicePathsToAligned(LocalExecutionPlanContext context) {
+    Map<IDeviceID, Boolean> devicePathsToAligned =
+        ((DataDriverContext) context.getDriverContext()).getDeviceIDToAligned();
+    ((DataDriverContext) context.getDriverContext()).clearDeviceIDToAligned();
+    return devicePathsToAligned;
   }
 
   private List<PartialPath> collectSourcePaths(LocalExecutionPlanContext context) {

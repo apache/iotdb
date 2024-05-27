@@ -17,26 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.read.filescan.model;
+package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.tsfile.file.metadata.IChunkMetadata;
-import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 
-public abstract class AbstractDeviceChunkMetaData {
-  private final IDeviceID devicePath;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
-  public AbstractDeviceChunkMetaData(IDeviceID devicePath) {
-    this.devicePath = devicePath;
+import java.util.List;
+
+public abstract class AbstractRegionScanDataSourceOperator extends AbstractSourceOperator
+    implements DataSourceOperator {
+  protected TsBlockBuilder resultTsBlockBuilder;
+
+  @Override
+  public void initQueryDataSource(IQueryDataSource dataSource) {
+    resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
   }
 
-  public IDeviceID getDevicePath() {
-    return devicePath;
-  }
-
-  public abstract boolean hasNextValueChunkMetadata();
-
-  public abstract IChunkMetadata nextValueChunkMetadata();
-
-  /** Get the chunk offset which is corresponding to current valueChunkMetadata */
-  public abstract AbstractChunkOffset getChunkOffset();
+  protected abstract List<TSDataType> getResultDataTypes();
 }

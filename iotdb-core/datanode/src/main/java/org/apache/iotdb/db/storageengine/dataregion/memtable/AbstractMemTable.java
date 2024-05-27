@@ -585,7 +585,7 @@ public abstract class AbstractMemTable implements IMemTable {
                 Collections.emptyList()));
     memChunkHandleMap
         .computeIfAbsent(measurementId, k -> new ArrayList<>())
-        .add(new MemChunkHandleImpl(deviceID, timestamps));
+        .add(new MemChunkHandleImpl(deviceID, measurementId, timestamps));
   }
 
   private void getMemAlignedChunkHandleFromMemTable(
@@ -691,7 +691,7 @@ public abstract class AbstractMemTable implements IMemTable {
                   Collections.emptyList()));
       memChunkHandleMap
           .computeIfAbsent(measurementId, k -> new ArrayList<>())
-          .add(new MemChunkHandleImpl(deviceID, timestamps));
+          .add(new MemChunkHandleImpl(deviceID, measurementId, timestamps));
     }
   }
 

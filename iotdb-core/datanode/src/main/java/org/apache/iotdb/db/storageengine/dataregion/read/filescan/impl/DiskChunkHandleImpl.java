@@ -135,6 +135,16 @@ public class DiskChunkHandleImpl implements IChunkHandle {
     return deviceID;
   }
 
+  @Override
+  public String getMeasurement() {
+    if (currentChunkHeader != null) {
+      return currentChunkHeader.getMeasurementID();
+    } else {
+      throw new IllegalArgumentException(
+          "Chunk header is not initialized. You should call hasNext() first");
+    }
+  }
+
   private long[] convertToTimeArray(ByteBuffer timeBuffer) throws IOException {
     long[] timeArray = new long[(int) currentPageHeader.getNumOfValues()];
     int index = 0;

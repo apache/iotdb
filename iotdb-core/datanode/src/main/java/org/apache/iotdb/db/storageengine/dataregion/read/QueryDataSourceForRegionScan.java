@@ -31,6 +31,8 @@ public class QueryDataSourceForRegionScan implements IQueryDataSource {
 
   private long dataTTL = Long.MAX_VALUE;
 
+  int curIndex = -1;
+
   public QueryDataSourceForRegionScan(
       List<IFileScanHandle> seqFileScanHandle, List<IFileScanHandle> unseqFileScanHandles) {
     this.seqFileScanHandle = seqFileScanHandle;
@@ -60,5 +62,26 @@ public class QueryDataSourceForRegionScan implements IQueryDataSource {
 
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
+  }
+
+  public boolean hasNext() {
+    return curIndex < seqFileScanHandle.size() + unseqFileScanHandles.size() - 1;
+  }
+
+  public IFileScanHandle next() {
+    curIndex++;
+    if (curIndex < seqFileScanHandle.size()) {
+      return seqFileScanHandle.get(curIndex);
+    } else {
+      return unseqFileScanHandles.get(curIndex - seqFileScanHandle.size());
+    }
+  }
+
+  public void releaseFileScanHandle() {
+    if (curIndex < seqFileScanHandle.size()) {
+      seqFileScanHandle.set(curIndex, null);
+    } else {
+      unseqFileScanHandles.set(curIndex - seqFileScanHandle.size(), null);
+    }
   }
 }

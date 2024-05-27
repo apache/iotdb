@@ -25,14 +25,20 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class DataDriverContext extends DriverContext {
 
   // it will be set to null, after being merged into Parent FIContext
   private List<PartialPath> paths;
+  private QueryDataSourceType queryDataSourceType = null;
+  private Map<IDeviceID, Boolean> deviceIDToAligned;
   // it will be set to null, after QueryDataSource being inited
   private List<DataSourceOperator> sourceOperators;
 
@@ -40,12 +46,22 @@ public class DataDriverContext extends DriverContext {
     super(fragmentInstanceContext, pipelineId);
     this.paths = new ArrayList<>();
     this.sourceOperators = new ArrayList<>();
+    this.deviceIDToAligned = null;
   }
 
   public DataDriverContext(DataDriverContext parentContext, int pipelineId) {
     super(parentContext.getFragmentInstanceContext(), pipelineId);
     this.paths = new ArrayList<>();
     this.sourceOperators = new ArrayList<>();
+    this.deviceIDToAligned = null;
+  }
+
+  public void setQueryDataSourceType(QueryDataSourceType queryDataSourceType) {
+    this.queryDataSourceType = queryDataSourceType;
+  }
+
+  public void setDeviceIDToAligned(Map<IDeviceID, Boolean> deviceIDToAligned) {
+    this.deviceIDToAligned = deviceIDToAligned;
   }
 
   public void addPath(PartialPath path) {
@@ -60,9 +76,22 @@ public class DataDriverContext extends DriverContext {
     return paths;
   }
 
+  public Map<IDeviceID, Boolean> getDeviceIDToAligned() {
+    return deviceIDToAligned;
+  }
+
+  public QueryDataSourceType getQueryDataSourceType() {
+    return queryDataSourceType;
+  }
+
   public void clearPaths() {
     // friendly for gc
     paths = null;
+  }
+
+  public void clearDeviceIDToAligned() {
+    // friendly for gc
+    deviceIDToAligned = null;
   }
 
   public IDataRegionForQuery getDataRegion() {

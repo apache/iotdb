@@ -27,13 +27,14 @@ import java.io.IOException;
 
 public class MemChunkHandleImpl implements IChunkHandle {
   protected final long[] dataOfTimestamp;
-
+  protected final String measurement;
   protected boolean hasRead = false;
 
   protected IDeviceID deviceID;
 
-  public MemChunkHandleImpl(IDeviceID deviceID, long[] dataOfTimestamp) {
+  public MemChunkHandleImpl(IDeviceID deviceID, String measurement, long[] dataOfTimestamp) {
     this.deviceID = deviceID;
+    this.measurement = measurement;
     this.dataOfTimestamp = dataOfTimestamp;
   }
 
@@ -62,5 +63,10 @@ public class MemChunkHandleImpl implements IChunkHandle {
   @Override
   public IDeviceID getDeviceID() {
     return deviceID;
+  }
+
+  @Override
+  public String getMeasurement() {
+    return measurement;
   }
 }
