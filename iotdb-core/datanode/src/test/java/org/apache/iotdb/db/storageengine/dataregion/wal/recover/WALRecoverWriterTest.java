@@ -169,6 +169,7 @@ public class WALRecoverWriterTest {
     walMetaData.add(size, 1, walEntry.getMemTableId());
     try (WALWriter walWriter = new WALWriter(logFile)) {
       walWriter.write(buffer.getBuffer(), walMetaData);
+      walMetaData.setTruncateOffSet(walWriter.getOffset());
     }
     long len = logFile.length();
     try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.APPEND)) {

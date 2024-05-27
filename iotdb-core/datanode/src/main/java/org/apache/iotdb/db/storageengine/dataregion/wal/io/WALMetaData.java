@@ -49,6 +49,7 @@ public class WALMetaData implements SerializedSize {
   private final List<Integer> buffersSize;
   // memTable ids of this wal file
   private final Set<Long> memTablesId;
+  private long truncateOffSet = 0;
 
   public WALMetaData() {
     this(ConsensusReqReader.DEFAULT_SEARCH_INDEX, new ArrayList<>(), new HashSet<>());
@@ -163,5 +164,13 @@ public class WALMetaData implements SerializedSize {
     String magicString = new String(magicStringBytes.array());
     return magicString.equals(WALWriter.MAGIC_STRING)
         || magicString.startsWith(WALWriter.MAGIC_STRING_V1);
+  }
+
+  public void setTruncateOffSet(long offset) {
+    this.truncateOffSet = offset;
+  }
+
+  public long getTruncateOffSet() {
+    return truncateOffSet;
   }
 }

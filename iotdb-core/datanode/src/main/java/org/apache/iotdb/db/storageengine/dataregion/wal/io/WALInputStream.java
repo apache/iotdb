@@ -215,7 +215,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       dataBuffer.clear();
       unCompressor.uncompress(compressedData, dataBuffer);
     } else {
-      dataBuffer = ByteBuffer.allocateDirect(dataBufferSize);
+      dataBuffer = ByteBuffer.allocate(dataBufferSize);
       if (channel.read(dataBuffer) != dataBufferSize) {
         throw new IOException("Unexpected end of file");
       }
@@ -275,5 +275,9 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       loadNextSegment();
       read(buffer);
     }
+  }
+
+  public long getFileCurrentPos() throws IOException {
+    return channel.position();
   }
 }

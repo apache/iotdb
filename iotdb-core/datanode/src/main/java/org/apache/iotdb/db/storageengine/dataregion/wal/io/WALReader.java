@@ -44,6 +44,7 @@ public class WALReader implements Closeable {
 
   private final File logFile;
   private final boolean fileMayCorrupt;
+  private final WALInputStream walInputStream;
   private final DataInputStream logStream;
   private WALEntry nextEntry;
   private boolean fileCorrupted = false;
@@ -55,7 +56,8 @@ public class WALReader implements Closeable {
   public WALReader(File logFile, boolean fileMayCorrupt) throws IOException {
     this.logFile = logFile;
     this.fileMayCorrupt = fileMayCorrupt;
-    this.logStream = new DataInputStream(new WALInputStream(logFile));
+    this.walInputStream = new WALInputStream(logFile);
+    this.logStream = new DataInputStream(walInputStream);
   }
 
   /** Like {@link Iterator#hasNext()}. */
@@ -82,6 +84,10 @@ public class WALReader implements Closeable {
     }
 
     return nextEntry != null;
+  }
+
+  public long getWALCurrentReadOffset() throws IOException {
+    return walInputStream.getFileCurrentPos();
   }
 
   /**
