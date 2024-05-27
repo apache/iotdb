@@ -3740,9 +3740,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       patternTree.appendFullPath(devicePattern, ONE_LEVEL_PATH_WILDCARD);
     }
 
-    SchemaPartition partition =
-        partitionFetcher.getOrCreateSchemaPartition(
-            patternTree, context.getSession().getUserName());
+    SchemaPartition partition = partitionFetcher.getSchemaPartition(patternTree);
 
     analysis.setSchemaPartitionInfo(partition);
 

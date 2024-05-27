@@ -20,13 +20,16 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.table;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -91,6 +94,14 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
 
   public List<ColumnHeader> getColumnHeaderList() {
     return columnHeaderList;
+  }
+
+  @Override
+  public List<PartialPath> getPathPatternList() {
+    return DeviceFilterUtil.convertToDevicePattern(
+        database,
+        DataNodeTableCache.getInstance().getTable(database, tableName),
+        idDeterminedFilterList);
   }
 
   @Override

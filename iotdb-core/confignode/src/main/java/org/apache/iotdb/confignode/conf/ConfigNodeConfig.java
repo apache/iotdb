@@ -87,7 +87,7 @@ public class ConfigNodeConfig {
    * SchemaRegionGroups for each Database. When set schema_region_group_extension_policy=AUTO, this
    * parameter is the default minimal number of SchemaRegionGroups for each Database.
    */
-  private int defaultSchemaRegionGroupNumPerDatabase = 1;
+  private int defaultSchemaRegionGroupNumPerDatabase = 2;
 
   /** The maximum number of SchemaRegions expected to be managed by each DataNode. */
   private double schemaRegionPerDataNode = schemaReplicationFactor;
