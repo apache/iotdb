@@ -718,7 +718,12 @@ public abstract class AbstractMemTable implements IMemTable {
           .computeIfAbsent(measurement, k -> new ArrayList<>())
           .add(
               new MemAlignedChunkHandleImpl(
-                  deviceID, timestamps, bitMaps.get(i), deletionList.get(i), startEndTime));
+                  deviceID,
+                  measurement,
+                  timestamps,
+                  bitMaps.get(i),
+                  deletionList.get(i),
+                  startEndTime));
     }
   }
 

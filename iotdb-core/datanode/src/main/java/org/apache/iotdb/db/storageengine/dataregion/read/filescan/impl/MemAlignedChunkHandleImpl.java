@@ -40,11 +40,12 @@ public class MemAlignedChunkHandleImpl extends MemChunkHandleImpl {
 
   public MemAlignedChunkHandleImpl(
       IDeviceID deviceID,
+      String measurement,
       long[] dataOfTimestamp,
       List<BitMap> bitMapOfValue,
       List<TimeRange> deletionList,
       long[] startEndTime) {
-    super(deviceID, dataOfTimestamp);
+    super(deviceID, measurement, dataOfTimestamp);
     this.bitMapOfValue = bitMapOfValue;
     this.deletionList = deletionList;
     this.startEndTime = startEndTime;
