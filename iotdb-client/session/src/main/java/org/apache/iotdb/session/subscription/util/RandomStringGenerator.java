@@ -17,21 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.exception;
+package org.apache.iotdb.session.subscription.util;
 
-import org.apache.iotdb.rpc.TSStatusCode;
+import java.security.SecureRandom;
 
-import org.junit.Test;
+public class RandomStringGenerator {
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+  private static final String CHARACTERS =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  private static final SecureRandom RANDOM = new SecureRandom();
 
-public class MemoryNotEnoughExceptionTest {
-
-  @Test
-  public void testMemoryNotEnoughExceptionStatusCode() {
-    MemoryNotEnoughException e = new MemoryNotEnoughException("test");
-    assertEquals(TSStatusCode.QUOTA_MEM_QUERY_NOT_ENOUGH.getStatusCode(), e.getErrorCode());
-    assertTrue(e.isUserException());
+  public static String generate(final int length) {
+    final StringBuilder sb = new StringBuilder(length);
+    for (int i = 0; i < length; i++) {
+      sb.append(CHARACTERS.charAt(RANDOM.nextInt(CHARACTERS.length())));
+    }
+    return sb.toString();
   }
 }

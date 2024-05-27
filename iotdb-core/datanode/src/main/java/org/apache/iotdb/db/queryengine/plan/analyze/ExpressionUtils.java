@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeException;
@@ -61,11 +62,16 @@ public class ExpressionUtils {
     // util class
   }
 
-  public static List<Expression> reconstructTimeSeriesOperands(
-      TimeSeriesOperand rawExpression, List<? extends PartialPath> actualPaths) {
+  /* Use queryContext to record the memory usage of the constructed Expression. */
+  public static List<Expression> reconstructTimeSeriesOperandsWithMemoryCheck(
+      final TimeSeriesOperand rawExpression,
+      final List<? extends PartialPath> actualPaths,
+      final MPPQueryContext queryContext) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (PartialPath actualPath : actualPaths) {
-      resultExpressions.add(reconstructTimeSeriesOperand(rawExpression, actualPath));
+      resultExpressions.add(
+          reserveMemoryForExpression(
+              queryContext, reconstructTimeSeriesOperand(rawExpression, actualPath)));
     }
     return resultExpressions;
   }
@@ -76,11 +82,15 @@ public class ExpressionUtils {
     return cloneCommonFields(rawExpression, resultExpression);
   }
 
-  public static List<Expression> reconstructFunctionExpressions(
-      FunctionExpression expression, List<List<Expression>> childExpressionsList) {
+  public static List<Expression> reconstructFunctionExpressionsWithMemoryCheck(
+      final FunctionExpression expression,
+      final List<List<Expression>> childExpressionsList,
+      final MPPQueryContext queryContext) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (List<Expression> functionExpressions : childExpressionsList) {
-      resultExpressions.add(reconstructFunctionExpression(expression, functionExpressions));
+      resultExpressions.add(
+          reserveMemoryForExpression(
+              queryContext, reconstructFunctionExpression(expression, functionExpressions)));
     }
     return resultExpressions;
   }
@@ -107,11 +117,15 @@ public class ExpressionUtils {
     return cloneCommonFields(rawExpression, resultExpression);
   }
 
-  public static List<Expression> reconstructUnaryExpressions(
-      UnaryExpression expression, List<Expression> childExpressions) {
+  public static List<Expression> reconstructUnaryExpressionsWithMemoryCheck(
+      final UnaryExpression expression,
+      final List<Expression> childExpressions,
+      final MPPQueryContext queryContext) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (Expression childExpression : childExpressions) {
-      resultExpressions.add(reconstructUnaryExpression(expression, childExpression));
+      resultExpressions.add(
+          reserveMemoryForExpression(
+              queryContext, reconstructUnaryExpression(expression, childExpression)));
     }
     return resultExpressions;
   }
@@ -172,14 +186,17 @@ public class ExpressionUtils {
     return cloneCommonFields(rawExpression, resultExpression);
   }
 
-  public static List<Expression> reconstructBinaryExpressions(
-      BinaryExpression expression,
-      List<Expression> leftExpressions,
-      List<Expression> rightExpressions) {
+  public static List<Expression> reconstructBinaryExpressionsWithMemoryCheck(
+      final BinaryExpression expression,
+      final List<Expression> leftExpressions,
+      final List<Expression> rightExpressions,
+      final MPPQueryContext queryContext) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (Expression le : leftExpressions) {
       for (Expression re : rightExpressions) {
-        resultExpressions.add(reconstructBinaryExpression(expression, le, re));
+        resultExpressions.add(
+            reserveMemoryForExpression(
+                queryContext, reconstructBinaryExpression(expression, le, re)));
       }
     }
     return resultExpressions;
@@ -238,16 +255,19 @@ public class ExpressionUtils {
     return cloneCommonFields(rawExpression, resultExpression);
   }
 
-  public static List<Expression> reconstructTernaryExpressions(
-      TernaryExpression expression,
-      List<Expression> firstExpressions,
-      List<Expression> secondExpressions,
-      List<Expression> thirdExpressions) {
+  public static List<Expression> reconstructTernaryExpressionsWithMemoryCheck(
+      final TernaryExpression expression,
+      final List<Expression> firstExpressions,
+      final List<Expression> secondExpressions,
+      final List<Expression> thirdExpressions,
+      final MPPQueryContext queryContext) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (Expression fe : firstExpressions) {
       for (Expression se : secondExpressions)
         for (Expression te : thirdExpressions) {
-          resultExpressions.add(reconstructTernaryExpression(expression, fe, se, te));
+          resultExpressions.add(
+              reserveMemoryForExpression(
+                  queryContext, reconstructTernaryExpression(expression, fe, se, te)));
         }
     }
     return resultExpressions;
@@ -276,6 +296,12 @@ public class ExpressionUtils {
       Expression rawExpression, Expression resultExpression) {
     resultExpression.setViewPath(rawExpression.getViewPath());
     return resultExpression;
+  }
+
+  private static Expression reserveMemoryForExpression(
+      MPPQueryContext queryContext, Expression expression) {
+    queryContext.reserveMemoryForFrontEnd(expression == null ? 0 : expression.ramBytesUsed());
+    return expression;
   }
 
   /**

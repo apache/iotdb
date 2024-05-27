@@ -17,29 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.rpc.subscription.exception;
+package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 
-import java.util.Objects;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 
-public class SubscriptionPollTimeOutException extends SubscriptionException {
-
-  public SubscriptionPollTimeOutException(String message) {
-    super(message);
-  }
-
-  protected SubscriptionPollTimeOutException(String message, long timeStamp) {
-    super(message, timeStamp);
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    return obj instanceof SubscriptionPollTimeOutException
-        && Objects.equals(getMessage(), ((SubscriptionPollTimeOutException) obj).getMessage())
-        && Objects.equals(getTimeStamp(), ((SubscriptionPollTimeOutException) obj).getTimeStamp());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(getMessage(), getTimeStamp());
-  }
+public interface QueryContextProvider {
+  MPPQueryContext getQueryContext();
 }

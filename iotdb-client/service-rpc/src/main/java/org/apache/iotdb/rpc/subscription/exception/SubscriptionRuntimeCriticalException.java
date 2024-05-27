@@ -17,6 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription;
+package org.apache.iotdb.rpc.subscription.exception;
 
-public interface SubscriptionMessagePayload extends AutoCloseable {}
+import java.util.Objects;
+
+public class SubscriptionRuntimeCriticalException extends SubscriptionException {
+
+  public SubscriptionRuntimeCriticalException(final String message) {
+    super(message);
+  }
+
+  public SubscriptionRuntimeCriticalException(final String message, final Throwable cause) {
+    super(message, cause);
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    return obj instanceof SubscriptionRuntimeCriticalException
+        && Objects.equals(getMessage(), ((SubscriptionRuntimeCriticalException) obj).getMessage())
+        && Objects.equals(
+            getTimeStamp(), ((SubscriptionRuntimeCriticalException) obj).getTimeStamp());
+  }
+}

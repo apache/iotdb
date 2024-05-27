@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.expression.other;
 
 import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.WhenThenExpression;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -42,6 +44,9 @@ import java.util.List;
 import java.util.Map;
 
 public class CaseWhenThenExpression extends Expression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CaseWhenThenExpression.class);
   protected List<WhenThenExpression> whenThenExpressions = new ArrayList<>();
   protected Expression elseExpression;
 
@@ -182,5 +187,16 @@ public class CaseWhenThenExpression extends Expression {
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitCaseWhenThenExpression(this, context);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(elseExpression)
+        + (whenThenExpressions == null
+            ? 0
+            : whenThenExpressions.stream()
+                .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
+                .sum());
   }
 }
