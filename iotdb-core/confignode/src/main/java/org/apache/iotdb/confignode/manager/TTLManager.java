@@ -55,7 +55,7 @@ public class TTLManager {
   }
 
   /** Set ttl when creating database. */
-  public TSStatus setTTL(DatabaseSchemaPlan databaseSchemaPlan) {
+  public TSStatus setTTL(DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe) {
     long ttl = databaseSchemaPlan.getSchema().getTTL();
     if (ttl <= 0) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.TTL_CONFIG_ERROR.getStatusCode());
@@ -70,10 +70,10 @@ public class TTLManager {
         new SetTTLPlan(
             databaseSchemaPlan.getSchema().getName().split(PATH_SEPARATER_NO_REGEX), ttl);
     setTTLPlan.setDataBase(true);
-    return configManager.getProcedureManager().setTTL(setTTLPlan);
+    return configManager.getProcedureManager().setTTL(setTTLPlan, isGeneratedByPipe);
   }
 
-  public TSStatus setTTL(SetTTLPlan setTTLPlan) {
+  public TSStatus setTTL(SetTTLPlan setTTLPlan, final boolean isGeneratedByPipe) {
     PartialPath path = new PartialPath(setTTLPlan.getPathPattern());
     if (!checkIsPathValidated(path)) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
@@ -99,10 +99,10 @@ public class TTLManager {
     ttl = ttl <= 0 ? Long.MAX_VALUE : ttl;
     setTTLPlan.setTTL(ttl);
 
-    return configManager.getProcedureManager().setTTL(setTTLPlan);
+    return configManager.getProcedureManager().setTTL(setTTLPlan, isGeneratedByPipe);
   }
 
-  public TSStatus unsetTTL(SetTTLPlan setTTLPlan) {
+  public TSStatus unsetTTL(SetTTLPlan setTTLPlan, final boolean isGeneratedByPipe) {
     PartialPath path = new PartialPath(setTTLPlan.getPathPattern());
     if (!checkIsPathValidated(path)) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode());
@@ -115,7 +115,7 @@ public class TTLManager {
     // if path matches database, then unset both path and path.**
     setTTLPlan.setDataBase(configManager.getPartitionManager().isDatabaseExist(path.getFullPath()));
 
-    return configManager.getProcedureManager().setTTL(setTTLPlan);
+    return configManager.getProcedureManager().setTTL(setTTLPlan, isGeneratedByPipe);
   }
 
   public DataSet showAllTTL(ShowTTLPlan showTTLPlan) {

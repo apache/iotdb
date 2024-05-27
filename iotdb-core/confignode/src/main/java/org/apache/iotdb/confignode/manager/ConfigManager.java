@@ -536,9 +536,9 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       if (setTTLPlan.getTTL() == TTLCache.NULL_TTL) {
-        return ttlManager.unsetTTL(setTTLPlan);
+        return ttlManager.unsetTTL(setTTLPlan, false);
       } else {
-        return ttlManager.setTTL(setTTLPlan);
+        return ttlManager.setTTL(setTTLPlan, false);
       }
     } else {
       return status;
