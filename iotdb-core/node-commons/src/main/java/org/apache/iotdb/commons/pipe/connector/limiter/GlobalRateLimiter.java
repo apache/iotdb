@@ -33,7 +33,15 @@ public class GlobalRateLimiter {
       new AtomicDouble(CONFIG.getPipeAllConnectorsRateLimitBytesPerSecond());
   private final RateLimiter rateLimiter;
 
-  private void doAcquire(long bytes) {
+  public GlobalRateLimiter() {
+    final double throughputBytesPerSecondLimit = throughputBytesPerSecond.get();
+    rateLimiter =
+        throughputBytesPerSecondLimit <= 0
+            ? RateLimiter.create(Double.MAX_VALUE)
+            : RateLimiter.create(throughputBytesPerSecondLimit);
+  }
+
+  public void acquire(long bytes) {
     final double throughputBytesPerSecondLimit =
         CONFIG.getPipeAllConnectorsRateLimitBytesPerSecond();
 
@@ -58,23 +66,5 @@ public class GlobalRateLimiter {
         return;
       }
     }
-  }
-
-  ///////////////////////////  SINGLETON  ///////////////////////////
-
-  private GlobalRateLimiter() {
-    final double throughputBytesPerSecondLimit = throughputBytesPerSecond.get();
-    rateLimiter =
-        throughputBytesPerSecondLimit <= 0
-            ? RateLimiter.create(Double.MAX_VALUE)
-            : RateLimiter.create(throughputBytesPerSecondLimit);
-  }
-
-  private static class GlobalRateLimiterHolder {
-    private static final GlobalRateLimiter INSTANCE = new GlobalRateLimiter();
-  }
-
-  public static void acquire(long bytes) {
-    GlobalRateLimiterHolder.INSTANCE.doAcquire(bytes);
   }
 }

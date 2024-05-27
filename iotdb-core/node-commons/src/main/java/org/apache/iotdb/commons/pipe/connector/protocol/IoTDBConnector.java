@@ -98,12 +98,13 @@ public abstract class IoTDBConnector implements PipeConnector {
 
   protected String loadBalanceStrategy;
 
-  protected boolean isRpcCompressionEnabled;
-  protected final List<PipeCompressor> compressors = new ArrayList<>();
+  private boolean isRpcCompressionEnabled;
+  private final List<PipeCompressor> compressors = new ArrayList<>();
 
-  protected double endPointRateLimitBytesPerSecond = -1;
-  protected static final Map<String, PipeEndPointRateLimiter> pipeName2EndPointRateLimiterMap =
+  private static final Map<String, PipeEndPointRateLimiter> PIPE_END_POINT_RATE_LIMITER_MAP =
       new ConcurrentHashMap<>();
+  private double endPointRateLimitBytesPerSecond = -1;
+  private static final GlobalRateLimiter GLOBAL_RATE_LIMITER = new GlobalRateLimiter();
 
   protected boolean isTabletBatchModeEnabled = true;
 
@@ -327,7 +328,7 @@ public abstract class IoTDBConnector implements PipeConnector {
   @Override
   public void close() {
     // TODO: Not all the limiters should be closed here, but it's fine for now.
-    pipeName2EndPointRateLimiterMap.clear();
+    PIPE_END_POINT_RATE_LIMITER_MAP.clear();
   }
 
   protected TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
@@ -353,13 +354,13 @@ public abstract class IoTDBConnector implements PipeConnector {
   public void rateLimitIfNeeded(
       final String pipeName, final TEndPoint endPoint, final long bytesLength) {
     if (pipeName != null && endPointRateLimitBytesPerSecond > 0) {
-      pipeName2EndPointRateLimiterMap
+      PIPE_END_POINT_RATE_LIMITER_MAP
           .computeIfAbsent(
               pipeName, endpoint -> new PipeEndPointRateLimiter(endPointRateLimitBytesPerSecond))
           .acquire(endPoint, bytesLength);
     }
 
-    GlobalRateLimiter.acquire(bytesLength);
+    GLOBAL_RATE_LIMITER.acquire(bytesLength);
   }
 
   public PipeReceiverStatusHandler statusHandler() {
