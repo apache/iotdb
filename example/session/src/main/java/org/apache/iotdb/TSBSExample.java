@@ -61,7 +61,7 @@ public class TSBSExample {
           try (SessionDataSet dataSet =
               session.executeQueryStatement(
                   String.format(
-                      "SELECT max_time(latitude), last_value(latitude), last_value(longitude) FROM root.readings.%s.**  align by device",
+                      "SELECT max_time(latitude), last_value(latitude), last_value(longitude) FROM root.readings.%s.** order by time desc align by device",
                       args[3]))) {
             SessionDataSet.DataIterator iterator = dataSet.iterator();
             long count = 0;
@@ -78,7 +78,7 @@ public class TSBSExample {
           try (SessionDataSet dataSet =
               session.executeQueryStatement(
                   String.format(
-                      "SELECT last_value(fuel_state) FROM root.diagnostics.%s.** WHERE fuel_state <= 0.1 align by device;",
+                      "SELECT last_value(fuel_state) FROM root.diagnostics.%s.** WHERE fuel_state <= 0.1 order by time desc align by device;",
                       args[3]))) {
             SessionDataSet.DataIterator iterator = dataSet.iterator();
             long count = 0;
