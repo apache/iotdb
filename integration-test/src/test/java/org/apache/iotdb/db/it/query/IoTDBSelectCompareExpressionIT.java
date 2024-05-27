@@ -83,9 +83,16 @@ public class IoTDBSelectCompareExpressionIT {
       double doubleValue,
       boolean boolValue,
       String _text) {
-    return String.format(Locale.CHINA,
-            "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6) values (%d, %d, %d, %f, %f, %s, %s);",
-        time, intValue32, intValue64, floatValue, doubleValue, boolValue ? "true" : "false", _text);
+    return String.format(
+        Locale.CHINA,
+        "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6) values (%d, %d, %d, %f, %f, %s, %s);",
+        time,
+        intValue32,
+        intValue64,
+        floatValue,
+        doubleValue,
+        boolValue ? "true" : "false",
+        _text);
   }
 
   @BeforeClass
