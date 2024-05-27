@@ -21,9 +21,12 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -33,11 +36,13 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.DEVICE_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.END_TIME_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyzeExpressionType;
@@ -99,10 +104,7 @@ public class TemplatedAggregationAnalyze {
     }
 
     analyzeHaving(analysis, queryStatement);
-
-    analyzeDeviceToAggregation(analysis);
-    analyzeDeviceToSourceTransform(analysis);
-    analyzeDeviceToSource(analysis);
+    analyzeDeviceToExpressions(analysis);
 
     analyzeDeviceViewOutput(analysis, queryStatement);
     analyzeDeviceViewInput(analysis, queryStatement);
@@ -124,6 +126,8 @@ public class TemplatedAggregationAnalyze {
       List<Pair<Expression, String>> outputExpressions,
       Template template) {
 
+    analysis.setDeviceTemplate(template);
+
     LinkedHashSet<Expression> selectExpressions = new LinkedHashSet<>();
     selectExpressions.add(DEVICE_EXPRESSION);
     if (queryStatement.isOutputEndTime()) {
@@ -143,35 +147,50 @@ public class TemplatedAggregationAnalyze {
         outputExpressions.add(new Pair<>(selectExpression, resultColumn.getAlias()));
         selectExpressions.add(selectExpression);
         aggregationExpressions.add(selectExpression);
+        if (selectExpression instanceof FunctionExpression
+            && "count_time"
+                .equalsIgnoreCase(((FunctionExpression) selectExpression).getFunctionName())) {
+          analysis.getExpressionTypes().put(NodeRef.of(selectExpression), TSDataType.INT64);
+          ((FunctionExpression) selectExpression)
+              .setExpressions(Collections.singletonList(new TimestampOperand()));
+        } else {
+          analyzeExpressionType(analysis, selectExpression);
+        }
       } else {
         break;
       }
     }
 
-    analysis.setDeviceTemplate(template);
     List<String> measurementList = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
     Set<String> measurementSet = new HashSet<>();
-    for (Expression selectExpression : selectExpressions) {
-      if ("device".equalsIgnoreCase(selectExpression.getOutputSymbol())) {
-        continue;
-      }
 
-      String measurement = selectExpression.getExpressions().get(0).getOutputSymbol();
-      if (!template.getSchemaMap().containsKey(measurement)) {
-        analysis.setDeviceTemplate(null);
-        // TODO not support agg(*), agg(s1+1), count_time(*) now
-        return false;
-      }
+    if (queryStatement.isCountTimeAggregation()) {
+      measurementList = new ArrayList<>(template.getSchemaMap().keySet());
+      measurementSchemaList = new ArrayList<>(template.getSchemaMap().values());
+    } else {
+      int idx = 0;
+      for (Expression selectExpression : selectExpressions) {
+        idx++;
+        if (idx == 1
+            || (idx == 2 && ENDTIME.equalsIgnoreCase(selectExpression.getOutputSymbol()))) {
+          continue;
+        }
 
-      // for agg1(s1) + agg2(s1), only record s1 for one time
-      if (!measurementSet.contains(measurement)) {
-        measurementSet.add(measurement);
-        measurementList.add(measurement);
-        measurementSchemaList.add(template.getSchemaMap().get(measurement));
-      }
+        String measurement = selectExpression.getExpressions().get(0).getOutputSymbol();
+        //  not support agg(*), agg(s1+1) now
+        if (!template.getSchemaMap().containsKey(measurement)) {
+          analysis.setDeviceTemplate(null);
+          return false;
+        }
 
-      analyzeExpressionType(analysis, selectExpression);
+        // for agg1(s1) + agg2(s1), only record s1 for one time
+        if (!measurementSet.contains(measurement)) {
+          measurementSet.add(measurement);
+          measurementList.add(measurement);
+          measurementSchemaList.add(template.getSchemaMap().get(measurement));
+        }
+      }
     }
 
     analysis.setMeasurementList(measurementList);
@@ -187,12 +206,8 @@ public class TemplatedAggregationAnalyze {
       return;
     }
 
-    // TODO not support having count(s1) + sum(s2) expression
     Set<Expression> aggregationExpressions = analysis.getAggregationExpressions();
-
     Expression havingExpression = queryStatement.getHavingCondition().getPredicate();
-
-    // Set<Expression> normalizedAggregationExpressions = new LinkedHashSet<>();
     for (Expression aggregationExpression : searchAggregationExpressions(havingExpression)) {
       Expression normalizedAggregationExpression = normalizeExpression(aggregationExpression);
 
@@ -200,7 +215,6 @@ public class TemplatedAggregationAnalyze {
       analyzeExpressionType(analysis, normalizedAggregationExpression);
 
       aggregationExpressions.add(aggregationExpression);
-      // normalizedAggregationExpressions.add(normalizedAggregationExpression);
     }
 
     TSDataType outputType = analyzeExpressionType(analysis, havingExpression);
@@ -213,18 +227,12 @@ public class TemplatedAggregationAnalyze {
     analysis.setHavingExpression(havingExpression);
   }
 
-  private static void analyzeDeviceToSourceTransform(Analysis analysis) {
-    // TODO add having into SourceTransform
+  private static void analyzeDeviceToExpressions(Analysis analysis) {
     analysis.setDeviceToSourceTransformExpressions(analysis.getDeviceToSelectExpressions());
-  }
 
-  private static void analyzeDeviceToSource(Analysis analysis) {
     analysis.setDeviceToSourceExpressions(analysis.getDeviceToSelectExpressions());
     analysis.setDeviceToOutputExpressions(analysis.getDeviceToSelectExpressions());
-  }
 
-  private static void analyzeDeviceToAggregation(Analysis analysis) {
-    // TODO need add having clause?
     analysis.setDeviceToAggregationExpressions(analysis.getDeviceToSelectExpressions());
   }
 }

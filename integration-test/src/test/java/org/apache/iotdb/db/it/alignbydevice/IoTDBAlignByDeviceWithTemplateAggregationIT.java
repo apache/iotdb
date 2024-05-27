@@ -149,13 +149,133 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
         expectedHeader,
         retArray);
 
-    // not supported: group by session, condition, agg(*), agg(s1+1), non-aligned template
-
     // duplicate select expressions
+    expectedHeader =
+        new String[] {
+          "Device,max_time(s1),last_value(s1),count(s2),first_value(s3),last_value(s1)"
+        };
+    retArray =
+        new String[] {
+          "root.sg1.d2,1314000000001,13.15,4,11,13.15,",
+          "root.sg1.d3,1314000000002,13.16,2,4,13.16,",
+          "root.sg1.d4,5,5555.5,1,5555,5555.5,",
+        };
+    resultSetEqualTest(
+        "SELECT max_time(s1), last_value(s1), count(s2), first_value(s3), last_value(s1) FROM root.sg1.** where s3+1=1316 or s2=false having avg(s1)>2 align by device;",
+        expectedHeader,
+        retArray);
+    retArray =
+        new String[] {
+          "root.sg2.d2,1314000000001,13.15,4,11,13.15,",
+          "root.sg2.d3,1314000000002,13.16,2,4,13.16,",
+          "root.sg2.d4,5,5555.5,1,5555,5555.5,",
+        };
+    resultSetEqualTest(
+        "SELECT max_time(s1), last_value(s1), count(s2), first_value(s3), last_value(s1) FROM root.sg2.** where s3+1=1316 or s2=false having avg(s1)>2 align by device;",
+        expectedHeader,
+        retArray);
 
-    // filter cannot push down
+    // alias
+    expectedHeader = new String[] {"Device,c1,first_value(s3),c2"};
+    retArray =
+        new String[] {
+          "root.sg1.d2,4,11,4,", "root.sg1.d3,2,4,2,", "root.sg1.d4,1,5555,1,",
+        };
+    resultSetEqualTest(
+        "SELECT count(s1) as c1, first_value(s3), count(s1) as c2 FROM root.sg1.** where s3+1=1316 or s2=false having avg(s1)>2 align by device;",
+        expectedHeader,
+        retArray);
+    retArray =
+        new String[] {
+          "root.sg2.d2,4,11,4,", "root.sg2.d3,2,4,2,", "root.sg2.d4,1,5555,1,",
+        };
+    resultSetEqualTest(
+        "SELECT count(s1) as c1, first_value(s3), count(s1) as c2 FROM root.sg2.** where s3+1=1316 or s2=false having avg(s1)>2 align by device;",
+        expectedHeader,
+        retArray);
 
-    // having count(s1+s2)
+    // arithmetic expression
+    expectedHeader =
+        new String[] {"Device,max_time(s1),count(s1),last_value(s2),count(s1) + last_value(s3)"};
+    retArray =
+        new String[] {
+          "root.sg1.d2,1314000000001,4,false,1319.0,",
+          "root.sg1.d3,1314000000002,2,false,1318.0,",
+          "root.sg1.d4,5,1,false,5556.0,",
+        };
+    resultSetEqualTest(
+        "SELECT max_time(s1), count(s1), last_value(s2), count(s1)+last_value(s3) FROM root.sg1.** where s3+1=1316 or s2=false having avg(s1)+sum(s3)>5 align by device;",
+        expectedHeader,
+        retArray);
+    retArray =
+        new String[] {
+          "root.sg2.d2,1314000000001,4,false,1319.0,",
+          "root.sg2.d3,1314000000002,2,false,1318.0,",
+          "root.sg2.d4,5,1,false,5556.0,",
+        };
+    resultSetEqualTest(
+        "SELECT max_time(s1), count(s1), last_value(s2), count(s1)+last_value(s3) FROM root.sg2.** where s3+1=1316 or s2=false having avg(s1)+sum(s3)>5 align by device;",
+        expectedHeader,
+        retArray);
+
+    // __endTime result is ambiguous
+
+    // not supported: group by session, condition, agg(*), agg(s1+1), count(s1+s2), non-aligned
+    // template
+  }
+
+  @Test
+  public void countTimeTest() {
+    String[] expectedHeader = new String[] {"Device,count_time(*)"};
+    String[] retArray =
+        new String[] {
+          "root.sg1.d1,2,", "root.sg1.d2,4,", "root.sg1.d3,2,", "root.sg1.d4,1,",
+        };
+    resultSetEqualTest(
+        "SELECT count_time(*) FROM root.sg1.** where s3+1=1316 or s2=false align by device;",
+        expectedHeader,
+        retArray);
+    retArray =
+        new String[] {
+          "root.sg2.d1,2,", "root.sg2.d2,4,", "root.sg2.d3,2,", "root.sg2.d4,1,",
+        };
+    resultSetEqualTest(
+        "SELECT count_time(*) FROM root.sg2.** where s3+1=1316 or s2=false align by device;",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {"Time,Device,count_time(*)"};
+    retArray =
+        new String[] {
+          "1,root.sg1.d1,2,",
+          "6,root.sg1.d1,0,",
+          "1,root.sg1.d2,3,",
+          "6,root.sg1.d2,0,",
+          "1,root.sg1.d3,0,",
+          "6,root.sg1.d3,1,",
+          "1,root.sg1.d4,1,",
+          "6,root.sg1.d4,0,",
+        };
+    resultSetEqualTest(
+        "SELECT count_time(*) FROM root.sg1.** where s3+1=1316 or s2=false group by ([1,10), 5ms) align by device;",
+        expectedHeader,
+        retArray);
+    expectedHeader = new String[] {"Time,Device,count_time(*)"};
+    retArray =
+        new String[] {
+          "1,root.sg2.d1,2,",
+          "6,root.sg2.d1,0,",
+          "1,root.sg2.d2,3,",
+          "6,root.sg2.d2,0,",
+          "1,root.sg2.d3,0,",
+          "6,root.sg2.d3,1,",
+          "1,root.sg2.d4,1,",
+          "6,root.sg2.d4,0,",
+        };
+    resultSetEqualTest(
+        "SELECT count_time(*) FROM root.sg2.** where s3+1=1316 or s2=false group by ([1,10), 5ms) align by device;",
+        expectedHeader,
+        retArray);
   }
 
   @Test

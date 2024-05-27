@@ -107,9 +107,7 @@ public class AggregationPushDown implements PlanOptimizer {
     boolean isAlignByDevice = queryStatement.isAlignByDevice();
     if (isAlignByDevice) {
       if (analysis.allDevicesInOneTemplate()) {
-        // TODO agg+template situation, how about the SourceTransformExpressions
-        return cannotUseStatistics(
-            analysis.getAggregationExpressions(), analysis.getAggregationExpressions());
+        return cannotUseStatisticsForTemplate(analysis.getAggregationExpressions());
       }
 
       // check any of the devices
@@ -125,8 +123,8 @@ public class AggregationPushDown implements PlanOptimizer {
 
   private boolean cannotUseStatistics(
       Set<Expression> aggregationExpressions, Set<Expression> sourceTransformExpressions) {
-    for (Expression expression : aggregationExpressions) {
 
+    for (Expression expression : aggregationExpressions) {
       if (expression instanceof FunctionExpression) {
         FunctionExpression functionExpression = (FunctionExpression) expression;
         // Disable statistics optimization of UDAF for now
@@ -149,6 +147,32 @@ public class AggregationPushDown implements PlanOptimizer {
               return true;
             }
           }
+          return false;
+        }
+
+        if (!BuiltinAggregationFunction.canUseStatistics(functionExpression.getFunctionName())) {
+          return true;
+        }
+      } else {
+        throw new IllegalArgumentException(
+            String.format("Invalid Aggregation Expression: %s", expression.getExpressionString()));
+      }
+    }
+    return false;
+  }
+
+  private boolean cannotUseStatisticsForTemplate(Set<Expression> aggregationExpressions) {
+
+    for (Expression expression : aggregationExpressions) {
+      if (expression instanceof FunctionExpression) {
+        FunctionExpression functionExpression = (FunctionExpression) expression;
+        // Disable statistics optimization of UDAF for now
+        if (functionExpression.isExternalAggregationFunctionExpression()) {
+          return true;
+        }
+
+        // in template align by device query, device must be aligned
+        if (COUNT_TIME.equalsIgnoreCase(functionExpression.getFunctionName())) {
           return false;
         }
 

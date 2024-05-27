@@ -260,8 +260,8 @@ public class TemplatedInfo {
     ReadWriteIOUtils.write(queryAllSensors, byteBuffer);
 
     ReadWriteIOUtils.write(deviceViewOutputNames.size(), byteBuffer);
-    for (String selectMeasurement : deviceViewOutputNames) {
-      ReadWriteIOUtils.write(selectMeasurement, byteBuffer);
+    for (String outputName : deviceViewOutputNames) {
+      ReadWriteIOUtils.write(outputName, byteBuffer);
     }
 
     ReadWriteIOUtils.write(deviceToMeasurementIndexes.size(), byteBuffer);
@@ -287,14 +287,29 @@ public class TemplatedInfo {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     }
 
-    if (groupByTimeParameter != null) {
+    if (aggregationQuery) {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      groupByTimeParameter.serialize(byteBuffer);
+      if (groupByTimeParameter != null) {
+        ReadWriteIOUtils.write((byte) 1, byteBuffer);
+        groupByTimeParameter.serialize(byteBuffer);
+      } else {
+        ReadWriteIOUtils.write((byte) 0, byteBuffer);
+      }
+
+      ReadWriteIOUtils.write(outputEndTime, byteBuffer);
+
+      ReadWriteIOUtils.write(ascendingDescriptorList.size(), byteBuffer);
+      for (AggregationDescriptor descriptor : ascendingDescriptorList) {
+        descriptor.serialize(byteBuffer);
+      }
+
+      ReadWriteIOUtils.write(descendingDescriptorList.size(), byteBuffer);
+      for (AggregationDescriptor descriptor : descendingDescriptorList) {
+        descriptor.serialize(byteBuffer);
+      }
     } else {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     }
-
-    ReadWriteIOUtils.write(outputEndTime, byteBuffer);
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
@@ -312,8 +327,8 @@ public class TemplatedInfo {
     ReadWriteIOUtils.write(queryAllSensors, stream);
 
     ReadWriteIOUtils.write(deviceViewOutputNames.size(), stream);
-    for (String selectMeasurement : deviceViewOutputNames) {
-      ReadWriteIOUtils.write(selectMeasurement, stream);
+    for (String outputName : deviceViewOutputNames) {
+      ReadWriteIOUtils.write(outputName, stream);
     }
 
     ReadWriteIOUtils.write(deviceToMeasurementIndexes.size(), stream);

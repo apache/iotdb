@@ -48,6 +48,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.END_TIME_EXPRESSION;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchSourceExpressions;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo.makeLayout;
 import static org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanBuilder.updateTypeProviderByPartialAggregation;
@@ -135,6 +136,10 @@ public class TemplatedLogicalPlan {
           .forEach(
               (key, value) ->
                   context.getTypeProvider().setType(key.getNode().getOutputSymbol(), value));
+    }
+
+    if (queryStatement.isOutputEndTime()) {
+      context.getTypeProvider().setType(END_TIME_EXPRESSION.getOutputSymbol(), TSDataType.INT64);
     }
 
     context
