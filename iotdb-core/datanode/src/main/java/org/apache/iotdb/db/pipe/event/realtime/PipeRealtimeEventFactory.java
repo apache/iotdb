@@ -44,6 +44,7 @@ public class PipeRealtimeEventFactory {
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
         new PipeInsertNodeTabletInsertionEvent(
             walEntryHandler,
+            insertNode.getDevicePath(),
             insertNode.getProgressIndex(),
             insertNode.isAligned(),
             insertNode.isGeneratedByPipe()),
