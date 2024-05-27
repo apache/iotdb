@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
@@ -121,10 +123,13 @@ public class PipeTransferTsFileInsertionEventHandler
       } else if (currentFile == tsFile) {
         isSealSignalSent.set(true);
         client.pipeTransfer(
-            transferMod
-                ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
-                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()),
+            PipeTransferCompressedReq.toTPipeTransferReq(
+                transferMod
+                    ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+                        modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
+                    : PipeTransferTsFileSealReq.toTPipeTransferReq(
+                        tsFile.getName(), tsFile.length()),
+                connector.getCompressors()),
             this);
       }
       return;
@@ -134,12 +139,17 @@ public class PipeTransferTsFileInsertionEventHandler
         readLength == readFileBufferSize
             ? readBuffer
             : Arrays.copyOfRange(readBuffer, 0, readLength);
-    client.pipeTransfer(
+    final TPipeTransferReq uncompressedReq =
         transferMod
             ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
                 currentFile.getName(), position, payload)
             : PipeTransferTsFilePieceReq.toTPipeTransferReq(
-                currentFile.getName(), position, payload),
+                currentFile.getName(), position, payload);
+    client.pipeTransfer(
+        connector.isRpcCompressionEnabled()
+            ? PipeTransferCompressedReq.toTPipeTransferReq(
+                uncompressedReq, connector.getCompressors())
+            : uncompressedReq,
         this);
     position += readLength;
   }
@@ -242,11 +252,13 @@ public class PipeTransferTsFileInsertionEventHandler
     } catch (final IOException e) {
       LOGGER.warn("Failed to close file reader when failed to transfer file.", e);
     } finally {
-      connector.addFailureEventToRetryQueue(event);
-
-      if (client != null) {
-        client.setShouldReturnSelf(true);
-        client.returnSelf();
+      try {
+        if (client != null) {
+          client.setShouldReturnSelf(true);
+          client.returnSelf();
+        }
+      } finally {
+        connector.addFailureEventToRetryQueue(event);
       }
     }
   }

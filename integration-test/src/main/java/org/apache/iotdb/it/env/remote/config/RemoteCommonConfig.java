@@ -308,4 +308,9 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setTagAttributeTotalSize(int tagAttributeTotalSize) {
     return this;
   }
+
+  @Override
+  public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
+    return this;
+  }
 }

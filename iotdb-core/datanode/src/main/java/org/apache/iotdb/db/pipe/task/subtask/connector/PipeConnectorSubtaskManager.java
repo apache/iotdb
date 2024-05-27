@@ -20,16 +20,16 @@
 package org.apache.iotdb.db.pipe.task.subtask.connector;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.execution.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -37,6 +37,9 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,6 +49,8 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class PipeConnectorSubtaskManager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtaskManager.class);
 
   private static final String FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE =
       "Failed to deregister PipeConnectorSubtask. No such subtask: ";
@@ -78,6 +83,7 @@ public class PipeConnectorSubtaskManager {
             .contains(new DataRegionId(environment.getRegionId()));
 
     final int connectorNum;
+    boolean realTimeFirst = false;
     String attributeSortedString = generateAttributeSortedString(pipeConnectorParameters);
     if (isDataRegionConnector) {
       connectorNum =
@@ -86,6 +92,12 @@ public class PipeConnectorSubtaskManager {
                   PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
                   PipeConnectorConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
               PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
+      realTimeFirst =
+          pipeConnectorParameters.getBooleanOrDefault(
+              Arrays.asList(
+                  PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY,
+                  PipeConnectorConstant.SINK_REALTIME_FIRST_KEY),
+              PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE);
       attributeSortedString = "data_" + attributeSortedString;
     } else {
       // Do not allow parallel tasks for schema region connectors
@@ -99,10 +111,10 @@ public class PipeConnectorSubtaskManager {
           new ArrayList<>(connectorNum);
 
       // Shared pending queue for all subtasks
-      final BoundedBlockingPendingQueue<Event> pendingQueue =
-          new BoundedBlockingPendingQueue<>(
-              PipeConfig.getInstance().getPipeConnectorPendingQueueSize(),
-              new PipeDataRegionEventCounter());
+      final UnboundedBlockingPendingQueue<Event> pendingQueue =
+          realTimeFirst
+              ? new PipeRealtimePriorityBlockingQueue()
+              : new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
 
       for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
         final PipeConnector pipeConnector =
@@ -117,6 +129,14 @@ public class PipeConnectorSubtaskManager {
               pipeConnectorParameters, new PipeTaskRuntimeConfiguration(environment));
           pipeConnector.handshake();
         } catch (final Exception e) {
+          try {
+            pipeConnector.close();
+          } catch (final Exception closeException) {
+            LOGGER.warn(
+                "Failed to close connector after failed to initialize connector. "
+                    + "Ignore this exception.",
+                closeException);
+          }
           throw new PipeException(
               "Failed to construct PipeConnector, because of " + e.getMessage(), e);
         }
@@ -144,6 +164,11 @@ public class PipeConnectorSubtaskManager {
     for (final PipeConnectorSubtaskLifeCycle lifeCycle :
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString)) {
       lifeCycle.register();
+      if (isDataRegionConnector) {
+        PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+            .register(
+                lifeCycle.getSubtask(), environment.getPipeName(), environment.getCreationTime());
+      }
     }
 
     return attributeSortedString;
@@ -191,7 +216,7 @@ public class PipeConnectorSubtaskManager {
     }
   }
 
-  public BoundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue(
+  public UnboundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue(
       final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(

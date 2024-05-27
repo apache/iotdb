@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
 import org.apache.tsfile.block.column.Column;
@@ -224,8 +225,8 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
-  public void initQueryDataSource(QueryDataSource dataSource) {
-    seriesScanUtil.initQueryDataSource(dataSource);
+  public void initQueryDataSource(IQueryDataSource dataSource) {
+    seriesScanUtil.initQueryDataSource((QueryDataSource) dataSource);
     resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
     resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
   }

@@ -169,7 +169,7 @@ pipeline {
             steps {
                 echo 'Deploying'
                 // Deploy the artifacts using the wagon-maven-plugin.
-                sh 'mvn -f jenkins.pom -X -P deploy-snapshots wagon:upload -P get-jar-with-dependencies'
+                sh 'until mvn -f jenkins.pom -X -P deploy-snapshots wagon:upload || (( count++ >= 5 )); do echo "Retrying to deploy"; done'
             }
         }
 

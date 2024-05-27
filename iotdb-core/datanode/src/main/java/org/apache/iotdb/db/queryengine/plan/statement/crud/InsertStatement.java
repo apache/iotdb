@@ -23,17 +23,13 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /** this class extends {@code Statement} and process insert statement. */
 public class InsertStatement extends Statement {
@@ -43,7 +39,7 @@ public class InsertStatement extends Statement {
   private long[] times;
   private String[] measurementList;
 
-  private List<String[]> valuesList;
+  private List<Object[]> valuesList;
 
   private boolean isAligned;
 
@@ -90,11 +86,11 @@ public class InsertStatement extends Statement {
     this.measurementList = measurementList;
   }
 
-  public List<String[]> getValuesList() {
+  public List<Object[]> getValuesList() {
     return valuesList;
   }
 
-  public void setValuesList(List<String[]> valuesList) {
+  public void setValuesList(List<Object[]> valuesList) {
     this.valuesList = valuesList;
   }
 
@@ -117,30 +113,5 @@ public class InsertStatement extends Statement {
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsert(this, context);
-  }
-
-  public void semanticCheck() {
-    Set<String> deduplicatedMeasurements = new HashSet<>();
-    for (String measurement : measurementList) {
-      if (measurement == null || measurement.isEmpty()) {
-        throw new SemanticException(
-            "Measurement contains null or empty string: " + Arrays.toString(measurementList));
-      }
-      if (deduplicatedMeasurements.contains(measurement)) {
-        throw new SemanticException("Insertion contains duplicated measurement: " + measurement);
-      } else {
-        deduplicatedMeasurements.add(measurement);
-      }
-    }
-
-    int measurementsNum = measurementList.length;
-    for (int i = 0; i < times.length; i++) {
-      if (measurementsNum != valuesList.get(i).length) {
-        throw new SemanticException(
-            String.format(
-                "the measurementList's size %d is not consistent with the valueList's size %d",
-                measurementsNum, valuesList.get(i).length));
-      }
-    }
   }
 }

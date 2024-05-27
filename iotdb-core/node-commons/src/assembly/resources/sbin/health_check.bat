@@ -198,8 +198,6 @@ set confignode_mem=%confignode_mem%
 for /f %%i in ('powershell.exe -Command "[math]::Round(%datanode_mem% / 1024, 2)"') do set datanode_mem=%%i
 for /f %%i in ('powershell.exe -Command "[math]::Round(%confignode_mem% / 1024, 2)"') do set confignode_mem=%%i
 
-echo datanode_mem=%datanode_mem%
-echo confignode_mem=%confignode_mem%
 echo Check: Installation Environment(Memory)
 echo Requirement: Allocate sufficient memory for IoTDB
 

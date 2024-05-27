@@ -69,7 +69,9 @@ public class PipeParameterValidator {
     }
 
     throw new PipeParameterNotValidException(
-        String.format("The value of %s should be one of %s", key, Arrays.toString(optionalValues)));
+        String.format(
+            "Invalid value %s of %s. The value should be one of %s",
+            actualValue, key, Arrays.toString(optionalValues)));
   }
 
   /**

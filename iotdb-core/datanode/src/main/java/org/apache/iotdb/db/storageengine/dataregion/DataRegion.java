@@ -47,6 +47,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -80,8 +81,12 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegionScan;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandle;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.ClosedFileScanHandleImpl;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -1856,6 +1861,199 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  /**
+   * @param tsFileResources includes sealed and unsealed tsfile resources
+   * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
+   */
+  private List<TsFileResource> getFileResourceListForQuery(
+      Collection<TsFileResource> tsFileResources,
+      List<PartialPath> pathList,
+      String singleDeviceId,
+      QueryContext context,
+      Filter globalTimeFilter,
+      boolean isSeq)
+      throws MetadataException {
+
+    if (context.isDebug()) {
+      DEBUG_LOGGER.info(
+          "Path: {}, get tsfile list: {} isSeq: {} timefilter: {}",
+          pathList,
+          tsFileResources,
+          isSeq,
+          (globalTimeFilter == null ? "null" : globalTimeFilter));
+    }
+
+    List<TsFileResource> tsFileResourcesForQuery = new ArrayList<>();
+
+    long timeLowerBound =
+        dataTTL != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
+    context.setQueryTimeLowerBound(timeLowerBound);
+
+    for (TsFileResource tsFileResource : tsFileResources) {
+      if (!tsFileResource.isSatisfied(
+          singleDeviceId == null ? null : new PlainDeviceID(singleDeviceId),
+          globalTimeFilter,
+          isSeq,
+          dataTTL,
+          context.isDebug())) {
+        continue;
+      }
+      closeQueryLock.readLock().lock();
+      try {
+        if (tsFileResource.isClosed()) {
+          tsFileResourcesForQuery.add(tsFileResource);
+        } else {
+          tsFileResource.getProcessor().query(pathList, context, tsFileResourcesForQuery);
+        }
+      } catch (IOException e) {
+        throw new MetadataException(e);
+      } finally {
+        closeQueryLock.readLock().unlock();
+      }
+    }
+    return tsFileResourcesForQuery;
+  }
+
+  @Override
+  public IQueryDataSource queryForSeriesRegionScan(
+      List<PartialPath> pathList,
+      QueryContext queryContext,
+      Filter globalTimeFilter,
+      List<Long> timePartitions)
+      throws QueryProcessException {
+    try {
+      List<IFileScanHandle> seqFileScanHandles =
+          getFileHandleListForQuery(
+              tsFileManager.getTsFileList(true, timePartitions, globalTimeFilter),
+              pathList,
+              queryContext,
+              globalTimeFilter,
+              true);
+      List<IFileScanHandle> unseqFileScanHandles =
+          getFileHandleListForQuery(
+              tsFileManager.getTsFileList(false, timePartitions, globalTimeFilter),
+              pathList,
+              queryContext,
+              globalTimeFilter,
+              false);
+
+      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(SEQUENCE_TSFILE, seqFileScanHandles.size());
+      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(
+          UNSEQUENCE_TSFILE, unseqFileScanHandles.size());
+
+      QueryDataSourceForRegionScan dataSource =
+          new QueryDataSourceForRegionScan(seqFileScanHandles, unseqFileScanHandles);
+      dataSource.setDataTTL(dataTTL);
+      return dataSource;
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+  }
+
+  private List<IFileScanHandle> getFileHandleListForQuery(
+      Collection<TsFileResource> tsFileResources,
+      List<PartialPath> partialPaths,
+      QueryContext context,
+      Filter globalTimeFilter,
+      boolean isSeq)
+      throws MetadataException {
+
+    List<IFileScanHandle> fileScanHandles = new ArrayList<>();
+
+    long timeLowerBound =
+        dataTTL != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
+    context.setQueryTimeLowerBound(timeLowerBound);
+
+    for (TsFileResource tsFileResource : tsFileResources) {
+      if (!tsFileResource.isSatisfied(null, globalTimeFilter, isSeq, dataTTL, context.isDebug())) {
+        continue;
+      }
+      closeQueryLock.readLock().lock();
+      try {
+        if (tsFileResource.isClosed()) {
+          fileScanHandles.add(new ClosedFileScanHandleImpl(tsFileResource, context));
+        } else {
+          tsFileResource
+              .getProcessor()
+              .queryForSeriesRegionScan(partialPaths, context, fileScanHandles);
+        }
+      } finally {
+        closeQueryLock.readLock().unlock();
+      }
+    }
+    return fileScanHandles;
+  }
+
+  @Override
+  public IQueryDataSource queryForDeviceRegionScan(
+      Map<IDeviceID, Boolean> devicePathToAligned,
+      QueryContext queryContext,
+      Filter globalTimeFilter,
+      List<Long> timePartitions)
+      throws QueryProcessException {
+    try {
+      List<IFileScanHandle> seqFileScanHandles =
+          getFileHandleListForQuery(
+              tsFileManager.getTsFileList(true, timePartitions, globalTimeFilter),
+              devicePathToAligned,
+              queryContext,
+              globalTimeFilter,
+              true);
+      List<IFileScanHandle> unseqFileScanHandles =
+          getFileHandleListForQuery(
+              tsFileManager.getTsFileList(false, timePartitions, globalTimeFilter),
+              devicePathToAligned,
+              queryContext,
+              globalTimeFilter,
+              false);
+
+      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(SEQUENCE_TSFILE, seqFileScanHandles.size());
+      QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(
+          UNSEQUENCE_TSFILE, unseqFileScanHandles.size());
+
+      QueryDataSourceForRegionScan dataSource =
+          new QueryDataSourceForRegionScan(seqFileScanHandles, unseqFileScanHandles);
+      dataSource.setDataTTL(dataTTL);
+      return dataSource;
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+  }
+
+  private List<IFileScanHandle> getFileHandleListForQuery(
+      Collection<TsFileResource> tsFileResources,
+      Map<IDeviceID, Boolean> devicePathToAligned,
+      QueryContext context,
+      Filter globalTimeFilter,
+      boolean isSeq)
+      throws MetadataException {
+
+    List<IFileScanHandle> fileScanHandles = new ArrayList<>();
+
+    long timeLowerBound =
+        dataTTL != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
+    context.setQueryTimeLowerBound(timeLowerBound);
+
+    for (TsFileResource tsFileResource : tsFileResources) {
+      if (!tsFileResource.isSatisfied(null, globalTimeFilter, isSeq, dataTTL, context.isDebug())) {
+        continue;
+      }
+      closeQueryLock.readLock().lock();
+      try {
+        if (tsFileResource.isClosed()) {
+          fileScanHandles.add(new ClosedFileScanHandleImpl(tsFileResource, context));
+        } else {
+          tsFileResource
+              .getProcessor()
+              .queryForDeviceRegionScan(devicePathToAligned, context, fileScanHandles);
+        }
+      } finally {
+        closeQueryLock.readLock().unlock();
+      }
+    }
+    return fileScanHandles;
+  }
+
   /** lock the read lock of the insert lock */
   @Override
   public void readLock() {
@@ -1882,59 +2080,6 @@ public class DataRegion implements IDataRegionForQuery {
   public void writeUnlock() {
     insertWriteLockHolder = "";
     insertLock.writeLock().unlock();
-  }
-
-  /**
-   * @param tsFileResources includes sealed and unsealed tsfile resources
-   * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
-   */
-  private List<TsFileResource> getFileResourceListForQuery(
-      Collection<TsFileResource> tsFileResources,
-      List<PartialPath> pathList,
-      String singleDeviceId,
-      QueryContext context,
-      Filter globalTimeFilter,
-      boolean isSeq)
-      throws MetadataException {
-
-    if (context.isDebug()) {
-      DEBUG_LOGGER.info(
-          "Path: {}, get tsfile list: {} isSeq: {} timefilter: {}",
-          pathList,
-          tsFileResources,
-          isSeq,
-          (globalTimeFilter == null ? "null" : globalTimeFilter));
-    }
-
-    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-
-    long timeLowerBound =
-        dataTTL != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - dataTTL : Long.MIN_VALUE;
-    context.setQueryTimeLowerBound(timeLowerBound);
-
-    for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(
-          singleDeviceId == null ? null : new PlainDeviceID(singleDeviceId),
-          globalTimeFilter,
-          isSeq,
-          dataTTL,
-          context.isDebug())) {
-        continue;
-      }
-      closeQueryLock.readLock().lock();
-      try {
-        if (tsFileResource.isClosed()) {
-          tsfileResourcesForQuery.add(tsFileResource);
-        } else {
-          tsFileResource.getProcessor().query(pathList, context, tsfileResourcesForQuery);
-        }
-      } catch (IOException e) {
-        throw new MetadataException(e);
-      } finally {
-        closeQueryLock.readLock().unlock();
-      }
-    }
-    return tsfileResourcesForQuery;
   }
 
   /** Seperate tsfiles in TsFileManager to sealedList and unsealedList. */
@@ -2808,6 +2953,8 @@ public class DataRegion implements IDataRegionForQuery {
         tsFileToLoad.getAbsolutePath(),
         targetFile.getAbsolutePath());
 
+    LoadTsFileRateLimiter.getInstance().acquire(tsFileResource.getTsFile().length());
+
     // move file from sync dir to data dir
     if (!targetFile.getParentFile().exists()) {
       targetFile.getParentFile().mkdirs();
@@ -2888,7 +3035,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     // help tsfile resource degrade
-    TsFileResourceManager.getInstance().registerSealedTsFileResource(tsFileResource);
+    tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
 
     tsFileManager.add(tsFileResource, false);
 

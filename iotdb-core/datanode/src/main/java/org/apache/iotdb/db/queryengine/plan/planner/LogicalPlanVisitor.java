@@ -513,6 +513,17 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
+    long limit = showTimeSeriesStatement.getLimit();
+    long offset = showTimeSeriesStatement.getOffset();
+    if (showTimeSeriesStatement.hasTimeCondition()) {
+      planBuilder =
+          planBuilder
+              .planTimeseriesRegionScan(analysis.getDeviceToTimeseriesSchemas(), false)
+              .planLimit(limit)
+              .planOffset(offset);
+      return planBuilder.getRoot();
+    }
+
     // If there is only one region, we can push down the offset and limit operation to
     // source operator.
     boolean canPushDownOffsetLimit =
@@ -520,8 +531,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1
             && !showTimeSeriesStatement.isOrderByHeat();
 
-    long limit = showTimeSeriesStatement.getLimit();
-    long offset = showTimeSeriesStatement.getOffset();
     if (showTimeSeriesStatement.isOrderByHeat()) {
       limit = 0;
       offset = 0;
@@ -545,7 +554,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     // show latest timeseries
     if (showTimeSeriesStatement.isOrderByHeat()
         && null != analysis.getDataPartitionInfo()
-        && 0 != analysis.getDataPartitionInfo().getDataPartitionMap().size()) {
+        && !analysis.getDataPartitionInfo().getDataPartitionMap().isEmpty()) {
       PlanNode lastPlanNode =
           new LogicalPlanBuilder(analysis, context).planLast(analysis, null).getRoot();
       planBuilder = planBuilder.planSchemaQueryOrderByHeat(lastPlanNode);
@@ -565,6 +574,15 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitShowDevices(
       ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+
+    if (showDevicesStatement.hasTimeCondition()) {
+      planBuilder =
+          planBuilder
+              .planDeviceRegionScan(analysis.getDevicePathToAlignedStatus(), false)
+              .planLimit(showDevicesStatement.getLimit())
+              .planOffset(showDevicesStatement.getOffset());
+      return planBuilder.getRoot();
+    }
 
     // If there is only one region, we can push down the offset and limit operation to
     // source operator.
@@ -604,6 +622,12 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitCountDevices(
       CountDevicesStatement countDevicesStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+
+    if (countDevicesStatement.hasTimeCondition()) {
+      planBuilder = planBuilder.planDeviceRegionScan(analysis.getDevicePathToAlignedStatus(), true);
+      return planBuilder.getRoot();
+    }
+
     return planBuilder
         .planDevicesCountSource(
             countDevicesStatement.getPathPattern(),
@@ -617,6 +641,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitCountTimeSeries(
       CountTimeSeriesStatement countTimeSeriesStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
+
+    if (countTimeSeriesStatement.hasTimeCondition()) {
+      planBuilder =
+          planBuilder.planTimeseriesRegionScan(analysis.getDeviceToTimeseriesSchemas(), true);
+      return planBuilder.getRoot();
+    }
+
     return planBuilder
         .planTimeSeriesCountSource(
             countTimeSeriesStatement.getPathPattern(),
