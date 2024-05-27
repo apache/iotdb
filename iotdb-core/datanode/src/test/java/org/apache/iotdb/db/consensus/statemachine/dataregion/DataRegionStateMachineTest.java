@@ -36,7 +36,7 @@ import java.util.List;
 public class DataRegionStateMachineTest {
 
   @Test
-  public void testMergeInsertNodesToInsertNodesOfOneDevice() throws IllegalPathException {
+  public void testMergeInsertRowNodes() throws IllegalPathException {
     List<InsertNode> list = new ArrayList<>();
     InsertRowNode node =
         new InsertRowNode(
@@ -72,6 +72,50 @@ public class DataRegionStateMachineTest {
             false);
     list.add(node);
     DataRegionStateMachine fakeStateMachine = new DataRegionStateMachine(null);
+    InsertNode mergedNode = fakeStateMachine.mergeInsertNodes(list);
+    Assert.assertTrue(mergedNode instanceof InsertRowsNode);
+  }
+
+  @Test
+  public void testMergeInsertRowsNodes() throws IllegalPathException {
+    InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId("plan node 1"));
+    List<InsertNode> list = new ArrayList<>();
+    InsertRowNode node =
+        new InsertRowNode(
+            new PlanNodeId("plan node 1"),
+            new PartialPath("root.sg.d1"),
+            false,
+            new String[] {"s1", "s2", "s3"},
+            new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64},
+            1000L,
+            new Object[] {1.0, 2f, 300L},
+            false);
+    insertRowsNode.addOneInsertRowNode(node, 0);
+    node =
+        new InsertRowNode(
+            new PlanNodeId("plan node 1"),
+            new PartialPath("root.sg.d1"),
+            false,
+            new String[] {"s1", "s2", "s3"},
+            new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64},
+            999L,
+            new Object[] {1.0, 2f, 300L},
+            false);
+    insertRowsNode.addOneInsertRowNode(node, 1);
+    node =
+        new InsertRowNode(
+            new PlanNodeId("plan node 1"),
+            new PartialPath("root.sg.d1"),
+            false,
+            new String[] {"s1", "s2", "s3"},
+            new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64},
+            998L,
+            new Object[] {1.0, 2f, 300L},
+            false);
+    insertRowsNode.addOneInsertRowNode(node, 2);
+    DataRegionStateMachine fakeStateMachine = new DataRegionStateMachine(null);
+    list.add(insertRowsNode);
+    list.add(insertRowsNode);
     InsertNode mergedNode = fakeStateMachine.mergeInsertNodes(list);
     Assert.assertTrue(mergedNode instanceof InsertRowsNode);
   }
