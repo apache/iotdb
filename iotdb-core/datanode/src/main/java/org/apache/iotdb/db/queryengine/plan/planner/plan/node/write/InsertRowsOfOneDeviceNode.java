@@ -297,7 +297,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
 
   @Override
   public void markAsGeneratedByRemote() {
-    isGeneratedByRemote = true;
+    super.markAsGeneratedByRemote();
     insertRowNodeList.forEach(InsertRowNode::markAsGeneratedByRemote);
   }
 

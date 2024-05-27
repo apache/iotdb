@@ -258,7 +258,7 @@ public class InsertMultiTabletsNode extends InsertNode {
 
   @Override
   public void markAsGeneratedByRemote() {
-    isGeneratedByRemote = true;
+    super.markAsGeneratedByRemote();
     insertTabletNodeList.forEach(InsertTabletNode::markAsGeneratedByRemote);
   }
 
