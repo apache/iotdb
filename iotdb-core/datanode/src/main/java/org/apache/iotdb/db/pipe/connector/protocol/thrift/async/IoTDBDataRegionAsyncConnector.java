@@ -196,11 +196,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                 pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
 
         transfer(
-            // insertNode.getDevicePath() is null for InsertRowsNode
-            Objects.nonNull(insertNode) && Objects.nonNull(insertNode.getDevicePath())
-                ? insertNode.getDevicePath().getFullPath()
-                : null,
-            pipeTransferInsertNodeReqHandler);
+            // getDeviceId() may return null for InsertRowsNode
+            pipeInsertNodeTabletInsertionEvent.getDeviceId(), pipeTransferInsertNodeReqHandler);
       } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
         final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
             (PipeRawTabletInsertionEvent) tabletInsertionEvent;
@@ -491,7 +488,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   @Override
   // synchronized to avoid close connector when transfer event
-  public synchronized void close() throws Exception {
+  public synchronized void close() {
     isClosed.set(true);
 
     retryConnector.close();
@@ -500,6 +497,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();
     }
+
+    super.close();
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
