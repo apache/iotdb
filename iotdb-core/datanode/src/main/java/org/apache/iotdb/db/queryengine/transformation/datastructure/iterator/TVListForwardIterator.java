@@ -76,18 +76,16 @@ public class TVListForwardIterator implements ListForwardIterator {
   @Override
   public void next() throws IOException {
     // Move forward iterator
-    SerializableTVList tvList = this.tvList.getSerializableTVList(externalIndex);
-    if (internalIndex + 1 == tvList.getColumnCount()) {
+    if (internalIndex + 1 == tvList.getColumnCount(externalIndex)) {
       internalIndex = 0;
       externalIndex++;
-      // Update TVList due to externalIndex increasing
-      tvList = this.tvList.getSerializableTVList(externalIndex);
     } else {
       internalIndex++;
     }
 
     // Assume we already consume all data in this block
-    endPointIndex += tvList.getColumnSize(internalIndex);
+    SerializableTVList internalTVList = tvList.getSerializableTVList(externalIndex);
+    endPointIndex += internalTVList.getColumnSize(internalIndex);
   }
 
   // When tvList apply new memory control strategy, the origin iterators become invalid.
@@ -103,5 +101,9 @@ public class TVListForwardIterator implements ListForwardIterator {
 
     this.externalIndex = externalColumnIndex;
     this.internalIndex = internalColumnIndex;
+  }
+
+  public int getEndPointIndex() {
+    return endPointIndex;
   }
 }

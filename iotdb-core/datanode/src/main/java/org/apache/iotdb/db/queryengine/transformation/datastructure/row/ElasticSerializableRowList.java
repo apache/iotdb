@@ -44,6 +44,7 @@ public class ElasticSerializableRowList {
 
   protected LRUCache cache;
   protected List<SerializableRowList> internalRowList;
+  protected List<Integer> internalBlockCountList;
 
   protected int rowCount;
   protected int lastRowCount;
@@ -87,6 +88,7 @@ public class ElasticSerializableRowList {
 
     cache = new ElasticSerializableRowList.LRUCache(numCacheBlock);
     internalRowList = new ArrayList<>();
+    internalBlockCountList = new ArrayList<>();
 
     rowCount = 0;
     evictionUpperBound = 0;
@@ -128,6 +130,7 @@ public class ElasticSerializableRowList {
 
     cache = new ElasticSerializableRowList.LRUCache(numCacheBlock);
     internalRowList = new ArrayList<>();
+    internalBlockCountList = new ArrayList<>();
 
     rowCount = 0;
     evictionUpperBound = 0;
@@ -204,17 +207,15 @@ public class ElasticSerializableRowList {
       }
 
       end += consumed;
-
-      // Fill row record list
-      cache.get(rowCount / internalRowListCapacity).putColumns(insertedColumns);
-
-      total -= consumed;
-      rowCount += consumed;
       begin = end;
-
+      total -= consumed;
       if (total > 0) {
         doExpansion();
       }
+
+      // Fill row record list
+      cache.get(rowCount / internalRowListCapacity).putColumns(insertedColumns);
+      rowCount += consumed;
     }
 
     if (!disableMemoryControl) {
@@ -311,7 +312,21 @@ public class ElasticSerializableRowList {
   }
 
   private void doExpansion() {
+    if (internalRowList.size() > 0) {
+      int lastIndex = internalRowList.size() - 1;
+      SerializableRowList lastInternalList = internalRowList.get(lastIndex);
+      internalBlockCountList.add(lastInternalList.getBlockCount());
+    }
     internalRowList.add(SerializableRowList.construct(queryId, dataTypes));
+  }
+
+  public int getBlockCount(int index) {
+    if (index == internalRowList.size() - 1) {
+      SerializableRowList lastList = internalRowList.get(index);
+      return lastList.getBlockCount();
+    } else {
+      return internalBlockCountList.get(index);
+    }
   }
 
   protected void checkMemoryUsage() throws IOException, QueryProcessException {

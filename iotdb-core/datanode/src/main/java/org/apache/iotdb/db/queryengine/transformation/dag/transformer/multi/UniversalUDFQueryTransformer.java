@@ -22,18 +22,20 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.iterator.TVListForwardIterator;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
 
 import org.apache.tsfile.block.column.Column;
 
 import java.io.IOException;
 
 public abstract class UniversalUDFQueryTransformer extends UDFQueryTransformer {
-
+  protected final ElasticSerializableTVList outputStorage;
   protected final TVListForwardIterator outputLayerIterator;
 
   protected UniversalUDFQueryTransformer(UDTFExecutor executor) {
     super(executor);
-    outputLayerIterator = executor.getOutputStorage().constructIterator();
+    outputStorage = executor.getOutputStorage();
+    outputLayerIterator = outputStorage.constructIterator();
   }
 
   @Override
@@ -61,6 +63,8 @@ public abstract class UniversalUDFQueryTransformer extends UDFQueryTransformer {
     Column values = outputLayerIterator.currentValues();
     Column times = outputLayerIterator.currentTimes();
     cachedColumns = new Column[] {values, times};
+
+    outputStorage.setEvictionUpperBound(outputLayerIterator.getEndPointIndex());
 
     return true;
   }

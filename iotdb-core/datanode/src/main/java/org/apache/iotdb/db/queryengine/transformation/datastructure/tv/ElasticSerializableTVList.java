@@ -41,6 +41,7 @@ public class ElasticSerializableTVList {
 
   protected LRUCache cache;
   protected List<SerializableTVList> internalTVList;
+  protected List<Integer> internalColumnCountList;
 
   protected int pointCount;
   protected int evictionUpperBound;
@@ -70,6 +71,7 @@ public class ElasticSerializableTVList {
 
     cache = new LRUCache(cacheSize);
     internalTVList = new ArrayList<>();
+    internalColumnCountList = new ArrayList<>();
     pointCount = 0;
     evictionUpperBound = 0;
 
@@ -90,6 +92,7 @@ public class ElasticSerializableTVList {
 
     cache = new LRUCache(cacheSize);
     internalTVList = new ArrayList<>();
+    internalColumnCountList = new ArrayList<>();
     pointCount = 0;
     evictionUpperBound = 0;
 
@@ -195,19 +198,17 @@ public class ElasticSerializableTVList {
       }
 
       end += consumed;
+      begin = end;
+      total -= consumed;
+      if (total > 0) {
+        doExpansion();
+      }
 
       // Fill row record list
       cache
           .get(pointCount / internalTVListCapacity)
           .putColumns(insertedTimeColumn, insertedValueColumn);
-
-      total -= consumed;
       pointCount += consumed;
-      begin = end;
-
-      if (total > 0) {
-        doExpansion();
-      }
     }
   }
 
@@ -227,6 +228,11 @@ public class ElasticSerializableTVList {
   }
 
   private void doExpansion() {
+    if (internalTVList.size() > 0) {
+      int lastIndex = internalTVList.size() - 1;
+      SerializableTVList lastInternalList = internalTVList.get(lastIndex);
+      internalColumnCountList.add(lastInternalList.getColumnCount());
+    }
     internalTVList.add(SerializableTVList.construct(queryId));
   }
 
@@ -238,6 +244,15 @@ public class ElasticSerializableTVList {
    */
   public void setEvictionUpperBound(int evictionUpperBound) {
     this.evictionUpperBound = evictionUpperBound;
+  }
+
+  public int getColumnCount(int index) {
+    if (index == internalTVList.size() - 1) {
+      SerializableTVList lastList = internalTVList.get(index);
+      return lastList.getColumnCount();
+    } else {
+      return internalColumnCountList.get(index);
+    }
   }
 
   public int getLastPointIndex(int externalIndex, int internalIndex) {

@@ -70,18 +70,16 @@ public class RowListForwardIterator implements ListForwardIterator {
   @Override
   public void next() throws IOException {
     // Move forward iterator
-    SerializableRowList rowList = this.rowList.getSerializableRowList(externalIndex);
-    if (internalIndex + 1 == rowList.getBlockCount()) {
+    if (internalIndex + 1 == rowList.getBlockCount(externalIndex)) {
       internalIndex = 0;
       externalIndex++;
-      // Update RowList due to externalIndex increasing
-      rowList = this.rowList.getSerializableRowList(externalIndex);
     } else {
       internalIndex++;
     }
 
     // Assume we already consume all data in this block
-    endRowIndex += rowList.getBlockSize(internalIndex);
+    SerializableRowList internalRowList = rowList.getSerializableRowList(externalIndex);
+    endRowIndex += internalRowList.getBlockSize(internalIndex);
   }
 
   // When rowList apply new memory control strategy, the origin iterators become invalid.
