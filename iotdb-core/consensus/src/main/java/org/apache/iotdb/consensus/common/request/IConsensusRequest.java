@@ -35,4 +35,8 @@ public interface IConsensusRequest {
    * changed or an error may occur
    */
   ByteBuffer serializeToByteBuffer();
+
+  default void markAsGeneratedByConsensus() {
+    // do nothing by default
+  }
 }

@@ -76,6 +76,7 @@ public abstract class PlanNode implements IConsensusRequest {
     isGeneratedByPipe = true;
   }
 
+  @Override
   public void markAsGeneratedByConsensus() {
     isGeneratedByConsensus = true;
   }

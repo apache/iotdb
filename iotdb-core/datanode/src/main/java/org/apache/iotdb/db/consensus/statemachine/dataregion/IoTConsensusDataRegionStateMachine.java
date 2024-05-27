@@ -56,7 +56,9 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
         List<TSStatus> subStatus = new LinkedList<>();
         for (IConsensusRequest consensusRequest :
             ((DeserializedBatchIndexedConsensusRequest) request).getInsertNodes()) {
-          subStatus.add(write((PlanNode) consensusRequest));
+          PlanNode writeNode = (PlanNode) consensusRequest;
+          writeNode.markAsGeneratedByConsensus();
+          subStatus.add(write(writeNode));
         }
         return new TSStatus().setSubStatus(subStatus);
       } else {

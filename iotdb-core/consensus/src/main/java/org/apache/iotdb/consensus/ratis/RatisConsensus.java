@@ -288,7 +288,7 @@ class RatisConsensus implements IConsensus {
     }
 
     // serialize request into Message
-    Message message = new RequestMessage(request);
+    RequestMessage message = new RequestMessage(request);
 
     // 1. first try the local server
     RaftClientRequest clientRequest;
@@ -319,6 +319,7 @@ class RatisConsensus implements IConsensus {
 
     // 2. try raft client
     TSStatus writeResult;
+    message.getActualRequest().markAsGeneratedByConsensus();
     try (AutoCloseable ignored =
             RatisMetricsManager.getInstance().startWriteRemotelyTimer(consensusGroupType);
         RatisClient client = getRaftClient(raftGroup)) {
