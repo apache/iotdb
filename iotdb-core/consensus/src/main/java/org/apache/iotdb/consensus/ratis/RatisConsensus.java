@@ -319,7 +319,7 @@ class RatisConsensus implements IConsensus {
 
     // 2. try raft client
     TSStatus writeResult;
-    message.getActualRequest().markAsGeneratedByConsensus();
+    message.getActualRequest().markAsGeneratedByRemote();
     try (AutoCloseable ignored =
             RatisMetricsManager.getInstance().startWriteRemotelyTimer(consensusGroupType);
         RatisClient client = getRaftClient(raftGroup)) {

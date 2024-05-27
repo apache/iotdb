@@ -434,7 +434,7 @@ public class LoadTsFileScheduler implements IScheduler {
                       databaseName,
                       Tag.REGION.toString(),
                       dataRegion.getDataRegionId());
-              if (!node.isGeneratedByConsensus()) {
+              if (!node.isGeneratedByRemote()) {
                 MetricService.getInstance()
                     .count(
                         node.getWritePointCount(),

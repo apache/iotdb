@@ -36,7 +36,7 @@ public interface IConsensusRequest {
    */
   ByteBuffer serializeToByteBuffer();
 
-  default void markAsGeneratedByConsensus() {
+  default void markAsGeneratedByRemote() {
     // do nothing by default
   }
 }
