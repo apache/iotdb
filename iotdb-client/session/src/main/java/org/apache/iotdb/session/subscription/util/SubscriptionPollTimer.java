@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.subscription.timer;
+package org.apache.iotdb.session.subscription.util;
 
 public class SubscriptionPollTimer {
 
