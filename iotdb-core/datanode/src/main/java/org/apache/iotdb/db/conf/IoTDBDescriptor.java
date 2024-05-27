@@ -1752,20 +1752,6 @@ public class IoTDBDescriptor {
     }
   }
 
-  private void loadHotModifiedPropertiesFromUrl(Properties commonProperties, URL url)
-      throws QueryProcessException {
-    try (InputStream inputStream = url.openStream()) {
-      LOGGER.info("Start to reload config file {}", url);
-      Properties properties = new Properties();
-      properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-      commonProperties.putAll(properties);
-    } catch (Exception e) {
-      LOGGER.warn("Fail to reload config file {}", url, e);
-      throw new QueryProcessException(
-          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
-    }
-  }
-
   private void initMemoryAllocate(Properties properties) {
     String memoryAllocateProportion = properties.getProperty("datanode_memory_proportion", null);
     if (memoryAllocateProportion == null) {

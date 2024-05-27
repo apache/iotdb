@@ -89,12 +89,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
-  protected String getTargetNodeConfigPath() {
-    return workDirFilePath("conf", IOTDB_SYSTEM_PROPERTIES_FILE);
-  }
-
-  @Override
-  protected String getTargetCommonConfigPath() {
+  protected String getSystemConfigPath() {
     return workDirFilePath("conf", IOTDB_SYSTEM_PROPERTIES_FILE);
   }
 
