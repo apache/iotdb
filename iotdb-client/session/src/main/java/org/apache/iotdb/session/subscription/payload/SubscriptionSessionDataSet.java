@@ -149,10 +149,12 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
         field.setBoolV(booleanValue);
         break;
       case INT32:
+      case DATE:
         final int intValue = ((int[]) value)[index];
         field.setIntV(intValue);
         break;
       case INT64:
+      case TIMESTAMP:
         final long longValue = ((long[]) value)[index];
         field.setLongV(longValue);
         break;
@@ -165,6 +167,8 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
         field.setDoubleV(doubleValue);
         break;
       case TEXT:
+      case STRING:
+      case BLOB:
         final Binary binaryValue = new Binary((((Binary[]) value)[index]).getValues());
         field.setBinaryV(binaryValue);
         break;

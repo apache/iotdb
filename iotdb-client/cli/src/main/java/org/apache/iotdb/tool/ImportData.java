@@ -70,11 +70,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.tsfile.enums.TSDataType.BOOLEAN;
-import static org.apache.tsfile.enums.TSDataType.DOUBLE;
-import static org.apache.tsfile.enums.TSDataType.FLOAT;
-import static org.apache.tsfile.enums.TSDataType.INT32;
-import static org.apache.tsfile.enums.TSDataType.INT64;
+import static org.apache.tsfile.enums.TSDataType.STRING;
 import static org.apache.tsfile.enums.TSDataType.TEXT;
 
 public class ImportData extends AbstractDataTool {
@@ -124,6 +120,9 @@ public class ImportData extends AbstractDataTool {
   private static final String DATATYPE_LONG = "long";
   private static final String DATATYPE_FLOAT = "float";
   private static final String DATATYPE_DOUBLE = "double";
+  private static final String DATATYPE_TIMESTAMP = "timestamp";
+  private static final String DATATYPE_DATE = "date";
+  private static final String DATATYPE_BLOB = "blob";
   private static final String DATATYPE_NAN = "NaN";
   private static final String DATATYPE_TEXT = "text";
 
@@ -140,6 +139,9 @@ public class ImportData extends AbstractDataTool {
     TYPE_INFER_KEY_DICT.put(DATATYPE_LONG, TSDataType.DOUBLE);
     TYPE_INFER_KEY_DICT.put(DATATYPE_FLOAT, TSDataType.FLOAT);
     TYPE_INFER_KEY_DICT.put(DATATYPE_DOUBLE, TSDataType.DOUBLE);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_TIMESTAMP, TSDataType.TIMESTAMP);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_DATE, TSDataType.TIMESTAMP);
+    TYPE_INFER_KEY_DICT.put(DATATYPE_BLOB, TSDataType.TEXT);
     TYPE_INFER_KEY_DICT.put(DATATYPE_NAN, TSDataType.DOUBLE);
   }
 
@@ -151,6 +153,9 @@ public class ImportData extends AbstractDataTool {
     TYPE_INFER_VALUE_DICT.put(DATATYPE_LONG, TSDataType.INT64);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_FLOAT, TSDataType.FLOAT);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_DOUBLE, TSDataType.DOUBLE);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_TIMESTAMP, TSDataType.TIMESTAMP);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_DATE, TSDataType.TIMESTAMP);
+    TYPE_INFER_VALUE_DICT.put(DATATYPE_BLOB, TSDataType.TEXT);
     TYPE_INFER_VALUE_DICT.put(DATATYPE_TEXT, TSDataType.TEXT);
   }
 
@@ -944,21 +949,10 @@ public class ImportData extends AbstractDataTool {
    * @return
    */
   private static TSDataType getType(String typeStr) {
-    switch (typeStr) {
-      case "TEXT":
-        return TEXT;
-      case "BOOLEAN":
-        return BOOLEAN;
-      case "INT32":
-        return INT32;
-      case "INT64":
-        return INT64;
-      case "FLOAT":
-        return FLOAT;
-      case "DOUBLE":
-        return DOUBLE;
-      default:
-        return null;
+    try {
+      return TSDataType.valueOf(typeStr);
+    } catch (Exception e) {
+      return null;
     }
   }
 
@@ -971,7 +965,7 @@ public class ImportData extends AbstractDataTool {
    */
   private static TSDataType typeInfer(String strValue) {
     if (strValue.contains("\"")) {
-      return TEXT;
+      return strValue.length() <= 512 + 2 ? STRING : TEXT;
     }
     if (isBoolean(strValue)) {
       return TYPE_INFER_KEY_DICT.get(DATATYPE_BOOLEAN);
@@ -989,8 +983,10 @@ public class ImportData extends AbstractDataTool {
       // "NaN" is returned if the NaN Literal is given in Parser
     } else if (DATATYPE_NAN.equals(strValue)) {
       return TYPE_INFER_KEY_DICT.get(DATATYPE_NAN);
+    } else if (strValue.length() <= 512) {
+      return STRING;
     } else {
-      return TSDataType.TEXT;
+      return TEXT;
     }
   }
 
@@ -1024,6 +1020,7 @@ public class ImportData extends AbstractDataTool {
     try {
       switch (type) {
         case TEXT:
+        case STRING:
           if (value.startsWith("\"") && value.endsWith("\"")) {
             return value.substring(1, value.length() - 1);
           }

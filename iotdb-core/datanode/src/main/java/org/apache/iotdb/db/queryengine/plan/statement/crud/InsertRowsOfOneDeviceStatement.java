@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -115,9 +116,9 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
   }
 
   @Override
-  public void updateAfterSchemaValidation() throws QueryProcessException {
+  public void updateAfterSchemaValidation(MPPQueryContext context) throws QueryProcessException {
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
-      insertRowStatement.updateAfterSchemaValidation();
+      insertRowStatement.updateAfterSchemaValidation(context);
       if (!this.hasFailedMeasurements() && insertRowStatement.hasFailedMeasurements()) {
         this.failedMeasurementIndex2Info = insertRowStatement.failedMeasurementIndex2Info;
       }

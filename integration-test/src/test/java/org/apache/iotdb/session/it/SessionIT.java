@@ -26,9 +26,11 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
@@ -41,7 +43,10 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 import static org.junit.Assert.fail;
@@ -117,6 +122,224 @@ public class SessionIT {
         i++;
       }
 
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInsertRecord() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      List<TSDataType> dataTypeList =
+          Arrays.asList(TSDataType.DATE, TSDataType.TIMESTAMP, TSDataType.BLOB, TSDataType.STRING);
+      List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4");
+      String deviceId = "root.db.d1";
+      for (int i = 0; i < dataTypeList.size(); i++) {
+        String tsPath = deviceId + "." + measurements.get(i);
+        if (!session.checkTimeseriesExists(tsPath)) {
+          session.createTimeseries(
+              tsPath, dataTypeList.get(i), TSEncoding.PLAIN, CompressionType.SNAPPY);
+        }
+      }
+      byte[] bytes = new byte[2];
+      bytes[0] = (byte) Integer.parseInt("BA", 16);
+      bytes[1] = (byte) Integer.parseInt("BE", 16);
+      for (long time = 10; time < 20; time++) {
+        List<Object> values = new ArrayList<>();
+        values.add(LocalDate.of(2024, 1, (int) time));
+        values.add(time);
+        values.add(new Binary(bytes));
+        values.add("" + time);
+        session.insertRecord(deviceId, time, measurements, dataTypeList, values);
+      }
+      try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.db.d1")) {
+        HashSet<String> columnNames = new HashSet<>(dataSet.getColumnNames());
+        Assert.assertEquals(5, columnNames.size());
+        for (int i = 0; i < 4; i++) {
+          Assert.assertTrue(columnNames.contains(deviceId + "." + measurements.get(i)));
+        }
+        dataSet.setFetchSize(1024); // default is 10000
+        int row = 10;
+        while (dataSet.hasNext()) {
+          RowRecord record = dataSet.next();
+          Assert.assertEquals(row, record.getTimestamp());
+          List<Field> fields = record.getFields();
+          Assert.assertEquals(4, fields.size());
+          for (int i = 0; i < 4; i++) {
+            switch (fields.get(i).getDataType()) {
+              case DATE:
+                Assert.assertEquals(LocalDate.of(2024, 1, row), fields.get(i).getDateV());
+                break;
+              case TIMESTAMP:
+                Assert.assertEquals(row, fields.get(i).getLongV());
+                break;
+              case BLOB:
+                Assert.assertArrayEquals(bytes, fields.get(i).getBinaryV().getValues());
+                break;
+              case STRING:
+                Assert.assertEquals("" + row, fields.get(i).getBinaryV().toString());
+                break;
+              default:
+                fail("Unsupported data type");
+            }
+            fields.get(i).getDataType();
+          }
+          row++;
+        }
+        Assert.assertEquals(20, row);
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInsertStrRecord() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      List<TSDataType> dataTypeList =
+          Arrays.asList(TSDataType.DATE, TSDataType.TIMESTAMP, TSDataType.BLOB, TSDataType.STRING);
+      List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4");
+      String deviceId = "root.db.d1";
+      for (int i = 0; i < dataTypeList.size(); i++) {
+        String tsPath = deviceId + "." + measurements.get(i);
+        if (!session.checkTimeseriesExists(tsPath)) {
+          session.createTimeseries(
+              tsPath, dataTypeList.get(i), TSEncoding.PLAIN, CompressionType.SNAPPY);
+        }
+      }
+      byte[] bytes = new byte[2];
+      bytes[0] = (byte) Integer.parseInt("BA", 16);
+      bytes[1] = (byte) Integer.parseInt("BE", 16);
+      for (long time = 10; time < 20; time++) {
+        List<String> values = new ArrayList<>();
+        values.add("2024-01-" + time);
+        values.add("" + time);
+        values.add("X'BABE'");
+        values.add("" + time);
+        session.insertRecord(deviceId, time, measurements, values);
+      }
+      try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.db.d1")) {
+        HashSet<String> columnNames = new HashSet<>(dataSet.getColumnNames());
+        Assert.assertEquals(5, columnNames.size());
+        for (int i = 0; i < 4; i++) {
+          Assert.assertTrue(columnNames.contains(deviceId + "." + measurements.get(i)));
+        }
+        dataSet.setFetchSize(1024); // default is 10000
+        int row = 10;
+        while (dataSet.hasNext()) {
+          RowRecord record = dataSet.next();
+          System.out.println(record);
+          Assert.assertEquals(row, record.getTimestamp());
+          List<Field> fields = record.getFields();
+          Assert.assertEquals(4, fields.size());
+          for (int i = 0; i < 4; i++) {
+            switch (fields.get(i).getDataType()) {
+              case DATE:
+                Assert.assertEquals(LocalDate.of(2024, 1, row), fields.get(i).getDateV());
+                break;
+              case TIMESTAMP:
+                Assert.assertEquals(row, fields.get(i).getLongV());
+                break;
+              case BLOB:
+                Assert.assertArrayEquals(bytes, fields.get(i).getBinaryV().getValues());
+                break;
+              case STRING:
+                Assert.assertEquals("" + row, fields.get(i).getBinaryV().toString());
+                break;
+              default:
+                fail("Unsupported data type");
+            }
+            fields.get(i).getDataType();
+          }
+          row++;
+        }
+        Assert.assertEquals(20, row);
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInsertTablet() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      List<MeasurementSchema> schemaList = new ArrayList<>();
+      String deviceId = "root.db.d1";
+      schemaList.add(new MeasurementSchema("s1", TSDataType.DATE));
+      schemaList.add(new MeasurementSchema("s2", TSDataType.TIMESTAMP));
+      schemaList.add(new MeasurementSchema("s3", TSDataType.BLOB));
+      schemaList.add(new MeasurementSchema("s4", TSDataType.STRING));
+      Tablet tablet = new Tablet(deviceId, schemaList, 100);
+      byte[] bytes = new byte[2];
+      bytes[0] = (byte) Integer.parseInt("BA", 16);
+      bytes[1] = (byte) Integer.parseInt("BE", 16);
+      // Method 1 to add tablet data
+      for (long time = 10; time < 15; time++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, time);
+        tablet.addValue(
+            schemaList.get(0).getMeasurementId(), rowIndex, LocalDate.of(2024, 1, (int) time));
+        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, time);
+        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, new Binary(bytes));
+        tablet.addValue(schemaList.get(3).getMeasurementId(), rowIndex, "" + time);
+      }
+      session.insertTablet(tablet);
+      tablet.reset();
+      // Method 2 to add tablet data
+      long[] timestamps = tablet.timestamps;
+      Object[] values = tablet.values;
+      for (long time = 15; time < 20; time++) {
+        int rowIndex = tablet.rowSize++;
+        timestamps[rowIndex] = time;
+        ((LocalDate[]) values[0])[rowIndex] = LocalDate.of(2024, 1, (int) time);
+        ((long[]) values[1])[rowIndex] = time;
+        ((Binary[]) values[2])[rowIndex] = new Binary(bytes);
+        ((Binary[]) values[3])[rowIndex] = new Binary(time + "", TSFileConfig.STRING_CHARSET);
+      }
+      session.insertTablet(tablet);
+      tablet.reset();
+      try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.db.d1")) {
+        HashSet<String> columnNames = new HashSet<>(dataSet.getColumnNames());
+        Assert.assertEquals(5, columnNames.size());
+        for (int i = 0; i < 4; i++) {
+          Assert.assertTrue(
+              columnNames.contains(deviceId + "." + schemaList.get(i).getMeasurementId()));
+        }
+        dataSet.setFetchSize(1024); // default is 10000
+        int row = 10;
+        while (dataSet.hasNext()) {
+          RowRecord record = dataSet.next();
+          Assert.assertEquals(row, record.getTimestamp());
+          List<Field> fields = record.getFields();
+          Assert.assertEquals(4, fields.size());
+          for (int i = 0; i < 4; i++) {
+            switch (fields.get(i).getDataType()) {
+              case DATE:
+                Assert.assertEquals(LocalDate.of(2024, 1, row), fields.get(i).getDateV());
+                break;
+              case TIMESTAMP:
+                Assert.assertEquals(row, fields.get(i).getLongV());
+                break;
+              case BLOB:
+                Assert.assertArrayEquals(bytes, fields.get(i).getBinaryV().getValues());
+                break;
+              case STRING:
+                Assert.assertEquals("" + row, fields.get(i).getBinaryV().toString());
+                break;
+              default:
+                fail("Unsupported data type");
+            }
+            fields.get(i).getDataType();
+          }
+          row++;
+        }
+        Assert.assertEquals(20, row);
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

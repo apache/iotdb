@@ -43,7 +43,7 @@ public class UDTFStrLocate implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, Type.TEXT)
+        .validateInputSeriesDataType(0, Type.TEXT, Type.STRING)
         .validate(
             target -> ((String) target).length() > 0,
             "target should not be empty",
