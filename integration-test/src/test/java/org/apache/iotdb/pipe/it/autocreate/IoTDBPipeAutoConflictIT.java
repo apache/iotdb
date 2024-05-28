@@ -53,19 +53,19 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
 
     // TODO: delete ratis configurations
     senderEnv
-            .getConfig()
-            .getCommonConfig()
-            .setAutoCreateSchemaEnabled(true)
-            .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-            .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-            .setDataRegionConsensusProtocolClass(ConsensusFactory.STREAM_CONSENSUS);
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.BATCH_CONSENSUS);
     receiverEnv
-            .getConfig()
-            .getCommonConfig()
-            .setAutoCreateSchemaEnabled(true)
-            .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-            .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-            .setDataRegionConsensusProtocolClass(ConsensusFactory.STREAM_CONSENSUS);
+        .getConfig()
+        .getCommonConfig()
+        .setAutoCreateSchemaEnabled(true)
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.BATCH_CONSENSUS);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
