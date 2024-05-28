@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.relational.sql.tree;
 
 import org.apache.iotdb.db.relational.sql.util.ExpressionFormatter;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
 

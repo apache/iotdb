@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.db.relational.sql.tree;
 
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

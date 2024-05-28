@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.relational.sql.tree;
 
 import org.apache.iotdb.db.relational.sql.parser.ParsingException;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.io.BaseEncoding;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
