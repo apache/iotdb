@@ -196,7 +196,6 @@ public class TemplatedAnalyze {
     analyzeDeviceToSource(analysis);
 
     analyzeDeviceViewOutput(analysis, queryStatement);
-    analyzeDeviceViewInput(analysis, queryStatement);
 
     analyzeFill(analysis, queryStatement);
 
@@ -366,27 +365,6 @@ public class TemplatedAnalyze {
     analysis.setDeviceViewOutputExpressions(deviceViewOutputExpressions);
     analysis.setDeviceViewSpecialProcess(
         analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement, analysis));
-  }
-
-  static void analyzeDeviceViewInput(Analysis analysis, QueryStatement queryStatement) {
-    List<Integer> indexes = new ArrayList<>();
-
-    if (queryStatement.isAggregationQuery()) {
-      for (int i = 1; i <= analysis.getAggregationExpressions().size(); i++) {
-        indexes.add(i);
-      }
-    } else {
-      for (int i = 1; i < analysis.getSelectExpressions().size(); i++) {
-        indexes.add(i);
-      }
-    }
-
-    // TODO only store once
-    Map<String, List<Integer>> deviceViewInputIndexesMap = new HashMap<>();
-    for (PartialPath devicePath : analysis.getDeviceList()) {
-      deviceViewInputIndexesMap.put(devicePath.getFullPath(), indexes);
-    }
-    analysis.setDeviceViewInputIndexesMap(deviceViewInputIndexesMap);
   }
 
   private static void analyzeDeviceToSource(Analysis analysis) {

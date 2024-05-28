@@ -51,7 +51,6 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.no
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchAggregationExpressions;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDataPartition;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDeviceToWhere;
-import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDeviceViewInput;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeDeviceViewOutput;
 import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAnalyze.analyzeFrom;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetInGroupByTimeForDevice;
@@ -106,7 +105,6 @@ public class TemplatedAggregationAnalyze {
     analyzeDeviceToExpressions(analysis);
 
     analyzeDeviceViewOutput(analysis, queryStatement);
-    analyzeDeviceViewInput(analysis, queryStatement);
 
     // generate result set header according to output expressions
     analyzeOutput(analysis, queryStatement, outputExpressions);

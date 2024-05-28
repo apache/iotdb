@@ -238,18 +238,12 @@ public class DeviceViewNode extends MultiChildProcessNode {
       devicesSize--;
     }
 
-    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>(devices.size());
-    for (String deviceName : devices) {
-      deviceToMeasurementIndexesMap.put(
-          deviceName, typeProvider.getTemplatedInfo().getDeviceToMeasurementIndexes());
-    }
-
     return new DeviceViewNode(
         planNodeId,
         mergeOrderParameter,
         typeProvider.getTemplatedInfo().getDeviceViewOutputNames(),
         devices,
-        deviceToMeasurementIndexesMap);
+        null);
   }
 
   @Override

@@ -138,6 +138,16 @@ public class TemplatedLogicalPlan {
     if (queryStatement.isOutputEndTime()) {
       context.getTypeProvider().setType(END_TIME_EXPRESSION.getOutputSymbol(), TSDataType.INT64);
     }
+    if (queryStatement.isCountTimeAggregation()) {
+      context.getTypeProvider().setType("count_time(*)", TSDataType.INT64);
+      context.getTypeProvider().setType("count_time(Time)", TSDataType.INT64);
+    }
+
+    List<Integer> deviceToMeasurementIndexes =
+        new ArrayList<>(analysis.getSelectExpressions().size() - 1);
+    for (int i = 1; i <= analysis.getAggregationExpressions().size(); i++) {
+      deviceToMeasurementIndexes.add(i);
+    }
 
     context
         .getTypeProvider()
@@ -153,7 +163,7 @@ public class TemplatedLogicalPlan {
                 analysis.getDeviceViewOutputExpressions().stream()
                     .map(Expression::getExpressionString)
                     .collect(Collectors.toList()),
-                analysis.getDeviceViewInputIndexesMap().values().iterator().next(),
+                deviceToMeasurementIndexes,
                 OFFSET_VALUE,
                 limitValue,
                 whereExpression,
@@ -197,6 +207,12 @@ public class TemplatedLogicalPlan {
                   context.getTypeProvider().setType(key.getNode().getOutputSymbol(), value));
     }
 
+    List<Integer> deviceToMeasurementIndexes =
+        new ArrayList<>(analysis.getSelectExpressions().size() - 1);
+    for (int i = 1; i < analysis.getSelectExpressions().size(); i++) {
+      deviceToMeasurementIndexes.add(i);
+    }
+
     context
         .getTypeProvider()
         .setTemplatedInfo(
@@ -211,7 +227,7 @@ public class TemplatedLogicalPlan {
                 analysis.getDeviceViewOutputExpressions().stream()
                     .map(Expression::getExpressionString)
                     .collect(Collectors.toList()),
-                analysis.getDeviceViewInputIndexesMap().values().iterator().next(),
+                deviceToMeasurementIndexes,
                 OFFSET_VALUE,
                 limitValue,
                 whereExpression,
@@ -351,7 +367,7 @@ public class TemplatedLogicalPlan {
             .planDeviceView(
                 deviceToSubPlanMap,
                 analysis.getDeviceViewOutputExpressions(),
-                analysis.getDeviceViewInputIndexesMap(),
+                null,
                 analysis.getSelectExpressions(),
                 queryStatement,
                 analysis)

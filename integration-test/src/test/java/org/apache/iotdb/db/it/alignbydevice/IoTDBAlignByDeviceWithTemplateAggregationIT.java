@@ -253,8 +253,43 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
 
   @Test
   public void countTimeTest() {
+    // no filter
     String[] expectedHeader = new String[] {"Device,count_time(*)"};
     String[] retArray =
+        new String[] {
+          "root.sg1.d1,4,", "root.sg1.d2,4,", "root.sg1.d3,4,", "root.sg1.d4,4,",
+        };
+    resultSetEqualTest(
+        "SELECT count_time(*) FROM root.sg1.** align by device;", expectedHeader, retArray);
+    retArray =
+        new String[] {
+          "root.sg2.d1,4,", "root.sg2.d2,4,", "root.sg2.d3,4,", "root.sg2.d4,4,",
+        };
+    resultSetEqualTest(
+        "SELECT count_time(*) FROM root.sg2.** align by device;", expectedHeader, retArray);
+
+    // and filter
+    expectedHeader = new String[] {"Device,count_time(*)"};
+    retArray =
+        new String[] {
+          "root.sg1.d1,2,", "root.sg1.d2,4,", "root.sg1.d3,2,", "root.sg1.d4,1,",
+        };
+    resultSetEqualTest(
+        "SELECT count_time(*) FROM root.sg1.** where s3>0 and s2=false align by device;",
+        expectedHeader,
+        retArray);
+    retArray =
+        new String[] {
+          "root.sg2.d1,2,", "root.sg2.d2,4,", "root.sg2.d3,2,", "root.sg2.d4,1,",
+        };
+    resultSetEqualTest(
+        "SELECT count_time(*) FROM root.sg2.** where s3>0 and s2=false align by device;",
+        expectedHeader,
+        retArray);
+
+    // or filter
+    expectedHeader = new String[] {"Device,count_time(*)"};
+    retArray =
         new String[] {
           "root.sg1.d1,2,", "root.sg1.d2,4,", "root.sg1.d3,2,", "root.sg1.d4,1,",
         };
@@ -271,6 +306,7 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
         expectedHeader,
         retArray);
 
+    // group by
     expectedHeader = new String[] {"Time,Device,count_time(*)"};
     retArray =
         new String[] {

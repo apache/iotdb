@@ -292,7 +292,6 @@ import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOper
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
-import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.DESC;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree. */
@@ -497,11 +496,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<String> outputColumnNames = node.getOutputColumnNames();
     if (outputColumnNames == null) {
       if (context.getTypeProvider().getTemplatedInfo().isAggregationQuery()) {
-        // TODO fix it
-        // outputColumnNames is aggregation expression
         outputColumnNames = context.getTypeProvider().getTemplatedInfo().getDeviceViewOutputNames();
         outputColumnNames = outputColumnNames.subList(1, outputColumnNames.size());
-        inputColumnNames = outputColumnNames;
+        inputColumnNames = node.getChild().getOutputColumnNames();
       } else {
         outputColumnNames = context.getTypeProvider().getTemplatedInfo().getDeviceViewOutputNames();
         // skip device column
@@ -602,12 +599,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, LocalExecutionPlanContext context) {
     if (context.isBuildPlanUseTemplate()) {
-      Ordering scanOrder = ASC;
-      List<AggregationDescriptor> aggregationDescriptors = null;
+      Ordering scanOrder = context.getTemplatedInfo().getScanOrder();
+      List<AggregationDescriptor> aggregationDescriptors;
       if (node.getDescriptorType() == 0 || node.getDescriptorType() == 2) {
         aggregationDescriptors = context.getTemplatedInfo().getAscendingDescriptorList();
       } else {
-        scanOrder = DESC;
+        scanOrder = scanOrder.reverse();
         aggregationDescriptors = context.getTemplatedInfo().getDescendingDescriptorList();
       }
 
@@ -1016,10 +1013,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 DeviceViewOperator.class.getSimpleName());
     List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
-    List<List<Integer>> deviceColumnIndex =
-        node.getDevices().stream()
-            .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
-            .collect(Collectors.toList());
+    List<List<Integer>> deviceColumnIndex = new ArrayList<>(node.getDevices().size());
+    if (context.getTemplatedInfo() != null) {
+      for (int i = 0; i < node.getDevices().size(); i++) {
+        deviceColumnIndex.add(context.getTemplatedInfo().getDeviceToMeasurementIndexes());
+      }
+    } else {
+      deviceColumnIndex =
+          node.getDevices().stream()
+              .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
+              .collect(Collectors.toList());
+    }
+
     List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
 
     return new DeviceViewOperator(

@@ -61,7 +61,7 @@ public class TemplatedInfo {
 
   // variables used in DeviceViewOperator
   private final List<String> deviceViewOutputNames;
-  private final List<Integer> deviceToMeasurementIndexes;
+  private List<Integer> deviceToMeasurementIndexes;
 
   // variables related to LIMIT/OFFSET push down
   private final long offsetValue;
@@ -160,6 +160,10 @@ public class TemplatedInfo {
 
   public List<Integer> getDeviceToMeasurementIndexes() {
     return this.deviceToMeasurementIndexes;
+  }
+
+  public void setDeviceToMeasurementIndexes(List<Integer> deviceToMeasurementIndexes) {
+    this.deviceToMeasurementIndexes = deviceToMeasurementIndexes;
   }
 
   public Expression getPredicate() {
