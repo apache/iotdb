@@ -2278,8 +2278,10 @@ public class IoTDBDescriptor {
       case BOOLEAN:
         return conf.getDefaultBooleanEncoding();
       case INT32:
+      case DATE:
         return conf.getDefaultInt32Encoding();
       case INT64:
+      case TIMESTAMP:
         return conf.getDefaultInt64Encoding();
       case FLOAT:
         return conf.getDefaultFloatEncoding();

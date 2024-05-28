@@ -53,12 +53,14 @@ public class WindowImpl implements Window {
 
     switch (dataType) {
       case INT32:
+      case DATE:
         intValues = new int[size];
         for (int i = 0; i < size; ++i) {
           intValues[i] = list.getIntByIndex(begin + i);
         }
         break;
       case INT64:
+      case TIMESTAMP:
         longValues = new long[size];
         for (int i = 0; i < size; ++i) {
           longValues[i] = list.getLongByIndex(begin + i);
@@ -83,6 +85,8 @@ public class WindowImpl implements Window {
         }
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         binaryValues = new Binary[size];
         for (int i = 0; i < size; ++i) {
           binaryValues[i] = list.getBinaryByIndex(begin + i);

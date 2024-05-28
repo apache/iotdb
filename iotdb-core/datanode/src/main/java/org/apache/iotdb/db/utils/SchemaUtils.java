@@ -62,6 +62,8 @@ public class SchemaUtils {
 
     schemaChecker.put(TSDataType.INT32, intSet);
     schemaChecker.put(TSDataType.INT64, intSet);
+    schemaChecker.put(TSDataType.TIMESTAMP, intSet);
+    schemaChecker.put(TSDataType.DATE, intSet);
 
     Set<TSEncoding> floatSet = new HashSet<>();
     floatSet.add(TSEncoding.PLAIN);
@@ -80,6 +82,8 @@ public class SchemaUtils {
     textSet.add(TSEncoding.PLAIN);
     textSet.add(TSEncoding.DICTIONARY);
     schemaChecker.put(TSDataType.TEXT, textSet);
+    schemaChecker.put(TSDataType.BLOB, textSet);
+    schemaChecker.put(TSDataType.STRING, textSet);
   }
 
   /**

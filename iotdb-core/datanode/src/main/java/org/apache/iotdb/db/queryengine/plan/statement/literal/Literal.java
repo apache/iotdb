@@ -36,7 +36,8 @@ public abstract class Literal extends StatementNode {
     DOUBLE,
     LONG,
     STRING,
-    NULL
+    NULL,
+    BINARY
   }
 
   public static Literal deserialize(ByteBuffer byteBuffer) {
@@ -52,6 +53,8 @@ public abstract class Literal extends StatementNode {
         return new StringLiteral(ReadWriteIOUtils.readString(byteBuffer));
       case NULL:
         return new NullLiteral();
+      case BINARY:
+        return new BinaryLiteral(ReadWriteIOUtils.readBinary(byteBuffer).getValues());
       default:
         throw new IllegalArgumentException(String.format("Unknown literal type: %s", type));
     }

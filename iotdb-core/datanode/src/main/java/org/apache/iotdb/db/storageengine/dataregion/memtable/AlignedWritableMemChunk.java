@@ -393,7 +393,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
                 long recordSize =
                     MemUtils.getRecordSize(
                         tsDataType,
-                        tsDataType == TSDataType.TEXT
+                        tsDataType.isBinary()
                             ? list.getBinaryByValueIndex(
                                 list.getValueIndex(sortedRowIndex), columnIndex)
                             : null,
@@ -428,10 +428,12 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
                   time, list.getBooleanByValueIndex(originRowIndex, columnIndex), isNull);
               break;
             case INT32:
+            case DATE:
               alignedChunkWriter.writeByColumn(
                   time, list.getIntByValueIndex(originRowIndex, columnIndex), isNull);
               break;
             case INT64:
+            case TIMESTAMP:
               alignedChunkWriter.writeByColumn(
                   time, list.getLongByValueIndex(originRowIndex, columnIndex), isNull);
               break;
@@ -444,6 +446,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
                   time, list.getDoubleByValueIndex(originRowIndex, columnIndex), isNull);
               break;
             case TEXT:
+            case BLOB:
+            case STRING:
               alignedChunkWriter.writeByColumn(
                   time, list.getBinaryByValueIndex(originRowIndex, columnIndex), isNull);
               break;
