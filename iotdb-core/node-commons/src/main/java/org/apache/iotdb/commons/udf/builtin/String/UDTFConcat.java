@@ -46,7 +46,7 @@ public class UDTFConcat implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     int size = validator.getParameters().getChildExpressions().size();
     for (int i = 0; i < size; i++) {
-      validator.validateInputSeriesDataType(i, Type.TEXT);
+      validator.validateInputSeriesDataType(i, Type.TEXT, Type.STRING);
     }
   }
 

@@ -79,6 +79,8 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE = "forced-log";
   public static final String EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE = "stream";
   public static final String EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE = "batch";
+  public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_KEY = "extractor.realtime.loose-range";
+  public static final String SOURCE_REALTIME_LOOSE_RANGE_KEY = "source.realtime.loose-range";
 
   public static final String EXTRACTOR_START_TIME_KEY = "extractor.start-time";
   public static final String SOURCE_START_TIME_KEY = "source.start-time";

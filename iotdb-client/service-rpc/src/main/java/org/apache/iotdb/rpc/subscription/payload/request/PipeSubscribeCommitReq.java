@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.rpc.subscription.payload.request;
 
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -27,17 +28,22 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
 
-  private transient Map<String, List<String>> topicNameToSubscriptionCommitIds = new HashMap<>();
+  private transient List<SubscriptionCommitContext> commitContexts = new ArrayList<>();
 
-  public Map<String, List<String>> getTopicNameToSubscriptionCommitIds() {
-    return topicNameToSubscriptionCommitIds;
+  private transient boolean nack;
+
+  public List<SubscriptionCommitContext> getCommitContexts() {
+    return commitContexts;
+  }
+
+  public boolean isNack() {
+    return nack;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -47,20 +53,21 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
    * client.
    */
   public static PipeSubscribeCommitReq toTPipeSubscribeReq(
-      Map<String, List<String>> topicNameToSubscriptionCommitIds) throws IOException {
+      final List<SubscriptionCommitContext> commitContexts, final boolean nack) throws IOException {
     final PipeSubscribeCommitReq req = new PipeSubscribeCommitReq();
 
-    req.topicNameToSubscriptionCommitIds = topicNameToSubscriptionCommitIds;
+    req.commitContexts = commitContexts;
+    req.nack = nack;
 
     req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();
     req.type = PipeSubscribeRequestType.COMMIT.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.write(topicNameToSubscriptionCommitIds.size(), outputStream);
-      for (Map.Entry<String, List<String>> entry : topicNameToSubscriptionCommitIds.entrySet()) {
-        ReadWriteIOUtils.write(entry.getKey(), outputStream);
-        ReadWriteIOUtils.writeStringList(entry.getValue(), outputStream);
+      ReadWriteIOUtils.write(commitContexts.size(), outputStream);
+      for (final SubscriptionCommitContext commitContext : commitContexts) {
+        commitContext.serialize(outputStream);
       }
+      ReadWriteIOUtils.write(nack, outputStream);
       req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
@@ -68,16 +75,15 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
   }
 
   /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
-  public static PipeSubscribeCommitReq fromTPipeSubscribeReq(TPipeSubscribeReq commitReq) {
+  public static PipeSubscribeCommitReq fromTPipeSubscribeReq(final TPipeSubscribeReq commitReq) {
     final PipeSubscribeCommitReq req = new PipeSubscribeCommitReq();
 
     if (Objects.nonNull(commitReq.body) && commitReq.body.hasRemaining()) {
-      int size = ReadWriteIOUtils.readInt(commitReq.body);
+      final int size = ReadWriteIOUtils.readInt(commitReq.body);
       for (int i = 0; i < size; ++i) {
-        String topicName = ReadWriteIOUtils.readString(commitReq.body);
-        List<String> subscriptionCommitIds = ReadWriteIOUtils.readStringList(commitReq.body);
-        req.topicNameToSubscriptionCommitIds.put(topicName, subscriptionCommitIds);
+        req.commitContexts.add(SubscriptionCommitContext.deserialize(commitReq.body));
       }
+      req.nack = ReadWriteIOUtils.readBool(commitReq.body);
     }
 
     req.version = commitReq.version;
@@ -90,16 +96,16 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribeCommitReq that = (PipeSubscribeCommitReq) obj;
-    return Objects.equals(
-            this.topicNameToSubscriptionCommitIds, that.topicNameToSubscriptionCommitIds)
+    final PipeSubscribeCommitReq that = (PipeSubscribeCommitReq) obj;
+    return Objects.equals(this.commitContexts, that.commitContexts)
+        && Objects.equals(this.nack, that.nack)
         && this.version == that.version
         && this.type == that.type
         && Objects.equals(this.body, that.body);
@@ -107,6 +113,6 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicNameToSubscriptionCommitIds, version, type, body);
+    return Objects.hash(commitContexts, nack, version, type, body);
   }
 }

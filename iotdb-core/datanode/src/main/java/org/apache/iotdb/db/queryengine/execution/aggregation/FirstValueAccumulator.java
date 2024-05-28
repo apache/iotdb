@@ -47,9 +47,11 @@ public class FirstValueAccumulator implements Accumulator {
   public void addInput(Column[] columns, BitMap bitMap) {
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         addIntInput(columns, bitMap);
         return;
       case INT64:
+      case TIMESTAMP:
         addLongInput(columns, bitMap);
         return;
       case FLOAT:
@@ -59,6 +61,8 @@ public class FirstValueAccumulator implements Accumulator {
         addDoubleInput(columns, bitMap);
         return;
       case TEXT:
+      case STRING:
+      case BLOB:
         addBinaryInput(columns, bitMap);
         return;
       case BOOLEAN:
@@ -79,9 +83,11 @@ public class FirstValueAccumulator implements Accumulator {
     }
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         updateIntFirstValue(partialResult[0].getInt(0), partialResult[1].getLong(0));
         break;
       case INT64:
+      case TIMESTAMP:
         updateLongFirstValue(partialResult[0].getLong(0), partialResult[1].getLong(0));
         break;
       case FLOAT:
@@ -91,6 +97,8 @@ public class FirstValueAccumulator implements Accumulator {
         updateDoubleFirstValue(partialResult[0].getDouble(0), partialResult[1].getLong(0));
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         updateBinaryFirstValue(partialResult[0].getBinary(0), partialResult[1].getLong(0));
         break;
       case BOOLEAN:
@@ -109,9 +117,11 @@ public class FirstValueAccumulator implements Accumulator {
     }
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         updateIntFirstValue((int) statistics.getFirstValue(), statistics.getStartTime());
         break;
       case INT64:
+      case TIMESTAMP:
         updateLongFirstValue((long) statistics.getFirstValue(), statistics.getStartTime());
         break;
       case FLOAT:
@@ -121,6 +131,8 @@ public class FirstValueAccumulator implements Accumulator {
         updateDoubleFirstValue((double) statistics.getFirstValue(), statistics.getStartTime());
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         updateBinaryFirstValue((Binary) statistics.getFirstValue(), statistics.getStartTime());
         break;
       case BOOLEAN:
@@ -140,9 +152,11 @@ public class FirstValueAccumulator implements Accumulator {
       hasCandidateResult = true;
       switch (seriesDataType) {
         case INT32:
+        case DATE:
           firstValue.setInt(finalResult.getInt(0));
           break;
         case INT64:
+        case TIMESTAMP:
           firstValue.setLong(finalResult.getLong(0));
           break;
         case FLOAT:
@@ -152,6 +166,8 @@ public class FirstValueAccumulator implements Accumulator {
           firstValue.setDouble(finalResult.getDouble(0));
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           firstValue.setBinary(finalResult.getBinary(0));
           break;
         case BOOLEAN:
@@ -175,9 +191,11 @@ public class FirstValueAccumulator implements Accumulator {
     }
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         columnBuilders[0].writeInt(firstValue.getInt());
         break;
       case INT64:
+      case TIMESTAMP:
         columnBuilders[0].writeLong(firstValue.getLong());
         break;
       case FLOAT:
@@ -187,6 +205,8 @@ public class FirstValueAccumulator implements Accumulator {
         columnBuilders[0].writeDouble(firstValue.getDouble());
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         columnBuilders[0].writeBinary(firstValue.getBinary());
         break;
       case BOOLEAN:
@@ -207,9 +227,11 @@ public class FirstValueAccumulator implements Accumulator {
     }
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         columnBuilder.writeInt(firstValue.getInt());
         break;
       case INT64:
+      case TIMESTAMP:
         columnBuilder.writeLong(firstValue.getLong());
         break;
       case FLOAT:
@@ -219,6 +241,8 @@ public class FirstValueAccumulator implements Accumulator {
         columnBuilder.writeDouble(firstValue.getDouble());
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         columnBuilder.writeBinary(firstValue.getBinary());
         break;
       case BOOLEAN:

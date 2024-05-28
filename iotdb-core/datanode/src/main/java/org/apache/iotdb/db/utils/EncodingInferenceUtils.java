@@ -37,8 +37,10 @@ public class EncodingInferenceUtils {
     switch (dataType) {
       case BOOLEAN:
         return conf.getDefaultBooleanEncoding();
+      case DATE:
       case INT32:
         return conf.getDefaultInt32Encoding();
+      case TIMESTAMP:
       case INT64:
         return conf.getDefaultInt64Encoding();
       case FLOAT:
@@ -46,6 +48,8 @@ public class EncodingInferenceUtils {
       case DOUBLE:
         return conf.getDefaultDoubleEncoding();
       case TEXT:
+      case BLOB:
+      case STRING:
         return conf.getDefaultTextEncoding();
       default:
         throw new UnSupportedDataTypeException(

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription;
+package org.apache.iotdb.session.subscription.payload;
 
 import org.apache.iotdb.isession.ISessionDataSet;
 
@@ -45,7 +45,7 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
     return tablet;
   }
 
-  public SubscriptionSessionDataSet(Tablet tablet) {
+  public SubscriptionSessionDataSet(final Tablet tablet) {
     this.tablet = tablet;
     generateRowIterator();
   }
@@ -94,7 +94,7 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
 
   @Override
   public RowRecord next() {
-    Map.Entry<Long, Integer> entry = this.rowIterator.next();
+    final Map.Entry<Long, Integer> entry = this.rowIterator.next();
     final int columnSize = getColumnSize();
 
     final List<Field> fields = new ArrayList<>();
@@ -106,7 +106,7 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
       if (tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
         field = new Field(null);
       } else {
-        TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
+        final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
         field = generateFieldFromTabletValue(dataType, tablet.values[columnIndex], rowIndex);
       }
       fields.add(field);
@@ -130,41 +130,46 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
 
   private void generateRowIterator() {
     // timestamp -> row index
-    long[] timestamps = tablet.timestamps;
-    TreeMap<Long, Integer> timestampToRowIndex = new TreeMap<>();
+    final long[] timestamps = tablet.timestamps;
+    final TreeMap<Long, Integer> timestampToRowIndex = new TreeMap<>();
     final int rowSize = timestamps.length;
     for (int rowIndex = 0; rowIndex < rowSize; ++rowIndex) {
-      Long timestamp = timestamps[rowIndex];
+      final Long timestamp = timestamps[rowIndex];
       timestampToRowIndex.put(timestamp, rowIndex);
     }
     this.rowIterator = timestampToRowIndex.entrySet().iterator();
   }
 
-  private static Field generateFieldFromTabletValue(TSDataType dataType, Object value, int index) {
+  private static Field generateFieldFromTabletValue(
+      final TSDataType dataType, final Object value, final int index) {
     final Field field = new Field(dataType);
     switch (dataType) {
       case BOOLEAN:
-        boolean booleanValue = ((boolean[]) value)[index];
+        final boolean booleanValue = ((boolean[]) value)[index];
         field.setBoolV(booleanValue);
         break;
       case INT32:
-        int intValue = ((int[]) value)[index];
+      case DATE:
+        final int intValue = ((int[]) value)[index];
         field.setIntV(intValue);
         break;
       case INT64:
-        long longValue = ((long[]) value)[index];
+      case TIMESTAMP:
+        final long longValue = ((long[]) value)[index];
         field.setLongV(longValue);
         break;
       case FLOAT:
-        float floatValue = ((float[]) value)[index];
+        final float floatValue = ((float[]) value)[index];
         field.setFloatV(floatValue);
         break;
       case DOUBLE:
-        double doubleValue = ((double[]) value)[index];
+        final double doubleValue = ((double[]) value)[index];
         field.setDoubleV(doubleValue);
         break;
       case TEXT:
-        Binary binaryValue = new Binary((((Binary[]) value)[index]).getValues());
+      case STRING:
+      case BLOB:
+        final Binary binaryValue = new Binary((((Binary[]) value)[index]).getValues());
         field.setBinaryV(binaryValue);
         break;
       default:

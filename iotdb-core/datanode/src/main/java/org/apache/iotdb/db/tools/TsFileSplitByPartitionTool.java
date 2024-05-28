@@ -424,9 +424,11 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
       switch (schema.getType()) {
         case INT32:
+        case DATE:
           chunkWriter.write(time, (int) value);
           break;
         case INT64:
+        case TIMESTAMP:
           chunkWriter.write(time, (long) value);
           break;
         case FLOAT:
@@ -439,6 +441,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
           chunkWriter.write(time, (boolean) value);
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           chunkWriter.write(time, (Binary) value);
           break;
         default:

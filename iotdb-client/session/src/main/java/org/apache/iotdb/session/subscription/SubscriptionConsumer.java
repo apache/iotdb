@@ -21,17 +21,39 @@ package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.SessionConfig;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
-import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
+import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.util.RandomStringGenerator;
+import org.apache.iotdb.session.subscription.util.SubscriptionPollTimer;
 import org.apache.iotdb.session.util.SessionUtils;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -40,39 +62,33 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.SortedMap;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
+import java.util.concurrent.locks.LockSupport;
 
 public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
 
-  private static final IoTDBConnectionException NO_PROVIDERS_EXCEPTION =
-      new IoTDBConnectionException("Cluster has no available subscription providers to connect");
-
-  private final List<TEndPoint> initialEndpoints;
+  private static final long SLEEP_NS = 1_000_000_000L;
 
   private final String username;
   private final String password;
 
-  private String consumerId;
-  private String consumerGroupId;
+  protected String consumerId;
+  protected String consumerGroupId;
 
   private final long heartbeatIntervalMs;
   private final long endpointsSyncIntervalMs;
 
-  private final SortedMap<Integer, SubscriptionProvider> subscriptionProviders =
-      new ConcurrentSkipListMap<>();
-  private final ReentrantReadWriteLock subscriptionProvidersLock = new ReentrantReadWriteLock(true);
+  private final SubscriptionProviders subscriptionProviders;
 
   private ScheduledExecutorService heartbeatWorkerExecutor;
   private ScheduledExecutorService endpointsSyncerExecutor;
@@ -80,6 +96,34 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private ExecutorService asyncCommitExecutor;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
+
+  private final String fileSaveDir;
+
+  private Path getFileDir(final String topicName) throws IOException {
+    final Path dirPath =
+        Paths.get(fileSaveDir).resolve(consumerGroupId).resolve(consumerId).resolve(topicName);
+    Files.createDirectories(dirPath);
+    return dirPath;
+  }
+
+  private Path getFilePath(final String topicName, String fileName) throws SubscriptionException {
+    Path filePath;
+    try {
+      filePath = getFileDir(topicName).resolve(fileName);
+      Files.createFile(filePath);
+    } catch (final FileAlreadyExistsException fileAlreadyExistsException) {
+      fileName += "." + RandomStringGenerator.generate(16);
+      try {
+        filePath = getFileDir(topicName).resolve(fileName);
+        Files.createFile(filePath);
+      } catch (final IOException e) {
+        throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+      }
+    } catch (final IOException e) {
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    return filePath;
+  }
 
   public String getConsumerId() {
     return consumerId;
@@ -91,8 +135,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// ctor ///////////////////////////////
 
-  protected SubscriptionConsumer(Builder builder) {
-    this.initialEndpoints = new ArrayList<>();
+  protected SubscriptionConsumer(final Builder builder) {
+    final List<TEndPoint> initialEndpoints = new ArrayList<>();
     // From org.apache.iotdb.session.Session.getNodeUrls
     // Priority is given to `host:port` over `nodeUrls`.
     if (Objects.nonNull(builder.host)) {
@@ -100,6 +144,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     } else {
       initialEndpoints.addAll(SessionUtils.parseSeedNodeUrls(builder.nodeUrls));
     }
+    this.subscriptionProviders = new SubscriptionProviders(initialEndpoints);
 
     this.username = builder.username;
     this.password = builder.password;
@@ -109,9 +154,11 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
     this.heartbeatIntervalMs = builder.heartbeatIntervalMs;
     this.endpointsSyncIntervalMs = builder.endpointsSyncIntervalMs;
+
+    this.fileSaveDir = builder.fileSaveDir;
   }
 
-  protected SubscriptionConsumer(Builder builder, Properties properties) {
+  protected SubscriptionConsumer(final Builder builder, final Properties properties) {
     this(
         builder
             .host(
@@ -140,23 +187,27 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
                 (Long)
                     properties.getOrDefault(
                         ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_KEY,
-                        ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE)));
+                        ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE))
+            .fileSaveDir(
+                (String)
+                    properties.getOrDefault(
+                        ConsumerConstant.FILE_SAVE_DIR_KEY,
+                        ConsumerConstant.FILE_SAVE_DIR_DEFAULT_VALUE)));
   }
 
   /////////////////////////////// open & close ///////////////////////////////
 
-  public synchronized void open()
-      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+  public synchronized void open() throws SubscriptionException {
     if (!isClosed.get()) {
       return;
     }
 
     // open subscription providers
-    acquireWriteLock();
+    subscriptionProviders.acquireWriteLock();
     try {
-      openProviders(); // throw IoTDBConnectionException
+      subscriptionProviders.openProviders(this); // throw SubscriptionException
     } finally {
-      releaseWriteLock();
+      subscriptionProviders.releaseWriteLock();
     }
 
     // launch heartbeat worker
@@ -169,7 +220,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   @Override
-  public synchronized void close() throws IoTDBConnectionException {
+  public synchronized void close() {
     if (isClosed.get()) {
       return;
     }
@@ -178,15 +229,18 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       // shutdown endpoints syncer
       shutdownEndpointsSyncer();
 
-      // shutdown workers
-      shutdownWorkers();
+      // shutdown heartbeat worker
+      shutdownHeartbeatWorker();
+
+      // shutdown async commit worker if needed
+      shutdownAsyncCommitWorkerIfNeeded();
 
       // close subscription providers
-      acquireWriteLock();
+      subscriptionProviders.acquireWriteLock();
       try {
-        closeProviders();
+        subscriptionProviders.closeProviders();
       } finally {
-        releaseWriteLock();
+        subscriptionProviders.releaseWriteLock();
       }
     } finally {
       isClosed.set(true);
@@ -197,63 +251,39 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     return isClosed.get();
   }
 
-  /////////////////////////////// lock ///////////////////////////////
-
-  void acquireReadLock() {
-    subscriptionProvidersLock.readLock().lock();
-  }
-
-  void releaseReadLock() {
-    subscriptionProvidersLock.readLock().unlock();
-  }
-
-  void acquireWriteLock() {
-    subscriptionProvidersLock.writeLock().lock();
-  }
-
-  void releaseWriteLock() {
-    subscriptionProvidersLock.writeLock().unlock();
-  }
-
   /////////////////////////////// subscribe & unsubscribe ///////////////////////////////
 
-  public void subscribe(String topicName)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+  public void subscribe(final String topicName) throws SubscriptionException {
     subscribe(Collections.singleton(topicName));
   }
 
-  public void subscribe(String... topicNames)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+  public void subscribe(final String... topicNames) throws SubscriptionException {
     subscribe(new HashSet<>(Arrays.asList(topicNames)));
   }
 
-  public void subscribe(Set<String> topicNames)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
-    acquireReadLock();
+  public void subscribe(final Set<String> topicNames) throws SubscriptionException {
+    subscriptionProviders.acquireReadLock();
     try {
       subscribeWithRedirection(topicNames);
     } finally {
-      releaseReadLock();
+      subscriptionProviders.releaseReadLock();
     }
   }
 
-  public void unsubscribe(String topicName)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+  public void unsubscribe(final String topicName) throws SubscriptionException {
     unsubscribe(Collections.singleton(topicName));
   }
 
-  public void unsubscribe(String... topicNames)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
+  public void unsubscribe(final String... topicNames) throws SubscriptionException {
     unsubscribe(new HashSet<>(Arrays.asList(topicNames)));
   }
 
-  public void unsubscribe(Set<String> topicNames)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
-    acquireReadLock();
+  public void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
+    subscriptionProviders.acquireReadLock();
     try {
       unsubscribeWithRedirection(topicNames);
     } finally {
-      releaseReadLock();
+      subscriptionProviders.releaseReadLock();
     }
   }
 
@@ -264,7 +294,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     heartbeatWorkerExecutor =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
-              Thread t =
+              final Thread t =
                   new Thread(
                       Thread.currentThread().getThreadGroup(), r, "ConsumerHeartbeatWorker", 0);
               if (!t.isDaemon()) {
@@ -275,32 +305,26 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
               }
               return t;
             });
-    heartbeatWorkerExecutor.scheduleAtFixedRate(
-        new ConsumerHeartbeatWorker(this), 0, heartbeatIntervalMs, TimeUnit.MILLISECONDS);
+    heartbeatWorkerExecutor.scheduleWithFixedDelay(
+        () -> subscriptionProviders.heartbeat(this),
+        generateRandomInitialDelayMs(heartbeatIntervalMs),
+        heartbeatIntervalMs,
+        TimeUnit.MILLISECONDS);
   }
 
-  /**
-   * Shut down workers upon close. There are currently two workers: heartbeat worker and async
-   * commit executor.
-   */
-  private void shutdownWorkers() {
+  private void shutdownHeartbeatWorker() {
     heartbeatWorkerExecutor.shutdown();
     heartbeatWorkerExecutor = null;
-
-    if (asyncCommitExecutor != null) {
-      asyncCommitExecutor.shutdown();
-      asyncCommitExecutor = null;
-    }
   }
 
-  /////////////////////////////// endpoints syncer ///////////////////////////////
+  /////////////////////////////// sync endpoints ///////////////////////////////
 
   @SuppressWarnings("unsafeThreadSchedule")
   private void launchEndpointsSyncer() {
     endpointsSyncerExecutor =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
-              Thread t =
+              final Thread t =
                   new Thread(
                       Thread.currentThread().getThreadGroup(), r, "SubscriptionEndpointsSyncer", 0);
               if (!t.isDaemon()) {
@@ -311,8 +335,11 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
               }
               return t;
             });
-    endpointsSyncerExecutor.scheduleAtFixedRate(
-        new SubscriptionEndpointsSyncer(this), 0, endpointsSyncIntervalMs, TimeUnit.MILLISECONDS);
+    endpointsSyncerExecutor.scheduleWithFixedDelay(
+        () -> subscriptionProviders.sync(this),
+        generateRandomInitialDelayMs(endpointsSyncIntervalMs),
+        endpointsSyncIntervalMs,
+        TimeUnit.MILLISECONDS);
   }
 
   private void shutdownEndpointsSyncer() {
@@ -323,11 +350,20 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// subscription provider ///////////////////////////////
 
   SubscriptionProvider constructProviderAndHandshake(final TEndPoint endPoint)
-      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+      throws SubscriptionException {
     final SubscriptionProvider provider =
         new SubscriptionProvider(
             endPoint, this.username, this.password, this.consumerId, this.consumerGroupId);
-    provider.handshake();
+    try {
+      provider.handshake();
+    } catch (final Exception e) {
+      try {
+        provider.close();
+      } catch (final Exception ignored) {
+      }
+      throw new SubscriptionConnectionException(
+          String.format("Failed to handshake with subscription provider %s", provider));
+    }
 
     // update consumer id and consumer group id if not exist
     if (Objects.isNull(this.consumerId)) {
@@ -340,266 +376,482 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     return provider;
   }
 
-  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void openProviders() throws IoTDBConnectionException {
-    // close stale providers
-    closeProviders();
+  /////////////////////////////// poll ///////////////////////////////
 
-    for (final TEndPoint endPoint : initialEndpoints) {
-      final SubscriptionProvider defaultProvider;
-      final int defaultDataNodeId;
+  protected List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs)
+      throws SubscriptionException {
+    final List<SubscriptionMessage> messages = new ArrayList<>();
+    final SubscriptionPollTimer timer =
+        new SubscriptionPollTimer(System.currentTimeMillis(), timeoutMs);
 
+    do {
       try {
-        defaultProvider = constructProviderAndHandshake(endPoint);
-      } catch (final Exception e) {
-        LOGGER.warn("Failed to create connection with {}, exception: {}", endPoint, e.getMessage());
-        continue; // try next endpoint
-      }
-      defaultDataNodeId = defaultProvider.getDataNodeId();
-      addProvider(defaultDataNodeId, defaultProvider);
-
-      final Map<Integer, TEndPoint> allEndPoints;
-      try {
-        allEndPoints = defaultProvider.getSessionConnection().fetchAllEndPoints();
-      } catch (final Exception e) {
+        // poll tablets or file
+        for (final SubscriptionPollResponse pollResponse : pollInternal(topicNames)) {
+          final short responseType = pollResponse.getResponseType();
+          if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+            LOGGER.warn("unexpected response type: {}", responseType);
+            continue;
+          }
+          switch (SubscriptionPollResponseType.valueOf(responseType)) {
+            case TABLETS:
+              messages.add(
+                  new SubscriptionMessage(
+                      pollResponse.getCommitContext(),
+                      ((TabletsPayload) pollResponse.getPayload()).getTablets()));
+              break;
+            case FILE_INIT:
+              pollFile(
+                      pollResponse.getCommitContext(),
+                      ((FileInitPayload) pollResponse.getPayload()).getFileName())
+                  .ifPresent(messages::add);
+              break;
+            case ERROR:
+              final ErrorPayload payload = (ErrorPayload) pollResponse.getPayload();
+              final String errorMessage = payload.getErrorMessage();
+              final boolean critical = payload.isCritical();
+              LOGGER.warn(
+                  "Error occurred when SubscriptionConsumer {} polling topics {}: {}, critical: {}",
+                  this,
+                  topicNames,
+                  errorMessage,
+                  critical);
+              if (critical) {
+                throw new SubscriptionRuntimeCriticalException(errorMessage);
+              } else {
+                throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+              }
+            default:
+              LOGGER.warn("unexpected response type: {}", responseType);
+              break;
+          }
+        }
+      } catch (final SubscriptionRuntimeNonCriticalException e) {
         LOGGER.warn(
-            "Failed to fetch all endpoints from {}, exception: {}, will retry later...",
-            endPoint,
-            e.getMessage());
-        break; // retry later
-      }
-
-      for (final Map.Entry<Integer, TEndPoint> entry : allEndPoints.entrySet()) {
-        if (defaultDataNodeId == entry.getKey()) {
-          continue;
-        }
-
-        final SubscriptionProvider provider;
+            "SubscriptionRuntimeNonCriticalException occurred when SubscriptionConsumer {} polling topics {}",
+            this,
+            topicNames,
+            e);
+        // nack and clear messages
         try {
-          provider = constructProviderAndHandshake(entry.getValue());
-        } catch (final Exception e) {
-          LOGGER.warn(
-              "Failed to create connection with {}, exception: {}, will retry later...",
-              entry.getValue(),
-              e.getMessage());
-          continue; // retry later
+          nack(messages);
+          messages.clear();
+        } catch (final Exception ignored) {
         }
-        addProvider(entry.getKey(), provider);
+      } catch (final SubscriptionRuntimeCriticalException e) {
+        LOGGER.warn(
+            "SubscriptionRuntimeCriticalException occurred when SubscriptionConsumer {} polling topics {}",
+            this,
+            topicNames,
+            e);
+        // nack and clear messages
+        try {
+          nack(messages);
+          messages.clear();
+        } catch (final Exception ignored) {
+        }
+        // rethrow
+        throw e;
       }
+      if (!messages.isEmpty()) {
+        return messages;
+      }
+      // update timer
+      timer.update();
+      // TODO: associated with timeoutMs instead of hardcoding
+      LockSupport.parkNanos(SLEEP_NS); // wait some time
+    } while (timer.notExpired());
 
-      break;
-    }
+    LOGGER.info(
+        "SubscriptionConsumer {} poll empty message after {} millisecond(s)", this, timeoutMs);
+    return messages;
+  }
 
-    if (hasNoProviders()) {
-      throw NO_PROVIDERS_EXCEPTION;
+  private Optional<SubscriptionMessage> pollFile(
+      final SubscriptionCommitContext commitContext, final String fileName)
+      throws SubscriptionException {
+    final String topicName = commitContext.getTopicName();
+    final Path filePath = getFilePath(topicName, fileName);
+    final File file = filePath.toFile();
+    try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
+      return Optional.of(pollFileInternal(commitContext, file, fileWriter));
+    } catch (final IOException e) {
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
 
-  /////////////////////////////// poll & commit ///////////////////////////////
+  private SubscriptionMessage pollFileInternal(
+      final SubscriptionCommitContext commitContext,
+      final File file,
+      final RandomAccessFile fileWriter)
+      throws IOException, SubscriptionException {
+    final int dataNodeId = commitContext.getDataNodeId();
+    final String topicName = commitContext.getTopicName();
+    final String fileName = file.getName();
 
-  protected List<SubscriptionMessage> poll(Set<String> topicNames, long timeoutMs)
-      throws TException, IOException, StatementExecutionException {
-    List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
+    LOGGER.info(
+        "{} start to poll file {} with commit context {}",
+        this,
+        file.getAbsolutePath(),
+        commitContext);
 
-    acquireReadLock();
+    long writingOffset = fileWriter.length();
+    while (true) {
+      final List<SubscriptionPollResponse> responses =
+          pollFileInternal(dataNodeId, topicName, fileName, writingOffset);
+
+      // It's agreed that the server will always return at least one response, even in case of
+      // failure.
+      if (responses.isEmpty()) {
+        final String errorMessage =
+            String.format("SubscriptionConsumer %s poll empty response", this);
+        LOGGER.warn(errorMessage);
+        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+
+      // Only one SubscriptionEvent polled currently...
+      final SubscriptionPollResponse response = responses.get(0);
+      final SubscriptionPollPayload payload = response.getPayload();
+      final short responseType = response.getResponseType();
+      if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+        final String errorMessage = String.format("unexpected response type: %s", responseType);
+        LOGGER.warn(errorMessage);
+        throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+
+      switch (SubscriptionPollResponseType.valueOf(responseType)) {
+        case FILE_PIECE:
+          {
+            // check commit context
+            final SubscriptionCommitContext incomingCommitContext = response.getCommitContext();
+            if (Objects.isNull(incomingCommitContext)
+                || !Objects.equals(commitContext, incomingCommitContext)) {
+              final String errorMessage =
+                  String.format(
+                      "inconsistent commit context, current is %s, incoming is %s, consumer: %s",
+                      commitContext, incomingCommitContext, this);
+              LOGGER.warn(errorMessage);
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+
+            // check file name
+            if (!fileName.startsWith(((FilePiecePayload) payload).getFileName())) {
+              final String errorMessage =
+                  String.format(
+                      "inconsistent file name, current is %s, incoming is %s, consumer: %s",
+                      fileName, ((FilePiecePayload) payload).getFileName(), this);
+              LOGGER.warn(errorMessage);
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+
+            // write file piece
+            fileWriter.write(((FilePiecePayload) payload).getFilePiece());
+            fileWriter.getFD().sync();
+
+            // check offset
+            if (!Objects.equals(
+                fileWriter.length(), ((FilePiecePayload) payload).getNextWritingOffset())) {
+              final String errorMessage =
+                  String.format(
+                      "inconsistent file offset, current is %s, incoming is %s, consumer: %s",
+                      fileWriter.length(),
+                      ((FilePiecePayload) payload).getNextWritingOffset(),
+                      this);
+              LOGGER.warn(errorMessage);
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+
+            // update offset
+            writingOffset = ((FilePiecePayload) payload).getNextWritingOffset();
+            break;
+          }
+        case FILE_SEAL:
+          {
+            // check commit context
+            final SubscriptionCommitContext incomingCommitContext = response.getCommitContext();
+            if (Objects.isNull(incomingCommitContext)
+                || !Objects.equals(commitContext, incomingCommitContext)) {
+              final String errorMessage =
+                  String.format(
+                      "inconsistent commit context, current is %s, incoming is %s, consumer: %s",
+                      commitContext, incomingCommitContext, this);
+              LOGGER.warn(errorMessage);
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+
+            // check file name
+            if (!fileName.startsWith(((FileSealPayload) payload).getFileName())) {
+              final String errorMessage =
+                  String.format(
+                      "inconsistent file name, current is %s, incoming is %s, consumer: %s",
+                      fileName, ((FileSealPayload) payload).getFileName(), this);
+              LOGGER.warn(errorMessage);
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+
+            // check file length
+            if (fileWriter.length() != ((FileSealPayload) payload).getFileLength()) {
+              final String errorMessage =
+                  String.format(
+                      "inconsistent file length, current is %s, incoming is %s, consumer: %s",
+                      fileWriter.length(), ((FileSealPayload) payload).getFileLength(), this);
+              LOGGER.warn(errorMessage);
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+
+            // sync and close
+            fileWriter.getFD().sync();
+            fileWriter.close();
+
+            LOGGER.info(
+                "SubscriptionConsumer {} successfully poll file {} with commit context {}",
+                this,
+                file.getAbsolutePath(),
+                commitContext);
+
+            // generate subscription message
+            return new SubscriptionMessage(commitContext, file.getAbsolutePath());
+          }
+        case ERROR:
+          {
+            // no need to check commit context
+
+            final String errorMessage = ((ErrorPayload) payload).getErrorMessage();
+            final boolean critical = ((ErrorPayload) payload).isCritical();
+            LOGGER.warn(
+                "Error occurred when SubscriptionConsumer {} polling file {} with commit context {}: {}, critical: {}",
+                this,
+                file.getAbsolutePath(),
+                commitContext,
+                errorMessage,
+                critical);
+            if (critical) {
+              throw new SubscriptionRuntimeCriticalException(errorMessage);
+            } else {
+              throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+            }
+          }
+        default:
+          final String errorMessage = String.format("unexpected response type: %s", responseType);
+          LOGGER.warn(errorMessage);
+          throw new SubscriptionRuntimeNonCriticalException(errorMessage);
+      }
+    }
+  }
+
+  private List<SubscriptionPollResponse> pollInternal(final Set<String> topicNames)
+      throws SubscriptionException {
+    subscriptionProviders.acquireReadLock();
     try {
-      for (final SubscriptionProvider provider : getAllAvailableProviders()) {
-        // TODO: network timeout
-        enrichedTabletsList.addAll(provider.getSessionConnection().poll(topicNames, timeoutMs));
+      final SubscriptionProvider provider = subscriptionProviders.getNextAvailableProvider();
+      if (Objects.isNull(provider) || !provider.isAvailable()) {
+        throw new SubscriptionConnectionException(
+            String.format(
+                "Cluster has no available subscription providers when %s poll topic %s",
+                this, topicNames));
+      }
+      // ignore SubscriptionConnectionException to improve poll auto retry
+      try {
+        return provider.poll(
+            new SubscriptionPollRequest(
+                SubscriptionPollRequestType.POLL.getType(), new PollPayload(topicNames), 0L));
+      } catch (final SubscriptionConnectionException ignored) {
+        return Collections.emptyList();
       }
     } finally {
-      releaseReadLock();
-    }
-
-    return enrichedTabletsList.stream().map(SubscriptionMessage::new).collect(Collectors.toList());
-  }
-
-  protected void commitSync(Iterable<SubscriptionMessage> messages)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
-    Map<Integer, Map<String, List<String>>> dataNodeIdToTopicNameToSubscriptionCommitIds =
-        new HashMap<>();
-    for (SubscriptionMessage message : messages) {
-      dataNodeIdToTopicNameToSubscriptionCommitIds
-          .computeIfAbsent(
-              message.parseDataNodeIdFromSubscriptionCommitId(), (id) -> new HashMap<>())
-          .computeIfAbsent(message.getTopicName(), (topicName) -> new ArrayList<>())
-          .add(message.getSubscriptionCommitId());
-    }
-    for (Map.Entry<Integer, Map<String, List<String>>> entry :
-        dataNodeIdToTopicNameToSubscriptionCommitIds.entrySet()) {
-      commitSyncInternal(entry.getKey(), entry.getValue());
+      subscriptionProviders.releaseReadLock();
     }
   }
 
-  protected void commitAsync(Iterable<SubscriptionMessage> messages) {
-    commitAsync(messages, new AsyncCommitCallback() {});
-  }
-
-  protected void commitAsync(Iterable<SubscriptionMessage> messages, AsyncCommitCallback callback) {
-
-    // Initiate executor if needed
-    if (asyncCommitExecutor == null) {
-      synchronized (this) {
-        if (asyncCommitExecutor != null) {
-          return;
-        }
-
-        asyncCommitExecutor =
-            Executors.newSingleThreadExecutor(
-                r -> {
-                  Thread t =
-                      new Thread(
-                          Thread.currentThread().getThreadGroup(),
-                          r,
-                          "SubscriptionConsumerAsyncCommitWorker",
-                          0);
-                  if (!t.isDaemon()) {
-                    t.setDaemon(true);
-                  }
-                  if (t.getPriority() != Thread.NORM_PRIORITY) {
-                    t.setPriority(Thread.NORM_PRIORITY);
-                  }
-                  return t;
-                });
+  private List<SubscriptionPollResponse> pollFileInternal(
+      final int dataNodeId, final String topicName, final String fileName, final long writingOffset)
+      throws SubscriptionException {
+    subscriptionProviders.acquireReadLock();
+    try {
+      final SubscriptionProvider provider = subscriptionProviders.getProvider(dataNodeId);
+      if (Objects.isNull(provider) || !provider.isAvailable()) {
+        throw new SubscriptionConnectionException(
+            String.format(
+                "something unexpected happened when %s poll file from subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                this, dataNodeId));
       }
+      // ignore SubscriptionConnectionException to improve poll auto retry
+      try {
+        return provider.poll(
+            new SubscriptionPollRequest(
+                SubscriptionPollRequestType.POLL_FILE.getType(),
+                new PollFilePayload(topicName, fileName, writingOffset),
+                0L));
+      } catch (final SubscriptionConnectionException ignored) {
+        return Collections.emptyList();
+      }
+    } finally {
+      subscriptionProviders.releaseReadLock();
     }
+  }
+
+  /////////////////////////////// commit sync (ack & nack) ///////////////////////////////
+
+  protected void ack(final Iterable<SubscriptionMessage> messages) throws SubscriptionException {
+    final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
+        new HashMap<>();
+    for (final SubscriptionMessage message : messages) {
+      dataNodeIdToSubscriptionCommitContexts
+          .computeIfAbsent(message.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
+          .add(message.getCommitContext());
+    }
+    for (final Map.Entry<Integer, List<SubscriptionCommitContext>> entry :
+        dataNodeIdToSubscriptionCommitContexts.entrySet()) {
+      commitInternal(entry.getKey(), entry.getValue(), false);
+    }
+  }
+
+  protected void nack(final Iterable<SubscriptionMessage> messages) throws SubscriptionException {
+    final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
+        new HashMap<>();
+    for (final SubscriptionMessage message : messages) {
+      dataNodeIdToSubscriptionCommitContexts
+          .computeIfAbsent(message.getCommitContext().getDataNodeId(), (id) -> new ArrayList<>())
+          .add(message.getCommitContext());
+    }
+    for (final Map.Entry<Integer, List<SubscriptionCommitContext>> entry :
+        dataNodeIdToSubscriptionCommitContexts.entrySet()) {
+      commitInternal(entry.getKey(), entry.getValue(), true);
+    }
+  }
+
+  private void commitInternal(
+      final int dataNodeId,
+      final List<SubscriptionCommitContext> subscriptionCommitContexts,
+      final boolean nack)
+      throws SubscriptionException {
+    subscriptionProviders.acquireReadLock();
+    try {
+      final SubscriptionProvider provider = subscriptionProviders.getProvider(dataNodeId);
+      if (Objects.isNull(provider) || !provider.isAvailable()) {
+        throw new SubscriptionConnectionException(
+            String.format(
+                "something unexpected happened when %s commit (nack: %s) messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
+                this, nack, dataNodeId));
+      }
+      provider.commit(subscriptionCommitContexts, nack);
+    } finally {
+      subscriptionProviders.releaseReadLock();
+    }
+  }
+
+  /////////////////////////////// commit async ///////////////////////////////
+
+  protected void commitAsync(
+      final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
+    // launch async commit worker if needed
+    launchAsyncCommitWorkerIfNeeded();
 
     asyncCommitExecutor.submit(new AsyncCommitWorker(messages, callback));
   }
 
-  /////////////////////////////// utility ///////////////////////////////
+  protected CompletableFuture<Void> commitAsync(final Iterable<SubscriptionMessage> messages) {
+    // launch async commit worker if needed
+    launchAsyncCommitWorkerIfNeeded();
 
-  private void commitSyncInternal(
-      int dataNodeId, Map<String, List<String>> topicNameToSubscriptionCommitIds)
-      throws TException, IOException, StatementExecutionException, IoTDBConnectionException {
-    acquireReadLock();
-    try {
-      final SubscriptionProvider provider = getProvider(dataNodeId);
-      if (Objects.isNull(provider) || !provider.isAvailable()) {
-        throw new IoTDBConnectionException(
-            String.format(
-                "something unexpected happened when commit messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
-                dataNodeId));
-      }
-      provider.getSessionConnection().commitSync(topicNameToSubscriptionCommitIds);
-    } finally {
-      releaseReadLock();
-    }
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  private void closeProviders() throws IoTDBConnectionException {
-    for (final SubscriptionProvider provider : getAllProviders()) {
-      provider.close();
-    }
-    subscriptionProviders.clear();
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void addProvider(final int dataNodeId, final SubscriptionProvider provider) {
-    // the subscription provider is opened
-    LOGGER.info("add new subscription provider {}", provider);
-    subscriptionProviders.put(dataNodeId, provider);
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireWriteLock()}. */
-  void closeAndRemoveProvider(final int dataNodeId) throws IoTDBConnectionException {
-    if (!containsProvider(dataNodeId)) {
-      return;
-    }
-    final SubscriptionProvider provider = subscriptionProviders.get(dataNodeId);
-    try {
-      provider.close();
-    } finally {
-      LOGGER.info("close and remove stale subscription provider {}", provider);
-      subscriptionProviders.remove(dataNodeId);
-    }
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  boolean hasNoProviders() {
-    return subscriptionProviders.isEmpty();
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  boolean containsProvider(final int dataNodeId) {
-    return subscriptionProviders.containsKey(dataNodeId);
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  List<SubscriptionProvider> getAllAvailableProviders() {
-    return subscriptionProviders.values().stream()
-        .filter(SubscriptionProvider::isAvailable)
-        .collect(Collectors.toList());
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  List<SubscriptionProvider> getAllProviders() {
-    return new ArrayList<>(subscriptionProviders.values());
-  }
-
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  SubscriptionProvider getProvider(final int dataNodeId) {
-    return containsProvider(dataNodeId) ? subscriptionProviders.get(dataNodeId) : null;
+    final CompletableFuture<Void> future = new CompletableFuture<>();
+    asyncCommitExecutor.submit(
+        () -> {
+          try {
+            ack(messages);
+            future.complete(null);
+          } catch (final Throwable e) {
+            future.completeExceptionally(e);
+          }
+        });
+    return future;
   }
 
   /////////////////////////////// redirection ///////////////////////////////
 
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  public void subscribeWithRedirection(final Set<String> topicNames)
-      throws IoTDBConnectionException {
-    for (final SubscriptionProvider provider : getAllAvailableProviders()) {
+  private void subscribeWithRedirection(final Set<String> topicNames) throws SubscriptionException {
+    final List<SubscriptionProvider> providers = subscriptionProviders.getAllAvailableProviders();
+    if (providers.isEmpty()) {
+      throw new SubscriptionConnectionException(
+          String.format(
+              "Cluster has no available subscription providers when %s subscribe topic %s",
+              this, topicNames));
+    }
+    for (final SubscriptionProvider provider : providers) {
       try {
-        provider.getSessionConnection().subscribe(topicNames);
+        provider.subscribe(topicNames);
         return;
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to subscribe topics {} from subscription provider {}, exception: {}, try next subscription provider...",
+            "{} failed to subscribe topics {} from subscription provider {}, try next subscription provider...",
+            this,
             topicNames,
             provider,
-            e.getMessage());
+            e);
       }
     }
-    throw NO_PROVIDERS_EXCEPTION;
+    final String errorMessage =
+        String.format(
+            "%s failed to subscribe topics %s from all available subscription providers %s",
+            this, topicNames, providers);
+    LOGGER.warn(errorMessage);
+    throw new SubscriptionRuntimeCriticalException(errorMessage);
   }
 
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  public void unsubscribeWithRedirection(final Set<String> topicNames)
-      throws IoTDBConnectionException {
-    for (final SubscriptionProvider provider : getAllAvailableProviders()) {
+  private void unsubscribeWithRedirection(final Set<String> topicNames)
+      throws SubscriptionException {
+    final List<SubscriptionProvider> providers = subscriptionProviders.getAllAvailableProviders();
+    if (providers.isEmpty()) {
+      throw new SubscriptionConnectionException(
+          String.format(
+              "Cluster has no available subscription providers when %s unsubscribe topic %s",
+              this, topicNames));
+    }
+    for (final SubscriptionProvider provider : providers) {
       try {
-        provider.getSessionConnection().unsubscribe(topicNames);
+        provider.unsubscribe(topicNames);
         return;
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to unsubscribe topics {} from subscription provider {}, exception: {}, try next subscription provider...",
+            "{} failed to unsubscribe topics {} from subscription provider {}, try next subscription provider...",
+            this,
             topicNames,
             provider,
-            e.getMessage());
+            e);
       }
     }
-    throw NO_PROVIDERS_EXCEPTION;
+    final String errorMessage =
+        String.format(
+            "%s failed to unsubscribe topics %s from all available subscription providers %s",
+            this, topicNames, providers);
+    LOGGER.warn(errorMessage);
+    throw new SubscriptionRuntimeCriticalException(errorMessage);
   }
 
-  /** Caller should ensure that the method is called in the lock {@link #acquireReadLock()}. */
-  public Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection()
-      throws IoTDBConnectionException {
-    Map<Integer, TEndPoint> endPoints = null;
-    for (final SubscriptionProvider provider : getAllAvailableProviders()) {
+  Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection() throws SubscriptionException {
+    final List<SubscriptionProvider> providers = subscriptionProviders.getAllAvailableProviders();
+    if (providers.isEmpty()) {
+      throw new SubscriptionConnectionException(
+          String.format(
+              "Cluster has no available subscription providers when %s fetch all endpoints", this));
+    }
+    for (final SubscriptionProvider provider : providers) {
       try {
-        endPoints = provider.getSessionConnection().fetchAllEndPoints();
-        break;
+        return provider.getSessionConnection().fetchAllEndPoints();
       } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to fetch all endpoints from subscription provider {}, exception: {}, try next subscription provider...",
+            "{} failed to fetch all endpoints from subscription provider {}, try next subscription provider...",
+            this,
             provider,
-            e.getMessage());
+            e);
       }
     }
-    if (Objects.isNull(endPoints)) {
-      throw NO_PROVIDERS_EXCEPTION;
-    }
-    return endPoints;
+    final String errorMessage =
+        String.format(
+            "%s failed to fetch all endpoints from all available subscription providers %s",
+            this, providers);
+    LOGGER.warn(errorMessage);
+    throw new SubscriptionRuntimeCriticalException(errorMessage);
   }
 
   /////////////////////////////// builder ///////////////////////////////
@@ -620,50 +872,57 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     protected long endpointsSyncIntervalMs =
         ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE;
 
-    public Builder host(String host) {
+    protected String fileSaveDir = ConsumerConstant.FILE_SAVE_DIR_DEFAULT_VALUE;
+
+    public Builder host(final String host) {
       this.host = host;
       return this;
     }
 
-    public Builder port(int port) {
+    public Builder port(final int port) {
       this.port = port;
       return this;
     }
 
-    public Builder nodeUrls(List<String> nodeUrls) {
+    public Builder nodeUrls(final List<String> nodeUrls) {
       this.nodeUrls = nodeUrls;
       return this;
     }
 
-    public Builder username(String username) {
+    public Builder username(final String username) {
       this.username = username;
       return this;
     }
 
-    public Builder password(String password) {
+    public Builder password(final String password) {
       this.password = password;
       return this;
     }
 
-    public Builder consumerId(String consumerId) {
+    public Builder consumerId(final String consumerId) {
       this.consumerId = consumerId;
       return this;
     }
 
-    public Builder consumerGroupId(String consumerGroupId) {
+    public Builder consumerGroupId(final String consumerGroupId) {
       this.consumerGroupId = consumerGroupId;
       return this;
     }
 
-    public Builder heartbeatIntervalMs(long heartbeatIntervalMs) {
+    public Builder heartbeatIntervalMs(final long heartbeatIntervalMs) {
       this.heartbeatIntervalMs =
           Math.max(heartbeatIntervalMs, ConsumerConstant.HEARTBEAT_INTERVAL_MS_MIN_VALUE);
       return this;
     }
 
-    public Builder endpointsSyncIntervalMs(long endpointsSyncIntervalMs) {
+    public Builder endpointsSyncIntervalMs(final long endpointsSyncIntervalMs) {
       this.endpointsSyncIntervalMs =
           Math.max(endpointsSyncIntervalMs, ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE);
+      return this;
+    }
+
+    public Builder fileSaveDir(final String fileSaveDir) {
+      this.fileSaveDir = fileSaveDir;
       return this;
     }
 
@@ -672,11 +931,49 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     public abstract SubscriptionPushConsumer buildPushConsumer();
   }
 
+  /////////////////////////////// commit async worker ///////////////////////////////
+
+  private void launchAsyncCommitWorkerIfNeeded() {
+    if (asyncCommitExecutor == null) {
+      synchronized (this) {
+        if (asyncCommitExecutor != null) {
+          return;
+        }
+
+        asyncCommitExecutor =
+            Executors.newSingleThreadExecutor(
+                r -> {
+                  final Thread t =
+                      new Thread(
+                          Thread.currentThread().getThreadGroup(),
+                          r,
+                          "SubscriptionConsumerAsyncCommitWorker",
+                          0);
+                  if (!t.isDaemon()) {
+                    t.setDaemon(true);
+                  }
+                  if (t.getPriority() != Thread.NORM_PRIORITY) {
+                    t.setPriority(Thread.NORM_PRIORITY);
+                  }
+                  return t;
+                });
+      }
+    }
+  }
+
+  private void shutdownAsyncCommitWorkerIfNeeded() {
+    if (asyncCommitExecutor != null) {
+      asyncCommitExecutor.shutdown();
+      asyncCommitExecutor = null;
+    }
+  }
+
   class AsyncCommitWorker implements Runnable {
     private final Iterable<SubscriptionMessage> messages;
     private final AsyncCommitCallback callback;
 
-    public AsyncCommitWorker(Iterable<SubscriptionMessage> messages, AsyncCommitCallback callback) {
+    public AsyncCommitWorker(
+        final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
       this.messages = messages;
       this.callback = callback;
     }
@@ -688,11 +985,28 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       }
 
       try {
-        commitSync(messages);
+        ack(messages);
         callback.onComplete();
-      } catch (Exception e) {
+      } catch (final Exception e) {
         callback.onFailure(e);
       }
     }
+  }
+
+  /////////////////////////////// object ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionConsumer{consumerId="
+        + consumerId
+        + ", consumerGroupId="
+        + consumerGroupId
+        + "}";
+  }
+
+  /////////////////////////////// utility ///////////////////////////////
+
+  protected long generateRandomInitialDelayMs(final long maxMs) {
+    return (long) (Math.random() * maxMs);
   }
 }

@@ -247,8 +247,10 @@ public class AggregationUtil {
   public static long getOutputColumnSizePerLine(TSDataType tsDataType) {
     switch (tsDataType) {
       case INT32:
+      case DATE:
         return IntColumn.SIZE_IN_BYTES_PER_POSITION;
       case INT64:
+      case TIMESTAMP:
         return LongColumn.SIZE_IN_BYTES_PER_POSITION;
       case FLOAT:
         return FloatColumn.SIZE_IN_BYTES_PER_POSITION;
@@ -257,6 +259,8 @@ public class AggregationUtil {
       case BOOLEAN:
         return BooleanColumn.SIZE_IN_BYTES_PER_POSITION;
       case TEXT:
+      case BLOB:
+      case STRING:
         return StatisticsManager.getInstance().getMaxBinarySizeInBytes();
       default:
         throw new UnsupportedOperationException("Unknown data type " + tsDataType);

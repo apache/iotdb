@@ -25,16 +25,16 @@ import java.util.Objects;
 
 public class SubscriptionException extends PipeException {
 
-  public SubscriptionException(String message) {
+  public SubscriptionException(final String message) {
     super(message);
   }
 
-  protected SubscriptionException(String message, long timeStamp) {
-    super(message, timeStamp);
+  public SubscriptionException(final String message, final Throwable cause) {
+    super(message, cause);
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     return obj instanceof SubscriptionException
         && Objects.equals(getMessage(), ((SubscriptionException) obj).getMessage())
         && Objects.equals(getTimeStamp(), ((SubscriptionException) obj).getTimeStamp());

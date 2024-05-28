@@ -87,6 +87,7 @@ public class TestUtilsForAlignedSeries {
             alignedChunkWriter.write(time, booleanVal, randomNull && random.nextInt(2) == 1);
             break;
           case INT32:
+          case DATE:
             int intVal = (int) generateRandomVal(schemas[i].getType());
             alignedChunkWriter.write(time, intVal, randomNull && random.nextInt(2) == 1);
             break;
@@ -99,6 +100,8 @@ public class TestUtilsForAlignedSeries {
             alignedChunkWriter.write(time, floatVal, randomNull && random.nextInt(2) == 1);
             break;
           case TEXT:
+          case STRING:
+          case BLOB:
             String stringVal = (String) generateRandomVal(schemas[i].getType());
             alignedChunkWriter.write(
                 time,
@@ -106,6 +109,7 @@ public class TestUtilsForAlignedSeries {
                 randomNull && random.nextInt(2) == 1);
             break;
           case INT64:
+          case TIMESTAMP:
             long longVal = (long) generateRandomVal(schemas[i].getType());
             alignedChunkWriter.write(time, longVal, randomNull && random.nextInt(2) == 1);
             break;
@@ -139,6 +143,7 @@ public class TestUtilsForAlignedSeries {
             chunkWriter.write(time, booleanVal);
             break;
           case INT32:
+          case DATE:
             int intVal = (int) generateRandomVal(schema.getType());
             chunkWriter.write(time, intVal);
             break;
@@ -151,10 +156,13 @@ public class TestUtilsForAlignedSeries {
             chunkWriter.write(time, floatVal);
             break;
           case TEXT:
+          case STRING:
+          case BLOB:
             String stringVal = (String) generateRandomVal(schema.getType());
             chunkWriter.write(time, new Binary(stringVal.getBytes(StandardCharsets.UTF_8)));
             break;
           case INT64:
+          case TIMESTAMP:
             long longVal = (long) generateRandomVal(schema.getType());
             chunkWriter.write(time, longVal);
             break;
@@ -173,6 +181,7 @@ public class TestUtilsForAlignedSeries {
         returnVal = random.nextInt(2) == 0;
         break;
       case INT32:
+      case DATE:
         returnVal = random.nextInt();
         break;
       case DOUBLE:
@@ -182,9 +191,12 @@ public class TestUtilsForAlignedSeries {
         returnVal = random.nextFloat();
         break;
       case TEXT:
+      case STRING:
+      case BLOB:
         returnVal = String.valueOf(random.nextLong());
         break;
       case INT64:
+      case TIMESTAMP:
         returnVal = random.nextLong();
         break;
     }

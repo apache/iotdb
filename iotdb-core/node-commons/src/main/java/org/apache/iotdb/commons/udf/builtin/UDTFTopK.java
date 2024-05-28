@@ -34,9 +34,11 @@ public class UDTFTopK extends UDTFSelectK {
   protected void constructPQ() throws UDFInputSeriesDataTypeNotValidException {
     switch (dataType) {
       case INT32:
+      case DATE:
         intPQ = new PriorityQueue<>(k, Comparator.comparing(o -> o.right));
         break;
       case INT64:
+      case TIMESTAMP:
         longPQ = new PriorityQueue<>(k, Comparator.comparing(o -> o.right));
         break;
       case FLOAT:
@@ -46,6 +48,7 @@ public class UDTFTopK extends UDTFSelectK {
         doublePQ = new PriorityQueue<>(k, Comparator.comparing(o -> o.right));
         break;
       case TEXT:
+      case STRING:
         stringPQ = new PriorityQueue<>(k, Comparator.comparing(o -> o.right));
         break;
       default:
@@ -57,7 +60,10 @@ public class UDTFTopK extends UDTFSelectK {
             Type.INT64,
             Type.FLOAT,
             Type.DOUBLE,
-            Type.TEXT);
+            Type.TEXT,
+            Type.DATE,
+            Type.TIMESTAMP,
+            Type.STRING);
     }
   }
 

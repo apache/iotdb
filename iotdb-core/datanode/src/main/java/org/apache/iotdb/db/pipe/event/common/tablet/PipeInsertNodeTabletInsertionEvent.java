@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -62,15 +63,19 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   private List<TabletInsertionDataContainer> dataContainers;
 
+  private final PartialPath devicePath;
+
   private ProgressIndex progressIndex;
 
   public PipeInsertNodeTabletInsertionEvent(
       WALEntryHandler walEntryHandler,
+      PartialPath devicePath,
       ProgressIndex progressIndex,
       boolean isAligned,
       boolean isGeneratedByPipe) {
     this(
         walEntryHandler,
+        devicePath,
         progressIndex,
         isAligned,
         isGeneratedByPipe,
@@ -83,6 +88,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   private PipeInsertNodeTabletInsertionEvent(
       WALEntryHandler walEntryHandler,
+      PartialPath devicePath,
       ProgressIndex progressIndex,
       boolean isAligned,
       boolean isGeneratedByPipe,
@@ -93,6 +99,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       long endTime) {
     super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
     this.walEntryHandler = walEntryHandler;
+    // Record device path here so there's no need to get it from InsertNode cache later.
+    this.devicePath = devicePath;
     this.progressIndex = progressIndex;
     this.isAligned = isAligned;
     this.isGeneratedByPipe = isGeneratedByPipe;
@@ -112,6 +120,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   // deserializing
   public InsertNode getInsertNodeViaCacheIfPossible() {
     return walEntryHandler.getInsertNodeViaCacheIfPossible();
+  }
+
+  public String getDeviceId() {
+    return Objects.nonNull(devicePath) ? devicePath.getFullPath() : null;
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -170,6 +182,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       long endTime) {
     return new PipeInsertNodeTabletInsertionEvent(
         walEntryHandler,
+        devicePath,
         progressIndex,
         isAligned,
         isGeneratedByPipe,
