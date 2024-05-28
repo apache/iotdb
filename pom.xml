@@ -2501,7 +2501,7 @@
             </activation>
             <properties>
                 <!-- The generated code relied on Boost and that relies on VS and can't be built with MinGW -->
-                <cmake.generator>MinGW Makefiles</cmake.generator>
+                <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <os.classifier>windows-aarch64</os.classifier>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
             </properties>

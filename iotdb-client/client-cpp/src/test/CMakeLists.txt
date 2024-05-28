@@ -38,7 +38,7 @@ IF (DEFINED BOOST_INCLUDEDIR)
 ENDIF()
 
 # Link directories are different for Windows and Linux/Mac
-IF(MINGW)
+IF(MSVC)
     LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/Release)
     SET(THRIFT_STATIC_LIB "${CMAKE_SOURCE_DIR}/../../thrift/lib/Release/thriftmd.lib")
 ELSE()
@@ -49,7 +49,7 @@ ENDIF()
 ADD_EXECUTABLE(${TARGET_NAME} main.cpp cpp/sessionIT.cpp)
 
 # Link with shared library iotdb_session and pthread
-IF(MINGW)
+IF(MSVC)
     TARGET_LINK_LIBRARIES(${TARGET_NAME} iotdb_session ${THRIFT_STATIC_LIB})
 ELSE()
     TARGET_LINK_LIBRARIES(${TARGET_NAME} iotdb_session pthread)
@@ -57,7 +57,7 @@ ENDIF()
 TARGET_INCLUDE_DIRECTORIES(${TARGET_NAME} PUBLIC ./catch2/)
 
 # Add 'sessionIT' to the project to be run by ctest
-IF(MINGW)
+IF(MSVC)
     ADD_TEST(NAME sessionIT CONFIGURATIONS Release COMMAND ${TARGET_NAME})
 ELSE()
     ADD_TEST(NAME sessionIT COMMAND ${TARGET_NAME})
