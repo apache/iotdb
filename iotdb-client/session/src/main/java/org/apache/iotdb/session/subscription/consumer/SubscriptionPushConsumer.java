@@ -100,7 +100,6 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// auto poll ///////////////////////////////
 
-  @SuppressWarnings("unsafeThreadSchedule")
   private void launchAutoPollWorker() {
     final ScheduledFuture<?>[] future = new ScheduledFuture<?>[1];
     future[0] =

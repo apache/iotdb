@@ -63,7 +63,6 @@ final class SubscriptionExecutorService {
 
   /////////////////////////////// heartbeat worker ///////////////////////////////
 
-  @SuppressWarnings("unsafeThreadSchedule")
   private static void launchHeartbeatWorkerExecutorIfNeeded() {
     if (Objects.isNull(heartbeatWorkerExecutor)) {
       synchronized (SubscriptionExecutorService.class) {
@@ -93,6 +92,7 @@ final class SubscriptionExecutorService {
     }
   }
 
+  @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitHeartbeatWorker(
       final Runnable task, final long heartbeatIntervalMs) {
     launchHeartbeatWorkerExecutorIfNeeded();
@@ -105,7 +105,6 @@ final class SubscriptionExecutorService {
 
   /////////////////////////////// endpoints syncer ///////////////////////////////
 
-  @SuppressWarnings("unsafeThreadSchedule")
   private static void launchEndpointsSyncerExecutorIfNeeded() {
     if (Objects.isNull(endpointsSyncerExecutor)) {
       synchronized (SubscriptionExecutorService.class) {
@@ -135,6 +134,7 @@ final class SubscriptionExecutorService {
     }
   }
 
+  @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitEndpointsSyncer(
       final Runnable task, final long endpointsSyncIntervalMs) {
     launchEndpointsSyncerExecutorIfNeeded();
@@ -147,7 +147,6 @@ final class SubscriptionExecutorService {
 
   /////////////////////////////// async commit worker ///////////////////////////////
 
-  @SuppressWarnings("unsafeThreadSchedule")
   private static void launchAsyncCommitWorkerExecutorIfNeeded() {
     if (Objects.isNull(asyncCommitWorkerExecutor)) {
       synchronized (SubscriptionExecutorService.class) {
@@ -184,7 +183,6 @@ final class SubscriptionExecutorService {
 
   /////////////////////////////// auto commit worker ///////////////////////////////
 
-  @SuppressWarnings("unsafeThreadSchedule")
   private static void launchAutoCommitWorkerExecutorIfNeeded() {
     if (Objects.isNull(autoCommitWorkerExecutor)) {
       synchronized (SubscriptionExecutorService.class) {
@@ -214,6 +212,7 @@ final class SubscriptionExecutorService {
     }
   }
 
+  @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitAutoCommitWorker(
       final Runnable task, final long autoCommitIntervalMs) {
     launchAutoCommitWorkerExecutorIfNeeded();
@@ -226,7 +225,6 @@ final class SubscriptionExecutorService {
 
   /////////////////////////////// auto poll worker ///////////////////////////////
 
-  @SuppressWarnings("unsafeThreadSchedule")
   private static void launchAutoPollWorkerExecutorIfNeeded() {
     if (Objects.isNull(autoPollWorkerExecutor)) {
       synchronized (SubscriptionExecutorService.class) {
@@ -256,6 +254,7 @@ final class SubscriptionExecutorService {
     }
   }
 
+  @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitAutoPollWorker(
       final Runnable task, final long autoPollIntervalMs) {
     launchAutoPollWorkerExecutorIfNeeded();
