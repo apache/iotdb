@@ -185,7 +185,7 @@
         <xz.version>1.9</xz.version>
         <zeppelin.version>0.11.1</zeppelin.version>
         <zstd-jni.version>1.5.5-5</zstd-jni.version>
-        <tsfile.version>1.0.1-c57ba73-SNAPSHOT</tsfile.version>
+        <tsfile.version>1.0.1-e1207ba-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
