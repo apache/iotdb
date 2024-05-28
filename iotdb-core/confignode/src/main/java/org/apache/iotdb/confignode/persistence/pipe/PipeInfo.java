@@ -113,6 +113,8 @@ public class PipeInfo implements SnapshotProcessor {
 
       PipeConfigNodeAgent.task()
           .handleSinglePipeMetaChanges(pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeName()));
+      PipeTemporaryMetaMetrics.getInstance()
+          .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final Exception e) {
       LOGGER.error("Failed to set pipe status", e);
@@ -161,6 +163,8 @@ public class PipeInfo implements SnapshotProcessor {
       PipeConfigNodeAgent.task()
           .handleSinglePipeMetaChanges(
               pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeStaticMeta().getPipeName()));
+      PipeTemporaryMetaMetrics.getInstance()
+          .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final Exception e) {
       LOGGER.error("Failed to alter pipe", e);
@@ -199,6 +203,8 @@ public class PipeInfo implements SnapshotProcessor {
         pipeMetaListFromCoordinator.add(pipeMeta);
       }
       PipeConfigNodeAgent.task().handlePipeMetaChanges(pipeMetaListFromCoordinator);
+      PipeTemporaryMetaMetrics.getInstance()
+          .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (final Exception e) {
       LOGGER.error("Failed to handle leader change", e);
