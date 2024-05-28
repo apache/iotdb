@@ -1880,11 +1880,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitRawDataAggregation(
       RawDataAggregationNode node, LocalExecutionPlanContext context) {
-    // TODO optimize serialize and deserialize method in template situation
     Map<String, List<InputLocation>> layout;
     if (context.isBuildPlanUseTemplate()) {
-      // in template situation, output columns of ProjectNode is not stored, it's same as its
-      // children
       layout = context.getTemplatedInfo().getFilterLayoutMap();
     } else {
       layout = makeLayout(node);

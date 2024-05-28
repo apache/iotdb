@@ -214,6 +214,7 @@ public class TemplatedAggregationAnalyze {
     for (Expression aggregationExpression : searchAggregationExpressions(havingExpression)) {
       Expression normalizedAggregationExpression = normalizeExpression(aggregationExpression);
 
+      // not support having agg(s1+s2) temporarily
       if (!((normalizedAggregationExpression).getExpressions().get(0)
           instanceof TimeSeriesOperand)) {
         return false;

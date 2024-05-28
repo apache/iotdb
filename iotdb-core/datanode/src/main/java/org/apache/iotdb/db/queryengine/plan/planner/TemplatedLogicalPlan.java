@@ -99,7 +99,7 @@ public class TemplatedLogicalPlan {
 
     this.whereExpression = analysis.getWhereExpression();
 
-    // for align by device query with template, most used variables are same
+    // for align by device query with template, store common variables for once
     if (queryStatement.isAggregationQuery()) {
       initAggQueryCommonVariables();
     } else {
@@ -144,7 +144,7 @@ public class TemplatedLogicalPlan {
     }
 
     List<Integer> deviceToMeasurementIndexes =
-        new ArrayList<>(analysis.getSelectExpressions().size() - 1);
+        new ArrayList<>(analysis.getAggregationExpressions().size());
     for (int i = 1; i <= analysis.getAggregationExpressions().size(); i++) {
       deviceToMeasurementIndexes.add(i);
     }

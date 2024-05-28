@@ -66,13 +66,11 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
@@ -490,7 +488,7 @@ public class AggregationPushDown implements PlanOptimizer {
         }
 
         List<PlanNode> sourceNodeList =
-            newConstructSourceNodeFromTemplateAggregationDescriptors(
+            constructSourceNodeFromTemplateAggregationDescriptors(
                 context
                     .getContext()
                     .getTypeProvider()
@@ -532,60 +530,6 @@ public class AggregationPushDown implements PlanOptimizer {
     }
 
     private List<PlanNode> constructSourceNodeFromTemplateAggregationDescriptors(
-        Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations,
-        Map<PartialPath, List<AggregationDescriptor>> descendingAggregations,
-        Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations,
-        Ordering scanOrder,
-        GroupByTimeParameter groupByTimeParameter,
-        RewriterContext context) {
-
-      // keySet of ascendingAggregations is measurement,
-      // valueSet of ascendingAggregations is aggDescriptors such as count(s1), avg(s1)
-
-      List<PlanNode> sourceNodeList = new ArrayList<>();
-      PartialPath devicePath = context.curDevicePath;
-      List<String> measurementList = context.analysis.getMeasurementList();
-      List<IMeasurementSchema> measurementSchemaList = context.analysis.getMeasurementSchemaList();
-      boolean needCheckAscending = groupByTimeParameter == null;
-
-      if (context.analysis.getDeviceTemplate().isDirectAligned()) {
-        AlignedPath alignedPath = new AlignedPath(devicePath);
-        alignedPath.setMeasurementList(measurementList);
-        alignedPath.addSchemas(measurementSchemaList);
-
-        List<AggregationDescriptor> aggregationDescriptors =
-            ascendingAggregations.values().stream()
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList());
-        if (!aggregationDescriptors.isEmpty()) {
-          sourceNodeList.add(
-              createAggregationScanNode(
-                  alignedPath,
-                  aggregationDescriptors,
-                  scanOrder,
-                  groupByTimeParameter,
-                  context,
-                  (byte) 0));
-        }
-
-        if (needCheckAscending && !descendingAggregations.isEmpty()) {
-          aggregationDescriptors =
-              descendingAggregations.values().stream()
-                  .flatMap(Collection::stream)
-                  .collect(Collectors.toList());
-          sourceNodeList.add(
-              createAggregationScanNode(
-                  alignedPath, aggregationDescriptors, scanOrder, null, context, (byte) 1));
-        }
-      } else {
-        throw new IllegalStateException(
-            "Aggregation descriptors with non aligned template are not supported");
-      }
-
-      return sourceNodeList;
-    }
-
-    private List<PlanNode> newConstructSourceNodeFromTemplateAggregationDescriptors(
         List<AggregationDescriptor> ascendingAggregations,
         List<AggregationDescriptor> descendingAggregations,
         Ordering scanOrder,
