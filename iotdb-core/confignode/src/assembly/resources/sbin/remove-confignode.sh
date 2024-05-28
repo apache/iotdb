@@ -18,6 +18,17 @@
 # under the License.
 #
 
+if [ "$#" -eq 1 ] && [ "$1" == "--help" ]; then
+    echo "The script will remove a ConfigNode."
+    echo "Before removing a ConfigNode, ensure that there is at least one active ConfigNode in the cluster after the removal."
+    echo "Usage:"
+    echo "Remove the ConfigNode with confignode_id"
+    echo "./sbin/remove-confignode.sh [confignode_id]"
+    echo "Remove the ConfigNode with address:port"
+    echo "./sbin/remove-confignode.sh [cn_internal_address:cn_internal_port]"
+    exit 0
+fi
+
 echo ----------------------------
 echo Starting to remove IoTDB ConfigNode
 echo ----------------------------

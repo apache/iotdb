@@ -18,6 +18,18 @@
 @REM
 
 @echo off
+
+IF "%~1"=="--help" (
+    echo The script will remove a ConfigNode.
+    echo Before removing a ConfigNode, ensure that there is at least one active ConfigNode in the cluster after the removal.
+    echo Usage:
+    echo Remove the ConfigNode with confignode_id
+    echo ./sbin/remove-confignode.bat [confignode_id]
+    echo Remove the ConfigNode with address:port
+    echo ./sbin/remove-confignode.bat [cn_internal_address:cn_internal_port]
+    EXIT /B 0
+)
+
 echo ```````````````````````````
 echo Starting to remove IoTDB ConfigNode
 echo ```````````````````````````

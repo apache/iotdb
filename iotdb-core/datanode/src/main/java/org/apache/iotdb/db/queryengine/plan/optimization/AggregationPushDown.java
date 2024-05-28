@@ -104,6 +104,10 @@ public class AggregationPushDown implements PlanOptimizer {
   private boolean cannotUseStatistics(QueryStatement queryStatement, Analysis analysis) {
     boolean isAlignByDevice = queryStatement.isAlignByDevice();
     if (isAlignByDevice) {
+      if (analysis.allDevicesInOneTemplate()) {
+        return cannotUseStatisticsForTemplate(analysis.getAggregationExpressions());
+      }
+
       // check any of the devices
       String device = analysis.getDeviceList().get(0).toString();
       return cannotUseStatistics(
@@ -117,8 +121,8 @@ public class AggregationPushDown implements PlanOptimizer {
 
   private boolean cannotUseStatistics(
       Set<Expression> aggregationExpressions, Set<Expression> sourceTransformExpressions) {
-    for (Expression expression : aggregationExpressions) {
 
+    for (Expression expression : aggregationExpressions) {
       if (expression instanceof FunctionExpression) {
         FunctionExpression functionExpression = (FunctionExpression) expression;
         // Disable statistics optimization of UDAF for now
@@ -141,6 +145,32 @@ public class AggregationPushDown implements PlanOptimizer {
               return true;
             }
           }
+          return false;
+        }
+
+        if (!BuiltinAggregationFunction.canUseStatistics(functionExpression.getFunctionName())) {
+          return true;
+        }
+      } else {
+        throw new IllegalArgumentException(
+            String.format("Invalid Aggregation Expression: %s", expression.getExpressionString()));
+      }
+    }
+    return false;
+  }
+
+  private boolean cannotUseStatisticsForTemplate(Set<Expression> aggregationExpressions) {
+
+    for (Expression expression : aggregationExpressions) {
+      if (expression instanceof FunctionExpression) {
+        FunctionExpression functionExpression = (FunctionExpression) expression;
+        // Disable statistics optimization of UDAF for now
+        if (functionExpression.isExternalAggregationFunctionExpression()) {
+          return true;
+        }
+
+        // in template align by device query, device must be aligned
+        if (COUNT_TIME.equalsIgnoreCase(functionExpression.getFunctionName())) {
           return false;
         }
 
@@ -184,6 +214,10 @@ public class AggregationPushDown implements PlanOptimizer {
       List<PlanNode> rewrittenChildren = new ArrayList<>();
       for (int i = 0; i < node.getDevices().size(); i++) {
         context.setCurDevice(node.getDevices().get(i));
+        if (context.analysis.allDevicesInOneTemplate()) {
+          context.setCurDevicePath(context.analysis.getDeviceList().get(i));
+        }
+
         rewrittenChildren.add(node.getChildren().get(i).accept(this, context));
       }
       node.setChildren(rewrittenChildren);
@@ -193,6 +227,7 @@ public class AggregationPushDown implements PlanOptimizer {
     @Override
     public PlanNode visitSingleDeviceView(SingleDeviceViewNode node, RewriterContext context) {
       context.setCurDevice(node.getDevice());
+      context.setCurDevicePath(new PartialPath(node.getDevice().split(",")));
       PlanNode rewrittenChild = node.getChild().accept(this, context);
       node.setChild(rewrittenChild);
       return node;
@@ -236,6 +271,10 @@ public class AggregationPushDown implements PlanOptimizer {
 
     @Override
     public PlanNode visitRawDataAggregation(RawDataAggregationNode node, RewriterContext context) {
+      if (context.analysis.allDevicesInOneTemplate()) {
+        return visitRawDataAggregationTemplateCase(node, context);
+      }
+
       PlanNode child = node.getChild();
       if (child instanceof ProjectNode) {
         // remove ProjectNode
@@ -246,7 +285,6 @@ public class AggregationPushDown implements PlanOptimizer {
         boolean isSingleSource = child instanceof SeriesScanSourceNode;
         boolean needCheckAscending = node.getGroupByTimeParameter() == null;
         if (isSingleSource && ((SeriesScanSourceNode) child).getPushDownPredicate() != null) {
-          needCheckAscending = false;
           Expression pushDownPredicate = ((SeriesScanSourceNode) child).getPushDownPredicate();
           if (!PredicateUtils.predicateCanPushIntoScan(pushDownPredicate)) {
             // don't push down, simplify the BE side logic
@@ -275,7 +313,7 @@ public class AggregationPushDown implements PlanOptimizer {
         }
 
         List<PlanNode> sourceNodeList =
-            constructSourceNodeFromAggregationDescriptors(
+            constructSourceNodeFromAggregationsDescriptors(
                 sourceToAscendingAggregationsMap,
                 sourceToDescendingAggregationsMap,
                 sourceToCountTimeAggregationsMap,
@@ -384,7 +422,7 @@ public class AggregationPushDown implements PlanOptimizer {
       }
     }
 
-    private List<PlanNode> constructSourceNodeFromAggregationDescriptors(
+    private List<PlanNode> constructSourceNodeFromAggregationsDescriptors(
         Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations,
         Map<PartialPath, List<AggregationDescriptor>> descendingAggregations,
         Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations,
@@ -392,7 +430,6 @@ public class AggregationPushDown implements PlanOptimizer {
         GroupByTimeParameter groupByTimeParameter,
         RewriterContext context) {
       List<PlanNode> sourceNodeList = new ArrayList<>();
-      boolean needCheckAscending = groupByTimeParameter == null;
       Map<PartialPath, List<AggregationDescriptor>> groupedAscendingAggregations = null;
       if (!countTimeAggregations.isEmpty()) {
         groupedAscendingAggregations = countTimeAggregations;
@@ -408,9 +445,11 @@ public class AggregationPushDown implements PlanOptimizer {
                 pathAggregationsEntry.getValue(),
                 scanOrder,
                 groupByTimeParameter,
-                context));
+                context,
+                countTimeAggregations.isEmpty() ? (byte) 0 : (byte) 2));
       }
 
+      boolean needCheckAscending = groupByTimeParameter == null;
       if (needCheckAscending) {
         Map<PartialPath, List<AggregationDescriptor>> groupedDescendingAggregations =
             MetaUtils.groupAlignedAggregations(descendingAggregations);
@@ -422,9 +461,112 @@ public class AggregationPushDown implements PlanOptimizer {
                   pathAggregationsEntry.getValue(),
                   scanOrder.reverse(),
                   null,
-                  context));
+                  context,
+                  (byte) 1));
         }
       }
+      return sourceNodeList;
+    }
+
+    public PlanNode visitRawDataAggregationTemplateCase(
+        RawDataAggregationNode node, RewriterContext context) {
+      PlanNode child = node.getChild();
+
+      if (child instanceof ProjectNode) {
+        node.setChild(((ProjectNode) child).getChild());
+        return visitRawDataAggregation(node, context);
+      }
+
+      if (child instanceof FullOuterTimeJoinNode || child instanceof SeriesScanSourceNode) {
+        boolean isSingleSource = child instanceof SeriesScanSourceNode;
+        if (isSingleSource && ((SeriesScanSourceNode) child).getPushDownPredicate() != null) {
+          Expression pushDownPredicate = ((SeriesScanSourceNode) child).getPushDownPredicate();
+          if (!PredicateUtils.predicateCanPushIntoScan(pushDownPredicate)) {
+            // don't push down, simplify the BE side logic
+            return node;
+          }
+        }
+
+        List<PlanNode> sourceNodeList =
+            constructSourceNodeFromTemplateAggregationDescriptors(
+                context
+                    .getContext()
+                    .getTypeProvider()
+                    .getTemplatedInfo()
+                    .getAscendingDescriptorList(),
+                context
+                    .getContext()
+                    .getTypeProvider()
+                    .getTemplatedInfo()
+                    .getDescendingDescriptorList(),
+                node.getScanOrder(),
+                node.getGroupByTimeParameter(),
+                context);
+
+        if (isSingleSource && ((SeriesScanSourceNode) child).getPushDownPredicate() != null) {
+          Expression pushDownPredicate = ((SeriesScanSourceNode) child).getPushDownPredicate();
+          sourceNodeList.forEach(
+              sourceNode -> {
+                SeriesAggregationSourceNode aggregationSourceNode =
+                    (SeriesAggregationSourceNode) sourceNode;
+                aggregationSourceNode.setPushDownPredicate(pushDownPredicate);
+                if (aggregationSourceNode instanceof AlignedSeriesAggregationScanNode) {
+                  ((AlignedSeriesAggregationScanNode) aggregationSourceNode)
+                      .setAlignedPath(((AlignedSeriesScanNode) child).getAlignedPath());
+                }
+              });
+        }
+
+        PlanNode resultNode = convergeWithTimeJoin(sourceNodeList, node.getScanOrder(), context);
+        resultNode = planProject(resultNode, node, context);
+
+        // After pushing down the predicate, the original scan nodes are no longer needed, we should
+        // release the memory that they occupied.
+        context.releaseMemoryForFrontEnd(getRamBytesUsedOfOldScanNodes(child));
+        return resultNode;
+      }
+      // cannot push down
+      return node;
+    }
+
+    private List<PlanNode> constructSourceNodeFromTemplateAggregationDescriptors(
+        List<AggregationDescriptor> ascendingAggregations,
+        List<AggregationDescriptor> descendingAggregations,
+        Ordering scanOrder,
+        GroupByTimeParameter groupByTimeParameter,
+        RewriterContext context) {
+
+      List<PlanNode> sourceNodeList = new ArrayList<>();
+      PartialPath devicePath = context.curDevicePath;
+      List<String> measurementList = context.analysis.getMeasurementList();
+      List<IMeasurementSchema> measurementSchemaList = context.analysis.getMeasurementSchemaList();
+      boolean needCheckAscending = groupByTimeParameter == null;
+
+      if (!context.analysis.getDeviceTemplate().isDirectAligned()) {
+        throw new IllegalStateException(
+            "Aggregation descriptors with non aligned template are not supported");
+      }
+      AlignedPath alignedPath = new AlignedPath(devicePath);
+      alignedPath.setMeasurementList(measurementList);
+      alignedPath.addSchemas(measurementSchemaList);
+
+      if (!ascendingAggregations.isEmpty()) {
+        sourceNodeList.add(
+            createAggregationScanNode(
+                alignedPath,
+                ascendingAggregations,
+                scanOrder,
+                groupByTimeParameter,
+                context,
+                (byte) 0));
+      }
+
+      if (needCheckAscending && !descendingAggregations.isEmpty()) {
+        sourceNodeList.add(
+            createAggregationScanNode(
+                alignedPath, descendingAggregations, scanOrder, null, context, (byte) 1));
+      }
+
       return sourceNodeList;
     }
 
@@ -433,7 +575,8 @@ public class AggregationPushDown implements PlanOptimizer {
         List<AggregationDescriptor> aggregationDescriptorList,
         Ordering scanOrder,
         GroupByTimeParameter groupByTimeParameter,
-        RewriterContext context) {
+        RewriterContext context,
+        byte descriptorType) {
       if (selectPath instanceof MeasurementPath) { // non-aligned series
         SeriesAggregationSourceNode node =
             new SeriesAggregationScanNode(
@@ -448,18 +591,19 @@ public class AggregationPushDown implements PlanOptimizer {
                 MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(node));
         return node;
       } else if (selectPath instanceof AlignedPath) { // aligned series
-        SeriesAggregationSourceNode node =
+        AlignedSeriesAggregationScanNode aggScanNode =
             new AlignedSeriesAggregationScanNode(
                 context.genPlanNodeId(),
                 (AlignedPath) selectPath,
                 aggregationDescriptorList,
                 scanOrder,
                 groupByTimeParameter);
+        aggScanNode.setDescriptorType(descriptorType);
         context
             .getContext()
             .reserveMemoryForFrontEnd(
-                MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(node));
-        return node;
+                MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(aggScanNode));
+        return aggScanNode;
       } else {
         throw new IllegalArgumentException("unexpected path type");
       }
@@ -496,6 +640,7 @@ public class AggregationPushDown implements PlanOptimizer {
     private final boolean isAlignByDevice;
 
     private String curDevice;
+    private PartialPath curDevicePath;
 
     private long bytesToBeReleased = 0;
 
@@ -518,13 +663,21 @@ public class AggregationPushDown implements PlanOptimizer {
       this.curDevice = curDevice;
     }
 
+    public void setCurDevicePath(PartialPath devicePath) {
+      this.curDevicePath = devicePath;
+    }
+
     public MPPQueryContext getContext() {
       return context;
     }
 
     public Set<Expression> getAggregationExpressions() {
       if (isAlignByDevice) {
-        return analysis.getDeviceToAggregationExpressions().get(curDevice);
+        if (analysis.allDevicesInOneTemplate()) {
+          return analysis.getAggregationExpressions();
+        } else {
+          return analysis.getDeviceToAggregationExpressions().get(curDevice);
+        }
       }
       return analysis.getAggregationExpressions();
     }

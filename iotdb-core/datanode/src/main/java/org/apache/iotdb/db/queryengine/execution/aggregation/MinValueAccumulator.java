@@ -23,6 +23,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -45,9 +46,11 @@ public class MinValueAccumulator implements Accumulator {
   public void addInput(Column[] columns, BitMap bitMap) {
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         addIntInput(columns, bitMap);
         return;
       case INT64:
+      case TIMESTAMP:
         addLongInput(columns, bitMap);
         return;
       case FLOAT:
@@ -55,6 +58,9 @@ public class MinValueAccumulator implements Accumulator {
         return;
       case DOUBLE:
         addDoubleInput(columns, bitMap);
+        return;
+      case STRING:
+        addBinaryInput(columns, bitMap);
         return;
       case TEXT:
       case BOOLEAN:
@@ -73,9 +79,11 @@ public class MinValueAccumulator implements Accumulator {
     }
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         updateIntResult(partialResult[0].getInt(0));
         break;
       case INT64:
+      case TIMESTAMP:
         updateLongResult(partialResult[0].getLong(0));
         break;
       case FLOAT:
@@ -83,6 +91,9 @@ public class MinValueAccumulator implements Accumulator {
         break;
       case DOUBLE:
         updateDoubleResult(partialResult[0].getDouble(0));
+        break;
+      case STRING:
+        updateBinaryResult(partialResult[0].getBinary(0));
         break;
       case TEXT:
       case BOOLEAN:
@@ -99,9 +110,11 @@ public class MinValueAccumulator implements Accumulator {
     }
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         updateIntResult((int) statistics.getMinValue());
         break;
       case INT64:
+      case TIMESTAMP:
         updateLongResult((long) statistics.getMinValue());
         break;
       case FLOAT:
@@ -109,6 +122,9 @@ public class MinValueAccumulator implements Accumulator {
         break;
       case DOUBLE:
         updateDoubleResult((double) statistics.getMinValue());
+        break;
+      case STRING:
+        updateBinaryResult((Binary) statistics.getMinValue());
         break;
       case TEXT:
       case BOOLEAN:
@@ -127,9 +143,11 @@ public class MinValueAccumulator implements Accumulator {
     initResult = true;
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         minResult.setInt(finalResult.getInt(0));
         break;
       case INT64:
+      case TIMESTAMP:
         minResult.setLong(finalResult.getLong(0));
         break;
       case FLOAT:
@@ -137,6 +155,9 @@ public class MinValueAccumulator implements Accumulator {
         break;
       case DOUBLE:
         minResult.setDouble(finalResult.getDouble(0));
+        break;
+      case STRING:
+        minResult.setBinary(finalResult.getBinary(0));
         break;
       case TEXT:
       case BOOLEAN:
@@ -156,9 +177,11 @@ public class MinValueAccumulator implements Accumulator {
     }
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         columnBuilders[0].writeInt(minResult.getInt());
         break;
       case INT64:
+      case TIMESTAMP:
         columnBuilders[0].writeLong(minResult.getLong());
         break;
       case FLOAT:
@@ -166,6 +189,9 @@ public class MinValueAccumulator implements Accumulator {
         break;
       case DOUBLE:
         columnBuilders[0].writeDouble(minResult.getDouble());
+        break;
+      case STRING:
+        columnBuilders[0].writeBinary(minResult.getBinary());
         break;
       case TEXT:
       case BOOLEAN:
@@ -183,9 +209,11 @@ public class MinValueAccumulator implements Accumulator {
     }
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         columnBuilder.writeInt(minResult.getInt());
         break;
       case INT64:
+      case TIMESTAMP:
         columnBuilder.writeLong(minResult.getLong());
         break;
       case FLOAT:
@@ -193,6 +221,9 @@ public class MinValueAccumulator implements Accumulator {
         break;
       case DOUBLE:
         columnBuilder.writeDouble(minResult.getDouble());
+        break;
+      case STRING:
+        columnBuilder.writeBinary(minResult.getBinary());
         break;
       case TEXT:
       case BOOLEAN:
@@ -297,6 +328,25 @@ public class MinValueAccumulator implements Accumulator {
     if (!initResult || minVal < minResult.getDouble()) {
       initResult = true;
       minResult.setDouble(minVal);
+    }
+  }
+
+  private void addBinaryInput(Column[] column, BitMap bitMap) {
+    int count = column[0].getPositionCount();
+    for (int i = 0; i < count; i++) {
+      if (bitMap != null && !bitMap.isMarked(i)) {
+        continue;
+      }
+      if (!column[1].isNull(i)) {
+        updateBinaryResult(column[1].getBinary(i));
+      }
+    }
+  }
+
+  private void updateBinaryResult(Binary minVal) {
+    if (!initResult || minVal.compareTo(minResult.getBinary()) < 0) {
+      initResult = true;
+      minResult.setBinary(minVal);
     }
   }
 }

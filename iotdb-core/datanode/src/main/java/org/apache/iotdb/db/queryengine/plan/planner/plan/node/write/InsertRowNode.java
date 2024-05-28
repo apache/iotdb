@@ -326,9 +326,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
             ReadWriteIOUtils.write((Boolean) values[i], buffer);
             break;
           case INT32:
+          case DATE:
             ReadWriteIOUtils.write((Integer) values[i], buffer);
             break;
           case INT64:
+          case TIMESTAMP:
             ReadWriteIOUtils.write((Long) values[i], buffer);
             break;
           case FLOAT:
@@ -338,6 +340,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
             ReadWriteIOUtils.write((Double) values[i], buffer);
             break;
           case TEXT:
+          case STRING:
+          case BLOB:
             ReadWriteIOUtils.write((Binary) values[i], buffer);
             break;
           default:
@@ -377,9 +381,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
             ReadWriteIOUtils.write((Boolean) values[i], stream);
             break;
           case INT32:
+          case DATE:
             ReadWriteIOUtils.write((Integer) values[i], stream);
             break;
           case INT64:
+          case TIMESTAMP:
             ReadWriteIOUtils.write((Long) values[i], stream);
             break;
           case FLOAT:
@@ -389,6 +395,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
             ReadWriteIOUtils.write((Double) values[i], stream);
             break;
           case TEXT:
+          case STRING:
+          case BLOB:
             ReadWriteIOUtils.write((Binary) values[i], stream);
             break;
           default:
@@ -462,9 +470,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           values[i] = ReadWriteIOUtils.readBool(buffer);
           break;
         case INT32:
+        case DATE:
           values[i] = ReadWriteIOUtils.readInt(buffer);
           break;
         case INT64:
+        case TIMESTAMP:
           values[i] = ReadWriteIOUtils.readLong(buffer);
           break;
         case FLOAT:
@@ -474,6 +484,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           values[i] = ReadWriteIOUtils.readDouble(buffer);
           break;
         case TEXT:
+        case STRING:
+        case BLOB:
           values[i] = ReadWriteIOUtils.readBinary(buffer);
           break;
         default:
@@ -524,9 +536,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           size += Byte.BYTES;
           break;
         case INT32:
+        case DATE:
           size += Integer.BYTES;
           break;
         case INT64:
+        case TIMESTAMP:
           size += Long.BYTES;
           break;
         case FLOAT:
@@ -536,6 +550,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           size += Double.BYTES;
           break;
         case TEXT:
+        case STRING:
+        case BLOB:
           size += ReadWriteIOUtils.sizeToWrite((Binary) values[i]);
           break;
         default:
@@ -595,9 +611,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           WALWriteUtils.write((Boolean) values[i], buffer);
           break;
         case INT32:
+        case DATE:
           WALWriteUtils.write((Integer) values[i], buffer);
           break;
         case INT64:
+        case TIMESTAMP:
           WALWriteUtils.write((Long) values[i], buffer);
           break;
         case FLOAT:
@@ -607,6 +625,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           WALWriteUtils.write((Double) values[i], buffer);
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           WALWriteUtils.write((Binary) values[i], buffer);
           break;
         default:
@@ -678,9 +698,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           values[i] = ReadWriteIOUtils.readBool(stream);
           break;
         case INT32:
+        case DATE:
           values[i] = ReadWriteIOUtils.readInt(stream);
           break;
         case INT64:
+        case TIMESTAMP:
           values[i] = ReadWriteIOUtils.readLong(stream);
           break;
         case FLOAT:
@@ -690,6 +712,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           values[i] = ReadWriteIOUtils.readDouble(stream);
           break;
         case TEXT:
+        case STRING:
+        case BLOB:
           values[i] = ReadWriteIOUtils.readBinary(stream);
           break;
         default:
@@ -758,9 +782,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           values[i] = ReadWriteIOUtils.readBool(buffer);
           break;
         case INT32:
+        case DATE:
           values[i] = ReadWriteIOUtils.readInt(buffer);
           break;
         case INT64:
+        case TIMESTAMP:
           values[i] = ReadWriteIOUtils.readLong(buffer);
           break;
         case FLOAT:
@@ -770,6 +796,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           values[i] = ReadWriteIOUtils.readDouble(buffer);
           break;
         case TEXT:
+        case STRING:
+        case BLOB:
           values[i] = ReadWriteIOUtils.readBinary(buffer);
           break;
         default:
