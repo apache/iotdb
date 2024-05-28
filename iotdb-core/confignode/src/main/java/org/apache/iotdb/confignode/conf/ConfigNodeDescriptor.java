@@ -130,7 +130,7 @@ public class ConfigNodeDescriptor {
         commonDescriptor
             .getConfig()
             .updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
-        MetricConfigDescriptor.getInstance().loadProps(commonProperties);
+        MetricConfigDescriptor.getInstance().loadProps(commonProperties, true);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
             .updateRpcInstance(
