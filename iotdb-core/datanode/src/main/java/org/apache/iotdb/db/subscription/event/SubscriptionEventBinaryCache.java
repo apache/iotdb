@@ -93,7 +93,7 @@ public class SubscriptionEventBinaryCache {
 
   private SubscriptionEventBinaryCache() {
     final long initMemorySizeInBytes =
-        PipeResourceManager.memory().getTotalMemorySizeInBytes() / 10; // TODO: enlarge
+        PipeResourceManager.memory().getTotalMemorySizeInBytes() / 20;
     final long maxMemorySizeInBytes =
         (long)
             (PipeResourceManager.memory().getTotalMemorySizeInBytes()
