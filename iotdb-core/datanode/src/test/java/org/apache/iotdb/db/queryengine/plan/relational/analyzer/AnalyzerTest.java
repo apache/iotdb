@@ -39,8 +39,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.RelationalDistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.relational.sql.parser.SqlParser;
-import org.apache.iotdb.db.relational.sql.tree.Statement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement;
 
 import org.junit.Ignore;
 import org.junit.Test;

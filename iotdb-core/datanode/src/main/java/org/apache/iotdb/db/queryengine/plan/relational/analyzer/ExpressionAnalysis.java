@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.db.relational.sql.tree.ExistsPredicate;
-import org.apache.iotdb.db.relational.sql.tree.Expression;
-import org.apache.iotdb.db.relational.sql.tree.InPredicate;
-import org.apache.iotdb.db.relational.sql.tree.QuantifiedComparisonExpression;
-import org.apache.iotdb.db.relational.sql.tree.SubqueryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ExistsPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.InPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.QuantifiedComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SubqueryExpression;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;

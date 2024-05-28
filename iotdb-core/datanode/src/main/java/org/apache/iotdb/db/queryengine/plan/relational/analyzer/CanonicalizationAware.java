@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.db.relational.sql.tree.Identifier;
-import org.apache.iotdb.db.relational.sql.tree.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Node;
 
 import java.util.OptionalInt;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.relational.sql.util.AstUtil.treeEqual;
-import static org.apache.iotdb.db.relational.sql.util.AstUtil.treeHash;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.treeEqual;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.treeHash;
 
 public class CanonicalizationAware<T extends Node> {
 

@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate;
 
-import org.apache.iotdb.db.relational.sql.tree.AstVisitor;
-import org.apache.iotdb.db.relational.sql.tree.BetweenPredicate;
-import org.apache.iotdb.db.relational.sql.tree.ComparisonExpression;
-import org.apache.iotdb.db.relational.sql.tree.Expression;
-import org.apache.iotdb.db.relational.sql.tree.IfExpression;
-import org.apache.iotdb.db.relational.sql.tree.InPredicate;
-import org.apache.iotdb.db.relational.sql.tree.IsNotNullPredicate;
-import org.apache.iotdb.db.relational.sql.tree.IsNullPredicate;
-import org.apache.iotdb.db.relational.sql.tree.LikePredicate;
-import org.apache.iotdb.db.relational.sql.tree.LogicalExpression;
-import org.apache.iotdb.db.relational.sql.tree.NotExpression;
-import org.apache.iotdb.db.relational.sql.tree.NullIfExpression;
-import org.apache.iotdb.db.relational.sql.tree.SearchedCaseExpression;
-import org.apache.iotdb.db.relational.sql.tree.SimpleCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.BetweenPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.IfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.InPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.IsNotNullPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.IsNullPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LikePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NotExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NullIfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SearchedCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SimpleCaseExpression;
 
 /**
  * This class provides a visitor of {@link Expression}, which can be extended to create a visitor

@@ -23,7 +23,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
 import static java.util.Objects.requireNonNull;
 

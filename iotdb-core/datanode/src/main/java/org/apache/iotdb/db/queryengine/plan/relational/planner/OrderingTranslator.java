@@ -13,7 +13,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.db.relational.sql.tree.SortItem;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SortItem;
 
 public class OrderingTranslator {
   private OrderingTranslator() {}
