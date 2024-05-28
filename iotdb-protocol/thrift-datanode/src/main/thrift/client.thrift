@@ -655,4 +655,6 @@ service IClientRPCService {
   TSBackupConfigurationResp getBackupConfiguration();
 
   TSConnectionInfoResp fetchAllConnectionsInfo();
+
+  common.TSStatus testConnection()
 }
