@@ -35,7 +35,7 @@ IF (DEFINED BOOST_INCLUDEDIR)
     INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
 ENDIF()
 
-IF(MINGW)
+IF(MSVC)
     SET(THRIFT_STATIC_LIB "${CMAKE_SOURCE_DIR}/../../thrift/lib/Release/thriftmd.lib")
 ELSE()
     SET(THRIFT_STATIC_LIB "${CMAKE_SOURCE_DIR}/../../thrift/lib/libthrift.a")
@@ -43,7 +43,7 @@ ENDIF()
 
 # Add the generated source files to the sources for the library.
 AUX_SOURCE_DIRECTORY(./generated-sources-cpp SESSION_SRCS)
-IF(MINGW)
+IF(MSVC)
     ADD_LIBRARY(iotdb_session ${SESSION_SRCS})
 ELSE()
     ADD_LIBRARY(iotdb_session SHARED ${SESSION_SRCS})

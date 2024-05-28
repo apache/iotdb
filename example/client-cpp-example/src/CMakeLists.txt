@@ -39,7 +39,7 @@ LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/client/lib)
 ADD_EXECUTABLE(SessionExample SessionExample.cpp)
 ADD_EXECUTABLE(AlignedTimeseriesSessionExample AlignedTimeseriesSessionExample.cpp)
 
-IF(MINGW)
+IF(MSVC)
     TARGET_LINK_LIBRARIES(SessionExample iotdb_session "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib")
     TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample iotdb_session "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib")
 ELSE()
