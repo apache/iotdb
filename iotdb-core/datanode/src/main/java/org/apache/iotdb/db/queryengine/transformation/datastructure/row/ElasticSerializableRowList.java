@@ -315,7 +315,12 @@ public class ElasticSerializableRowList {
     if (internalRowList.size() > 0) {
       int lastIndex = internalRowList.size() - 1;
       SerializableRowList lastInternalList = internalRowList.get(lastIndex);
-      internalBlockCountList.add(lastInternalList.getBlockCount());
+      // For put nulls
+      if (lastInternalList != null) {
+        internalBlockCountList.add(lastInternalList.getBlockCount());
+      } else {
+        internalBlockCountList.add(0);
+      }
     }
     internalRowList.add(SerializableRowList.construct(queryId, dataTypes));
   }
@@ -389,6 +394,9 @@ public class ElasticSerializableRowList {
     int internalListEvictionUpperBound = evictionUpperBound / newInternalRowRecordListCapacity;
     for (int i = 0; i < internalListEvictionUpperBound; ++i) {
       newESRowList.internalRowList.add(null);
+      if (i != 0) {
+        newESRowList.internalBlockCountList.add(0);
+      }
     }
     // Put all null columns to middle list
     newESRowList.rowCount = internalListEvictionUpperBound * newInternalRowRecordListCapacity;
@@ -403,6 +411,7 @@ public class ElasticSerializableRowList {
     internalRowListCapacity = newInternalRowRecordListCapacity;
     cache = newESRowList.cache;
     internalRowList = newESRowList.internalRowList;
+    internalBlockCountList = newESRowList.internalBlockCountList;
     // Update metrics
     byteArrayLengthForMemoryControl = newByteArrayLengthForMemoryControl;
     rowByteArrayLength = (long) byteArrayLengthForMemoryControl * indexListOfTextFields.length;

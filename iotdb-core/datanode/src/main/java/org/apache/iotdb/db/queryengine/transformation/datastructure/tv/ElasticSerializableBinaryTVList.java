@@ -125,6 +125,9 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     int internalListEvictionUpperBound = evictionUpperBound / newInternalTVListCapacity;
     for (int i = 0; i < internalListEvictionUpperBound; ++i) {
       newESTVList.internalTVList.add(null);
+      if (i != 0) {
+        newESTVList.internalColumnCountList.add(0);
+      }
     }
     // Put all null columns to middle list
     newESTVList.pointCount = internalListEvictionUpperBound * newInternalTVListCapacity;
@@ -148,6 +151,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     internalTVListCapacity = newInternalTVListCapacity;
     cache = newESTVList.cache;
     internalTVList = newESTVList.internalTVList;
+    internalColumnCountList = newESTVList.internalColumnCountList;
     // Update metrics
     byteArrayLengthForMemoryControl = newByteArrayLengthForMemoryControl;
     totalByteArrayLengthLimit = (long) pointCount * byteArrayLengthForMemoryControl;

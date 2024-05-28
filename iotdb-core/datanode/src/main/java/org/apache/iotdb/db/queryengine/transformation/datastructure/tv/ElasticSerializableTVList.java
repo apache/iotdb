@@ -187,7 +187,7 @@ public class ElasticSerializableTVList {
           insertedTimeColumn = timeColumn;
           insertedValueColumn = valueColumn;
         } else {
-          insertedTimeColumn = (TimeColumn) timeColumn.getRegion(begin, consumed);
+          insertedTimeColumn = (TimeColumn) timeColumn.getRegionCopy(begin, consumed);
           insertedValueColumn = valueColumn.getRegionCopy(begin, consumed);
         }
       } else {
