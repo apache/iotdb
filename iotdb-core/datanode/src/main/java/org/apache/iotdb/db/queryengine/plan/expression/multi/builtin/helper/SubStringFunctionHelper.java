@@ -63,11 +63,11 @@ public class SubStringFunctionHelper implements BuiltInScalarFunctionHelper {
   @Override
   public void checkBuiltInScalarFunctionInputDataType(TSDataType tsDataType)
       throws SemanticException {
-    if (tsDataType.getType() == TSDataType.TEXT.getType()) {
+    if (TSDataType.TEXT.equals(tsDataType) || TSDataType.STRING.equals(tsDataType)) {
       return;
     }
     throw new SemanticException(
-        "Input series of Scalar function [SUBSTRING] only supports numeric data types [TEXT]");
+        String.format("Unsupported data type %s for function SUBSTRING.", tsDataType));
   }
 
   @Override

@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.statement.literal.BinaryLiteral;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
@@ -43,6 +44,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -57,6 +59,11 @@ public class CommonUtils {
   private CommonUtils() {}
 
   public static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
+    return parseValue(dataType, value, ZoneId.systemDefault());
+  }
+
+  public static Object parseValue(TSDataType dataType, String value, ZoneId zoneId)
+      throws QueryProcessException {
     try {
       if ("null".equals(value) || "NULL".equals(value)) {
         return null;
@@ -77,6 +84,41 @@ public class CommonUtils {
           } catch (NumberFormatException e) {
             throw new NumberFormatException(
                 "data type is not consistent, input " + value + ", registered " + dataType);
+          }
+        case TIMESTAMP:
+          try {
+            if (StringUtils.isNumeric(value)) {
+              return Long.parseLong(value);
+            } else {
+              return DateTimeUtils.parseDateTimeExpressionToLong(StringUtils.trim(value), zoneId);
+            }
+          } catch (Throwable e) {
+            throw new NumberFormatException(
+                "data type is not consistent, input "
+                    + value
+                    + ", registered "
+                    + dataType
+                    + " because "
+                    + e.getMessage());
+          }
+        case DATE:
+          try {
+            if (value.length() == 12
+                && ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
+                    || (value.startsWith(SqlConstant.DQUOTE)
+                        && value.endsWith(SqlConstant.DQUOTE)))) {
+              return DateTimeUtils.parseDateExpressionToInt(value.substring(1, value.length() - 1));
+            } else {
+              return DateTimeUtils.parseDateExpressionToInt(StringUtils.trim(value));
+            }
+          } catch (Throwable e) {
+            throw new NumberFormatException(
+                "data type is not consistent, input "
+                    + value
+                    + ", registered "
+                    + dataType
+                    + " because "
+                    + e.getMessage());
           }
         case FLOAT:
           float f;
@@ -103,6 +145,7 @@ public class CommonUtils {
           }
           return d;
         case TEXT:
+        case STRING:
           if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
               || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
             if (value.length() == 1) {
@@ -112,8 +155,17 @@ public class CommonUtils {
                   value.substring(1, value.length() - 1), TSFileConfig.STRING_CHARSET);
             }
           }
-
           return new Binary(value, TSFileConfig.STRING_CHARSET);
+        case BLOB:
+          if ((value.startsWith(SqlConstant.QUOTE) && value.endsWith(SqlConstant.QUOTE))
+              || (value.startsWith(SqlConstant.DQUOTE) && value.endsWith(SqlConstant.DQUOTE))) {
+            if (value.length() == 1) {
+              return new Binary(parseBlobStringToByteArray(value));
+            } else {
+              return new Binary(parseBlobStringToByteArray(value.substring(1, value.length() - 1)));
+            }
+          }
+          return new Binary(parseBlobStringToByteArray(value));
         default:
           throw new QueryProcessException("Unsupported data type:" + dataType);
       }
@@ -204,31 +256,6 @@ public class CommonUtils {
         break;
     }
     return value;
-  }
-
-  @TestOnly
-  public static Object parseValueForTest(TSDataType dataType, String value)
-      throws QueryProcessException {
-    try {
-      switch (dataType) {
-        case BOOLEAN:
-          return parseBoolean(value);
-        case INT32:
-          return Integer.parseInt(value);
-        case INT64:
-          return Long.parseLong(value);
-        case FLOAT:
-          return Float.parseFloat(value);
-        case DOUBLE:
-          return Double.parseDouble(value);
-        case TEXT:
-          return new Binary(value, TSFileConfig.STRING_CHARSET);
-        default:
-          throw new QueryProcessException("Unsupported data type:" + dataType);
-      }
-    } catch (NumberFormatException e) {
-      throw new QueryProcessException(e.getMessage());
-    }
   }
 
   private static boolean parseBoolean(String value) throws QueryProcessException {
@@ -341,6 +368,22 @@ public class CommonUtils {
       status = 2;
     }
     return status;
+  }
+
+  /**
+   * Converts a string into a byte array based on the encoding format (hex or escape).
+   *
+   * @param input The input string.
+   * @return The encoded byte array.
+   * @throws IllegalArgumentException if input is invalid.
+   */
+  public static byte[] parseBlobStringToByteArray(String input) throws IllegalArgumentException {
+    try {
+      BinaryLiteral binaryLiteral = new BinaryLiteral(input);
+      return binaryLiteral.getValues();
+    } catch (SemanticException e) {
+      throw new IllegalArgumentException(e.getMessage());
+    }
   }
 
   private static void badUse(Exception e) {

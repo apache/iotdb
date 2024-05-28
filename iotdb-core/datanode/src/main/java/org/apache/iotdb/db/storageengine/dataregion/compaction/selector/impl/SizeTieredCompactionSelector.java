@@ -101,6 +101,7 @@ public class SizeTieredCompactionSelector
     List<TsFileResource> selectedFileList = new ArrayList<>();
     long selectedFileSize = 0L;
     long targetCompactionFileSize = config.getTargetCompactionFileSize();
+    int fileLimit = config.getFileLimitPerInnerTask();
 
     List<List<TsFileResource>> taskList = new ArrayList<>();
     for (TsFileResource currentFile : tsFileResources) {
@@ -124,7 +125,7 @@ public class SizeTieredCompactionSelector
       long totalSizeIfSelectCurrentFile = selectedFileSize + currentFile.getTsFileSize();
       boolean canNotAddCurrentFileIntoCurrentTask =
           totalSizeIfSelectCurrentFile > targetCompactionFileSize
-              || selectedFileList.size() >= config.getFileLimitPerInnerTask();
+              || selectedFileList.size() >= fileLimit;
       if (canNotAddCurrentFileIntoCurrentTask) {
         // total file size or num will beyond the threshold if select current file, stop the
         // selection of current task
@@ -149,7 +150,7 @@ public class SizeTieredCompactionSelector
     }
 
     // if the selected file size reach the condition to submit
-    if (selectedFileList.size() == config.getFileLimitPerInnerTask()) {
+    if (selectedFileList.size() == fileLimit) {
       taskList.add(new ArrayList<>(selectedFileList));
       selectedFileList.clear();
       selectedFileSize = 0;

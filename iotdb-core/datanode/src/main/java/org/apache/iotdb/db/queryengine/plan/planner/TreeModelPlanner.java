@@ -46,16 +46,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
 public class TreeModelPlanner implements IPlanner {
-  private static final Logger LOGGER = LoggerFactory.getLogger(TreeModelPlanner.class);
 
   private final Statement statement;
 

@@ -179,7 +179,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     String errorMsg =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:45 mismatched input 'string' expecting {FALSE, NAN, NOW, NULL, TRUE, '-', '+', '/', '.', STRING_LITERAL, DATETIME_LITERAL, INTEGER_LITERAL, EXPONENT_NUM_PART}";
+            + "line 1:45 mismatched input 'string' expecting {FALSE, NAN, NOW, NULL, TRUE, '-', '+', '/', '.', STRING_LITERAL, BINARY_LITERAL, DATETIME_LITERAL, INTEGER_LITERAL, EXPONENT_NUM_PART}";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.sg1.d1.s1 TEXT");
@@ -198,7 +198,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     String errorMsg1 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:45 mismatched input '`string`' expecting {FALSE, NAN, NOW, NULL, TRUE, '-', '+', '/', '.', STRING_LITERAL, DATETIME_LITERAL, INTEGER_LITERAL, EXPONENT_NUM_PART}";
+            + "line 1:45 mismatched input '`string`' expecting {FALSE, NAN, NOW, NULL, TRUE, '-', '+', '/', '.', STRING_LITERAL, BINARY_LITERAL, DATETIME_LITERAL, INTEGER_LITERAL, EXPONENT_NUM_PART}";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // wrap STRING_LITERAL with ``

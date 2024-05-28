@@ -39,7 +39,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Set;
@@ -88,9 +87,8 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
 
   @Override
   protected byte[] generateHandShakeV1Payload() throws IOException {
-    return compressIfNeeded(
-        PipeTransferDataNodeHandshakeV1Req.toTPipeTransferBytes(
-            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+    return PipeTransferDataNodeHandshakeV1Req.toTPipeTransferBytes(
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
   @Override
@@ -103,11 +101,12 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
 
-    return compressIfNeeded(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferBytes(params));
+    return PipeTransferDataNodeHandshakeV2Req.toTPipeTransferBytes(params);
   }
 
   protected void doTransferWrapper(
-      final Socket socket, final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+      final AirGapSocket socket,
+      final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException, IOException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
@@ -123,13 +122,14 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
   }
 
   private void doTransfer(
-      final Socket socket, final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
+      final AirGapSocket socket,
+      final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException, IOException {
     if (!send(
+        pipeSchemaRegionWritePlanEvent.getPipeName(),
         socket,
-        compressIfNeeded(
-            PipeTransferPlanNodeReq.toTPipeTransferBytes(
-                pipeSchemaRegionWritePlanEvent.getPlanNode())))) {
+        PipeTransferPlanNodeReq.toTPipeTransferBytes(
+            pipeSchemaRegionWritePlanEvent.getPlanNode()))) {
       final String errorMessage =
           String.format(
               "Transfer data node write plan %s error. Socket: %s.",

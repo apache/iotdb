@@ -34,6 +34,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.tsfile.utils.Pair;
@@ -113,13 +114,15 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
 
     final TPipeTransferResp resp;
     try {
-      resp =
-          clientAndStatus
-              .getLeft()
-              .pipeTransfer(
-                  compressIfNeeded(
-                      PipeTransferPlanNodeReq.toTPipeTransferReq(
-                          pipeSchemaRegionWritePlanEvent.getPlanNode())));
+      final TPipeTransferReq req =
+          compressIfNeeded(
+              PipeTransferPlanNodeReq.toTPipeTransferReq(
+                  pipeSchemaRegionWritePlanEvent.getPlanNode()));
+      rateLimitIfNeeded(
+          pipeSchemaRegionWritePlanEvent.getPipeName(),
+          clientAndStatus.getLeft().getEndPoint(),
+          req.getBody().length);
+      resp = clientAndStatus.getLeft().pipeTransfer(req);
     } catch (final Exception e) {
       clientAndStatus.setRight(false);
       throw new PipeConnectionException(

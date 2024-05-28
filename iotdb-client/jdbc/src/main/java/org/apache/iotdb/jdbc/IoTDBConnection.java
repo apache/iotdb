@@ -278,7 +278,7 @@ public class IoTDBConnection implements Connection {
     if (isClosed) {
       throw new SQLException("Cannot create statement because connection is closed");
     }
-    return new IoTDBDatabaseMetadata(this, getClient(), sessionId);
+    return new IoTDBDatabaseMetadata(this, getClient(), sessionId, zoneId);
   }
 
   @Override

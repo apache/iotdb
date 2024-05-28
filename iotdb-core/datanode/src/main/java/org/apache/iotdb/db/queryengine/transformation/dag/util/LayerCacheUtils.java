@@ -65,9 +65,11 @@ public class LayerCacheUtils {
     } else {
       switch (dataType) {
         case INT32:
+        case DATE:
           target.putInt(source.currentTime(), source.currentInt());
           break;
         case INT64:
+        case TIMESTAMP:
           target.putLong(source.currentTime(), source.currentLong());
           break;
         case FLOAT:
@@ -80,6 +82,8 @@ public class LayerCacheUtils {
           target.putBoolean(source.currentTime(), source.currentBoolean());
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           target.putBinary(
               source.currentTime(),
               UDFBinaryTransformer.transformToUDFBinary(source.currentBinary()));
