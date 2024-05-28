@@ -30,7 +30,6 @@ import java.util.Objects;
 public class PipeConsensusTabletBatchReq extends TPipeConsensusBatchTransferReq {
   private final transient List<PipeConsensusTabletBinaryReq> binaryReqs = new ArrayList<>();
   private final transient List<PipeConsensusTabletInsertNodeReq> insertNodeReqs = new ArrayList<>();
-  private final transient List<PipeConsensusTabletRawReq> tabletReqs = new ArrayList<>();
 
   private PipeConsensusTabletBatchReq() {
     // do nothing
@@ -51,9 +50,7 @@ public class PipeConsensusTabletBatchReq extends TPipeConsensusBatchTransferReq 
     final PipeConsensusTabletBatchReq batchReq = new PipeConsensusTabletBatchReq();
 
     for (final TPipeConsensusTransferReq req : transferReq.getBatchReqs()) {
-      if (req instanceof PipeConsensusTabletRawReq) {
-        batchReq.tabletReqs.add((PipeConsensusTabletRawReq) req);
-      } else if (req instanceof PipeConsensusTabletBinaryReq) {
+      if (req instanceof PipeConsensusTabletBinaryReq) {
         batchReq.binaryReqs.add((PipeConsensusTabletBinaryReq) req);
       } else {
         batchReq.insertNodeReqs.add((PipeConsensusTabletInsertNodeReq) req);
@@ -76,12 +73,11 @@ public class PipeConsensusTabletBatchReq extends TPipeConsensusBatchTransferReq 
     PipeConsensusTabletBatchReq that = (PipeConsensusTabletBatchReq) obj;
     return binaryReqs.equals(that.binaryReqs)
         && insertNodeReqs.equals(that.insertNodeReqs)
-        && tabletReqs.equals(that.tabletReqs)
         && Objects.equals(batchReqs, that.batchReqs);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(binaryReqs, insertNodeReqs, tabletReqs, batchReqs);
+    return Objects.hash(binaryReqs, insertNodeReqs, batchReqs);
   }
 }

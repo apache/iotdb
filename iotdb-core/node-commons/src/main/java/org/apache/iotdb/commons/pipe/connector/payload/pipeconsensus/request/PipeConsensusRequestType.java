@@ -27,13 +27,13 @@ public enum PipeConsensusRequestType {
 
   // Data region
   TRANSFER_TABLET_INSERT_NODE((short) 100),
-  TRANSFER_TABLET_RAW((short) 101),
-  TRANSFER_TS_FILE_PIECE((short) 102),
-  TRANSFER_TS_FILE_SEAL((short) 103),
-  TRANSFER_TABLET_BATCH((short) 104),
-  TRANSFER_TABLET_BINARY((short) 105),
-  TRANSFER_TS_FILE_PIECE_WITH_MOD((short) 106),
-  TRANSFER_TS_FILE_SEAL_WITH_MOD((short) 107),
+  // PipeConsensus doesn't expect to handle rawTabletEvent.
+  TRANSFER_TS_FILE_PIECE((short) 101),
+  TRANSFER_TS_FILE_SEAL((short) 102),
+  TRANSFER_TABLET_BATCH((short) 103),
+  TRANSFER_TABLET_BINARY((short) 104),
+  TRANSFER_TS_FILE_PIECE_WITH_MOD((short) 105),
+  TRANSFER_TS_FILE_SEAL_WITH_MOD((short) 106),
 
 // Note: temporarily PipeConsensus only support data region. But we put this class in `node-common`
 // to reserve the scalability

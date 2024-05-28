@@ -142,7 +142,6 @@ public class PipeConsensusReceiver {
         case TRANSFER_TS_FILE_SEAL:
         case TRANSFER_TS_FILE_SEAL_WITH_MOD:
           // TODO: check memory when logging wal(in further version)
-        case TRANSFER_TABLET_RAW:
         case TRANSFER_TABLET_BINARY:
         case TRANSFER_TABLET_INSERT_NODE:
           // TODO: support batch transfer(in further version)
@@ -211,11 +210,6 @@ public class PipeConsensusReceiver {
           case TRANSFER_TABLET_INSERT_NODE:
             return handleTransferTabletInsertNode(
                 PipeConsensusTabletInsertNodeReq.fromTPipeConsensusTransferReq(req));
-          case TRANSFER_TABLET_RAW:
-            // PipeConsensus doesn't expect to handle rawTabletEvent.
-            LOGGER.error("PipeConsensus Unknown PipeRequestType: do not support tablet raw!");
-            return new TPipeConsensusTransferResp(
-                new TSStatus(TSStatusCode.PIPE_CONSENSUS_UNSUPPORTED_EVENT.getStatusCode()));
           case TRANSFER_TABLET_BINARY:
             return handleTransferTabletBinary(
                 PipeConsensusTabletBinaryReq.fromTPipeConsensusTransferReq(req));

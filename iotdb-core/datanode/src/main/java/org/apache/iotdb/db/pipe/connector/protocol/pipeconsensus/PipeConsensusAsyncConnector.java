@@ -37,12 +37,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTabletBatchEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTabletInsertNodeEventHandler;
-import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTabletRawEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler.PipeConsensusTsFileInsertionEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder.PipeConsensusAsyncBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletRawReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -227,69 +225,40 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
       TCommitId tCommitId;
       TConsensusGroupId tConsensusGroupId =
           new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
-            (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
-        tCommitId =
-            new TCommitId(
-                pipeInsertNodeTabletInsertionEvent.getCommitId(),
-                pipeInsertNodeTabletInsertionEvent.getRebootTimes());
+      // tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
+          (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
+      tCommitId =
+          new TCommitId(
+              pipeInsertNodeTabletInsertionEvent.getCommitId(),
+              pipeInsertNodeTabletInsertionEvent.getRebootTimes());
 
-        // We increase the reference count for this event to determine if the event may be released.
-        if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
-            PipeConsensusAsyncConnector.class.getName())) {
-          pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
-              PipeConsensusAsyncConnector.class.getName(), false);
-          return;
-        }
-
-        final InsertNode insertNode =
-            pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
-        final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
-        final TPipeConsensusTransferReq pipeConsensusTransferReq =
-            Objects.isNull(insertNode)
-                ? PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
-                    pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
-                    tCommitId,
-                    tConsensusGroupId,
-                    progressIndex,
-                    thisDataNodeId)
-                : PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
-                    insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId);
-        final PipeConsensusTabletInsertNodeEventHandler pipeConsensusInsertNodeReqHandler =
-            new PipeConsensusTabletInsertNodeEventHandler(
-                pipeInsertNodeTabletInsertionEvent, pipeConsensusTransferReq, this);
-
-        transfer(pipeConsensusInsertNodeReqHandler);
-      } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
-        final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
-            (PipeRawTabletInsertionEvent) tabletInsertionEvent;
-        tCommitId =
-            new TCommitId(
-                pipeRawTabletInsertionEvent.getCommitId(),
-                pipeRawTabletInsertionEvent.getRebootTimes());
-
-        // We increase the reference count for this event to determine if the event may be released.
-        if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
-            PipeConsensusAsyncConnector.class.getName())) {
-          pipeRawTabletInsertionEvent.decreaseReferenceCount(
-              PipeConsensusAsyncConnector.class.getName(), false);
-          return;
-        }
-
-        final PipeConsensusTabletRawReq pipeConsensusTabletRawReq =
-            PipeConsensusTabletRawReq.toTPipeConsensusTransferReq(
-                pipeRawTabletInsertionEvent.convertToTablet(),
-                pipeRawTabletInsertionEvent.isAligned(),
-                tCommitId,
-                tConsensusGroupId,
-                thisDataNodeId);
-        final PipeConsensusTabletRawEventHandler pipeConsensusTabletRawEventHandler =
-            new PipeConsensusTabletRawEventHandler(
-                pipeRawTabletInsertionEvent, pipeConsensusTabletRawReq, this);
-
-        transfer(pipeConsensusTabletRawEventHandler);
+      // We increase the reference count for this event to determine if the event may be released.
+      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+          PipeConsensusAsyncConnector.class.getName())) {
+        pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
+            PipeConsensusAsyncConnector.class.getName(), false);
+        return;
       }
+
+      final InsertNode insertNode =
+          pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+      final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
+      final TPipeConsensusTransferReq pipeConsensusTransferReq =
+          Objects.isNull(insertNode)
+              ? PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
+                  pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
+                  tCommitId,
+                  tConsensusGroupId,
+                  progressIndex,
+                  thisDataNodeId)
+              : PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
+                  insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId);
+      final PipeConsensusTabletInsertNodeEventHandler pipeConsensusInsertNodeReqHandler =
+          new PipeConsensusTabletInsertNodeEventHandler(
+              pipeInsertNodeTabletInsertionEvent, pipeConsensusTransferReq, this);
+
+      transfer(pipeConsensusInsertNodeReqHandler);
     }
   }
 
@@ -314,17 +283,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     } catch (final Exception ex) {
       logOnClientException(client, ex);
       pipeConsensusInsertNodeReqHandler.onError(ex);
-    }
-  }
-
-  private void transfer(final PipeConsensusTabletRawEventHandler pipeConsensusTabletReqHandler) {
-    AsyncPipeConsensusServiceClient client = null;
-    try {
-      client = asyncTransferClientManager.borrowClient(getFollowerUrl());
-      pipeConsensusTabletReqHandler.transfer(client);
-    } catch (final Exception ex) {
-      logOnClientException(client, ex);
-      pipeConsensusTabletReqHandler.onError(ex);
     }
   }
 
