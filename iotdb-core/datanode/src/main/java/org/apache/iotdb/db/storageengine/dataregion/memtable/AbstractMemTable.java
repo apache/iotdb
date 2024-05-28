@@ -581,7 +581,7 @@ public abstract class AbstractMemTable implements IMemTable {
             buildChunkMetaDataForMemoryChunk(
                 measurementId,
                 timestamps[0],
-                timestamps[timestamps.length - 1],
+                timestamps[tvListCopy.rowCount() - 1],
                 Collections.emptyList()));
     memChunkHandleMap
         .computeIfAbsent(measurementId, k -> new ArrayList<>())
@@ -687,7 +687,7 @@ public abstract class AbstractMemTable implements IMemTable {
               buildChunkMetaDataForMemoryChunk(
                   measurementId,
                   timestamps[0],
-                  timestamps[timestamps.length - 1],
+                  timestamps[tvListCopy.rowCount() - 1],
                   Collections.emptyList()));
       memChunkHandleMap
           .computeIfAbsent(measurementId, k -> new ArrayList<>())

@@ -55,6 +55,30 @@ public class TimeseriesSchemaInfo {
     this.deadbandParameters = deadbandInfo.right == null ? "" : deadbandInfo.right;
   }
 
+  public String getDataType() {
+    return dataType;
+  }
+
+  public String getEncoding() {
+    return encoding;
+  }
+
+  public String getCompression() {
+    return compression;
+  }
+
+  public String getTags() {
+    return tags;
+  }
+
+  public String getDeadbandParameters() {
+    return deadbandParameters;
+  }
+
+  public String getDeadband() {
+    return deadband;
+  }
+
   public TimeseriesSchemaInfo(
       String dataType,
       String encoding,
@@ -119,5 +143,16 @@ public class TimeseriesSchemaInfo {
   @Override
   public int hashCode() {
     return Objects.hash(dataType, encoding, compression, tags, deadband, deadbandParameters);
+  }
+
+  // Some info which can be calculated when executing query, we don't need to store them.
+  private String dataBase;
+
+  public void setDataBase(String dataBase) {
+    this.dataBase = dataBase;
+  }
+
+  public String getDataBase() {
+    return dataBase;
   }
 }

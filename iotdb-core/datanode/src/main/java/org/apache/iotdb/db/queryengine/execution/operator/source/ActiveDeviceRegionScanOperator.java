@@ -19,35 +19,30 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
-public class DeviceRegionScanOperator extends AbstractRegionScanDataSourceOperator {
-  private final RegionScanForActiveDeviceUtil regionScanUtil;
+public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSourceOperator {
+  // The devices which need to be checked.
   private final Map<IDeviceID, Boolean> deviceToAlignedMap;
-  // targetDevices is the devices that need to be checked
-  private final Set<IDeviceID> targetDevices;
-  private boolean finished = false;
 
-  public DeviceRegionScanOperator(
+  public ActiveDeviceRegionScanOperator(
       OperatorContext operatorContext,
       PlanNodeId sourceId,
       Map<IDeviceID, Boolean> deviceToAlignedMap,
@@ -55,24 +50,7 @@ public class DeviceRegionScanOperator extends AbstractRegionScanDataSourceOperat
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
     this.deviceToAlignedMap = deviceToAlignedMap;
-    this.targetDevices = deviceToAlignedMap.keySet();
     this.regionScanUtil = new RegionScanForActiveDeviceUtil(timeFilter);
-  }
-
-  @Override
-  public void initQueryDataSource(IQueryDataSource dataSource) {
-    regionScanUtil.initQueryDataSource(dataSource);
-    super.initQueryDataSource(dataSource);
-  }
-
-  @Override
-  public TsBlock next() throws Exception {
-    if (retainedTsBlock != null) {
-      return getResultFromRetainedTsBlock();
-    }
-    resultTsBlock = resultTsBlockBuilder.build();
-    resultTsBlockBuilder.reset();
-    return checkTsBlockSizeAndGetResult();
   }
 
   @Override
@@ -86,19 +64,19 @@ public class DeviceRegionScanOperator extends AbstractRegionScanDataSourceOperat
       long start = System.nanoTime();
 
       do {
-        if (regionScanUtil.isCurrentTsFileFinished()) {
-          if (!regionScanUtil.nextTsFileHandle(targetDevices)) {
-            // There is no more fileScanHandles in queryDataSource
-            break;
-          }
+        if (regionScanUtil.isCurrentTsFileFinished()
+            && !((RegionScanForActiveDeviceUtil) regionScanUtil)
+                .nextTsFileHandle(deviceToAlignedMap)) {
+          // There is no more fileScanHandles in queryDataSource
+          break;
         }
 
-        if (!regionScanUtil.filterChunkMetaData()) {
+        if (regionScanUtil.filterChunkMetaData()) {
           // There is still some chunkMetaData in current TsFile
           continue;
         }
 
-        if (!regionScanUtil.filterChunkData()) {
+        if (regionScanUtil.filterChunkData()) {
           // There is still some pageData in current TsFile
           continue;
         }
@@ -110,11 +88,11 @@ public class DeviceRegionScanOperator extends AbstractRegionScanDataSourceOperat
 
       finished =
           resultTsBlockBuilder.isEmpty()
-              && (regionScanUtil.isCurrentTsFileFinished() || targetDevices.isEmpty());
+              && (!regionScanUtil.hasMoreData() || deviceToAlignedMap.isEmpty());
 
       return !finished;
     } catch (IOException e) {
-      throw new RuntimeException("Error happened while scanning the file", e);
+      throw new IOException("Error happened while scanning active devices", e);
     }
   }
 
@@ -122,7 +100,8 @@ public class DeviceRegionScanOperator extends AbstractRegionScanDataSourceOperat
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
 
-    List<IDeviceID> activeDevices = regionScanUtil.getActiveDevices();
+    List<IDeviceID> activeDevices =
+        ((RegionScanForActiveDeviceUtil) regionScanUtil).getActiveDevices();
     for (IDeviceID deviceID : activeDevices) {
       timeColumnBuilder.writeLong(-1);
       columnBuilders[0].writeBinary(new Binary(deviceID.getBytes()));
@@ -131,43 +110,14 @@ public class DeviceRegionScanOperator extends AbstractRegionScanDataSourceOperat
               String.valueOf(deviceToAlignedMap.get(deviceID)), TSFileConfig.STRING_CHARSET));
       columnBuilders[2].appendNull();
       resultTsBlockBuilder.declarePosition();
-      targetDevices.remove(deviceID);
+      deviceToAlignedMap.remove(deviceID);
     }
   }
 
   @Override
-  public void close() throws Exception {
-    // do nothing
-  }
-
-  @Override
-  public boolean isFinished() throws Exception {
-    return finished;
-  }
-
-  @Override
-  public long calculateMaxPeekMemory() {
-    return Math.max(
-        maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3L);
-  }
-
-  @Override
-  public long calculateMaxReturnSize() {
-    return maxReturnSize;
-  }
-
-  @Override
-  public long calculateRetainedSizeAfterCallingNext() {
-    return calculateMaxPeekMemoryWithCounter() - calculateMaxReturnSize();
-  }
-
-  @Override
   protected List<TSDataType> getResultDataTypes() {
-    return Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT);
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return 0;
+    return ColumnHeaderConstant.showDevicesColumnHeaders.stream()
+        .map(ColumnHeader::getColumnType)
+        .collect(Collectors.toList());
   }
 }

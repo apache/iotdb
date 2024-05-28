@@ -1800,29 +1800,29 @@ public class TsFileProcessor {
                 measurementToChunkMetaList,
                 measurementToChunkHandleList,
                 modsToMemtable);
-            if (workMemTable != null) {
-              workMemTable.queryForSeriesRegionScan(
-                  seriesPath,
-                  queryContext.getQueryTimeLowerBound(),
-                  measurementToChunkMetaList,
-                  measurementToChunkHandleList,
-                  null);
-            }
-
-            IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(seriesPath.getDevice());
-            // Some memTable have been flushed already, so we need to get the chunk metadata from
-            // writer and build chunk handle for disk scanning
-            buildChunkHandleForFlushedMemTable(
-                deviceID,
-                ResourceByPathUtils.getResourceInstance(seriesPath)
-                    .getVisibleMetadataListFromWriter(writer, tsFileResource, queryContext),
+          }
+          if (workMemTable != null) {
+            workMemTable.queryForSeriesRegionScan(
+                seriesPath,
+                queryContext.getQueryTimeLowerBound(),
                 measurementToChunkMetaList,
-                measurementToChunkHandleList);
+                measurementToChunkHandleList,
+                null);
+          }
 
-            if (!measurementToChunkHandleList.isEmpty() || !measurementToChunkMetaList.isEmpty()) {
-              deviceToMemChunkHandleMap.put(deviceID, measurementToChunkHandleList);
-              deviceToChunkMetadataListMap.put(deviceID, measurementToChunkMetaList);
-            }
+          IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(seriesPath.getDevice());
+          // Some memTable have been flushed already, so we need to get the chunk metadata from
+          // writer and build chunk handle for disk scanning
+          buildChunkHandleForFlushedMemTable(
+              deviceID,
+              ResourceByPathUtils.getResourceInstance(seriesPath)
+                  .getVisibleMetadataListFromWriter(writer, tsFileResource, queryContext),
+              measurementToChunkMetaList,
+              measurementToChunkHandleList);
+
+          if (!measurementToChunkHandleList.isEmpty() || !measurementToChunkMetaList.isEmpty()) {
+            deviceToMemChunkHandleMap.put(deviceID, measurementToChunkHandleList);
+            deviceToChunkMetadataListMap.put(deviceID, measurementToChunkMetaList);
           }
         }
       } catch (QueryProcessException | MetadataException | IOException e) {

@@ -21,18 +21,66 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.List;
 
 public abstract class AbstractRegionScanDataSourceOperator extends AbstractSourceOperator
     implements DataSourceOperator {
+
+  protected boolean finished = false;
+
+  protected AbstractRegionScanForActiveDataUtil regionScanUtil;
   protected TsBlockBuilder resultTsBlockBuilder;
 
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
+    regionScanUtil.initQueryDataSource(dataSource);
     resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
+  }
+
+  @Override
+  public TsBlock next() throws Exception {
+    if (retainedTsBlock != null) {
+      return getResultFromRetainedTsBlock();
+    }
+    resultTsBlock = resultTsBlockBuilder.build();
+    resultTsBlockBuilder.reset();
+    return checkTsBlockSizeAndGetResult();
+  }
+
+  @Override
+  public void close() throws Exception {
+    // do nothing
+  }
+
+  @Override
+  public boolean isFinished() throws Exception {
+    return finished;
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return Math.max(
+        maxReturnSize, TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3L);
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return maxReturnSize;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return calculateMaxPeekMemoryWithCounter() - calculateMaxReturnSize();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return 0;
   }
 
   protected abstract List<TSDataType> getResultDataTypes();

@@ -75,7 +75,7 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
     chunkMetadataMap.values().stream()
         .flatMap(List::stream)
         .map(IChunkMetadata::getDeleteIntervalList)
-        .filter(deleteIntervalList -> !deleteIntervalList.isEmpty())
+        .filter(deleteIntervalList -> deleteIntervalList == null || !deleteIntervalList.isEmpty())
         .forEach(
             timeRangeList -> {
               int[] deleteCursor = {0};
@@ -133,7 +133,7 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
     boolean[] result = new boolean[timeArray.length];
     chunkMetadataList.stream()
         .map(IChunkMetadata::getDeleteIntervalList)
-        .filter(deleteIntervalList -> !deleteIntervalList.isEmpty())
+        .filter(deleteIntervalList -> deleteIntervalList == null || !deleteIntervalList.isEmpty())
         .forEach(
             timeRangeList -> {
               int[] deleteCursor = {0};

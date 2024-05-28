@@ -1,10 +1,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
-import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegionScan;
-import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
-import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.DeviceStartEndTime;
@@ -19,40 +15,27 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-public class RegionScanForActiveDeviceUtil {
+public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDataUtil {
 
-  private QueryDataSourceForRegionScan queryDataSource;
-
-  private final Filter timeFilter;
-
-  private final Set<IDeviceID> deviceSetForCurrentTsFile = new HashSet<>();
-  private final List<AbstractChunkOffset> chunkToBeScanned = new ArrayList<>();
-  private final List<Statistics<? extends Serializable>> chunkStatistics = new ArrayList<>();
-
-  private IFileScanHandle curFileScanHandle = null;
-  private Iterator<AbstractDeviceChunkMetaData> deviceChunkMetaDataIterator = null;
-  private Iterator<IChunkHandle> chunkHandleIterator = null;
-  private IChunkHandle currentChunkHandle = null;
-
-  private final List<IDeviceID> activeDevices = new ArrayList<>();
+  private final Set<IDeviceID> deviceSetForCurrentTsFile;
+  private final List<IDeviceID> activeDevices;
 
   public RegionScanForActiveDeviceUtil(Filter timeFilter) {
-    this.timeFilter = timeFilter;
+    super(timeFilter);
+    this.deviceSetForCurrentTsFile = new HashSet<>();
+    this.activeDevices = new ArrayList<>();
   }
 
-  public void initQueryDataSource(IQueryDataSource dataSource) {
-    this.queryDataSource = (QueryDataSourceForRegionScan) dataSource;
-  }
-
+  @Override
   public boolean isCurrentTsFileFinished() {
     return deviceSetForCurrentTsFile.isEmpty();
   }
 
-  public boolean nextTsFileHandle(Set<IDeviceID> targetDevices)
+  public boolean nextTsFileHandle(Map<IDeviceID, Boolean> targetDevices)
       throws IOException, IllegalPathException {
 
     if (!queryDataSource.hasNext()) {
@@ -68,18 +51,15 @@ public class RegionScanForActiveDeviceUtil {
     while (iterator.hasNext()) {
       DeviceStartEndTime deviceStartEndTime = iterator.next();
       IDeviceID deviceID = deviceStartEndTime.getDevicePath();
-
-      // If this device has already been removed by another TsFileHandle, we should skip it.
-      if (!targetDevices.contains(deviceID)) {
-        continue;
-      }
-
       long startTime = deviceStartEndTime.getStartTime();
       long endTime = deviceStartEndTime.getEndTime();
-      if (!timeFilter.satisfyStartEndTime(startTime, endTime)) {
-        // If the time range is filtered, the devicePath is not active in this time range.
+      // If this device has already been removed by another TsFileHandle, we should skip it.
+      // If the time range is filtered, the devicePath is not active in this time range.
+      if (!targetDevices.containsKey(deviceID)
+          || !timeFilter.satisfyStartEndTime(startTime, endTime)) {
         continue;
       }
+
       boolean[] isDeleted =
           curFileScanHandle.isDeviceTimeDeleted(
               deviceStartEndTime.getDevicePath(), new long[] {startTime, endTime});
@@ -94,98 +74,30 @@ public class RegionScanForActiveDeviceUtil {
     return true;
   }
 
-  public boolean filterChunkMetaData() throws IOException, IllegalPathException {
-
-    if (deviceSetForCurrentTsFile.isEmpty()) {
-      return true;
-    }
-
-    if (deviceChunkMetaDataIterator == null) {
-      deviceChunkMetaDataIterator = curFileScanHandle.getAllDeviceChunkMetaData();
-    }
-
-    if (deviceChunkMetaDataIterator.hasNext()) {
-      AbstractDeviceChunkMetaData deviceChunkMetaData = deviceChunkMetaDataIterator.next();
-      IDeviceID curDevice = deviceChunkMetaData.getDevicePath();
-      if (deviceSetForCurrentTsFile.contains(curDevice)) {
-        // If the chunkMeta in curDevice has valid start or end time, curDevice is active in this
-        // time range.
-        if (checkChunkMetaDataOfDevice(curDevice, deviceChunkMetaData)) {
-          deviceSetForCurrentTsFile.remove(curDevice);
-          activeDevices.add(curDevice);
-        }
-      }
-      // If the phase of chunkMetaData check is finished.
-      return !deviceChunkMetaDataIterator.hasNext();
-    } else {
-      return true;
+  @Override
+  public void processDeviceChunkMetadata(AbstractDeviceChunkMetaData deviceChunkMetaData)
+      throws IllegalPathException {
+    IDeviceID curDevice = deviceChunkMetaData.getDevicePath();
+    if (deviceSetForCurrentTsFile.contains(curDevice)
+        && checkChunkMetaDataOfDevice(curDevice, deviceChunkMetaData)) {
+      // If the chunkMeta in curDevice has valid start or end time, curDevice is active in this
+      // time range.
+      deviceSetForCurrentTsFile.remove(curDevice);
+      activeDevices.add(curDevice);
     }
   }
 
-  public boolean filterChunkData() throws IOException, IllegalPathException {
+  @Override
+  public boolean isCurrentChunkHandleValid() {
+    return deviceSetForCurrentTsFile.contains(currentChunkHandle.getDeviceID());
+  }
 
-    // If there is no device to be checked in current TsFile, just finish.
-    if (deviceSetForCurrentTsFile.isEmpty()) {
-      return true;
-    }
-
-    if (chunkHandleIterator == null) {
-      chunkHandleIterator = curFileScanHandle.getChunkHandles(chunkToBeScanned, chunkStatistics);
-    }
-
-    // 1. init a chunkHandle with data
-    // if there is no more chunkHandle, all the data in current TsFile is scanned, just return true.
-    while (currentChunkHandle == null || !currentChunkHandle.hasNextPage()) {
-      if (!chunkHandleIterator.hasNext()) {
-        return true;
-      }
-      currentChunkHandle = chunkHandleIterator.next();
-      // Skip currentChunkHandle if corresponding device is already active.
-      if (!deviceSetForCurrentTsFile.contains(currentChunkHandle.getDeviceID())) {
-        currentChunkHandle = null;
-      }
-    }
-
-    // 2. check page statistics
-    IDeviceID curDevice = currentChunkHandle.getDeviceID();
-    long[] pageStatistics = currentChunkHandle.getPageStatisticsTime();
-    if (!timeFilter.satisfyStartEndTime(pageStatistics[0], pageStatistics[1])) {
-      // All the data in current page is not valid, just skip.
-      currentChunkHandle.skipCurrentPage();
-      return false;
-    }
-    boolean[] isDeleted =
-        curFileScanHandle.isTimeSeriesTimeDeleted(
-            curDevice,
-            currentChunkHandle.getMeasurement(),
-            new long[] {pageStatistics[0], pageStatistics[1]});
-    if (!isDeleted[0] || !isDeleted[1]) {
-      // If the chunkMeta in curDevice has valid start or end time, curDevice is active in this time
-      // range.
-      deviceSetForCurrentTsFile.remove(curDevice);
-      activeDevices.add(curDevice);
-      currentChunkHandle = null;
-      return false;
-    }
-
-    // 3. check page data
-    long[] timeDataForPage = currentChunkHandle.getDataTime();
-    for (long time : timeDataForPage) {
-      if (!timeFilter.satisfy(time, null)) {
-        continue;
-      }
-      isDeleted =
-          curFileScanHandle.isTimeSeriesTimeDeleted(
-              curDevice, currentChunkHandle.getMeasurement(), new long[] {time});
-      if (!isDeleted[0]) {
-        // If the chunkData in curDevice has valid time, curDevice is active.
-        deviceSetForCurrentTsFile.remove(curDevice);
-        activeDevices.add(curDevice);
-        currentChunkHandle = null;
-        return false;
-      }
-    }
-    return !(currentChunkHandle.hasNextPage() || chunkHandleIterator.hasNext());
+  @Override
+  public void processActiveChunk(IDeviceID deviceID, String measurementId) {
+    // Chunk is active means relating device is active, too.
+    deviceSetForCurrentTsFile.remove(deviceID);
+    activeDevices.add(deviceID);
+    currentChunkHandle = null;
   }
 
   private boolean checkChunkMetaDataOfDevice(
@@ -220,13 +132,10 @@ public class RegionScanForActiveDeviceUtil {
     return activeDevices;
   }
 
+  @Override
   public void finishCurrentFile() {
     queryDataSource.releaseFileScanHandle();
     deviceSetForCurrentTsFile.clear();
     activeDevices.clear();
-  }
-
-  public boolean isFinished() {
-    return queryDataSource == null || !queryDataSource.hasNext();
   }
 }
