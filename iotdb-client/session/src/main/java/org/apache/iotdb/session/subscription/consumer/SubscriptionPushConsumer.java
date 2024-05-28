@@ -21,7 +21,6 @@ package org.apache.iotdb.session.subscription.consumer;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer.Builder;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 
 import org.slf4j.Logger;
