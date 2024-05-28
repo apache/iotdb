@@ -49,9 +49,6 @@ final class SubscriptionProvidersManager {
       // construct subscription providers
       final SubscriptionProviders providers = new SubscriptionProviders(initialEndpoints);
       endPointsToSubscriptionProviders.put(initialEndpoints, providers);
-      subscriptionProvidersToConsumers
-          .computeIfAbsent(providers, k -> new HashSet<>())
-          .add(consumer);
 
       // open subscription providers
       providers.acquireWriteLock();
@@ -70,12 +67,14 @@ final class SubscriptionProvidersManager {
                   if (consumer.isClosed()) {
                     if (Objects.nonNull(future[0])) {
                       future[0].cancel(false);
+                      LOGGER.info("SubscriptionProviders {} cancel heartbeat worker", providers);
                     }
                     return;
                   }
                   providers.heartbeat(consumer);
                 },
                 consumer.getHeartbeatIntervalMs());
+        LOGGER.info("SubscriptionProviders {} submit heartbeat worker", providers);
       }
 
       // launch endpoints syncer
@@ -87,16 +86,20 @@ final class SubscriptionProvidersManager {
                   if (consumer.isClosed()) {
                     if (Objects.nonNull(future[0])) {
                       future[0].cancel(false);
+                      LOGGER.info("SubscriptionProviders {} cancel endpoints syncer", providers);
                     }
                     return;
                   }
                   providers.sync(consumer);
                 },
                 consumer.getEndpointsSyncIntervalMs());
+        LOGGER.info("SubscriptionProviders {} submit endpoints syncer", providers);
       }
     }
 
-    return endPointsToSubscriptionProviders.get(initialEndpoints);
+    final SubscriptionProviders providers = endPointsToSubscriptionProviders.get(initialEndpoints);
+    subscriptionProvidersToConsumers.computeIfAbsent(providers, k -> new HashSet<>()).add(consumer);
+    return providers;
   }
 
   public synchronized void unbindSubscriptionProviders(

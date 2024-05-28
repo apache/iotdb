@@ -337,4 +337,16 @@ final class SubscriptionProviders {
       }
     }
   }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("SubscriptionProviders{");
+    for (final Map.Entry<Integer, SubscriptionProvider> entry : subscriptionProviders.entrySet()) {
+      sb.append(entry.getValue().toString()).append(", ");
+    }
+    sb.setLength(sb.length() - 2);
+    sb.append("}");
+    return sb.toString();
+  }
 }

@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.session.subscription.consumer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -27,9 +31,11 @@ import java.util.concurrent.TimeUnit;
 
 final class SubscriptionExecutorService {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionExecutorService.class);
+
   private static volatile ScheduledExecutorService heartbeatWorkerExecutor;
   private static volatile ScheduledExecutorService endpointsSyncerExecutor;
-  private static volatile ScheduledExecutorService asyncCommitWorkerExecutor;
+  private static volatile ExecutorService asyncCommitWorkerExecutor;
   private static volatile ScheduledExecutorService autoCommitWorkerExecutor;
   private static volatile ScheduledExecutorService autoPollWorkerExecutor;
 
@@ -39,22 +45,27 @@ final class SubscriptionExecutorService {
             new Thread(
                 () -> {
                   if (Objects.nonNull(heartbeatWorkerExecutor)) {
+                    LOGGER.info("Shutting down heartbeat worker executor...");
                     heartbeatWorkerExecutor.shutdown();
                     heartbeatWorkerExecutor = null;
                   }
                   if (Objects.nonNull(endpointsSyncerExecutor)) {
+                    LOGGER.info("Shutting down endpoints syncer executor...");
                     endpointsSyncerExecutor.shutdown();
                     endpointsSyncerExecutor = null;
                   }
                   if (Objects.nonNull(asyncCommitWorkerExecutor)) {
+                    LOGGER.info("Shutting down async commit worker executor...");
                     asyncCommitWorkerExecutor.shutdown();
                     asyncCommitWorkerExecutor = null;
                   }
                   if (Objects.nonNull(autoCommitWorkerExecutor)) {
+                    LOGGER.info("Shutting down auto commit worker executor...");
                     autoCommitWorkerExecutor.shutdown();
                     autoCommitWorkerExecutor = null;
                   }
                   if (Objects.nonNull(autoPollWorkerExecutor)) {
+                    LOGGER.info("Shutting down auto poll worker executor...");
                     autoPollWorkerExecutor.shutdown();
                     autoPollWorkerExecutor = null;
                   }
@@ -70,6 +81,7 @@ final class SubscriptionExecutorService {
           return;
         }
 
+        LOGGER.info("Launching heartbeat worker executor...");
         heartbeatWorkerExecutor =
             Executors.newScheduledThreadPool(
                 getCorePoolSize(),
@@ -112,6 +124,7 @@ final class SubscriptionExecutorService {
           return;
         }
 
+        LOGGER.info("Launching endpoints syncer executor...");
         endpointsSyncerExecutor =
             Executors.newScheduledThreadPool(
                 getCorePoolSize(),
@@ -154,6 +167,7 @@ final class SubscriptionExecutorService {
           return;
         }
 
+        LOGGER.info("Launching async commit worker executor...");
         asyncCommitWorkerExecutor =
             Executors.newScheduledThreadPool(
                 getCorePoolSize(),
@@ -190,6 +204,7 @@ final class SubscriptionExecutorService {
           return;
         }
 
+        LOGGER.info("Launching auto commit worker executor...");
         autoCommitWorkerExecutor =
             Executors.newScheduledThreadPool(
                 getCorePoolSize(),
@@ -232,6 +247,7 @@ final class SubscriptionExecutorService {
           return;
         }
 
+        LOGGER.info("Launching auto poll worker executor...");
         autoPollWorkerExecutor =
             Executors.newScheduledThreadPool(
                 getCorePoolSize(),
@@ -240,7 +256,7 @@ final class SubscriptionExecutorService {
                       new Thread(
                           Thread.currentThread().getThreadGroup(),
                           r,
-                          "SubscriptionPullConsumerAutoPollWorker",
+                          "SubscriptionPushConsumerAutoPollWorker",
                           0);
                   if (!t.isDaemon()) {
                     t.setDaemon(true);

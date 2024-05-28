@@ -108,12 +108,14 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
               if (isClosed()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
+                  LOGGER.info("SubscriptionPushConsumer {} cancel auto poll worker", this);
                 }
                 return;
               }
               new AutoPollWorker().run();
             },
             ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_INTERVAL_MS);
+    LOGGER.info("SubscriptionPushConsumer {} submit auto poll worker", this);
   }
 
   class AutoPollWorker implements Runnable {

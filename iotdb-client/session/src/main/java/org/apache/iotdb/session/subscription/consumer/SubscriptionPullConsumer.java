@@ -192,12 +192,14 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
               if (isClosed()) {
                 if (Objects.nonNull(future[0])) {
                   future[0].cancel(false);
+                  LOGGER.info("SubscriptionPullConsumer {} cancel auto commit worker", this);
                 }
                 return;
               }
               new AutoCommitWorker().run();
             },
             autoCommitIntervalMs);
+    LOGGER.info("SubscriptionPullConsumer {} submit auto commit worker", this);
   }
 
   private class AutoCommitWorker implements Runnable {
