@@ -57,8 +57,6 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
         for (IConsensusRequest consensusRequest :
             ((DeserializedBatchIndexedConsensusRequest) request).getInsertNodes()) {
           PlanNode writeNode = (PlanNode) consensusRequest;
-          LOGGER.error("Mark As Generate by Remote");
-          writeNode.markAsGeneratedByRemote();
           subStatus.add(write(writeNode));
         }
         return new TSStatus().setSubStatus(subStatus);
