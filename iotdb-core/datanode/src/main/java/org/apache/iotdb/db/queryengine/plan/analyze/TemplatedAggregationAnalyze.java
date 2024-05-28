@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
@@ -84,6 +85,7 @@ public class TemplatedAggregationAnalyze {
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
     boolean valid = analyzeSelect(queryStatement, analysis, outputExpressions, template);
     if (!valid) {
+      analysis.setDeviceTemplate(null);
       return false;
     }
 
@@ -101,7 +103,12 @@ public class TemplatedAggregationAnalyze {
       return true;
     }
 
-    analyzeHaving(analysis, queryStatement);
+    valid = analyzeHaving(analysis, queryStatement);
+    if (!valid) {
+      analysis.setDeviceTemplate(null);
+      return false;
+    }
+
     analyzeDeviceToExpressions(analysis);
 
     analyzeDeviceViewOutput(analysis, queryStatement);
@@ -176,7 +183,6 @@ public class TemplatedAggregationAnalyze {
         String measurement = selectExpression.getExpressions().get(0).getOutputSymbol();
         //  not support agg(*), agg(s1+1) now
         if (!template.getSchemaMap().containsKey(measurement)) {
-          analysis.setDeviceTemplate(null);
           return false;
         }
 
@@ -197,15 +203,32 @@ public class TemplatedAggregationAnalyze {
     return true;
   }
 
-  private static void analyzeHaving(Analysis analysis, QueryStatement queryStatement) {
+  private static boolean analyzeHaving(Analysis analysis, QueryStatement queryStatement) {
     if (!queryStatement.hasHaving()) {
-      return;
+      return true;
     }
 
+    Set<String> measurementSet = new HashSet<>(analysis.getMeasurementList());
     Set<Expression> aggregationExpressions = analysis.getAggregationExpressions();
     Expression havingExpression = queryStatement.getHavingCondition().getPredicate();
     for (Expression aggregationExpression : searchAggregationExpressions(havingExpression)) {
       Expression normalizedAggregationExpression = normalizeExpression(aggregationExpression);
+
+      if (!((normalizedAggregationExpression).getExpressions().get(0)
+          instanceof TimeSeriesOperand)) {
+        return false;
+      }
+
+      String measurement =
+          normalizedAggregationExpression.getExpressions().get(0).getOutputSymbol();
+      if (!measurementSet.contains(measurement)) {
+        // adapt this case: select agg(s1) from xx having agg(s3)
+        measurementSet.add(measurement);
+        analysis.getMeasurementList().add(measurement);
+        analysis
+            .getMeasurementSchemaList()
+            .add(analysis.getDeviceTemplate().getSchema(measurement));
+      }
 
       analyzeExpressionType(analysis, aggregationExpression);
       analyzeExpressionType(analysis, normalizedAggregationExpression);
@@ -221,6 +244,8 @@ public class TemplatedAggregationAnalyze {
               outputType));
     }
     analysis.setHavingExpression(havingExpression);
+
+    return true;
   }
 
   private static void analyzeDeviceToExpressions(Analysis analysis) {

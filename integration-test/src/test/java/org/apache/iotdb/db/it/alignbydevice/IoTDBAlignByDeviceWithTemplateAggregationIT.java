@@ -405,6 +405,63 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
   }
 
   @Test
+  public void havingTest() {
+    String[] expectedHeader = new String[] {"Device,max_time(s1),last_value(s1),last_value(s2)"};
+    String[] retArray =
+        new String[] {
+          "root.sg1.d1,2,2.2,false,",
+          "root.sg1.d2,1314000000001,13.15,false,",
+          "root.sg1.d3,1314000000002,13.16,false,",
+          "root.sg1.d4,5,5555.5,false,",
+        };
+    resultSetEqualTest(
+        "SELECT max_time(s1), last_value(s1), last_value(s2) FROM root.sg1.** where s2=false having avg(s3) > 1 align by device;",
+        expectedHeader,
+        retArray);
+    retArray =
+        new String[] {
+          "root.sg2.d1,2,2.2,false,",
+          "root.sg2.d2,1314000000001,13.15,false,",
+          "root.sg2.d3,1314000000002,13.16,false,",
+          "root.sg2.d4,5,5555.5,false,",
+        };
+    resultSetEqualTest(
+        "SELECT max_time(s1), last_value(s1), last_value(s2) FROM root.sg2.** where s2=false having avg(s3) > 1 align by device;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "root.sg1.d1,2,2.2,false,",
+          "root.sg1.d2,1314000000001,13.15,false,",
+          "root.sg1.d3,1314000000002,13.16,false,",
+        };
+    resultSetEqualTest(
+        "SELECT max_time(s1), last_value(s1), last_value(s2) FROM root.sg1.** where s2=false having count(s3)+count(s1) > 2 align by device;",
+        expectedHeader,
+        retArray);
+    retArray =
+        new String[] {
+          "root.sg2.d1,2,2.2,false,",
+          "root.sg2.d2,1314000000001,13.15,false,",
+          "root.sg2.d3,1314000000002,13.16,false,",
+        };
+    resultSetEqualTest(
+        "SELECT max_time(s1), last_value(s1), last_value(s2) FROM root.sg2.** where s2=false having count(s3)+count(s1) > 2 align by device;",
+        expectedHeader,
+        retArray);
+
+    retArray =
+        new String[] {
+          "root.sg2.d2,1314000000001,13.15,false,",
+        };
+    resultSetEqualTest(
+        "SELECT max_time(s1), last_value(s1), last_value(s2) FROM root.sg2.** where s2=false having count(s3+s1) > 2 align by device;",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
   public void orderByTest() {
     String[] expectedHeader = new String[] {"Time,Device,sum(s3)"};
     String[] retArray =
