@@ -90,6 +90,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
   private final String fileSaveDir;
+  private final boolean fileSync;
 
   private Path getFileDir(final String topicName) throws IOException {
     final Path dirPath =
@@ -154,6 +155,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     this.endpointsSyncIntervalMs = builder.endpointsSyncIntervalMs;
 
     this.fileSaveDir = builder.fileSaveDir;
+    this.fileSync = builder.fileSync;
   }
 
   protected SubscriptionConsumer(final Builder builder, final Properties properties) {
@@ -190,7 +192,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                 (String)
                     properties.getOrDefault(
                         ConsumerConstant.FILE_SAVE_DIR_KEY,
-                        ConsumerConstant.FILE_SAVE_DIR_DEFAULT_VALUE)));
+                        ConsumerConstant.FILE_SAVE_DIR_DEFAULT_VALUE))
+            .fileSync(
+                (Boolean)
+                    properties.getOrDefault(
+                        ConsumerConstant.FILE_SYNC_KEY, ConsumerConstant.FILE_SYNC_DEFAULT_VALUE)));
   }
 
   /////////////////////////////// open & close ///////////////////////////////
@@ -455,7 +461,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
             // write file piece
             fileWriter.write(((FilePiecePayload) payload).getFilePiece());
-            // fileWriter.getFD().sync(); // TODO: as config
+            if (fileSync) {
+              fileWriter.getFD().sync();
+            }
 
             // check offset
             if (!Objects.equals(
@@ -508,8 +516,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
               throw new SubscriptionRuntimeNonCriticalException(errorMessage);
             }
 
-            // sync and close
-            // fileWriter.getFD().sync(); // TODO: as config
+            // optional sync and close
+            if (fileSync) {
+              fileWriter.getFD().sync();
+            }
             fileWriter.close();
 
             LOGGER.info(
@@ -806,6 +816,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE;
 
     protected String fileSaveDir = ConsumerConstant.FILE_SAVE_DIR_DEFAULT_VALUE;
+    protected boolean fileSync = ConsumerConstant.FILE_SYNC_DEFAULT_VALUE;
 
     public Builder host(final String host) {
       this.host = host;
@@ -856,6 +867,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     public Builder fileSaveDir(final String fileSaveDir) {
       this.fileSaveDir = fileSaveDir;
+      return this;
+    }
+
+    public Builder fileSync(final boolean fileSync) {
+      this.fileSync = fileSync;
       return this;
     }
 

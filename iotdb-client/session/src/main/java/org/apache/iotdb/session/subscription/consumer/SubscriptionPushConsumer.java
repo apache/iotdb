@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.consumer;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer.Builder;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 
 import org.slf4j.Logger;
@@ -210,7 +211,12 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
 
     public SubscriptionPushConsumer.Builder fileSaveDir(final String fileSaveDir) {
-      this.fileSaveDir = fileSaveDir;
+      super.fileSaveDir(fileSaveDir);
+      return this;
+    }
+
+    public Builder fileSync(final boolean fileSync) {
+      super.fileSync(fileSync);
       return this;
     }
 
