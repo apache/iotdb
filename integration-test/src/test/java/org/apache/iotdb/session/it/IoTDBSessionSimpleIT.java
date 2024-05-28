@@ -657,7 +657,7 @@ public class IoTDBSessionSimpleIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertTabletWithDuplicatedMeasurementsTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
