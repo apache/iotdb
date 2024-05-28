@@ -22,11 +22,12 @@ github:
   homepage: https://iotdb.apache.org/
   labels:
     - timeseries
-    - file
+    - nosql
+    - database
     - iot
     - big-data
     - java
-    - tsfile
+    - tsdb
   features:
     wiki: true
     issues: true
