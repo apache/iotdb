@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription;
+package org.apache.iotdb.session.subscription.consumer;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -30,15 +30,14 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SubscriptionPullConsumer extends SubscriptionConsumer {
@@ -48,7 +47,6 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   private final boolean autoCommit;
   private final long autoCommitIntervalMs;
 
-  private ScheduledExecutorService autoCommitWorkerExecutor;
   private SortedMap<Long, Set<SubscriptionMessage>> uncommittedMessages;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
@@ -99,6 +97,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     super.open();
 
     if (autoCommit) {
+      uncommittedMessages = new ConcurrentSkipListMap<>();
       launchAutoCommitWorker();
     }
 
@@ -111,35 +110,31 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       return;
     }
 
-    try {
-      if (autoCommit) {
-        // shutdown auto commit worker
-        shutdownAutoCommitWorker();
-
-        // commit all uncommitted messages
-        commitAllUncommittedMessages();
-      }
-      super.close();
-    } finally {
-      isClosed.set(true);
+    if (autoCommit) {
+      // commit all uncommitted messages
+      commitAllUncommittedMessages();
     }
+
+    super.close();
+    isClosed.set(true);
   }
 
   /////////////////////////////// poll & commit ///////////////////////////////
 
-  public List<SubscriptionMessage> poll(final Duration timeoutMs) throws SubscriptionException {
-    return poll(Collections.emptySet(), timeoutMs.toMillis());
+  public List<SubscriptionMessage> poll(final Duration timeout) throws SubscriptionException {
+    return poll(Collections.emptySet(), timeout.toMillis());
   }
 
   public List<SubscriptionMessage> poll(final long timeoutMs) throws SubscriptionException {
     return poll(Collections.emptySet(), timeoutMs);
   }
 
-  public List<SubscriptionMessage> poll(final Set<String> topicNames, final Duration timeoutMs)
+  public List<SubscriptionMessage> poll(final Set<String> topicNames, final Duration timeout)
       throws SubscriptionException {
-    return poll(topicNames, timeoutMs.toMillis());
+    return poll(topicNames, timeout.toMillis());
   }
 
+  @Override
   public List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
     final List<SubscriptionMessage> messages = super.poll(topicNames, timeoutMs);
@@ -189,36 +184,45 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// auto commit ///////////////////////////////
 
-  @SuppressWarnings("unsafeThreadSchedule")
   private void launchAutoCommitWorker() {
-    uncommittedMessages = new ConcurrentSkipListMap<>();
-    autoCommitWorkerExecutor =
-        Executors.newSingleThreadScheduledExecutor(
-            r -> {
-              final Thread t =
-                  new Thread(
-                      Thread.currentThread().getThreadGroup(),
-                      r,
-                      "PullConsumerAutoCommitWorker",
-                      0);
-              if (!t.isDaemon()) {
-                t.setDaemon(true);
+    final ScheduledFuture<?>[] future = new ScheduledFuture<?>[1];
+    future[0] =
+        SubscriptionExecutorService.submitAutoCommitWorker(
+            () -> {
+              if (isClosed()) {
+                if (Objects.nonNull(future[0])) {
+                  future[0].cancel(false);
+                }
+                return;
               }
-              if (t.getPriority() != Thread.NORM_PRIORITY) {
-                t.setPriority(Thread.NORM_PRIORITY);
-              }
-              return t;
-            });
-    autoCommitWorkerExecutor.scheduleWithFixedDelay(
-        new AutoCommitWorker(),
-        generateRandomInitialDelayMs(autoCommitIntervalMs),
-        autoCommitIntervalMs,
-        TimeUnit.MILLISECONDS);
+              new AutoCommitWorker().run();
+            },
+            autoCommitIntervalMs);
   }
 
-  private void shutdownAutoCommitWorker() {
-    autoCommitWorkerExecutor.shutdown();
-    autoCommitWorkerExecutor = null;
+  private class AutoCommitWorker implements Runnable {
+    @Override
+    public void run() {
+      if (isClosed()) {
+        return;
+      }
+
+      final long currentTimestamp = System.currentTimeMillis();
+      long index = currentTimestamp / autoCommitIntervalMs;
+      if (currentTimestamp % autoCommitIntervalMs == 0) {
+        index -= 1;
+      }
+
+      for (final Map.Entry<Long, Set<SubscriptionMessage>> entry :
+          uncommittedMessages.headMap(index).entrySet()) {
+        try {
+          ack(entry.getValue());
+          uncommittedMessages.remove(entry.getKey());
+        } catch (final Exception e) {
+          LOGGER.warn("something unexpected happened when auto commit messages...", e);
+        }
+      }
+    }
   }
 
   private void commitAllUncommittedMessages() {
@@ -309,33 +313,6 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     public SubscriptionPushConsumer buildPushConsumer() {
       throw new SubscriptionException(
           "SubscriptionPullConsumer.Builder do not support build push consumer.");
-    }
-  }
-
-  /////////////////////////////// auto commit worker ///////////////////////////////
-
-  class AutoCommitWorker implements Runnable {
-    @Override
-    public void run() {
-      if (isClosed()) {
-        return;
-      }
-
-      final long currentTimestamp = System.currentTimeMillis();
-      long index = currentTimestamp / autoCommitIntervalMs;
-      if (currentTimestamp % autoCommitIntervalMs == 0) {
-        index -= 1;
-      }
-
-      for (final Map.Entry<Long, Set<SubscriptionMessage>> entry :
-          uncommittedMessages.headMap(index).entrySet()) {
-        try {
-          ack(entry.getValue());
-          uncommittedMessages.remove(entry.getKey());
-        } catch (final Exception e) {
-          LOGGER.warn("something unexpected happened when auto commit messages...", e);
-        }
-      }
     }
   }
 }

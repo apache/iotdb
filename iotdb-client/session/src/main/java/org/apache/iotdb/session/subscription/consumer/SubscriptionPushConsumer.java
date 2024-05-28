@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription;
+package org.apache.iotdb.session.subscription.consumer;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
@@ -29,10 +29,9 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SubscriptionPushConsumer extends SubscriptionConsumer {
@@ -41,8 +40,6 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
   private final AckStrategy ackStrategy;
   private final ConsumeListener consumeListener;
-
-  private ScheduledExecutorService autoPollWorkerExecutor;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
@@ -82,9 +79,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
 
     super.open();
-
     launchAutoPollWorker();
-
     isClosed.set(false);
   }
 
@@ -94,12 +89,8 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       return;
     }
 
-    try {
-      shutdownAutoPollWorker();
-      super.close();
-    } finally {
-      isClosed.set(true);
-    }
+    super.close();
+    isClosed.set(true);
   }
 
   @Override
@@ -111,29 +102,64 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
   @SuppressWarnings("unsafeThreadSchedule")
   private void launchAutoPollWorker() {
-    autoPollWorkerExecutor =
-        Executors.newSingleThreadScheduledExecutor(
-            r -> {
-              final Thread t =
-                  new Thread(Thread.currentThread().getThreadGroup(), r, "PushConsumerWorker", 0);
-              if (!t.isDaemon()) {
-                t.setDaemon(true);
+    final ScheduledFuture<?>[] future = new ScheduledFuture<?>[1];
+    future[0] =
+        SubscriptionExecutorService.submitAutoPollWorker(
+            () -> {
+              if (isClosed()) {
+                if (Objects.nonNull(future[0])) {
+                  future[0].cancel(false);
+                }
+                return;
               }
-              if (t.getPriority() != Thread.NORM_PRIORITY) {
-                t.setPriority(Thread.NORM_PRIORITY);
-              }
-              return t;
-            });
-    autoPollWorkerExecutor.scheduleWithFixedDelay(
-        new AutoPollWorker(),
-        generateRandomInitialDelayMs(ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_INTERVAL_MS),
-        ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_INTERVAL_MS,
-        TimeUnit.MILLISECONDS);
+              new AutoPollWorker().run();
+            },
+            ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_INTERVAL_MS);
   }
 
-  private void shutdownAutoPollWorker() {
-    autoPollWorkerExecutor.shutdown();
-    autoPollWorkerExecutor = null;
+  class AutoPollWorker implements Runnable {
+    @Override
+    public void run() {
+      if (isClosed()) {
+        return;
+      }
+
+      try {
+        // Poll all subscribed topics by passing an empty set
+        final List<SubscriptionMessage> messages =
+            poll(Collections.emptySet(), ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_TIME_OUT_MS);
+
+        if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
+          ack(messages);
+        }
+
+        final List<SubscriptionMessage> messagesToAck = new ArrayList<>();
+        final List<SubscriptionMessage> messagesToNack = new ArrayList<>();
+        for (final SubscriptionMessage message : messages) {
+          final ConsumeResult consumeResult;
+          try {
+            consumeResult = consumeListener.onReceive(message);
+            if (consumeResult.equals(ConsumeResult.SUCCESS)) {
+              messagesToAck.add(message);
+            } else {
+              LOGGER.warn("Consumer listener result failure when consuming message: {}", message);
+              messagesToNack.add(message);
+            }
+          } catch (final Exception e) {
+            LOGGER.warn(
+                "Consumer listener raised an exception while consuming message: {}", message, e);
+            messagesToNack.add(message);
+          }
+        }
+
+        if (ackStrategy.equals(AckStrategy.AFTER_CONSUME)) {
+          ack(messagesToAck);
+          nack(messagesToNack);
+        }
+      } catch (final Exception e) {
+        LOGGER.warn("something unexpected happened when auto poll messages...", e);
+      }
+    }
   }
 
   /////////////////////////////// builder ///////////////////////////////
@@ -208,53 +234,6 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     @Override
     public SubscriptionPushConsumer buildPushConsumer() {
       return new SubscriptionPushConsumer(this);
-    }
-  }
-
-  /////////////////////////////// auto poll worker ///////////////////////////////
-
-  class AutoPollWorker implements Runnable {
-    @Override
-    public void run() {
-      if (isClosed()) {
-        return;
-      }
-
-      try {
-        // Poll all subscribed topics by passing an empty set
-        final List<SubscriptionMessage> messages =
-            poll(Collections.emptySet(), ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_TIME_OUT_MS);
-
-        if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
-          ack(messages);
-        }
-
-        final List<SubscriptionMessage> messagesToAck = new ArrayList<>();
-        final List<SubscriptionMessage> messagesToNack = new ArrayList<>();
-        for (final SubscriptionMessage message : messages) {
-          final ConsumeResult consumeResult;
-          try {
-            consumeResult = consumeListener.onReceive(message);
-            if (consumeResult.equals(ConsumeResult.SUCCESS)) {
-              messagesToAck.add(message);
-            } else {
-              LOGGER.warn("Consumer listener result failure when consuming message: {}", message);
-              messagesToNack.add(message);
-            }
-          } catch (final Exception e) {
-            LOGGER.warn(
-                "Consumer listener raised an exception while consuming message: {}", message, e);
-            messagesToNack.add(message);
-          }
-        }
-
-        if (ackStrategy.equals(AckStrategy.AFTER_CONSUME)) {
-          ack(messagesToAck);
-          nack(messagesToNack);
-        }
-      } catch (final Exception e) {
-        LOGGER.warn("something unexpected happened when auto poll messages...", e);
-      }
     }
   }
 }

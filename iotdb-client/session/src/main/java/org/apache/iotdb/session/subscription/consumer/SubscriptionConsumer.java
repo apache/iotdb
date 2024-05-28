@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription;
+package org.apache.iotdb.session.subscription.consumer;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.SessionConfig;
@@ -66,14 +66,10 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
-public abstract class SubscriptionConsumer implements AutoCloseable {
+abstract class SubscriptionConsumer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConsumer.class);
 
@@ -88,12 +84,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   private final long heartbeatIntervalMs;
   private final long endpointsSyncIntervalMs;
 
-  private final SubscriptionProviders subscriptionProviders;
-
-  private ScheduledExecutorService heartbeatWorkerExecutor;
-  private ScheduledExecutorService endpointsSyncerExecutor;
-
-  private ExecutorService asyncCommitExecutor;
+  private final Set<TEndPoint> initialEndpoints = new HashSet<>();
+  private SubscriptionProviders providers;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
@@ -133,10 +125,17 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     return consumerGroupId;
   }
 
+  public long getHeartbeatIntervalMs() {
+    return heartbeatIntervalMs;
+  }
+
+  public long getEndpointsSyncIntervalMs() {
+    return endpointsSyncIntervalMs;
+  }
+
   /////////////////////////////// ctor ///////////////////////////////
 
   protected SubscriptionConsumer(final Builder builder) {
-    final List<TEndPoint> initialEndpoints = new ArrayList<>();
     // From org.apache.iotdb.session.Session.getNodeUrls
     // Priority is given to `host:port` over `nodeUrls`.
     if (Objects.nonNull(builder.host)) {
@@ -144,7 +143,6 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     } else {
       initialEndpoints.addAll(SessionUtils.parseSeedNodeUrls(builder.nodeUrls));
     }
-    this.subscriptionProviders = new SubscriptionProviders(initialEndpoints);
 
     this.username = builder.username;
     this.password = builder.password;
@@ -202,20 +200,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       return;
     }
 
-    // open subscription providers
-    subscriptionProviders.acquireWriteLock();
-    try {
-      subscriptionProviders.openProviders(this); // throw SubscriptionException
-    } finally {
-      subscriptionProviders.releaseWriteLock();
-    }
-
-    // launch heartbeat worker
-    launchHeartbeatWorker();
-
-    // launch endpoints syncer
-    launchEndpointsSyncer();
-
+    providers =
+        SubscriptionProvidersManager.getInstance()
+            .bindSubscriptionProviders(this, initialEndpoints);
     isClosed.set(false);
   }
 
@@ -225,26 +212,8 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       return;
     }
 
-    try {
-      // shutdown endpoints syncer
-      shutdownEndpointsSyncer();
-
-      // shutdown heartbeat worker
-      shutdownHeartbeatWorker();
-
-      // shutdown async commit worker if needed
-      shutdownAsyncCommitWorkerIfNeeded();
-
-      // close subscription providers
-      subscriptionProviders.acquireWriteLock();
-      try {
-        subscriptionProviders.closeProviders();
-      } finally {
-        subscriptionProviders.releaseWriteLock();
-      }
-    } finally {
-      isClosed.set(true);
-    }
+    SubscriptionProvidersManager.getInstance().unbindSubscriptionProviders(this, providers);
+    isClosed.set(true);
   }
 
   boolean isClosed() {
@@ -262,11 +231,11 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   public void subscribe(final Set<String> topicNames) throws SubscriptionException {
-    subscriptionProviders.acquireReadLock();
+    providers.acquireReadLock();
     try {
       subscribeWithRedirection(topicNames);
     } finally {
-      subscriptionProviders.releaseReadLock();
+      providers.releaseReadLock();
     }
   }
 
@@ -279,72 +248,12 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   public void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
-    subscriptionProviders.acquireReadLock();
+    providers.acquireReadLock();
     try {
       unsubscribeWithRedirection(topicNames);
     } finally {
-      subscriptionProviders.releaseReadLock();
+      providers.releaseReadLock();
     }
-  }
-
-  /////////////////////////////// heartbeat ///////////////////////////////
-
-  @SuppressWarnings("unsafeThreadSchedule")
-  private void launchHeartbeatWorker() {
-    heartbeatWorkerExecutor =
-        Executors.newSingleThreadScheduledExecutor(
-            r -> {
-              final Thread t =
-                  new Thread(
-                      Thread.currentThread().getThreadGroup(), r, "ConsumerHeartbeatWorker", 0);
-              if (!t.isDaemon()) {
-                t.setDaemon(true);
-              }
-              if (t.getPriority() != Thread.NORM_PRIORITY) {
-                t.setPriority(Thread.NORM_PRIORITY);
-              }
-              return t;
-            });
-    heartbeatWorkerExecutor.scheduleWithFixedDelay(
-        () -> subscriptionProviders.heartbeat(this),
-        generateRandomInitialDelayMs(heartbeatIntervalMs),
-        heartbeatIntervalMs,
-        TimeUnit.MILLISECONDS);
-  }
-
-  private void shutdownHeartbeatWorker() {
-    heartbeatWorkerExecutor.shutdown();
-    heartbeatWorkerExecutor = null;
-  }
-
-  /////////////////////////////// sync endpoints ///////////////////////////////
-
-  @SuppressWarnings("unsafeThreadSchedule")
-  private void launchEndpointsSyncer() {
-    endpointsSyncerExecutor =
-        Executors.newSingleThreadScheduledExecutor(
-            r -> {
-              final Thread t =
-                  new Thread(
-                      Thread.currentThread().getThreadGroup(), r, "SubscriptionEndpointsSyncer", 0);
-              if (!t.isDaemon()) {
-                t.setDaemon(true);
-              }
-              if (t.getPriority() != Thread.NORM_PRIORITY) {
-                t.setPriority(Thread.NORM_PRIORITY);
-              }
-              return t;
-            });
-    endpointsSyncerExecutor.scheduleWithFixedDelay(
-        () -> subscriptionProviders.sync(this),
-        generateRandomInitialDelayMs(endpointsSyncIntervalMs),
-        endpointsSyncIntervalMs,
-        TimeUnit.MILLISECONDS);
-  }
-
-  private void shutdownEndpointsSyncer() {
-    endpointsSyncerExecutor.shutdown();
-    endpointsSyncerExecutor = null;
   }
 
   /////////////////////////////// subscription provider ///////////////////////////////
@@ -546,7 +455,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
             // write file piece
             fileWriter.write(((FilePiecePayload) payload).getFilePiece());
-            fileWriter.getFD().sync();
+            // fileWriter.getFD().sync(); // TODO: as config
 
             // check offset
             if (!Objects.equals(
@@ -600,7 +509,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
             }
 
             // sync and close
-            fileWriter.getFD().sync();
+            // fileWriter.getFD().sync(); // TODO: as config
             fileWriter.close();
 
             LOGGER.info(
@@ -641,9 +550,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private List<SubscriptionPollResponse> pollInternal(final Set<String> topicNames)
       throws SubscriptionException {
-    subscriptionProviders.acquireReadLock();
+    providers.acquireReadLock();
     try {
-      final SubscriptionProvider provider = subscriptionProviders.getNextAvailableProvider();
+      final SubscriptionProvider provider = providers.getNextAvailableProvider();
       if (Objects.isNull(provider) || !provider.isAvailable()) {
         throw new SubscriptionConnectionException(
             String.format(
@@ -659,16 +568,16 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         return Collections.emptyList();
       }
     } finally {
-      subscriptionProviders.releaseReadLock();
+      providers.releaseReadLock();
     }
   }
 
   private List<SubscriptionPollResponse> pollFileInternal(
       final int dataNodeId, final String topicName, final String fileName, final long writingOffset)
       throws SubscriptionException {
-    subscriptionProviders.acquireReadLock();
+    providers.acquireReadLock();
     try {
-      final SubscriptionProvider provider = subscriptionProviders.getProvider(dataNodeId);
+      final SubscriptionProvider provider = providers.getProvider(dataNodeId);
       if (Objects.isNull(provider) || !provider.isAvailable()) {
         throw new SubscriptionConnectionException(
             String.format(
@@ -686,7 +595,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         return Collections.emptyList();
       }
     } finally {
-      subscriptionProviders.releaseReadLock();
+      providers.releaseReadLock();
     }
   }
 
@@ -725,9 +634,9 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       final List<SubscriptionCommitContext> subscriptionCommitContexts,
       final boolean nack)
       throws SubscriptionException {
-    subscriptionProviders.acquireReadLock();
+    providers.acquireReadLock();
     try {
-      final SubscriptionProvider provider = subscriptionProviders.getProvider(dataNodeId);
+      final SubscriptionProvider provider = providers.getProvider(dataNodeId);
       if (Objects.isNull(provider) || !provider.isAvailable()) {
         throw new SubscriptionConnectionException(
             String.format(
@@ -736,7 +645,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
       }
       provider.commit(subscriptionCommitContexts, nack);
     } finally {
-      subscriptionProviders.releaseReadLock();
+      providers.releaseReadLock();
     }
   }
 
@@ -744,19 +653,43 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   protected void commitAsync(
       final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
-    // launch async commit worker if needed
-    launchAsyncCommitWorkerIfNeeded();
+    SubscriptionExecutorService.submitAsyncCommitWorker(new AsyncCommitWorker(messages, callback));
+  }
 
-    asyncCommitExecutor.submit(new AsyncCommitWorker(messages, callback));
+  private class AsyncCommitWorker implements Runnable {
+
+    private final Iterable<SubscriptionMessage> messages;
+    private final AsyncCommitCallback callback;
+
+    public AsyncCommitWorker(
+        final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
+      this.messages = messages;
+      this.callback = callback;
+    }
+
+    @Override
+    public void run() {
+      if (isClosed()) {
+        return;
+      }
+
+      try {
+        ack(messages);
+        callback.onComplete();
+      } catch (final Exception e) {
+        callback.onFailure(e);
+      }
+    }
   }
 
   protected CompletableFuture<Void> commitAsync(final Iterable<SubscriptionMessage> messages) {
-    // launch async commit worker if needed
-    launchAsyncCommitWorkerIfNeeded();
-
     final CompletableFuture<Void> future = new CompletableFuture<>();
-    asyncCommitExecutor.submit(
+    SubscriptionExecutorService.submitAsyncCommitWorker(
         () -> {
+          if (isClosed()) {
+            return;
+          }
+
           try {
             ack(messages);
             future.complete(null);
@@ -770,7 +703,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   /////////////////////////////// redirection ///////////////////////////////
 
   private void subscribeWithRedirection(final Set<String> topicNames) throws SubscriptionException {
-    final List<SubscriptionProvider> providers = subscriptionProviders.getAllAvailableProviders();
+    final List<SubscriptionProvider> providers = this.providers.getAllAvailableProviders();
     if (providers.isEmpty()) {
       throw new SubscriptionConnectionException(
           String.format(
@@ -800,7 +733,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
 
   private void unsubscribeWithRedirection(final Set<String> topicNames)
       throws SubscriptionException {
-    final List<SubscriptionProvider> providers = subscriptionProviders.getAllAvailableProviders();
+    final List<SubscriptionProvider> providers = this.providers.getAllAvailableProviders();
     if (providers.isEmpty()) {
       throw new SubscriptionConnectionException(
           String.format(
@@ -829,7 +762,7 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection() throws SubscriptionException {
-    final List<SubscriptionProvider> providers = subscriptionProviders.getAllAvailableProviders();
+    final List<SubscriptionProvider> providers = this.providers.getAllAvailableProviders();
     if (providers.isEmpty()) {
       throw new SubscriptionConnectionException(
           String.format(
@@ -931,68 +864,6 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
     public abstract SubscriptionPushConsumer buildPushConsumer();
   }
 
-  /////////////////////////////// commit async worker ///////////////////////////////
-
-  private void launchAsyncCommitWorkerIfNeeded() {
-    if (asyncCommitExecutor == null) {
-      synchronized (this) {
-        if (asyncCommitExecutor != null) {
-          return;
-        }
-
-        asyncCommitExecutor =
-            Executors.newSingleThreadExecutor(
-                r -> {
-                  final Thread t =
-                      new Thread(
-                          Thread.currentThread().getThreadGroup(),
-                          r,
-                          "SubscriptionConsumerAsyncCommitWorker",
-                          0);
-                  if (!t.isDaemon()) {
-                    t.setDaemon(true);
-                  }
-                  if (t.getPriority() != Thread.NORM_PRIORITY) {
-                    t.setPriority(Thread.NORM_PRIORITY);
-                  }
-                  return t;
-                });
-      }
-    }
-  }
-
-  private void shutdownAsyncCommitWorkerIfNeeded() {
-    if (asyncCommitExecutor != null) {
-      asyncCommitExecutor.shutdown();
-      asyncCommitExecutor = null;
-    }
-  }
-
-  class AsyncCommitWorker implements Runnable {
-    private final Iterable<SubscriptionMessage> messages;
-    private final AsyncCommitCallback callback;
-
-    public AsyncCommitWorker(
-        final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
-      this.messages = messages;
-      this.callback = callback;
-    }
-
-    @Override
-    public void run() {
-      if (isClosed()) {
-        return;
-      }
-
-      try {
-        ack(messages);
-        callback.onComplete();
-      } catch (final Exception e) {
-        callback.onFailure(e);
-      }
-    }
-  }
-
   /////////////////////////////// object ///////////////////////////////
 
   @Override
@@ -1002,11 +873,5 @@ public abstract class SubscriptionConsumer implements AutoCloseable {
         + ", consumerGroupId="
         + consumerGroupId
         + "}";
-  }
-
-  /////////////////////////////// utility ///////////////////////////////
-
-  protected long generateRandomInitialDelayMs(final long maxMs) {
-    return (long) (Math.random() * maxMs);
   }
 }
