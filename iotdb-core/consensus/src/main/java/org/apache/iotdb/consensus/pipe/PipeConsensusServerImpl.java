@@ -37,8 +37,8 @@ import org.apache.iotdb.consensus.pipe.client.SyncPipeConsensusServiceClient;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeManager;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ProgressIndexManager;
-import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompleteddReq;
-import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompleteddResp;
+import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompletedReq;
+import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompletedResp;
 import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToCreateConsensusPipeReq;
 import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToCreateConsensusPipeResp;
 import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToDropConsensusPipeReq;
@@ -479,9 +479,9 @@ public class PipeConsensusServerImpl {
       throws ConsensusGroupModifyPeerException {
     try (SyncPipeConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
-      TCheckConsensusPipeCompleteddResp resp =
+      TCheckConsensusPipeCompletedResp resp =
           client.checkConsensusPipeCompleted(
-              new TCheckConsensusPipeCompleteddReq(
+              new TCheckConsensusPipeCompletedReq(
                   thisNode.getGroupId().convertToTConsensusGroupId(),
                   consensusPipeNames,
                   refreshCachedProgressIndex));

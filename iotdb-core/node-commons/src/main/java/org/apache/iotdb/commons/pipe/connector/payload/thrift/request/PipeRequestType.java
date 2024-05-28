@@ -30,7 +30,6 @@ public enum PipeRequestType {
   HANDSHAKE_DATANODE_V1((short) 1),
   HANDSHAKE_CONFIGNODE_V2((short) 50),
   HANDSHAKE_DATANODE_V2((short) 51),
-  PIPE_CONSENSUS_HANDSHAKE((short) 52),
 
   // Data region
   TRANSFER_TABLET_INSERT_NODE((short) 2),

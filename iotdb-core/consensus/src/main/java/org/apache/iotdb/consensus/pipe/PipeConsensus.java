@@ -146,7 +146,7 @@ public class PipeConsensus implements IConsensus {
     } else {
       try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
         for (Path path : stream) {
-          ConsensusGroupId consensusGroupId = parsePeerDir(path.getFileName().toString());
+          ConsensusGroupId consensusGroupId = parsePeerFileName(path.getFileName().toString());
           PipeConsensusServerImpl consensus =
               new PipeConsensusServerImpl(
                   new Peer(consensusGroupId, thisNodeId, thisNode),
@@ -238,12 +238,12 @@ public class PipeConsensus implements IConsensus {
         .read(request);
   }
 
-  private String buildPeerDir(ConsensusGroupId groupId) {
+  private String getPeerDir(ConsensusGroupId groupId) {
     return storageDir + File.separator + groupId.getType().getValue() + "_" + groupId.getId();
   }
 
-  private ConsensusGroupId parsePeerDir(String dirName) {
-    String[] items = dirName.split("_");
+  private ConsensusGroupId parsePeerFileName(String fileName) {
+    String[] items = fileName.split("_");
     return ConsensusGroupId.Factory.create(Integer.parseInt(items[0]), Integer.parseInt(items[1]));
   }
 
@@ -264,7 +264,7 @@ public class PipeConsensus implements IConsensus {
     try {
       stateMachineMapLock.lock();
 
-      final String path = buildPeerDir(groupId);
+      final String path = getPeerDir(groupId);
       if (!new File(path).mkdirs()) {
         LOGGER.warn("Unable to create consensus dir for group {} at {}", groupId, path);
         throw new ConsensusException(
@@ -302,7 +302,7 @@ public class PipeConsensus implements IConsensus {
       final PipeConsensusServerImpl consensus = stateMachineMap.get(groupId);
       consensus.clear();
 
-      FileUtils.deleteFileOrDirectory(new File(buildPeerDir(groupId)));
+      FileUtils.deleteFileOrDirectory(new File(getPeerDir(groupId)));
     } catch (IOException e) {
       LOGGER.warn("Cannot delete local peer for group {}", groupId, e);
       throw new ConsensusException(e);
@@ -418,7 +418,7 @@ public class PipeConsensus implements IConsensus {
   public void triggerSnapshot(ConsensusGroupId groupId, boolean force) throws ConsensusException {
     Optional.ofNullable(stateMachineMap.get(groupId))
         .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
-    // do nothing
+    // Do nothing here because we do not need to transfer snapshot when there are new peers
   }
 
   @Override
@@ -457,7 +457,7 @@ public class PipeConsensus implements IConsensus {
 
   @Override
   public String getRegionDirFromConsensusGroupId(ConsensusGroupId groupId) {
-    return buildPeerDir(groupId);
+    return getPeerDir(groupId);
   }
 
   @Override

@@ -77,11 +77,6 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
               groupId2MaxProgressIndex
                   .computeIfAbsent(dataRegionId, o -> MinimumProgressIndex.INSTANCE)
                   .updateToMinimumEqualOrIsAfterProgressIndex(maxProgressIndex);
-              groupId2MaxProgressIndex.put(
-                  dataRegionId,
-                  maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
-                      groupId2MaxProgressIndex.getOrDefault(
-                          dataRegionId, MinimumProgressIndex.INSTANCE)));
             });
 
     // TODO: update deletion progress index
@@ -120,13 +115,10 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
 
   @Override
   public ProgressIndex assignProgressIndex(ConsensusGroupId consensusGroupId) {
-    final ProgressIndex progressIndex = PipeAgent.runtime().assignProgressIndexForPipeConsensus();
-    groupId2MaxProgressIndex.put(
-        consensusGroupId,
-        progressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
-            groupId2MaxProgressIndex.getOrDefault(
-                consensusGroupId, MinimumProgressIndex.INSTANCE)));
-    return progressIndex;
+    return groupId2MaxProgressIndex
+        .computeIfAbsent(consensusGroupId, o -> MinimumProgressIndex.INSTANCE)
+        .updateToMinimumEqualOrIsAfterProgressIndex(
+            PipeAgent.runtime().assignProgressIndexForPipeConsensus());
   }
 
   @Override

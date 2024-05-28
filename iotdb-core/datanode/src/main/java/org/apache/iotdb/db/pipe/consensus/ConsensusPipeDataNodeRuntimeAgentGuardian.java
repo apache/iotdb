@@ -29,7 +29,6 @@ public class ConsensusPipeDataNodeRuntimeAgentGuardian implements ConsensusPipeG
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ConsensusPipeDataNodeRuntimeAgentGuardian.class);
   private boolean registered = false;
-  private String id;
 
   @Override
   public synchronized void start(String id, Runnable guardJob, long intervalInSeconds) {
@@ -38,14 +37,12 @@ public class ConsensusPipeDataNodeRuntimeAgentGuardian implements ConsensusPipeG
           "Registering periodical job {} with interval in seconds {}.", id, intervalInSeconds);
 
       this.registered = true;
-      this.id = id;
       PipeAgent.runtime().registerPeriodicalJob(id, guardJob, intervalInSeconds);
     }
   }
 
   @Override
   public synchronized void stop() {
-    LOGGER.info("Try to stop periodical job {}, but it will not stop.", id);
-    // TODO: add deregister in PipePeriodicalJobExecutor
+    // Do nothing because PipePeriodicalJobExecutor currently has no deregister logic
   }
 }
