@@ -63,6 +63,7 @@ keyWords
     | CONDITION
     | CONFIGNODES
     | CONFIGURATION
+    | CONNECTION
     | CONNECTOR
     | CONTAIN
     | CONTAINS
