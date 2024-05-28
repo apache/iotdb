@@ -287,7 +287,7 @@ public class AggregationPushDown implements PlanOptimizer {
         boolean isSingleSource = child instanceof SeriesScanSourceNode;
         boolean needCheckAscending = node.getGroupByTimeParameter() == null;
         if (isSingleSource && ((SeriesScanSourceNode) child).getPushDownPredicate() != null) {
-          needCheckAscending = false;
+          //          needCheckAscending = false;
           Expression pushDownPredicate = ((SeriesScanSourceNode) child).getPushDownPredicate();
           if (!PredicateUtils.predicateCanPushIntoScan(pushDownPredicate)) {
             // don't push down, simplify the BE side logic

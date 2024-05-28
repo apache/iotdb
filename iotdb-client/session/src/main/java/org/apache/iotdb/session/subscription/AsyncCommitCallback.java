@@ -24,7 +24,7 @@ public interface AsyncCommitCallback {
     // Do nothing
   }
 
-  default void onFailure(Throwable e) {
+  default void onFailure(final Throwable e) {
     // Do nothing
   }
 }
