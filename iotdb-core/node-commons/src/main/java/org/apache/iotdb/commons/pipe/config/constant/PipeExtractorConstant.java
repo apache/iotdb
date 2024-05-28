@@ -32,7 +32,7 @@ public class PipeExtractorConstant {
   public static final String SOURCE_EXCLUSION_KEY = "source.inclusion.exclusion";
   public static final String EXTRACTOR_EXCLUSION_DEFAULT_VALUE = "";
 
-  public static final String EXTRACTOR_MODE_KEY = "extract.mode";
+  public static final String EXTRACTOR_MODE_KEY = "extractor.mode";
   public static final String SOURCE_MODE_KEY = "source.mode";
   public static final String EXTRACTOR_MODE_QUERY_VALUE = "query";
   public static final String EXTRACTOR_MODE_SUBSCRIBE_VALUE = "subscribe";
