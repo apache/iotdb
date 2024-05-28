@@ -121,13 +121,14 @@ public class PipeConfigRegionExtractorMetrics implements IMetricSet {
 
   public long getRemainingEventCount(final String pipeName, final long creationTime) {
     final String taskID = pipeName + "_" + creationTime;
-    if (!extractorMap.containsKey(taskID)) {
+    final IoTDBConfigRegionExtractor extractor = extractorMap.get(taskID);
+    if (Objects.isNull(extractor)) {
       LOGGER.warn(
           "Failed to get remaining event count, IoTDBConfigRegionExtractor({}) does not exist",
           taskID);
       return 0;
     }
-    return extractorMap.get(taskID).getUnTransferredEventCount();
+    return extractor.getUnTransferredEventCount();
   }
 
   //////////////////////////// singleton ////////////////////////////
