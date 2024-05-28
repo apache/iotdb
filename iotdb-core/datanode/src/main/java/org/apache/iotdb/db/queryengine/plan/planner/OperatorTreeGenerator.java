@@ -991,7 +991,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 SingleDeviceViewOperator.class.getSimpleName());
     Operator child = node.getChild().accept(this, context);
-    List<Integer> deviceColumnIndex = node.getDeviceToMeasurementIndexes();
+    List<Integer> deviceColumnIndex =
+        context.getTemplatedInfo() != null
+            ? context.getTemplatedInfo().getDeviceToMeasurementIndexes()
+            : node.getDeviceToMeasurementIndexes();
     List<TSDataType> outputColumnTypes =
         node.isCacheOutputColumnNames()
             ? getOutputColumnTypes(node, context.getTypeProvider())

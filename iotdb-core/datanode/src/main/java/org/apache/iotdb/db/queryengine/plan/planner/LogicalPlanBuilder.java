@@ -621,7 +621,9 @@ public class LogicalPlanBuilder {
               context.getQueryId().genPlanNodeId(),
               outputColumnNames,
               deviceName,
-              deviceToMeasurementIndexesMap.get(deviceName));
+              deviceToMeasurementIndexesMap == null
+                  ? null
+                  : deviceToMeasurementIndexesMap.get(deviceName));
 
       // put LIMIT-NODE below of SingleDeviceViewNode if exists value filter
       if (valueFilterLimit > 0) {
