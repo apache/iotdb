@@ -345,7 +345,9 @@ final class SubscriptionProviders {
     for (final Map.Entry<Integer, SubscriptionProvider> entry : subscriptionProviders.entrySet()) {
       sb.append(entry.getValue().toString()).append(", ");
     }
-    sb.setLength(sb.length() - 2);
+    if (!subscriptionProviders.isEmpty()) {
+      sb.delete(sb.length() - 2, sb.length());
+    }
     sb.append("}");
     return sb.toString();
   }

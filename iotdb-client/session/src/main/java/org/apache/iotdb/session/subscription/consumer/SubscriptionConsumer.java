@@ -66,6 +66,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
@@ -84,8 +85,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final long heartbeatIntervalMs;
   private final long endpointsSyncIntervalMs;
 
-  private final Set<TEndPoint> initialEndpoints = new HashSet<>();
-  private SubscriptionProviders providers;
+  private final SubscriptionProviders providers;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
@@ -126,17 +126,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     return consumerGroupId;
   }
 
-  public long getHeartbeatIntervalMs() {
-    return heartbeatIntervalMs;
-  }
-
-  public long getEndpointsSyncIntervalMs() {
-    return endpointsSyncIntervalMs;
-  }
-
   /////////////////////////////// ctor ///////////////////////////////
 
   protected SubscriptionConsumer(final Builder builder) {
+    final Set<TEndPoint> initialEndpoints = new HashSet<>();
     // From org.apache.iotdb.session.Session.getNodeUrls
     // Priority is given to `host:port` over `nodeUrls`.
     if (Objects.nonNull(builder.host)) {
@@ -144,6 +137,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     } else {
       initialEndpoints.addAll(SessionUtils.parseSeedNodeUrls(builder.nodeUrls));
     }
+    this.providers = new SubscriptionProviders(initialEndpoints);
 
     this.username = builder.username;
     this.password = builder.password;
@@ -206,9 +200,20 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       return;
     }
 
-    providers =
-        SubscriptionProvidersManager.getInstance()
-            .bindSubscriptionProviders(this, initialEndpoints);
+    // open subscription providers
+    providers.acquireWriteLock();
+    try {
+      providers.openProviders(this); // throw SubscriptionException
+    } finally {
+      providers.releaseWriteLock();
+    }
+
+    // launch heartbeat worker
+    submitHeartbeatWorker();
+
+    // launch endpoints syncer
+    submitEndpointsSyncer();
+
     isClosed.set(false);
   }
 
@@ -218,7 +223,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       return;
     }
 
-    SubscriptionProvidersManager.getInstance().unbindSubscriptionProviders(this, providers);
+    // close subscription providers
+    providers.acquireWriteLock();
+    providers.closeProviders();
+    providers.releaseWriteLock();
+
     isClosed.set(true);
   }
 
@@ -657,6 +666,46 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     } finally {
       providers.releaseReadLock();
     }
+  }
+
+  /////////////////////////////// heartbeat ///////////////////////////////
+
+  private void submitHeartbeatWorker() {
+    final ScheduledFuture<?>[] future = new ScheduledFuture<?>[1];
+    future[0] =
+        SubscriptionExecutorService.submitHeartbeatWorker(
+            () -> {
+              if (isClosed()) {
+                if (Objects.nonNull(future[0])) {
+                  future[0].cancel(false);
+                  LOGGER.info("SubscriptionConsumer {} cancel heartbeat worker", this);
+                }
+                return;
+              }
+              providers.heartbeat(this);
+            },
+            heartbeatIntervalMs);
+    LOGGER.info("SubscriptionConsumer {} submit heartbeat worker", this);
+  }
+
+  /////////////////////////////// sync endpoints ///////////////////////////////
+
+  private void submitEndpointsSyncer() {
+    final ScheduledFuture<?>[] future = new ScheduledFuture<?>[1];
+    future[0] =
+        SubscriptionExecutorService.submitEndpointsSyncer(
+            () -> {
+              if (isClosed()) {
+                if (Objects.nonNull(future[0])) {
+                  future[0].cancel(false);
+                  LOGGER.info("SubscriptionConsumer {} cancel endpoints syncer", this);
+                }
+                return;
+              }
+              providers.sync(this);
+            },
+            endpointsSyncIntervalMs);
+    LOGGER.info("SubscriptionConsumer {} submit endpoints syncer", this);
   }
 
   /////////////////////////////// commit async ///////////////////////////////
