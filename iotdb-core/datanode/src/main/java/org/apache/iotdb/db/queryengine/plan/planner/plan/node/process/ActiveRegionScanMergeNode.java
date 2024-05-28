@@ -33,28 +33,36 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class RegionMergeNode extends MultiChildProcessNode {
+public class ActiveRegionScanMergeNode extends MultiChildProcessNode {
 
   private final boolean outputCount;
 
   private final boolean needMerge;
 
-  protected RegionMergeNode(
+  protected ActiveRegionScanMergeNode(
       PlanNodeId id, List<PlanNode> children, boolean outputCount, boolean needMerge) {
     super(id, children);
     this.outputCount = outputCount;
     this.needMerge = needMerge;
   }
 
-  public RegionMergeNode(PlanNodeId id, boolean outputCount, boolean needMerge) {
+  public ActiveRegionScanMergeNode(PlanNodeId id, boolean outputCount, boolean needMerge) {
     super(id);
     this.outputCount = outputCount;
     this.needMerge = needMerge;
   }
 
+  public boolean isOutputCount() {
+    return outputCount;
+  }
+
+  public boolean isNeedMerge() {
+    return needMerge;
+  }
+
   @Override
   public PlanNode clone() {
-    return new RegionMergeNode(this.id, outputCount, needMerge);
+    return new ActiveRegionScanMergeNode(this.id, outputCount, needMerge);
   }
 
   @Override
@@ -68,11 +76,11 @@ public class RegionMergeNode extends MultiChildProcessNode {
             .collect(Collectors.toList());
   }
 
-  public static RegionMergeNode deserialize(ByteBuffer byteBuffer) {
+  public static ActiveRegionScanMergeNode deserialize(ByteBuffer byteBuffer) {
     boolean outputCount = byteBuffer.get() == 1;
     boolean needMerge = byteBuffer.get() == 1;
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new RegionMergeNode(planNodeId, outputCount, needMerge);
+    return new ActiveRegionScanMergeNode(planNodeId, outputCount, needMerge);
   }
 
   @Override
@@ -91,7 +99,7 @@ public class RegionMergeNode extends MultiChildProcessNode {
 
   @Override
   public String toString() {
-    return "RegionMergeNode{"
+    return "ActiveRegionScanMergeNode{"
         + "outputCount="
         + outputCount
         + ", needMerge="
@@ -117,7 +125,7 @@ public class RegionMergeNode extends MultiChildProcessNode {
     if (!super.equals(o)) {
       return false;
     }
-    RegionMergeNode that = (RegionMergeNode) o;
+    ActiveRegionScanMergeNode that = (ActiveRegionScanMergeNode) o;
     return outputCount == that.outputCount && needMerge == that.needMerge;
   }
 

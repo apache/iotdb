@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.process.ActiveRegionScanMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ColumnInjectOperator;
@@ -198,6 +199,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChild
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -3355,6 +3357,41 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 ExplainAnalyzeOperator.class.getSimpleName());
     return new ExplainAnalyzeOperator(
         operatorContext, operator, node.getQueryId(), node.isVerbose(), node.getTimeout());
+  }
+
+  private List<TSDataType> generateRepeatTsDataType(int size, TSDataType type) {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      dataTypes.add(type);
+    }
+    return dataTypes;
+  }
+
+  @Override
+  public Operator visitRegionMerge(ActiveRegionScanMergeNode node, LocalExecutionPlanContext context) {
+    List<Operator> operatorList =
+        node.getChildren().stream()
+            .map(child -> child.accept(this, context))
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                ActiveRegionScanMergeOperator.class.getName());
+
+    List<TSDataType> dataTypes;
+    if (node.isOutputCount()) {
+      dataTypes = new ArrayList<>(Collections.singleton(TSDataType.INT64));
+    } else {
+      dataTypes =
+          generateRepeatTsDataType(
+              node.getChildren().get(0).getOutputColumnNames().size(), TSDataType.TEXT);
+    }
+    return new ActiveRegionScanMergeOperator(
+        operatorContext, operatorList, dataTypes, node.isOutputCount(), node.isNeedMerge());
   }
 
   @Override
