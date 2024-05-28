@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
 import org.apache.iotdb.common.rpc.thrift.TRegionMigrateFailedType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
@@ -223,15 +224,7 @@ public class RegionMaintainHandler {
 
     String storageGroup = configManager.getPartitionManager().getRegionStorageGroup(regionId);
     TCreatePeerReq req = new TCreatePeerReq(regionId, currentPeerNodes, storageGroup);
-    long ttl = Long.MAX_VALUE;
-    try {
-      ttl = configManager.getClusterSchemaManager().getDatabaseSchemaByName(storageGroup).getTTL();
-    } catch (DatabaseNotExistsException e) {
-      LOGGER.warn(
-          "Cannot find out the database which region {} belongs to, ttl will be set to Long.MAX_VALUE",
-          regionId);
-    }
-    req.setTtl(ttl);
+    req.setTtl(getTTL(storageGroup));
 
     status =
         SyncDataNodeClientPool.getInstance()
@@ -444,6 +437,32 @@ public class RegionMaintainHandler {
     configManager
         .getLoadManager()
         .forceUpdateRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
+  }
+
+  public long getTTL(String database) {
+    long ttl = Long.MAX_VALUE;
+    try {
+      ttl = configManager.getClusterSchemaManager().getDatabaseSchemaByName(database).getTTL();
+    } catch (DatabaseNotExistsException e) {
+      LOGGER.warn(
+              "Cannot find out the database {}, ttl will be set to Long.MAX_VALUE",
+              database);
+    }
+    return ttl;
+  }
+
+  public void setTTL(TConsensusGroupId regionId, TDataNodeLocation dataNodeLocation) {
+    String storageGroup = configManager.getPartitionManager().getRegionStorageGroup(regionId);
+
+    AsyncClientHandler<TSetTTLReq, TSStatus> clientHandler =
+            new AsyncClientHandler<>(DataNodeRequestType.SET_TTL);
+
+    TSetTTLReq setTTLReq =
+            new TSetTTLReq(Collections.singletonList(storageGroup), getTTL(storageGroup));
+    clientHandler.putRequest(dataNodeLocation.getDataNodeId(), setTTLReq);
+    clientHandler.putDataNodeLocation(dataNodeLocation.getDataNodeId(), dataNodeLocation);
+
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
   }
 
   public void removeRegionLocation(

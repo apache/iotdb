@@ -3144,6 +3144,7 @@ public class DataRegion implements IDataRegionForQuery {
               dataTTL, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     }
     this.dataTTL = dataTTL;
+    logger.info("Set dataTTL to {}.", dataTTL);
   }
 
   public void setDataTTL(long dataTTL) {
