@@ -80,6 +80,7 @@ final class SubscriptionExecutorService {
       LOGGER.warn(
           "to upstream communication executor has been initialized, set core pool size to {} will be ignored",
           toUpstreamCommunicationExecutorCorePoolSize);
+      return;
     }
     SubscriptionExecutorService.toUpstreamCommunicationExecutorCorePoolSize =
         toUpstreamCommunicationExecutorCorePoolSize;
@@ -91,6 +92,7 @@ final class SubscriptionExecutorService {
       LOGGER.warn(
           "to downstream communication executor has been initialized, set core pool size to {} will be ignored",
           toDownstreamCommunicationExecutorCorePoolSize);
+      return;
     }
     SubscriptionExecutorService.toDownstreamCommunicationExecutorCorePoolSize =
         toDownstreamCommunicationExecutorCorePoolSize;
