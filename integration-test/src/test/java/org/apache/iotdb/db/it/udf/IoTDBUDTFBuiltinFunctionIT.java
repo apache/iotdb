@@ -55,12 +55,12 @@ import static org.junit.Assert.fail;
 public class IoTDBUDTFBuiltinFunctionIT {
 
   private static final String[] INSERTION_SQLS = {
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s8) values (0, 0, 0, 0, 0, true, '0', 0, 0)",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7) values (2, 1, 1, 1, 1, false, '1', 1)",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7) values (4, 2, 2, 2, 2, false, '2', 2)",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8) values (6, 3, 3, 3, 3, true, '3', 3)",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8) values (8, 4, 4, 4, 4, true, '4', 4)",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8) values (10000000000, 5, 5, 5, 5, false, '5', 5)"
+    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s8, s10, s11, s12) values (0, 0, 0, 0, 0, true, '0', 0, 0, '2024-01-01', 0, '0')",
+    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s10, s11, s12) values (2, 1, 1, 1, 1, false, '1', 1, '2024-01-02', 1, '1')",
+    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s10, s11, s12) values (4, 2, 2, 2, 2, false, '2', 2, '2024-01-03', 2, '2')",
+    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (6, 3, 3, 3, 3, true, '3', 3, '2024-01-04', 3, '3')",
+    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (8, 4, 4, 4, 4, true, '4', 4, '2024-01-05', 4, '4')",
+    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (10000000000, 5, 5, 5, 5, false, '5', 5, '2024-01-06', 5, '5')"
   };
 
   private static final double E = 0.0001;
@@ -87,6 +87,9 @@ public class IoTDBUDTFBuiltinFunctionIT {
       statement.execute("CREATE TIMESERIES root.sg.d1.s4 with datatype=DOUBLE,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg.d1.s5 with datatype=BOOLEAN,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg.d1.s6 with datatype=TEXT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d1.s10 with datatype=DATE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d1.s11 with datatype=TIMESTAMP,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d1.s12 with datatype=STRING,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -188,16 +191,22 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s) from root.sg.d1",
-                  TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K));
+                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s), %s(s10, %s), %s(s11, %s), %s(s12, %s) from root.sg.d1",
+                  TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K));
 
       int columnCount = resultSet.getMetaData().getColumnCount();
-      assertEquals(1 + 5, columnCount);
+      assertEquals(1 + 8, columnCount);
 
       for (int i = INSERTION_SQLS.length - 2; i < INSERTION_SQLS.length; ++i) {
         resultSet.next();
-        for (int j = 0; j < 5; ++j) {
-          assertEquals(i, Double.parseDouble(resultSet.getString(2 + j)), E);
+        for (int j = 0; j < 8; ++j) {
+          if (j != 5 && j != 6) {
+            assertEquals(i, Double.parseDouble(resultSet.getString(2 + j)), E);
+          } else if (j == 5) {
+            assertEquals("2024-01-0" + (i + 1), resultSet.getString(7));
+          } else if (j == 6) {
+            assertEquals(String.format("1970-01-01T00:00:00.00%dZ", i), resultSet.getString(8));
+          }
         }
       }
       resultSet.close();
@@ -227,16 +236,23 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s) from root.sg.d1",
-                  BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K));
+                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s), %s(s10, %s), %s(s11, %s), %s(s12, %s) from root.sg.d1",
+                  BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K,
+                  BOTTOM_K, K, BOTTOM_K, K));
 
       int columnCount = resultSet.getMetaData().getColumnCount();
-      assertEquals(1 + 5, columnCount);
+      assertEquals(1 + 8, columnCount);
 
       for (int i = 0; i < 2; ++i) {
         resultSet.next();
-        for (int j = 0; j < 5; ++j) {
-          assertEquals(i, Double.parseDouble(resultSet.getString(2 + j)), E);
+        for (int j = 0; j < 8; ++j) {
+          if (j != 5 && j != 6) {
+            assertEquals(i, Double.parseDouble(resultSet.getString(2 + j)), E);
+          } else if (j == 5) {
+            assertEquals("2024-01-0" + (i + 1), resultSet.getString(7));
+          } else if (j == 6) {
+            assertEquals(String.format("1970-01-01T00:00:00.00%dZ", i), resultSet.getString(8));
+          }
         }
       }
       resultSet.close();
@@ -1716,12 +1732,16 @@ public class IoTDBUDTFBuiltinFunctionIT {
           "CREATE DATABASE root.testStringFunctions",
           "CREATE TIMESERIES root.testStringFunctions.d1.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
           "CREATE TIMESERIES root.testStringFunctions.d1.s2 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testStringFunctions.d1.s3 WITH DATATYPE=STRING, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testStringFunctions.d1.s4 WITH DATATYPE=STRING, ENCODING=PLAIN",
         };
 
     String[] insertSQLs =
         new String[] {
           "INSERT INTO root.testStringFunctions.d1(timestamp,s1,s2) values(1, \"1111test1111\", \"  1111test1111 \")",
-          "INSERT INTO root.testStringFunctions.d1(timestamp,s1) values(10000000000, \"2222test2222\")"
+          "INSERT INTO root.testStringFunctions.d1(timestamp,s1) values(10000000000, \"2222test2222\")",
+          "INSERT INTO root.testStringFunctions.d1(timestamp,s1,s3) values(1, \"1111test1111\", \"  1111test1111 \")",
+          "INSERT INTO root.testStringFunctions.d1(timestamp,s4) values(10000000000, \"2222test2222\")"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -1773,6 +1793,26 @@ public class IoTDBUDTFBuiltinFunctionIT {
       }
       assertEquals(resultSet.getString(3).trim(), resultSet.getString(4));
     }
+
+    resultSet = statement.executeQuery("select s4, trim(s4) " + "from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      s2 = resultSet.getString(3);
+      if (s2 == null) {
+        continue;
+      }
+      assertEquals(resultSet.getString(2).trim(), resultSet.getString(3));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s4, trim(s4) " + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      s2 = resultSet.getString(3);
+      if (s2 == null) {
+        continue;
+      }
+      assertEquals(resultSet.getString(3).trim(), resultSet.getString(4));
+    }
   }
 
   private void testStrCmp(Statement statement) throws SQLException {
@@ -1801,6 +1841,30 @@ public class IoTDBUDTFBuiltinFunctionIT {
       }
       assertEquals(s1.compareTo(s2), resultSet.getInt(5));
     }
+
+    resultSet =
+        statement.executeQuery(
+            "select s3, s4, strcmp(s3, s4) " + "from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      s1 = resultSet.getString(2);
+      s2 = resultSet.getString(3);
+      if (s1 == null || s2 == null) {
+        continue;
+      }
+      assertEquals(s1.compareTo(s2), resultSet.getInt(4));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s3, s4, strcmp(s3, s4) " + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      s1 = resultSet.getString(3);
+      s2 = resultSet.getString(4);
+      if (s1 == null || s2 == null) {
+        continue;
+      }
+      assertEquals(s1.compareTo(s2), resultSet.getInt(5));
+    }
   }
 
   private void testLower(Statement statement) throws SQLException {
@@ -1813,6 +1877,19 @@ public class IoTDBUDTFBuiltinFunctionIT {
     resultSet =
         statement.executeQuery(
             "select s1, lower(s1) " + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(3).toLowerCase(), resultSet.getString(4));
+    }
+
+    resultSet =
+        statement.executeQuery("select s3, lower(s3) " + "from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(2).toLowerCase(), resultSet.getString(3));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s3, lower(s3) " + "from root.testStringFunctions.d1 align by device");
     while (resultSet.next()) {
       assertEquals(resultSet.getString(3).toLowerCase(), resultSet.getString(4));
     }
@@ -1831,6 +1908,19 @@ public class IoTDBUDTFBuiltinFunctionIT {
     while (resultSet.next()) {
       assertEquals(resultSet.getString(3).toUpperCase(), resultSet.getString(4));
     }
+
+    resultSet =
+        statement.executeQuery("select s3, upper(s3) " + "from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(2).toUpperCase(), resultSet.getString(3));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s3, upper(s3) " + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(3).toUpperCase(), resultSet.getString(4));
+    }
   }
 
   private void testSubStr(Statement statement) throws SQLException {
@@ -1844,6 +1934,20 @@ public class IoTDBUDTFBuiltinFunctionIT {
     resultSet =
         statement.executeQuery(
             "select s1, substring(s1, 3, 7) " + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(3).substring(2, 9), resultSet.getString(4));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s3, substring(s3, 3, 7) " + "from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(2).substring(2, 9), resultSet.getString(3));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s3, substring(s3, 3, 7) " + "from root.testStringFunctions.d1 align by device");
     while (resultSet.next()) {
       assertEquals(resultSet.getString(3).substring(2, 9), resultSet.getString(4));
     }
@@ -1879,6 +1983,36 @@ public class IoTDBUDTFBuiltinFunctionIT {
           ("IoTDB" + (resultSet.getString(3) + resultSet.getString(4))).replace("null", ""),
           resultSet.getString(6));
     }
+
+    resultSet =
+        statement.executeQuery(
+            "select s3, s4, "
+                + "concat(s3, s4, \"target1\"=\"IoT\", \"target2\"=\"DB\"), "
+                + "concat(s3, s4, \"target1\"=\"IoT\", \"target2\"=\"DB\", \"series_behind\"=\"true\") "
+                + "from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(
+          (resultSet.getString(2) + resultSet.getString(3) + "IoTDB").replace("null", ""),
+          resultSet.getString(4));
+      assertEquals(
+          ("IoTDB" + (resultSet.getString(2) + resultSet.getString(3))).replace("null", ""),
+          resultSet.getString(5));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s3, s4, "
+                + "concat(s3, s4, \"target1\"=\"IoT\", \"target2\"=\"DB\"), "
+                + "concat(s3, s4, \"target1\"=\"IoT\", \"target2\"=\"DB\", \"series_behind\"=\"true\") "
+                + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(
+          (resultSet.getString(3) + resultSet.getString(4) + "IoTDB").replace("null", ""),
+          resultSet.getString(5));
+      assertEquals(
+          ("IoTDB" + (resultSet.getString(3) + resultSet.getString(4))).replace("null", ""),
+          resultSet.getString(6));
+    }
   }
 
   private void testEndsWith(Statement statement) throws SQLException {
@@ -1896,6 +2030,21 @@ public class IoTDBUDTFBuiltinFunctionIT {
     while (resultSet.next()) {
       assertEquals(resultSet.getString(3).endsWith("1111"), resultSet.getBoolean(4));
     }
+
+    resultSet =
+        statement.executeQuery(
+            "select s3, endsWith(s3, \"target\"=\"1111\") " + "from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(2).endsWith("1111"), resultSet.getBoolean(3));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s3, endsWith(s3, \"target\"=\"1111\") "
+                + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(3).endsWith("1111"), resultSet.getBoolean(4));
+    }
   }
 
   private void testStartsWith(Statement statement) throws SQLException {
@@ -1909,6 +2058,21 @@ public class IoTDBUDTFBuiltinFunctionIT {
     resultSet =
         statement.executeQuery(
             "select s1, startsWith(s1, \"target\"=\"1111\") "
+                + "from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(3).startsWith("1111"), resultSet.getBoolean(4));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s3, startsWith(s3, \"target\"=\"1111\") " + "from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(2).startsWith("1111"), resultSet.getBoolean(3));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s3, startsWith(s3, \"target\"=\"1111\") "
                 + "from root.testStringFunctions.d1 align by device");
     while (resultSet.next()) {
       assertEquals(resultSet.getString(3).startsWith("1111"), resultSet.getBoolean(4));
@@ -1931,6 +2095,22 @@ public class IoTDBUDTFBuiltinFunctionIT {
       assertEquals(resultSet.getString(3).indexOf("1111"), resultSet.getInt(4));
       assertEquals(resultSet.getString(3).lastIndexOf("1111"), resultSet.getInt(5));
     }
+
+    resultSet =
+        statement.executeQuery(
+            "select s3, locate(s3, \"target\"=\"1111\"), locate(s3, \"target\"=\"1111\", \"reverse\"=\"true\") from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(2).indexOf("1111"), resultSet.getInt(3));
+      assertEquals(resultSet.getString(2).lastIndexOf("1111"), resultSet.getInt(4));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s3, locate(s3, \"target\"=\"1111\"), locate(s3, \"target\"=\"1111\", \"reverse\"=\"true\") from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(3).indexOf("1111"), resultSet.getInt(4));
+      assertEquals(resultSet.getString(3).lastIndexOf("1111"), resultSet.getInt(5));
+    }
   }
 
   private void testStrLength(Statement statement) throws SQLException {
@@ -1943,6 +2123,18 @@ public class IoTDBUDTFBuiltinFunctionIT {
     resultSet =
         statement.executeQuery(
             "select s1, length(s1) from root.testStringFunctions.d1 align by device");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(3).length(), resultSet.getInt(4));
+    }
+
+    resultSet = statement.executeQuery("select s3, length(s3) from root.testStringFunctions.d1");
+    while (resultSet.next()) {
+      assertEquals(resultSet.getString(2).length(), resultSet.getInt(3));
+    }
+
+    resultSet =
+        statement.executeQuery(
+            "select s3, length(s3) from root.testStringFunctions.d1 align by device");
     while (resultSet.next()) {
       assertEquals(resultSet.getString(3).length(), resultSet.getInt(4));
     }

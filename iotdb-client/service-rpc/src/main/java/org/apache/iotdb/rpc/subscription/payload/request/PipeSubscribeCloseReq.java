@@ -41,7 +41,7 @@ public class PipeSubscribeCloseReq extends TPipeSubscribeReq {
   }
 
   /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
-  public static PipeSubscribeCloseReq fromTPipeSubscribeReq(TPipeSubscribeReq closeReq) {
+  public static PipeSubscribeCloseReq fromTPipeSubscribeReq(final TPipeSubscribeReq closeReq) {
     final PipeSubscribeCloseReq req = new PipeSubscribeCloseReq();
 
     req.version = closeReq.version;
@@ -54,14 +54,14 @@ public class PipeSubscribeCloseReq extends TPipeSubscribeReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribeCloseReq that = (PipeSubscribeCloseReq) obj;
+    final PipeSubscribeCloseReq that = (PipeSubscribeCloseReq) obj;
     return this.version == that.version
         && this.type == that.type
         && Objects.equals(this.body, that.body);

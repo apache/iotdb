@@ -17,7 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription;
+package org.apache.iotdb.session.subscription.payload;
+
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
 
 import org.apache.tsfile.write.record.Tablet;
 
@@ -25,29 +27,36 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public class SubscriptionSessionDataSets
-    implements Iterable<SubscriptionSessionDataSet>, SubscriptionMessagePayload {
+public class SubscriptionSessionDataSetsHandler
+    implements Iterable<SubscriptionSessionDataSet>, SubscriptionMessageHandler {
 
-  private final List<SubscriptionSessionDataSet> dataSetList;
+  private final List<SubscriptionSessionDataSet> dataSets;
 
-  public SubscriptionSessionDataSets(List<Tablet> tablets) {
-    this.dataSetList = new ArrayList<>();
-    tablets.forEach((tablet -> this.dataSetList.add(new SubscriptionSessionDataSet(tablet))));
+  private final List<Tablet> tablets;
+
+  public SubscriptionSessionDataSetsHandler(final List<Tablet> tablets) {
+    this.dataSets = new ArrayList<>();
+    this.tablets = tablets;
+    tablets.forEach((tablet -> this.dataSets.add(new SubscriptionSessionDataSet(tablet))));
   }
 
   @Override
   public Iterator<SubscriptionSessionDataSet> iterator() {
-    return dataSetList.iterator();
+    return dataSets.iterator();
   }
 
   public Iterator<Tablet> tabletIterator() {
-    return dataSetList.stream().map((SubscriptionSessionDataSet::getTablet)).iterator();
+    return tablets.iterator();
   }
 
   @Override
-  public void close() throws Exception {
-    for (SubscriptionSessionDataSet dataSet : dataSetList) {
-      dataSet.close();
-    }
+  public SubscriptionSessionDataSetsHandler getSessionDataSetsHandler() {
+    return this;
+  }
+
+  @Override
+  public SubscriptionTsFileHandler getTsFileHandler() {
+    throw new SubscriptionIncompatibleHandlerException(
+        "SubscriptionSessionDataSetsHandler do not support getSessionDataSetsHandler().");
   }
 }

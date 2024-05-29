@@ -265,7 +265,7 @@ public class AggregationDescriptor {
 
   protected String getInputString(List<Expression> expressions) {
     StringBuilder builder = new StringBuilder();
-    if (!(expressions.size() == 0)) {
+    if (!(expressions.isEmpty())) {
       builder.append(expressions.get(0).getExpressionString());
       for (int i = 1; i < expressions.size(); ++i) {
         builder.append(", ").append(expressions.get(i).getExpressionString());

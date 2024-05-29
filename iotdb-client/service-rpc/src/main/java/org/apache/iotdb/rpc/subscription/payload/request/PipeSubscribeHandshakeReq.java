@@ -22,11 +22,7 @@ package org.apache.iotdb.rpc.subscription.payload.request;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 
-import org.apache.tsfile.utils.PublicBAOS;
-
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
@@ -43,7 +39,7 @@ public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
    * Serialize the incoming parameters into `PipeSubscribeHandshakeReq`, called by the subscription
    * client.
    */
-  public static PipeSubscribeHandshakeReq toTPipeSubscribeReq(ConsumerConfig consumerConfig)
+  public static PipeSubscribeHandshakeReq toTPipeSubscribeReq(final ConsumerConfig consumerConfig)
       throws IOException {
     final PipeSubscribeHandshakeReq req = new PipeSubscribeHandshakeReq();
 
@@ -51,17 +47,14 @@ public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
 
     req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();
     req.type = PipeSubscribeRequestType.HANDSHAKE.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      consumerConfig.serialize(outputStream);
-      req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    }
+    req.body = ConsumerConfig.serialize(consumerConfig);
 
     return req;
   }
 
   /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
-  public static PipeSubscribeHandshakeReq fromTPipeSubscribeReq(TPipeSubscribeReq handshakeReq) {
+  public static PipeSubscribeHandshakeReq fromTPipeSubscribeReq(
+      final TPipeSubscribeReq handshakeReq) {
     final PipeSubscribeHandshakeReq req = new PipeSubscribeHandshakeReq();
 
     if (Objects.nonNull(handshakeReq.body) && handshakeReq.body.hasRemaining()) {
@@ -78,14 +71,14 @@ public class PipeSubscribeHandshakeReq extends TPipeSubscribeReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribeHandshakeReq that = (PipeSubscribeHandshakeReq) obj;
+    final PipeSubscribeHandshakeReq that = (PipeSubscribeHandshakeReq) obj;
     return Objects.equals(this.consumerConfig, that.consumerConfig)
         && this.version == that.version
         && this.type == that.type

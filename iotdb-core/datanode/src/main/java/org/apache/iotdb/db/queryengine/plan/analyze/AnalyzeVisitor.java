@@ -209,7 +209,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   static final Expression DEVICE_EXPRESSION =
       TimeSeriesOperand.constructColumnHeaderExpression(DEVICE, TSDataType.TEXT);
 
-  static final Expression END_TIME_EXPRESSION =
+  public static final Expression END_TIME_EXPRESSION =
       TimeSeriesOperand.constructColumnHeaderExpression(ENDTIME, TSDataType.INT64);
 
   private final List<String> lastQueryColumnNames =
@@ -1904,7 +1904,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           && rightExpression instanceof ConstantOperand)) {
         throw new SemanticException(
             String.format(
-                "Please check the keep condition ([%s]),it need to be a constant or a compare expression constructed by 'keep' and a long number.",
+                "Please check the keep condition ([%s]), "
+                    + "it need to be a constant or a compare expression constructed by 'keep' and a long number.",
                 keepExpression.getExpressionString()));
       }
       return;
@@ -1912,12 +1913,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (!(keepExpression instanceof ConstantOperand)) {
       throw new SemanticException(
           String.format(
-              "Please check the keep condition ([%s]),it need to be a constant or a compare expression constructed by 'keep' and a long number.",
+              "Please check the keep condition ([%s]), "
+                  + "it need to be a constant or a compare expression constructed by 'keep' and a long number.",
               keepExpression.getExpressionString()));
     }
   }
 
-  private void analyzeGroupByTime(Analysis analysis, QueryStatement queryStatement) {
+  static void analyzeGroupByTime(Analysis analysis, QueryStatement queryStatement) {
     if (!queryStatement.isGroupByTime()) {
       return;
     }

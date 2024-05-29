@@ -194,7 +194,8 @@ public class DataQueryLogicalPlannerTest {
             new Expression[] {new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))},
             predicate,
             false,
-            Ordering.DESC);
+            Ordering.DESC,
+            true);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), filterNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -249,7 +250,8 @@ public class DataQueryLogicalPlannerTest {
             },
             predicate1,
             false,
-            Ordering.DESC);
+            Ordering.DESC,
+            true);
 
     List<PlanNode> sourceNodeList2 = new ArrayList<>();
     sourceNodeList2.add(
@@ -287,7 +289,8 @@ public class DataQueryLogicalPlannerTest {
             },
             predicate2,
             false,
-            Ordering.DESC);
+            Ordering.DESC,
+            true);
 
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
     deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));
@@ -742,7 +745,8 @@ public class DataQueryLogicalPlannerTest {
             },
             predicate,
             false,
-            Ordering.DESC);
+            Ordering.DESC,
+            true);
 
     RawDataAggregationNode aggregationNode =
         new RawDataAggregationNode(
@@ -867,7 +871,8 @@ public class DataQueryLogicalPlannerTest {
             },
             predicate1,
             false,
-            Ordering.DESC);
+            Ordering.DESC,
+            true);
 
     RawDataAggregationNode aggregationNode1 =
         new RawDataAggregationNode(
@@ -922,7 +927,8 @@ public class DataQueryLogicalPlannerTest {
             },
             predicate2,
             false,
-            Ordering.DESC);
+            Ordering.DESC,
+            true);
 
     RawDataAggregationNode aggregationNode2 =
         new RawDataAggregationNode(

@@ -39,7 +39,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class PipeEventBatch implements AutoCloseable {
@@ -60,6 +62,9 @@ public class PipeEventBatch implements AutoCloseable {
   // limit in buffer size
   private final PipeMemoryBlock allocatedMemoryBlock;
   private long totalBufferSize = 0;
+
+  // Used to rate limit when transferring data
+  private final Map<String, Long> pipeName2BytesAccumulated = new HashMap<>();
 
   public PipeEventBatch(int maxDelayInMs, long requestMaxBatchSizeInBytes) {
     this.maxDelayInMs = maxDelayInMs;
@@ -112,6 +117,10 @@ public class PipeEventBatch implements AutoCloseable {
 
         final int bufferSize = buildTabletInsertionBuffer(event);
         totalBufferSize += bufferSize;
+        pipeName2BytesAccumulated.compute(
+            ((EnrichedEvent) event).getPipeName(),
+            (pipeName, bytesAccumulated) ->
+                bytesAccumulated == null ? bufferSize : bytesAccumulated + bufferSize);
 
         if (firstEventProcessingTime == Long.MIN_VALUE) {
           firstEventProcessingTime = System.currentTimeMillis();
@@ -137,6 +146,7 @@ public class PipeEventBatch implements AutoCloseable {
     firstEventProcessingTime = Long.MIN_VALUE;
 
     totalBufferSize = 0;
+    pipeName2BytesAccumulated.clear();
   }
 
   public PipeTransferTabletBatchReq toTPipeTransferReq() throws IOException {
@@ -158,6 +168,14 @@ public class PipeEventBatch implements AutoCloseable {
 
   public List<Long> deepCopyRequestCommitIds() {
     return new ArrayList<>(requestCommitIds);
+  }
+
+  public Map<String, Long> deepCopyPipeName2BytesAccumulated() {
+    return new HashMap<>(pipeName2BytesAccumulated);
+  }
+
+  public Map<String, Long> getPipeName2BytesAccumulated() {
+    return pipeName2BytesAccumulated;
   }
 
   private int buildTabletInsertionBuffer(final TabletInsertionEvent event)

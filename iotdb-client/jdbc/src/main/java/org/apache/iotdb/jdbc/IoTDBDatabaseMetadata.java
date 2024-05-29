@@ -45,6 +45,7 @@ import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -69,6 +70,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           ? IoTDBDatabaseMetadata.class.getPackage().getImplementationVersion()
           : "UNKNOWN";
   private long sessionId;
+  private ZoneId zoneId;
   private static String sqlKeywordsThatArentSQL92;
   private static TsBlockSerde serde = new TsBlockSerde();
 
@@ -145,10 +147,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   private static final String CONVERT_ERROR_MSG = "convert tsBlock error: {}";
 
   IoTDBDatabaseMetadata(
-      IoTDBConnection connection, IClientRPCService.Iface client, long sessionId) {
+      IoTDBConnection connection, IClientRPCService.Iface client, long sessionId, ZoneId zoneId) {
     this.connection = connection;
     this.client = client;
     this.sessionId = sessionId;
+    this.zoneId = zoneId;
   }
 
   static {
@@ -675,7 +678,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -720,7 +724,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -784,7 +789,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   public static ByteBuffer convertTsBlock(
@@ -796,6 +802,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         TSDataType columnType = tsDataTypeList.get(j);
         switch (columnType) {
           case TEXT:
+          case STRING:
+          case BLOB:
             tsBlockBuilder
                 .getColumnBuilder(j)
                 .writeBinary(
@@ -805,9 +813,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
             tsBlockBuilder.getColumnBuilder(j).writeFloat((float) valuesInRow.get(j));
             break;
           case INT32:
+          case DATE:
             tsBlockBuilder.getColumnBuilder(j).writeInt((int) valuesInRow.get(j));
             break;
           case INT64:
+          case TIMESTAMP:
             tsBlockBuilder.getColumnBuilder(j).writeLong((long) valuesInRow.get(j));
             break;
           case DOUBLE:
@@ -886,7 +896,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @SuppressWarnings({
@@ -1008,7 +1019,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -1063,7 +1075,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -1177,7 +1190,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -1286,7 +1300,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @SuppressWarnings(
@@ -1364,7 +1379,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -1417,7 +1433,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -1466,7 +1483,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -1685,7 +1703,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -1741,7 +1760,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -1786,7 +1806,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -1856,7 +1877,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -1941,7 +1963,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -1995,7 +2018,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -2036,7 +2060,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -2172,7 +2197,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -2212,7 +2238,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @SuppressWarnings({
@@ -2413,7 +2440,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   private void close(ResultSet rs, Statement stmt) {
@@ -2612,7 +2640,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -2814,7 +2843,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         Collections.singletonList(tsBlock),
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -2857,7 +2887,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override
@@ -2911,7 +2942,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         null,
         null,
         (long) 60 * 1000,
-        false);
+        false,
+        zoneId);
   }
 
   @Override

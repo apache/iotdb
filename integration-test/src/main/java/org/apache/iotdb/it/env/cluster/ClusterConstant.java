@@ -199,6 +199,7 @@ public class ClusterConstant {
   public static final int NODE_START_TIMEOUT = 100;
   public static final int PROBE_TIMEOUT_MS = 2000;
   public static final int NODE_NETWORK_TIMEOUT_MS = 0;
+  public static final String ZERO_TIME_ZONE = "GMT+0";
 
   public static final String DELIMITER = ",";
   public static final String TAB = "  ";

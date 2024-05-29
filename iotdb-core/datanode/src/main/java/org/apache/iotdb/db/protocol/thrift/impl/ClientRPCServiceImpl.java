@@ -709,7 +709,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               Collections.singletonList(aggregator),
               initTimeRangeIterator(groupByTimeParameter, true, true),
               groupByTimeParameter,
-              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+              !TSDataType.BLOB.equals(dataType)
+                  || (!TAggregationType.LAST_VALUE.equals(aggregationType)
+                      && !TAggregationType.FIRST_VALUE.equals(aggregationType)));
     } else {
       path = new MeasurementPath(device, measurement, measurementSchema);
       operator =
@@ -722,7 +725,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               Collections.singletonList(aggregator),
               initTimeRangeIterator(groupByTimeParameter, true, true),
               groupByTimeParameter,
-              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+              !TSDataType.BLOB.equals(dataType)
+                  || (!TAggregationType.LAST_VALUE.equals(aggregationType)
+                      && !TAggregationType.FIRST_VALUE.equals(aggregationType)));
     }
 
     try {

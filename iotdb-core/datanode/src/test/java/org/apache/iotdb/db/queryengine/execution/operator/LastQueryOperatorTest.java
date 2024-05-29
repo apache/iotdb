@@ -146,7 +146,8 @@ public class LastQueryOperatorTest {
               aggregators1,
               initTimeRangeIterator(null, false, true),
               null,
-              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+              true);
 
       seriesAggregationScanOperator1.initQueryDataSource(
           new QueryDataSource(seqResources, unSeqResources));
@@ -171,7 +172,8 @@ public class LastQueryOperatorTest {
               aggregators2,
               initTimeRangeIterator(null, false, true),
               null,
-              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+              true);
       seriesAggregationScanOperator2.initQueryDataSource(
           new QueryDataSource(seqResources, unSeqResources));
 
@@ -273,7 +275,8 @@ public class LastQueryOperatorTest {
               aggregators1,
               initTimeRangeIterator(null, false, true),
               null,
-              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+              true);
       seriesAggregationScanOperator1.initQueryDataSource(
           new QueryDataSource(seqResources, unSeqResources));
 
@@ -297,7 +300,8 @@ public class LastQueryOperatorTest {
               aggregators2,
               initTimeRangeIterator(null, false, true),
               null,
-              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+              true);
       seriesAggregationScanOperator2.initQueryDataSource(
           new QueryDataSource(seqResources, unSeqResources));
 

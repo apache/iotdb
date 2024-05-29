@@ -36,8 +36,11 @@ abstract class AbstractSubscriptionDualIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
+    // enable auto create schema
     senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
     receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+
+    // for IoTDBSubscriptionConsumerGroupIT
     receiverEnv.getConfig().getCommonConfig().setPipeAirGapReceiverEnabled(true);
 
     // 10 min, assert that the operations will not time out

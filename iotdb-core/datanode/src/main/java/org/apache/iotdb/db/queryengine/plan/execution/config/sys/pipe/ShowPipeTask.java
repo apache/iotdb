@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -37,6 +38,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -45,24 +47,24 @@ public class ShowPipeTask implements IConfigTask {
 
   private final ShowPipesStatement showPipesStatement;
 
-  public ShowPipeTask(ShowPipesStatement showPipesStatement) {
+  public ShowPipeTask(final ShowPipesStatement showPipesStatement) {
     this.showPipesStatement = showPipesStatement;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.showPipes(showPipesStatement);
   }
 
   public static void buildTSBlock(
-      List<TShowPipeInfo> pipeInfoList, SettableFuture<ConfigTaskResult> future) {
-    List<TSDataType> outputDataTypes =
+      final List<TShowPipeInfo> pipeInfoList, final SettableFuture<ConfigTaskResult> future) {
+    final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showPipeColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
-    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (TShowPipeInfo tPipeInfo : pipeInfoList) {
+    final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    for (final TShowPipeInfo tPipeInfo : pipeInfoList) {
       builder.getTimeColumnBuilder().writeLong(0L);
       builder
           .getColumnBuilder(0)
@@ -88,9 +90,38 @@ public class ShowPipeTask implements IConfigTask {
       builder
           .getColumnBuilder(6)
           .writeBinary(new Binary(tPipeInfo.getExceptionMessage(), TSFileConfig.STRING_CHARSET));
+
+      // Optional, default 0/0.0
+      long remainingEventCount = tPipeInfo.getRemainingEventCount();
+      double remainingTime = tPipeInfo.getEstimatedRemainingTime();
+
+      if (remainingEventCount == -1 && remainingTime == -1) {
+        final Pair<Long, Double> remainingEventAndTime =
+            PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+                .getRemainingEventAndTime(tPipeInfo.getId(), tPipeInfo.getCreationTime());
+        remainingEventCount = remainingEventAndTime.getLeft();
+        remainingTime = remainingEventAndTime.getRight();
+      }
+
+      builder
+          .getColumnBuilder(7)
+          .writeBinary(
+              new Binary(
+                  tPipeInfo.isSetRemainingEventCount()
+                      ? String.valueOf(remainingEventCount)
+                      : "Unknown",
+                  TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(8)
+          .writeBinary(
+              new Binary(
+                  tPipeInfo.isSetEstimatedRemainingTime()
+                      ? String.format("%.2f", remainingTime)
+                      : "Unknown",
+                  TSFileConfig.STRING_CHARSET));
       builder.declarePosition();
     }
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeHeader();
+    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowPipeHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

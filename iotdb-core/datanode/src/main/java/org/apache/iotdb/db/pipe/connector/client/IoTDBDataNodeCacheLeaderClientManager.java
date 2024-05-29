@@ -105,6 +105,10 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
     }
 
     public void updateLeaderEndPoint(String deviceId, TEndPoint endPoint) {
+      if (deviceId == null || endPoint == null) {
+        return;
+      }
+
       TEndPoint endPointFromMap = endPoints.putIfAbsent(endPoint, endPoint);
       if (endPointFromMap != null) {
         device2endpoint.put(deviceId, endPointFromMap);

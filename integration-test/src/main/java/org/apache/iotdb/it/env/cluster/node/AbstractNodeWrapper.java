@@ -453,6 +453,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               "-Djava.rmi.server.hostname=" + getIp(),
               "-Xms" + jvmConfig.getInitHeapSize() + "m",
               "-Xmx" + jvmConfig.getMaxHeapSize() + "m",
+              "-Duser.timezone=" + jvmConfig.getTimezone(),
               "-XX:MaxDirectMemorySize=" + jvmConfig.getMaxDirectMemorySize() + "m",
               "-Djdk.nio.maxCachedBufferSize=262144",
               "-D" + IoTDBConstant.INTEGRATION_TEST_KILL_POINTS + "=" + killPoints.toString(),

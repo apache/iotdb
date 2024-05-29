@@ -41,6 +41,7 @@ public class PipeConfigNodeMetrics implements IMetricSet {
     PipeConfigRegionExtractorMetrics.getInstance().bindTo(metricService);
     PipeConfigRegionConnectorMetrics.getInstance().bindTo(metricService);
     PipeConfigNodeRemainingTimeMetrics.getInstance().bindTo(metricService);
+    PipeTemporaryMetaMetrics.getInstance().bindTo(metricService);
   }
 
   @Override
@@ -51,5 +52,6 @@ public class PipeConfigNodeMetrics implements IMetricSet {
     PipeConfigRegionExtractorMetrics.getInstance().unbindFrom(metricService);
     PipeConfigRegionConnectorMetrics.getInstance().unbindFrom(metricService);
     PipeConfigNodeRemainingTimeMetrics.getInstance().unbindFrom(metricService);
+    PipeTemporaryMetaMetrics.getInstance().unbindFrom(metricService);
   }
 }

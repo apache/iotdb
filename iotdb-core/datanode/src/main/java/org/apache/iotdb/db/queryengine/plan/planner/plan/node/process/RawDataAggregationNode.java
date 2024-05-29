@@ -124,6 +124,26 @@ public class RawDataAggregationNode extends SingleChildProcessNode {
     this.outputEndTime = outputEndTime;
   }
 
+  // to avoid the repeated invoking of getDeduplicatedDescriptors method
+  public RawDataAggregationNode(
+      PlanNodeId id,
+      PlanNode child,
+      List<AggregationDescriptor> deduplicatedAggregationDescriptorList,
+      @Nullable GroupByTimeParameter groupByTimeParameter,
+      @Nullable GroupByParameter groupByParameter,
+      Expression groupByExpression,
+      boolean outputEndTime,
+      Ordering scanOrder,
+      boolean useDeduplicatedDescriptors) {
+    super(id, child);
+    this.aggregationDescriptorList = deduplicatedAggregationDescriptorList;
+    this.scanOrder = scanOrder;
+    this.groupByParameter = groupByParameter;
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.groupByExpression = groupByExpression;
+    this.outputEndTime = outputEndTime;
+  }
+
   public List<AggregationDescriptor> getAggregationDescriptorList() {
     return aggregationDescriptorList;
   }
