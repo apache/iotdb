@@ -500,7 +500,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
 
   // synchronized to avoid close connector when transfer event
   @Override
-  public synchronized void close() throws Exception {
+  public synchronized void close() {
+    super.close();
     isClosed.set(true);
 
     retryConnector.close();
