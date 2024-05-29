@@ -31,17 +31,17 @@ public class ConsensusPipeName {
   private final int senderDataNodeId;
   private final int receiverDataNodeId;
 
-  public ConsensusPipeName(Peer senderPeer, Peer recieverPeer) {
+  public ConsensusPipeName(Peer senderPeer, Peer receiverPeer) {
     this.consensusGroupId = senderPeer.getGroupId();
     this.senderDataNodeId = senderPeer.getNodeId();
-    this.receiverDataNodeId = recieverPeer.getNodeId();
+    this.receiverDataNodeId = receiverPeer.getNodeId();
   }
 
   public ConsensusPipeName(
-      ConsensusGroupId consensusGroupId, int senderDataNodeId, int receiverNodeId) {
+      ConsensusGroupId consensusGroupId, int senderDataNodeId, int receiverDataNodeId) {
     this.consensusGroupId = consensusGroupId;
     this.senderDataNodeId = senderDataNodeId;
-    this.receiverDataNodeId = receiverNodeId;
+    this.receiverDataNodeId = receiverDataNodeId;
   }
 
   public ConsensusPipeName(String pipeName) throws IllegalArgumentException {

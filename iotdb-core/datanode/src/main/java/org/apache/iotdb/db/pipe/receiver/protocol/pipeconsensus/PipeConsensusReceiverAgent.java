@@ -105,13 +105,13 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
   private PipeConsensusReceiver getReceiver(
       ConsensusGroupId consensusGroupId, int leaderDataNodeId, byte reqVersion) {
     // 1. Route to given consensusGroup's receiver map
-    Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>> consensusPipe2ReciverMap =
+    Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>> consensusPipe2ReceiverMap =
         replicaReceiverMap.computeIfAbsent(consensusGroupId, key -> new ConcurrentHashMap<>());
     // 2. Route to given consensusPipeTask's receiver
     ConsensusPipeName consensusPipeName =
         new ConsensusPipeName(consensusGroupId, leaderDataNodeId, thisNodeId);
     AtomicReference<PipeConsensusReceiver> receiverReference =
-        consensusPipe2ReciverMap.computeIfAbsent(
+        consensusPipe2ReceiverMap.computeIfAbsent(
             consensusPipeName, key -> new AtomicReference<>(null));
 
     if (receiverReference.get() == null) {

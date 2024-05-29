@@ -49,14 +49,14 @@
         <scalableSingleNodeMode.configNodeConsensus>Ratis</scalableSingleNodeMode.configNodeConsensus>
         <scalableSingleNodeMode.configNodeNumber>1</scalableSingleNodeMode.configNodeNumber>
         <scalableSingleNodeMode.dataNodeNumber>1</scalableSingleNodeMode.dataNodeNumber>
-        <scalableSingleNodeMode.dataRegionConsensus>IoT</scalableSingleNodeMode.dataRegionConsensus>
+        <scalableSingleNodeMode.dataRegionConsensus>Pipe</scalableSingleNodeMode.dataRegionConsensus>
         <scalableSingleNodeMode.dataRegionReplicaNumber>1</scalableSingleNodeMode.dataRegionReplicaNumber>
         <scalableSingleNodeMode.schemaRegionConsensus>Ratis</scalableSingleNodeMode.schemaRegionConsensus>
         <scalableSingleNodeMode.schemaRegionReplicaNumber>1</scalableSingleNodeMode.schemaRegionReplicaNumber>
         <highPerformanceMode.configNodeConsensus>Ratis</highPerformanceMode.configNodeConsensus>
         <highPerformanceMode.configNodeNumber>1</highPerformanceMode.configNodeNumber>
         <highPerformanceMode.dataNodeNumber>3</highPerformanceMode.dataNodeNumber>
-        <highPerformanceMode.dataRegionConsensus>IoT</highPerformanceMode.dataRegionConsensus>
+        <highPerformanceMode.dataRegionConsensus>Pipe</highPerformanceMode.dataRegionConsensus>
         <highPerformanceMode.dataRegionReplicaNumber>2</highPerformanceMode.dataRegionReplicaNumber>
         <highPerformanceMode.schemaRegionConsensus>Ratis</highPerformanceMode.schemaRegionConsensus>
         <highPerformanceMode.schemaRegionReplicaNumber>3</highPerformanceMode.schemaRegionReplicaNumber>
