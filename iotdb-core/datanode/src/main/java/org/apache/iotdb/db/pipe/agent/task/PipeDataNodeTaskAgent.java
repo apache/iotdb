@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
@@ -80,10 +81,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY;
 
 public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
@@ -309,8 +306,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 || pipeTaskMap.entrySet().stream()
                     .filter(entry -> dataRegionIds.contains(entry.getKey()))
                     .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted());
-        // If the "source.history.terminate-pipe-on-all-consumed" is false or the pipe does
-        // not include data transfer, we should not terminate the pipe.
         final boolean includeDataAndNeedDrop =
             DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
                         pipeMeta.getStaticMeta().getExtractorParameters())
@@ -318,11 +313,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 && pipeMeta
                     .getStaticMeta()
                     .getExtractorParameters()
-                    .getBooleanOrDefault(
+                    .getStringOrDefault(
                         Arrays.asList(
-                            SOURCE_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY,
-                            EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY),
-                        EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_DEFAULT_VALUE);
+                            PipeExtractorConstant.EXTRACTOR_MODE_KEY,
+                            PipeExtractorConstant.SOURCE_MODE_KEY),
+                        PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE)
+                    .equalsIgnoreCase(PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE);
 
         final boolean isCompleted = isAllDataRegionCompleted && includeDataAndNeedDrop;
         final Pair<Long, Double> remainingEventAndTime =
@@ -389,8 +385,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 || pipeTaskMap.entrySet().stream()
                     .filter(entry -> dataRegionIds.contains(entry.getKey()))
                     .allMatch(entry -> ((PipeDataNodeTask) entry.getValue()).isCompleted());
-        // If the "source.history.terminate-pipe-on-all-consumed" is false or the pipe does
-        // not include data transfer, we should not terminate the pipe.
         final boolean includeDataAndNeedDrop =
             DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(
                         pipeMeta.getStaticMeta().getExtractorParameters())
@@ -398,11 +392,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                 && pipeMeta
                     .getStaticMeta()
                     .getExtractorParameters()
-                    .getBooleanOrDefault(
+                    .getStringOrDefault(
                         Arrays.asList(
-                            SOURCE_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY,
-                            EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY),
-                        EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_DEFAULT_VALUE);
+                            PipeExtractorConstant.EXTRACTOR_MODE_KEY,
+                            PipeExtractorConstant.SOURCE_MODE_KEY),
+                        PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE)
+                    .equalsIgnoreCase(PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE);
 
         final boolean isCompleted = isAllDataRegionCompleted && includeDataAndNeedDrop;
         final Pair<Long, Double> remainingEventAndTime =

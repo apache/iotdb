@@ -43,7 +43,7 @@ import java.util.Map;
 @Category({MultiClusterIT2AutoCreateSchema.class})
 public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
   @Test
-  public void testThriftConnectorWithRealtimeFirst() throws Exception {
+  public void testThriftConnectorWithRealtimeFirstDisabled() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -70,7 +70,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.realtime-first", "true");
+      connectorAttributes.put("connector.realtime-first", "false");
 
       final TSStatus status =
           client.createPipe(
