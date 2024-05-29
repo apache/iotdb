@@ -1122,7 +1122,7 @@ public class IoTConsensusServerImpl {
         ioTConsensusServerMetrics.recordSortCost(sortTime - insertStartTime);
         List<TSStatus> subStatus = new LinkedList<>();
         for (IConsensusRequest insertNode : request.getInsertNodes()) {
-          insertNode.markAsGeneratedByRemote();
+          insertNode.markAsGeneratedByRemoteConsensusLeader();
           subStatus.add(stateMachine.write(insertNode));
         }
         long applyTime = System.nanoTime();

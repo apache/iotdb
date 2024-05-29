@@ -236,7 +236,7 @@ public abstract class AbstractMemTable implements IMemTable {
             database,
             Tag.REGION.toString(),
             dataRegionId);
-    if (!insertRowNode.isGeneratedByRemote()) {
+    if (!insertRowNode.isGeneratedByRemoteConsensusLeader()) {
       MetricService.getInstance()
           .count(
               pointsInserted,
@@ -288,7 +288,7 @@ public abstract class AbstractMemTable implements IMemTable {
             database,
             Tag.REGION.toString(),
             dataRegionId);
-    if (!insertRowNode.isGeneratedByRemote()) {
+    if (!insertRowNode.isGeneratedByRemoteConsensusLeader()) {
       MetricService.getInstance()
           .count(
               pointsInserted,
@@ -324,7 +324,7 @@ public abstract class AbstractMemTable implements IMemTable {
               database,
               Tag.REGION.toString(),
               dataRegionId);
-      if (!insertTabletNode.isGeneratedByRemote()) {
+      if (!insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
         MetricService.getInstance()
             .count(
                 pointsInserted,
@@ -363,7 +363,7 @@ public abstract class AbstractMemTable implements IMemTable {
               database,
               Tag.REGION.toString(),
               dataRegionId);
-      if (!insertTabletNode.isGeneratedByRemote()) {
+      if (!insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
         MetricService.getInstance()
             .count(
                 pointsInserted,

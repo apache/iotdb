@@ -147,7 +147,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     do {
       try {
         if (isLeader) {
-          deserializedRequest.markAsGeneratedByRemote();
+          deserializedRequest.markAsGeneratedByRemoteConsensusLeader();
         }
         final TSStatus result = applicationStateMachine.write(deserializedRequest);
         ret = new ResponseMessage(result);

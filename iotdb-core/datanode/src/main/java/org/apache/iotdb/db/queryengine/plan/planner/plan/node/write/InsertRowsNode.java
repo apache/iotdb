@@ -226,9 +226,9 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public void markAsGeneratedByRemote() {
-    super.markAsGeneratedByRemote();
-    insertRowNodeList.forEach(InsertRowNode::markAsGeneratedByRemote);
+  public void markAsGeneratedByRemoteConsensusLeader() {
+    super.markAsGeneratedByRemoteConsensusLeader();
+    insertRowNodeList.forEach(InsertRowNode::markAsGeneratedByRemoteConsensusLeader);
   }
 
   @Override

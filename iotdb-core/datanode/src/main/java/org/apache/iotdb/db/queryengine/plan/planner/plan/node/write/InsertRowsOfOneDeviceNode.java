@@ -296,9 +296,9 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   }
 
   @Override
-  public void markAsGeneratedByRemote() {
-    super.markAsGeneratedByRemote();
-    insertRowNodeList.forEach(InsertRowNode::markAsGeneratedByRemote);
+  public void markAsGeneratedByRemoteConsensusLeader() {
+    super.markAsGeneratedByRemoteConsensusLeader();
+    insertRowNodeList.forEach(InsertRowNode::markAsGeneratedByRemoteConsensusLeader);
   }
 
   @Override
