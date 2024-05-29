@@ -263,7 +263,7 @@ public class AggregationDescriptor {
     return Collections.singletonList(getInputString(inputExpressions));
   }
 
-  protected String getInputString(List<Expression> expressions) {
+  public String getInputString(List<Expression> expressions) {
     StringBuilder builder = new StringBuilder();
     if (!(expressions.isEmpty())) {
       builder.append(expressions.get(0).getExpressionString());
