@@ -19,30 +19,18 @@
 
 package org.apache.iotdb.rpc.subscription.payload.request;
 
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 
-import org.apache.tsfile.utils.PublicBAOS;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.HashSet;
 import java.util.Objects;
-import java.util.Set;
 
 public class PipeSubscribePollReq extends TPipeSubscribeReq {
 
-  private transient Set<String> topicNames = new HashSet<>();
+  private transient SubscriptionPollRequest request;
 
-  private transient long timeoutMs;
-
-  public Set<String> getTopicNames() {
-    return topicNames;
-  }
-
-  public long getTimeoutMs() {
-    return timeoutMs;
+  public SubscriptionPollRequest getRequest() {
+    return request;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -51,32 +39,25 @@ public class PipeSubscribePollReq extends TPipeSubscribeReq {
    * Serialize the incoming parameters into `PipeSubscribePollReq`, called by the subscription
    * client.
    */
-  public static PipeSubscribePollReq toTPipeSubscribeReq(Set<String> topicNames, long timeoutMs)
+  public static PipeSubscribePollReq toTPipeSubscribeReq(final SubscriptionPollRequest request)
       throws IOException {
     final PipeSubscribePollReq req = new PipeSubscribePollReq();
 
-    req.topicNames = topicNames;
-    req.timeoutMs = timeoutMs;
+    req.request = request;
 
     req.version = PipeSubscribeRequestVersion.VERSION_1.getVersion();
     req.type = PipeSubscribeRequestType.POLL.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.writeObjectSet(topicNames, outputStream);
-      ReadWriteIOUtils.write(timeoutMs, outputStream);
-      req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    }
+    req.body = SubscriptionPollRequest.serialize(request);
 
     return req;
   }
 
   /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
-  public static PipeSubscribePollReq fromTPipeSubscribeReq(TPipeSubscribeReq pollReq) {
+  public static PipeSubscribePollReq fromTPipeSubscribeReq(final TPipeSubscribeReq pollReq) {
     final PipeSubscribePollReq req = new PipeSubscribePollReq();
 
     if (Objects.nonNull(pollReq.body) && pollReq.body.hasRemaining()) {
-      req.topicNames = ReadWriteIOUtils.readObjectSet(pollReq.body);
-      req.timeoutMs = ReadWriteIOUtils.readLong(pollReq.body);
+      req.request = SubscriptionPollRequest.deserialize(pollReq.body);
     }
 
     req.version = pollReq.version;
@@ -89,16 +70,15 @@ public class PipeSubscribePollReq extends TPipeSubscribeReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribePollReq that = (PipeSubscribePollReq) obj;
-    return Objects.equals(this.topicNames, that.topicNames)
-        && this.timeoutMs == that.timeoutMs
+    final PipeSubscribePollReq that = (PipeSubscribePollReq) obj;
+    return Objects.equals(this.request, that.request)
         && this.version == that.version
         && this.type == that.type
         && Objects.equals(this.body, that.body);
@@ -106,6 +86,6 @@ public class PipeSubscribePollReq extends TPipeSubscribeReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicNames, timeoutMs, version, type, body);
+    return Objects.hash(request, request, version, type, body);
   }
 }

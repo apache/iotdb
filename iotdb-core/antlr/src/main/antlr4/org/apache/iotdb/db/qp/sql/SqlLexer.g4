@@ -1104,6 +1104,12 @@ STRING_LITERAL
     | SQUOTA_STRING
     ;
 
+// Note: we allow any character inside the binary literal and validate
+// its a correct literal when the AST is being constructed. This
+// allows us to provide more meaningful error messages to the user
+BINARY_LITERAL
+    : 'X\'' (~'\'')* '\''
+    ;
 
 // Date & Time Literal
 

@@ -64,9 +64,11 @@ public class SerializableRowRecordList implements SerializableList {
     for (TSDataType dataType : dataTypes) { // fields
       switch (dataType) {
         case INT32:
+        case DATE:
           rowLength += ReadWriteIOUtils.INT_LEN;
           break;
         case INT64:
+        case TIMESTAMP:
           rowLength += ReadWriteIOUtils.LONG_LEN;
           break;
         case FLOAT:
@@ -79,6 +81,8 @@ public class SerializableRowRecordList implements SerializableList {
           rowLength += ReadWriteIOUtils.BOOLEAN_LEN;
           break;
         case TEXT:
+        case STRING:
+        case BLOB:
           rowLength +=
               MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE + byteArrayLengthForMemoryControl;
           break;

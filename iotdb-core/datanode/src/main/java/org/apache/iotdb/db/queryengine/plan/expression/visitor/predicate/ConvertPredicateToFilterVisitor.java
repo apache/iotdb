@@ -41,7 +41,9 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 
+import com.google.common.io.BaseEncoding;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -51,6 +53,7 @@ import org.apache.tsfile.read.filter.operator.ValueFilterOperators;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
+import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -338,6 +341,7 @@ public class ConvertPredicateToFilterVisitor
         case INT32:
           return (T) Integer.valueOf(valueString);
         case INT64:
+        case TIMESTAMP:
           return (T) Long.valueOf(valueString);
         case FLOAT:
           return (T) Float.valueOf(valueString);
@@ -352,8 +356,13 @@ public class ConvertPredicateToFilterVisitor
             throw new IllegalArgumentException(
                 String.format("\"%s\" cannot be cast to [%s]", valueString, dataType));
           }
+        case BLOB:
+          return (T) new Binary(BaseEncoding.base16().decode(valueString));
         case TEXT:
+        case STRING:
           return (T) new Binary(valueString, TSFileConfig.STRING_CHARSET);
+        case DATE:
+          return (T) DateTimeUtils.parseDateExpressionToInt(valueString);
         default:
           throw new UnsupportedOperationException(
               String.format("Unsupported data type %s", dataType));
@@ -375,13 +384,18 @@ public class ConvertPredicateToFilterVisitor
     private final List<String> allMeasurements;
     private final boolean isBuildPlanUseTemplate;
     private final TypeProvider typeProvider;
+    private final ZoneId zoneId;
     private Map<String, IMeasurementSchema> schemaMap;
 
     public Context(
-        List<String> allMeasurements, boolean isBuildPlanUseTemplate, TypeProvider typeProvider) {
+        List<String> allMeasurements,
+        boolean isBuildPlanUseTemplate,
+        TypeProvider typeProvider,
+        ZoneId zoneId) {
       this.allMeasurements = allMeasurements;
       this.isBuildPlanUseTemplate = isBuildPlanUseTemplate;
       this.typeProvider = typeProvider;
+      this.zoneId = zoneId;
       if (isBuildPlanUseTemplate) {
         this.schemaMap = typeProvider.getTemplatedInfo().getSchemaMap();
       }
@@ -402,6 +416,10 @@ public class ConvertPredicateToFilterVisitor
       } else {
         return typeProvider.getType(path.getFullPath());
       }
+    }
+
+    public ZoneId getZoneId() {
+      return zoneId;
     }
   }
 }

@@ -45,7 +45,7 @@ public class PipeSubscribeUnsubscribeReq extends TPipeSubscribeReq {
    * Serialize the incoming parameters into `PipeSubscribeUnsubscribeReq`, called by the
    * subscription client.
    */
-  public static PipeSubscribeUnsubscribeReq toTPipeSubscribeReq(Set<String> topicNames)
+  public static PipeSubscribeUnsubscribeReq toTPipeSubscribeReq(final Set<String> topicNames)
       throws IOException {
     final PipeSubscribeUnsubscribeReq req = new PipeSubscribeUnsubscribeReq();
 
@@ -64,7 +64,7 @@ public class PipeSubscribeUnsubscribeReq extends TPipeSubscribeReq {
 
   /** Deserialize `TPipeSubscribeReq` to obtain parameters, called by the subscription server. */
   public static PipeSubscribeUnsubscribeReq fromTPipeSubscribeReq(
-      TPipeSubscribeReq unsubscribeReq) {
+      final TPipeSubscribeReq unsubscribeReq) {
     final PipeSubscribeUnsubscribeReq req = new PipeSubscribeUnsubscribeReq();
 
     if (Objects.nonNull(unsubscribeReq.body) && unsubscribeReq.body.hasRemaining()) {
@@ -81,14 +81,14 @@ public class PipeSubscribeUnsubscribeReq extends TPipeSubscribeReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribeUnsubscribeReq that = (PipeSubscribeUnsubscribeReq) obj;
+    final PipeSubscribeUnsubscribeReq that = (PipeSubscribeUnsubscribeReq) obj;
     return Objects.equals(this.topicNames, that.topicNames)
         && this.version == that.version
         && this.type == that.type

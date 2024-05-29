@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -125,6 +127,13 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     recoverMemoryStatus = true;
     boolean isSuccess = true;
     if (!tsFileManager.isAllowCompaction()) {
+      return true;
+    }
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction()) {
+      return true;
+    }
+    if (compactionConfigVersion
+        < CompactionTaskManager.getInstance().getCurrentCompactionConfigVersion()) {
       return true;
     }
 
@@ -425,5 +434,15 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   public CompactionTaskType getCompactionTaskType() {
     return CompactionTaskType.CROSS;
+  }
+
+  @Override
+  public long getCompactionConfigVersion() {
+    return this.compactionConfigVersion;
+  }
+
+  @Override
+  public void setCompactionConfigVersion(long compactionConfigVersion) {
+    this.compactionConfigVersion = Math.min(this.compactionConfigVersion, compactionConfigVersion);
   }
 }

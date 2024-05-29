@@ -32,11 +32,11 @@ import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.session.subscription.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
-import org.apache.iotdb.session.subscription.SubscriptionSessionDataSet;
-import org.apache.iotdb.session.subscription.SubscriptionSessionDataSets;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.awaitility.Awaitility;
 import org.junit.After;
@@ -48,12 +48,12 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
 
 import static org.junit.Assert.fail;
 
@@ -98,20 +98,24 @@ public class IoTDBSubscriptionRestartIT {
     }
 
     // Subscription
+    final SubscriptionPullConsumer consumer;
     try {
-      final SubscriptionPullConsumer consumer =
+      consumer =
           new SubscriptionPullConsumer.Builder()
               .host(host)
               .port(port)
               .consumerId("c1")
               .consumerGroupId("cg1")
-              .autoCommit(false)
+              .autoCommit(true)
+              .heartbeatIntervalMs(1000) // narrow heartbeat interval
+              .endpointsSyncIntervalMs(5000) // narrow endpoints sync interval
               .buildPullConsumer();
       consumer.open();
       consumer.subscribe(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+      return;
     }
 
     // Restart cluster
@@ -150,39 +154,29 @@ public class IoTDBSubscriptionRestartIT {
     final Thread thread =
         new Thread(
             () -> {
-              try (final SubscriptionPullConsumer consumer =
-                  new SubscriptionPullConsumer.Builder()
-                      .host(host)
-                      .port(port)
-                      .consumerId("c1")
-                      .consumerGroupId("cg1")
-                      .autoCommit(false)
-                      .buildPullConsumer()) {
-                consumer.open();
+              try (final SubscriptionPullConsumer consumerRef = consumer) {
                 while (!isClosed.get()) {
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
+                  final List<SubscriptionMessage> messages;
                   try {
-                    Thread.sleep(1000); // wait some time
-                  } catch (final InterruptedException e) {
-                    break;
-                  }
-                  final List<SubscriptionMessage> messages =
-                      consumer.poll(Duration.ofMillis(10000));
-                  if (messages.isEmpty()) {
+                    messages = consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
+                  } catch (final Exception e) {
+                    e.printStackTrace();
+                    // Avoid failure
                     continue;
                   }
                   for (final SubscriptionMessage message : messages) {
-                    final SubscriptionSessionDataSets payload =
-                        (SubscriptionSessionDataSets) message.getPayload();
-                    for (final SubscriptionSessionDataSet dataSet : payload) {
+                    for (final SubscriptionSessionDataSet dataSet :
+                        message.getSessionDataSetsHandler()) {
                       while (dataSet.hasNext()) {
                         final long timestamp = dataSet.next().getTimestamp();
                         timestamps.put(timestamp, timestamp);
                       }
                     }
                   }
-                  consumer.commitSync(messages);
+                  // Auto commit
                 }
-                consumer.unsubscribe(topicName);
+                consumerRef.unsubscribe(topicName);
               } catch (final Exception e) {
                 e.printStackTrace();
                 // Avoid failure
@@ -196,9 +190,10 @@ public class IoTDBSubscriptionRestartIT {
     try {
       // Keep retrying if there are execution failures
       Awaitility.await()
-          .pollDelay(1, TimeUnit.SECONDS)
-          .pollInterval(1, TimeUnit.SECONDS)
-          .atMost(120, TimeUnit.SECONDS)
+          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+          .pollInterval(
+              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
           .untilAsserted(() -> Assert.assertEquals(100, timestamps.size()));
     } catch (final Exception e) {
       e.printStackTrace();
@@ -235,7 +230,7 @@ public class IoTDBSubscriptionRestartIT {
               .consumerId("c1")
               .consumerGroupId("cg1")
               .autoCommit(true)
-              .heartbeatIntervalMs(1000)
+              .heartbeatIntervalMs(1000) // narrow heartbeat interval
               .endpointsSyncIntervalMs(5000) // narrow endpoints sync interval
               .buildPullConsumer();
       consumer.open();
@@ -271,30 +266,25 @@ public class IoTDBSubscriptionRestartIT {
             () -> {
               try (final SubscriptionPullConsumer consumerRef = consumer) {
                 while (!isClosed.get()) {
-                  try {
-                    Thread.sleep(1000); // wait some time
-                  } catch (final InterruptedException e) {
-                    break;
-                  }
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages;
                   try {
-                    messages = consumerRef.poll(Duration.ofMillis(10000));
+                    messages = consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   } catch (final Exception e) {
                     e.printStackTrace();
                     // Avoid failure
                     continue;
                   }
                   for (final SubscriptionMessage message : messages) {
-                    final SubscriptionSessionDataSets payload =
-                        (SubscriptionSessionDataSets) message.getPayload();
-                    for (final SubscriptionSessionDataSet dataSet : payload) {
+                    for (final SubscriptionSessionDataSet dataSet :
+                        message.getSessionDataSetsHandler()) {
                       while (dataSet.hasNext()) {
                         final long timestamp = dataSet.next().getTimestamp();
                         timestamps.put(timestamp, timestamp);
                       }
                     }
-                    // Auto commit
                   }
+                  // Auto commit
                 }
                 consumerRef.unsubscribe(topicName);
               } catch (final Exception e) {
@@ -328,9 +318,10 @@ public class IoTDBSubscriptionRestartIT {
     try {
       // Keep retrying if there are execution failures
       Awaitility.await()
-          .pollDelay(1, TimeUnit.SECONDS)
-          .pollInterval(1, TimeUnit.SECONDS)
-          .atMost(120, TimeUnit.SECONDS)
+          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+          .pollInterval(
+              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
           .untilAsserted(() -> Assert.assertEquals(200, timestamps.size()));
     } catch (final Exception e) {
       e.printStackTrace();
@@ -367,7 +358,7 @@ public class IoTDBSubscriptionRestartIT {
               .consumerId("c1")
               .consumerGroupId("cg1")
               .autoCommit(true)
-              .heartbeatIntervalMs(1000)
+              .heartbeatIntervalMs(1000) // narrow heartbeat interval
               .endpointsSyncIntervalMs(5000) // narrow endpoints sync interval
               .buildPullConsumer();
       consumer.open();
@@ -398,30 +389,25 @@ public class IoTDBSubscriptionRestartIT {
             () -> {
               try (final SubscriptionPullConsumer consumerRef = consumer) {
                 while (!isClosed.get()) {
-                  try {
-                    Thread.sleep(1000); // wait some time
-                  } catch (final InterruptedException e) {
-                    break;
-                  }
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages;
                   try {
-                    messages = consumerRef.poll(Duration.ofMillis(10000));
+                    messages = consumerRef.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   } catch (final Exception e) {
                     e.printStackTrace();
                     // Avoid failure
                     continue;
                   }
                   for (final SubscriptionMessage message : messages) {
-                    final SubscriptionSessionDataSets payload =
-                        (SubscriptionSessionDataSets) message.getPayload();
-                    for (final SubscriptionSessionDataSet dataSet : payload) {
+                    for (final SubscriptionSessionDataSet dataSet :
+                        message.getSessionDataSetsHandler()) {
                       while (dataSet.hasNext()) {
                         final long timestamp = dataSet.next().getTimestamp();
                         timestamps.put(timestamp, timestamp);
                       }
                     }
-                    // Auto commit
                   }
+                  // Auto commit
                 }
                 consumerRef.unsubscribe(topicName);
               } catch (final Exception e) {
@@ -467,9 +453,10 @@ public class IoTDBSubscriptionRestartIT {
     try {
       // Keep retrying if there are execution failures
       Awaitility.await()
-          .pollDelay(1, TimeUnit.SECONDS)
-          .pollInterval(1, TimeUnit.SECONDS)
-          .atMost(120, TimeUnit.SECONDS)
+          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+          .pollInterval(
+              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
           .untilAsserted(() -> Assert.assertEquals(200, timestamps.size()));
     } catch (final Exception e) {
       e.printStackTrace();

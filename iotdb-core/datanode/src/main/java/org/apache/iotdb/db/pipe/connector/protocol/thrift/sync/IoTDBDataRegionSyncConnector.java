@@ -287,10 +287,9 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
               pipeInsertNodeTabletInsertionEvent.coreReportMessage(), status),
           pipeInsertNodeTabletInsertionEvent.toString());
     }
-    // pipeInsertNodeTabletInsertionEvent.getDeviceId() is null for InsertRowsNode
-    if (Objects.nonNull(pipeInsertNodeTabletInsertionEvent.getDeviceId())
-        && status.isSetRedirectNode()) {
+    if (status.isSetRedirectNode()) {
       clientManager.updateLeaderCache(
+          // pipeInsertNodeTabletInsertionEvent.getDeviceId() is null for InsertRowsNode
           pipeInsertNodeTabletInsertionEvent.getDeviceId(), status.getRedirectNode());
     }
   }

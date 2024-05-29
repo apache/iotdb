@@ -52,7 +52,8 @@ public class FilterNodeSerdeTest {
                 new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
                 new ConstantOperand(TSDataType.INT64, "100")),
             false,
-            Ordering.ASC);
+            Ordering.ASC,
+            true);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     filterNode.serialize(byteBuffer);

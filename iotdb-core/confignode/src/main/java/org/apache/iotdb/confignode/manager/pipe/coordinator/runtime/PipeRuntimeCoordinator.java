@@ -107,9 +107,15 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   public void parseHeartbeat(
       final int dataNodeId,
       @NotNull final List<ByteBuffer> pipeMetaByteBufferListFromDataNode,
-      /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent) {
+      /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent,
+      /* @Nullable */ final List<Long> pipeRemainingEventCountListFromAgent,
+      /* @Nullable */ final List<Double> pipeRemainingTimeListFromAgent) {
     pipeHeartbeatScheduler.parseHeartbeat(
         dataNodeId,
-        new PipeHeartbeat(pipeMetaByteBufferListFromDataNode, pipeCompletedListFromAgent));
+        new PipeHeartbeat(
+            pipeMetaByteBufferListFromDataNode,
+            pipeCompletedListFromAgent,
+            pipeRemainingEventCountListFromAgent,
+            pipeRemainingTimeListFromAgent));
   }
 }

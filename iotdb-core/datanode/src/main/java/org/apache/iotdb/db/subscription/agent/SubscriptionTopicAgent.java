@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,7 +70,7 @@ public class SubscriptionTopicAgent {
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
-              topicName, e.getMessage());
+              topicName, e);
       LOGGER.warn(exceptionMessage);
       return new TPushTopicMetaRespExceptionMessage(
           topicName, exceptionMessage, System.currentTimeMillis());
@@ -96,7 +97,7 @@ public class SubscriptionTopicAgent {
           final String exceptionMessage =
               String.format(
                   "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
-                  topicName, e.getMessage());
+                  topicName, e);
           LOGGER.warn(exceptionMessage);
           return new TPushTopicMetaRespExceptionMessage(
               topicName, exceptionMessage, System.currentTimeMillis());
@@ -115,8 +116,7 @@ public class SubscriptionTopicAgent {
       return null;
     } catch (Exception e) {
       final String exceptionMessage =
-          String.format(
-              "Subscription: Failed to drop topic %s, because %s", topicName, e.getMessage());
+          String.format("Subscription: Failed to drop topic %s, because %s", topicName, e);
       LOGGER.warn(exceptionMessage);
       return new TPushTopicMetaRespExceptionMessage(
           topicName, exceptionMessage, System.currentTimeMillis());
@@ -133,6 +133,18 @@ public class SubscriptionTopicAgent {
     acquireReadLock();
     try {
       return topicMetaKeeper.containsTopicMeta(topicName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public String getTopicFormat(String topicName) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper
+          .getTopicMeta(topicName)
+          .getConfig()
+          .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE);
     } finally {
       releaseReadLock();
     }

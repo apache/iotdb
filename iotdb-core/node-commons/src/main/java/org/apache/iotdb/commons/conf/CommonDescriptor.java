@@ -560,6 +560,12 @@ public class CommonDescriptor {
             properties.getProperty(
                 "two_stage_aggregate_sender_end_points_cache_in_ms",
                 String.valueOf(config.getTwoStageAggregateSenderEndPointsCacheInMs()))));
+
+    config.setSubscriptionCacheMemoryUsagePercentage(
+        Float.parseFloat(
+            properties.getProperty(
+                "subscription_cache_memory_usage_percentage",
+                String.valueOf(config.getSubscriptionCacheMemoryUsagePercentage()))));
   }
 
   private void loadSubscriptionProps(Properties properties) {
@@ -576,6 +582,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_max_tablets_per_prefetching",
                 String.valueOf(config.getSubscriptionMaxTabletsPerPrefetching()))));
+    config.setSubscriptionMaxTabletsSizeInBytesPerPrefetching(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_max_tablets_size_in_bytes_per_prefetching",
+                String.valueOf(config.getSubscriptionMaxTabletsSizeInBytesPerPrefetching()))));
     config.setSubscriptionPollMaxBlockingTimeMs(
         Integer.parseInt(
             properties.getProperty(
@@ -596,16 +607,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_recycle_uncommitted_event_interval_ms",
                 String.valueOf(config.getSubscriptionRecycleUncommittedEventIntervalMs()))));
-    config.setSubscriptionDefaultPollTimeoutMs(
+    config.setSubscriptionReadFileBufferSize(
         Integer.parseInt(
             properties.getProperty(
-                "subscription_default_poll_timeout_ms",
-                String.valueOf(config.getSubscriptionDefaultPollTimeoutMs()))));
-    config.setSubscriptionMinPollTimeoutMs(
-        Integer.parseInt(
-            properties.getProperty(
-                "subscription_min_poll_timeout_ms",
-                String.valueOf(config.getSubscriptionMinPollTimeoutMs()))));
+                "subscription_read_file_buffer_size",
+                String.valueOf(config.getSubscriptionReadFileBufferSize()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

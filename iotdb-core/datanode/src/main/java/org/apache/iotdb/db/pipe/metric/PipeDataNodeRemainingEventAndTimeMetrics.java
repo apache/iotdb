@@ -36,6 +36,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -195,6 +196,16 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     if (SchemaEngine.getInstance().getAllSchemaRegionIds().contains(new SchemaRegionId(regionId))) {
       operator.markSchemaRegionCommit();
     }
+  }
+
+  //////////////////////////// Show pipes ////////////////////////////
+
+  public Pair<Long, Double> getRemainingEventAndTime(
+      final String pipeName, final long creationTime) {
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.computeIfAbsent(
+            pipeName + "_" + creationTime, k -> new PipeDataNodeRemainingEventAndTimeOperator());
+    return new Pair<>(operator.getRemainingEvents(), operator.getRemainingTime());
   }
 
   //////////////////////////// singleton ////////////////////////////

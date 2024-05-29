@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -292,6 +293,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.conver
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
+import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.iotdb.db.utils.TimestampPrecisionUtils.TIMESTAMP_PRECISION;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree. */
@@ -342,7 +344,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               pushDownPredicate,
               Collections.singletonList(node.getSeriesPath().getMeasurement()),
               context.getTypeProvider().getTemplatedInfo() != null,
-              context.getTypeProvider()));
+              context.getTypeProvider(),
+              context.getZoneId()));
     }
 
     OperatorContext operatorContext =
@@ -404,7 +407,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               pushDownPredicate,
               node.getAlignedPath().getMeasurementList(),
               context.getTypeProvider().getTemplatedInfo() != null,
-              context.getTypeProvider()));
+              context.getTypeProvider(),
+              context.getZoneId()));
     }
 
     OperatorContext operatorContext =
@@ -448,7 +452,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             seriesScanOperator,
             templatedInfo.getProjectExpressions(),
             templatedInfo.getDataTypes(),
-            templatedInfo.getLayoutMap(),
+            templatedInfo.getFilterLayoutMap(),
             templatedInfo.isKeepNull(),
             node.getPlanNodeId(),
             templatedInfo.getScanOrder(),
@@ -495,10 +499,16 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<String> inputColumnNames;
     List<String> outputColumnNames = node.getOutputColumnNames();
     if (outputColumnNames == null) {
-      outputColumnNames = context.getTypeProvider().getTemplatedInfo().getSelectMeasurements();
-      // skip device column
-      outputColumnNames = outputColumnNames.subList(1, outputColumnNames.size());
-      inputColumnNames = context.getTypeProvider().getTemplatedInfo().getMeasurementList();
+      if (context.getTypeProvider().getTemplatedInfo().isAggregationQuery()) {
+        outputColumnNames = context.getTypeProvider().getTemplatedInfo().getDeviceViewOutputNames();
+        outputColumnNames = outputColumnNames.subList(1, outputColumnNames.size());
+        inputColumnNames = node.getChild().getOutputColumnNames();
+      } else {
+        outputColumnNames = context.getTypeProvider().getTemplatedInfo().getDeviceViewOutputNames();
+        // skip device column
+        outputColumnNames = outputColumnNames.subList(1, outputColumnNames.size());
+        inputColumnNames = context.getTypeProvider().getTemplatedInfo().getMeasurementList();
+      }
     } else {
       inputColumnNames = node.getChild().getOutputColumnNames();
     }
@@ -524,7 +534,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   public Operator visitSeriesAggregationScan(
       SeriesAggregationScanNode node, LocalExecutionPlanContext context) {
     PartialPath seriesPath = node.getSeriesPath();
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    boolean ascending = node.getScanOrder() == ASC;
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
     List<Aggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
@@ -560,7 +570,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               pushDownPredicate,
               Collections.singletonList(node.getSeriesPath().getMeasurement()),
               context.getTypeProvider().getTemplatedInfo() != null,
-              context.getTypeProvider()));
+              context.getTypeProvider(),
+              context.getZoneId()));
     }
 
     OperatorContext operatorContext =
@@ -570,6 +581,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 SeriesAggregationScanOperator.class.getSimpleName());
+    boolean canUseStatistics =
+        !TSDataType.BLOB.equals(node.getSeriesPath().getSeriesType())
+            || (aggregationDescriptors.stream()
+                .noneMatch(o -> !judgeCanUseStatistics(o.getAggregationType(), TSDataType.BLOB)));
     SeriesAggregationScanOperator aggregateScanOperator =
         new SeriesAggregationScanOperator(
             node.getPlanNodeId(),
@@ -581,7 +596,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             aggregators,
             timeRangeIterator,
             node.getGroupByTimeParameter(),
-            maxReturnSize);
+            maxReturnSize,
+            canUseStatistics);
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(aggregateScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
@@ -592,22 +608,67 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, LocalExecutionPlanContext context) {
-    AlignedPath seriesPath = node.getAlignedPath();
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    if (context.isBuildPlanUseTemplate()) {
+      Ordering scanOrder = context.getTemplatedInfo().getScanOrder();
+      List<AggregationDescriptor> aggregationDescriptors;
+      if (node.getDescriptorType() == 0 || node.getDescriptorType() == 2) {
+        aggregationDescriptors = context.getTemplatedInfo().getAscendingDescriptorList();
+      } else {
+        scanOrder = scanOrder.reverse();
+        aggregationDescriptors = context.getTemplatedInfo().getDescendingDescriptorList();
+      }
+
+      return constructAlignedSeriesAggregationScanOperator(
+          node.getPlanNodeId(),
+          node.getAlignedPath(),
+          aggregationDescriptors,
+          context.getTemplatedInfo().getPushDownPredicate(),
+          scanOrder,
+          context.getTemplatedInfo().getGroupByTimeParameter(),
+          context.getTemplatedInfo().isOutputEndTime(),
+          context);
+    }
+
+    return constructAlignedSeriesAggregationScanOperator(
+        node.getPlanNodeId(),
+        node.getAlignedPath(),
+        node.getAggregationDescriptorList(),
+        node.getPushDownPredicate(),
+        node.getScanOrder(),
+        node.getGroupByTimeParameter(),
+        node.isOutputEndTime(),
+        context);
+  }
+
+  private Operator constructAlignedSeriesAggregationScanOperator(
+      PlanNodeId planNodeId,
+      AlignedPath alignedPath,
+      List<AggregationDescriptor> aggregationDescriptorList,
+      Expression pushDownPredicate,
+      Ordering scanOrder,
+      GroupByTimeParameter groupByTimeParameter,
+      boolean outputEndTime,
+      LocalExecutionPlanContext context) {
+    boolean ascending = scanOrder == ASC;
     List<Aggregator> aggregators = new ArrayList<>();
-    for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
+    boolean canUseStatistics = true;
+    for (AggregationDescriptor descriptor : aggregationDescriptorList) {
       checkArgument(
           descriptor.getInputExpressions().size() == 1,
           "descriptor's input expression size is not 1");
+
       Expression expression = descriptor.getInputExpressions().get(0);
       if (expression instanceof TimeSeriesOperand) {
         String inputSeries =
             ((TimeSeriesOperand) (descriptor.getInputExpressions().get(0)))
                 .getPath()
                 .getMeasurement();
-        int seriesIndex = seriesPath.getMeasurementList().indexOf(inputSeries);
+        int seriesIndex = alignedPath.getMeasurementList().indexOf(inputSeries);
         TSDataType seriesDataType =
-            seriesPath.getMeasurementSchema().getSubMeasurementsTSDataTypeList().get(seriesIndex);
+            alignedPath.getMeasurementSchema().getSubMeasurementsTSDataTypeList().get(seriesIndex);
+        if (!judgeCanUseStatistics(descriptor.getAggregationType(), seriesDataType)) {
+          canUseStatistics = false;
+        }
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
@@ -641,25 +702,24 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       }
     }
 
-    GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
     ITimeRangeIterator timeRangeIterator =
         initTimeRangeIterator(groupByTimeParameter, ascending, true);
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
-            node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
+            aggregationDescriptorList, timeRangeIterator, context.getTypeProvider());
 
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(context);
-    scanOptionsBuilder.withAllSensors(new HashSet<>(seriesPath.getMeasurementList()));
+    scanOptionsBuilder.withAllSensors(new HashSet<>(alignedPath.getMeasurementList()));
 
-    Expression pushDownPredicate = node.getPushDownPredicate();
     if (pushDownPredicate != null) {
       checkArgument(PredicateUtils.predicateCanPushIntoScan(pushDownPredicate));
       scanOptionsBuilder.withPushDownFilter(
           convertPredicateToFilter(
               pushDownPredicate,
-              node.getAlignedPath().getMeasurementList(),
+              alignedPath.getMeasurementList(),
               context.getTypeProvider().getTemplatedInfo() != null,
-              context.getTypeProvider()));
+              context.getTypeProvider(),
+              context.getZoneId()));
     }
 
     OperatorContext operatorContext =
@@ -667,26 +727,34 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
-                node.getPlanNodeId(),
+                planNodeId,
                 AlignedSeriesAggregationScanOperator.class.getSimpleName());
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         new AlignedSeriesAggregationScanOperator(
-            node.getPlanNodeId(),
-            seriesPath,
-            node.getScanOrder(),
-            node.isOutputEndTime(),
+            planNodeId,
+            alignedPath,
+            scanOrder,
+            outputEndTime,
             scanOptionsBuilder.build(),
             operatorContext,
             aggregators,
             timeRangeIterator,
             groupByTimeParameter,
-            maxReturnSize);
+            maxReturnSize,
+            canUseStatistics);
 
     ((DataDriverContext) context.getDriverContext())
         .addSourceOperator(seriesAggregationScanOperator);
-    ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
+    ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
     context.getDriverContext().setInputDriver(true);
     return seriesAggregationScanOperator;
+  }
+
+  private boolean judgeCanUseStatistics(
+      final TAggregationType aggregationType, final TSDataType seriesType) {
+    return !TSDataType.BLOB.equals(seriesType)
+        || (!TAggregationType.LAST_VALUE.equals(aggregationType)
+            && !TAggregationType.FIRST_VALUE.equals(aggregationType));
   }
 
   private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(LocalExecutionPlanContext context) {
@@ -946,7 +1014,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 SingleDeviceViewOperator.class.getSimpleName());
     Operator child = node.getChild().accept(this, context);
-    List<Integer> deviceColumnIndex = node.getDeviceToMeasurementIndexes();
+    List<Integer> deviceColumnIndex =
+        context.getTemplatedInfo() != null
+            ? context.getTemplatedInfo().getDeviceToMeasurementIndexes()
+            : node.getDeviceToMeasurementIndexes();
     List<TSDataType> outputColumnTypes =
         node.isCacheOutputColumnNames()
             ? getOutputColumnTypes(node, context.getTypeProvider())
@@ -968,10 +1039,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 DeviceViewOperator.class.getSimpleName());
     List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
-    List<List<Integer>> deviceColumnIndex =
-        node.getDevices().stream()
-            .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
-            .collect(Collectors.toList());
+    List<List<Integer>> deviceColumnIndex = new ArrayList<>(node.getDevices().size());
+    if (context.getTemplatedInfo() != null) {
+      for (int i = 0; i < node.getDevices().size(); i++) {
+        deviceColumnIndex.add(context.getTemplatedInfo().getDeviceToMeasurementIndexes());
+      }
+    } else {
+      deviceColumnIndex =
+          node.getDevices().stream()
+              .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
+              .collect(Collectors.toList());
+    }
+
     List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
 
     return new DeviceViewOperator(
@@ -1323,7 +1402,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     final Map<NodeRef<Expression>, TSDataType> expressionTypes = new HashMap<>();
 
     for (Expression projectExpression : projectExpressions) {
-      ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, projectExpression);
+      if (context.isBuildPlanUseTemplate()) {
+        ExpressionTypeAnalyzer.analyzeExpressionUsingTemplatedInfo(
+            expressionTypes, projectExpression, context.getTemplatedInfo());
+      } else {
+        ExpressionTypeAnalyzer.analyzeExpression(expressionTypes, projectExpression);
+      }
     }
 
     boolean hasNonMappableUDF = false;
@@ -1388,7 +1472,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           node.isKeepNull(),
           context.getZoneId(),
           expressionTypes,
-          node.getScanOrder() == Ordering.ASC);
+          node.getScanOrder() == ASC);
     } catch (QueryProcessException e) {
       throw new RuntimeException(e);
     }
@@ -1396,25 +1480,32 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
-    if (context.isBuildPlanUseTemplate()) {
+    if (context.isBuildPlanUseTemplate() && node.isFromWhere()) {
       TemplatedInfo templatedInfo = context.getTemplatedInfo();
       return constructFilterOperator(
           node.getPredicate(),
           generateOnlyChildOperator(node, context),
           templatedInfo.getProjectExpressions(),
           templatedInfo.getDataTypes(),
-          templatedInfo.getLayoutMap(),
+          templatedInfo.getFilterLayoutMap(),
           templatedInfo.isKeepNull(),
           node.getPlanNodeId(),
           templatedInfo.getScanOrder(),
           context);
     }
 
+    // 1. not use template
+    // 2. use template but the FilterNode is not generated by FilterNode
+    // the inputDataTypes should be generated by the outputColumns of children
     return constructFilterOperator(
         node.getPredicate(),
         generateOnlyChildOperator(node, context),
         node.getOutputExpressions(),
-        getInputColumnTypes(node, context.getTypeProvider()),
+        node.getChildren().stream()
+            .map(PlanNode::getOutputColumnNames)
+            .flatMap(List::stream)
+            .map(context.getTypeProvider()::getType)
+            .collect(Collectors.toList()),
         makeLayout(node),
         node.isKeepNull(),
         node.getPlanNodeId(),
@@ -1568,7 +1659,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           isKeepNull,
           context.getZoneId(),
           expressionTypes,
-          scanOrder == Ordering.ASC);
+          scanOrder == ASC);
     } catch (QueryProcessException e) {
       throw new RuntimeException(e);
     }
@@ -1580,7 +1671,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         !node.getGroupByLevelDescriptors().isEmpty(),
         "GroupByLevel descriptorList cannot be empty");
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    boolean ascending = node.getScanOrder() == ASC;
     List<Aggregator> aggregators = new ArrayList<>();
     Map<String, List<InputLocation>> layout = makeLayout(node);
     List<CrossSeriesAggregationDescriptor> aggregationDescriptors =
@@ -1637,7 +1728,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
 
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    boolean ascending = node.getScanOrder() == ASC;
     Map<String, List<InputLocation>> layout = makeLayout(node);
     List<List<String>> groups = new ArrayList<>();
     List<List<Aggregator>> groupedAggregators = new ArrayList<>();
@@ -1710,19 +1801,30 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 SlidingWindowAggregationOperator.class.getSimpleName());
     Operator child = node.getChild().accept(this, context);
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    boolean ascending = node.getScanOrder() == ASC;
     List<Aggregator> aggregators = new ArrayList<>();
     Map<String, List<InputLocation>> layout = makeLayout(node);
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
     for (AggregationDescriptor descriptor : aggregationDescriptors) {
       List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
+      List<TSDataType> dataTypes = new ArrayList<>();
+      for (Expression expression : descriptor.getInputExpressions()) {
+        if (context.isBuildPlanUseTemplate() && expression instanceof TimeSeriesOperand) {
+          dataTypes.add(
+              context
+                  .getTemplatedInfo()
+                  .getSchemaMap()
+                  .get(expression.getExpressionString())
+                  .getType());
+        } else {
+          dataTypes.add(context.getTypeProvider().getType(expression.getExpressionString()));
+        }
+      }
       aggregators.add(
           SlidingWindowAggregatorFactory.createSlidingWindowAggregator(
               descriptor.getAggregationFuncName(),
               descriptor.getAggregationType(),
-              descriptor.getInputExpressions().stream()
-                  .map(x -> context.getTypeProvider().getType(x.getExpressionString()))
-                  .collect(Collectors.toList()),
+              dataTypes,
               descriptor.getInputExpressions(),
               descriptor.getInputAttributes(),
               ascending,
@@ -1779,13 +1881,25 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitRawDataAggregation(
       RawDataAggregationNode node, LocalExecutionPlanContext context) {
+    Map<String, List<InputLocation>> layout;
+    if (context.isBuildPlanUseTemplate()) {
+      layout = context.getTemplatedInfo().getFilterLayoutMap();
+    } else {
+      layout = makeLayout(node);
+    }
+    return createRawDataAggregationOperator(node, context, layout);
+  }
+
+  private RawDataAggregationOperator createRawDataAggregationOperator(
+      RawDataAggregationNode node,
+      LocalExecutionPlanContext context,
+      Map<String, List<InputLocation>> layout) {
     checkArgument(
         !node.getAggregationDescriptorList().isEmpty(),
         "Aggregation descriptorList cannot be empty");
     Operator child = node.getChild().accept(this, context);
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    boolean ascending = node.getScanOrder() == ASC;
     List<Aggregator> aggregators = new ArrayList<>();
-    Map<String, List<InputLocation>> layout = makeLayout(node);
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
     for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
       List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
@@ -1909,7 +2023,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         !node.getAggregationDescriptorList().isEmpty(),
         "Aggregation descriptorList cannot be empty");
     List<Operator> children = dealWithConsumeAllChildrenPipelineBreaker(node, context);
-    boolean ascending = node.getScanOrder() == Ordering.ASC;
+    boolean ascending = node.getScanOrder() == ASC;
     List<Aggregator> aggregators = new ArrayList<>();
     Map<String, List<InputLocation>> layout = makeLayout(node);
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
@@ -2192,7 +2306,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 FullOuterTimeJoinOperator.class.getSimpleName());
     TimeComparator timeComparator =
-        node.getMergeOrder() == Ordering.ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
+        node.getMergeOrder() == ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
     List<OutputColumn> outputColumns = generateOutputColumnsFromChildren(node);
     List<ColumnMerger> mergers = createColumnMergers(outputColumns, timeComparator);
     List<TSDataType> outputColumnTypes =
@@ -2222,7 +2336,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 InnerTimeJoinOperator.class.getSimpleName());
     TimeComparator timeComparator =
-        node.getMergeOrder() == Ordering.ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
+        node.getMergeOrder() == ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
     List<TSDataType> outputColumnTypes =
         context.getTypeProvider().getTemplatedInfo() != null
             ? getOutputColumnTypesOfTimeJoinNode(node)
@@ -2276,7 +2390,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 LeftOuterTimeJoinOperator.class.getSimpleName());
     TimeComparator timeComparator =
-        node.getMergeOrder() == Ordering.ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
+        node.getMergeOrder() == ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
     List<TSDataType> outputColumnTypes =
         context.getTypeProvider().getTemplatedInfo() != null
             ? getOutputColumnTypesOfTimeJoinNode(node)
@@ -2639,7 +2753,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             aggregators,
             timeRangeIterator,
             null,
-            maxReturnSize);
+            maxReturnSize,
+            !TSDataType.BLOB.equals(seriesPath.getSeriesType()));
     ((DataDriverContext) context.getDriverContext())
         .addSourceOperator(seriesAggregationScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(seriesPath);
@@ -2650,9 +2765,13 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       AlignedLastQueryScanNode node, AlignedPath unCachedPath, LocalExecutionPlanContext context) {
     // last_time, last_value
     List<Aggregator> aggregators = new ArrayList<>();
+    boolean canUseStatistics = true;
     for (int i = 0; i < unCachedPath.getMeasurementList().size(); i++) {
-      aggregators.addAll(
-          LastQueryUtil.createAggregators(unCachedPath.getSchemaList().get(i).getType(), i));
+      TSDataType dataType = unCachedPath.getSchemaList().get(i).getType();
+      aggregators.addAll(LastQueryUtil.createAggregators(dataType, i));
+      if (TSDataType.BLOB.equals(dataType)) {
+        canUseStatistics = false;
+      }
     }
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(null, false, false);
     long maxReturnSize = calculateMaxAggregationResultSizeForLastQuery(aggregators);
@@ -2678,7 +2797,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             aggregators,
             timeRangeIterator,
             null,
-            maxReturnSize);
+            maxReturnSize,
+            canUseStatistics);
     ((DataDriverContext) context.getDriverContext())
         .addSourceOperator(seriesAggregationScanOperator);
     ((DataDriverContext) context.getDriverContext()).addPath(unCachedPath);
@@ -2781,9 +2901,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     } else {
       // order by timeseries
       Comparator<Binary> comparator =
-          node.getTimeseriesOrdering() == Ordering.ASC
-              ? ASC_BINARY_COMPARATOR
-              : DESC_BINARY_COMPARATOR;
+          node.getTimeseriesOrdering() == ASC ? ASC_BINARY_COMPARATOR : DESC_BINARY_COMPARATOR;
       // sort values from last cache
       if (initSize > 0) {
         cachedLastValueAndPathList.sort(Comparator.comparing(Pair::getRight, comparator));
@@ -2827,7 +2945,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     Ordering timeseriesOrdering = node.getTimeseriesOrdering();
     Comparator<Binary> comparator =
-        (timeseriesOrdering == null || timeseriesOrdering == Ordering.ASC)
+        (timeseriesOrdering == null || timeseriesOrdering == ASC)
             ? ASC_BINARY_COMPARATOR
             : DESC_BINARY_COMPARATOR;
 

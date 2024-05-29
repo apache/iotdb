@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -46,6 +47,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -133,9 +135,11 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
           values[i] = ReadWriteIOUtils.readBool(buffer);
           break;
         case INT32:
+        case DATE:
           values[i] = ReadWriteIOUtils.readInt(buffer);
           break;
         case INT64:
+        case TIMESTAMP:
           values[i] = ReadWriteIOUtils.readLong(buffer);
           break;
         case FLOAT:
@@ -145,6 +149,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
           values[i] = ReadWriteIOUtils.readDouble(buffer);
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           values[i] = ReadWriteIOUtils.readBinary(buffer);
           break;
         default:
@@ -194,7 +200,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
    * Notice: measurementSchemas must be initialized before calling this method
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void transferType() throws QueryProcessException {
+  public void transferType(ZoneId zoneId) throws QueryProcessException {
 
     for (int i = 0; i < measurementSchemas.length; i++) {
       // null when time series doesn't exist
@@ -215,7 +221,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       // parse string value to specific type
       dataTypes[i] = measurementSchemas[i].getType();
       try {
-        values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
+        values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
       } catch (Exception e) {
         LOGGER.warn(
             "data type of {}.{} is not consistent, "
@@ -335,9 +341,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   }
 
   @Override
-  public void updateAfterSchemaValidation() throws QueryProcessException {
+  public void updateAfterSchemaValidation(MPPQueryContext context) throws QueryProcessException {
     if (isNeedInferType) {
-      transferType();
+      transferType(context == null ? ZoneId.systemDefault() : context.getZoneId());
     }
   }
 

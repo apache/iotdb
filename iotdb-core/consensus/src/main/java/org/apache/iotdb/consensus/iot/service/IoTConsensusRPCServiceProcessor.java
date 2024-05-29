@@ -328,7 +328,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
     }
     TSStatus responseStatus;
     try {
-      impl.cleanupTransferredSnapshot(req.snapshotId);
+      impl.cleanupSnapshot(req.snapshotId);
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (ConsensusGroupModifyPeerException e) {
       LOGGER.error("failed to cleanup transferred snapshot {}", req.snapshotId, e);

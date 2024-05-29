@@ -150,6 +150,8 @@ public class CompactionScheduler {
     String storageGroupName = tsFileManager.getStorageGroupName();
     String dataRegionId = tsFileManager.getDataRegionId();
 
+    long compactionConfigVersionWhenSelectTask =
+        CompactionTaskManager.getInstance().getCurrentCompactionConfigVersion();
     ICompactionSelector innerSpaceCompactionSelector;
     if (sequence) {
       innerSpaceCompactionSelector =
@@ -172,6 +174,8 @@ public class CompactionScheduler {
         .updateCompactionTaskSelectionTimeCost(
             sequence ? CompactionTaskType.INNER_SEQ : CompactionTaskType.INNER_UNSEQ,
             System.currentTimeMillis() - startTime);
+    innerSpaceTaskList.forEach(
+        task -> task.setCompactionConfigVersion(compactionConfigVersionWhenSelectTask));
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
     int trySubmitCount = addTaskToWaitingQueue(innerSpaceTaskList);
@@ -256,6 +260,8 @@ public class CompactionScheduler {
     }
     String logicalStorageGroupName = tsFileManager.getStorageGroupName();
     String dataRegionId = tsFileManager.getDataRegionId();
+    long compactionConfigVersionWhenSelectTask =
+        CompactionTaskManager.getInstance().getCurrentCompactionConfigVersion();
     ICrossSpaceSelector crossSpaceCompactionSelector =
         config
             .getCrossCompactionSelector()
@@ -273,20 +279,20 @@ public class CompactionScheduler {
     // evicted due to the low priority of the task
     int trySubmitCount = 0;
     for (int i = 0, size = taskList.size(); i < size; ++i) {
-      trySubmitCount =
-          addTaskToWaitingQueue(
-              Collections.singletonList(
-                  new CrossSpaceCompactionTask(
-                      timePartition,
-                      tsFileManager,
-                      taskList.get(i).getSeqFiles(),
-                      taskList.get(i).getUnseqFiles(),
-                      IoTDBDescriptor.getInstance()
-                          .getConfig()
-                          .getCrossCompactionPerformer()
-                          .createInstance(),
-                      memoryCost.get(i),
-                      tsFileManager.getNextCompactionTaskId())));
+      CrossSpaceCompactionTask task =
+          new CrossSpaceCompactionTask(
+              timePartition,
+              tsFileManager,
+              taskList.get(i).getSeqFiles(),
+              taskList.get(i).getUnseqFiles(),
+              IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getCrossCompactionPerformer()
+                  .createInstance(),
+              memoryCost.get(i),
+              tsFileManager.getNextCompactionTaskId());
+      task.setCompactionConfigVersion(compactionConfigVersionWhenSelectTask);
+      trySubmitCount = addTaskToWaitingQueue(Collections.singletonList(task));
     }
     summary.incrementSubmitTaskNum(CompactionTaskType.CROSS, trySubmitCount);
     return trySubmitCount;
