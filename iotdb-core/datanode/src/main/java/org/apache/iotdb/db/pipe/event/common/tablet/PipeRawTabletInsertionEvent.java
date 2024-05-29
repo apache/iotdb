@@ -39,7 +39,7 @@ import java.util.function.BiConsumer;
 public class PipeRawTabletInsertionEvent extends EnrichedEvent implements TabletInsertionEvent {
 
   private Tablet tablet;
-  private String deviceId;
+  private String deviceId; // Only used when the tablet is released.
   private final boolean isAligned;
 
   private final EnrichedEvent sourceEvent;
@@ -111,9 +111,11 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   @Override
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     allocatedMemoryBlock.close();
-    // Record the deviceId before the memory is released, for later possibly updating the leader
-    // cache.
+
+    // Record the deviceId before the memory is released,
+    // for later possibly updating the leader cache.
     deviceId = tablet.deviceId;
+
     // Actually release the occupied memory.
     tablet = null;
     dataContainer = null;
@@ -187,6 +189,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   public String getDeviceId() {
+    // NonNull indicates that the internallyDecreaseResourceReferenceCount has not been called.
     return Objects.nonNull(tablet) ? tablet.deviceId : deviceId;
   }
 
