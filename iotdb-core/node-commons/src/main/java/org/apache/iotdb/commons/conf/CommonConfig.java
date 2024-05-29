@@ -228,7 +228,7 @@ public class CommonConfig {
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeConsensusEventBufferSize = 5;
   private long pipeConsensusEventEnqueueTimeoutInMs = 5000;
-  private long pipeConsensusReceiverMaxWaitingTimeForEventsInMs = 10000;
+  private long pipeConsensusReceiverMaxWaitingTimeForEventsInMs = 5000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
   private double pipeRemainingTimeCommitRateSmoothingFactor = 0.5;
 

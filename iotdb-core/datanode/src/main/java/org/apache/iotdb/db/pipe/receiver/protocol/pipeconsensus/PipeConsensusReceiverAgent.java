@@ -59,7 +59,7 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
   // For each consensus Pipe task, there is an independent receiver. So for every replica, it has
   // (n-1) receivers, n is the num of replicas.
   // 1 DataNode --has--> 1 PipeConsensusReceiverAgent & n replicas
-  // 1 PipeConsensusReceiverAgent --manage--> n replicas' receivers
+  // 1 PipeConsensusReceiverAgent --manages--> n replicas' receivers
   // 1 replica --has--> (n-1) receivers
   private final Map<
           ConsensusGroupId, Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>>>
@@ -167,31 +167,5 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
             receiver.set(null);
           }
         });
-  }
-
-  // TODO: will implement them when construct UT.
-  @TestOnly
-  public void resetReceiver() {
-    // changed to reset given receiver
-  }
-
-  @TestOnly
-  public long getSyncCommitIndex() {
-    return 0;
-    //    if (receiverReference.get() == null) {
-    //      return internalSetAndGetReceiver(PipeConsensusRequestVersion.VERSION_1.getVersion())
-    //          .getOnSyncedCommitIndex();
-    //    }
-    //    return receiverReference.get().getOnSyncedCommitIndex();
-  }
-
-  @TestOnly
-  public int getRebootTimes() {
-    return 0;
-    //    if (receiverReference.get() == null) {
-    //      return internalSetAndGetReceiver(PipeConsensusRequestVersion.VERSION_1.getVersion())
-    //          .getConnectorRebootTimes();
-    //    }
-    //    return receiverReference.get().getConnectorRebootTimes();
   }
 }

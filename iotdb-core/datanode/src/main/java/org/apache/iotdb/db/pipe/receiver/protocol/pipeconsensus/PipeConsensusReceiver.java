@@ -101,7 +101,7 @@ public class PipeConsensusReceiver {
     this.consensusGroupId = consensusGroupId;
 
     // Each pipeConsensusReceiver has its own base directories. for example, a default dir path is
-    // data/datanode/system/pipe/consensus/receiver/consensus{consensusGroupId}_{leaderDataNodeId}_{followerDataNodeId}
+    // data/datanode/system/pipe/consensus/receiver/__consensus{consensusGroupId}_{leaderDataNodeId}_{followerDataNodeId}
     receiverBaseDirsName =
         Arrays.stream(IoTDBDescriptor.getInstance().getConfig().getPipeConsensusReceiverFileDirs())
             .map(s -> s + File.separator + consensusPipeName)
@@ -492,7 +492,6 @@ public class PipeConsensusReceiver {
       final List<String> fileAbsolutePaths =
           files.stream().map(File::getAbsolutePath).collect(Collectors.toList());
 
-      // only load mods
       final TSStatus status =
           loadFileToDateRegion(
               fileAbsolutePaths.get(1),
@@ -990,7 +989,7 @@ public class PipeConsensusReceiver {
   }
 
   private static class TsFileTransferDiskBuffer {
-    // whether this buffer is used. this will be updated when first transfer tsFile piece or
+    // whether this buffer is used. This will be updated when first transfer tsFile piece or
     // when transfer seal.
     private boolean isUsed = false;
     // If isUsed is true, this variable will be set to the TCommitId of holderEvent
