@@ -194,55 +194,47 @@ public class AsyncDataNodeClientPool {
       Object req = clientHandler.getRequest(requestId);
       AbstractAsyncRPCHandler<?> handler =
           clientHandler.createAsyncRPCHandler(requestId, targetDataNode);
+      AsyncTSStatusRPCHandler defaultHandler = (AsyncTSStatusRPCHandler) handler;
 
       switch (clientHandler.getRequestType()) {
         case SET_TTL:
-          client.setTTL((TSetTTLReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.setTTL((TSetTTLReq) req, defaultHandler);
           break;
         case CREATE_DATA_REGION:
-          client.createDataRegion((TCreateDataRegionReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.createDataRegion((TCreateDataRegionReq) req, defaultHandler);
           break;
         case DELETE_REGION:
-          client.deleteRegion((TConsensusGroupId) req, (AsyncTSStatusRPCHandler) handler);
+          client.deleteRegion((TConsensusGroupId) req, defaultHandler);
           break;
         case CREATE_SCHEMA_REGION:
-          client.createSchemaRegion(
-              (TCreateSchemaRegionReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.createSchemaRegion((TCreateSchemaRegionReq) req, defaultHandler);
           break;
         case CREATE_FUNCTION:
-          client.createFunction(
-              (TCreateFunctionInstanceReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.createFunction((TCreateFunctionInstanceReq) req, defaultHandler);
           break;
         case DROP_FUNCTION:
-          client.dropFunction((TDropFunctionInstanceReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.dropFunction((TDropFunctionInstanceReq) req, defaultHandler);
           break;
         case CREATE_TRIGGER_INSTANCE:
-          client.createTriggerInstance(
-              (TCreateTriggerInstanceReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.createTriggerInstance((TCreateTriggerInstanceReq) req, defaultHandler);
           break;
         case DROP_TRIGGER_INSTANCE:
-          client.dropTriggerInstance(
-              (TDropTriggerInstanceReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.dropTriggerInstance((TDropTriggerInstanceReq) req, defaultHandler);
           break;
         case ACTIVE_TRIGGER_INSTANCE:
-          client.activeTriggerInstance(
-              (TActiveTriggerInstanceReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.activeTriggerInstance((TActiveTriggerInstanceReq) req, defaultHandler);
           break;
         case INACTIVE_TRIGGER_INSTANCE:
-          client.inactiveTriggerInstance(
-              (TInactiveTriggerInstanceReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.inactiveTriggerInstance((TInactiveTriggerInstanceReq) req, defaultHandler);
           break;
         case UPDATE_TRIGGER_LOCATION:
-          client.updateTriggerLocation(
-              (TUpdateTriggerLocationReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.updateTriggerLocation((TUpdateTriggerLocationReq) req, defaultHandler);
           break;
         case CREATE_PIPE_PLUGIN:
-          client.createPipePlugin(
-              (TCreatePipePluginInstanceReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.createPipePlugin((TCreatePipePluginInstanceReq) req, defaultHandler);
           break;
         case DROP_PIPE_PLUGIN:
-          client.dropPipePlugin(
-              (TDropPipePluginInstanceReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.dropPipePlugin((TDropPipePluginInstanceReq) req, defaultHandler);
           break;
         case PIPE_PUSH_ALL_META:
           client.pushPipeMeta((TPushPipeMetaReq) req, (PipePushMetaRPCHandler) handler);
@@ -277,28 +269,28 @@ public class AsyncDataNodeClientPool {
           break;
         case MERGE:
         case FULL_MERGE:
-          client.merge((AsyncTSStatusRPCHandler) handler);
+          client.merge(defaultHandler);
           break;
         case FLUSH:
-          client.flush((TFlushReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.flush((TFlushReq) req, defaultHandler);
           break;
         case CLEAR_CACHE:
-          client.clearCache((AsyncTSStatusRPCHandler) handler);
+          client.clearCache(defaultHandler);
           break;
         case START_REPAIR_DATA:
-          client.startRepairData((AsyncTSStatusRPCHandler) handler);
+          client.startRepairData(defaultHandler);
           break;
         case STOP_REPAIR_DATA:
-          client.stopRepairData((AsyncTSStatusRPCHandler) handler);
+          client.stopRepairData(defaultHandler);
           break;
         case LOAD_CONFIGURATION:
-          client.loadConfiguration((AsyncTSStatusRPCHandler) handler);
+          client.loadConfiguration(defaultHandler);
           break;
         case SET_SYSTEM_STATUS:
-          client.setSystemStatus((String) req, (AsyncTSStatusRPCHandler) handler);
+          client.setSystemStatus((String) req, defaultHandler);
           break;
         case UPDATE_REGION_ROUTE_MAP:
-          client.updateRegionCache((TRegionRouteReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.updateRegionCache((TRegionRouteReq) req, defaultHandler);
           break;
         case CHANGE_REGION_LEADER:
           client.changeRegionLeader(
@@ -318,7 +310,7 @@ public class AsyncDataNodeClientPool {
           break;
         case INVALIDATE_MATCHED_SCHEMA_CACHE:
           client.invalidateMatchedSchemaCache(
-              (TInvalidateMatchedSchemaCacheReq) req, (AsyncTSStatusRPCHandler) handler);
+              (TInvalidateMatchedSchemaCacheReq) req, defaultHandler);
           break;
         case DELETE_DATA_FOR_DELETE_SCHEMA:
           client.deleteDataForDeleteSchema(
@@ -339,7 +331,7 @@ public class AsyncDataNodeClientPool {
           client.deactivateTemplate((TDeactivateTemplateReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case UPDATE_TEMPLATE:
-          client.updateTemplate((TUpdateTemplateReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.updateTemplate((TUpdateTemplateReq) req, defaultHandler);
           break;
         case COUNT_PATHS_USING_TEMPLATE:
           client.countPathsUsingTemplate(
@@ -369,16 +361,16 @@ public class AsyncDataNodeClientPool {
           client.alterView((TAlterViewReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case KILL_QUERY_INSTANCE:
-          client.killQueryInstance((String) req, (AsyncTSStatusRPCHandler) handler);
+          client.killQueryInstance((String) req, defaultHandler);
           break;
         case SET_SPACE_QUOTA:
-          client.setSpaceQuota((TSetSpaceQuotaReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.setSpaceQuota((TSetSpaceQuotaReq) req, defaultHandler);
           break;
         case SET_THROTTLE_QUOTA:
-          client.setThrottleQuota((TSetThrottleQuotaReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.setThrottleQuota((TSetThrottleQuotaReq) req, defaultHandler);
           break;
         case RESET_PEER_LIST:
-          client.resetPeerList((TResetPeerListReq) req, (AsyncTSStatusRPCHandler) handler);
+          client.resetPeerList((TResetPeerListReq) req, defaultHandler);
           break;
         default:
           LOGGER.error(
