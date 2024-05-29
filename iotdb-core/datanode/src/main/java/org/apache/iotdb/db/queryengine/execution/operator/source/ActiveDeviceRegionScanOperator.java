@@ -71,12 +71,14 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
           break;
         }
 
+        // For filter method, it will return false if the phase of calculation is finished,
+        // otherwise, it will return true to execute in the next loop.
         if (regionScanUtil.filterChunkMetaData()) {
           // There is still some chunkMetaData in current TsFile
           continue;
         }
 
-        if (regionScanUtil.filterChunkData()) {
+        if (regionScanUtil.filterChunkData() && !regionScanUtil.isCurrentTsFileFinished()) {
           // There is still some pageData in current TsFile
           continue;
         }
@@ -88,7 +90,8 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
 
       finished =
           resultTsBlockBuilder.isEmpty()
-              && (!regionScanUtil.hasMoreData() || deviceToAlignedMap.isEmpty());
+              && ((!regionScanUtil.hasMoreData() && regionScanUtil.isCurrentTsFileFinished())
+                  || deviceToAlignedMap.isEmpty());
 
       return !finished;
     } catch (IOException e) {

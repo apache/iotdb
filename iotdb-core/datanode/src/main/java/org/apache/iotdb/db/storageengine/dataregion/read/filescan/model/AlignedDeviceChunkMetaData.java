@@ -38,7 +38,7 @@ public class AlignedDeviceChunkMetaData extends AbstractDeviceChunkMetaData {
     super(devicePath);
     this.alignedChunkMetadataList = alignedChunkMetadataList;
     this.valueSize = alignedChunkMetadataList.get(0).getValueChunkMetadataList().size();
-    this.alignedChunkMetadataIndex = -1;
+    this.alignedChunkMetadataIndex = 0;
     this.valueChunkMetadataIndex = -1;
   }
 
@@ -64,10 +64,14 @@ public class AlignedDeviceChunkMetaData extends AbstractDeviceChunkMetaData {
 
   @Override
   public AbstractChunkOffset getChunkOffset() {
+    AlignedChunkMetadata alignedChunkMetadata =
+        alignedChunkMetadataList.get(alignedChunkMetadataIndex);
+    IChunkMetadata valueChunkMetaData =
+        alignedChunkMetadata.getValueChunkMetadataList().get(valueChunkMetadataIndex);
     return new AlignedChunkOffset(
-        alignedChunkMetadataList.get(alignedChunkMetadataIndex).getOffsetOfChunkHeader(),
+        valueChunkMetaData.getOffsetOfChunkHeader(),
         getDevicePath(),
-        new SharedTimeDataBuffer(
-            alignedChunkMetadataList.get(alignedChunkMetadataIndex).getTimeChunkMetadata()));
+        valueChunkMetaData.getMeasurementUid(),
+        new SharedTimeDataBuffer(alignedChunkMetadata.getTimeChunkMetadata()));
   }
 }

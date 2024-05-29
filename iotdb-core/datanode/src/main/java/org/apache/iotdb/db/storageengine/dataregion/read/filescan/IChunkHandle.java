@@ -26,10 +26,11 @@ import java.io.IOException;
 /** This interface is used to handle the scan of chunks in TSFile. */
 public interface IChunkHandle {
 
-  /**
-   * Check If there is more pages to be scanned in Chunk. If so, move to next page and return true
-   */
+  /** Check If there is more pages to be scanned in Chunk. */
   boolean hasNextPage() throws IOException;
+
+  /** Move to next page */
+  void nextPage() throws IOException;
 
   /** Skip the current page */
   void skipCurrentPage();

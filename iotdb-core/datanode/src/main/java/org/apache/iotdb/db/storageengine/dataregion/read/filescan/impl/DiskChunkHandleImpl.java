@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 public class DiskChunkHandleImpl implements IChunkHandle {
   private final boolean tsFileClosed;
   private final IDeviceID deviceID;
+  private final String measurement;
   private final String filePath;
   protected ChunkHeader currentChunkHeader;
   protected PageHeader currentPageHeader;
@@ -60,11 +61,13 @@ public class DiskChunkHandleImpl implements IChunkHandle {
 
   public DiskChunkHandleImpl(
       IDeviceID deviceID,
+      String measurement,
       String filePath,
       boolean isTsFileClosed,
       long offset,
       Statistics<? extends Serializable> chunkStatistics) {
     this.deviceID = deviceID;
+    this.measurement = measurement;
     this.chunkStatistic = chunkStatistics;
     this.offset = offset;
     this.filePath = filePath;
@@ -81,30 +84,32 @@ public class DiskChunkHandleImpl implements IChunkHandle {
   }
 
   // Check if there is more pages to be scanned in Chunk.
-  // If so, deserialize the page header
+  // If currentChunkDataBuffer is equals to null, it means nextPage() is not called and needed
   @Override
   public boolean hasNextPage() throws IOException {
+    return currentChunkDataBuffer == null || currentChunkDataBuffer.hasRemaining();
+  }
+
+  @Override
+  public void nextPage() throws IOException {
     // read chunk from disk if needed
     if (currentChunkDataBuffer == null) {
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, tsFileClosed);
       init(reader);
     }
-
-    if (!currentChunkDataBuffer.hasRemaining()) {
-      return false;
+    if (currentChunkDataBuffer.hasRemaining()) {
+      // If there is only one page, page statistics is not stored in the chunk header, which is the
+      // same as chunkStatistics
+      if ((byte) (this.currentChunkHeader.getChunkType() & 0x3F)
+          == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+        currentPageHeader =
+            PageHeader.deserializeFrom(this.currentChunkDataBuffer, this.chunkStatistic);
+      } else {
+        currentPageHeader =
+            PageHeader.deserializeFrom(
+                this.currentChunkDataBuffer, this.currentChunkHeader.getDataType());
+      }
     }
-    // If there is only one page, page statistics is not stored in the chunk header, which is the
-    // same as chunkStatistics
-    if ((byte) (this.currentChunkHeader.getChunkType() & 0x3F)
-        == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-      currentPageHeader =
-          PageHeader.deserializeFrom(this.currentChunkDataBuffer, this.chunkStatistic);
-    } else {
-      currentPageHeader =
-          PageHeader.deserializeFrom(
-              this.currentChunkDataBuffer, this.currentChunkHeader.getDataType());
-    }
-    return true;
   }
 
   @Override
@@ -137,12 +142,7 @@ public class DiskChunkHandleImpl implements IChunkHandle {
 
   @Override
   public String getMeasurement() {
-    if (currentChunkHeader != null) {
-      return currentChunkHeader.getMeasurementID();
-    } else {
-      throw new IllegalArgumentException(
-          "Chunk header is not initialized. You should call hasNext() first");
-    }
+    return measurement;
   }
 
   private long[] convertToTimeArray(ByteBuffer timeBuffer) throws IOException {

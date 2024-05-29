@@ -29,20 +29,14 @@ import java.io.Serializable;
 
 public class ChunkOffset extends AbstractChunkOffset {
 
-  private final String measurement;
-
   public ChunkOffset(long offset, IDeviceID deviceID, String measurement) {
-    super(offset, deviceID);
-    this.measurement = measurement;
-  }
-
-  public String getMeasurement() {
-    return measurement;
+    super(offset, deviceID, measurement);
   }
 
   @Override
   public IChunkHandle generateChunkHandle(
       String filePath, Statistics<? extends Serializable> statistics) {
-    return new DiskChunkHandleImpl(getDeviceID(), filePath, true, getOffSet(), statistics);
+    return new DiskChunkHandleImpl(
+        getDeviceID(), getMeasurement(), filePath, true, getOffSet(), statistics);
   }
 }

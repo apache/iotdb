@@ -34,19 +34,24 @@ public class AlignedChunkOffset extends AbstractChunkOffset {
   private final SharedTimeDataBuffer sharedTimeDataBuffer;
 
   public AlignedChunkOffset(
-      long offSet, IDeviceID devicePath, SharedTimeDataBuffer sharedTimeDataBuffer) {
-    super(offSet, devicePath);
+      long offSet,
+      IDeviceID devicePath,
+      String measurement,
+      SharedTimeDataBuffer sharedTimeDataBuffer) {
+    super(offSet, devicePath, measurement);
     this.sharedTimeDataBuffer = sharedTimeDataBuffer;
-  }
-
-  public SharedTimeDataBuffer getSharedTimeDataBuffer() {
-    return sharedTimeDataBuffer;
   }
 
   @Override
   public IChunkHandle generateChunkHandle(
       String filePath, Statistics<? extends Serializable> statistics) {
     return new DiskAlignedChunkHandleImpl(
-        getDeviceID(), filePath, true, getOffSet(), statistics, sharedTimeDataBuffer);
+        getDeviceID(),
+        getMeasurement(),
+        filePath,
+        true,
+        getOffSet(),
+        statistics,
+        sharedTimeDataBuffer);
   }
 }

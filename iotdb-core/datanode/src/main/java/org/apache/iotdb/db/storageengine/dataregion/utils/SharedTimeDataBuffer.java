@@ -57,7 +57,7 @@ public class SharedTimeDataBuffer {
     }
     Chunk timeChunk = reader.readMemChunk(timeChunkMetaData.getOffsetOfChunkHeader());
     timeChunkHeader = timeChunk.getHeader();
-    timeBuffer = timeChunk.getData();
+    timeBuffer = timeChunk.getData().duplicate();
   }
 
   public long[] getPageTime(int pageId) throws IOException {
@@ -78,14 +78,20 @@ public class SharedTimeDataBuffer {
       throw new UnsupportedOperationException("No more data in SharedTimeDataBuffer");
     }
     PageHeader timePageHeader =
-        PageHeader.deserializeFrom(timeBuffer, timeChunkHeader.getDataType());
+        isSinglePageChunk()
+            ? PageHeader.deserializeFrom(timeBuffer, timeChunkMetaData.getStatistics())
+            : PageHeader.deserializeFrom(timeBuffer, timeChunkHeader.getDataType());
     ByteBuffer timePageData =
         ChunkReader.deserializePageData(timePageHeader, timeBuffer, timeChunkHeader);
     long[] pageData = new long[(int) timePageHeader.getNumOfValues()];
     int index = 0;
     while (defaultTimeDecoder.hasNext(timePageData)) {
-      pageData[index] = defaultTimeDecoder.readLong(timePageData);
+      pageData[index++] = defaultTimeDecoder.readLong(timePageData);
     }
     timeData.add(pageData);
+  }
+
+  private boolean isSinglePageChunk() {
+    return (this.timeChunkHeader.getChunkType() & 63) == 5;
   }
 }

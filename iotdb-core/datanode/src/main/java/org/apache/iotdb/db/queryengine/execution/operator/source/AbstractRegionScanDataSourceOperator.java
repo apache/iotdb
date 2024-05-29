@@ -47,6 +47,9 @@ public abstract class AbstractRegionScanDataSourceOperator extends AbstractSourc
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
+    if (resultTsBlockBuilder.isEmpty()) {
+      return null;
+    }
     resultTsBlock = resultTsBlockBuilder.build();
     resultTsBlockBuilder.reset();
     return checkTsBlockSizeAndGetResult();

@@ -96,8 +96,8 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
   public boolean isCurrentChunkHandleValid() {
     IDeviceID deviceID = currentChunkHandle.getDeviceID();
     String measurementId = currentChunkHandle.getMeasurement();
-    return timeSeriesForCurrentTsFile.containsKey(deviceID)
-        && timeSeriesForCurrentTsFile.get(deviceID).contains(measurementId);
+    Set<String> measurements = timeSeriesForCurrentTsFile.get(deviceID);
+    return measurements != null && measurements.contains(measurementId);
   }
 
   @Override
@@ -109,6 +109,7 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
 
   @Override
   public void finishCurrentFile() {
+    super.finishCurrentFile();
     queryDataSource.releaseFileScanHandle();
     timeSeriesForCurrentTsFile.clear();
     activeTimeSeries.clear();
@@ -131,7 +132,8 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
       boolean[] isDeleted =
           curFileScanHandle.isTimeSeriesTimeDeleted(
               deviceID, valueChunkMetaData.getMeasurementUid(), new long[] {startTime, endTime});
-      if (!isDeleted[0] || !isDeleted[1]) {
+      if ((!isDeleted[0] && timeFilter.satisfy(startTime, null)
+          || (!isDeleted[1] && timeFilter.satisfy(endTime, null)))) {
         removeTimeSeriesForCurrentTsFile(deviceID, measurementId);
         activeTimeSeries.computeIfAbsent(deviceID, k -> new ArrayList<>()).add(measurementId);
       } else {

@@ -39,12 +39,13 @@ public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
 
   public DiskAlignedChunkHandleImpl(
       IDeviceID deviceID,
+      String measurement,
       String filePath,
       boolean isTsFileClosed,
       long offset,
       Statistics<? extends Serializable> chunkStatistic,
       SharedTimeDataBuffer sharedTimeDataBuffer) {
-    super(deviceID, filePath, isTsFileClosed, offset, chunkStatistic);
+    super(deviceID, measurement, filePath, isTsFileClosed, offset, chunkStatistic);
     this.sharedTimeDataBuffer = sharedTimeDataBuffer;
   }
 
@@ -68,13 +69,13 @@ public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
       throw new UnsupportedOperationException("Time data size not match");
     }
 
-    long[] validTimeList = new long[(int) currentPageHeader.getNumOfValues()];
-    for (int i = 0; i < size; i++) {
-      if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+    long[] validTimeList = new long[(int) this.currentPageHeader.getNumOfValues()];
+    int index = 0;
+    for (int i = 0; i < timeData.length; i++) {
+      if ((bitmap[i / 8] & 0xFF & MASK >>> i % 8) == 0) {
         continue;
       }
-      long timestamp = timeData[i];
-      validTimeList[i] = timestamp;
+      validTimeList[index++] = timeData[i];
     }
 
     pageIndex++;

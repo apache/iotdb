@@ -154,7 +154,7 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
                     .collect(Collectors.toList())));
       } else {
         // device is aligned
-        List<IChunkMetadata> timeChunkMetaData = metadataForDevice.get("").getLeft();
+        List<IChunkMetadata> timeChunkMetaDataList = metadataForDevice.get("").getLeft();
         List<List<IChunkMetadata>> valueMetaDataList = new ArrayList<>();
         for (Map.Entry<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> pair :
             metadataForDevice.entrySet()) {
@@ -166,9 +166,11 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
         }
 
         List<AlignedChunkMetadata> alignedDeviceChunkMetaData = new ArrayList<>();
-        for (int i = 0; i < timeChunkMetaData.size(); i++) {
-          alignedDeviceChunkMetaData.add(
-              new AlignedChunkMetadata(timeChunkMetaData.get(i), valueMetaDataList.get(i)));
+        for (IChunkMetadata timeChunkMetaData : timeChunkMetaDataList) {
+          for (List<IChunkMetadata> chunkMetadataList : valueMetaDataList) {
+            alignedDeviceChunkMetaData.add(
+                new AlignedChunkMetadata(timeChunkMetaData, chunkMetadataList));
+          }
         }
         deviceChunkMetaDataList.add(
             new AlignedDeviceChunkMetaData(deviceIDWithIsAligned.left, alignedDeviceChunkMetaData));

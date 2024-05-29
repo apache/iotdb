@@ -67,7 +67,12 @@ public abstract class AbstractRegionScanForActiveDataUtil {
 
   public abstract void processActiveChunk(IDeviceID deviceID, String measurementId);
 
-  public abstract void finishCurrentFile();
+  public void finishCurrentFile() {
+    curFileScanHandle = null;
+    deviceChunkMetaDataIterator = null;
+    chunkHandleIterator = null;
+    currentChunkHandle = null;
+  }
 
   public boolean hasMoreData() {
     return queryDataSource != null && queryDataSource.hasNext();
@@ -108,6 +113,7 @@ public abstract class AbstractRegionScanForActiveDataUtil {
     // if there is no more chunkHandle, all the data in current TsFile is scanned, just return true.
     while (currentChunkHandle == null || !currentChunkHandle.hasNextPage()) {
       if (!chunkHandleIterator.hasNext()) {
+        chunkHandleIterator = null;
         return false;
       }
       currentChunkHandle = chunkHandleIterator.next();
@@ -118,6 +124,7 @@ public abstract class AbstractRegionScanForActiveDataUtil {
     }
 
     // 2. check page statistics
+    currentChunkHandle.nextPage();
     IDeviceID curDevice = currentChunkHandle.getDeviceID();
     String curMeasurement = currentChunkHandle.getMeasurement();
     long[] pageStatistics = currentChunkHandle.getPageStatisticsTime();
@@ -131,7 +138,8 @@ public abstract class AbstractRegionScanForActiveDataUtil {
             curDevice,
             currentChunkHandle.getMeasurement(),
             new long[] {pageStatistics[0], pageStatistics[1]});
-    if (!isDeleted[0] || !isDeleted[1]) {
+    if ((!isDeleted[0] && timeFilter.satisfy(pageStatistics[0], null)
+        || !isDeleted[1] && timeFilter.satisfy(pageStatistics[1], null))) {
       // If the page in curChunk has valid start or end time, curChunk is active in this time
       // range.
       processActiveChunk(curDevice, curMeasurement);

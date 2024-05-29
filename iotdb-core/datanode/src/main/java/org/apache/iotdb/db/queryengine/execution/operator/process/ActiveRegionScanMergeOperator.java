@@ -129,6 +129,21 @@ public class ActiveRegionScanMergeOperator extends AbstractConsumeAllOperator {
     return outputCount ? returnResultIfNoMoreData() : tsBlockBuilder.build();
   }
 
+  @Override
+  protected boolean canSkipCurrentChild(int currentChildIndex) {
+    return noMoreTsBlocks[currentChildIndex]
+        || !isEmpty(currentChildIndex)
+        || children.get(currentChildIndex) == null;
+  }
+
+  @Override
+  protected void handleFinishedChild(int currentChildIndex) throws Exception {
+    noMoreTsBlocks[currentChildIndex] = true;
+    inputTsBlocks[currentChildIndex] = null;
+    children.get(currentChildIndex).close();
+    children.set(currentChildIndex, null);
+  }
+
   private TsBlock returnResultIfNoMoreData() throws Exception {
     if (isFinished()) {
       tsBlockBuilder.reset();
@@ -175,9 +190,6 @@ public class ActiveRegionScanMergeOperator extends AbstractConsumeAllOperator {
     if (finished) {
       return false;
     }
-    if (retainedTsBlock != null) {
-      return true;
-    }
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!isEmpty(i)) {
         return true;
@@ -198,10 +210,6 @@ public class ActiveRegionScanMergeOperator extends AbstractConsumeAllOperator {
     if (finished) {
       return true;
     }
-    if (retainedTsBlock != null) {
-      return false;
-    }
-
     finished = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
       // has more tsBlock output from children[i] or has cached tsBlock in inputTsBlocks[i]

@@ -63,7 +63,8 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
       boolean[] isDeleted =
           curFileScanHandle.isDeviceTimeDeleted(
               deviceStartEndTime.getDevicePath(), new long[] {startTime, endTime});
-      if (!isDeleted[0] || !isDeleted[1]) {
+      if ((!isDeleted[0] && timeFilter.satisfy(startTime, null)
+          || (!isDeleted[1] && timeFilter.satisfy(endTime, null)))) {
         // Only if one time is not deleted, the devicePath is active in this time range.
         activeDevices.add(deviceID);
       } else {
@@ -115,7 +116,8 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
       boolean[] isDeleted =
           curFileScanHandle.isTimeSeriesTimeDeleted(
               deviceID, valueChunkMetaData.getMeasurementUid(), new long[] {startTime, endTime});
-      if (!isDeleted[0] || !isDeleted[1]) {
+      if ((!isDeleted[0] && timeFilter.satisfy(startTime, null))
+          || (!isDeleted[1] && timeFilter.satisfy(endTime, null))) {
         // If the chunkMeta in curDevice has valid start or end time, curDevice is active in this
         // time range.
         return true;
@@ -134,6 +136,7 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
 
   @Override
   public void finishCurrentFile() {
+    super.finishCurrentFile();
     queryDataSource.releaseFileScanHandle();
     deviceSetForCurrentTsFile.clear();
     activeDevices.clear();

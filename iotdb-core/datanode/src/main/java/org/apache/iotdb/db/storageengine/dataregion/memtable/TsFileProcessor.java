@@ -1630,14 +1630,16 @@ public class TsFileProcessor {
     SharedTimeDataBuffer sharedTimeDataBuffer =
         new SharedTimeDataBuffer(alignedChunkMetadata.getTimeChunkMetadata());
     for (IChunkMetadata valueChunkMetaData : alignedChunkMetadata.getValueChunkMetadataList()) {
+      String measurement = valueChunkMetaData.getMeasurementUid();
       measurementToChunkMetaMap
-          .computeIfAbsent(valueChunkMetaData.getMeasurementUid(), k -> new ArrayList<>())
+          .computeIfAbsent(measurement, k -> new ArrayList<>())
           .add(valueChunkMetaData);
       measurementToChunkHandleMap
-          .computeIfAbsent(valueChunkMetaData.getMeasurementUid(), k -> new ArrayList<>())
+          .computeIfAbsent(measurement, k -> new ArrayList<>())
           .add(
               new DiskAlignedChunkHandleImpl(
                   deviceID,
+                  measurement,
                   filePath,
                   false,
                   valueChunkMetaData.getOffsetOfChunkHeader(),
@@ -1652,14 +1654,16 @@ public class TsFileProcessor {
       Map<String, List<IChunkMetadata>> measurementToChunkMetaMap,
       Map<String, List<IChunkHandle>> measurementToChunkHandleMap,
       String filePath) {
+    String measurement = chunkMetadata.getMeasurementUid();
     measurementToChunkMetaMap
-        .computeIfAbsent(chunkMetadata.getMeasurementUid(), k -> new ArrayList<>())
+        .computeIfAbsent(measurement, k -> new ArrayList<>())
         .add(chunkMetadata);
     measurementToChunkHandleMap
-        .computeIfAbsent(chunkMetadata.getMeasurementUid(), k -> new ArrayList<>())
+        .computeIfAbsent(measurement, k -> new ArrayList<>())
         .add(
             new DiskChunkHandleImpl(
                 deviceID,
+                measurement,
                 filePath,
                 false,
                 chunkMetadata.getOffsetOfChunkHeader(),

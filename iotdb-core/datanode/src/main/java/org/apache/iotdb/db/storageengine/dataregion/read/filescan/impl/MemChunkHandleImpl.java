@@ -43,6 +43,11 @@ public class MemChunkHandleImpl implements IChunkHandle {
     return !hasRead;
   }
 
+  @Override
+  public void nextPage() throws IOException {
+    // do nothing, there is only one page in MemChunk
+  }
+
   // MemChunk only has one page in handle
   @Override
   public void skipCurrentPage() {

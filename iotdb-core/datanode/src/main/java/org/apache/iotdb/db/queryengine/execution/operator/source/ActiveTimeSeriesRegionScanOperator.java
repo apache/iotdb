@@ -72,11 +72,11 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
           break;
         }
 
-        if (regionScanUtil.filterChunkMetaData()) {
+        if (regionScanUtil.filterChunkMetaData() && !regionScanUtil.isCurrentTsFileFinished()) {
           continue;
         }
 
-        if (regionScanUtil.filterChunkData()) {
+        if (regionScanUtil.filterChunkData() && !regionScanUtil.isCurrentTsFileFinished()) {
           continue;
         }
 
@@ -87,7 +87,8 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
 
       finished =
           resultTsBlockBuilder.isEmpty()
-              && (!regionScanUtil.hasMoreData() || timeSeriesToSchemasInfo.isEmpty());
+              && ((!regionScanUtil.hasMoreData() && regionScanUtil.isCurrentTsFileFinished())
+                  || timeSeriesToSchemasInfo.isEmpty());
 
       return !finished;
     } catch (IOException e) {

@@ -29,11 +29,13 @@ import java.io.Serializable;
 public abstract class AbstractChunkOffset {
 
   private final IDeviceID deviceID;
+  private final String measurement;
   private final long offSet;
 
-  protected AbstractChunkOffset(long offSet, IDeviceID deviceID) {
+  protected AbstractChunkOffset(long offSet, IDeviceID deviceID, String measurement) {
     this.offSet = offSet;
     this.deviceID = deviceID;
+    this.measurement = measurement;
   }
 
   public abstract IChunkHandle generateChunkHandle(
@@ -41,6 +43,10 @@ public abstract class AbstractChunkOffset {
 
   public IDeviceID getDeviceID() {
     return deviceID;
+  }
+
+  public String getMeasurement() {
+    return measurement;
   }
 
   public long getOffSet() {
