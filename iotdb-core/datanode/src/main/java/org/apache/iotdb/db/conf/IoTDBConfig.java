@@ -429,13 +429,13 @@ public class IoTDBConfig {
   private int avgSeriesPointNumberThreshold = 100000;
 
   /** Enable inner space compaction for sequence files */
-  private boolean enableSeqSpaceCompaction = true;
+  private volatile boolean enableSeqSpaceCompaction = true;
 
   /** Enable inner space compaction for unsequence files */
-  private boolean enableUnseqSpaceCompaction = true;
+  private volatile boolean enableUnseqSpaceCompaction = true;
 
   /** Compact the unsequence files into the overlapped sequence files */
-  private boolean enableCrossSpaceCompaction = true;
+  private volatile boolean enableCrossSpaceCompaction = true;
 
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
@@ -502,22 +502,22 @@ public class IoTDBConfig {
   private long compactionAcquireWriteLockTimeout = 60_000L;
 
   /** The max candidate file num in one inner space compaction task */
-  private int fileLimitPerInnerTask = 30;
+  private volatile int fileLimitPerInnerTask = 30;
 
   /** The max candidate file num in one cross space compaction task */
-  private int fileLimitPerCrossTask = 500;
+  private volatile int fileLimitPerCrossTask = 500;
 
   /** The max candidate file num in compaction */
-  private int totalFileLimitForCompactionTask = 5000;
+  private volatile int totalFileLimitForCompactionTask = 5000;
 
   /** The max total size of candidate files in one cross space compaction task */
-  private long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
+  private volatile long maxCrossCompactionCandidateFileSize = 1024 * 1024 * 1024 * 5L;
 
   /**
    * Only the unseq files whose level of inner space compaction reaches this value can be selected
    * to participate in the cross space compaction.
    */
-  private int minCrossCompactionUnseqFileLevel = 1;
+  private volatile int minCrossCompactionUnseqFileLevel = 1;
 
   /** The interval of compaction task schedulation in each virtual database. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
@@ -534,23 +534,23 @@ public class IoTDBConfig {
   /** The number of threads to be set up to select compaction task. */
   private int compactionScheduleThreadNum = 4;
 
-  private boolean enableTsFileValidation = false;
+  private volatile boolean enableTsFileValidation = false;
 
   /** The size of candidate compaction task queue. */
-  private int candidateCompactionTaskQueueSize = 200;
+  private int candidateCompactionTaskQueueSize = 50;
 
   /**
    * When the size of the mods file corresponding to TsFile exceeds this value, inner compaction
    * tasks containing mods files are selected first.
    */
-  private long innerCompactionTaskSelectionModsFileThreshold = 10 * 1024 * 1024L;
+  private volatile long innerCompactionTaskSelectionModsFileThreshold = 10 * 1024 * 1024L;
 
   /**
    * When disk availability is lower than the sum of (disk_space_warning_threshold +
    * inner_compaction_task_selection_disk_redundancy), inner compaction tasks containing mods files
    * are selected first.
    */
-  private double innerCompactionTaskSelectionDiskRedundancy = 0.05;
+  private volatile double innerCompactionTaskSelectionDiskRedundancy = 0.05;
 
   /** The size of global compaction estimation file info cahce. */
   private int globalCompactionFileInfoCacheSize = 1000;
