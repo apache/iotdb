@@ -23,16 +23,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.CanonicalizationAware;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.ResolvedField;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
-import org.apache.iotdb.db.relational.sql.tree.Expression;
-import org.apache.iotdb.db.relational.sql.tree.Identifier;
-import org.apache.iotdb.db.relational.sql.tree.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Node;
 
 import java.util.OptionalInt;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.relational.sql.util.AstUtil.treeEqual;
-import static org.apache.iotdb.db.relational.sql.util.AstUtil.treeHash;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.treeEqual;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.treeHash;
 
 /**
  * A wrapper for Expressions that can be used as a key in maps and sets.

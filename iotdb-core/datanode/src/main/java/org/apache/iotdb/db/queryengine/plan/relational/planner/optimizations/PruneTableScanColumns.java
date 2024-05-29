@@ -24,8 +24,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
-import org.apache.iotdb.db.relational.sql.tree.DefaultTraversalVisitor;
-import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DefaultTraversalVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
 

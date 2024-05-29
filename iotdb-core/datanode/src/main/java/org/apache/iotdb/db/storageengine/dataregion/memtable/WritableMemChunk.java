@@ -64,9 +64,11 @@ public class WritableMemChunk implements IWritableMemChunk {
         putBoolean(insertTime, (boolean) objectValue);
         break;
       case INT32:
+      case DATE:
         putInt(insertTime, (int) objectValue);
         break;
       case INT64:
+      case TIMESTAMP:
         putLong(insertTime, (long) objectValue);
         break;
       case FLOAT:
@@ -76,6 +78,8 @@ public class WritableMemChunk implements IWritableMemChunk {
         putDouble(insertTime, (double) objectValue);
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         return putBinaryWithFlushCheck(insertTime, (Binary) objectValue);
       default:
         throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
@@ -98,10 +102,12 @@ public class WritableMemChunk implements IWritableMemChunk {
         putBooleans(times, boolValues, bitMap, start, end);
         break;
       case INT32:
+      case DATE:
         int[] intValues = (int[]) valueList;
         putInts(times, intValues, bitMap, start, end);
         break;
       case INT64:
+      case TIMESTAMP:
         long[] longValues = (long[]) valueList;
         putLongs(times, longValues, bitMap, start, end);
         break;
@@ -114,6 +120,8 @@ public class WritableMemChunk implements IWritableMemChunk {
         putDoubles(times, doubleValues, bitMap, start, end);
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) valueList;
         return putBinariesWithFlushCheck(times, binaryValues, bitMap, start, end);
       default:
@@ -335,9 +343,7 @@ public class WritableMemChunk implements IWritableMemChunk {
       if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
         long recordSize =
             MemUtils.getRecordSize(
-                tsDataType,
-                tsDataType == TSDataType.TEXT ? list.getBinary(sortedRowIndex) : null,
-                true);
+                tsDataType, tsDataType.isBinary() ? list.getBinary(sortedRowIndex) : null, true);
         CompressionRatio.decreaseDuplicatedMemorySize(recordSize);
         continue;
       }
@@ -352,9 +358,11 @@ public class WritableMemChunk implements IWritableMemChunk {
           chunkWriterImpl.write(time, list.getBoolean(sortedRowIndex));
           break;
         case INT32:
+        case DATE:
           chunkWriterImpl.write(time, list.getInt(sortedRowIndex));
           break;
         case INT64:
+        case TIMESTAMP:
           chunkWriterImpl.write(time, list.getLong(sortedRowIndex));
           break;
         case FLOAT:
@@ -364,6 +372,8 @@ public class WritableMemChunk implements IWritableMemChunk {
           chunkWriterImpl.write(time, list.getDouble(sortedRowIndex));
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           chunkWriterImpl.write(time, list.getBinary(sortedRowIndex));
           break;
         default:

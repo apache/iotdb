@@ -21,9 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
-import org.apache.iotdb.db.relational.sql.tree.Expression;
-import org.apache.iotdb.db.relational.sql.tree.Parameter;
-import org.apache.iotdb.db.relational.sql.tree.Statement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Parameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement;
 
 import java.util.List;
 import java.util.Map;

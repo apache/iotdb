@@ -48,17 +48,17 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisi
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.RelationalModelPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CreateDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DescribeTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ShowDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.relational.sql.parser.SqlParser;
-import org.apache.iotdb.db.relational.sql.tree.CreateDB;
-import org.apache.iotdb.db.relational.sql.tree.CreateTable;
-import org.apache.iotdb.db.relational.sql.tree.DescribeTable;
-import org.apache.iotdb.db.relational.sql.tree.DropDB;
-import org.apache.iotdb.db.relational.sql.tree.DropTable;
-import org.apache.iotdb.db.relational.sql.tree.ShowDB;
-import org.apache.iotdb.db.relational.sql.tree.ShowTables;
-import org.apache.iotdb.db.relational.sql.tree.Use;
 import org.apache.iotdb.db.utils.SetThreadName;
 
 import org.slf4j.Logger;
@@ -233,7 +233,7 @@ public class Coordinator {
   }
 
   public ExecutionResult executeForTableModel(
-      org.apache.iotdb.db.relational.sql.tree.Statement statement,
+      org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement statement,
       SqlParser sqlParser,
       IClientSession clientSession,
       long queryId,
@@ -257,7 +257,7 @@ public class Coordinator {
   }
 
   private IQueryExecution createQueryExecutionForTableModel(
-      org.apache.iotdb.db.relational.sql.tree.Statement statement,
+      org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement statement,
       SqlParser sqlParser,
       IClientSession clientSession,
       MPPQueryContext queryContext,

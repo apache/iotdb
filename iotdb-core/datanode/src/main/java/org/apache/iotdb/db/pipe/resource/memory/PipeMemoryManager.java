@@ -209,7 +209,7 @@ public class PipeMemoryManager {
           continue;
         }
 
-        if (tsDataType == TSDataType.TEXT) {
+        if (tsDataType.isBinary()) {
           if (tablet.values == null || tablet.values.length <= column) {
             continue;
           }

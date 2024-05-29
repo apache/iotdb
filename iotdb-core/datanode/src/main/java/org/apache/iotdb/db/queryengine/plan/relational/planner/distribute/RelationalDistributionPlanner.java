@@ -26,7 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.relational.sql.tree.Query;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Query;
 
 import java.util.Collections;
 import java.util.HashMap;

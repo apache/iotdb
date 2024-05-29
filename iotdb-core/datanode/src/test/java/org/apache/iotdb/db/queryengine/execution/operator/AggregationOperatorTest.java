@@ -346,7 +346,8 @@ public class AggregationOperatorTest {
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, true, true),
             groupByTimeParameter,
-            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+            true);
 
     List<TsFileResource> seqResources1 = new ArrayList<>();
     List<TsFileResource> unSeqResources1 = new ArrayList<>();
@@ -370,7 +371,8 @@ public class AggregationOperatorTest {
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, true, true),
             groupByTimeParameter,
-            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+            true);
 
     List<TsFileResource> seqResources2 = new ArrayList<>();
     List<TsFileResource> unSeqResources2 = new ArrayList<>();

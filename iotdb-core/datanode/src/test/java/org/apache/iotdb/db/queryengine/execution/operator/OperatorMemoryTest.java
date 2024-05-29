@@ -1228,7 +1228,8 @@ public class OperatorMemoryTest {
         aggregators,
         timeRangeIterator,
         groupByTimeParameter,
-        maxReturnSize);
+        maxReturnSize,
+        true);
   }
 
   @Test

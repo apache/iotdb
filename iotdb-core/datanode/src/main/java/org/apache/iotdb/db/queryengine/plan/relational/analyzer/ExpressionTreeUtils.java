@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.db.relational.sql.tree.DefaultExpressionTraversalVisitor;
-import org.apache.iotdb.db.relational.sql.tree.DereferenceExpression;
-import org.apache.iotdb.db.relational.sql.tree.Expression;
-import org.apache.iotdb.db.relational.sql.tree.FunctionCall;
-import org.apache.iotdb.db.relational.sql.tree.Identifier;
-import org.apache.iotdb.db.relational.sql.tree.Node;
-import org.apache.iotdb.db.relational.sql.tree.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DefaultExpressionTraversalVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DereferenceExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.QualifiedName;
 
 import com.google.common.collect.ImmutableList;
 

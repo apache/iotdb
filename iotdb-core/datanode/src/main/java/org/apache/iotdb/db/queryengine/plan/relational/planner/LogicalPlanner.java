@@ -32,9 +32,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Pru
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RelationalPlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SimplifyExpressions;
-import org.apache.iotdb.db.relational.sql.tree.Query;
-import org.apache.iotdb.db.relational.sql.tree.Statement;
-import org.apache.iotdb.db.relational.sql.tree.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Query;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Table;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -50,7 +50,6 @@ import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
-import static org.apache.tsfile.read.common.type.IntType.INT32;
 
 public class LogicalPlanner {
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanner.class);

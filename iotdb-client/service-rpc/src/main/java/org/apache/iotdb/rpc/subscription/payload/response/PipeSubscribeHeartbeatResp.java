@@ -32,7 +32,7 @@ public class PipeSubscribeHeartbeatResp extends TPipeSubscribeResp {
    * Serialize the incoming parameters into `PipeSubscribeHeartbeatResp`, called by the subscription
    * server.
    */
-  public static PipeSubscribeHeartbeatResp toTPipeSubscribeResp(TSStatus status) {
+  public static PipeSubscribeHeartbeatResp toTPipeSubscribeResp(final TSStatus status) {
     final PipeSubscribeHeartbeatResp resp = new PipeSubscribeHeartbeatResp();
 
     resp.status = status;
@@ -44,7 +44,7 @@ public class PipeSubscribeHeartbeatResp extends TPipeSubscribeResp {
 
   /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
   public static PipeSubscribeHeartbeatResp fromTPipeSubscribeResp(
-      TPipeSubscribeResp heartbeatResp) {
+      final TPipeSubscribeResp heartbeatResp) {
     final PipeSubscribeHeartbeatResp resp = new PipeSubscribeHeartbeatResp();
 
     resp.status = heartbeatResp.status;
@@ -58,14 +58,14 @@ public class PipeSubscribeHeartbeatResp extends TPipeSubscribeResp {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribeHeartbeatResp that = (PipeSubscribeHeartbeatResp) obj;
+    final PipeSubscribeHeartbeatResp that = (PipeSubscribeHeartbeatResp) obj;
     return Objects.equals(this.status, that.status)
         && this.version == that.version
         && this.type == that.type

@@ -54,7 +54,7 @@ public class IoTDBStatementTest {
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     when(connection.getMetaData())
-        .thenReturn(new IoTDBDatabaseMetadata(connection, client, sessionId));
+        .thenReturn(new IoTDBDatabaseMetadata(connection, client, sessionId, zoneID));
     when(connection.isClosed()).thenReturn(false);
     when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
     when(fetchMetadataResp.getStatus()).thenReturn(RpcUtils.SUCCESS_STATUS);

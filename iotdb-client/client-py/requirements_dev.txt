@@ -23,7 +23,6 @@ flake8==3.9.0
 black==24.3.0
 # Testcontainer
 testcontainers==3.4.2
-requests<2.32.0
 # For releases
 twine==3.4.1
 wheel==0.38.1

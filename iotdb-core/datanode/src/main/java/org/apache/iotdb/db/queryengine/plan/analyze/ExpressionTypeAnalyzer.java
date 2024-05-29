@@ -153,7 +153,8 @@ public class ExpressionTypeAnalyzer {
       checkInputExpressionDataType(
           likeExpression.getExpression().getExpressionString(),
           process(likeExpression.getExpression(), context),
-          TSDataType.TEXT);
+          TSDataType.TEXT,
+          TSDataType.STRING);
       return setExpressionType(likeExpression, TSDataType.BOOLEAN);
     }
 
@@ -163,7 +164,8 @@ public class ExpressionTypeAnalyzer {
       checkInputExpressionDataType(
           regularExpression.getExpression().getExpressionString(),
           process(regularExpression.getExpression(), context),
-          TSDataType.TEXT);
+          TSDataType.TEXT,
+          TSDataType.STRING);
       return setExpressionType(regularExpression, TSDataType.BOOLEAN);
     }
 
@@ -248,12 +250,33 @@ public class ExpressionTypeAnalyzer {
               leftExpressionString, leftExpressionDataType, TSDataType.BOOLEAN);
           checkInputExpressionDataType(
               rightExpressionString, rightExpressionDataType, TSDataType.BOOLEAN);
+        } else if (TSDataType.DATE.equals(leftExpressionDataType)
+            || TSDataType.DATE.equals(rightExpressionDataType)) {
+          checkInputExpressionDataType(
+              leftExpressionString, leftExpressionDataType, TSDataType.DATE, TSDataType.TEXT);
+          checkInputExpressionDataType(
+              rightExpressionString, rightExpressionDataType, TSDataType.DATE, TSDataType.TEXT);
         } else if (TSDataType.TEXT.equals(leftExpressionDataType)
             || TSDataType.TEXT.equals(rightExpressionDataType)) {
           checkInputExpressionDataType(
-              leftExpressionString, leftExpressionDataType, TSDataType.TEXT);
+              leftExpressionString, leftExpressionDataType, TSDataType.TEXT, TSDataType.STRING);
           checkInputExpressionDataType(
-              rightExpressionString, rightExpressionDataType, TSDataType.TEXT);
+              rightExpressionString, rightExpressionDataType, TSDataType.TEXT, TSDataType.STRING);
+        } else if (TSDataType.BLOB.equals(leftExpressionDataType)
+            || TSDataType.BLOB.equals(rightExpressionDataType)) {
+          checkInputExpressionDataType(
+              leftExpressionString, leftExpressionDataType, TSDataType.BLOB);
+          checkInputExpressionDataType(
+              rightExpressionString, rightExpressionDataType, TSDataType.BLOB);
+        } else if (TSDataType.TIMESTAMP.equals(leftExpressionDataType)
+            || TSDataType.TIMESTAMP.equals(rightExpressionDataType)) {
+          checkInputExpressionDataType(
+              leftExpressionString, leftExpressionDataType, TSDataType.TIMESTAMP, TSDataType.INT64);
+          checkInputExpressionDataType(
+              rightExpressionString,
+              rightExpressionDataType,
+              TSDataType.TIMESTAMP,
+              TSDataType.INT64);
         } else {
           checkInputExpressionDataType(
               leftExpressionString,

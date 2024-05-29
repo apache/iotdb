@@ -52,7 +52,7 @@ public class MemUtils {
    * be calculated.
    */
   public static long getRecordSize(TSDataType dataType, Object value, boolean addingTextDataSize) {
-    if (dataType == TSDataType.TEXT) {
+    if (dataType.isBinary()) {
       return 8L + (addingTextDataSize ? getBinarySize((Binary) value) : 0);
     }
     return 8L + dataType.getDataTypeSize();
@@ -83,7 +83,7 @@ public class MemUtils {
     // time and index size
     long memSize = 8L + 4L;
     for (int i = 0; i < dataTypes.size(); i++) {
-      if (value[i] == null || dataTypes.get(i) == TSDataType.TEXT) {
+      if (value[i] == null || dataTypes.get(i).isBinary()) {
         continue;
       }
       memSize += dataTypes.get(i).getDataTypeSize();
