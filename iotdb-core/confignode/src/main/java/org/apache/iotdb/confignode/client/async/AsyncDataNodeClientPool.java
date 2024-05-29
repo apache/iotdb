@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.AbstractAsyncRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExistenceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
@@ -190,315 +191,216 @@ public class AsyncDataNodeClientPool {
     try {
       AsyncDataNodeInternalServiceClient client;
       client = clientManager.borrowClient(targetDataNode.getInternalEndPoint());
+      Object request = clientHandler.getRequest(requestId);
+      AbstractAsyncRPCHandler<?> abstractHandler =
+          clientHandler.createAsyncRPCHandler(requestId, targetDataNode);
 
       switch (clientHandler.getRequestType()) {
         case SET_TTL:
-          client.setTTL(
-              (TSetTTLReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          client.setTTL((TSetTTLReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case CREATE_DATA_REGION:
           client.createDataRegion(
-              (TCreateDataRegionReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TCreateDataRegionReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case DELETE_REGION:
           client.deleteRegion(
-              (TConsensusGroupId) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TConsensusGroupId) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case CREATE_SCHEMA_REGION:
           client.createSchemaRegion(
-              (TCreateSchemaRegionReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TCreateSchemaRegionReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case CREATE_FUNCTION:
           client.createFunction(
-              (TCreateFunctionInstanceReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TCreateFunctionInstanceReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case DROP_FUNCTION:
           client.dropFunction(
-              (TDropFunctionInstanceReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TDropFunctionInstanceReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case CREATE_TRIGGER_INSTANCE:
           client.createTriggerInstance(
-              (TCreateTriggerInstanceReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TCreateTriggerInstanceReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case DROP_TRIGGER_INSTANCE:
           client.dropTriggerInstance(
-              (TDropTriggerInstanceReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TDropTriggerInstanceReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case ACTIVE_TRIGGER_INSTANCE:
           client.activeTriggerInstance(
-              (TActiveTriggerInstanceReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TActiveTriggerInstanceReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case INACTIVE_TRIGGER_INSTANCE:
           client.inactiveTriggerInstance(
-              (TInactiveTriggerInstanceReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TInactiveTriggerInstanceReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case UPDATE_TRIGGER_LOCATION:
           client.updateTriggerLocation(
-              (TUpdateTriggerLocationReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TUpdateTriggerLocationReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case CREATE_PIPE_PLUGIN:
           client.createPipePlugin(
-              (TCreatePipePluginInstanceReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TCreatePipePluginInstanceReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case DROP_PIPE_PLUGIN:
           client.dropPipePlugin(
-              (TDropPipePluginInstanceReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TDropPipePluginInstanceReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case PIPE_PUSH_ALL_META:
-          client.pushPipeMeta(
-              (TPushPipeMetaReq) clientHandler.getRequest(requestId),
-              (PipePushMetaRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          client.pushPipeMeta((TPushPipeMetaReq) request, (PipePushMetaRPCHandler) abstractHandler);
           break;
         case PIPE_PUSH_SINGLE_META:
           client.pushSinglePipeMeta(
-              (TPushSinglePipeMetaReq) clientHandler.getRequest(requestId),
-              (PipePushMetaRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TPushSinglePipeMetaReq) request, (PipePushMetaRPCHandler) abstractHandler);
           break;
         case PIPE_PUSH_MULTI_META:
           client.pushMultiPipeMeta(
-              (TPushMultiPipeMetaReq) clientHandler.getRequest(requestId),
-              (PipePushMetaRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TPushMultiPipeMetaReq) request, (PipePushMetaRPCHandler) abstractHandler);
           break;
         case TOPIC_PUSH_ALL_META:
           client.pushTopicMeta(
-              (TPushTopicMetaReq) clientHandler.getRequest(requestId),
-              (TopicPushMetaRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TPushTopicMetaReq) request, (TopicPushMetaRPCHandler) abstractHandler);
           break;
         case TOPIC_PUSH_SINGLE_META:
           client.pushSingleTopicMeta(
-              (TPushSingleTopicMetaReq) clientHandler.getRequest(requestId),
-              (TopicPushMetaRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TPushSingleTopicMetaReq) request, (TopicPushMetaRPCHandler) abstractHandler);
           break;
         case TOPIC_PUSH_MULTI_META:
           client.pushMultiTopicMeta(
-              (TPushMultiTopicMetaReq) clientHandler.getRequest(requestId),
-              (TopicPushMetaRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TPushMultiTopicMetaReq) request, (TopicPushMetaRPCHandler) abstractHandler);
           break;
         case CONSUMER_GROUP_PUSH_ALL_META:
           client.pushConsumerGroupMeta(
-              (TPushConsumerGroupMetaReq) clientHandler.getRequest(requestId),
-              (ConsumerGroupPushMetaRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TPushConsumerGroupMetaReq) request,
+              (ConsumerGroupPushMetaRPCHandler) abstractHandler);
           break;
         case CONSUMER_GROUP_PUSH_SINGLE_META:
           client.pushSingleConsumerGroupMeta(
-              (TPushSingleConsumerGroupMetaReq) clientHandler.getRequest(requestId),
-              (ConsumerGroupPushMetaRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TPushSingleConsumerGroupMetaReq) request,
+              (ConsumerGroupPushMetaRPCHandler) abstractHandler);
           break;
         case PIPE_HEARTBEAT:
           client.pipeHeartbeat(
-              (TPipeHeartbeatReq) clientHandler.getRequest(requestId),
-              (PipeHeartbeatRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TPipeHeartbeatReq) request, (PipeHeartbeatRPCHandler) abstractHandler);
           break;
         case MERGE:
         case FULL_MERGE:
-          client.merge(
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          client.merge((AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case FLUSH:
-          client.flush(
-              (TFlushReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          client.flush((TFlushReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case CLEAR_CACHE:
-          client.clearCache(
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          client.clearCache((AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case START_REPAIR_DATA:
-          client.startRepairData(
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          client.startRepairData((AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case STOP_REPAIR_DATA:
-          client.stopRepairData(
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          client.stopRepairData((AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case LOAD_CONFIGURATION:
-          client.loadConfiguration(
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          client.loadConfiguration((AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case SET_SYSTEM_STATUS:
-          client.setSystemStatus(
-              (String) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          client.setSystemStatus((String) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case UPDATE_REGION_ROUTE_MAP:
           client.updateRegionCache(
-              (TRegionRouteReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TRegionRouteReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case CHANGE_REGION_LEADER:
           client.changeRegionLeader(
-              (TRegionLeaderChangeReq) clientHandler.getRequest(requestId),
-              (TransferLeaderRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TRegionLeaderChangeReq) request, (TransferLeaderRPCHandler) abstractHandler);
           break;
         case CONSTRUCT_SCHEMA_BLACK_LIST:
           client.constructSchemaBlackList(
-              (TConstructSchemaBlackListReq) clientHandler.getRequest(requestId),
-              (SchemaUpdateRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TConstructSchemaBlackListReq) request, (SchemaUpdateRPCHandler) abstractHandler);
           break;
         case ROLLBACK_SCHEMA_BLACK_LIST:
           client.rollbackSchemaBlackList(
-              (TRollbackSchemaBlackListReq) clientHandler.getRequest(requestId),
-              (SchemaUpdateRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TRollbackSchemaBlackListReq) request, (SchemaUpdateRPCHandler) abstractHandler);
           break;
         case FETCH_SCHEMA_BLACK_LIST:
           client.fetchSchemaBlackList(
-              (TFetchSchemaBlackListReq) clientHandler.getRequest(requestId),
-              (FetchSchemaBlackListRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TFetchSchemaBlackListReq) request, (FetchSchemaBlackListRPCHandler) abstractHandler);
           break;
         case INVALIDATE_MATCHED_SCHEMA_CACHE:
           client.invalidateMatchedSchemaCache(
-              (TInvalidateMatchedSchemaCacheReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TInvalidateMatchedSchemaCacheReq) request,
+              (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case DELETE_DATA_FOR_DELETE_SCHEMA:
           client.deleteDataForDeleteSchema(
-              (TDeleteDataForDeleteSchemaReq) clientHandler.getRequest(requestId),
-              (SchemaUpdateRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TDeleteDataForDeleteSchemaReq) request, (SchemaUpdateRPCHandler) abstractHandler);
           break;
         case DELETE_TIMESERIES:
           client.deleteTimeSeries(
-              (TDeleteTimeSeriesReq) clientHandler.getRequest(requestId),
-              (SchemaUpdateRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TDeleteTimeSeriesReq) request, (SchemaUpdateRPCHandler) abstractHandler);
           break;
         case CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
           client.constructSchemaBlackListWithTemplate(
-              (TConstructSchemaBlackListWithTemplateReq) clientHandler.getRequest(requestId),
-              (SchemaUpdateRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TConstructSchemaBlackListWithTemplateReq) request,
+              (SchemaUpdateRPCHandler) abstractHandler);
           break;
         case ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
           client.rollbackSchemaBlackListWithTemplate(
-              (TRollbackSchemaBlackListWithTemplateReq) clientHandler.getRequest(requestId),
-              (SchemaUpdateRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TRollbackSchemaBlackListWithTemplateReq) request,
+              (SchemaUpdateRPCHandler) abstractHandler);
           break;
         case DEACTIVATE_TEMPLATE:
           client.deactivateTemplate(
-              (TDeactivateTemplateReq) clientHandler.getRequest(requestId),
-              (SchemaUpdateRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TDeactivateTemplateReq) request, (SchemaUpdateRPCHandler) abstractHandler);
           break;
         case UPDATE_TEMPLATE:
           client.updateTemplate(
-              (TUpdateTemplateReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TUpdateTemplateReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case COUNT_PATHS_USING_TEMPLATE:
           client.countPathsUsingTemplate(
-              (TCountPathsUsingTemplateReq) clientHandler.getRequest(requestId),
-              (CountPathsUsingTemplateRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TCountPathsUsingTemplateReq) request,
+              (CountPathsUsingTemplateRPCHandler) abstractHandler);
           break;
         case CHECK_SCHEMA_REGION_USING_TEMPLATE:
           client.checkSchemaRegionUsingTemplate(
-              (TCheckSchemaRegionUsingTemplateReq) clientHandler.getRequest(requestId),
-              (CheckSchemaRegionUsingTemplateRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TCheckSchemaRegionUsingTemplateReq) request,
+              (CheckSchemaRegionUsingTemplateRPCHandler) abstractHandler);
           break;
         case CHECK_TIMESERIES_EXISTENCE:
           client.checkTimeSeriesExistence(
-              (TCheckTimeSeriesExistenceReq) clientHandler.getRequest(requestId),
-              (CheckTimeSeriesExistenceRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TCheckTimeSeriesExistenceReq) request,
+              (CheckTimeSeriesExistenceRPCHandler) abstractHandler);
           break;
         case CONSTRUCT_VIEW_SCHEMA_BLACK_LIST:
           client.constructViewSchemaBlackList(
-              (TConstructViewSchemaBlackListReq) clientHandler.getRequest(requestId),
-              (SchemaUpdateRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TConstructViewSchemaBlackListReq) request, (SchemaUpdateRPCHandler) abstractHandler);
           break;
         case ROLLBACK_VIEW_SCHEMA_BLACK_LIST:
           client.rollbackViewSchemaBlackList(
-              (TRollbackViewSchemaBlackListReq) clientHandler.getRequest(requestId),
-              (SchemaUpdateRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TRollbackViewSchemaBlackListReq) request, (SchemaUpdateRPCHandler) abstractHandler);
           break;
         case DELETE_VIEW:
           client.deleteViewSchema(
-              (TDeleteViewSchemaReq) clientHandler.getRequest(requestId),
-              (SchemaUpdateRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TDeleteViewSchemaReq) request, (SchemaUpdateRPCHandler) abstractHandler);
           break;
         case ALTER_VIEW:
-          client.alterView(
-              (TAlterViewReq) clientHandler.getRequest(requestId),
-              (SchemaUpdateRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          client.alterView((TAlterViewReq) request, (SchemaUpdateRPCHandler) abstractHandler);
           break;
         case KILL_QUERY_INSTANCE:
-          client.killQueryInstance(
-              (String) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          client.killQueryInstance((String) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case SET_SPACE_QUOTA:
           client.setSpaceQuota(
-              (TSetSpaceQuotaReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TSetSpaceQuotaReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case SET_THROTTLE_QUOTA:
           client.setThrottleQuota(
-              (TSetThrottleQuotaReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TSetThrottleQuotaReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         case RESET_PEER_LIST:
           client.resetPeerList(
-              (TResetPeerListReq) clientHandler.getRequest(requestId),
-              (AsyncTSStatusRPCHandler)
-                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+              (TResetPeerListReq) request, (AsyncTSStatusRPCHandler) abstractHandler);
           break;
         default:
           LOGGER.error(
