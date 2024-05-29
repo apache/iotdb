@@ -353,7 +353,6 @@ public class LoadTsFileManager {
                   MemTableFlushTask.recordFlushPointsMetricInternal(
                       writePointCount, databaseName, dataRegion.getDataRegionId());
 
-                  // TODO @SpriCoder check how load use consensus
                   MetricService.getInstance()
                       .count(
                           writePointCount,
