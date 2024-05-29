@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.core.type;
 
-import org.apache.iotdb.metrics.core.uitls.IoTDBMovingAverage;
+import org.apache.iotdb.metrics.core.utils.IoTDBMovingAverage;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.utils.AbstractMetricMBean;
 

@@ -438,7 +438,8 @@ public class SessionConnection {
         execResp.isIgnoreTimeStamp(),
         timeout,
         execResp.moreData,
-        session.fetchSize);
+        session.fetchSize,
+        zoneId);
   }
 
   protected void executeNonQueryStatement(String sql)
@@ -533,7 +534,8 @@ public class SessionConnection {
         sessionId,
         execResp.queryResult,
         execResp.isIgnoreTimeStamp(),
-        execResp.moreData);
+        execResp.moreData,
+        zoneId);
   }
 
   protected Pair<SessionDataSet, TEndPoint> executeLastDataQueryForOneDevice(
@@ -579,7 +581,8 @@ public class SessionConnection {
             sessionId,
             tsExecuteStatementResp.queryResult,
             tsExecuteStatementResp.isIgnoreTimeStamp(),
-            tsExecuteStatementResp.moreData),
+            tsExecuteStatementResp.moreData,
+            zoneId),
         redirectedEndPoint);
   }
 
@@ -620,7 +623,8 @@ public class SessionConnection {
         sessionId,
         tsExecuteStatementResp.queryResult,
         tsExecuteStatementResp.isIgnoreTimeStamp(),
-        tsExecuteStatementResp.moreData);
+        tsExecuteStatementResp.moreData,
+        zoneId);
   }
 
   protected SessionDataSet executeAggregationQuery(
@@ -701,7 +705,8 @@ public class SessionConnection {
         sessionId,
         tsExecuteStatementResp.queryResult,
         tsExecuteStatementResp.isIgnoreTimeStamp(),
-        tsExecuteStatementResp.moreData);
+        tsExecuteStatementResp.moreData,
+        zoneId);
   }
 
   private TSAggregationQueryReq createAggregationQueryReq(

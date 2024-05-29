@@ -107,6 +107,8 @@ public class ReadOnlyMemChunk {
           }
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBinary(i));
           }
@@ -117,11 +119,13 @@ public class ReadOnlyMemChunk {
           }
           break;
         case INT32:
+        case DATE:
           for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getInt(i));
           }
           break;
         case INT64:
+        case TIMESTAMP:
           for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getLong(i));
           }

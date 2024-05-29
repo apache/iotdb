@@ -1151,6 +1151,7 @@ constant
     | (MINUS|PLUS|DIV)? realLiteral
     | (MINUS|PLUS|DIV)? INTEGER_LITERAL
     | STRING_LITERAL
+    | BINARY_LITERAL
     | boolean_literal
     | null_literal
     | nan_literal
@@ -1310,6 +1311,7 @@ attributeKey
 attributeValue
     : identifier
     | constant
+    | TIMESTAMP
     ;
 
 alias

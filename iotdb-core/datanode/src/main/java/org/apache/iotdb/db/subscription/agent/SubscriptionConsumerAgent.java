@@ -76,7 +76,7 @@ public class SubscriptionConsumerAgent {
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to handle single consumer group meta changes for consumer group %s, because %s",
-              consumerGroupId, e.getMessage());
+              consumerGroupId, e);
       LOGGER.warn(exceptionMessage);
       return new TPushConsumerGroupMetaRespExceptionMessage(
           consumerGroupId, exceptionMessage, System.currentTimeMillis());
@@ -133,7 +133,7 @@ public class SubscriptionConsumerAgent {
           final String exceptionMessage =
               String.format(
                   "Subscription: Failed to handle single consumer group meta changes for consumer group %s, because %s",
-                  consumerGroupId, e.getMessage());
+                  consumerGroupId, e);
           LOGGER.warn(exceptionMessage);
           return new TPushConsumerGroupMetaRespExceptionMessage(
               consumerGroupId, exceptionMessage, System.currentTimeMillis());
@@ -154,8 +154,7 @@ public class SubscriptionConsumerAgent {
     } catch (Exception e) {
       final String exceptionMessage =
           String.format(
-              "Subscription: Failed to drop consumer group %s, because %s",
-              consumerGroupId, e.getMessage());
+              "Subscription: Failed to drop consumer group %s, because %s", consumerGroupId, e);
       LOGGER.warn(exceptionMessage);
       return new TPushConsumerGroupMetaRespExceptionMessage(
           consumerGroupId, exceptionMessage, System.currentTimeMillis());

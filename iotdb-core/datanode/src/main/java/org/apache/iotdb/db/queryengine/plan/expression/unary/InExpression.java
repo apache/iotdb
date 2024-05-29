@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.unary;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.validation.constraints.NotNull;
@@ -38,7 +40,8 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 
 public class InExpression extends UnaryExpression {
-
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(InExpression.class);
   private final boolean isNotIn;
   private final LinkedHashSet<String> values;
 
@@ -137,5 +140,12 @@ public class InExpression extends UnaryExpression {
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitInExpression(this, context);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression)
+        + (values == null ? 0 : values.stream().mapToLong(RamUsageEstimator::sizeOf).sum());
   }
 }

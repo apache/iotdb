@@ -89,14 +89,245 @@ public class IoTDBQueryWithComplexValueFilterIT {
     }
   }
 
+  @Test
+  public void testRawQuery3() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s3 == '1'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s4 == '2024-01-01'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s5 == 1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s3 != '1'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s4 != '2024-01-01'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s5 != 1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testRawQuery4() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s3 > '0'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s4 > '2024-01-01'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s5 > 0")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s3 < '1'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s4 < '2024-01-02'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s5 < 1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s3 >= '1'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s4 >= '2024-01-01'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(2, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s5 >= 1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s3 <= '1'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(2, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s4 <= '2024-01-01'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s5 <= 1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(2, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testRawQuery5() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s3 == '1'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s3 == '1'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s4 == '2024-01-01'")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.sg1.d1 where s5 == 1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   private static void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("create database root.sg1");
       statement.execute("create timeseries root.sg1.d1.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("create timeseries root.sg1.d1.s2 with datatype=DOUBLE,encoding=PLAIN");
-      statement.execute("insert into root.sg1.d1(time,s1,s2) values(0,0,0)");
-      statement.execute("insert into root.sg1.d1(time,s1,s2) values(1,1,1)");
+      statement.execute("create timeseries root.sg1.d1.s3 with datatype=STRING,encoding=PLAIN");
+      statement.execute("create timeseries root.sg1.d1.s4 with datatype=DATE,encoding=PLAIN");
+      statement.execute("create timeseries root.sg1.d1.s5 with datatype=TIMESTAMP,encoding=PLAIN");
+      statement.execute(
+          "insert into root.sg1.d1(time,s1,s2,s3,s4,s5) values(0,0,0,'0','2024-01-01',0)");
+      statement.execute(
+          "insert into root.sg1.d1(time,s1,s2,s3,s4,s5) values(1,1,1,'1','2024-01-02',1)");
       statement.execute("insert into root.sg1.d1(time,s1,s2) values(2,2,2)");
       statement.execute("insert into root.sg1.d1(time,s1,s2) values(3,3,3)");
       statement.execute("insert into root.sg1.d1(time,s1,s2) values(4,4,4)");

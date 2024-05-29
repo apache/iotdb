@@ -365,7 +365,8 @@ public class TestPlanBuilder {
             expressions.toArray(new Expression[0]),
             predicate,
             isGroupByTime,
-            Ordering.ASC);
+            Ordering.ASC,
+            true);
     return this;
   }
 

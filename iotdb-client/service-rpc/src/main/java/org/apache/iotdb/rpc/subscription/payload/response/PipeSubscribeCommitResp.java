@@ -32,7 +32,7 @@ public class PipeSubscribeCommitResp extends TPipeSubscribeResp {
    * Serialize the incoming parameters into `PipeSubscribeCommitResp`, called by the subscription
    * server.
    */
-  public static PipeSubscribeCommitResp toTPipeSubscribeResp(TSStatus status) {
+  public static PipeSubscribeCommitResp toTPipeSubscribeResp(final TSStatus status) {
     final PipeSubscribeCommitResp resp = new PipeSubscribeCommitResp();
 
     resp.status = status;
@@ -43,7 +43,8 @@ public class PipeSubscribeCommitResp extends TPipeSubscribeResp {
   }
 
   /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
-  public static PipeSubscribeCommitResp fromTPipeSubscribeResp(TPipeSubscribeResp commitResp) {
+  public static PipeSubscribeCommitResp fromTPipeSubscribeResp(
+      final TPipeSubscribeResp commitResp) {
     final PipeSubscribeCommitResp resp = new PipeSubscribeCommitResp();
 
     resp.status = commitResp.status;
@@ -57,14 +58,14 @@ public class PipeSubscribeCommitResp extends TPipeSubscribeResp {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribeCommitResp that = (PipeSubscribeCommitResp) obj;
+    final PipeSubscribeCommitResp that = (PipeSubscribeCommitResp) obj;
     return Objects.equals(this.status, that.status)
         && this.version == that.version
         && this.type == that.type

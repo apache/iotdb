@@ -21,10 +21,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.ternary;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -32,6 +34,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class BetweenExpression extends TernaryExpression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TernaryExpression.class);
+
   private final boolean isNotBetween;
 
   public boolean isNotBetween() {
@@ -101,5 +107,13 @@ public class BetweenExpression extends TernaryExpression {
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitBetweenExpression(this, context);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(firstExpression)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(secondExpression)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(thirdExpression);
   }
 }

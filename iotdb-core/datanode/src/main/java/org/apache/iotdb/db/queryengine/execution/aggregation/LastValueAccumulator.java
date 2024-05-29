@@ -47,9 +47,11 @@ public class LastValueAccumulator implements Accumulator {
   public void addInput(Column[] columns, BitMap bitMap) {
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         addIntInput(columns, bitMap);
         return;
       case INT64:
+      case TIMESTAMP:
         addLongInput(columns, bitMap);
         return;
       case FLOAT:
@@ -59,6 +61,8 @@ public class LastValueAccumulator implements Accumulator {
         addDoubleInput(columns, bitMap);
         return;
       case TEXT:
+      case STRING:
+      case BLOB:
         addBinaryInput(columns, bitMap);
         return;
       case BOOLEAN:
@@ -79,9 +83,11 @@ public class LastValueAccumulator implements Accumulator {
     }
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         updateIntLastValue(partialResult[0].getInt(0), partialResult[1].getLong(0));
         break;
       case INT64:
+      case TIMESTAMP:
         updateLongLastValue(partialResult[0].getLong(0), partialResult[1].getLong(0));
         break;
       case FLOAT:
@@ -91,6 +97,8 @@ public class LastValueAccumulator implements Accumulator {
         updateDoubleLastValue(partialResult[0].getDouble(0), partialResult[1].getLong(0));
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         updateBinaryLastValue(partialResult[0].getBinary(0), partialResult[1].getLong(0));
         break;
       case BOOLEAN:
@@ -109,9 +117,11 @@ public class LastValueAccumulator implements Accumulator {
     }
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         updateIntLastValue((int) statistics.getLastValue(), statistics.getEndTime());
         break;
       case INT64:
+      case TIMESTAMP:
         updateLongLastValue((long) statistics.getLastValue(), statistics.getEndTime());
         break;
       case FLOAT:
@@ -121,6 +131,8 @@ public class LastValueAccumulator implements Accumulator {
         updateDoubleLastValue((double) statistics.getLastValue(), statistics.getEndTime());
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         updateBinaryLastValue((Binary) statistics.getLastValue(), statistics.getEndTime());
         break;
       case BOOLEAN:
@@ -140,9 +152,11 @@ public class LastValueAccumulator implements Accumulator {
       initResult = true;
       switch (seriesDataType) {
         case INT32:
+        case DATE:
           lastValue.setInt(finalResult.getInt(0));
           break;
         case INT64:
+        case TIMESTAMP:
           lastValue.setLong(finalResult.getLong(0));
           break;
         case FLOAT:
@@ -152,6 +166,8 @@ public class LastValueAccumulator implements Accumulator {
           lastValue.setDouble(finalResult.getDouble(0));
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           lastValue.setBinary(finalResult.getBinary(0));
           break;
         case BOOLEAN:
@@ -175,9 +191,11 @@ public class LastValueAccumulator implements Accumulator {
     }
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         columnBuilders[0].writeInt(lastValue.getInt());
         break;
       case INT64:
+      case TIMESTAMP:
         columnBuilders[0].writeLong(lastValue.getLong());
         break;
       case FLOAT:
@@ -187,6 +205,8 @@ public class LastValueAccumulator implements Accumulator {
         columnBuilders[0].writeDouble(lastValue.getDouble());
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         columnBuilders[0].writeBinary(lastValue.getBinary());
         break;
       case BOOLEAN:
@@ -207,9 +227,11 @@ public class LastValueAccumulator implements Accumulator {
     }
     switch (seriesDataType) {
       case INT32:
+      case DATE:
         columnBuilder.writeInt(lastValue.getInt());
         break;
       case INT64:
+      case TIMESTAMP:
         columnBuilder.writeLong(lastValue.getLong());
         break;
       case FLOAT:
@@ -219,6 +241,8 @@ public class LastValueAccumulator implements Accumulator {
         columnBuilder.writeDouble(lastValue.getDouble());
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         columnBuilder.writeBinary(lastValue.getBinary());
         break;
       case BOOLEAN:

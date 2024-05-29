@@ -19,19 +19,19 @@
 
 package org.apache.iotdb.db.subscription.task.subtask;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.execution.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtaskLifeCycle;
+import org.apache.iotdb.db.pipe.task.subtask.connector.PipeRealtimePriorityBlockingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -86,14 +86,20 @@ public class SubscriptionConnectorSubtaskManager {
             environment.getRegionId(),
             connectorKey);
 
+    boolean realTimeFirst =
+        pipeConnectorParameters.getBooleanOrDefault(
+            Arrays.asList(
+                PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY,
+                PipeConnectorConstant.SINK_REALTIME_FIRST_KEY),
+            PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE);
     String attributeSortedString = generateAttributeSortedString(pipeConnectorParameters);
     attributeSortedString = "__subscription_" + attributeSortedString;
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      final BoundedBlockingPendingQueue<Event> pendingQueue =
-          new BoundedBlockingPendingQueue<>(
-              PipeConfig.getInstance().getPipeConnectorPendingQueueSize(),
-              new PipeDataRegionEventCounter());
+      final UnboundedBlockingPendingQueue<Event> pendingQueue =
+          realTimeFirst
+              ? new PipeRealtimePriorityBlockingQueue()
+              : new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
 
       final PipeConnector pipeConnector =
           PipeAgent.plugin().dataRegion().reflectConnector(pipeConnectorParameters);
@@ -193,7 +199,7 @@ public class SubscriptionConnectorSubtaskManager {
     lifeCycle.stop();
   }
 
-  public BoundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue(
+  public UnboundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue(
       final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(

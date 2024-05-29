@@ -35,6 +35,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Locale;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -113,14 +114,14 @@ public class IoTDBFlushQueryIT {
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 10; j < 20; j++) {
-          statement.execute(String.format(insertTemplate, i, j, j, j * 0.1, j));
+          statement.execute(String.format(Locale.CHINA, insertTemplate, i, j, j, j * 0.1, j));
         }
       }
       statement.execute("FLUSH");
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 0; j < 10; j++) {
-          statement.execute(String.format(insertTemplate, i, j, j, j * 0.1, j));
+          statement.execute(String.format(Locale.CHINA, insertTemplate, i, j, j, j * 0.1, j));
         }
       }
       statement.execute("FLUSH root.group1");
@@ -128,7 +129,7 @@ public class IoTDBFlushQueryIT {
 
       for (int i = 1; i <= 3; i++) {
         for (int j = 0; j < 30; j++) {
-          statement.execute(String.format(insertTemplate, i, j, j, j * 0.1, j));
+          statement.execute(String.format(Locale.CHINA, insertTemplate, i, j, j, j * 0.1, j));
         }
       }
       statement.execute("FLUSH root.group1 TRUE");

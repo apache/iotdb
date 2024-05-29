@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -264,11 +265,15 @@ public class ExpressionAnalyzer {
    * @return the concatenated expression list
    */
   public static List<Expression> concatExpressionWithSuffixPaths(
-      Expression expression, List<PartialPath> prefixPaths, PathPatternTree patternTree) {
+      final Expression expression,
+      final List<PartialPath> prefixPaths,
+      final PathPatternTree patternTree,
+      final MPPQueryContext queryContext) {
     return new ConcatExpressionWithSuffixPathsVisitor()
         .process(
             expression,
-            new ConcatExpressionWithSuffixPathsVisitor.Context(prefixPaths, patternTree));
+            new ConcatExpressionWithSuffixPathsVisitor.Context(
+                prefixPaths, patternTree, queryContext));
   }
 
   /**
@@ -405,8 +410,11 @@ public class ExpressionAnalyzer {
    *     expressions
    */
   public static List<Expression> bindSchemaForExpression(
-      Expression expression, ISchemaTree schemaTree) {
-    return new BindSchemaForExpressionVisitor().process(expression, schemaTree);
+      final Expression expression,
+      final ISchemaTree schemaTree,
+      final MPPQueryContext queryContext) {
+    return new BindSchemaForExpressionVisitor()
+        .process(expression, new BindSchemaForExpressionVisitor.Context(schemaTree, queryContext));
   }
 
   /**
@@ -419,10 +427,16 @@ public class ExpressionAnalyzer {
    * @return the expression list with full path and after binding schema
    */
   public static List<Expression> bindSchemaForPredicate(
-      Expression predicate, List<PartialPath> prefixPaths, ISchemaTree schemaTree, boolean isRoot) {
+      final Expression predicate,
+      final List<PartialPath> prefixPaths,
+      final ISchemaTree schemaTree,
+      final boolean isRoot,
+      final MPPQueryContext queryContext) {
     return new BindSchemaForPredicateVisitor()
         .process(
-            predicate, new BindSchemaForPredicateVisitor.Context(prefixPaths, schemaTree, isRoot));
+            predicate,
+            new BindSchemaForPredicateVisitor.Context(
+                prefixPaths, schemaTree, isRoot, queryContext));
   }
 
   public static Expression replaceRawPathWithGroupedPath(
@@ -445,11 +459,15 @@ public class ExpressionAnalyzer {
    * @return expression list with full path and after binding schema
    */
   public static List<Expression> concatDeviceAndBindSchemaForExpression(
-      Expression expression, PartialPath devicePath, ISchemaTree schemaTree) {
+      final Expression expression,
+      final PartialPath devicePath,
+      final ISchemaTree schemaTree,
+      final MPPQueryContext queryContext) {
     return new ConcatDeviceAndBindSchemaForExpressionVisitor()
         .process(
             expression,
-            new ConcatDeviceAndBindSchemaForExpressionVisitor.Context(devicePath, schemaTree));
+            new ConcatDeviceAndBindSchemaForExpressionVisitor.Context(
+                devicePath, schemaTree, queryContext));
   }
 
   /**
@@ -459,12 +477,16 @@ public class ExpressionAnalyzer {
    * @return the expression list with full path and after binding schema
    */
   public static List<Expression> concatDeviceAndBindSchemaForPredicate(
-      Expression predicate, PartialPath devicePath, ISchemaTree schemaTree, boolean isWhere) {
+      final Expression predicate,
+      final PartialPath devicePath,
+      final ISchemaTree schemaTree,
+      final boolean isWhere,
+      final MPPQueryContext queryContext) {
     return new ConcatDeviceAndBindSchemaForPredicateVisitor()
         .process(
             predicate,
             new ConcatDeviceAndBindSchemaForPredicateVisitor.Context(
-                devicePath, schemaTree, isWhere));
+                devicePath, schemaTree, isWhere, queryContext));
   }
 
   /**

@@ -89,7 +89,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
   }
 
   public void updateLeaderCache(String deviceId, TEndPoint endPoint) {
-    if (!useLeaderCache) {
+    if (!useLeaderCache || deviceId == null || endPoint == null) {
       return;
     }
 

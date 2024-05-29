@@ -53,6 +53,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool tPro queue and run all compaction tasks. */
 @SuppressWarnings("squid:S6548")
@@ -100,6 +101,7 @@ public class CompactionTaskManager implements IService {
               : config.getCompactionReadThroughputMbPerSec() * 1024.0 * 1024.0);
 
   private volatile boolean init = false;
+  private AtomicLong compactionConfigVersion = new AtomicLong(0);
 
   public static CompactionTaskManager getInstance() {
     return INSTANCE;
@@ -107,6 +109,14 @@ public class CompactionTaskManager implements IService {
 
   public boolean isStopAllCompactionWorker() {
     return stopAllCompactionWorker;
+  }
+
+  public long getCurrentCompactionConfigVersion() {
+    return compactionConfigVersion.get();
+  }
+
+  public void incrCompactionConfigVersion() {
+    this.compactionConfigVersion.incrementAndGet();
   }
 
   @Override
@@ -249,7 +259,8 @@ public class CompactionTaskManager implements IService {
     if (init
         && !candidateCompactionTaskQueue.contains(compactionTask)
         && !isTaskRunning(compactionTask)
-        && compactionTask.setSourceFilesToCompactionCandidate()) {
+        && compactionTask.setSourceFilesToCompactionCandidate()
+        && compactionTask.getCompactionConfigVersion() >= getCurrentCompactionConfigVersion()) {
       candidateCompactionTaskQueue.put(compactionTask);
       return true;
     }

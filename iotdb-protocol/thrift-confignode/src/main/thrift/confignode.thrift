@@ -686,6 +686,8 @@ struct TShowPipeInfo {
   5: required string pipeProcessor
   6: required string pipeConnector
   7: required string exceptionMessage
+  8: optional i64 remainingEventCount
+  9: optional double EstimatedRemainingTime
 }
 
 struct TGetAllPipeInfoResp {

@@ -31,9 +31,12 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.DateUtils;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -76,6 +79,8 @@ public class IoTDBRpcDataSet {
   public int queryResultIndex; // the index of bytebuffer in queryResult
   public int tsBlockSize; // the size of current tsBlock
   public int tsBlockIndex; // the row index in current tsBlock
+  private final ZoneId zoneId;
+  private final String timeFormat;
 
   @SuppressWarnings({"squid:S3776", "squid:S107"}) // Suppress high Cognitive Complexity warning
   public IoTDBRpcDataSet(
@@ -91,7 +96,9 @@ public class IoTDBRpcDataSet {
       long sessionId,
       List<ByteBuffer> queryResult,
       int fetchSize,
-      long timeout) {
+      long timeout,
+      ZoneId zoneId,
+      String timeFormat) {
     this.sessionId = sessionId;
     this.statementId = statementId;
     this.ignoreTimeStamp = ignoreTimeStamp;
@@ -155,6 +162,8 @@ public class IoTDBRpcDataSet {
     this.queryResultIndex = 0;
     this.tsBlockSize = 0;
     this.tsBlockIndex = -1;
+    this.zoneId = zoneId;
+    this.timeFormat = timeFormat;
   }
 
   public Integer addColumnTypeListReturnIndex(AtomicInteger index, TSDataType dataType) {
@@ -181,7 +190,9 @@ public class IoTDBRpcDataSet {
       int fetchSize,
       long timeout,
       List<String> sgList,
-      BitSet aliasColumnMap) {
+      BitSet aliasColumnMap,
+      ZoneId zoneId,
+      String timeFormat) {
     this.sessionId = sessionId;
     this.statementId = statementId;
     this.ignoreTimeStamp = ignoreTimeStamp;
@@ -255,6 +266,8 @@ public class IoTDBRpcDataSet {
     this.queryResultIndex = 0;
     this.tsBlockSize = 0;
     this.tsBlockIndex = -1;
+    this.zoneId = zoneId;
+    this.timeFormat = timeFormat;
   }
 
   public void close() throws StatementExecutionException, TException {
@@ -541,10 +554,19 @@ public class IoTDBRpcDataSet {
       case DOUBLE:
         return String.valueOf(curTsBlock.getColumn(index).getDouble(tsBlockIndex));
       case TEXT:
+      case STRING:
         return curTsBlock
             .getColumn(index)
             .getBinary(tsBlockIndex)
             .getStringValue(TSFileConfig.STRING_CHARSET);
+      case BLOB:
+        return BytesUtils.parseBlobByteArrayToString(
+            curTsBlock.getColumn(index).getBinary(tsBlockIndex).getValues());
+      case TIMESTAMP:
+        return RpcUtils.formatDatetime(
+            timeFormat, "ms", curTsBlock.getColumn(index).getLong(tsBlockIndex), zoneId);
+      case DATE:
+        return DateUtils.formatDate(curTsBlock.getColumn(index).getInt(tsBlockIndex));
       default:
         return null;
     }

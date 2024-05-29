@@ -660,7 +660,8 @@ public class SeriesAggregationScanOperatorTest {
             aggregators,
             initTimeRangeIterator(groupByTimeParameter, ascending, true),
             groupByTimeParameter,
-            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+            true);
     seriesAggregationScanOperator.initQueryDataSource(
         new QueryDataSource(seqResources, unSeqResources));
     return seriesAggregationScanOperator;

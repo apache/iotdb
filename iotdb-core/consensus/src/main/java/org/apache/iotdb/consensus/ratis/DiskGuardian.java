@@ -143,7 +143,7 @@ class DiskGuardian {
   void start() {
     // first schedule the snapshot daemon
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        workerThread, this::snapshotDaemon, 0L, daemonIntervalMs, TimeUnit.SECONDS);
+        workerThread, this::snapshotDaemon, daemonIntervalMs, daemonIntervalMs, TimeUnit.SECONDS);
 
     // then schedule all checker daemons
     snapshotArbitrators.forEach(
@@ -151,7 +151,7 @@ class DiskGuardian {
             ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
                 workerThread,
                 () -> checkerDaemon(checkers),
-                0L,
+                daemonIntervalMs,
                 interval.toLong(TimeUnit.SECONDS),
                 TimeUnit.SECONDS));
   }
@@ -175,26 +175,31 @@ class DiskGuardian {
     if (isStopped.get()) {
       return;
     }
-    for (RaftGroupId groupId : serverRef.get().getServer().getGroupIds()) {
-      if (getSnapshotFlag(groupId).get()) {
-        try {
-          serverRef.get().triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(groupId), false);
-          final boolean flagCleared = snapshotFlag.get(groupId).compareAndSet(true, false);
-          if (!flagCleared) {
-            logger.warn(
-                "{}: clear snapshot flag failed for group {}, please check the related implementation",
+    try {
+      for (RaftGroupId groupId : serverRef.get().getServer().getGroupIds()) {
+        if (getSnapshotFlag(groupId).get()) {
+          try {
+            serverRef
+                .get()
+                .triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(groupId), false);
+            final boolean flagCleared = snapshotFlag.get(groupId).compareAndSet(true, false);
+            if (!flagCleared) {
+              logger.info(
+                  "{}: clear snapshot flag failed for group {}, please check the related implementation",
+                  this,
+                  groupId);
+            }
+          } catch (ConsensusException e) {
+            logger.info(
+                "{} take snapshot failed for group {} due to {}. Disk file status {}",
                 this,
-                groupId);
+                groupId,
+                e,
+                getLatestSummary(groupId).orElse(null));
           }
-        } catch (ConsensusException e) {
-          logger.warn(
-              "{} take snapshot failed for group {} due to {}. Disk file status {}",
-              this,
-              groupId,
-              e,
-              getLatestSummary(groupId).orElse(null));
         }
       }
+    } catch (IOException ignore) {
     }
   }
 
@@ -203,18 +208,21 @@ class DiskGuardian {
     if (isStopped.get()) {
       return;
     }
-    for (RaftGroupId groupId : serverRef.get().getServer().getGroupIds()) {
-      final Optional<RaftLogSummary> summary = getLatestSummary(groupId);
-      if (summary.isPresent()) {
-        final Optional<Boolean> anyCheckerPositive =
-            checkerList.stream()
-                .map(checker -> checker.test(summary.get()))
-                .filter(Boolean::booleanValue)
-                .findAny();
-        if (anyCheckerPositive.isPresent()) {
-          getSnapshotFlag(groupId).set(true);
+    try {
+      for (RaftGroupId groupId : serverRef.get().getServer().getGroupIds()) {
+        final Optional<RaftLogSummary> summary = getLatestSummary(groupId);
+        if (summary.isPresent()) {
+          final Optional<Boolean> anyCheckerPositive =
+              checkerList.stream()
+                  .map(checker -> checker.test(summary.get()))
+                  .filter(Boolean::booleanValue)
+                  .findAny();
+          if (anyCheckerPositive.isPresent()) {
+            getSnapshotFlag(groupId).set(true);
+          }
         }
       }
+    } catch (IOException ignore) {
     }
   }
 
@@ -240,7 +248,6 @@ class DiskGuardian {
                         .getCurrentDir();
                 return new RaftLogSummary(gid, root);
               } catch (IOException e) {
-                logger.warn("{}: group not exists for {} and caught exception ", this, groupId, e);
                 return null;
               }
             });
