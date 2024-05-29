@@ -1147,6 +1147,7 @@ public class IoTDBDescriptor {
   }
 
   private void loadCompactionHotModifiedProps(Properties properties) throws InterruptedException {
+    boolean compactionTaskConfigHotModified = loadCompactionTaskHotModifiedProps(properties);
     // hot load compaction schedule task manager configurations
     int compactionScheduleThreadNum =
         Integer.parseInt(
@@ -1162,72 +1163,94 @@ public class IoTDBDescriptor {
     loadCompactionIsEnabledHotModifiedProps(properties);
     boolean restartCompactionTaskManager = loadCompactionThreadCountHotModifiedProps(properties);
     restartCompactionTaskManager |= loadCompactionSubTaskCountHotModifiedProps(properties);
-    if (restartCompactionTaskManager) {
+    if (restartCompactionTaskManager || compactionTaskConfigHotModified) {
       CompactionTaskManager.getInstance().restart();
     }
+
     // hot load compaction rate limit configurations
-
-    // update merge_write_throughput_mb_per_sec
-    conf.setCompactionWriteThroughputMbPerSec(
-        Integer.parseInt(
-            properties.getProperty(
-                "compaction_write_throughput_mb_per_sec",
-                Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
-
-    // update compaction_read_operation_per_sec
-    conf.setCompactionReadOperationPerSec(
-        Integer.parseInt(
-            properties.getProperty(
-                "compaction_read_operation_per_sec",
-                Integer.toString(conf.getCompactionReadOperationPerSec()))));
-
-    // update compaction_read_throughput_mb_per_sec
-    conf.setCompactionReadThroughputMbPerSec(
-        Integer.parseInt(
-            properties.getProperty(
-                "compaction_read_throughput_mb_per_sec",
-                Integer.toString(conf.getCompactionReadThroughputMbPerSec()))));
-
-    // update max_inner_compaction_candidate_file_num
-    conf.setFileLimitPerInnerTask(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_inner_compaction_candidate_file_num",
-                Integer.toString(conf.getFileLimitPerInnerTask()))));
-
-    // update target_compaction_file_size
-    conf.setTargetCompactionFileSize(
-        Long.parseLong(
-            properties.getProperty(
-                "target_compaction_file_size", Long.toString(conf.getTargetCompactionFileSize()))));
-
-    // update max_cross_compaction_candidate_file_num
-    conf.setFileLimitPerCrossTask(
-        Integer.parseInt(
-            properties.getProperty(
-                "max_cross_compaction_candidate_file_num",
-                Integer.toString(conf.getFileLimitPerCrossTask()))));
-
-    // update max_cross_compaction_candidate_file_size
-    conf.setMaxCrossCompactionCandidateFileSize(
-        Long.parseLong(
-            properties.getProperty(
-                "max_cross_compaction_candidate_file_size",
-                Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
-
-    // update min_cross_compaction_unseq_file_level
-    conf.setMinCrossCompactionUnseqFileLevel(
-        Integer.parseInt(
-            properties.getProperty(
-                "min_cross_compaction_unseq_file_level",
-                Integer.toString(conf.getMinCrossCompactionUnseqFileLevel()))));
-
     CompactionTaskManager.getInstance()
         .setCompactionReadOperationRate(conf.getCompactionReadOperationPerSec());
     CompactionTaskManager.getInstance()
         .setCompactionReadThroughputRate(conf.getCompactionReadThroughputMbPerSec());
     CompactionTaskManager.getInstance()
         .setWriteMergeRate(conf.getCompactionWriteThroughputMbPerSec());
+  }
+
+  private boolean loadCompactionTaskHotModifiedProps(Properties properties) {
+    boolean configModified = false;
+    // update merge_write_throughput_mb_per_sec
+    int compactionWriteThroughput = conf.getCompactionWriteThroughputMbPerSec();
+    conf.setCompactionWriteThroughputMbPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_write_throughput_mb_per_sec",
+                Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
+    configModified |= compactionWriteThroughput != conf.getCompactionWriteThroughputMbPerSec();
+
+    // update compaction_read_operation_per_sec
+    int compactionReadOperation = conf.getCompactionReadOperationPerSec();
+    conf.setCompactionReadOperationPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_read_operation_per_sec",
+                Integer.toString(conf.getCompactionReadOperationPerSec()))));
+    configModified |= compactionReadOperation != conf.getCompactionReadOperationPerSec();
+
+    // update compaction_read_throughput_mb_per_sec
+    int compactionReadThroughput = conf.getCompactionReadThroughputMbPerSec();
+    conf.setCompactionReadThroughputMbPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_read_throughput_mb_per_sec",
+                Integer.toString(conf.getCompactionReadThroughputMbPerSec()))));
+    configModified |= compactionReadOperation != conf.getCompactionReadThroughputMbPerSec();
+
+    // update max_inner_compaction_candidate_file_num
+    int maxInnerCompactionCandidateFileNum = conf.getFileLimitPerInnerTask();
+    conf.setFileLimitPerInnerTask(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_inner_compaction_candidate_file_num",
+                Integer.toString(conf.getFileLimitPerInnerTask()))));
+    configModified |= maxInnerCompactionCandidateFileNum != conf.getFileLimitPerInnerTask();
+
+    // update target_compaction_file_size
+    long targetCompactionFilesize = conf.getTargetCompactionFileSize();
+    conf.setTargetCompactionFileSize(
+        Long.parseLong(
+            properties.getProperty(
+                "target_compaction_file_size", Long.toString(conf.getTargetCompactionFileSize()))));
+    configModified |= targetCompactionFilesize != conf.getTargetCompactionFileSize();
+
+    // update max_cross_compaction_candidate_file_num
+    int maxCrossCompactionCandidateFileNum = conf.getFileLimitPerCrossTask();
+    conf.setFileLimitPerCrossTask(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_cross_compaction_candidate_file_num",
+                Integer.toString(conf.getFileLimitPerCrossTask()))));
+    configModified |= maxCrossCompactionCandidateFileNum != conf.getFileLimitPerCrossTask();
+
+    // update max_cross_compaction_candidate_file_size
+    long maxCrossCompactionCandidateFileSize = conf.getMaxCrossCompactionCandidateFileSize();
+    conf.setMaxCrossCompactionCandidateFileSize(
+        Long.parseLong(
+            properties.getProperty(
+                "max_cross_compaction_candidate_file_size",
+                Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
+    configModified |=
+        maxCrossCompactionCandidateFileSize != conf.getMaxCrossCompactionCandidateFileSize();
+
+    // update min_cross_compaction_unseq_file_level
+    int minCrossCompactionCandidateFileNum = conf.getMinCrossCompactionUnseqFileLevel();
+    conf.setMinCrossCompactionUnseqFileLevel(
+        Integer.parseInt(
+            properties.getProperty(
+                "min_cross_compaction_unseq_file_level",
+                Integer.toString(conf.getMinCrossCompactionUnseqFileLevel()))));
+    configModified |=
+        minCrossCompactionCandidateFileNum != conf.getMinCrossCompactionUnseqFileLevel();
+    return configModified;
   }
 
   private boolean loadCompactionThreadCountHotModifiedProps(Properties properties) {
