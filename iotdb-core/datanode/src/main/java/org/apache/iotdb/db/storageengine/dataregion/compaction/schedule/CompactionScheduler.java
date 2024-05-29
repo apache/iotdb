@@ -281,6 +281,7 @@ public class CompactionScheduler {
                   .createInstance(),
               memoryCost.get(i),
               tsFileManager.getNextCompactionTaskId());
+      task.setCompactionConfigVersion(compactionConfigVersionWhenSelectTask);
       trySubmitCount = addTaskToWaitingQueue(Collections.singletonList(task));
     }
     summary.incrementSubmitTaskNum(CompactionTaskType.CROSS, trySubmitCount);
