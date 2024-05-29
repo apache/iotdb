@@ -140,7 +140,7 @@ public class CompactionScheduler {
     String storageGroupName = tsFileManager.getStorageGroupName();
     String dataRegionId = tsFileManager.getDataRegionId();
 
-    long compactionConfigWhenSelectTask =
+    long compactionConfigVersionWhenSelectTask =
         CompactionTaskManager.getInstance().getCurrentCompactionConfigVersion();
     ICompactionSelector innerSpaceCompactionSelector;
     if (sequence) {
@@ -165,7 +165,7 @@ public class CompactionScheduler {
             sequence ? CompactionTaskType.INNER_SEQ : CompactionTaskType.INNER_UNSEQ,
             System.currentTimeMillis() - startTime);
     innerSpaceTaskList.forEach(
-        task -> task.setCompactionConfigVersion(compactionConfigWhenSelectTask));
+        task -> task.setCompactionConfigVersion(compactionConfigVersionWhenSelectTask));
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
     int trySubmitCount = addTaskToWaitingQueue(innerSpaceTaskList);

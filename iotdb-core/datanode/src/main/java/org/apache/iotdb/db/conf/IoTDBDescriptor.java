@@ -1206,7 +1206,7 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "compaction_read_throughput_mb_per_sec",
                 Integer.toString(conf.getCompactionReadThroughputMbPerSec()))));
-    configModified |= compactionReadOperation != conf.getCompactionReadThroughputMbPerSec();
+    configModified |= compactionReadThroughput != conf.getCompactionReadThroughputMbPerSec();
 
     // update max_inner_compaction_candidate_file_num
     int maxInnerCompactionCandidateFileNum = conf.getFileLimitPerInnerTask();
