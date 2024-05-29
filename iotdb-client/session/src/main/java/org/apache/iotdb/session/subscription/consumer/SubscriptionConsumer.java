@@ -170,8 +170,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             .endpointsSyncMaxTasksIfNotExist(
                 (Integer)
                     properties.getOrDefault(
-                        ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_KEY,
-                        ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE))
+                        ConsumerConstant.ENDPOINTS_SYNC_MAX_TASKS_IF_NOT_EXIST_KEY,
+                        ConsumerConstant.ENDPOINTS_SYNC_MAX_TASKS_IF_NOT_EXIST_DEFAULT_VALUE))
             .fileSaveDir(
                 (String)
                     properties.getOrDefault(
