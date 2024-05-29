@@ -40,11 +40,11 @@ public class ReplaceFunctionHelper implements BuiltInScalarFunctionHelper {
   @Override
   public void checkBuiltInScalarFunctionInputDataType(TSDataType tsDataType)
       throws SemanticException {
-    if (tsDataType.equals(TSDataType.TEXT)) {
+    if (TSDataType.TEXT.equals(tsDataType) || TSDataType.STRING.equals(tsDataType)) {
       return;
     }
     throw new SemanticException(
-        "Input series of Scalar function [REPLACE] only support text data type.");
+        String.format("Unsupported data type %s for function REPLACE.", tsDataType));
   }
 
   @Override

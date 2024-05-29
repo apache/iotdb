@@ -37,8 +37,25 @@ public enum Type {
   DOUBLE((byte) 4),
 
   /* TEXT */
-  TEXT((byte) 5);
+  TEXT((byte) 5),
 
+  /* VECTOR */
+  VECTOR((byte) 6),
+
+  /* UNKNOWN */
+  UNKNOWN((byte) 7),
+
+  /* TIMESTAMP */
+  TIMESTAMP((byte) 8),
+
+  /* DATE */
+  DATE((byte) 9),
+
+  /* BLOB */
+  BLOB((byte) 10),
+
+  /* STRING */
+  STRING((byte) 11);
   private final byte dataType;
 
   Type(byte type) {

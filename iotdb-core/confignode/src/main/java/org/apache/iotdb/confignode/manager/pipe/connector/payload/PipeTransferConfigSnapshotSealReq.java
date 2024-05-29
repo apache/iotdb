@@ -48,16 +48,19 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferConfigSnapshotSealReq toTPipeTransferReq(
-      String snapshotName,
-      long snapshotLength,
-      String templateFileName,
-      long templateFileLength,
-      CNSnapshotFileType fileType,
-      String typeString)
+      final String pattern,
+      final String snapshotName,
+      final long snapshotLength,
+      final String templateFileName,
+      final long templateFileLength,
+      final CNSnapshotFileType fileType,
+      final String typeString)
       throws IOException {
     final Map<String, String> parameters = new HashMap<>();
+    parameters.put(ColumnHeaderConstant.PATH_PATTERN, pattern);
     parameters.put(FILE_TYPE, Byte.toString(fileType.getType()));
     parameters.put(ColumnHeaderConstant.TYPE, typeString);
+
     return (PipeTransferConfigSnapshotSealReq)
         new PipeTransferConfigSnapshotSealReq()
             .convertToTPipeTransferReq(
@@ -70,7 +73,7 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
                 parameters);
   }
 
-  public static PipeTransferConfigSnapshotSealReq fromTPipeTransferReq(TPipeTransferReq req) {
+  public static PipeTransferConfigSnapshotSealReq fromTPipeTransferReq(final TPipeTransferReq req) {
     return (PipeTransferConfigSnapshotSealReq)
         new PipeTransferConfigSnapshotSealReq().translateFromTPipeTransferReq(req);
   }
@@ -78,14 +81,16 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(
-      String snapshotName,
-      long snapshotLength,
-      String templateFileName,
-      long templateFileLength,
-      CNSnapshotFileType fileType,
-      String typeString)
+      final String pattern,
+      final String snapshotName,
+      final long snapshotLength,
+      final String templateFileName,
+      final long templateFileLength,
+      final CNSnapshotFileType fileType,
+      final String typeString)
       throws IOException {
     final Map<String, String> parameters = new HashMap<>();
+    parameters.put(ColumnHeaderConstant.PATH_PATTERN, pattern);
     parameters.put(FILE_TYPE, Byte.toString(fileType.getType()));
     parameters.put(ColumnHeaderConstant.TYPE, typeString);
     return new PipeTransferConfigSnapshotSealReq()
@@ -102,7 +107,7 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     return obj instanceof PipeTransferConfigSnapshotSealReq && super.equals(obj);
   }
 

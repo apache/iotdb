@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<TPipeTransferResp> {
@@ -50,7 +51,10 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
 
   private final List<Long> requestCommitIds;
   private final List<Event> events;
+  private final Map<String, Long> pipeName2BytesAccumulated;
+
   private final TPipeTransferReq req;
+  private final double reqCompressionRatio;
 
   private final IoTDBDataRegionAsyncConnector connector;
 
@@ -60,16 +64,25 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
     // Deep copy to keep Ids' and events' reference
     requestCommitIds = batch.deepCopyRequestCommitIds();
     events = batch.deepCopyEvents();
+    pipeName2BytesAccumulated = batch.deepCopyPipeName2BytesAccumulated();
+
+    final TPipeTransferReq uncompressedReq = batch.toTPipeTransferReq();
     req =
         connector.isRpcCompressionEnabled()
-            ? batch.toTPipeTransferReq()
-            : PipeTransferCompressedReq.toTPipeTransferReq(
-                batch.toTPipeTransferReq(), connector.getCompressors());
+            ? PipeTransferCompressedReq.toTPipeTransferReq(
+                uncompressedReq, connector.getCompressors())
+            : uncompressedReq;
+    reqCompressionRatio = (double) req.getBody().length / uncompressedReq.getBody().length;
 
     this.connector = connector;
   }
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
+    for (final Map.Entry<String, Long> entry : pipeName2BytesAccumulated.entrySet()) {
+      connector.rateLimitIfNeeded(
+          entry.getKey(), client.getEndPoint(), (long) (entry.getValue() * reqCompressionRatio));
+    }
+
     client.pipeTransfer(req, this);
   }
 

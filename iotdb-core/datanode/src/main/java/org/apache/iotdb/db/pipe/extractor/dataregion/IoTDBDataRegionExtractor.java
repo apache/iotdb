@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.extractor.dataregion;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.extractor.IoTDBExtractor;
+import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -33,7 +34,8 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRe
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionLogExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionTsFileExtractor;
-import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
@@ -93,6 +95,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   private boolean hasNoExtractionNeed = true;
   private boolean shouldExtractInsertion = false;
+  private boolean shouldExtractDeletion = false;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
@@ -107,6 +110,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     }
     hasNoExtractionNeed = false;
     shouldExtractInsertion = insertionDeletionListeningOptionPair.getLeft();
+    shouldExtractDeletion = insertionDeletionListeningOptionPair.getRight();
 
     if (insertionDeletionListeningOptionPair.getLeft().equals(true)
         && IoTDBDescriptor.getInstance()
@@ -213,6 +217,16 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     if (!pattern.isLegal()) {
       throw new IllegalArgumentException(String.format("Pattern \"%s\" is illegal.", pattern));
     }
+
+    if (shouldExtractDeletion
+        && !(pattern instanceof IoTDBPipePattern
+            && (((IoTDBPipePattern) pattern).isPrefix()
+                || ((IoTDBPipePattern) pattern).isFullPath()))) {
+      throw new IllegalArgumentException(
+          String.format(
+              "The path pattern %s is not valid for the source. Only prefix or full path is allowed.",
+              pattern));
+    }
   }
 
   private void constructHistoricalExtractor() {
@@ -309,7 +323,8 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     }
 
     // register metric after generating taskID
-    PipeExtractorMetrics.getInstance().register(this);
+    PipeDataRegionExtractorMetrics.getInstance().register(this);
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().register(this);
   }
 
   @Override
@@ -415,11 +430,11 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
     if (Objects.nonNull(event)) {
       if (event instanceof TabletInsertionEvent) {
-        PipeExtractorMetrics.getInstance().markTabletEvent(taskID);
+        PipeDataRegionExtractorMetrics.getInstance().markTabletEvent(taskID);
       } else if (event instanceof TsFileInsertionEvent) {
-        PipeExtractorMetrics.getInstance().markTsFileEvent(taskID);
+        PipeDataRegionExtractorMetrics.getInstance().markTsFileEvent(taskID);
       } else if (event instanceof PipeHeartbeatEvent) {
-        PipeExtractorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
+        PipeDataRegionExtractorMetrics.getInstance().markPipeHeartbeatEvent(taskID);
       }
     }
 
@@ -435,7 +450,7 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
     historicalExtractor.close();
     realtimeExtractor.close();
     if (Objects.nonNull(taskID)) {
-      PipeExtractorMetrics.getInstance().deregister(taskID);
+      PipeDataRegionExtractorMetrics.getInstance().deregister(taskID);
     }
   }
 
@@ -456,22 +471,6 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
-  public String getTaskID() {
-    return taskID;
-  }
-
-  public String getPipeName() {
-    return pipeName;
-  }
-
-  public int getDataRegionId() {
-    return regionId;
-  }
-
-  public long getCreationTime() {
-    return creationTime;
-  }
-
   public int getHistoricalTsFileInsertionEventCount() {
     return hasBeenStarted.get() ? historicalExtractor.getPendingQueueSize() : 0;
   }
@@ -486,5 +485,11 @@ public class IoTDBDataRegionExtractor extends IoTDBExtractor {
 
   public int getPipeHeartbeatEventCount() {
     return hasBeenStarted.get() ? realtimeExtractor.getPipeHeartbeatEventCount() : 0;
+  }
+
+  public int getEventCount() {
+    return hasBeenStarted.get()
+        ? (historicalExtractor.getPendingQueueSize() + realtimeExtractor.getEventCount())
+        : 0;
   }
 }

@@ -52,12 +52,14 @@ public class InTransformer extends UnaryTransformer {
   private void initTypedSet(Set<String> values) {
     switch (layerReaderDataType) {
       case INT32:
+      case DATE:
         intSet = new HashSet<>();
         for (String value : values) {
           intSet.add(Integer.valueOf(value));
         }
         break;
       case INT64:
+      case TIMESTAMP:
         longSet = new HashSet<>();
         for (String value : values) {
           longSet.add(Long.valueOf(value));
@@ -82,6 +84,7 @@ public class InTransformer extends UnaryTransformer {
         }
         break;
       case TEXT:
+      case STRING:
         stringSet = values;
         break;
       default:
@@ -99,9 +102,11 @@ public class InTransformer extends UnaryTransformer {
       throws QueryProcessException, IOException {
     switch (layerReaderDataType) {
       case INT32:
+      case DATE:
         transformInt(columns, builder);
         return;
       case INT64:
+      case TIMESTAMP:
         transformLong(columns, builder);
         return;
       case FLOAT:
@@ -114,6 +119,7 @@ public class InTransformer extends UnaryTransformer {
         transformBoolean(columns, builder);
         return;
       case TEXT:
+      case STRING:
         transformBinary(columns, builder);
         return;
       default:

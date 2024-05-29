@@ -32,34 +32,39 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructBinaryExpressionsWithMemoryCheck;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructCaseWhenThenExpression;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTernaryExpressions;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructUnaryExpressions;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTernaryExpressionsWithMemoryCheck;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructUnaryExpressionsWithMemoryCheck;
 
-public abstract class CartesianProductVisitor<C>
+public abstract class CartesianProductVisitor<C extends QueryContextProvider>
     extends ExpressionAnalyzeVisitor<List<Expression>, C> {
   @Override
   public List<Expression> visitTernaryExpression(TernaryExpression ternaryExpression, C context) {
     List<List<Expression>> childResultsList = getResultsFromChild(ternaryExpression, context);
-    return reconstructTernaryExpressions(
+    return reconstructTernaryExpressionsWithMemoryCheck(
         ternaryExpression,
         childResultsList.get(0),
         childResultsList.get(1),
-        childResultsList.get(2));
+        childResultsList.get(2),
+        context.getQueryContext());
   }
 
   @Override
   public List<Expression> visitBinaryExpression(BinaryExpression binaryExpression, C context) {
     List<List<Expression>> childResultsList = getResultsFromChild(binaryExpression, context);
-    return reconstructBinaryExpressions(
-        binaryExpression, childResultsList.get(0), childResultsList.get(1));
+    return reconstructBinaryExpressionsWithMemoryCheck(
+        binaryExpression,
+        childResultsList.get(0),
+        childResultsList.get(1),
+        context.getQueryContext());
   }
 
   @Override
   public List<Expression> visitUnaryExpression(UnaryExpression unaryExpression, C context) {
     List<List<Expression>> childResultsList = getResultsFromChild(unaryExpression, context);
-    return reconstructUnaryExpressions(unaryExpression, childResultsList.get(0));
+    return reconstructUnaryExpressionsWithMemoryCheck(
+        unaryExpression, childResultsList.get(0), context.getQueryContext());
   }
 
   @Override

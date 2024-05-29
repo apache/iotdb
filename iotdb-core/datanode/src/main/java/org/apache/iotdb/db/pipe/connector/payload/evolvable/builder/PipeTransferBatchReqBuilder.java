@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeCacheLeaderClientManager;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -112,11 +111,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
     if (event instanceof PipeRawTabletInsertionEvent) {
       deviceId = ((PipeRawTabletInsertionEvent) event).getDeviceId();
     } else if (event instanceof PipeInsertNodeTabletInsertionEvent) {
-      final InsertNode insertNode =
-          ((PipeInsertNodeTabletInsertionEvent) event).getInsertNodeViaCacheIfPossible();
-      if (Objects.nonNull(insertNode)) {
-        deviceId = insertNode.getDevicePath().getFullPath();
-      }
+      deviceId = ((PipeInsertNodeTabletInsertionEvent) event).getDeviceId();
     }
 
     if (Objects.isNull(deviceId)) {

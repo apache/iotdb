@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
@@ -799,6 +800,10 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       SeriesSourceNode split = (SeriesSourceNode) node.clone();
       split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
       split.setRegionReplicaSet(dataRegion);
+      context
+          .getQueryContext()
+          .reserveMemoryForFrontEnd(
+              MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(split));
       ret.add(split);
     }
     return ret;
@@ -858,6 +863,10 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       split.setAggregationDescriptorList(leafAggDescriptorList);
       split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
       split.setRegionReplicaSet(dataRegion);
+      context
+          .getQueryContext()
+          .reserveMemoryForFrontEnd(
+              MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(split));
       aggregationNode.addChild(split);
     }
     return Collections.singletonList(aggregationNode);
@@ -1556,12 +1565,25 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           descriptorExpressions.addAll(originalDescriptor.getOutputExpressions());
         }
 
-        for (String groupedInputExpressionString :
-            originalDescriptor.getGroupedInputExpressionStrings()) {
-          List<Expression> inputExpressions =
-              childrenExpressionMap.get(groupedInputExpressionString);
-          if (inputExpressions != null && !inputExpressions.isEmpty()) {
-            descriptorExpressions.addAll(inputExpressions);
+        if (analysis.useLogicalView()) {
+          for (List<Expression> groupedInputExpressions :
+              originalDescriptor.getGroupedInputExpressions()) {
+            String groupedInputExpressionsString =
+                originalDescriptor.getInputString(groupedInputExpressions);
+            List<Expression> inputExpressions =
+                childrenExpressionMap.get(groupedInputExpressionsString);
+            if (inputExpressions != null && !inputExpressions.isEmpty()) {
+              descriptorExpressions.addAll(groupedInputExpressions);
+            }
+          }
+        } else {
+          for (String groupedInputExpressionString :
+              originalDescriptor.getGroupedInputExpressionStrings()) {
+            List<Expression> inputExpressions =
+                childrenExpressionMap.get(groupedInputExpressionString);
+            if (inputExpressions != null && !inputExpressions.isEmpty()) {
+              descriptorExpressions.addAll(inputExpressions);
+            }
           }
         }
 

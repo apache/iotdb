@@ -141,6 +141,9 @@ public class Coordinator {
       }
       return result;
     } finally {
+      if (queryContext != null) {
+        queryContext.releaseMemoryForFrontEnd();
+      }
       if (queryContext != null && !queryContext.getAcquiredLockNumMap().isEmpty()) {
         Map<SchemaLockType, Integer> lockMap = queryContext.getAcquiredLockNumMap();
         for (Map.Entry<SchemaLockType, Integer> entry : lockMap.entrySet()) {

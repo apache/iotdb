@@ -55,10 +55,4 @@ public class MppConfigNodeConfig extends MppBaseConfig implements ConfigNodeConf
     properties.setProperty("cn_metric_reporter_list", String.join(",", metricReporterTypes));
     return this;
   }
-
-  @Override
-  public ConfigNodeConfig setConnectionTimeoutMs(long connectionTimeoutMs) {
-    properties.setProperty("cn_connection_timeout_ms", String.valueOf(connectionTimeoutMs));
-    return this;
-  }
 }

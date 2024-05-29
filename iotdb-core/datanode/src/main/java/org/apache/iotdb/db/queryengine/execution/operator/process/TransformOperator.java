@@ -327,9 +327,11 @@ public class TransformOperator implements ProcessOperator {
       TSDataType type = transformers[index].getDataTypes()[0];
       switch (type) {
         case INT32:
+        case DATE:
           writer.writeInt(valueColumn.getInt(currentIndex));
           break;
         case INT64:
+        case TIMESTAMP:
           writer.writeLong(valueColumn.getLong(currentIndex));
           break;
         case FLOAT:
@@ -342,6 +344,8 @@ public class TransformOperator implements ProcessOperator {
           writer.writeBoolean(valueColumn.getBoolean(currentIndex));
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           writer.writeBinary(valueColumn.getBinary(currentIndex));
           break;
         default:
