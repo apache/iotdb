@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.relational;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
@@ -33,6 +32,8 @@ import org.apache.iotdb.db.utils.sort.DiskSpiller;
 import org.apache.iotdb.db.utils.sort.MemoryReader;
 import org.apache.iotdb.db.utils.sort.SortBufferManager;
 import org.apache.iotdb.db.utils.sort.SortReader;
+
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;

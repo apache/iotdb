@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.SubPlanTypeExtractor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.IPartitionRelatedNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.VirtualSourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableModelTypeProviderExtractor;
@@ -157,7 +158,7 @@ public class PlanFragment {
     } else {
       ReadWriteIOUtils.write((byte) 1, stream);
 
-      // templated device, the serialized attribute basically same,
+      // templated align by device query, the serialized attributes are same,
       // so there is no need to serialize all the SeriesScanNode repeated
       if (typeProvider.getTemplatedInfo() != null) {
         typeProvider.serialize(stream);
@@ -188,7 +189,8 @@ public class PlanFragment {
     PlanNode root;
     if (typeProvider != null && typeProvider.getTemplatedInfo() != null) {
       root = PlanNodeType.deserializeWithTemplate(byteBuffer, typeProvider);
-      if (root instanceof AlignedSeriesScanNode) {
+      if (root instanceof AlignedSeriesScanNode
+          || root instanceof AlignedSeriesAggregationScanNode) {
         return root;
       }
     } else {

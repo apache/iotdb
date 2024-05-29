@@ -190,7 +190,7 @@ public class SingleDeviceViewNode extends SingleChildProcessNode {
     return new SingleDeviceViewNode(
         planNodeId,
         cacheOutputColumnNames,
-        typeProvider.getTemplatedInfo().getSelectMeasurements(),
+        typeProvider.getTemplatedInfo().getDeviceViewOutputNames(),
         device,
         typeProvider.getTemplatedInfo().getDeviceToMeasurementIndexes());
   }
