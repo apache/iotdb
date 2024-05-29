@@ -50,7 +50,8 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
       List<Aggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       GroupByTimeParameter groupByTimeParameter,
-      long maxReturnSize) {
+      long maxReturnSize,
+      boolean canUseStatistics) {
     super(
         sourceId,
         context,
@@ -61,7 +62,8 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
         scanOrder.isAscending(),
         false,
         groupByTimeParameter,
-        maxReturnSize);
+        maxReturnSize,
+        canUseStatistics);
   }
 
   public AlignedSeriesAggregationScanOperator(
@@ -74,7 +76,8 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
       List<Aggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       GroupByTimeParameter groupByTimeParameter,
-      long maxReturnSize) {
+      long maxReturnSize,
+      boolean canUseStatistics) {
     super(
         sourceId,
         context,
@@ -85,7 +88,8 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
         scanOrder.isAscending(),
         outputEndTime,
         groupByTimeParameter,
-        maxReturnSize);
+        maxReturnSize,
+        canUseStatistics);
   }
 
   @Override

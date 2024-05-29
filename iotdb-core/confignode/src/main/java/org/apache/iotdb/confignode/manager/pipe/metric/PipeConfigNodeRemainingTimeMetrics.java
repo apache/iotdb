@@ -147,6 +147,15 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     operator.markConfigRegionCommit();
   }
 
+  //////////////////////////// Show pipes ////////////////////////////
+
+  public double getRemainingTime(final String pipeName, final long creationTime) {
+    return remainingTimeOperatorMap
+        .computeIfAbsent(
+            pipeName + "_" + creationTime, k -> new PipeConfigNodeRemainingTimeOperator())
+        .getRemainingTime();
+  }
+
   //////////////////////////// singleton ////////////////////////////
 
   private static class PipeConfigNodeRemainingTimeMetricsHolder {

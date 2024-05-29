@@ -21,9 +21,7 @@ package org.apache.iotdb.db.utils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
-import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.utils.TsPrimitiveType.TsBinary;
 import org.apache.tsfile.utils.TsPrimitiveType.TsBoolean;
 import org.apache.tsfile.utils.TsPrimitiveType.TsDouble;
@@ -44,35 +42,15 @@ public class TimeValuePairUtils {
    * @param data -batch data
    * @return -given data's (time,value) pair
    */
-  public static TimeValuePair getCurrentTimeValuePair(BatchData data) {
-    switch (data.getDataType()) {
-      case INT32:
-        return new TimeValuePair(data.currentTime(), new TsPrimitiveType.TsInt(data.getInt()));
-      case INT64:
-        return new TimeValuePair(data.currentTime(), new TsPrimitiveType.TsLong(data.getLong()));
-      case FLOAT:
-        return new TimeValuePair(data.currentTime(), new TsPrimitiveType.TsFloat(data.getFloat()));
-      case DOUBLE:
-        return new TimeValuePair(
-            data.currentTime(), new TsPrimitiveType.TsDouble(data.getDouble()));
-      case TEXT:
-        return new TimeValuePair(
-            data.currentTime(), new TsPrimitiveType.TsBinary(data.getBinary()));
-      case BOOLEAN:
-        return new TimeValuePair(
-            data.currentTime(), new TsPrimitiveType.TsBoolean(data.getBoolean()));
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(data.getDataType()));
-    }
-  }
-
   public static void setTimeValuePair(TimeValuePair from, TimeValuePair to) {
     to.setTimestamp(from.getTimestamp());
     switch (from.getValue().getDataType()) {
       case INT32:
+      case DATE:
         to.getValue().setInt(from.getValue().getInt());
         break;
       case INT64:
+      case TIMESTAMP:
         to.getValue().setLong(from.getValue().getLong());
         break;
       case FLOAT:
@@ -82,6 +60,8 @@ public class TimeValuePairUtils {
         to.getValue().setDouble(from.getValue().getDouble());
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         to.getValue().setBinary(from.getValue().getBinary());
         break;
       case BOOLEAN:
@@ -97,14 +77,18 @@ public class TimeValuePairUtils {
       case FLOAT:
         return new TimeValuePair(0, new TsFloat(0.0f));
       case INT32:
+      case DATE:
         return new TimeValuePair(0, new TsInt(0));
       case INT64:
+      case TIMESTAMP:
         return new TimeValuePair(0, new TsLong(0));
       case BOOLEAN:
         return new TimeValuePair(0, new TsBoolean(false));
       case DOUBLE:
         return new TimeValuePair(0, new TsDouble(0.0));
       case TEXT:
+      case BLOB:
+      case STRING:
         return new TimeValuePair(0, new TsBinary(new Binary("", TSFileConfig.STRING_CHARSET)));
       default:
         throw new UnsupportedOperationException("Unrecognized datatype: " + dataType);

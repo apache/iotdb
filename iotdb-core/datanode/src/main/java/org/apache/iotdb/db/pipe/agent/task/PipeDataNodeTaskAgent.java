@@ -63,6 +63,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -287,6 +288,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     final List<Boolean> pipeCompletedList = new ArrayList<>();
+    final List<Long> pipeRemainingEventCountList = new ArrayList<>();
+    final List<Double> pipeRemainingTimeList = new ArrayList<>();
     try {
       final Optional<Logger> logger =
           PipeResourceManager.log()
@@ -298,8 +301,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
 
-        final Map<Integer, PipeTask> pipeTaskMap =
-            pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
+        final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+
+        final Map<Integer, PipeTask> pipeTaskMap = pipeTaskManager.getPipeTasks(staticMeta);
         final boolean isAllDataRegionCompleted =
             pipeTaskMap == null
                 || pipeTaskMap.entrySet().stream()
@@ -320,14 +324,22 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                             EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY),
                         EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_DEFAULT_VALUE);
 
-        pipeCompletedList.add(isAllDataRegionCompleted && includeDataAndNeedDrop);
+        final boolean isCompleted = isAllDataRegionCompleted && includeDataAndNeedDrop;
+        final Pair<Long, Double> remainingEventAndTime =
+            PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+                .getRemainingEventAndTime(staticMeta.getPipeName(), staticMeta.getCreationTime());
+        pipeCompletedList.add(isCompleted);
+        pipeRemainingEventCountList.add(remainingEventAndTime.getLeft());
+        pipeRemainingTimeList.add(remainingEventAndTime.getRight());
 
         logger.ifPresent(
             l ->
                 l.info(
-                    "Reporting pipe meta: {}, isCompleted: {}",
+                    "Reporting pipe meta: {}, isCompleted: {}, remainingEventCount: {}, estimatedRemainingTime: {}",
                     pipeMeta.coreReportMessage(),
-                    includeDataAndNeedDrop));
+                    isCompleted,
+                    remainingEventAndTime.getLeft(),
+                    remainingEventAndTime.getRight()));
       }
       LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
     } catch (final IOException | IllegalPathException e) {
@@ -335,6 +347,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
     resp.setPipeCompletedList(pipeCompletedList);
+    resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
+    resp.setPipeRemainingTimeList(pipeRemainingTimeList);
+    PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 
   @Override
@@ -353,6 +368,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     final List<Boolean> pipeCompletedList = new ArrayList<>();
+    final List<Long> pipeRemainingEventCountList = new ArrayList<>();
+    final List<Double> pipeRemainingTimeList = new ArrayList<>();
     try {
       final Optional<Logger> logger =
           PipeResourceManager.log()
@@ -364,8 +381,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
 
-        final Map<Integer, PipeTask> pipeTaskMap =
-            pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
+        final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+
+        final Map<Integer, PipeTask> pipeTaskMap = pipeTaskManager.getPipeTasks(staticMeta);
         final boolean isAllDataRegionCompleted =
             pipeTaskMap == null
                 || pipeTaskMap.entrySet().stream()
@@ -386,14 +404,22 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
                             EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY),
                         EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_DEFAULT_VALUE);
 
-        pipeCompletedList.add(isAllDataRegionCompleted && includeDataAndNeedDrop);
+        final boolean isCompleted = isAllDataRegionCompleted && includeDataAndNeedDrop;
+        final Pair<Long, Double> remainingEventAndTime =
+            PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+                .getRemainingEventAndTime(staticMeta.getPipeName(), staticMeta.getCreationTime());
+        pipeCompletedList.add(isCompleted);
+        pipeRemainingEventCountList.add(remainingEventAndTime.getLeft());
+        pipeRemainingTimeList.add(remainingEventAndTime.getRight());
 
         logger.ifPresent(
             l ->
                 l.info(
-                    "Reporting pipe meta: {}, isCompleted: {}",
+                    "Reporting pipe meta: {}, isCompleted: {}, remainingEventCount: {}, estimatedRemainingTime: {}",
                     pipeMeta.coreReportMessage(),
-                    includeDataAndNeedDrop));
+                    isCompleted,
+                    remainingEventAndTime.getLeft(),
+                    remainingEventAndTime.getRight()));
       }
       LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
     } catch (final IOException | IllegalPathException e) {
@@ -401,6 +427,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
     resp.setPipeCompletedList(pipeCompletedList);
+    resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
+    resp.setPipeRemainingTimeList(pipeRemainingTimeList);
     PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 

@@ -178,6 +178,8 @@ public class TsFileGeneratorUtils {
   public static void writeNonAlignedPoint(PageWriter pageWriter, long timestamp, boolean isSeq) {
     switch (pageWriter.getStatistics().getType()) {
       case TEXT:
+      case STRING:
+      case BLOB:
         pageWriter.write(
             timestamp, new Binary(isSeq ? "seqText" : "unSeqText", TSFileConfig.STRING_CHARSET));
         break;
@@ -188,9 +190,11 @@ public class TsFileGeneratorUtils {
         pageWriter.write(timestamp, isSeq);
         break;
       case INT64:
+      case TIMESTAMP:
         pageWriter.write(timestamp, isSeq ? timestamp : 100000L + timestamp);
         break;
       case INT32:
+      case DATE:
         pageWriter.write(timestamp, isSeq ? (int) timestamp : (int) (100000 + timestamp));
         break;
       case FLOAT:
@@ -230,6 +234,8 @@ public class TsFileGeneratorUtils {
       ValuePageWriter valuePageWriter, long timestamp, boolean isSeq) {
     switch (valuePageWriter.getStatistics().getType()) {
       case TEXT:
+      case STRING:
+      case BLOB:
         valuePageWriter.write(
             timestamp,
             new Binary(isSeq ? "seqText" : "unSeqText", TSFileConfig.STRING_CHARSET),
@@ -242,9 +248,11 @@ public class TsFileGeneratorUtils {
         valuePageWriter.write(timestamp, isSeq, false);
         break;
       case INT64:
+      case TIMESTAMP:
         valuePageWriter.write(timestamp, isSeq ? timestamp : 100000L + timestamp, false);
         break;
       case INT32:
+      case DATE:
         valuePageWriter.write(
             timestamp, isSeq ? (int) timestamp : (int) (100000 + timestamp), false);
         break;

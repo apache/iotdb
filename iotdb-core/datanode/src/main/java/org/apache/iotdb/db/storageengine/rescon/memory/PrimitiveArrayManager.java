@@ -56,24 +56,23 @@ public class PrimitiveArrayManager {
           / AMPLIFICATION_FACTOR;
 
   /** TSDataType#serialize() -> ArrayDeque<Array>, VECTOR and UNKNOWN are ignored */
-  private static final ArrayDeque[] POOLED_ARRAYS = new ArrayDeque[TSDataType.values().length - 2];
+  private static final ArrayDeque[] POOLED_ARRAYS = new ArrayDeque[TSDataType.values().length];
 
   /** TSDataType#serialize() -> max size of ArrayDeque<Array>, VECTOR and UNKNOWN are ignored */
-  private static final int[] LIMITS = new int[TSDataType.values().length - 2];
+  private static final int[] LIMITS = new int[TSDataType.values().length];
 
   /** LIMITS should be updated if (TOTAL_ALLOCATION_REQUEST_COUNT.get() > limitUpdateThreshold) */
   private static long limitUpdateThreshold;
 
   /** TSDataType#serialize() -> count of allocation requests, VECTOR is ignored */
   private static final AtomicLong[] ALLOCATION_REQUEST_COUNTS =
-      new AtomicLong[] {
-        new AtomicLong(0),
-        new AtomicLong(0),
-        new AtomicLong(0),
-        new AtomicLong(0),
-        new AtomicLong(0),
-        new AtomicLong(0)
-      };
+      new AtomicLong[TSDataType.values().length];
+
+  static {
+    for (int i = 0; i < ALLOCATION_REQUEST_COUNTS.length; ++i) {
+      ALLOCATION_REQUEST_COUNTS[i] = new AtomicLong(0);
+    }
+  }
 
   private static final AtomicLong TOTAL_ALLOCATION_REQUEST_COUNT = new AtomicLong(0);
 
@@ -220,9 +219,11 @@ public class PrimitiveArrayManager {
         dataArray = new boolean[ARRAY_SIZE];
         break;
       case INT32:
+      case DATE:
         dataArray = new int[ARRAY_SIZE];
         break;
       case INT64:
+      case TIMESTAMP:
         dataArray = new long[ARRAY_SIZE];
         break;
       case FLOAT:
@@ -232,6 +233,8 @@ public class PrimitiveArrayManager {
         dataArray = new double[ARRAY_SIZE];
         break;
       case TEXT:
+      case STRING:
+      case BLOB:
         dataArray = new Binary[ARRAY_SIZE];
         break;
       default:
@@ -294,12 +297,14 @@ public class PrimitiveArrayManager {
         }
         return booleans;
       case INT32:
+      case DATE:
         int[][] ints = new int[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
           ints[i] = new int[ARRAY_SIZE];
         }
         return ints;
       case INT64:
+      case TIMESTAMP:
         long[][] longs = new long[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
           longs[i] = new long[ARRAY_SIZE];
@@ -318,6 +323,8 @@ public class PrimitiveArrayManager {
         }
         return doubles;
       case TEXT:
+      case STRING:
+      case BLOB:
         Binary[][] binaries = new Binary[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
           binaries[i] = new Binary[ARRAY_SIZE];

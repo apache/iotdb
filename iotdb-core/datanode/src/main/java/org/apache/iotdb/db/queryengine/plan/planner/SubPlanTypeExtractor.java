@@ -85,6 +85,13 @@ public class SubPlanTypeExtractor {
     @Override
     public Void visitAlignedSeriesAggregationScan(
         AlignedSeriesAggregationScanNode node, Void context) {
+      // if TemplateInfo is not empty, all type infos used by AlignedSeriesAggregationScanNode have
+      // been stored
+      // in TemplateInfo
+      if (typeProvider.getTemplatedInfo() != null) {
+        return null;
+      }
+
       AlignedPath alignedPath = node.getAlignedPath();
       for (int i = 0; i < alignedPath.getColumnNum(); i++) {
         String sourcePath = alignedPath.getPathWithMeasurement(i).getFullPath();
@@ -168,6 +175,7 @@ public class SubPlanTypeExtractor {
       if (typeProvider.getTemplatedInfo() != null) {
         return null;
       }
+
       return visitPlan(node, context);
     }
 
@@ -178,6 +186,7 @@ public class SubPlanTypeExtractor {
       if (typeProvider.getTemplatedInfo() != null) {
         return null;
       }
+
       return visitPlan(node, context);
     }
 

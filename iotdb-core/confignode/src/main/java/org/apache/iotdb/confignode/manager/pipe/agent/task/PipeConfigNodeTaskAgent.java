@@ -30,6 +30,8 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningFilter;
+import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeRemainingTimeMetrics;
+import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigRegionExtractorMetrics;
 import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTask;
 import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTaskBuilder;
 import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTaskStage;
@@ -63,14 +65,16 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected Map<Integer, PipeTask> buildPipeTasks(PipeMeta pipeMetaFromConfigNode)
+  protected Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromConfigNode)
       throws IllegalPathException {
     return new PipeConfigNodeTaskBuilder(pipeMetaFromConfigNode).build();
   }
 
   @Override
   protected void createPipeTask(
-      int consensusGroupId, PipeStaticMeta pipeStaticMeta, PipeTaskMeta pipeTaskMeta)
+      final int consensusGroupId,
+      final PipeStaticMeta pipeStaticMeta,
+      final PipeTaskMeta pipeTaskMeta)
       throws IllegalPathException {
     // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
     if (consensusGroupId == Integer.MIN_VALUE
@@ -106,12 +110,12 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
 
   @Override
   protected TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChangesInternal(
-      PipeMeta pipeMetaFromCoordinator) {
+      final PipeMeta pipeMetaFromCoordinator) {
     try {
       return PipeConfigNodeAgent.runtime().isLeaderReady()
           ? super.handleSinglePipeMetaChangesInternal(pipeMetaFromCoordinator.deepCopy())
           : null;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       return new TPushPipeMetaRespExceptionMessage(
           pipeMetaFromCoordinator.getStaticMeta().getPipeName(),
           e.getMessage(),
@@ -120,7 +124,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected TPushPipeMetaRespExceptionMessage handleDropPipeInternal(String pipeName) {
+  protected TPushPipeMetaRespExceptionMessage handleDropPipeInternal(final String pipeName) {
     return PipeConfigNodeAgent.runtime().isLeaderReady()
         ? super.handleDropPipeInternal(pipeName)
         : null;
@@ -128,7 +132,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
 
   @Override
   protected List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
-      List<PipeMeta> pipeMetaListFromCoordinator) {
+      final List<PipeMeta> pipeMetaListFromCoordinator) {
     if (isShutdown() || !PipeConfigNodeAgent.runtime().isLeaderReady()) {
       return Collections.emptyList();
     }
@@ -148,13 +152,13 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
                   .collect(Collectors.toList()));
       clearConfigRegionListeningQueueIfNecessary(pipeMetaListFromCoordinator);
       return exceptionMessages;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new PipeException("failed to handle pipe meta changes", e);
     }
   }
 
   private void clearConfigRegionListeningQueueIfNecessary(
-      List<PipeMeta> pipeMetaListFromCoordinator) {
+      final List<PipeMeta> pipeMetaListFromCoordinator) {
     final AtomicLong listeningQueueNewFirstIndex = new AtomicLong(Long.MAX_VALUE);
 
     // Check each pipe
@@ -187,8 +191,8 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected void collectPipeMetaListInternal(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
-      throws TException {
+  protected void collectPipeMetaListInternal(
+      final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp) throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (isShutdown() || !PipeConfigNodeAgent.runtime().isLeaderReady()) {
       return;
@@ -197,6 +201,8 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
     LOGGER.info("Received pipe heartbeat request {} from config coordinator.", req.heartbeatId);
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
+    final List<Long> pipeRemainingEventCountList = new ArrayList<>();
+    final List<Double> pipeRemainingTimeList = new ArrayList<>();
     try {
       final boolean shouldPrintLog =
           System.currentTimeMillis() - lastLogPrintedTime.get() > 1000 * 60 * 10; // 10 minutes
@@ -206,14 +212,32 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
 
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
+
+        final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+        final long remainingEventCount =
+            PipeConfigRegionExtractorMetrics.getInstance()
+                .getRemainingEventCount(staticMeta.getPipeName(), staticMeta.getCreationTime());
+        final double remainingTime =
+            PipeConfigNodeRemainingTimeMetrics.getInstance()
+                .getRemainingTime(staticMeta.getPipeName(), staticMeta.getCreationTime());
+
+        pipeRemainingEventCountList.add(remainingEventCount);
+        pipeRemainingTimeList.add(remainingTime);
+
         if (shouldPrintLog) {
-          LOGGER.info("Reporting pipe meta: {}", pipeMeta.coreReportMessage());
+          LOGGER.info(
+              "Reporting pipe meta: {}, remainingEventCount: {}, remainingTime: {}",
+              pipeMeta.coreReportMessage(),
+              remainingEventCount,
+              remainingTime);
         }
       }
       LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new TException(e);
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
+    resp.setPipeRemainingEventCountList(pipeRemainingEventCountList);
+    resp.setPipeRemainingTimeList(pipeRemainingTimeList);
   }
 }

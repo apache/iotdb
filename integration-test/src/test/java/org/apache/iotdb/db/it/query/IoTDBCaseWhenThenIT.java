@@ -149,7 +149,7 @@ public class IoTDBCaseWhenThenIT {
     // the expression in CASE clause must be able to be equated with the expression in WHEN clause
     String sql = "select case s1 when \"1\" then 20 else 22 end from root.sg.d1";
     String msg =
-        "701: Invalid input expression data type. expression: root.sg.d1.s1, actual data type: INT32, expected data type(s): [TEXT].";
+        "701: Invalid input expression data type. expression: root.sg.d1.s1, actual data type: INT32, expected data type(s): [TEXT, STRING].";
     assertTestFail(sql, msg);
   }
 
