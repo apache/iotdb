@@ -143,6 +143,18 @@ public class ConfigNodeStartupCheck extends StartupChecks {
           "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.IoTConsensus");
     }
 
+    // When the schemaengine region consensus protocol is set to PipeConsensus,
+    // we should report an error
+    if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.FAST_IOT_CONSENSUS)
+        || CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.IOTV2_CONSENSUS)) {
+      throw new ConfigurationException(
+          "schema_region_consensus_protocol_class",
+          String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),
+          String.format(
+              "%s or %s", ConsensusFactory.SIMPLE_CONSENSUS, ConsensusFactory.RATIS_CONSENSUS),
+          "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.FastIoTConsensus");
+    }
+
     // The leader distribution policy is limited
     if (!AbstractLeaderBalancer.GREEDY_POLICY.equals(CONF.getLeaderDistributionPolicy())
         && !AbstractLeaderBalancer.CFD_POLICY.equals(CONF.getLeaderDistributionPolicy())) {

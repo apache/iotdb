@@ -1060,10 +1060,12 @@ public class IoTDBDescriptor {
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
     loadIoTConsensusProps(properties);
+    loadPipeConsensusProps(properties);
   }
 
   private void reloadConsensusProps(Properties properties) {
     loadIoTConsensusProps(properties);
+    loadPipeConsensusProps(properties);
     DataRegionConsensusImpl.reloadConsensusConfig();
   }
 
@@ -1102,6 +1104,17 @@ public class IoTDBDescriptor {
                     "region_migration_speed_limit_bytes_per_second",
                     String.valueOf(conf.getRegionMigrationSpeedLimitBytesPerSecond()))
                 .trim()));
+  }
+
+  private void loadPipeConsensusProps(Properties properties) {
+    conf.setPipeConsensusPipelineSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_consensus_pipeline_size",
+                Integer.toString(conf.getPipeConsensusPipelineSize()))));
+    if (conf.getPipeConsensusPipelineSize() <= 0) {
+      conf.setPipeConsensusPipelineSize(5);
+    }
   }
 
   private void loadAuthorCache(Properties properties) {

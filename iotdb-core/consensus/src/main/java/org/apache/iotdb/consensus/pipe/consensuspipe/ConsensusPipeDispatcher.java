@@ -33,5 +33,7 @@ public interface ConsensusPipeDispatcher {
 
   void stopPipe(String pipeName) throws Exception;
 
-  void dropPipe(String pipeName) throws Exception;
+  // Use ConsensusPipeName instead of String to provide information for receiverAgent to release
+  // corresponding resource
+  void dropPipe(ConsensusPipeName pipeName) throws Exception;
 }

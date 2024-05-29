@@ -202,7 +202,6 @@ public class CommonDescriptor {
             properties.getProperty("datanode_token_timeout", String.valueOf(3 * 60 * 1000))));
 
     loadPipeProps(properties);
-    loadPipeConsensusProps(properties);
     loadSubscriptionProps(properties);
 
     config.setSchemaEngineMode(
@@ -548,29 +547,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "two_stage_aggregate_sender_end_points_cache_in_ms",
                 String.valueOf(config.getTwoStageAggregateSenderEndPointsCacheInMs()))));
-  }
-
-  private void loadPipeConsensusProps(Properties properties) {
-    config.setPipeConsensusEventBufferSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_consensus_event_buffer_size",
-                Integer.toString(config.getPipeConsensusEventBufferSize()))));
-    if (config.getPipeConsensusEventBufferSize() <= 0) {
-      config.setPipeConsensusEventBufferSize(5);
-    }
-
-    config.setPipeConsensusEventEnqueueTimeoutInMs(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_consensus_event_enqueue_timeout_in_ms",
-                Long.toString(config.getPipeConsensusEventEnqueueTimeoutInMs()))));
-
-    config.setPipeConsensusReceiverMaxWaitingTimeForEventsInMs(
-        Long.parseLong(
-            properties.getProperty(
-                "pipe_consensus_receiver_max_waiting_time_for_events_in_ms",
-                Long.toString(config.getPipeConsensusReceiverMaxWaitingTimeForEventsInMs()))));
   }
 
   private void loadSubscriptionProps(Properties properties) {

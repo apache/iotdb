@@ -20,17 +20,15 @@
 package org.apache.iotdb.db.pipe.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeDispatcher;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.protocol.session.SessionManager;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
-import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -43,20 +41,8 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ConsensusPipeDataNodeDispatcher.class);
 
-  private TSStatus executePipeStatement(Statement statement) {
-    final long queryId = SessionManager.getInstance().requestQueryId();
-    final ExecutionResult result =
-        Coordinator.getInstance()
-            .executeForTreeModel(
-                statement,
-                queryId,
-                null,
-                "",
-                null,
-                null,
-                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
-    return result.status;
-  }
+  private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
+      ConfigNodeClientManager.getInstance();
 
   @Override
   public void createPipe(
@@ -65,52 +51,71 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes)
       throws Exception {
-    final CreatePipeStatement statement = new CreatePipeStatement(StatementType.CREATE_PIPE);
-    statement.setPipeName(pipeName);
-    statement.setExtractorAttributes(extractorAttributes);
-    statement.setProcessorAttributes(processorAttributes);
-    statement.setConnectorAttributes(connectorAttributes);
-
-    final TSStatus status = executePipeStatement(statement);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to create pipe, status: {}", status);
-      throw new PipeException(status.getMessage());
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TCreatePipeReq req =
+          new TCreatePipeReq()
+              .setPipeName(pipeName)
+              .setExtractorAttributes(extractorAttributes)
+              .setProcessorAttributes(processorAttributes)
+              .setConnectorAttributes(connectorAttributes);
+      TSStatus status = configNodeClient.createPipe(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
+        LOGGER.warn("Failed to create consensus pipe-{}, status: {}", pipeName, status);
+        throw new PipeException(status.getMessage());
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Failed to create consensus pipe-{}", pipeName);
+      throw new PipeException("Failed to create consensus pipe", e);
     }
   }
 
   @Override
   public void startPipe(String pipeName) throws Exception {
-    final StartPipeStatement statement = new StartPipeStatement(StatementType.START_PIPE);
-    statement.setPipeName(pipeName);
-
-    final TSStatus status = executePipeStatement(statement);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to start pipe, status: {}", status);
-      throw new PipeException(status.getMessage());
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus status = configNodeClient.startPipe(pipeName);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
+        LOGGER.warn("Failed to start consensus pipe-{}, status: {}", pipeName, status);
+        throw new PipeException(status.getMessage());
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Failed to start consensus pipe-{}", pipeName);
+      throw new PipeException("Failed to start consensus pipe", e);
     }
   }
 
   @Override
   public void stopPipe(String pipeName) throws Exception {
-    final StopPipeStatement statement = new StopPipeStatement(StatementType.STOP_PIPE);
-    statement.setPipeName(pipeName);
-
-    final TSStatus status = executePipeStatement(statement);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to stop pipe, status: {}", status);
-      throw new PipeException(status.getMessage());
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSStatus status = configNodeClient.stopPipe(pipeName);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
+        LOGGER.warn("Failed to stop consensus pipe-{}, status: {}", pipeName, status);
+        throw new PipeException(status.getMessage());
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Failed to stop consensus pipe-{}", pipeName);
+      throw new PipeException("Failed to stop consensus pipe", e);
     }
   }
 
+  // Use ConsensusPipeName instead of String to provide information for receiverAgent to release
+  // corresponding resource
   @Override
-  public void dropPipe(String pipeName) throws Exception {
-    final DropPipeStatement statement = new DropPipeStatement(StatementType.DROP_PIPE);
-    statement.setPipeName(pipeName);
-
-    final TSStatus status = executePipeStatement(statement);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to drop pipe, status: {}", status);
-      throw new PipeException(status.getMessage());
+  public void dropPipe(ConsensusPipeName pipeName) throws Exception {
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSStatus status = configNodeClient.dropPipe(pipeName.toString());
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
+        LOGGER.warn("Failed to drop consensus pipe-{}, status: {}", pipeName, status);
+        throw new PipeException(status.getMessage());
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Failed to drop consensus pipe-{}", pipeName);
+      throw new PipeException("Failed to drop consensus pipe", e);
     }
+    // Release corresponding receiver's resource
+    PipeAgent.receiver().pipeConsensus().handleDropPipeConsensusTask(pipeName);
   }
 }

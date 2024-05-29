@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.config;
 
-import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeDispatcher;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
@@ -85,11 +84,8 @@ public class PipeConsensusConfig {
     private final int rpcMaxConcurrentClientNum;
     private final int thriftServerAwaitTimeForStopService;
     private final boolean isRpcThriftCompressionEnabled;
-    private final int selectorNumOfClientManager;
     private final int connectionTimeoutInMs;
-    private final boolean printLogWhenThriftClientEncounterException;
     private final int thriftMaxFrameSize;
-    private final int maxClientNumForEachNode;
 
     public RPC(
         int rpcSelectorThreadNum,
@@ -97,21 +93,15 @@ public class PipeConsensusConfig {
         int rpcMaxConcurrentClientNum,
         int thriftServerAwaitTimeForStopService,
         boolean isRpcThriftCompressionEnabled,
-        int selectorNumOfClientManager,
         int connectionTimeoutInMs,
-        boolean printLogWhenThriftClientEncounterException,
-        int thriftMaxFrameSize,
-        int maxClientNumForEachNode) {
+        int thriftMaxFrameSize) {
       this.rpcSelectorThreadNum = rpcSelectorThreadNum;
       this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
       this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
       this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
       this.isRpcThriftCompressionEnabled = isRpcThriftCompressionEnabled;
-      this.selectorNumOfClientManager = selectorNumOfClientManager;
       this.connectionTimeoutInMs = connectionTimeoutInMs;
-      this.printLogWhenThriftClientEncounterException = printLogWhenThriftClientEncounterException;
       this.thriftMaxFrameSize = thriftMaxFrameSize;
-      this.maxClientNumForEachNode = maxClientNumForEachNode;
     }
 
     public int getRpcSelectorThreadNum() {
@@ -134,24 +124,12 @@ public class PipeConsensusConfig {
       return isRpcThriftCompressionEnabled;
     }
 
-    public int getSelectorNumOfClientManager() {
-      return selectorNumOfClientManager;
-    }
-
     public int getConnectionTimeoutInMs() {
       return connectionTimeoutInMs;
     }
 
-    public boolean isPrintLogWhenThriftClientEncounterException() {
-      return printLogWhenThriftClientEncounterException;
-    }
-
     public int getThriftMaxFrameSize() {
       return thriftMaxFrameSize;
-    }
-
-    public int getMaxClientNumForEachNode() {
-      return maxClientNumForEachNode;
     }
 
     public static RPC.Builder newBuilder() {
@@ -164,12 +142,8 @@ public class PipeConsensusConfig {
       private int rpcMaxConcurrentClientNum = 65535;
       private int thriftServerAwaitTimeForStopService = 60;
       private boolean isRpcThriftCompressionEnabled = false;
-      private int selectorNumOfClientManager = 1;
-      private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(20);
-      private boolean printLogWhenThriftClientEncounterException = true;
+      private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(60);
       private int thriftMaxFrameSize = 536870912;
-      private int maxClientNumForEachNode =
-          ClientPoolProperty.DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
       public RPC.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
         this.rpcSelectorThreadNum = rpcSelectorThreadNum;
@@ -197,30 +171,13 @@ public class PipeConsensusConfig {
         return this;
       }
 
-      public RPC.Builder setSelectorNumOfClientManager(int selectorNumOfClientManager) {
-        this.selectorNumOfClientManager = selectorNumOfClientManager;
-        return this;
-      }
-
       public RPC.Builder setConnectionTimeoutInMs(int connectionTimeoutInMs) {
         this.connectionTimeoutInMs = connectionTimeoutInMs;
         return this;
       }
 
-      public RPC.Builder setPrintLogWhenThriftClientEncounterException(
-          boolean printLogWhenThriftClientEncounterException) {
-        this.printLogWhenThriftClientEncounterException =
-            printLogWhenThriftClientEncounterException;
-        return this;
-      }
-
       public RPC.Builder setThriftMaxFrameSize(int thriftMaxFrameSize) {
         this.thriftMaxFrameSize = thriftMaxFrameSize;
-        return this;
-      }
-
-      public RPC.Builder setMaxClientNumForEachNode(int maxClientNumForEachNode) {
-        this.maxClientNumForEachNode = maxClientNumForEachNode;
         return this;
       }
 
@@ -231,11 +188,8 @@ public class PipeConsensusConfig {
             rpcMaxConcurrentClientNum,
             thriftServerAwaitTimeForStopService,
             isRpcThriftCompressionEnabled,
-            selectorNumOfClientManager,
             connectionTimeoutInMs,
-            printLogWhenThriftClientEncounterException,
-            thriftMaxFrameSize,
-            maxClientNumForEachNode);
+            thriftMaxFrameSize);
       }
     }
   }

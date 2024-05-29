@@ -149,11 +149,9 @@ public class DataRegionConsensusImpl {
                           .setRpcMinConcurrentClientNum(CONF.getRpcMinConcurrentClientNum())
                           .setRpcMaxConcurrentClientNum(CONF.getRpcMaxConcurrentClientNum())
                           .setIsRpcThriftCompressionEnabled(CONF.isRpcThriftCompressionEnable())
-                          .setSelectorNumOfClientManager(CONF.getSelectorNumOfClientManager())
                           .setThriftServerAwaitTimeForStopService(
                               CONF.getThriftServerAwaitTimeForStopService())
                           .setThriftMaxFrameSize(CONF.getThriftMaxFrameSize())
-                          .setMaxClientNumForEachNode(CONF.getMaxClientNumForEachNode())
                           .build())
                   .setPipe(
                       PipeConsensusConfig.Pipe.newBuilder()

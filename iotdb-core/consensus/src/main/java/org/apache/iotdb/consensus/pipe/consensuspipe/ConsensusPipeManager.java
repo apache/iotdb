@@ -96,7 +96,7 @@ public class ConsensusPipeManager {
 
   public void dropConsensusPipe(Peer senderPeer, Peer receiverPeer) throws Exception {
     ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
-    dispatcher.dropPipe(consensusPipeName.toString());
+    dispatcher.dropPipe(consensusPipeName);
   }
 
   public void updateConsensusPipe(ConsensusPipeName consensusPipeName, PipeStatus pipeStatus)
@@ -106,7 +106,7 @@ public class ConsensusPipeManager {
     } else if (PipeStatus.STOPPED.equals(pipeStatus)) {
       dispatcher.stopPipe(consensusPipeName.toString());
     } else if (PipeStatus.DROPPED.equals(pipeStatus)) {
-      dispatcher.dropPipe(consensusPipeName.toString());
+      dispatcher.dropPipe(consensusPipeName);
     } else {
       throw new IllegalArgumentException("Unsupported pipe status: " + pipeStatus);
     }

@@ -107,5 +107,5 @@ service PipeConsensusIService {
 
   TNotifyPeerToDropConsensusPipeResp notifyPeerToDropConsensusPipe(TNotifyPeerToDropConsensusPipeReq req)
 
-  TCheckConsensusPipeCompleteddResp checkConsensusPipeCompleted(TCheckConsensusPipeCompleteddReq req)
+  TCheckConsensusPipeCompletedResp checkConsensusPipeCompleted(TCheckConsensusPipeCompletedReq req)
 }

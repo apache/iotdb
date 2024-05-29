@@ -103,10 +103,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
-import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -1671,9 +1669,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Validate pipe name
-    if (!(DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
-            && createPipeStatement.getPipeName().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX))
-        && createPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
+    if (createPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
               "Failed to create pipe %s in config node, pipe name starting with \"%s\" are not allowed to be created",
@@ -1784,9 +1780,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Validate pipe name
-    if (!(DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
-            && startPipeStatement.getPipeName().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX))
-        && startPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
+    if (startPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
               "Failed to start pipe %s in config node, pipe name starting with \"%s\" are not allowed to be started",
@@ -1818,9 +1812,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Validate pipe name
-    if (!(DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
-            && dropPipeStatement.getPipeName().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX))
-        && dropPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
+    if (dropPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
               "Failed to drop pipe %s in config node, pipe name starting with \"%s\" are not allowed to be dropped",
@@ -1852,9 +1844,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Validate pipe name
-    if (!(DataRegionConsensusImpl.getInstance() instanceof PipeConsensus
-            && stopPipeStatement.getPipeName().startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX))
-        && stopPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
+    if (stopPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
               "Failed to stop pipe %s in config node, pipe name starting with \"%s\" are not allowed to be stopped",

@@ -22,6 +22,9 @@ package org.apache.iotdb.consensus.pipe;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
+import org.apache.iotdb.commons.client.container.PipeConsensusClientMgrContainer;
+import org.apache.iotdb.commons.client.sync.SyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
@@ -44,9 +47,6 @@ import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
-import org.apache.iotdb.consensus.pipe.client.AsyncPipeConsensusServiceClient;
-import org.apache.iotdb.consensus.pipe.client.PipeConsensusClientPool;
-import org.apache.iotdb.consensus.pipe.client.SyncPipeConsensusServiceClient;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeManager;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
@@ -108,16 +108,8 @@ public class PipeConsensus implements IConsensus {
             config.getPipeConsensusConfig().getReplicateMode());
     this.consensusPipeGuardian =
         config.getPipeConsensusConfig().getPipe().getConsensusPipeGuardian();
-    this.asyncClientManager =
-        new IClientManager.Factory<TEndPoint, AsyncPipeConsensusServiceClient>()
-            .createClientManager(
-                new PipeConsensusClientPool.AsyncPipeConsensusServiceClientPoolFactory(
-                    config.getPipeConsensusConfig()));
-    this.syncClientManager =
-        new IClientManager.Factory<TEndPoint, SyncPipeConsensusServiceClient>()
-            .createClientManager(
-                new PipeConsensusClientPool.SyncPipeConsensusServiceClientPoolFactory(
-                    config.getPipeConsensusConfig()));
+    this.asyncClientManager = PipeConsensusClientMgrContainer.getInstance().getAsyncClientManager();
+    this.syncClientManager = PipeConsensusClientMgrContainer.getInstance().getSyncClientManager();
   }
 
   @Override
@@ -172,7 +164,7 @@ public class PipeConsensus implements IConsensus {
     stateMachineMap.values().parallelStream().forEach(PipeConsensusServerImpl::stop);
   }
 
-  public void checkAllConsensusPipe() {
+  private void checkAllConsensusPipe() {
     final Map<ConsensusGroupId, Map<ConsensusPipeName, PipeStatus>> existedPipes =
         consensusPipeManager.getAllConsensusPipe().entrySet().stream()
             .filter(entry -> entry.getKey().getSenderDataNodeId() == thisNodeId)
@@ -182,13 +174,9 @@ public class PipeConsensus implements IConsensus {
                     Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
     try {
       stateMachineMapLock.lock();
-      stateMachineMap.entrySet().parallelStream()
-          .forEach(
-              entry ->
-                  entry
-                      .getValue()
-                      .checkConsensusPipe(
-                          existedPipes.getOrDefault(entry.getKey(), ImmutableMap.of())));
+      stateMachineMap.forEach(
+          (key, value) ->
+              value.checkConsensusPipe(existedPipes.getOrDefault(key, ImmutableMap.of())));
       existedPipes.entrySet().stream()
           .filter(entry -> !stateMachineMap.containsKey(entry.getKey()))
           .flatMap(entry -> entry.getValue().keySet().stream())
@@ -463,14 +451,6 @@ public class PipeConsensus implements IConsensus {
   @Override
   public void reloadConsensusConfig(ConsensusConfig consensusConfig) {
     // TODO: impl for hot config loading
-  }
-
-  public IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> getAsyncClientManager() {
-    return asyncClientManager;
-  }
-
-  public IClientManager<TEndPoint, SyncPipeConsensusServiceClient> getSyncClientManager() {
-    return syncClientManager;
   }
 
   public PipeConsensusServerImpl getImpl(ConsensusGroupId groupId) {

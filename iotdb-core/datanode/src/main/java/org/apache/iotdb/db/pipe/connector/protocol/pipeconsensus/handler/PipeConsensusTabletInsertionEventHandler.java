@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.consensus.pipe.client.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.PipeConsensusAsyncConnector;
@@ -86,7 +86,7 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
         LOGGER.info(
             "Debug only: no.{} event successfully processed!",
             ((EnrichedEvent) event).getCommitId());
-        connector.removeEventFromBuffer(event);
+        connector.removeEventFromBuffer((EnrichedEvent) event);
       }
     } catch (Exception e) {
       onError(e);

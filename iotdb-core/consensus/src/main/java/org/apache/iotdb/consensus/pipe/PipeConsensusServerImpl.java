@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.client.sync.SyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
@@ -33,7 +34,6 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
-import org.apache.iotdb.consensus.pipe.client.SyncPipeConsensusServiceClient;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeManager;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ProgressIndexManager;
@@ -120,6 +120,7 @@ public class PipeConsensusServerImpl {
       } catch (Exception e) {
         // roll back
         LOGGER.warn("{} cannot persist all peers", thisNode, e);
+        peerManager.deleteAllFiles();
         updateConsensusPipesStatus(successfulPipes, PipeStatus.DROPPED);
         throw e;
       }
@@ -278,7 +279,6 @@ public class PipeConsensusServerImpl {
         ((ComparableConsensusRequest) request)
             .setProgressIndex(progressIndexManager.assignProgressIndex(thisNode.getGroupId()));
       }
-
       return stateMachine.write(request);
     } finally {
       stateMachineLock.unlock();

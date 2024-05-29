@@ -22,11 +22,11 @@ package org.apache.iotdb.db.pipe.receiver.protocol.pipeconsensus;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeReceiver;
+import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -38,12 +38,10 @@ import org.apache.commons.lang3.function.TriFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
 
@@ -152,20 +150,38 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     return receiverReference.get();
   }
 
-  public final void handleClientExit() {
-    // 1. Get all consensusPipeTask
-    final Collection<Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>>>
-        allReceiverMap = replicaReceiverMap.values();
-    // 2. Collect all receiver from every consensusPipeTask
-    final Collection<AtomicReference<PipeConsensusReceiver>> allReceivers =
-        allReceiverMap.stream().flatMap(map -> map.values().stream()).collect(Collectors.toList());
-    // 3. exit
-    allReceivers.forEach(
-        receiver -> {
-          if (receiver.get() != null) {
-            receiver.get().handleExit();
-            receiver.set(null);
-          }
-        });
+  // Release given pipeConsensusTask client's corresponding receiver.
+  @Override
+  public void handleClientExit(
+      ConsensusGroupId consensusGroupId, int senderDataNodeId, TCommitId commitId) {
+    // 1. Route to given consensusGroup's receiver map
+    Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>> consensusPipe2ReciverMap =
+        replicaReceiverMap.getOrDefault(consensusGroupId, new ConcurrentHashMap<>());
+    // 2. Route to given consensusPipeTask's receiver
+    AtomicReference<PipeConsensusReceiver> receiverReference =
+        consensusPipe2ReciverMap.getOrDefault(
+            new ConsensusPipeName(consensusGroupId, senderDataNodeId, thisNodeId), null);
+    // 3. Release client's resource
+    if (receiverReference != null) {
+      receiverReference.get().handleClientExit(commitId);
+      receiverReference.set(null);
+    }
+  }
+
+  // Release receiver of given pipeConsensusTask
+  @Override
+  public final void handleDropPipeConsensusTask(ConsensusPipeName pipeName) {
+    // 1. Route to given consensusGroup's receiver map
+    Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>> consensusPipe2ReciverMap =
+        replicaReceiverMap.getOrDefault(pipeName.getConsensusGroupId(), new ConcurrentHashMap<>());
+    // 2. Route to given consensusPipeTask's receiver
+    AtomicReference<PipeConsensusReceiver> receiverReference =
+        consensusPipe2ReciverMap.getOrDefault(pipeName, null);
+    // 3. Release receiver
+    if (receiverReference != null) {
+      receiverReference.get().handleExit();
+      receiverReference.set(null);
+    }
+    consensusPipe2ReciverMap.remove(pipeName);
   }
 }

@@ -2724,7 +2724,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
     PipeAgent.receiver().thrift().handleClientExit();
     PipeAgent.receiver().legacy().handleClientExit();
-    PipeAgent.receiver().pipeConsensus().handleClientExit();
     SubscriptionAgent.receiver().handleClientExit();
   }
 }

@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.handler;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.consensus.pipe.client.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
@@ -95,7 +95,7 @@ public class PipeConsensusTabletBatchEventHandler
       }
       // if all events success, remove them from transferBuffer
       else {
-        events.forEach(connector::removeEventFromBuffer);
+        events.forEach(event -> connector.removeEventFromBuffer((EnrichedEvent) event));
       }
 
       for (final Event event : events) {

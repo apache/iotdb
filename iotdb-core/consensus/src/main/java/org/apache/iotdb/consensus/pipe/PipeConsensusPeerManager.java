@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.pipe;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.common.Peer;
 
 import com.google.common.collect.ImmutableList;
@@ -76,6 +77,7 @@ public class PipeConsensusPeerManager {
     File configurationFile = new File(storageDir, generateConfigurationFileName(peer));
     if (configurationFile.exists()) {
       LOGGER.warn("Configuration file {} already exists, delete it.", configurationFile);
+      FileUtils.deleteFileOrDirectory(configurationFile);
     }
 
     try (FileOutputStream fileOutputStream = new FileOutputStream(configurationFile)) {
@@ -126,11 +128,11 @@ public class PipeConsensusPeerManager {
     return ImmutableList.copyOf(peers);
   }
 
-  public void clear() throws IOException {
+  public void deleteAllFiles() throws IOException {
     IOException exception = null;
     for (Peer peer : peers) {
       try {
-        Files.delete(Paths.get(storageDir, generateConfigurationFileName(peer)));
+        Files.deleteIfExists(Paths.get(storageDir, generateConfigurationFileName(peer)));
       } catch (IOException e) {
         LOGGER.error("Failed to delete configuration file for peer {}", peer, e);
         if (exception == null) {
@@ -140,9 +142,13 @@ public class PipeConsensusPeerManager {
         }
       }
     }
-    peers.clear();
     if (exception != null) {
       throw exception;
     }
+  }
+
+  public void clear() throws IOException {
+    deleteAllFiles();
+    peers.clear();
   }
 }

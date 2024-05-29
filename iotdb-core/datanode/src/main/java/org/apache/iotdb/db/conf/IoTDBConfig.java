@@ -1095,6 +1095,9 @@ public class IoTDBConfig {
   private double maxMemoryRatioForQueue = 0.6;
   private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
 
+  // PipeConsensus Config
+  private int pipeConsensusPipelineSize = 5;
+
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
 
@@ -1154,6 +1157,14 @@ public class IoTDBConfig {
   public void setRegionMigrationSpeedLimitBytesPerSecond(
       long regionMigrationSpeedLimitBytesPerSecond) {
     this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
+  }
+
+  public int getPipeConsensusPipelineSize() {
+    return pipeConsensusPipelineSize;
+  }
+
+  public void setPipeConsensusPipelineSize(int pipeConsensusPipelineSize) {
+    this.pipeConsensusPipelineSize = pipeConsensusPipelineSize;
   }
 
   public void setMaxSizePerBatch(int maxSizePerBatch) {

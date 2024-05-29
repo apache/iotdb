@@ -19,12 +19,20 @@
 
 package org.apache.iotdb.consensus.pipe.service;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
+
+import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PipeConsensusRPCServiceHandler implements TServerEventHandler {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PipeConsensusRPCServiceHandler.class);
   private final PipeConsensusRPCServiceProcessor processor;
 
   public PipeConsensusRPCServiceHandler(PipeConsensusRPCServiceProcessor processor) {
@@ -41,7 +49,19 @@ public class PipeConsensusRPCServiceHandler implements TServerEventHandler {
 
   @Override
   public void deleteContext(ServerContext serverContext, TProtocol input, TProtocol output) {
-    processor.handleClientExit();
+    // Construct clientReq from inputProtocol
+    TPipeConsensusTransferReq clientReq = new TPipeConsensusTransferReq();
+    try {
+      clientReq.read(input);
+    } catch (TException e) {
+      LOGGER.error(
+          "PipeConsensus: failed to delete receiver's context when sender's RpcClient exit, because: {}",
+          e.getMessage());
+    }
+    processor.handleClientExit(
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(clientReq.getConsensusGroupId()),
+        clientReq.getDataNodeId(),
+        clientReq.getCommitId());
   }
 
   @Override

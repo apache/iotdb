@@ -108,7 +108,7 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 /** A multi-raft consensus implementation based on Apache Ratis. */
-public class RatisConsensus implements IConsensus {
+class RatisConsensus implements IConsensus {
 
   private static final Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
 

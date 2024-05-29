@@ -195,6 +195,9 @@ public class ConfigNodeConfig {
   /** Whether to enable auto leader balance for IoTConsensus protocol. */
   private boolean enableAutoLeaderBalanceForIoTConsensus = true;
 
+  /** Whether to enable auto leader balance for FastIoTConsensus protocol. */
+  private boolean enableAutoLeaderBalanceForFastIoTConsensus = true;
+
   /** The route priority policy of cluster read/write requests. */
   private String routePriorityPolicy = IPriorityBalancer.LEADER_POLICY;
 
@@ -1229,5 +1232,14 @@ public class ConfigNodeConfig {
   public void setDataRegionRatisPeriodicSnapshotInterval(
       long dataRegionRatisPeriodicSnapshotInterval) {
     this.dataRegionRatisPeriodicSnapshotInterval = dataRegionRatisPeriodicSnapshotInterval;
+  }
+
+  public boolean isEnableAutoLeaderBalanceForFastIoTConsensus() {
+    return enableAutoLeaderBalanceForFastIoTConsensus;
+  }
+
+  public void setEnableAutoLeaderBalanceForFastIoTConsensus(
+      boolean enableAutoLeaderBalanceForFastIoTConsensus) {
+    this.enableAutoLeaderBalanceForFastIoTConsensus = enableAutoLeaderBalanceForFastIoTConsensus;
   }
 }

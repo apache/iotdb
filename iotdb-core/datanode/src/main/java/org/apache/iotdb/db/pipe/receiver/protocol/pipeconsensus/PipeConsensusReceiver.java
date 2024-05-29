@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.pipe.receiver.protocol.pipeconsensus;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -39,6 +37,7 @@ import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
@@ -83,7 +82,13 @@ import java.util.stream.Collectors;
 
 public class PipeConsensusReceiver {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusReceiver.class);
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private static final long PIPE_CONSENSUS_RECEIVER_MAX_WAITING_TIME_IN_MS =
+      (long) IOTDB_CONFIG.getConnectionTimeoutInMS()
+          / 6
+          * IOTDB_CONFIG.getPipeConsensusPipelineSize();
+  private static final long CLOSE_TSFILE_WRITER_MAX_WAIT_TIME_IN_MS = 5000;
+  private static final long RETRY_WAIT_TIME = 500;
   private final RequestExecutor requestExecutor = new RequestExecutor();
   private final PipeConsensus pipeConsensus;
   private final ConsensusGroupId consensusGroupId;
@@ -111,7 +116,7 @@ public class PipeConsensusReceiver {
       this.folderManager =
           new FolderManager(receiverBaseDirsName, DirectoryStrategyType.SEQUENCE_STRATEGY);
       initiateTsFileBufferFolder();
-    } catch (DiskSpaceInsufficientException e) {
+    } catch (Exception e) {
       LOGGER.error(
           "Fail to create pipeConsensus receiver file folders allocation strategy because all disks of folders are full.",
           e);
@@ -280,7 +285,8 @@ public class PipeConsensusReceiver {
       final PipeConsensusTransferFilePieceReq req, final boolean isSingleFile) {
     LOGGER.info(
         "PipeConsensus-ConsensusGroupId-{}: starting to receive tsFile pieces", consensusGroupId);
-    PipeTsFileWriter diskBuffer = tsFileDiskBufferPool.borrowCorrespondingWriter(req.getCommitId());
+    PipeConsensusTsFileWriter diskBuffer =
+        tsFileDiskBufferPool.borrowCorrespondingWriter(req.getCommitId());
 
     try {
       updateWritingFileIfNeeded(diskBuffer, req.getFileName(), isSingleFile);
@@ -335,12 +341,13 @@ public class PipeConsensusReceiver {
   private TPipeConsensusTransferResp handleTransferFileSeal(final PipeConsensusTsFileSealReq req) {
     LOGGER.info(
         "PipeConsensus-ConsensusGroupId-{}: starting to receive tsFile seal", consensusGroupId);
-    PipeTsFileWriter diskBuffer = tsFileDiskBufferPool.borrowCorrespondingWriter(req.getCommitId());
-    File writingFile = diskBuffer.getWritingFile();
-    RandomAccessFile writingFileWriter = diskBuffer.getWritingFileWriter();
+    PipeConsensusTsFileWriter tsFileWriter =
+        tsFileDiskBufferPool.borrowCorrespondingWriter(req.getCommitId());
+    File writingFile = tsFileWriter.getWritingFile();
+    RandomAccessFile writingFileWriter = tsFileWriter.getWritingFileWriter();
 
     try {
-      if (isWritingFileNonAvailable(diskBuffer)) {
+      if (isWritingFileNonAvailable(tsFileWriter)) {
         final TSStatus status =
             RpcUtils.getStatus(
                 TSStatusCode.PIPE_CONSENSUS_TRANSFER_FILE_ERROR,
@@ -351,7 +358,7 @@ public class PipeConsensusReceiver {
       }
 
       final TPipeConsensusTransferResp resp =
-          checkFinalFileSeal(diskBuffer, req.getFileName(), req.getFileLength());
+          checkFinalFileSeal(tsFileWriter, req.getFileName(), req.getFileLength());
       if (Objects.nonNull(resp)) {
         return resp;
       }
@@ -367,10 +374,10 @@ public class PipeConsensusReceiver {
       // loaded file. Since the writing file writer has already been closed, it will throw a Stream
       // Close exception.
       writingFileWriter.close();
-      diskBuffer.setWritingFileWriter(null);
+      tsFileWriter.setWritingFileWriter(null);
 
       // writingFile will be deleted after load if no exception occurs
-      diskBuffer.setWritingFile(null);
+      tsFileWriter.setWritingFile(null);
 
       final TSStatus status =
           loadFileToDataRegion(
@@ -378,7 +385,7 @@ public class PipeConsensusReceiver {
               ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
-        diskBuffer.returnSelf();
+        tsFileWriter.returnSelf();
         LOGGER.info(
             "PipeConsensus-ConsensusGroupId-{}: Seal file {} successfully.",
             consensusGroupId,
@@ -417,8 +424,8 @@ public class PipeConsensusReceiver {
       // If the writing file is not sealed successfully, the writing file will be deleted.
       // All pieces of the writing file and its mod (if exists) should be retransmitted by the
       // sender.
-      closeCurrentWritingFileWriter(diskBuffer);
-      deleteCurrentWritingFile(diskBuffer);
+      closeCurrentWritingFileWriter(tsFileWriter);
+      deleteCurrentWritingFile(tsFileWriter);
     }
   }
 
@@ -427,7 +434,7 @@ public class PipeConsensusReceiver {
     LOGGER.info(
         "PipeConsensus-ConsensusGroupId-{}: starting to receive tsFile seal with mods",
         consensusGroupId);
-    PipeTsFileWriter tsFileWriter =
+    PipeConsensusTsFileWriter tsFileWriter =
         tsFileDiskBufferPool.borrowCorrespondingWriter(req.getCommitId());
     File writingFile = tsFileWriter.getWritingFile();
     RandomAccessFile writingFileWriter = tsFileWriter.getWritingFileWriter();
@@ -482,7 +489,6 @@ public class PipeConsensusReceiver {
       final List<String> fileAbsolutePaths =
           files.stream().map(File::getAbsolutePath).collect(Collectors.toList());
 
-      // only load mods
       final TSStatus status =
           loadFileToDataRegion(
               fileAbsolutePaths.get(1),
@@ -525,7 +531,7 @@ public class PipeConsensusReceiver {
   }
 
   private TPipeConsensusTransferResp checkNonFinalFileSeal(
-      final PipeTsFileWriter diskBuffer,
+      final PipeConsensusTsFileWriter diskBuffer,
       final File file,
       final String fileName,
       final long fileLength)
@@ -588,7 +594,7 @@ public class PipeConsensusReceiver {
     return tsFileResource;
   }
 
-  private boolean isWritingFileNonAvailable(PipeTsFileWriter diskBuffer) {
+  private boolean isWritingFileNonAvailable(PipeConsensusTsFileWriter diskBuffer) {
     File writingFile = diskBuffer.getWritingFile();
     RandomAccessFile writingFileWriter = diskBuffer.getWritingFileWriter();
 
@@ -608,7 +614,7 @@ public class PipeConsensusReceiver {
   }
 
   private TPipeConsensusTransferResp checkFinalFileSeal(
-      final PipeTsFileWriter diskBuffer, final String fileName, final long fileLength)
+      final PipeConsensusTsFileWriter diskBuffer, final String fileName, final long fileLength)
       throws IOException {
     final File writingFile = diskBuffer.getWritingFile();
     final RandomAccessFile writingFileWriter = diskBuffer.getWritingFileWriter();
@@ -648,13 +654,14 @@ public class PipeConsensusReceiver {
     return null;
   }
 
-  private boolean isFileExistedAndNameCorrect(PipeTsFileWriter diskBuffer, String fileName) {
+  private boolean isFileExistedAndNameCorrect(
+      PipeConsensusTsFileWriter diskBuffer, String fileName) {
     final File writingFile = diskBuffer.getWritingFile();
     return writingFile != null && writingFile.getName().equals(fileName);
   }
 
-  private boolean isWritingFileOffsetNonCorrect(PipeTsFileWriter diskBuffer, final long offset)
-      throws IOException {
+  private boolean isWritingFileOffsetNonCorrect(
+      PipeConsensusTsFileWriter diskBuffer, final long offset) throws IOException {
     final File writingFile = diskBuffer.getWritingFile();
     final RandomAccessFile writingFileWriter = diskBuffer.getWritingFileWriter();
 
@@ -670,7 +677,7 @@ public class PipeConsensusReceiver {
     return !offsetCorrect;
   }
 
-  private void closeCurrentWritingFileWriter(PipeTsFileWriter diskBuffer) {
+  private void closeCurrentWritingFileWriter(PipeConsensusTsFileWriter diskBuffer) {
     if (diskBuffer.getWritingFileWriter() != null) {
       try {
         diskBuffer.getWritingFileWriter().close();
@@ -722,7 +729,7 @@ public class PipeConsensusReceiver {
     }
   }
 
-  private void deleteCurrentWritingFile(PipeTsFileWriter diskBuffer) {
+  private void deleteCurrentWritingFile(PipeConsensusTsFileWriter diskBuffer) {
     if (diskBuffer.getWritingFile() != null) {
       deleteFile(diskBuffer.getWritingFile());
     } else {
@@ -735,7 +742,7 @@ public class PipeConsensusReceiver {
   }
 
   private void updateWritingFileIfNeeded(
-      final PipeTsFileWriter diskBuffer, final String fileName, final boolean isSingleFile)
+      final PipeConsensusTsFileWriter diskBuffer, final String fileName, final boolean isSingleFile)
       throws IOException {
     if (isFileExistedAndNameCorrect(diskBuffer, fileName)) {
       return;
@@ -785,7 +792,7 @@ public class PipeConsensusReceiver {
     return Objects.isNull(folderManager) ? null : folderManager.getNextFolder();
   }
 
-  private void initiateTsFileBufferFolder() throws DiskSpaceInsufficientException {
+  private void initiateTsFileBufferFolder() throws DiskSpaceInsufficientException, IOException {
     // Clear the original receiver file dir if exists
     if (receiverFileDirWithIdSuffix.get() != null) {
       if (receiverFileDirWithIdSuffix.get().exists()) {
@@ -834,7 +841,10 @@ public class PipeConsensusReceiver {
             "PipeConsensus-ConsensusGroupId-{}: Failed to create receiver file dir {}.",
             newReceiverDir.getPath(),
             consensusGroupId.getId());
-        throw new DiskSpaceInsufficientException(receiverBaseDirsName);
+        throw new IOException(
+            String.format(
+                "PipeConsensus-ConsensusGroupId-%s: Failed to create receiver file dir %s.",
+                newReceiverDir.getPath(), consensusGroupId.getId()));
       }
       receiverFileDirWithIdSuffix.set(newReceiverDir);
 
@@ -850,6 +860,13 @@ public class PipeConsensusReceiver {
     return PipeConsensusRequestVersion.VERSION_1;
   }
 
+  // Clear corresponding TsFileWriter. Don't need to clear ReqExecutor's resource because
+  // ReqExecutor's buffer is a TreeSet, which will properly cope with the resend duplicate event
+  // from sender.
+  public void handleClientExit(TCommitId commitId) {
+    tsFileDiskBufferPool.handleClientExit(commitId, consensusGroupId);
+  }
+
   public synchronized void handleExit() {
     // Clear the diskBuffers
     tsFileDiskBufferPool.handleExit(consensusGroupId);
@@ -860,12 +877,12 @@ public class PipeConsensusReceiver {
         try {
           FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
           LOGGER.info(
-              "PipeConsensus-ConsensusGroupId-{}: Handling exit: Original receiver file dir {} was deleted.",
+              "PipeConsensus-ConsensusGroupId-{}: Receiver exit: Original receiver file dir {} was deleted.",
               consensusGroupId,
               receiverFileDirWithIdSuffix.get().getPath());
         } catch (IOException e) {
           LOGGER.warn(
-              "PipeConsensus-ConsensusGroupId-{}: Handling exit: Delete original receiver file dir {} error.",
+              "PipeConsensus-ConsensusGroupId-{}: Receiver exit: Delete original receiver file dir {} error.",
               consensusGroupId,
               receiverFileDirWithIdSuffix.get().getPath(),
               e);
@@ -873,7 +890,7 @@ public class PipeConsensusReceiver {
       } else {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "PipeConsensus-ConsensusGroupId-{}: Handling exit: Original receiver file dir {} does not exist. No need to delete.",
+              "PipeConsensus-ConsensusGroupId-{}: Receiver exit: Original receiver file dir {} does not exist. No need to delete.",
               consensusGroupId,
               receiverFileDirWithIdSuffix.get().getPath());
         }
@@ -882,29 +899,29 @@ public class PipeConsensusReceiver {
     } else {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "PipeConsensus-ConsensusGroupId-{}: Handling exit: Original receiver file dir is null. No need to delete.",
+            "PipeConsensus-ConsensusGroupId-{}: Receiver exit: Original receiver file dir is null. No need to delete.",
             consensusGroupId.getId());
       }
     }
 
     LOGGER.info(
-        "PipeConsensus-ConsensusGroupId-{}: Handling exit: Receiver exited.",
+        "PipeConsensus-ConsensusGroupId-{}: Receiver exit: Receiver exited.",
         consensusGroupId.getId());
   }
 
   private static class TsFileDiskBufferPool {
-    private final List<PipeTsFileWriter> pipeTsFileWriterPool = new ArrayList<>();
+    private final Lock lock = new ReentrantLock();
+    private final List<PipeConsensusTsFileWriter> pipeConsensusTsFileWriterPool = new ArrayList<>();
 
     public TsFileDiskBufferPool() {
-      for (int i = 0; i < COMMON_CONFIG.getPipeConsensusEventBufferSize(); i++) {
-        pipeTsFileWriterPool.add(new PipeTsFileWriter());
+      for (int i = 0; i < IOTDB_CONFIG.getPipeConsensusPipelineSize(); i++) {
+        pipeConsensusTsFileWriterPool.add(new PipeConsensusTsFileWriter(i));
       }
     }
 
-    public PipeTsFileWriter borrowCorrespondingWriter(TCommitId commitId) {
-      Optional<PipeTsFileWriter> diskBuffer;
-      diskBuffer =
-          pipeTsFileWriterPool.stream()
+    public PipeConsensusTsFileWriter borrowCorrespondingWriter(TCommitId commitId) {
+      Optional<PipeConsensusTsFileWriter> diskBuffer =
+          pipeConsensusTsFileWriterPool.stream()
               .filter(
                   item -> Objects.equals(commitId, item.getCommitIdOfCorrespondingHolderEvent()))
               .findFirst();
@@ -912,73 +929,61 @@ public class PipeConsensusReceiver {
       // If the TsFileInsertionEvent is first using diskBuffer, we will find the first available
       // buffer for it.
       if (!diskBuffer.isPresent()) {
-        diskBuffer = pipeTsFileWriterPool.stream().filter(item -> !item.isUsed()).findFirst();
-        // We don't need to check diskBuffer.isPresent() here. Since diskBuffers' length is equals
-        // to
-        // ReqExecutor's buffer, so the diskBuffer is always present.
-        diskBuffer.get().setUsed(true);
-        diskBuffer.get().setCommitIdOfCorrespondingHolderEvent(commitId);
+        // We should synchronously find the idle writer to avoid concurrency issues.
+        try {
+          lock.lock();
+          diskBuffer =
+              pipeConsensusTsFileWriterPool.stream().filter(item -> !item.isUsed()).findFirst();
+          // We don't need to check diskBuffer.isPresent() here. Since diskBuffers' length is equals
+          // to ReqExecutor's buffer, so the diskBuffer is always present.
+          diskBuffer.get().setUsed(true);
+          diskBuffer.get().setCommitIdOfCorrespondingHolderEvent(commitId);
+        } finally {
+          lock.unlock();
+        }
       }
 
       return diskBuffer.get();
     }
 
+    public void handleClientExit(TCommitId commitId, ConsensusGroupId consensusGroupId) {
+      Optional<PipeConsensusTsFileWriter> tsFileWriter =
+          pipeConsensusTsFileWriterPool.stream()
+              .filter(
+                  item -> Objects.equals(commitId, item.getCommitIdOfCorrespondingHolderEvent()))
+              .findFirst();
+
+      if (tsFileWriter.isPresent()) {
+        tsFileWriter.get().returnSelf();
+        tsFileWriter.get().closeSelf(consensusGroupId);
+      }
+    }
+
     public void handleExit(ConsensusGroupId consensusGroupId) {
-      pipeTsFileWriterPool.forEach(
+      pipeConsensusTsFileWriterPool.forEach(
           diskBuffer -> {
-            // close file writer
-            if (diskBuffer.getWritingFileWriter() != null) {
+            // Wait until diskBuffer is not used by TsFileInsertionEvent or timeout.
+            long currentTime = System.currentTimeMillis();
+            while (System.currentTimeMillis() - currentTime
+                    < CLOSE_TSFILE_WRITER_MAX_WAIT_TIME_IN_MS
+                && diskBuffer.isUsed()) {
               try {
-                diskBuffer.getWritingFileWriter().close();
-                LOGGER.info(
-                    "PipeConsensus-ConsensusGroupId-{}: Handling exit: Writing file writer was closed.",
-                    consensusGroupId.getId());
-              } catch (Exception e) {
+                Thread.sleep(RETRY_WAIT_TIME);
+              } catch (InterruptedException e) {
                 LOGGER.warn(
-                    "PipeConsensus-ConsensusGroupId-{}: Handling exit: Close writing file writer error.",
-                    consensusGroupId,
-                    e);
-              }
-              diskBuffer.setWritingFileWriter(null);
-            } else {
-              if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(
-                    "PipeConsensus-ConsensusGroupId-{}: Handling exit: Writing file writer is null. No need to close.",
+                    "PipeConsensus-ConsensusGroupId-{}: receiver thread get interrupted when exiting.",
                     consensusGroupId.getId());
+                // avoid infinite loop
+                break;
               }
             }
-
-            // close file
-            if (diskBuffer.getWritingFile() != null) {
-              try {
-                FileUtils.delete(diskBuffer.getWritingFile());
-                LOGGER.info(
-                    "PipeConsensus-ConsensusGroupId-{}: Handling exit: Writing file {} was deleted.",
-                    consensusGroupId,
-                    diskBuffer.getWritingFile().getPath());
-              } catch (Exception e) {
-                LOGGER.warn(
-                    "PipeConsensus-ConsensusGroupId-{}: Handling exit: Delete writing file {} error.",
-                    consensusGroupId,
-                    diskBuffer.getWritingFile().getPath(),
-                    e);
-              }
-              diskBuffer.setWritingFile(null);
-            } else {
-              if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(
-                    "PipeConsensus-ConsensusGroupId-{}: Handling exit: Writing file is null. No need to delete.",
-                    consensusGroupId.getId());
-              }
-            }
-
-            // release disk buffer
-            diskBuffer.returnSelf();
+            diskBuffer.closeSelf(consensusGroupId);
           });
     }
   }
 
-  private static class PipeTsFileWriter {
+  private static class PipeConsensusTsFileWriter {
+    private final int index;
     // whether this buffer is used. this will be updated when first transfer tsFile piece or
     // when transfer seal.
     private boolean isUsed = false;
@@ -986,6 +991,10 @@ public class PipeConsensusReceiver {
     private TCommitId commitIdOfCorrespondingHolderEvent;
     private File writingFile;
     private RandomAccessFile writingFileWriter;
+
+    public PipeConsensusTsFileWriter(int index) {
+      this.index = index;
+    }
 
     public File getWritingFile() {
       return writingFile;
@@ -1024,6 +1033,57 @@ public class PipeConsensusReceiver {
       this.isUsed = false;
       this.commitIdOfCorrespondingHolderEvent = null;
     }
+
+    public void closeSelf(ConsensusGroupId consensusGroupId) {
+      // close file writer
+      if (writingFileWriter != null) {
+        try {
+          writingFileWriter.close();
+          LOGGER.info(
+              "PipeConsensus-ConsensusGroupId-{}: TsFileWriter-{} exit: Writing file writer was closed.",
+              consensusGroupId.getId(),
+              index);
+        } catch (Exception e) {
+          LOGGER.warn(
+              "PipeConsensus-ConsensusGroupId-{}: TsFileWriter-{} exit: Close Writing file writer error.",
+              consensusGroupId,
+              index,
+              e);
+        }
+        setWritingFileWriter(null);
+      } else {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "PipeConsensus-ConsensusGroupId-{}: TsFileWriter-{} exit: Writing file writer is null. No need to close.",
+              consensusGroupId.getId(),
+              index);
+        }
+      }
+
+      // close file
+      if (writingFile != null) {
+        try {
+          FileUtils.delete(writingFile);
+          LOGGER.info(
+              "PipeConsensus-ConsensusGroupId-{}: TsFileWriter exit: Writing file {} was deleted.",
+              consensusGroupId,
+              writingFile.getPath());
+        } catch (Exception e) {
+          LOGGER.warn(
+              "PipeConsensus-ConsensusGroupId-{}: TsFileWriter exit: Delete writing file {} error.",
+              consensusGroupId,
+              writingFile.getPath(),
+              e);
+        }
+        setWritingFile(null);
+      } else {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "PipeConsensus-ConsensusGroupId-{}: TsFileWriter exit: Writing file is null. No need to delete.",
+              consensusGroupId.getId());
+        }
+      }
+    }
   }
 
   /**
@@ -1031,17 +1091,17 @@ public class PipeConsensusReceiver {
    * although events can arrive receiver in a random sequence.
    */
   private class RequestExecutor {
-    // An ordered set that buffers transfer request, whose length is not larger than
-    // PIPE_CONSENSUS_EVENT_BUFFER_SIZE.
+    // An ordered set that buffers transfer requests' TCommitId, whose length is not larger than
+    // PIPE_CONSENSUS_PIPELINE_SIZE.
     // Here we use set is to avoid duplicate events being received in some special cases
-    private final TreeSet<TCommitId> reqBuffer;
+    private final TreeSet<TCommitId> reqExecutionOrderBuffer;
     private final Lock lock;
     private final Condition condition;
     private long onSyncedCommitIndex = -1;
     private int connectorRebootTimes = 0;
 
     public RequestExecutor() {
-      reqBuffer =
+      reqExecutionOrderBuffer =
           new TreeSet<>(
               Comparator.comparingInt(TCommitId::getRebootTimes)
                   .thenComparingLong(TCommitId::getCommitIndex));
@@ -1054,7 +1114,7 @@ public class PipeConsensusReceiver {
           "PipeConsensus-ConsensusGroupId-{}: process no.{} event successfully!",
           consensusGroupId,
           nextSyncedCommitIndex);
-      reqBuffer.pollFirst();
+      reqExecutionOrderBuffer.pollFirst();
       onSyncedCommitIndex = nextSyncedCommitIndex;
     }
 
@@ -1092,7 +1152,7 @@ public class PipeConsensusReceiver {
         if (tCommitId.getRebootTimes() > connectorRebootTimes) {
           resetWithNewestRebootTime(tCommitId.getRebootTimes());
         }
-        reqBuffer.add(tCommitId);
+        reqExecutionOrderBuffer.add(tCommitId);
         // TsFilePieceTransferEvent will not enter further procedure, it just holds a place in
         // buffer. Only after the corresponding sealing event is processed, this event can be
         // dequeued.
@@ -1100,8 +1160,8 @@ public class PipeConsensusReceiver {
           return null;
         }
 
-        if (reqBuffer.size() >= COMMON_CONFIG.getPipeConsensusEventBufferSize()
-            && !reqBuffer.first().equals(tCommitId)) {
+        if (reqExecutionOrderBuffer.size() >= IOTDB_CONFIG.getPipeConsensusPipelineSize()
+            && !reqExecutionOrderBuffer.first().equals(tCommitId)) {
           // If reqBuffer is full and current thread do not hold the reqBuffer's peek, this req
           // is not supposed to be processed. So current thread should notify the corresponding
           // threads to process the peek.
@@ -1110,7 +1170,7 @@ public class PipeConsensusReceiver {
 
         // Polling to process
         while (true) {
-          if (reqBuffer.first().equals(tCommitId)
+          if (reqExecutionOrderBuffer.first().equals(tCommitId)
               && tCommitId.getCommitIndex() == onSyncedCommitIndex + 1) {
             // If current req is supposed to be process, load this event through
             // DataRegionStateMachine.
@@ -1127,8 +1187,8 @@ public class PipeConsensusReceiver {
             return resp;
           }
 
-          if (reqBuffer.size() >= COMMON_CONFIG.getPipeConsensusEventBufferSize()
-              && reqBuffer.first().equals(tCommitId)) {
+          if (reqExecutionOrderBuffer.size() >= IOTDB_CONFIG.getPipeConsensusPipelineSize()
+              && reqExecutionOrderBuffer.first().equals(tCommitId)) {
             // If the reqBuffer is full and its peek is hold by current thread, load this event.
             TPipeConsensusTransferResp resp = loadEvent(req);
 
@@ -1146,17 +1206,15 @@ public class PipeConsensusReceiver {
             try {
               boolean timeout =
                   !condition.await(
-                      COMMON_CONFIG.getPipeConsensusReceiverMaxWaitingTimeForEventsInMs()
-                          * COMMON_CONFIG.getPipeConsensusEventBufferSize(),
-                      TimeUnit.MILLISECONDS);
+                      PIPE_CONSENSUS_RECEIVER_MAX_WAITING_TIME_IN_MS, TimeUnit.MILLISECONDS);
 
               // If the buffer is not full after waiting timeout, we suppose that the sender will
               // not send any more events at this time, that is, the sender has sent all events. At
               // this point we apply the event at reqBuffer's peek
               if (timeout
-                  && reqBuffer.size() < COMMON_CONFIG.getPipeConsensusEventBufferSize()
-                  && reqBuffer.first() != null
-                  && reqBuffer.first().equals(tCommitId)) {
+                  && reqExecutionOrderBuffer.size() < IOTDB_CONFIG.getPipeConsensusPipelineSize()
+                  && reqExecutionOrderBuffer.first() != null
+                  && reqExecutionOrderBuffer.first().equals(tCommitId)) {
                 TPipeConsensusTransferResp resp = loadEvent(req);
 
                 if (resp != null
@@ -1195,7 +1253,7 @@ public class PipeConsensusReceiver {
       LOGGER.info(
           "PipeConsensus-ConsensusGroup-{}: receiver detected an newer rebootTimes, which indicates the leader has rebooted. receiver will reset all its data.",
           consensusGroupId);
-      this.reqBuffer.clear();
+      this.reqExecutionOrderBuffer.clear();
       this.onSyncedCommitIndex = -1;
       // sync the follower's connectorRebootTimes with connector's actual rebootTimes
       this.connectorRebootTimes = connectorRebootTimes;

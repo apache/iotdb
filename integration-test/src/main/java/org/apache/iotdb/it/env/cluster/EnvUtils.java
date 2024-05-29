@@ -30,12 +30,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.apache.iotdb.consensus.ConsensusFactory.BATCH_CONSENSUS;
+import static org.apache.iotdb.consensus.ConsensusFactory.FAST_IOT_CONSENSUS;
+import static org.apache.iotdb.consensus.ConsensusFactory.IOTV2_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.REAL_PIPE_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
-import static org.apache.iotdb.consensus.ConsensusFactory.STREAM_CONSENSUS;
 import static org.apache.iotdb.db.utils.DateTimeUtils.convertLongToDate;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.BATCH_CONSENSUS_STR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CLUSTER_CONFIGURATIONS;
@@ -224,9 +224,9 @@ public class EnvUtils {
         return IOT_CONSENSUS_STR;
       case REAL_PIPE_CONSENSUS:
         return PIPE_CONSENSUS_STR;
-      case STREAM_CONSENSUS:
+      case IOTV2_CONSENSUS:
         return STREAM_CONSENSUS_STR;
-      case BATCH_CONSENSUS:
+      case FAST_IOT_CONSENSUS:
         return BATCH_CONSENSUS_STR;
       default:
         throw new IllegalArgumentException("Unknown consensus type: " + consensus);
@@ -244,9 +244,9 @@ public class EnvUtils {
       case PIPE_CONSENSUS_STR:
         return REAL_PIPE_CONSENSUS;
       case STREAM_CONSENSUS_STR:
-        return STREAM_CONSENSUS;
+        return IOTV2_CONSENSUS;
       case BATCH_CONSENSUS_STR:
-        return BATCH_CONSENSUS;
+        return FAST_IOT_CONSENSUS;
       default:
         throw new IllegalArgumentException("Unknown consensus type: " + consensus);
     }
