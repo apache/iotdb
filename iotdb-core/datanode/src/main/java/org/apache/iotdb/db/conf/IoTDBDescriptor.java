@@ -1148,6 +1148,9 @@ public class IoTDBDescriptor {
 
   private void loadCompactionHotModifiedProps(Properties properties) throws InterruptedException {
     boolean compactionTaskConfigHotModified = loadCompactionTaskHotModifiedProps(properties);
+    if (compactionTaskConfigHotModified) {
+      CompactionTaskManager.getInstance().incrCompactionConfigVersion();
+    }
     // hot load compaction schedule task manager configurations
     int compactionScheduleThreadNum =
         Integer.parseInt(
@@ -1163,7 +1166,7 @@ public class IoTDBDescriptor {
     loadCompactionIsEnabledHotModifiedProps(properties);
     boolean restartCompactionTaskManager = loadCompactionThreadCountHotModifiedProps(properties);
     restartCompactionTaskManager |= loadCompactionSubTaskCountHotModifiedProps(properties);
-    if (restartCompactionTaskManager || compactionTaskConfigHotModified) {
+    if (restartCompactionTaskManager) {
       CompactionTaskManager.getInstance().restart();
     }
 
