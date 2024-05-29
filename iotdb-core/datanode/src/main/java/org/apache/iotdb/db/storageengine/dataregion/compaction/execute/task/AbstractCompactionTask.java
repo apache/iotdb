@@ -116,10 +116,12 @@ public abstract class AbstractCompactionTask {
   public abstract List<TsFileResource> getAllSourceTsFiles();
 
   public long getCompactionConfigVersion() {
+    // This parameter should not take effect by default unless it is overridden by a subclass
     return Long.MAX_VALUE;
   }
 
   public void setCompactionConfigVersion(long compactionConfigVersion) {
+    // This parameter should not take effect by default unless it is overridden by a subclass
     this.compactionConfigVersion = Long.MAX_VALUE;
   }
 
