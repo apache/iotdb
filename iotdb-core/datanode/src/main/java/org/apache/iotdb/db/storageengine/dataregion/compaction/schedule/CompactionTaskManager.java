@@ -260,7 +260,7 @@ public class CompactionTaskManager implements IService {
         && !candidateCompactionTaskQueue.contains(compactionTask)
         && !isTaskRunning(compactionTask)
         && compactionTask.setSourceFilesToCompactionCandidate()
-        && compactionTask.getCompactionConfigVersion() > getCurrentCompactionConfigVersion()) {
+        && compactionTask.getCompactionConfigVersion() >= getCurrentCompactionConfigVersion()) {
       candidateCompactionTaskQueue.put(compactionTask);
       return true;
     }
