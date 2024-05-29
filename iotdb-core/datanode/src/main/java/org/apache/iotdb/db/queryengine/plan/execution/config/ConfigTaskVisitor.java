@@ -73,6 +73,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.MergeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetSystemStatusTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StartRepairDataTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StopRepairDataTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.AlterPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.CreatePipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.DropPipeTask;
@@ -152,6 +153,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
@@ -236,6 +238,12 @@ public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryCon
   public IConfigTask visitShowClusterId(
       ShowClusterIdStatement showClusterIdStatement, MPPQueryContext context) {
     return new ShowClusterIdTask();
+  }
+
+  @Override
+  public IConfigTask visitTestConnection(
+      TestConnectionStatement testConnectionStatement, MPPQueryContext context) {
+    return new TestConnectionTask();
   }
 
   @Override

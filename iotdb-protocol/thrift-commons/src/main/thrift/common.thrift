@@ -185,6 +185,23 @@ struct TLicense {
     9: required i16 mlNodeNumLimit
 }
 
+struct TTestConnectionResult {
+  1: required bool success
+  2: optional string reason
+}
+
+struct TTestConnectionResp {
+  1: required TSStatus status;
+  2: required map<TEndPoint, TTestConnectionResult> resultMap
+}
+
+struct TTestConnection
+
+struct TNodeLocations {
+  1: optional list<TConfigNodeLocation> configNodeLocations
+  2: optional list<TDataNodeLocation> dataNodeLocations
+}
+
 enum TAggregationType {
   COUNT,
   AVG,

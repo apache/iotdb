@@ -656,5 +656,9 @@ service IClientRPCService {
 
   TSConnectionInfoResp fetchAllConnectionsInfo();
 
+  /** For other node's call */
   common.TSStatus testConnection()
+
+  /** For user's call */
+  common.TSStatus SubmitTestConnectionTask()
 }

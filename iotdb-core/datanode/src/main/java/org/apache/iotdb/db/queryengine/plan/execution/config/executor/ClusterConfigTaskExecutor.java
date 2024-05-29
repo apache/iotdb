@@ -101,6 +101,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -1241,6 +1242,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     ShowClusterIdTask.buildTSBlock(
         IoTDBDescriptor.getInstance().getConfig().getClusterId(), future);
     return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> testConnection() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // TODO: now sync, maybe async in future
+      TTestConnectionResult result = client.submitTestConnectionTask();
+    } catch (Exception e) {
+      future.setException(e);
+    }
   }
 
   @Override

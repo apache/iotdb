@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
@@ -40,6 +41,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackLis
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.TestConnectionRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.TransferLeaderRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
@@ -372,6 +374,10 @@ public class AsyncDataNodeClientPool {
         case RESET_PEER_LIST:
           client.resetPeerList((TResetPeerListReq) req, defaultHandler);
           break;
+        case SUBMIT_TEST_CONNECTION_TASK:
+          client.submitTestConnectionTask((TNodeLocations) req, (TestConnectionRPCHandler) handler);
+        case TEST_CONNECTION:
+          client.testConnection(defaultHandler);
         default:
           LOGGER.error(
               "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",

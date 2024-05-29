@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
+import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -76,5 +81,22 @@ public class ClusterManager {
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
     }
+  }
+
+  public void submitTestConnectionTask() {}
+
+  private void submitTestConnectionTaskToAllDataNode() {
+
+    AsyncClientHandler<TNodeLocations, TTestConnectionResult> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.TEST_CONNECTION,
+            null,
+            configManager.getNodeManager().getRegisteredDataNodeLocations());
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    clientHandler.getResponseMap();
+  }
+
+  private void submitTestConnectionTaskToAllConfigNode() {
+    //    AsyncClientHandler<TNodeLocations, >
   }
 }

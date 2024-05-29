@@ -19,15 +19,23 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSettleReq;
+import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.async.AsyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -1407,6 +1415,42 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       LOGGER.error(e.getMessage());
     }
     return resp;
+  }
+
+  @Override
+  public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations)
+      throws TException {
+    TTestConnectionResp resp = new TTestConnectionResp();
+    IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
+        dataNodeInternalServiceClientManager =
+            new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
+                .createClientManager(
+                    new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory());
+    IClientManager<TEndPoint, AsyncConfigNodeIServiceClient>
+        configNodeInternalServiceClientManager =
+            new IClientManager.Factory<TEndPoint, AsyncConfigNodeIServiceClient>()
+                .createClientManager(
+                    new ClientPoolFactory.AsyncConfigNodeHeartbeatServiceClientPoolFactory());
+    try {
+      for (TDataNodeLocation dataNodeLocation : nodeLocations.dataNodeLocations) {
+        dataNodeInternalServiceClientManager
+            .borrowClient(dataNodeLocation.getInternalEndPoint())
+            .testConnection(null);
+      }
+      for (TConfigNodeLocation configNodeLocation : nodeLocations.configNodeLocations) {
+        configNodeInternalServiceClientManager
+            .borrowClient(configNodeLocation.getInternalEndPoint())
+            .testConnection(null);
+      }
+    } catch (ClientManagerException e) {
+      throw new RuntimeException(e);
+    }
+    // TODO: 其它service
+  }
+
+  @Override
+  public TSStatus testConnection() throws TException {
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {

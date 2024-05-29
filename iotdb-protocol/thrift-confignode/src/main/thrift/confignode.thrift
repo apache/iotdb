@@ -528,15 +528,6 @@ struct TShowVariablesResp {
   2: optional TClusterParameters clusterParameters
 }
 
-struct TTestConnectionResult {
-  1: required bool success
-  2: optional string reason
-}
-
-struct TTestConnectionResp {
-  1: required map<common.TEndPoint, TTestConnectionResult> resultMap
-}
-
 // Show datanodes
 struct TDataNodeInfo {
   1: required i32 dataNodeId
@@ -1367,7 +1358,9 @@ service IConfigNodeRPCService {
   TShowDatabaseResp showDatabase(TGetDatabaseReq req)
 
   /** Test connection of every node in the cluster */
-  TTestConnectionResult submitTestConnectionTask()
+  common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
+
+  common.TTestConnectionResp submitTestConnectionTaskToLeader()
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnection()

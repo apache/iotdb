@@ -118,6 +118,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -515,6 +516,8 @@ public interface IManager {
    * @return TShowStorageGroupResp
    */
   TShowDatabaseResp showDatabase(TGetDatabaseReq req);
+
+  TTestConnectionResp submitTestConnectionTask();
 
   /**
    * Create schemaengine template.

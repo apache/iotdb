@@ -186,6 +186,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
@@ -1618,6 +1619,11 @@ public class ConfigManager implements IManager {
     } else {
       return new TShowDatabaseResp().setStatus(status);
     }
+  }
+
+  @Override
+  public TTestConnectionResp submitTestConnectionTask() {
+    clusterManager.submitTestConnectionTask();
   }
 
   @Override

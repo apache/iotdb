@@ -992,6 +992,8 @@ service IDataNodeRPCService {
   */
   TFetchFragmentInstanceStatisticsResp fetchFragmentInstanceStatistics(TFetchFragmentInstanceStatisticsReq req)
 
+  common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
+
   /** Empty rpc, only for connection test */
   common.TSStatus testConnection()
 }
