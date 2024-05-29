@@ -39,86 +39,10 @@ set JAVA_OPTS=-ea^
 REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
 if EXIST %IOTDB_HOME%\lib (set CLASSPATH="%IOTDB_HOME%\lib\*") else set CLASSPATH="%IOTDB_HOME%\..\lib\*"
 
-REM -----------------------------------------------------------------------------
-
-@REM set default parameters
-set pw_parameter=-pw root
-set u_parameter=-u root
-set p_parameter=-p 6667
-set h_parameter=-h 127.0.0.1
-set load_dir_parameter=
-set fail_dir_parameter=
-set on_failure_parameter=
-set thread_parameter=
-set sg_level_parameter=
-set verify_parameter=
-set on_success_parameter=
-
-echo %* | findstr /c:"-f">nul || (goto :load_err)
-
-@Rem get every param of input
-:loop
-set param=%1
-if %param%!== ! (
-    if "%load_dir_parameter%"=="" goto :load_err
-    if not "%fail_dir_param%"=="" if "%on_failure_param%"=="" goto :failure_err
-	goto :finally
-) else if "%param%"=="-pw" (
-	set pw_parameter=%1 %2
-) else if "%param%"=="-u" (
-	set u_parameter=%1 %2
-) else if "%param%"=="-p" (
-	set p_parameter=%1 %2
-) else if "%param%"=="-h" (
-	set h_parameter=%1 %2
-) else if "%param%"=="-fd" (
-  	set fail_dir_parameter=%1 %2
-) else if "%param%"=="--onFailure" (
-  	set on_failure_parameter=%1 %2
-) else if "%param%"=="--thread" (
-  	set thread_parameter=%1 %2
-) else if "%param%"=="-f" (
-	if "%2"=="" goto :load_err
-	set load_dir_parameter=%1 %2
-) else if "%param%"=="--sgLevel" (
-	set sg_level_parameter=%1 %2
-) else if "%param%"=="--verify" (
-	set verify_parameter=%1 %2
-) else if "%param%"=="--onSuccess" (
-	set on_success_parameter=%1 %2
-)
-shift
-goto :loop
-
-
-:err
-echo JAVA_HOME environment variable must be set!
-set ret_code=1
-ENDLOCAL
-EXIT /B %ret_code%
-
-:load_err
-echo -f option must be set!
-set ret_code=1
-ENDLOCAL
-EXIT /B %ret_code%
-
-:failure_err
-echo Both -fd and --onFailure must be present or absent!
-set ret_code=1
-ENDLOCAL
-EXIT /B %ret_code%
-
-@REM -----------------------------------------------------------------------------
-:finally
-
-set PARAMETERS=%h_parameter% %p_parameter% %u_parameter% %pw_parameter% %load_dir_parameter% %sg_level_parameter% %verify_parameter% %on_success_parameter% %fail_dir_parameter% %on_failure_parameter% %thread_parameter%
-echo %PARAMETERS%
+set PARAMETERS=%*
 
 echo start loading TsFiles, please wait...
 "%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %PARAMETERS%
 set ret_code=%ERRORLEVEL%
-
-ENDLOCAL
 
 EXIT /B %ret_code%

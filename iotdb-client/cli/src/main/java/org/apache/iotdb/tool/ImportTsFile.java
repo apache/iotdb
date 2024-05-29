@@ -9,141 +9,125 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.FileStore;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class ImportTsFile extends AbstractTsFileTool {
 
-  private static final String FILE_ARGS = "f";
-  private static final String FILE_NAME = "file or folder";
+  private static final String SOURCE_ARGS = "s";
+  private static final String SOURCE_NAME = "source";
 
-  private static final String SG_LEVEL_ARGS = "sgLevel";
-  private static final String SG_LEVEL_NAME = "Sg level of loading TsFile";
+  private static final String ON_SUCCESS_ARGS = "os";
+  private static final String ON_SUCCESS_NAME = "on_success";
 
-  private static final String VERIFY_ARGS = "verify";
-  private static final String VERIFY_NAME = "Verify schema ";
+  private static final String SUCCESS_DIR_ARGS = "sd";
+  private static final String SUCCESS_DIR_NAME = "success_dir";
 
-  private static final String ON_SUCCESS_ARGS = "onSuccess";
-  private static final String ON_SUCCESS_NAME = "Operate success file";
+  private static final String FAIL_DIR_ARGS = "fd";
+  private static final String FAIL_DIR_NAME = "fail_dir";
 
-  private static final String FAILED_FILE_ARGS = "fd";
-  private static final String FAILED_FILE_NAME = "Failed file directory";
+  private static final String ON_FAIL_ARGS = "of";
+  private static final String ON_FAIL_NAME = "on_fail";
 
-  private static final String ON_FAILURE_ARGS = "onFailure";
-  private static final String ON_FAILURE_NAME = "Operate failed file";
-
-  private static final String THREAD_ARGS = "thread";
-  private static final String THREAD_NAME = "Thread";
+  private static final String THREAD_NUM_ARGS = "tn";
+  private static final String THREAD_NUM_NAME = "thread_num";
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
   private static final String TSFILEDB_CLI_PREFIX = "ImportTsFile";
 
-  public static final String MV = "mv";
-  public static final String CP = "cp";
-
-  private static String targetPath;
-  private static String targetFullPath;
-  private static String loadParam = "";
-  private static String failedFileDirectory;
-  private static String sgLevel;
-  private static String verify;
+  private static String source;
+  private static String sourceFullPath;
+  private static String failDir = "fail/";
+  private static String successDir = "success/";
   private static String onSuccess;
-  private static boolean onFailureMv = false;
-  private static boolean onFailureCp = false;
-  private static int threadNum = 1;
+  private static String onFail;
+  private static Operation successOperation;
+  private static Operation failOperation;
+  private static int threadNum = 8;
   private static final LinkedBlockingQueue<String> linkedBlockingQueue =
       new LinkedBlockingQueue<>();
 
-  private static Options createOptions() {
-    Options options = createNewOptions();
+  private static void createOptions() {
+    createBaseOptions();
 
-    Option opHelp =
-        Option.builder(HELP_ARGS)
-            .longOpt(HELP_ARGS)
-            .hasArg(false)
-            .desc("Display help information")
-            .build();
-    options.addOption(opHelp);
-
-    Option opFile =
-        Option.builder(FILE_ARGS)
+    Option opSource =
+        Option.builder(SOURCE_ARGS)
+            .longOpt(SOURCE_NAME)
             .required()
-            .argName(FILE_NAME)
+            .required()
+            .argName(SOURCE_NAME)
             .hasArg()
             .desc(
                 "If input a file path, load a file, "
                     + "otherwise load all file under this directory (required)")
             .build();
-    options.addOption(opFile);
-
-    Option opSgLevel =
-        Option.builder(SG_LEVEL_ARGS)
-            .longOpt(SG_LEVEL_ARGS)
-            .argName(SG_LEVEL_NAME)
-            .hasArg()
-            .desc(
-                "Sg level of loading Tsfile, optional field, default_storage_group_level in iotdb-common.properties by default")
-            .build();
-    options.addOption(opSgLevel);
-
-    Option opVerify =
-        Option.builder(VERIFY_ARGS)
-            .longOpt(VERIFY_ARGS)
-            .argName(VERIFY_NAME)
-            .hasArg()
-            .desc("Verify schema or not, optional field, True by default")
-            .build();
-    options.addOption(opVerify);
+    options.addOption(opSource);
 
     Option opOnSuccess =
         Option.builder(ON_SUCCESS_ARGS)
-            .longOpt(ON_SUCCESS_ARGS)
+            .longOpt(ON_SUCCESS_NAME)
             .argName(ON_SUCCESS_NAME)
+            .required()
             .hasArg()
-            .desc("Delete or remain origin TsFile after loading, optional field, none by default")
+            .desc(
+                "When loading tsfile successfully, do operation on tsfile, optional parameters are none, mv, cp, delete.")
             .build();
     options.addOption(opOnSuccess);
 
-    Option opFailedFile =
-        Option.builder(FAILED_FILE_ARGS)
-            .argName(FAILED_FILE_NAME)
+    Option opOnFail =
+        Option.builder(ON_FAIL_ARGS)
+            .longOpt(ON_FAIL_NAME)
+            .argName(ON_FAIL_NAME)
+            .required()
             .hasArg()
-            .desc("Specifying a directory to save failed file")
+            .desc(
+                "When loading tsfile failed, do operation on tsfile, optional parameters are none, mv, cp, delete.")
             .build();
-    options.addOption(opFailedFile);
+    options.addOption(opOnFail);
 
-    Option opOnFailure =
-        Option.builder(ON_FAILURE_ARGS)
-            .longOpt(ON_FAILURE_ARGS)
-            .argName(ON_FAILURE_NAME)
+    Option opSuccessDir =
+        Option.builder(SUCCESS_DIR_ARGS)
+            .longOpt(SUCCESS_DIR_NAME)
+            .argName(SUCCESS_DIR_NAME)
             .hasArg()
-            .desc("Manipulating files after failure；mv or cp")
+            .desc("When os is mv, cp, you need to specify the folder to operate on.")
             .build();
+    options.addOption(opSuccessDir);
 
-    options.addOption(opOnFailure);
+    Option opFailDir =
+        Option.builder(FAIL_DIR_ARGS)
+            .longOpt(FAIL_DIR_NAME)
+            .argName(FAIL_DIR_NAME)
+            .hasArg()
+            .desc("When of is mv, cp, you need to specify the folder to operate on.")
+            .build();
+    options.addOption(opFailDir);
 
-    Option opP =
-        Option.builder(THREAD_ARGS)
-            .longOpt(THREAD_ARGS)
-            .argName(THREAD_NAME)
+    Option opThreadNum =
+        Option.builder(THREAD_NUM_ARGS)
+            .longOpt(THREAD_NUM_NAME)
+            .argName(THREAD_NUM_NAME)
             .hasArgs()
             .desc("Support for concurrent parameters")
             .build();
-    options.addOption(opP);
-
-    return options;
+    options.addOption(opThreadNum);
   }
 
   public static void main(String[] args) {
-    Options options = createOptions();
-    HelpFormatter hf = new HelpFormatter();
+    createOptions();
+    hf = new HelpFormatter();
     hf.setOptionComparator(null);
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
     CommandLine commandLine = null;
@@ -156,24 +140,27 @@ public class ImportTsFile extends AbstractTsFileTool {
     }
 
     try {
-      commandLine = parser.parse(options, args);
-    } catch (org.apache.commons.cli.ParseException e) {
+      CommandLine helpCommandLine = parser.parse(helpOptions, args, true);
+      if (helpCommandLine.hasOption(HELP_ARGS)) {
+        hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+        System.exit(CODE_ERROR);
+      }
+    } catch (ParseException e) {
       ioTPrinter.println("Parse error: " + e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
-    if (commandLine.hasOption(HELP_ARGS)) {
+
+    try {
+      commandLine = parser.parse(options, args, true);
+    } catch (ParseException e) {
+      ioTPrinter.println("Parse error: " + e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
 
     try {
       parseBasicParams(commandLine);
-      targetPath = commandLine.getOptionValue(FILE_ARGS);
-      if (targetPath == null) {
-        hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-        System.exit(CODE_ERROR);
-      }
       parseSpecialParams(commandLine);
     } catch (ArgsErrorException e) {
       ioTPrinter.println("Args error: " + e.getMessage());
@@ -187,58 +174,79 @@ public class ImportTsFile extends AbstractTsFileTool {
   }
 
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
-    if (commandLine.getOptionValue(SG_LEVEL_ARGS) != null) {
-      sgLevel = commandLine.getOptionValue(SG_LEVEL_ARGS);
+
+    source = commandLine.getOptionValue(SOURCE_ARGS);
+    onSuccess = commandLine.getOptionValue(ON_SUCCESS_ARGS);
+    onFail = commandLine.getOptionValue(ON_FAIL_ARGS);
+
+    boolean checkSuccessFileStory = false;
+    if (Operation.MV.name().equalsIgnoreCase(onSuccess)
+        || Operation.CP.name().equalsIgnoreCase(onSuccess)) {
+      File file = createSuccessDir(commandLine);
+      checkSuccessFileStory = checkFileStory(source, file);
     }
 
-    if (commandLine.getOptionValue(FAILED_FILE_ARGS) != null) {
-      failedFileDirectory = commandLine.getOptionValue(FAILED_FILE_ARGS);
-      if (commandLine.getOptionValue(ON_FAILURE_ARGS) != null) {
-        if (MV.equals(commandLine.getOptionValue(ON_FAILURE_ARGS))
-            || CP.equals(commandLine.getOptionValue(ON_FAILURE_ARGS))) {
-          File file = new File(failedFileDirectory);
-          if (!file.isDirectory()) {
-            file.mkdir();
-            failedFileDirectory = file.getAbsolutePath() + File.separator;
-          }
-          if (MV.equals(commandLine.getOptionValue(ON_FAILURE_ARGS))) {
-            onFailureMv = true;
-          } else {
-            onFailureCp = true;
-          }
-        } else {
-          ioTPrinter.println("--onFailure Optional values are mv or cp");
-          System.exit(CODE_ERROR);
-        }
-      } else {
-        ioTPrinter.println("Both -fd and --onFailure must be present or absent");
-        System.exit(CODE_ERROR);
-      }
+    boolean checkFailFileStory = false;
+    if (Operation.MV.name().equalsIgnoreCase(onFail)
+        || Operation.CP.name().equalsIgnoreCase(onFail)) {
+      File file = createFailDir(commandLine);
+      checkFailFileStory = checkFileStory(source, file);
     }
 
-    if (commandLine.getOptionValue(VERIFY_ARGS) != null) {
-      verify = commandLine.getOptionValue(VERIFY_ARGS);
-    }
+    successOperation = Operation.getOperation(onSuccess, checkSuccessFileStory);
+    failOperation = Operation.getOperation(onFail, checkFailFileStory);
 
-    if (commandLine.getOptionValue(ON_SUCCESS_ARGS) != null) {
-      onSuccess = commandLine.getOptionValue(ON_SUCCESS_ARGS);
+    if (commandLine.getOptionValue(THREAD_NUM_ARGS) != null) {
+      threadNum = Integer.parseInt(commandLine.getOptionValue(THREAD_NUM_ARGS));
     }
+  }
 
-    if (commandLine.getOptionValue(THREAD_ARGS) != null) {
-      threadNum = Integer.parseInt(commandLine.getOptionValue(THREAD_ARGS));
+  public static boolean checkFileStory(String filePath1, File file) {
+    Path path1 = Paths.get(filePath1);
+    Path path2 = file.toPath();
+
+    try {
+      FileStore store1 = Files.getFileStore(path1);
+      FileStore store2 = Files.getFileStore(path2);
+      return store1.equals(store2);
+    } catch (IOException e) {
+      e.printStackTrace();
+      ioTPrinter.println("check file story fail : " + e.getMessage());
+      return false;
     }
+  }
+
+  public static File createSuccessDir(CommandLine commandLine) {
+    if (commandLine.getOptionValue(SUCCESS_DIR_ARGS) != null) {
+      successDir = commandLine.getOptionValue(SUCCESS_DIR_ARGS);
+    }
+    File file = new File(successDir);
+    if (!file.isDirectory()) {
+      file.mkdirs();
+    }
+    return file;
+  }
+
+  public static File createFailDir(CommandLine commandLine) {
+    if (commandLine.getOptionValue(FAIL_DIR_ARGS) != null) {
+      failDir = commandLine.getOptionValue(FAIL_DIR_ARGS);
+    }
+    File file = new File(failDir);
+    if (!file.isDirectory()) {
+      file.mkdirs();
+    }
+    return file;
   }
 
   public static int importFromTargetPath() {
     try {
       sessionPool = new SessionPool(host, Integer.parseInt(port), username, password, threadNum);
-      File file = new File(targetPath);
-      targetFullPath = file.getAbsolutePath();
+      File file = new File(source);
+      sourceFullPath = file.getAbsolutePath();
       if (!file.isFile() && !file.isDirectory()) {
         ioTPrinter.println("File not found!");
         return CODE_ERROR;
       }
-      setLoadParam();
       traverse(file);
       asyncImportTsFiles();
     } catch (InterruptedException e) {
@@ -250,20 +258,6 @@ public class ImportTsFile extends AbstractTsFileTool {
       }
     }
     return CODE_OK;
-  }
-
-  public static void setLoadParam() {
-    if (null != sgLevel) {
-      loadParam = loadParam + " sglevel=" + sgLevel;
-    }
-
-    if (null != onSuccess) {
-      loadParam = loadParam + " onSuccess=" + onSuccess;
-    }
-
-    if (null != verify) {
-      loadParam = loadParam + " verify=" + verify;
-    }
   }
 
   public static void traverse(File file) throws InterruptedException {
@@ -280,26 +274,31 @@ public class ImportTsFile extends AbstractTsFileTool {
   }
 
   public static void asyncImportTsFiles() {
-
+    List<Thread> list = new ArrayList<>(threadNum);
     for (int i = 0; i < threadNum; i++) {
       Thread thread = new Thread(ImportTsFile::importTsFile);
       thread.start();
-      try {
-        thread.join();
-      } catch (InterruptedException e) {
-        ioTPrinter.println("importTsFile thread join interrupted: " + e.getMessage());
-      }
+      list.add(thread);
     }
+    list.forEach(
+        thread -> {
+          try {
+            thread.join();
+          } catch (InterruptedException e) {
+            ioTPrinter.println("importTsFile thread join interrupted: " + e.getMessage());
+          }
+        });
   }
 
   public static void importTsFile() {
     String filePath;
     try {
       while ((filePath = linkedBlockingQueue.poll()) != null) {
-        String sql = "load '" + filePath + "' " + loadParam;
+        String sql = "load '" + filePath + "' onSuccess=none ";
         try {
           sessionPool.executeNonQueryStatement(sql);
           ioTPrinter.println("Import [ " + filePath + " ] file success");
+          processingSuccess(filePath);
         } catch (Exception e) {
           ioTPrinter.println("Import [ " + filePath + " ] file fail: " + e.getMessage());
           processingFailed(filePath);
@@ -310,30 +309,127 @@ public class ImportTsFile extends AbstractTsFileTool {
     }
   }
 
-  public static void processingFailed(String filePath) {
-    String relativePath = filePath.substring(targetFullPath.length() + 1);
+  public static void processingSuccess(String filePath) {
+    String relativePath = filePath.substring(sourceFullPath.length() + 1);
 
-    if (onFailureCp) {
-      try {
-        Files.copy(
-            Paths.get(filePath),
-            Paths.get(
-                failedFileDirectory + File.separator + relativePath.replace(File.separator, "_")),
-            StandardCopyOption.REPLACE_EXISTING);
-      } catch (IOException e) {
-        ioTPrinter.println("File copied  exceptions: " + e.getMessage());
-      }
+    switch (successOperation) {
+      case DELETE:
+        try {
+          Files.delete(Paths.get(filePath));
+        } catch (IOException e) {
+          ioTPrinter.println("File delete fail: " + e.getMessage());
+        }
+        break;
+      case CP:
+        try {
+          Files.copy(
+              Paths.get(filePath),
+              Paths.get(successDir + File.separator + relativePath.replace(File.separator, "_")),
+              StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+          ioTPrinter.println("File copied fail: " + e.getMessage());
+        }
+        break;
+      case HD:
+        try {
+          Files.createLink(
+              Paths.get(successDir + File.separator + relativePath.replace(File.separator, "_")),
+              Paths.get(filePath));
+        } catch (FileAlreadyExistsException e) {
+          ioTPrinter.println("File headlinked fail: File Already Exists " + e.getMessage());
+        } catch (IOException e) {
+          e.printStackTrace();
+          ioTPrinter.println("File headlinked fail: " + e.getMessage());
+        }
+        break;
+      case MV:
+        try {
+          Files.move(
+              Paths.get(filePath),
+              Paths.get(successDir + File.separator + relativePath.replace(File.separator, "_")),
+              StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+          ioTPrinter.println("File moved fail: " + e.getMessage());
+        }
+        break;
+      default:
+        break;
     }
+  }
 
-    if (onFailureMv) {
-      try {
-        Files.move(
-            Paths.get(filePath),
-            Paths.get(
-                failedFileDirectory + File.separator + relativePath.replace(File.separator, "_")),
-            StandardCopyOption.REPLACE_EXISTING);
-      } catch (IOException e) {
-        ioTPrinter.println("File moved  exceptions: " + e.getMessage());
+  public static void processingFailed(String filePath) {
+    String relativePath = filePath.substring(sourceFullPath.length() + 1);
+
+    switch (failOperation) {
+      case DELETE:
+        try {
+          Files.delete(Paths.get(filePath));
+        } catch (IOException e) {
+          ioTPrinter.println("File delete fail: " + e.getMessage());
+        }
+        break;
+      case CP:
+        try {
+          Files.copy(
+              Paths.get(filePath),
+              Paths.get(failDir + File.separator + relativePath.replace(File.separator, "_")),
+              StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+          ioTPrinter.println("File copied fail: " + e.getMessage());
+        }
+        break;
+      case HD:
+        try {
+          Files.createLink(
+              Paths.get(failDir + File.separator + relativePath.replace(File.separator, "_")),
+              Paths.get(filePath));
+        } catch (FileAlreadyExistsException e) {
+          ioTPrinter.println("File headlinked fail: File Already Exists " + e.getMessage());
+        } catch (IOException e) {
+          ioTPrinter.println("File headlinked fail: " + e.getMessage());
+        }
+        break;
+      case MV:
+        try {
+          Files.move(
+              Paths.get(filePath),
+              Paths.get(failDir + File.separator + relativePath.replace(File.separator, "_")),
+              StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+          ioTPrinter.println("File moved fail: " + e.getMessage());
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  private enum Operation {
+    NONE,
+    MV,
+    HD,
+    CP,
+    DELETE,
+    ;
+
+    public static Operation getOperation(String operation, boolean fileStory) {
+      switch (operation.toLowerCase()) {
+        case "none":
+          return Operation.NONE;
+        case "mv":
+          return Operation.MV;
+        case "cp":
+          if (fileStory) {
+            return Operation.HD;
+          } else {
+            return Operation.CP;
+          }
+        case "delete":
+          return Operation.DELETE;
+        default:
+          ioTPrinter.println("Args error: os/of must in none,mv,cp,delete");
+          System.exit(CODE_ERROR);
+          return null;
       }
     }
   }

@@ -25,6 +25,7 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 
@@ -52,10 +53,13 @@ public abstract class AbstractTsFileTool {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
-  protected static String host;
-  protected static String port;
-  protected static String username;
-  protected static String password;
+  protected static Options options;
+  protected static HelpFormatter hf;
+  protected static Options helpOptions;
+  protected static String host = "127.0.0.1";
+  protected static String port = "6667";
+  protected static String username = "root";
+  protected static String password = "root";
   protected static Session session;
   protected static SessionPool sessionPool;
 
@@ -74,42 +78,61 @@ public abstract class AbstractTsFileTool {
   }
 
   protected static void parseBasicParams(CommandLine commandLine) throws ArgsErrorException {
-    host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
-    port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
-    username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);
-    password = commandLine.getOptionValue(PW_ARGS);
+    host =
+        null != commandLine.getOptionValue(HOST_ARGS)
+            ? commandLine.getOptionValue(HOST_ARGS)
+            : host;
+    port =
+        null != commandLine.getOptionValue(PORT_ARGS)
+            ? commandLine.getOptionValue(PORT_ARGS)
+            : port;
+    username =
+        null != commandLine.getOptionValue(USERNAME_ARGS)
+            ? commandLine.getOptionValue(USERNAME_ARGS)
+            : username;
+    password =
+        null != commandLine.getOptionValue(PW_ARGS)
+            ? commandLine.getOptionValue(PW_ARGS)
+            : password;
   }
 
-  protected static Options createNewOptions() {
-    Options options = new Options();
+  protected static void createBaseOptions() {
+    options = new Options();
+    helpOptions = new Options();
+
+    Option opHelp =
+        Option.builder(HELP_ARGS)
+            .longOpt(HELP_ARGS)
+            .hasArg(false)
+            .desc("Display help information")
+            .build();
+    options.addOption(opHelp);
+    helpOptions.addOption(opHelp);
 
     Option opHost =
         Option.builder(HOST_ARGS)
             .longOpt(HOST_NAME)
-            .required()
             .argName(HOST_NAME)
             .hasArg()
-            .desc("Host Name (required)")
+            .desc("Host Name")
             .build();
     options.addOption(opHost);
 
     Option opPort =
         Option.builder(PORT_ARGS)
             .longOpt(PORT_NAME)
-            .required()
             .argName(PORT_NAME)
             .hasArg()
-            .desc("Port (required)")
+            .desc("Port")
             .build();
     options.addOption(opPort);
 
     Option opUsername =
         Option.builder(USERNAME_ARGS)
             .longOpt(USERNAME_NAME)
-            .required()
             .argName(USERNAME_NAME)
             .hasArg()
-            .desc("Username (required)")
+            .desc("Username")
             .build();
     options.addOption(opUsername);
 
@@ -119,9 +142,8 @@ public abstract class AbstractTsFileTool {
             .optionalArg(true)
             .argName(PW_NAME)
             .hasArg()
-            .desc("Password (required)")
+            .desc("Password")
             .build();
     options.addOption(opPassword);
-    return options;
   }
 }
