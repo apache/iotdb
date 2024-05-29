@@ -114,7 +114,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
               }
               new AutoPollWorker().run();
             },
-            ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_INTERVAL_MS);
+            ConsumerConstant.AUTO_POLL_INTERVAL_MS);
     LOGGER.info("SubscriptionPushConsumer {} submit auto poll worker", this);
   }
 
@@ -128,7 +128,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       try {
         // Poll all subscribed topics by passing an empty set
         final List<SubscriptionMessage> messages =
-            poll(Collections.emptySet(), ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_TIME_OUT_MS);
+            poll(Collections.emptySet(), ConsumerConstant.AUTO_POLL_TIMEOUT_MS);
 
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
           ack(messages);
@@ -170,63 +170,90 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     private AckStrategy ackStrategy = AckStrategy.defaultValue();
     private ConsumeListener consumeListener = message -> ConsumeResult.SUCCESS;
 
-    public SubscriptionPushConsumer.Builder host(final String host) {
+    @Override
+    public Builder host(final String host) {
       super.host(host);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder port(final int port) {
+    @Override
+    public Builder port(final int port) {
       super.port(port);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder username(final String username) {
+    @Override
+    public Builder nodeUrls(final List<String> nodeUrls) {
+      super.nodeUrls(nodeUrls);
+      return this;
+    }
+
+    @Override
+    public Builder username(final String username) {
       super.username(username);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder password(final String password) {
+    @Override
+    public Builder password(final String password) {
       super.password(password);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder consumerId(final String consumerId) {
+    @Override
+    public Builder consumerId(final String consumerId) {
       super.consumerId(consumerId);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder consumerGroupId(final String consumerGroupId) {
+    @Override
+    public Builder consumerGroupId(final String consumerGroupId) {
       super.consumerGroupId(consumerGroupId);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder heartbeatIntervalMs(final long heartbeatIntervalMs) {
+    @Override
+    public Builder heartbeatIntervalMs(final long heartbeatIntervalMs) {
       super.heartbeatIntervalMs(heartbeatIntervalMs);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder endpointsSyncIntervalMs(
-        final long endpointsSyncIntervalMs) {
+    @Override
+    public Builder endpointsSyncIntervalMs(final long endpointsSyncIntervalMs) {
       super.endpointsSyncIntervalMs(endpointsSyncIntervalMs);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder fileSaveDir(final String fileSaveDir) {
+    @Override
+    public Builder heartbeatMaxTasksIfNotExist(final int heartbeatMaxTasksIfNotExist) {
+      super.heartbeatMaxTasksIfNotExist(heartbeatMaxTasksIfNotExist);
+      return this;
+    }
+
+    @Override
+    public Builder endpointsSyncMaxTasksIfNotExist(final int endpointsSyncMaxTasksIfNotExist) {
+      super.endpointsSyncMaxTasksIfNotExist(endpointsSyncMaxTasksIfNotExist);
+      return this;
+    }
+
+    @Override
+    public Builder fileSaveDir(final String fileSaveDir) {
       super.fileSaveDir(fileSaveDir);
       return this;
     }
 
+    @Override
     public Builder fileSync(final boolean fileSync) {
       super.fileSync(fileSync);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder ackStrategy(final AckStrategy ackStrategy) {
+    public Builder ackStrategy(final AckStrategy ackStrategy) {
       this.ackStrategy = ackStrategy;
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder consumeListener(final ConsumeListener consumeListener) {
+    public Builder consumeListener(final ConsumeListener consumeListener) {
       this.consumeListener = consumeListener;
       return this;
     }

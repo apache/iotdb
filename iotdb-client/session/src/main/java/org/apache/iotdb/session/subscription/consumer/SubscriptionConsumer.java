@@ -85,38 +85,15 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final long heartbeatIntervalMs;
   private final long endpointsSyncIntervalMs;
 
+  private final int heartbeatMaxTasksIfNotExist;
+  private final int endpointsSyncMaxTasksIfNotExist;
+
   private final SubscriptionProviders providers;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
   private final String fileSaveDir;
   private final boolean fileSync;
-
-  private Path getFileDir(final String topicName) throws IOException {
-    final Path dirPath =
-        Paths.get(fileSaveDir).resolve(consumerGroupId).resolve(consumerId).resolve(topicName);
-    Files.createDirectories(dirPath);
-    return dirPath;
-  }
-
-  private Path getFilePath(final String topicName, String fileName) throws SubscriptionException {
-    Path filePath;
-    try {
-      filePath = getFileDir(topicName).resolve(fileName);
-      Files.createFile(filePath);
-    } catch (final FileAlreadyExistsException fileAlreadyExistsException) {
-      fileName += "." + RandomStringGenerator.generate(16);
-      try {
-        filePath = getFileDir(topicName).resolve(fileName);
-        Files.createFile(filePath);
-      } catch (final IOException e) {
-        throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
-      }
-    } catch (final IOException e) {
-      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
-    }
-    return filePath;
-  }
 
   public String getConsumerId() {
     return consumerId;
@@ -147,6 +124,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     this.heartbeatIntervalMs = builder.heartbeatIntervalMs;
     this.endpointsSyncIntervalMs = builder.endpointsSyncIntervalMs;
+
+    this.heartbeatMaxTasksIfNotExist = builder.heartbeatMaxTasksIfNotExist;
+    this.endpointsSyncMaxTasksIfNotExist = builder.endpointsSyncMaxTasksIfNotExist;
 
     this.fileSaveDir = builder.fileSaveDir;
     this.fileSync = builder.fileSync;
@@ -179,6 +159,16 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                         ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE))
             .endpointsSyncIntervalMs(
                 (Long)
+                    properties.getOrDefault(
+                        ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_KEY,
+                        ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE))
+            .heartbeatMaxTasksIfNotExist(
+                (Integer)
+                    properties.getOrDefault(
+                        ConsumerConstant.HEARTBEAT_MAX_TASKS_IF_NOT_EXIST_KEY,
+                        ConsumerConstant.HEARTBEAT_MAX_TASKS_IF_NOT_EXIST_DEFAULT_VALUE))
+            .endpointsSyncMaxTasksIfNotExist(
+                (Integer)
                     properties.getOrDefault(
                         ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_KEY,
                         ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE))
@@ -298,6 +288,34 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
 
     return provider;
+  }
+
+  /////////////////////////////// file ops ///////////////////////////////
+
+  private Path getFileDir(final String topicName) throws IOException {
+    final Path dirPath =
+        Paths.get(fileSaveDir).resolve(consumerGroupId).resolve(consumerId).resolve(topicName);
+    Files.createDirectories(dirPath);
+    return dirPath;
+  }
+
+  private Path getFilePath(final String topicName, String fileName) throws SubscriptionException {
+    Path filePath;
+    try {
+      filePath = getFileDir(topicName).resolve(fileName);
+      Files.createFile(filePath);
+    } catch (final FileAlreadyExistsException fileAlreadyExistsException) {
+      fileName += "." + RandomStringGenerator.generate(16);
+      try {
+        filePath = getFileDir(topicName).resolve(fileName);
+        Files.createFile(filePath);
+      } catch (final IOException e) {
+        throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+      }
+    } catch (final IOException e) {
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    return filePath;
   }
 
   /////////////////////////////// poll ///////////////////////////////
@@ -684,6 +702,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
               }
               providers.heartbeat(this);
             },
+            heartbeatMaxTasksIfNotExist,
             heartbeatIntervalMs);
     LOGGER.info("SubscriptionConsumer {} submit heartbeat worker", this);
   }
@@ -704,6 +723,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
               }
               providers.sync(this);
             },
+            endpointsSyncMaxTasksIfNotExist,
             endpointsSyncIntervalMs);
     LOGGER.info("SubscriptionConsumer {} submit endpoints syncer", this);
   }
@@ -864,6 +884,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     protected long endpointsSyncIntervalMs =
         ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_DEFAULT_VALUE;
 
+    protected int heartbeatMaxTasksIfNotExist =
+        ConsumerConstant.HEARTBEAT_MAX_TASKS_IF_NOT_EXIST_DEFAULT_VALUE;
+    protected int endpointsSyncMaxTasksIfNotExist =
+        ConsumerConstant.ENDPOINTS_SYNC_MAX_TASKS_IF_NOT_EXIST_DEFAULT_VALUE;
+
     protected String fileSaveDir = ConsumerConstant.FILE_SAVE_DIR_DEFAULT_VALUE;
     protected boolean fileSync = ConsumerConstant.FILE_SYNC_DEFAULT_VALUE;
 
@@ -911,6 +936,22 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     public Builder endpointsSyncIntervalMs(final long endpointsSyncIntervalMs) {
       this.endpointsSyncIntervalMs =
           Math.max(endpointsSyncIntervalMs, ConsumerConstant.ENDPOINTS_SYNC_INTERVAL_MS_MIN_VALUE);
+      return this;
+    }
+
+    public Builder heartbeatMaxTasksIfNotExist(final int heartbeatMaxTasksIfNotExist) {
+      this.heartbeatMaxTasksIfNotExist =
+          Math.max(
+              heartbeatMaxTasksIfNotExist,
+              ConsumerConstant.HEARTBEAT_MAX_TASKS_IF_NOT_EXIST_MIN_VALUE);
+      return this;
+    }
+
+    public Builder endpointsSyncMaxTasksIfNotExist(final int endpointsSyncMaxTasksIfNotExist) {
+      this.endpointsSyncMaxTasksIfNotExist =
+          Math.max(
+              endpointsSyncMaxTasksIfNotExist,
+              ConsumerConstant.ENDPOINTS_SYNC_MAX_TASKS_IF_NOT_EXIST_MIN_VALUE);
       return this;
     }
 

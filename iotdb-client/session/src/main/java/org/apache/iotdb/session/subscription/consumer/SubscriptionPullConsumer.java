@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.consumer;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.session.subscription.consumer.SubscriptionConsumer.Builder;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 
 import org.slf4j.Logger;
@@ -245,56 +246,79 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     private boolean autoCommit = ConsumerConstant.AUTO_COMMIT_DEFAULT_VALUE;
     private long autoCommitIntervalMs = ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_DEFAULT_VALUE;
 
+    @Override
     public Builder host(final String host) {
       super.host(host);
       return this;
     }
 
+    @Override
     public Builder port(final int port) {
       super.port(port);
       return this;
     }
 
+    @Override
     public Builder nodeUrls(final List<String> nodeUrls) {
       super.nodeUrls(nodeUrls);
       return this;
     }
 
+    @Override
     public Builder username(final String username) {
       super.username(username);
       return this;
     }
 
+    @Override
     public Builder password(final String password) {
       super.password(password);
       return this;
     }
 
+    @Override
     public Builder consumerId(final String consumerId) {
       super.consumerId(consumerId);
       return this;
     }
 
+    @Override
     public Builder consumerGroupId(final String consumerGroupId) {
       super.consumerGroupId(consumerGroupId);
       return this;
     }
 
+    @Override
     public Builder heartbeatIntervalMs(final long heartbeatIntervalMs) {
       super.heartbeatIntervalMs(heartbeatIntervalMs);
       return this;
     }
 
+    @Override
     public Builder endpointsSyncIntervalMs(final long endpointsSyncIntervalMs) {
       super.endpointsSyncIntervalMs(endpointsSyncIntervalMs);
       return this;
     }
 
+    @Override
+    public Builder heartbeatMaxTasksIfNotExist(final int heartbeatMaxTasksIfNotExist) {
+      super.heartbeatMaxTasksIfNotExist(heartbeatMaxTasksIfNotExist);
+      return this;
+    }
+
+    @Override
+    public Builder endpointsSyncMaxTasksIfNotExist(final int endpointsSyncMaxTasksIfNotExist) {
+      super.endpointsSyncMaxTasksIfNotExist(endpointsSyncMaxTasksIfNotExist);
+      return this;
+    }
+
+    @Override
     public Builder fileSaveDir(final String fileSaveDir) {
       super.fileSaveDir(fileSaveDir);
       return this;
     }
 
+    @Override
     public Builder fileSync(final boolean fileSync) {
       super.fileSync(fileSync);
       return this;
