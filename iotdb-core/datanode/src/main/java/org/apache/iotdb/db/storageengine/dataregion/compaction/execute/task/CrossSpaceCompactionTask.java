@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
@@ -130,6 +131,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     boolean isSuccess = true;
     try {
       if (!tsFileManager.isAllowCompaction()) {
+        return true;
+      }
+      if (!IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction()) {
         return true;
       }
       if (compactionConfigVersion

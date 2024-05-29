@@ -543,14 +543,14 @@ public class IoTDBConfig {
    * When the size of the mods file corresponding to TsFile exceeds this value, inner compaction
    * tasks containing mods files are selected first.
    */
-  private long innerCompactionTaskSelectionModsFileThreshold = 10 * 1024 * 1024L;
+  private volatile long innerCompactionTaskSelectionModsFileThreshold = 10 * 1024 * 1024L;
 
   /**
    * When disk availability is lower than the sum of (disk_space_warning_threshold +
    * inner_compaction_task_selection_disk_redundancy), inner compaction tasks containing mods files
    * are selected first.
    */
-  private double innerCompactionTaskSelectionDiskRedundancy = 0.05;
+  private volatile double innerCompactionTaskSelectionDiskRedundancy = 0.05;
 
   /** The size of global compaction estimation file info cahce. */
   private int globalCompactionFileInfoCacheSize = 1000;

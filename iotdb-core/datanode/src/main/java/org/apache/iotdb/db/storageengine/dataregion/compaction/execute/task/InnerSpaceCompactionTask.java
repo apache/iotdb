@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
@@ -168,6 +169,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   @SuppressWarnings({"squid:S6541", "squid:S3776", "squid:S2142"})
   protected boolean doCompaction() {
     if (!tsFileManager.isAllowCompaction()) {
+      return true;
+    }
+    if ((sequence && !IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction())
+        || (!sequence
+            && !IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction())) {
       return true;
     }
     if (this.compactionConfigVersion

@@ -1253,6 +1253,33 @@ public class IoTDBDescriptor {
                 Integer.toString(conf.getMinCrossCompactionUnseqFileLevel()))));
     configModified |=
         minCrossCompactionCandidateFileNum != conf.getMinCrossCompactionUnseqFileLevel();
+
+    // update inner_compaction_task_selection_disk_redundancy
+    double innerCompactionTaskSelectionDiskRedundancy =
+        conf.getInnerCompactionTaskSelectionDiskRedundancy();
+    conf.setInnerCompactionTaskSelectionDiskRedundancy(
+        Double.parseDouble(
+            properties.getProperty(
+                "inner_compaction_task_selection_disk_redundancy",
+                Double.toString(conf.getInnerCompactionTaskSelectionDiskRedundancy()))));
+    configModified |=
+        (Math.abs(
+                innerCompactionTaskSelectionDiskRedundancy
+                    - conf.getInnerCompactionTaskSelectionDiskRedundancy())
+            < 0.001);
+
+    // update inner_compaction_task_selection_mods_file_threshold
+    long innerCompactionTaskSelectionModsFileThreshold =
+        conf.getInnerCompactionTaskSelectionModsFileThreshold();
+    conf.setInnerCompactionTaskSelectionModsFileThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "inner_compaction_task_selection_mods_file_threshold",
+                Long.toString(conf.getInnerCompactionTaskSelectionModsFileThreshold()))));
+    configModified |=
+        innerCompactionTaskSelectionModsFileThreshold
+            != conf.getInnerCompactionTaskSelectionModsFileThreshold();
+
     return configModified;
   }
 
@@ -1324,18 +1351,6 @@ public class IoTDBDescriptor {
     conf.setEnableCrossSpaceCompaction(newConfigEnableCrossSpaceCompaction);
     conf.setEnableSeqSpaceCompaction(newConfigEnableSeqSpaceCompaction);
     conf.setEnableUnseqSpaceCompaction(newConfigEnableUnseqSpaceCompaction);
-
-    conf.setInnerCompactionTaskSelectionDiskRedundancy(
-        Double.parseDouble(
-            properties.getProperty(
-                "inner_compaction_task_selection_disk_redundancy",
-                Double.toString(conf.getInnerCompactionTaskSelectionDiskRedundancy()))));
-
-    conf.setInnerCompactionTaskSelectionModsFileThreshold(
-        Long.parseLong(
-            properties.getProperty(
-                "inner_compaction_task_selection_mods_file_threshold",
-                Long.toString(conf.getInnerCompactionTaskSelectionModsFileThreshold()))));
   }
 
   private void loadWALHotModifiedProps(Properties properties) {
