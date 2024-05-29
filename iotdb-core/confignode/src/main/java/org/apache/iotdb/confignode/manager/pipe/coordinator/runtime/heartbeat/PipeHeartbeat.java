@@ -31,28 +31,52 @@ import java.util.Map;
 import java.util.Objects;
 
 public class PipeHeartbeat {
-
   private final Map<PipeStaticMeta, PipeMeta> pipeMetaMap = new HashMap<>();
   private final Map<PipeStaticMeta, Boolean> isCompletedMap = new HashMap<>();
+  private final Map<PipeStaticMeta, Long> remainingEventCountMap = new HashMap<>();
+  private final Map<PipeStaticMeta, Double> remainingTimeMap = new HashMap<>();
 
   public PipeHeartbeat(
       @NotNull final List<ByteBuffer> pipeMetaByteBufferListFromAgent,
-      /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent) {
+      /* @Nullable */ final List<Boolean> pipeCompletedListFromAgent,
+      /* @Nullable */ final List<Long> pipeRemainingEventCountListFromAgent,
+      /* @Nullable */ final List<Double> pipeRemainingTimeListFromAgent) {
     for (int i = 0; i < pipeMetaByteBufferListFromAgent.size(); ++i) {
       final PipeMeta pipeMeta = PipeMeta.deserialize(pipeMetaByteBufferListFromAgent.get(i));
       pipeMetaMap.put(pipeMeta.getStaticMeta(), pipeMeta);
       isCompletedMap.put(
           pipeMeta.getStaticMeta(),
           Objects.nonNull(pipeCompletedListFromAgent) && pipeCompletedListFromAgent.get(i));
+      // If remaining event count & remaining time can not be got, it implies that the heartbeat is
+      // from an ancient version of DataNode. Here we guarantee that "0" will not affect both of
+      // the final results and namely these dataNodes are omitted in calculation.
+      remainingEventCountMap.put(
+          pipeMeta.getStaticMeta(),
+          Objects.nonNull(pipeCompletedListFromAgent)
+              ? pipeRemainingEventCountListFromAgent.get(i)
+              : 0L);
+      remainingTimeMap.put(
+          pipeMeta.getStaticMeta(),
+          Objects.nonNull(pipeRemainingTimeListFromAgent)
+              ? pipeRemainingTimeListFromAgent.get(i)
+              : 0d);
     }
   }
 
-  public PipeMeta getPipeMeta(PipeStaticMeta pipeStaticMeta) {
+  public PipeMeta getPipeMeta(final PipeStaticMeta pipeStaticMeta) {
     return pipeMetaMap.get(pipeStaticMeta);
   }
 
-  public Boolean isCompleted(PipeStaticMeta pipeStaticMeta) {
+  public Boolean isCompleted(final PipeStaticMeta pipeStaticMeta) {
     return isCompletedMap.get(pipeStaticMeta);
+  }
+
+  public Long getRemainingEventCount(final PipeStaticMeta pipeStaticMeta) {
+    return remainingEventCountMap.get(pipeStaticMeta);
+  }
+
+  public Double getRemainingTime(final PipeStaticMeta pipeStaticMeta) {
+    return remainingTimeMap.get(pipeStaticMeta);
   }
 
   public boolean isEmpty() {

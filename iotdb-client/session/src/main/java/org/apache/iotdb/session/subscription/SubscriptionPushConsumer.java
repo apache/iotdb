@@ -19,16 +19,14 @@
 
 package org.apache.iotdb.session.subscription;
 
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
@@ -44,18 +42,18 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
   private final AckStrategy ackStrategy;
   private final ConsumeListener consumeListener;
 
-  private ScheduledExecutorService workerExecutor;
+  private ScheduledExecutorService autoPollWorkerExecutor;
 
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
-  protected SubscriptionPushConsumer(Builder builder) {
+  protected SubscriptionPushConsumer(final Builder builder) {
     super(builder);
 
     this.ackStrategy = builder.ackStrategy;
     this.consumeListener = builder.consumeListener;
   }
 
-  public SubscriptionPushConsumer(Properties config) {
+  public SubscriptionPushConsumer(final Properties config) {
     this(
         config,
         (AckStrategy)
@@ -67,7 +65,9 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
   }
 
   private SubscriptionPushConsumer(
-      Properties config, AckStrategy ackStrategy, ConsumeListener consumeListener) {
+      final Properties config,
+      final AckStrategy ackStrategy,
+      final ConsumeListener consumeListener) {
     super(new Builder().ackStrategy(ackStrategy), config);
 
     this.ackStrategy = ackStrategy;
@@ -76,8 +76,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// open & close ///////////////////////////////
 
-  public synchronized void open()
-      throws TException, IoTDBConnectionException, IOException, StatementExecutionException {
+  public synchronized void open() throws SubscriptionException {
     if (!isClosed.get()) {
       return;
     }
@@ -90,13 +89,13 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
   }
 
   @Override
-  public synchronized void close() throws IoTDBConnectionException {
+  public synchronized void close() {
     if (isClosed.get()) {
       return;
     }
 
     try {
-      shutdownWorker();
+      shutdownAutoPollWorker();
       super.close();
     } finally {
       isClosed.set(true);
@@ -108,14 +107,14 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     return isClosed.get();
   }
 
-  /////////////////////////////// auto poll worker ///////////////////////////////
+  /////////////////////////////// auto poll ///////////////////////////////
 
   @SuppressWarnings("unsafeThreadSchedule")
   private void launchAutoPollWorker() {
-    workerExecutor =
+    autoPollWorkerExecutor =
         Executors.newSingleThreadScheduledExecutor(
             r -> {
-              Thread t =
+              final Thread t =
                   new Thread(Thread.currentThread().getThreadGroup(), r, "PushConsumerWorker", 0);
               if (!t.isDaemon()) {
                 t.setDaemon(true);
@@ -125,16 +124,16 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
               }
               return t;
             });
-    workerExecutor.scheduleAtFixedRate(
-        new PushConsumerWorker(),
-        0,
+    autoPollWorkerExecutor.scheduleWithFixedDelay(
+        new AutoPollWorker(),
+        generateRandomInitialDelayMs(ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_INTERVAL_MS),
         ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_INTERVAL_MS,
         TimeUnit.MILLISECONDS);
   }
 
-  private void shutdownWorker() {
-    workerExecutor.shutdown();
-    workerExecutor = null;
+  private void shutdownAutoPollWorker() {
+    autoPollWorkerExecutor.shutdown();
+    autoPollWorkerExecutor = null;
   }
 
   /////////////////////////////// builder ///////////////////////////////
@@ -144,42 +143,58 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     private AckStrategy ackStrategy = AckStrategy.defaultValue();
     private ConsumeListener consumeListener = message -> ConsumeResult.SUCCESS;
 
-    public SubscriptionPushConsumer.Builder host(String host) {
+    public SubscriptionPushConsumer.Builder host(final String host) {
       super.host(host);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder port(int port) {
+    public SubscriptionPushConsumer.Builder port(final int port) {
       super.port(port);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder username(String username) {
+    public SubscriptionPushConsumer.Builder username(final String username) {
       super.username(username);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder password(String password) {
+    public SubscriptionPushConsumer.Builder password(final String password) {
       super.password(password);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder consumerId(String consumerId) {
+    public SubscriptionPushConsumer.Builder consumerId(final String consumerId) {
       super.consumerId(consumerId);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder consumerGroupId(String consumerGroupId) {
+    public SubscriptionPushConsumer.Builder consumerGroupId(final String consumerGroupId) {
       super.consumerGroupId(consumerGroupId);
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder ackStrategy(AckStrategy ackStrategy) {
+    public SubscriptionPushConsumer.Builder heartbeatIntervalMs(final long heartbeatIntervalMs) {
+      super.heartbeatIntervalMs(heartbeatIntervalMs);
+      return this;
+    }
+
+    public SubscriptionPushConsumer.Builder endpointsSyncIntervalMs(
+        final long endpointsSyncIntervalMs) {
+      super.endpointsSyncIntervalMs(endpointsSyncIntervalMs);
+      return this;
+    }
+
+    public SubscriptionPushConsumer.Builder fileSaveDir(final String fileSaveDir) {
+      this.fileSaveDir = fileSaveDir;
+      return this;
+    }
+
+    public SubscriptionPushConsumer.Builder ackStrategy(final AckStrategy ackStrategy) {
       this.ackStrategy = ackStrategy;
       return this;
     }
 
-    public SubscriptionPushConsumer.Builder consumeListener(ConsumeListener consumeListener) {
+    public SubscriptionPushConsumer.Builder consumeListener(final ConsumeListener consumeListener) {
       this.consumeListener = consumeListener;
       return this;
     }
@@ -196,7 +211,9 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
   }
 
-  class PushConsumerWorker implements Runnable {
+  /////////////////////////////// auto poll worker ///////////////////////////////
+
+  class AutoPollWorker implements Runnable {
     @Override
     public void run() {
       if (isClosed()) {
@@ -205,29 +222,38 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
       try {
         // Poll all subscribed topics by passing an empty set
-        List<SubscriptionMessage> pollResults =
+        final List<SubscriptionMessage> messages =
             poll(Collections.emptySet(), ConsumerConstant.PUSH_CONSUMER_AUTO_POLL_TIME_OUT_MS);
 
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
-          commitSync(pollResults);
+          ack(messages);
         }
 
-        for (SubscriptionMessage pollResult : pollResults) {
-          ConsumeResult consumeResult = consumeListener.onReceive(pollResult);
-          if (consumeResult.equals(ConsumeResult.FAILURE)) {
-            LOGGER.warn("consumeListener failed when processing message: {}", pollResult);
+        final List<SubscriptionMessage> messagesToAck = new ArrayList<>();
+        final List<SubscriptionMessage> messagesToNack = new ArrayList<>();
+        for (final SubscriptionMessage message : messages) {
+          final ConsumeResult consumeResult;
+          try {
+            consumeResult = consumeListener.onReceive(message);
+            if (consumeResult.equals(ConsumeResult.SUCCESS)) {
+              messagesToAck.add(message);
+            } else {
+              LOGGER.warn("Consumer listener result failure when consuming message: {}", message);
+              messagesToNack.add(message);
+            }
+          } catch (final Exception e) {
+            LOGGER.warn(
+                "Consumer listener raised an exception while consuming message: {}", message, e);
+            messagesToNack.add(message);
           }
         }
 
         if (ackStrategy.equals(AckStrategy.AFTER_CONSUME)) {
-          commitSync(pollResults);
+          ack(messagesToAck);
+          nack(messagesToNack);
         }
-
-      } catch (TException
-          | IOException
-          | StatementExecutionException
-          | IoTDBConnectionException e) {
-        LOGGER.warn("Exception occurred when auto polling: ", e);
+      } catch (final Exception e) {
+        LOGGER.warn("something unexpected happened when auto poll messages...", e);
       }
     }
   }

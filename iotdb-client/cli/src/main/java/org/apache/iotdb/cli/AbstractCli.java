@@ -649,7 +649,8 @@ public abstract class AbstractCli {
         maxSizeList.add(columnLabel.length() + count);
       }
 
-      boolean printTimestamp = !((IoTDBJDBCResultSet) resultSet).isIgnoreTimeStamp();
+      IoTDBJDBCResultSet ioTDBJDBCResultSet = (IoTDBJDBCResultSet) resultSet;
+      boolean printTimestamp = !ioTDBJDBCResultSet.isIgnoreTimeStamp();
       while (j < maxPrintRowCount && !isReachEnd) {
         for (int i = 1; i <= columnCount; i++) {
           String tmp;

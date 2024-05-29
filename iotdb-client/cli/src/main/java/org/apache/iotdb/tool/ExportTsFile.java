@@ -417,21 +417,6 @@ public class ExportTsFile extends AbstractTsFileTool {
   }
 
   private static TSDataType getTsDataType(String type) {
-    switch (type) {
-      case "INT64":
-        return TSDataType.INT64;
-      case "INT32":
-        return TSDataType.INT32;
-      case "FLOAT":
-        return TSDataType.FLOAT;
-      case "DOUBLE":
-        return TSDataType.DOUBLE;
-      case "TEXT":
-        return TSDataType.TEXT;
-      case "BOOLEAN":
-        return TSDataType.BOOLEAN;
-      default:
-        throw new IllegalArgumentException("Invalid input: " + type);
-    }
+    return TSDataType.valueOf(type);
   }
 }

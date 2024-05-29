@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -114,9 +115,9 @@ public class InsertRowsStatement extends InsertBaseStatement {
   }
 
   @Override
-  public void updateAfterSchemaValidation() throws QueryProcessException {
+  public void updateAfterSchemaValidation(MPPQueryContext context) throws QueryProcessException {
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
-      insertRowStatement.updateAfterSchemaValidation();
+      insertRowStatement.updateAfterSchemaValidation(context);
       if (!this.hasFailedMeasurements() && insertRowStatement.hasFailedMeasurements()) {
         this.failedMeasurementIndex2Info = insertRowStatement.failedMeasurementIndex2Info;
       }

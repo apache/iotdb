@@ -121,6 +121,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
         .setMaxHeapSize(EnvUtils.getIntFromSysVar(CONFIG_NODE_MAX_HEAP_SIZE, 256, clusterIndex))
         .setMaxDirectMemorySize(
             EnvUtils.getIntFromSysVar(CONFIG_NODE_MAX_DIRECT_MEMORY_SIZE, 256, clusterIndex))
+        .setTimezone("Asia/Shanghai")
         .build();
   }
 

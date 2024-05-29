@@ -54,7 +54,16 @@ public abstract class UDTFSelectK implements UDTF {
   public void validate(UDFParameterValidator validator) throws UDFException {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE, Type.TEXT)
+        .validateInputSeriesDataType(
+            0,
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE,
+            Type.TEXT,
+            Type.STRING,
+            Type.DATE,
+            Type.TIMESTAMP)
         .validateRequiredAttribute("k")
         .validate(
             k -> 0 < (int) k && (int) k <= 1000,
@@ -80,9 +89,11 @@ public abstract class UDTFSelectK implements UDTF {
       throws UDFInputSeriesDataTypeNotValidException, IOException {
     switch (dataType) {
       case INT32:
+      case DATE:
         transformInt(row.getTime(), row.getInt(0));
         break;
       case INT64:
+      case TIMESTAMP:
         transformLong(row.getTime(), row.getLong(0));
         break;
       case FLOAT:
@@ -92,6 +103,7 @@ public abstract class UDTFSelectK implements UDTF {
         transformDouble(row.getTime(), row.getDouble(0));
         break;
       case TEXT:
+      case STRING:
         transformString(row.getTime(), row.getString(0));
         break;
       default:
@@ -103,7 +115,10 @@ public abstract class UDTFSelectK implements UDTF {
             Type.INT64,
             Type.FLOAT,
             Type.DOUBLE,
-            Type.TEXT);
+            Type.TEXT,
+            Type.DATE,
+            Type.TIMESTAMP,
+            Type.STRING);
     }
   }
 
@@ -122,12 +137,14 @@ public abstract class UDTFSelectK implements UDTF {
       throws UDFInputSeriesDataTypeNotValidException, IOException {
     switch (dataType) {
       case INT32:
+      case DATE:
         for (Pair<Long, Integer> pair :
             intPQ.stream().sorted(Comparator.comparing(p -> p.left)).collect(Collectors.toList())) {
           collector.putInt(pair.left, pair.right);
         }
         break;
       case INT64:
+      case TIMESTAMP:
         for (Pair<Long, Long> pair :
             longPQ.stream()
                 .sorted(Comparator.comparing(p -> p.left))
@@ -152,6 +169,7 @@ public abstract class UDTFSelectK implements UDTF {
         }
         break;
       case TEXT:
+      case STRING:
         for (Pair<Long, String> pair :
             stringPQ.stream()
                 .sorted(Comparator.comparing(p -> p.left))
@@ -168,7 +186,10 @@ public abstract class UDTFSelectK implements UDTF {
             Type.INT64,
             Type.FLOAT,
             Type.DOUBLE,
-            Type.TEXT);
+            Type.TEXT,
+            Type.DATE,
+            Type.TIMESTAMP,
+            Type.STRING);
     }
   }
 }

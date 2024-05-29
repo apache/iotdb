@@ -310,9 +310,11 @@ public class TransformOperator implements ProcessOperator {
       TSDataType type = reader.getDataType();
       switch (type) {
         case INT32:
+        case DATE:
           writer.writeInt(reader.currentInt());
           break;
         case INT64:
+        case TIMESTAMP:
           writer.writeLong(reader.currentLong());
           break;
         case FLOAT:
@@ -325,6 +327,8 @@ public class TransformOperator implements ProcessOperator {
           writer.writeBoolean(reader.currentBoolean());
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           writer.writeBinary(reader.currentBinary());
           break;
         default:

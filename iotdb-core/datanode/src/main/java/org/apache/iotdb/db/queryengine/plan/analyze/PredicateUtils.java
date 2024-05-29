@@ -45,6 +45,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -281,14 +282,15 @@ public class PredicateUtils {
       Expression predicate,
       List<String> allMeasurements,
       boolean isBuildPlanUseTemplate,
-      TypeProvider typeProvider) {
+      TypeProvider typeProvider,
+      ZoneId zoneId) {
     if (predicate == null) {
       return null;
     }
     return predicate.accept(
         new ConvertPredicateToFilterVisitor(),
         new ConvertPredicateToFilterVisitor.Context(
-            allMeasurements, isBuildPlanUseTemplate, typeProvider));
+            allMeasurements, isBuildPlanUseTemplate, typeProvider, zoneId));
   }
 
   /**

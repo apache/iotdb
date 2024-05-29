@@ -185,6 +185,7 @@ public abstract class EnrichedEvent implements Event {
     boolean isSuccessful = true;
     synchronized (this) {
       if (referenceCount.get() >= 1 && !isReleased.get()) {
+        // We assume that this function will not throw any exceptions.
         isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
         isReleased.set(true);
       }
