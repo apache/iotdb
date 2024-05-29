@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.manager.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -50,7 +49,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -392,69 +390,6 @@ public class ClusterSchemaManager {
     }
 
     return new TShowDatabaseResp().setDatabaseInfoMap(infoMap).setStatus(StatusUtils.OK);
-  }
-
-  // TODO: Remove, use TTLManager instead.
-  /**
-   * Update TTL for the specific Database or all databases in a path
-   *
-   * @param setTTLPlan setTTLPlan
-   * @return {@link TSStatusCode#SUCCESS_STATUS} if successfully update the TTL, {@link
-   *     TSStatusCode#DATABASE_NOT_EXIST} if the path doesn't exist
-   */
-  public TSStatus setTTL(SetTTLPlan setTTLPlan, boolean isGeneratedByPipe) {
-
-    Map<String, TDatabaseSchema> storageSchemaMap =
-        clusterSchemaInfo.getMatchedDatabaseSchemasByOneName(setTTLPlan.getPathPattern());
-
-    if (storageSchemaMap.isEmpty()) {
-      return RpcUtils.getStatus(
-          TSStatusCode.DATABASE_NOT_EXIST,
-          "Path [" + new PartialPath(setTTLPlan.getPathPattern()) + "] does not exist");
-    }
-
-    // Map<DataNodeId, TDataNodeLocation>
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-    // Map<DataNodeId, DatabasePatterns>
-    Map<Integer, List<String>> dnlToSgMap = new ConcurrentHashMap<>();
-    for (String database : storageSchemaMap.keySet()) {
-      // Get related DataNodes
-      Set<TDataNodeLocation> dataNodeLocations =
-          getPartitionManager()
-              .getDatabaseRelatedDataNodes(database, TConsensusGroupType.DataRegion);
-
-      for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
-        dataNodeLocationMap.putIfAbsent(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-        dnlToSgMap
-            .computeIfAbsent(dataNodeLocation.getDataNodeId(), empty -> new ArrayList<>())
-            .add(database);
-      }
-    }
-
-    AsyncClientHandler<TSetTTLReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.SET_TTL);
-    dnlToSgMap
-        .keySet()
-        .forEach(
-            dataNodeId -> {
-              TSetTTLReq setTTLReq =
-                  new TSetTTLReq(
-                      dnlToSgMap.get(dataNodeId), setTTLPlan.getTTL(), setTTLPlan.isDataBase());
-              clientHandler.putRequest(dataNodeId, setTTLReq);
-              clientHandler.putDataNodeLocation(dataNodeId, dataNodeLocationMap.get(dataNodeId));
-            });
-    // TODO: Check response
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-
-    try {
-      return getConsensusManager()
-          .write(isGeneratedByPipe ? new PipeEnrichedPlan(setTTLPlan) : setTTLPlan);
-    } catch (ConsensusException e) {
-      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
-      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      result.setMessage(e.getMessage());
-      return result;
-    }
   }
 
   public Map<String, Long> getTTLInfoForUpgrading() {
