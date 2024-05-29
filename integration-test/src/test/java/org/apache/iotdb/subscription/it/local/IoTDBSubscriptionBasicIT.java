@@ -210,6 +210,7 @@ public class IoTDBSubscriptionBasicIT {
                       .consumerId("c1")
                       .consumerGroupId("cg1")
                       .autoCommit(false)
+                      .fileSaveDir(System.getProperty("java.io.tmpdir")) // hack for license check
                       .buildPullConsumer()) {
                 consumer.open();
                 consumer.subscribe(topicName);

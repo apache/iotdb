@@ -908,6 +908,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
             .consumerId(subscriptionInfo.consumerId)
             .consumerGroupId(subscriptionInfo.consumerGroupId)
             .autoCommit(false)
+            .fileSaveDir(System.getProperty("java.io.tmpdir")) // hack for license check
             .buildPullConsumer();
     consumer.open();
     consumer.subscribe(subscriptionInfo.topicNames);
