@@ -90,9 +90,9 @@ public class AuditLogger {
     insertStatement.setAligned(false);
     insertStatement.setValues(
         new Object[] {
-          new Binary(log, TSFileConfig.STRING_CHARSET),
-          new Binary(username, TSFileConfig.STRING_CHARSET),
-          new Binary(address, TSFileConfig.STRING_CHARSET)
+          new Binary(log == null ? "null" : log, TSFileConfig.STRING_CHARSET),
+          new Binary(username == null ? "null" : username, TSFileConfig.STRING_CHARSET),
+          new Binary(address == null ? "null" : address, TSFileConfig.STRING_CHARSET)
         });
     insertStatement.setDataTypes(
         new TSDataType[] {TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT});
