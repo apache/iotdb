@@ -151,7 +151,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   createPipeRequest.getExtractorAttributes().get(EXTRACTOR_CONSENSUS_GROUP_ID_KEY))
               .convertToTConsensusGroupId();
 
-      final int leaderDataNodeId =
+      final int senderDataNodeId =
           Integer.parseInt(
               createPipeRequest
                   .getExtractorAttributes()
@@ -159,8 +159,8 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       consensusGroupIdToTaskMetaMap.put(
           groupId.getId(),
           new PipeTaskMeta(
-              new RecoverProgressIndex(leaderDataNodeId, new SimpleProgressIndex(0, 0)),
-              leaderDataNodeId));
+              new RecoverProgressIndex(senderDataNodeId, new SimpleProgressIndex(0, 0)),
+              senderDataNodeId));
     } else {
       // data regions & schema regions
       env.getConfigManager()

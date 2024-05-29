@@ -27,9 +27,7 @@ import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBatchReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletRawReq;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -38,12 +36,9 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
-import org.apache.tsfile.utils.PublicBAOS;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -178,57 +173,34 @@ public abstract class PipeConsensusTransferBatchReqBuilder implements AutoClosea
     return new ArrayList<>(events);
   }
 
-  protected int buildTabletInsertionBuffer(TabletInsertionEvent event)
-      throws IOException, WALPipeException {
+  protected int buildTabletInsertionBuffer(TabletInsertionEvent event) throws WALPipeException {
     final ByteBuffer buffer;
     final TCommitId commitId;
 
-    if (event instanceof PipeInsertNodeTabletInsertionEvent) {
-      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
-          (PipeInsertNodeTabletInsertionEvent) event;
-      commitId =
-          new TCommitId(
-              pipeInsertNodeTabletInsertionEvent.getCommitId(),
-              pipeInsertNodeTabletInsertionEvent.getRebootTimes());
+    // event instanceof PipeInsertNodeTabletInsertionEvent)
+    final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
+        (PipeInsertNodeTabletInsertionEvent) event;
+    commitId =
+        new TCommitId(
+            pipeInsertNodeTabletInsertionEvent.getCommitId(),
+            pipeInsertNodeTabletInsertionEvent.getRebootTimes());
 
-      // Read the bytebuffer from the wal file and transfer it directly without serializing or
-      // deserializing if possible
-      final InsertNode insertNode =
-          pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
-      // PipeConsensus will transfer binary data to TPipeConsensusTransferReq
-      final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
-      if (Objects.isNull(insertNode)) {
-        buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
-        batchReqs.add(
-            PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
-                buffer, commitId, consensusGroupId, progressIndex, thisDataNodeId));
-      } else {
-        buffer = insertNode.serializeToByteBuffer();
-        batchReqs.add(
-            PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
-                insertNode, commitId, consensusGroupId, progressIndex, thisDataNodeId));
-      }
-    } else {
-      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
-          (PipeRawTabletInsertionEvent) event;
-      commitId =
-          new TCommitId(
-              pipeRawTabletInsertionEvent.getCommitId(),
-              pipeRawTabletInsertionEvent.getRebootTimes());
-
-      try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-          final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-        pipeRawTabletInsertionEvent.convertToTablet().serialize(outputStream);
-        ReadWriteIOUtils.write(pipeRawTabletInsertionEvent.isAligned(), outputStream);
-        buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-      }
+    // Read the bytebuffer from the wal file and transfer it directly without serializing or
+    // deserializing if possible
+    final InsertNode insertNode =
+        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
+    // PipeConsensus will transfer binary data to TPipeConsensusTransferReq
+    final ProgressIndex progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
+    if (Objects.isNull(insertNode)) {
+      buffer = pipeInsertNodeTabletInsertionEvent.getByteBuffer();
       batchReqs.add(
-          PipeConsensusTabletRawReq.toTPipeConsensusTransferRawReq(
-              pipeRawTabletInsertionEvent.convertToTablet(),
-              pipeRawTabletInsertionEvent.isAligned(),
-              commitId,
-              consensusGroupId,
-              thisDataNodeId));
+          PipeConsensusTabletBinaryReq.toTPipeConsensusTransferReq(
+              buffer, commitId, consensusGroupId, progressIndex, thisDataNodeId));
+    } else {
+      buffer = insertNode.serializeToByteBuffer();
+      batchReqs.add(
+          PipeConsensusTabletInsertNodeReq.toTPipeConsensusTransferReq(
+              insertNode, commitId, consensusGroupId, progressIndex, thisDataNodeId));
     }
 
     return buffer.limit();

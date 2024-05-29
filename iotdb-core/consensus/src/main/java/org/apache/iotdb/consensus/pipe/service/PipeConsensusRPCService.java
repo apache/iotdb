@@ -21,7 +21,6 @@ package org.apache.iotdb.consensus.pipe.service;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
@@ -31,14 +30,8 @@ import org.apache.iotdb.consensus.pipe.thrift.PipeConsensusIService;
 import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 
 import org.apache.thrift.TBaseAsyncProcessor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.lang.reflect.InvocationTargetException;
 
 public class PipeConsensusRPCService extends ThriftService implements PipeConsensusRPCServiceMBean {
-
-  private static final Logger logger = LoggerFactory.getLogger(PipeConsensusRPCService.class);
 
   private final TEndPoint thisNode;
   private final PipeConsensusConfig config;
@@ -47,16 +40,6 @@ public class PipeConsensusRPCService extends ThriftService implements PipeConsen
   public PipeConsensusRPCService(TEndPoint thisNode, PipeConsensusConfig config) {
     this.thisNode = thisNode;
     this.config = config;
-  }
-
-  @Override
-  public void waitAndStop(long milliseconds) {
-    super.waitAndStop(milliseconds);
-  }
-
-  @Override
-  public void shutdown(long milliseconds) throws ShutdownException {
-    super.shutdown(milliseconds);
   }
 
   @Override
@@ -72,18 +55,12 @@ public class PipeConsensusRPCService extends ThriftService implements PipeConsen
   }
 
   @Override
-  public void initTProcessor()
-      throws ClassNotFoundException,
-          IllegalAccessException,
-          InstantiationException,
-          NoSuchMethodException,
-          InvocationTargetException {
+  public void initTProcessor() {
     processor = new PipeConsensusIService.AsyncProcessor<>(pipeConsensusRPCServiceProcessor);
   }
 
   @Override
-  public void initThriftServiceThread()
-      throws IllegalAccessException, InstantiationException, ClassNotFoundException {
+  public void initThriftServiceThread() throws IllegalAccessException {
     try {
       thriftServiceThread =
           new ThriftServiceThread(

@@ -158,6 +158,26 @@ for %%i in (%dn_sync_dir%) do (
     )
 )
 
+for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^pipe_receiver_file_dir"
+  %IOTDB_DATANODE_CONFIG%') do (
+  set pipe_receiver_file_dir=%%i
+)
+if "%pipe_receiver_file_dir%"=="" (
+    set "pipe_receiver_file_dir=data\\datanode\\system\\pipe\\receiver"
+)
+
+set "pipe_receiver_file_dir=!pipe_receiver_file_dir:%delimiter%= !"
+for %%i in (%pipe_receiver_file_dir%) do (
+  set "var=%%i"
+    if "!var:~0,2!"=="\\" (
+      rmdir /s /q "%%i" 2>nul
+    ) else if "!var:~1,3!"==":\\" (
+      rmdir /s /q "%%i" 2>nul
+    ) else (
+      rmdir /s /q "%IOTDB_HOME%\%%i" 2>nul
+    )
+)
+
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^sort_tmp_dir"
   %IOTDB_DATANODE_CONFIG%') do (
   set sort_tmp_dir=%%i

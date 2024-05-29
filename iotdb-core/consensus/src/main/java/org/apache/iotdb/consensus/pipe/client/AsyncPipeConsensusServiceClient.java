@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class AsyncPipeConsensusServiceClient extends PipeConsensusIService.AsyncClient
     implements ThriftClient {
@@ -43,6 +44,8 @@ public class AsyncPipeConsensusServiceClient extends PipeConsensusIService.Async
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AsyncPipeConsensusServiceClient.class);
 
+  private static final AtomicInteger idGenerator = new AtomicInteger(0);
+  private final int id = idGenerator.incrementAndGet();
   private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncPipeConsensusServiceClient> clientManager;
@@ -81,7 +84,7 @@ public class AsyncPipeConsensusServiceClient extends PipeConsensusIService.Async
   @Override
   public void invalidate() {
     if (!hasError()) {
-      super.onError(new Exception("This client has been invalidated"));
+      super.onError(new Exception(String.format("This client %d has been invalidated", id)));
     }
   }
 
@@ -125,7 +128,7 @@ public class AsyncPipeConsensusServiceClient extends PipeConsensusIService.Async
 
   @Override
   public String toString() {
-    return String.format("AsyncPipeConsensusServiceClient{%s}", endpoint);
+    return String.format("AsyncPipeDataTransferServiceClient{%s}, id = {%d}", endpoint, id);
   }
 
   public TEndPoint getTEndpoint() {

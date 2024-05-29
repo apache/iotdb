@@ -79,13 +79,13 @@ struct TNotifyPeerToDropConsensusPipeResp {
   1: required common.TSStatus status
 }
 
-struct TCheckConsensusPipeCompleteddReq {
+struct TCheckConsensusPipeCompletedReq {
   1: required common.TConsensusGroupId consensusGroupId
   2: required list<string> consensusPipeNames;
   3: required bool refreshCachedProgressIndex
 }
 
-struct TCheckConsensusPipeCompleteddResp {
+struct TCheckConsensusPipeCompletedResp {
   1: required common.TSStatus status
   2: required bool isCompleted
 }

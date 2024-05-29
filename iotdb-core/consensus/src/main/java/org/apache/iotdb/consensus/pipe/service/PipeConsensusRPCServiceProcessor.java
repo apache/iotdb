@@ -27,8 +27,8 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensusServerImpl;
 import org.apache.iotdb.consensus.pipe.thrift.PipeConsensusIService;
-import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompleteddReq;
-import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompleteddResp;
+import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompletedReq;
+import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompletedResp;
 import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToCreateConsensusPipeReq;
 import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToCreateConsensusPipeResp;
 import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToDropConsensusPipeReq;
@@ -169,8 +169,8 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
 
   @Override
   public void checkConsensusPipeCompleted(
-      TCheckConsensusPipeCompleteddReq req,
-      AsyncMethodCallback<TCheckConsensusPipeCompleteddResp> resultHandler)
+      TCheckConsensusPipeCompletedReq req,
+      AsyncMethodCallback<TCheckConsensusPipeCompletedResp> resultHandler)
       throws TException {
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
@@ -183,7 +183,7 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
       LOGGER.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
-      resultHandler.onComplete(new TCheckConsensusPipeCompleteddResp(status, true));
+      resultHandler.onComplete(new TCheckConsensusPipeCompletedResp(status, true));
       return;
     }
     TSStatus responseStatus;
@@ -203,7 +203,7 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
           true,
           e);
     }
-    resultHandler.onComplete(new TCheckConsensusPipeCompleteddResp(responseStatus, isCompleted));
+    resultHandler.onComplete(new TCheckConsensusPipeCompletedResp(responseStatus, isCompleted));
   }
 
   public void handleClientExit() {}
