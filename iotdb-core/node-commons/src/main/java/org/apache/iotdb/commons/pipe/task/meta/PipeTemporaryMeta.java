@@ -27,13 +27,31 @@ import java.util.concurrent.ConcurrentMap;
 public class PipeTemporaryMeta {
 
   private final ConcurrentMap<Integer, Integer> completedDataNodeIds = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, Long> nodeId2RemainingEventMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Integer, Double> nodeId2RemainingTimeMap = new ConcurrentHashMap<>();
 
   public void markDataNodeCompleted(final int dataNodeId) {
     completedDataNodeIds.put(dataNodeId, dataNodeId);
   }
 
+  public void setRemainingEvent(final int dataNodeId, final long remainingEventCount) {
+    nodeId2RemainingEventMap.put(dataNodeId, remainingEventCount);
+  }
+
+  public void setRemainingTime(final int dataNodeId, final double remainingTime) {
+    nodeId2RemainingTimeMap.put(dataNodeId, remainingTime);
+  }
+
   public Set<Integer> getCompletedDataNodeIds() {
     return completedDataNodeIds.keySet();
+  }
+
+  public long getGlobalRemainingEvents() {
+    return nodeId2RemainingEventMap.values().stream().reduce(Long::sum).orElse(0L);
+  }
+
+  public double getGlobalRemainingTime() {
+    return nodeId2RemainingTimeMap.values().stream().reduce(Math::max).orElse(0d);
   }
 
   @Override
@@ -45,16 +63,25 @@ public class PipeTemporaryMeta {
       return false;
     }
     final PipeTemporaryMeta that = (PipeTemporaryMeta) o;
-    return Objects.equals(this.completedDataNodeIds, that.completedDataNodeIds);
+    return Objects.equals(this.completedDataNodeIds, that.completedDataNodeIds)
+        && Objects.equals(this.nodeId2RemainingEventMap, that.nodeId2RemainingEventMap)
+        && Objects.equals(this.nodeId2RemainingTimeMap, that.nodeId2RemainingTimeMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(completedDataNodeIds);
+    return Objects.hash(completedDataNodeIds, nodeId2RemainingEventMap, nodeId2RemainingTimeMap);
   }
 
   @Override
   public String toString() {
-    return "PipeTemporaryMeta{" + "completedDataNodeIds=" + completedDataNodeIds + '}';
+    return "PipeTemporaryMeta{"
+        + "completedDataNodeIds="
+        + completedDataNodeIds
+        + ", nodeId2RemainingEventMap="
+        + nodeId2RemainingEventMap
+        + ", nodeId2RemainingTimeMap"
+        + nodeId2RemainingTimeMap
+        + '}';
   }
 }
