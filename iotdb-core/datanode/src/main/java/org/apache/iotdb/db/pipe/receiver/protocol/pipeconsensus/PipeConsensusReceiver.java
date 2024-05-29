@@ -94,7 +94,8 @@ public class PipeConsensusReceiver {
   private final ConsensusGroupId consensusGroupId;
   // Used to buffer TsFile when transfer TsFile asynchronously.
   private final List<String> receiverBaseDirsName;
-  private final TsFileDiskBufferPool tsFileDiskBufferPool = new TsFileDiskBufferPool();
+  private final PipeConsensusTsFileWriterPool pipeConsensusTsFileWriterPool =
+      new PipeConsensusTsFileWriterPool();
   private final AtomicReference<File> receiverFileDirWithIdSuffix = new AtomicReference<>();
   private FolderManager folderManager;
 
@@ -120,6 +121,7 @@ public class PipeConsensusReceiver {
       LOGGER.error(
           "Fail to create pipeConsensus receiver file folders allocation strategy because all disks of folders are full.",
           e);
+      throw new RuntimeException(e);
     }
   }
 
@@ -286,7 +288,7 @@ public class PipeConsensusReceiver {
     LOGGER.info(
         "PipeConsensus-ConsensusGroupId-{}: starting to receive tsFile pieces", consensusGroupId);
     PipeConsensusTsFileWriter diskBuffer =
-        tsFileDiskBufferPool.borrowCorrespondingWriter(req.getCommitId());
+        pipeConsensusTsFileWriterPool.borrowCorrespondingWriter(req.getCommitId());
 
     try {
       updateWritingFileIfNeeded(diskBuffer, req.getFileName(), isSingleFile);
@@ -342,7 +344,7 @@ public class PipeConsensusReceiver {
     LOGGER.info(
         "PipeConsensus-ConsensusGroupId-{}: starting to receive tsFile seal", consensusGroupId);
     PipeConsensusTsFileWriter tsFileWriter =
-        tsFileDiskBufferPool.borrowCorrespondingWriter(req.getCommitId());
+        pipeConsensusTsFileWriterPool.borrowCorrespondingWriter(req.getCommitId());
     File writingFile = tsFileWriter.getWritingFile();
     RandomAccessFile writingFileWriter = tsFileWriter.getWritingFileWriter();
 
@@ -435,7 +437,7 @@ public class PipeConsensusReceiver {
         "PipeConsensus-ConsensusGroupId-{}: starting to receive tsFile seal with mods",
         consensusGroupId);
     PipeConsensusTsFileWriter tsFileWriter =
-        tsFileDiskBufferPool.borrowCorrespondingWriter(req.getCommitId());
+        pipeConsensusTsFileWriterPool.borrowCorrespondingWriter(req.getCommitId());
     File writingFile = tsFileWriter.getWritingFile();
     RandomAccessFile writingFileWriter = tsFileWriter.getWritingFileWriter();
 
@@ -864,12 +866,12 @@ public class PipeConsensusReceiver {
   // ReqExecutor's buffer is a TreeSet, which will properly cope with the resend duplicate event
   // from sender.
   public void handleClientExit(TCommitId commitId) {
-    tsFileDiskBufferPool.handleClientExit(commitId, consensusGroupId);
+    pipeConsensusTsFileWriterPool.handleClientExit(commitId, consensusGroupId);
   }
 
   public synchronized void handleExit() {
     // Clear the diskBuffers
-    tsFileDiskBufferPool.handleExit(consensusGroupId);
+    pipeConsensusTsFileWriterPool.handleExit(consensusGroupId);
 
     // Clear the original receiver file dir if exists
     if (receiverFileDirWithIdSuffix.get() != null) {
@@ -909,11 +911,11 @@ public class PipeConsensusReceiver {
         consensusGroupId.getId());
   }
 
-  private static class TsFileDiskBufferPool {
+  private static class PipeConsensusTsFileWriterPool {
     private final Lock lock = new ReentrantLock();
     private final List<PipeConsensusTsFileWriter> pipeConsensusTsFileWriterPool = new ArrayList<>();
 
-    public TsFileDiskBufferPool() {
+    public PipeConsensusTsFileWriterPool() {
       for (int i = 0; i < IOTDB_CONFIG.getPipeConsensusPipelineSize(); i++) {
         pipeConsensusTsFileWriterPool.add(new PipeConsensusTsFileWriter(i));
       }

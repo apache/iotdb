@@ -58,14 +58,14 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.FAST_IOT_CONSENSUS);
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setDataRegionConsensusProtocolClass(ConsensusFactory.FAST_IOT_CONSENSUS);
+        .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
