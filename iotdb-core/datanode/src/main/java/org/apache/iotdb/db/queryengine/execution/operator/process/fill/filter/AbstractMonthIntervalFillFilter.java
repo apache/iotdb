@@ -21,9 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter;
 
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFillFilter;
 
-import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 
 public abstract class AbstractMonthIntervalFillFilter implements IFillFilter {
 
@@ -35,12 +33,9 @@ public abstract class AbstractMonthIntervalFillFilter implements IFillFilter {
   // non-month part of time duration, its precision is same as current time_precision
   protected final long nonMonthDuration;
 
-  protected final ZoneOffset zoneOffset;
-
   AbstractMonthIntervalFillFilter(int monthDuration, long nonMonthDuration, ZoneId zone) {
     this.monthDuration = monthDuration;
     this.nonMonthDuration = nonMonthDuration;
     this.zone = zone;
-    this.zoneOffset = zone.getRules().getOffset(Instant.now());
   }
 }

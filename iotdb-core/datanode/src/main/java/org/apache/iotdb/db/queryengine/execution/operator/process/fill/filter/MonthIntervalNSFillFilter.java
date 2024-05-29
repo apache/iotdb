@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoField;
 
 public class MonthIntervalNSFillFilter extends AbstractMonthIntervalFillFilter {
@@ -34,10 +35,15 @@ public class MonthIntervalNSFillFilter extends AbstractMonthIntervalFillFilter {
   public boolean needFill(long time, long previousTime) {
     long smaller = Math.min(time, previousTime);
     long greater = Math.max(time, previousTime);
-    Instant instant = Instant.ofEpochSecond(smaller / 1_000_000_000L, smaller % 1_000_000_000L);
-    LocalDateTime localDateTime = LocalDateTime.ofInstant(instant, zone);
+    Instant smallerInstant =
+        Instant.ofEpochSecond(smaller / 1_000_000_000L, smaller % 1_000_000_000L);
+    LocalDateTime smallerDateTime = LocalDateTime.ofInstant(smallerInstant, zone);
+    ZoneOffset smallerOffset = zone.getRules().getStandardOffset(smallerInstant);
     Instant upper =
-        localDateTime.plusMonths(monthDuration).plusNanos(nonMonthDuration).toInstant(zoneOffset);
+        smallerDateTime
+            .plusMonths(monthDuration)
+            .plusNanos(nonMonthDuration)
+            .toInstant(smallerOffset);
     long timeInNs =
         upper.getLong(ChronoField.NANO_OF_SECOND) + upper.getEpochSecond() * 1_000_000_000L;
     return timeInNs >= greater;
