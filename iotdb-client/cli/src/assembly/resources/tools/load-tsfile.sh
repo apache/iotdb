@@ -107,10 +107,7 @@ IOTDB_CLI_CONF=${IOTDB_HOME}/conf
 
 MAIN_CLASS=org.apache.iotdb.cli.Cli
 
-CLASSPATH=""
-for f in ${IOTDB_HOME}/lib/*.jar; do
-  CLASSPATH=${CLASSPATH}":"$f
-done
+CLASSPATH=${IOTDB_HOME}/lib/*
 
 if [ -n "$JAVA_HOME" ]; then
     for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do

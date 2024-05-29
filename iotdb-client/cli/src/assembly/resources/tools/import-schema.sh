@@ -49,9 +49,7 @@ if [ -z $JAVA ] ; then
     exit 1;
 fi
 
-for f in ${IOTDB_HOME}/lib/*.jar; do
-    CLASSPATH=${CLASSPATH}":"$f
-done
+CLASSPATH=${IOTDB_HOME}/lib/*
 
 MAIN_CLASS=org.apache.iotdb.tool.ImportSchema
 
