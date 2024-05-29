@@ -67,7 +67,6 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 // TODO: Optimize the network and disk io for TsFile onComplete
 // TODO: support Tablet Batch
@@ -97,8 +96,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
       new LinkedBlockingDeque<>(COMMON_CONFIG.getPipeConsensusEventBufferSize());
 
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
-
-  private final AtomicInteger alreadySentEventsInTransferBuffer = new AtomicInteger(0);
 
   private final int thisDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
@@ -146,16 +143,12 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
   /** Add an event to transferBuffer, whose events will be asynchronizedly transfer to receiver. */
   private boolean addEvent2Buffer(Event event) {
     try {
-      LOGGER.info(
-          "PipeConsensus-ConsensusGroup-{}: no.{} event-{} added to connector buffer",
-          consensusGroupId,
-          ((EnrichedEvent) event).getCommitId(),
-          event);
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "PipeConsensus connector: one event enqueue, queue size = {}, limit size = {}",
-            transferBuffer.size(),
-            COMMON_CONFIG.getPipeConsensusEventBufferSize());
+            "PipeConsensus-ConsensusGroup-{}: no.{} event-{} added to connector buffer",
+            consensusGroupId,
+            ((EnrichedEvent) event).getCommitId(),
+            event);
       }
       boolean result =
           transferBuffer.offer(
@@ -195,8 +188,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector {
     // decrease reference count
     ((EnrichedEvent) event)
         .decreaseReferenceCount(PipeConsensusAsyncConnector.class.getName(), true);
-    // decrease alreadySentEventsCounts
-    alreadySentEventsInTransferBuffer.decrementAndGet();
   }
 
   @Override
