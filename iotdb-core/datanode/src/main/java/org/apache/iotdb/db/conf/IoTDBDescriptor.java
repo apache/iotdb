@@ -1266,7 +1266,7 @@ public class IoTDBDescriptor {
         (Math.abs(
                 innerCompactionTaskSelectionDiskRedundancy
                     - conf.getInnerCompactionTaskSelectionDiskRedundancy())
-            < 0.001);
+            > 0.001);
 
     // update inner_compaction_task_selection_mods_file_threshold
     long innerCompactionTaskSelectionModsFileThreshold =
