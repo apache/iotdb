@@ -79,7 +79,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
 
     super.open();
-    launchAutoPollWorker();
+    submitAutoPollWorker();
     isClosed.set(false);
   }
 
@@ -100,7 +100,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// auto poll ///////////////////////////////
 
-  private void launchAutoPollWorker() {
+  private void submitAutoPollWorker() {
     final ScheduledFuture<?>[] future = new ScheduledFuture<?>[1];
     future[0] =
         SubscriptionExecutorService.submitAutoPollWorker(

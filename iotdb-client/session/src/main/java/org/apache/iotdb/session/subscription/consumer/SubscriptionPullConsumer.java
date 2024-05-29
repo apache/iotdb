@@ -98,7 +98,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
     if (autoCommit) {
       uncommittedMessages = new ConcurrentSkipListMap<>();
-      launchAutoCommitWorker();
+      submitAutoCommitWorker();
     }
 
     isClosed.set(false);
@@ -184,7 +184,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   /////////////////////////////// auto commit ///////////////////////////////
 
-  private void launchAutoCommitWorker() {
+  private void submitAutoCommitWorker() {
     final ScheduledFuture<?>[] future = new ScheduledFuture<?>[1];
     future[0] =
         SubscriptionExecutorService.submitAutoCommitWorker(
