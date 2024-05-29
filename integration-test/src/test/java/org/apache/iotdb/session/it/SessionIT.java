@@ -269,7 +269,7 @@ public class SessionIT {
   @Test
   public void testInsertTablet() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       String deviceId = "root.db.d1";
       schemaList.add(new MeasurementSchema("s1", TSDataType.DATE));
       schemaList.add(new MeasurementSchema("s2", TSDataType.TIMESTAMP));
