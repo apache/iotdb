@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -47,7 +48,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TTLInfo implements SnapshotProcessor {
-  private static final String SNAPSHOT_FILENAME = "ttl_info.bin";
+  public static final String SNAPSHOT_FILENAME = "ttl_info.bin";
   private static final Logger LOGGER = LoggerFactory.getLogger(TTLInfo.class);
 
   private final TTLCache ttlCache;
@@ -190,5 +191,10 @@ public class TTLInfo implements SnapshotProcessor {
     TTLInfo other = (TTLInfo) o;
     return this.getTTLCount() == other.getTTLCount()
         && this.showAllTTL().getPathTTLMap().equals(other.showAllTTL().getPathTTLMap());
+  }
+
+  @TestOnly
+  public void clear() {
+    ttlCache.clear();
   }
 }

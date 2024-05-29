@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
@@ -37,6 +38,7 @@ import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeF
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -58,6 +60,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Stack;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
@@ -128,6 +131,8 @@ public class CNPhysicalPlanGenerator
       generateUserRolePhysicalPlan(false);
     } else if (snapshotFileType == CNSnapshotFileType.USER_ROLE) {
       generateGrantRolePhysicalPlan();
+    } else if (snapshotFileType == CNSnapshotFileType.TTL) {
+      generateSetTTLPlan();
     } else if (snapshotFileType == CNSnapshotFileType.SCHEMA) {
       generateTemplatePlan();
       if (latestException != null) {
@@ -262,6 +267,24 @@ public class CNPhysicalPlanGenerator
         plan.setNodeNameList(new ArrayList<>());
         planDeque.add(plan);
       }
+    }
+  }
+
+  private void generateSetTTLPlan() {
+    try (DataInputStream ttlInputStream =
+        new DataInputStream(new BufferedInputStream(inputStream))) {
+      int size = ReadWriteIOUtils.readInt(ttlInputStream);
+      while (size > 0) {
+        String path = ReadWriteIOUtils.readString(ttlInputStream);
+        long ttl = ReadWriteIOUtils.readLong(ttlInputStream);
+        planDeque.add(
+            new SetTTLPlan(
+                Objects.requireNonNull(path).split(TsFileConstant.PATH_SEPARATER_NO_REGEX), ttl));
+        size--;
+      }
+    } catch (IOException e) {
+      logger.error("Got IOException when deserializing ttl file", e);
+      latestException = e;
     }
   }
 

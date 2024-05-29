@@ -270,11 +270,11 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
   @Override
   public Optional<ConfigPhysicalPlan> visitTTL(
       final SetTTLPlan setTTLPlan, final IoTDBPipePattern pattern) {
-    final PartialPath databasePath = new PartialPath(setTTLPlan.getPathPattern());
+    final PartialPath partialPath = new PartialPath(setTTLPlan.getPathPattern());
     final List<PartialPath> intersectionList =
-        pattern.matchPrefixPath(databasePath.getFullPath())
-            ? Collections.singletonList(databasePath)
-            : pattern.getIntersection(databasePath);
+        pattern.matchPrefixPath(partialPath.getFullPath())
+            ? Collections.singletonList(partialPath)
+            : pattern.getIntersection(partialPath);
     return !intersectionList.isEmpty()
         ? Optional.of(
             new PipeSetTTLPlan(

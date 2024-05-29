@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -222,7 +223,7 @@ public class TTLCache {
     while (size > 0) {
       String path = ReadWriteIOUtils.readString(bufferedInputStream);
       long ttl = ReadWriteIOUtils.readLong(bufferedInputStream);
-      setTTL(Objects.requireNonNull(path).split("\\" + IoTDBConstant.PATH_SEPARATOR), ttl);
+      setTTL(Objects.requireNonNull(path).split(TsFileConstant.PATH_SEPARATER_NO_REGEX), ttl);
       size--;
     }
   }

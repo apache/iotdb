@@ -102,12 +102,14 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
       return false;
     }
     SetTTLPlan setTTLPlan = (SetTTLPlan) o;
-    return TTL == setTTLPlan.TTL && Arrays.equals(this.pathPattern, setTTLPlan.pathPattern);
+    return isDataBase == setTTLPlan.isDataBase
+        && TTL == setTTLPlan.TTL
+        && Arrays.equals(this.pathPattern, setTTLPlan.pathPattern);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(Arrays.hashCode(pathPattern), TTL);
+    return Objects.hash(Arrays.hashCode(pathPattern), TTL, isDataBase);
   }
 
   public boolean isDataBase() {
