@@ -89,9 +89,11 @@ public class SerializableRowList implements SerializableList {
     for (TSDataType dataType : dataTypes) { // fields
       switch (dataType) {
         case INT32:
+        case DATE:
           rowLength += ReadWriteIOUtils.INT_LEN;
           break;
         case INT64:
+        case TIMESTAMP:
           rowLength += ReadWriteIOUtils.LONG_LEN;
           break;
         case FLOAT:
@@ -104,6 +106,8 @@ public class SerializableRowList implements SerializableList {
           rowLength += ReadWriteIOUtils.BOOLEAN_LEN;
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           rowLength +=
               MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE + byteArrayLengthForMemoryControl;
           break;
@@ -192,9 +196,11 @@ public class SerializableRowList implements SerializableList {
         for (int i = 0; i < block.length - 1; i++) {
           switch (dataTypes[i]) {
             case INT32:
+            case DATE:
               row[i] = block[i].getInt(offset);
               break;
             case INT64:
+            case TIMESTAMP:
               row[i] = block[i].getLong(offset);
               break;
             case FLOAT:
@@ -207,6 +213,8 @@ public class SerializableRowList implements SerializableList {
               row[i] = block[i].getBoolean(offset);
               break;
             case TEXT:
+            case BLOB:
+            case STRING:
               row[i] = block[i].getBinary(offset);
               break;
             default:
