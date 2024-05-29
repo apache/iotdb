@@ -62,7 +62,7 @@ final class SubscriptionExecutorService {
 
   /////////////////////////////// setter ///////////////////////////////
 
-  public static void setClusterConnectionExecutorCorePoolSize(
+  public static synchronized void setClusterConnectionExecutorCorePoolSize(
       final int clusterConnectionExecutorCorePoolSize) {
     if (Objects.nonNull(clusterConnectionExecutor)) {
       LOGGER.warn(
@@ -74,7 +74,7 @@ final class SubscriptionExecutorService {
         clusterConnectionExecutorCorePoolSize;
   }
 
-  public static void setToUpstreamCommunicationExecutorCorePoolSize(
+  public static synchronized void setToUpstreamCommunicationExecutorCorePoolSize(
       final int toUpstreamCommunicationExecutorCorePoolSize) {
     if (Objects.nonNull(toUpstreamCommunicationExecutor)) {
       LOGGER.warn(
@@ -85,7 +85,7 @@ final class SubscriptionExecutorService {
         toUpstreamCommunicationExecutorCorePoolSize;
   }
 
-  public static void setToDownstreamCommunicationExecutorCorePoolSize(
+  public static synchronized void setToDownstreamCommunicationExecutorCorePoolSize(
       final int toDownstreamCommunicationExecutorCorePoolSize) {
     if (Objects.nonNull(toDownstreamCommunicationExecutor)) {
       LOGGER.warn(
