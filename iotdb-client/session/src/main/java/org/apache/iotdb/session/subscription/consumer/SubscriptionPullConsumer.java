@@ -84,7 +84,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
         properties);
 
     this.autoCommit = autoCommit;
-    this.autoCommitIntervalMs = autoCommitIntervalMs;
+    this.autoCommitIntervalMs =
+        Math.max(autoCommitIntervalMs, ConsumerConstant.AUTO_COMMIT_INTERVAL_MS_MIN_VALUE);
   }
 
   /////////////////////////////// open & close ///////////////////////////////
@@ -296,18 +297,6 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     @Override
     public Builder endpointsSyncIntervalMs(final long endpointsSyncIntervalMs) {
       super.endpointsSyncIntervalMs(endpointsSyncIntervalMs);
-      return this;
-    }
-
-    @Override
-    public Builder heartbeatMaxTasksIfNotExist(final int heartbeatMaxTasksIfNotExist) {
-      super.heartbeatMaxTasksIfNotExist(heartbeatMaxTasksIfNotExist);
-      return this;
-    }
-
-    @Override
-    public Builder endpointsSyncMaxTasksIfNotExist(final int endpointsSyncMaxTasksIfNotExist) {
-      super.endpointsSyncMaxTasksIfNotExist(endpointsSyncMaxTasksIfNotExist);
       return this;
     }
 

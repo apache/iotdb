@@ -41,6 +41,9 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
   private final AckStrategy ackStrategy;
   private final ConsumeListener consumeListener;
 
+  private final long autoPollIntervalMs;
+  private final long autoPollTimeoutMs;
+
   private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
   protected SubscriptionPushConsumer(final Builder builder) {
@@ -48,6 +51,9 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
     this.ackStrategy = builder.ackStrategy;
     this.consumeListener = builder.consumeListener;
+
+    this.autoPollIntervalMs = builder.autoPollIntervalMs;
+    this.autoPollTimeoutMs = builder.autoPollTimeoutMs;
   }
 
   public SubscriptionPushConsumer(final Properties config) {
@@ -58,17 +64,38 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
         (ConsumeListener)
             config.getOrDefault(
                 ConsumerConstant.CONSUME_LISTENER_KEY,
-                (ConsumeListener) message -> ConsumeResult.SUCCESS));
+                (ConsumeListener) message -> ConsumeResult.SUCCESS),
+        (Long)
+            config.getOrDefault(
+                ConsumerConstant.AUTO_POLL_INTERVAL_MS_KEY,
+                ConsumerConstant.AUTO_POLL_INTERVAL_MS_DEFAULT_VALUE),
+        (Long)
+            config.getOrDefault(
+                ConsumerConstant.AUTO_POLL_TIMEOUT_MS_KEY,
+                ConsumerConstant.AUTO_POLL_TIMEOUT_MS_DEFAULT_VALUE));
   }
 
   private SubscriptionPushConsumer(
       final Properties config,
       final AckStrategy ackStrategy,
-      final ConsumeListener consumeListener) {
-    super(new Builder().ackStrategy(ackStrategy), config);
+      final ConsumeListener consumeListener,
+      final long autoPollIntervalMs,
+      final long autoPollTimeoutMs) {
+    super(
+        new Builder()
+            .ackStrategy(ackStrategy)
+            .consumeListener(consumeListener)
+            .autoPollIntervalMs(autoPollIntervalMs)
+            .autoPollTimeoutMs(autoPollTimeoutMs),
+        config);
 
     this.ackStrategy = ackStrategy;
     this.consumeListener = consumeListener;
+
+    this.autoPollIntervalMs =
+        Math.max(autoPollIntervalMs, ConsumerConstant.AUTO_POLL_INTERVAL_MS_MIN_VALUE);
+    this.autoPollTimeoutMs =
+        Math.max(autoPollTimeoutMs, ConsumerConstant.AUTO_POLL_TIMEOUT_MS_MIN_VALUE);
   }
 
   /////////////////////////////// open & close ///////////////////////////////
@@ -114,7 +141,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
               }
               new AutoPollWorker().run();
             },
-            ConsumerConstant.AUTO_POLL_INTERVAL_MS);
+            autoPollIntervalMs);
     LOGGER.info("SubscriptionPushConsumer {} submit auto poll worker", this);
   }
 
@@ -127,8 +154,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
       try {
         // Poll all subscribed topics by passing an empty set
-        final List<SubscriptionMessage> messages =
-            poll(Collections.emptySet(), ConsumerConstant.AUTO_POLL_TIMEOUT_MS);
+        final List<SubscriptionMessage> messages = poll(Collections.emptySet(), autoPollTimeoutMs);
 
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
           ack(messages);
@@ -169,6 +195,9 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
     private AckStrategy ackStrategy = AckStrategy.defaultValue();
     private ConsumeListener consumeListener = message -> ConsumeResult.SUCCESS;
+
+    private long autoPollIntervalMs = ConsumerConstant.AUTO_POLL_INTERVAL_MS_DEFAULT_VALUE;
+    private long autoPollTimeoutMs = ConsumerConstant.AUTO_POLL_TIMEOUT_MS_DEFAULT_VALUE;
 
     @Override
     public Builder host(final String host) {
@@ -225,18 +254,6 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
 
     @Override
-    public Builder heartbeatMaxTasksIfNotExist(final int heartbeatMaxTasksIfNotExist) {
-      super.heartbeatMaxTasksIfNotExist(heartbeatMaxTasksIfNotExist);
-      return this;
-    }
-
-    @Override
-    public Builder endpointsSyncMaxTasksIfNotExist(final int endpointsSyncMaxTasksIfNotExist) {
-      super.endpointsSyncMaxTasksIfNotExist(endpointsSyncMaxTasksIfNotExist);
-      return this;
-    }
-
-    @Override
     public Builder fileSaveDir(final String fileSaveDir) {
       super.fileSaveDir(fileSaveDir);
       return this;
@@ -255,6 +272,18 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
     public Builder consumeListener(final ConsumeListener consumeListener) {
       this.consumeListener = consumeListener;
+      return this;
+    }
+
+    public Builder autoPollIntervalMs(final long autoPollIntervalMs) {
+      this.autoPollIntervalMs =
+          Math.max(autoPollIntervalMs, ConsumerConstant.AUTO_POLL_INTERVAL_MS_MIN_VALUE);
+      return this;
+    }
+
+    public Builder autoPollTimeoutMs(final long autoPollTimeoutMs) {
+      this.autoPollTimeoutMs =
+          Math.max(autoPollTimeoutMs, ConsumerConstant.AUTO_POLL_TIMEOUT_MS_MIN_VALUE);
       return this;
     }
 

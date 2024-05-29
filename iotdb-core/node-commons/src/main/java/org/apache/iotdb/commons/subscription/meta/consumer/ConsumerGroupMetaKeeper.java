@@ -158,7 +158,7 @@ public class ConsumerGroupMetaKeeper {
   @Override
   public String toString() {
     return "ConsumerGroupMetaKeeper{"
-        + "consumerGroupIDToConsumerGroupMetaMap="
+        + "consumerGroupIdToConsumerGroupMetaMap="
         + consumerGroupIdToConsumerGroupMetaMap
         + '}';
   }

@@ -23,12 +23,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 final class SubscriptionExecutorService {
@@ -36,14 +34,67 @@ final class SubscriptionExecutorService {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionExecutorService.class);
 
   private static final long AWAIT_TERMINATION_TIMEOUT_MS = 10_000L;
-  private static final long KEEP_ALIVE_TIME_MS = 10_000L;
-  private static final int WORK_QUEUE_CAPACITY = 1024;
 
-  private static volatile ScheduledExecutorService heartbeatWorkerExecutor;
-  private static volatile ScheduledExecutorService endpointsSyncerExecutor;
-  private static volatile ScheduledExecutorService autoCommitWorkerExecutor;
-  private static volatile ScheduledExecutorService autoPollWorkerExecutor;
-  private static volatile ExecutorService asyncCommitWorkerExecutor;
+  private static int clusterConnectionExecutorCorePoolSize =
+      Math.max(Runtime.getRuntime().availableProcessors() / 2, 1);
+  private static int toUpstreamCommunicationExecutorCorePoolSize =
+      Math.max(Runtime.getRuntime().availableProcessors() / 2, 1);
+  private static int toDownstreamCommunicationExecutorCorePoolSize =
+      Math.max(Runtime.getRuntime().availableProcessors(), 1);
+
+  /**
+   * Cluster Connection Executor: execute heartbeat worker and endpoints syncer for {@link
+   * SubscriptionConsumer}
+   */
+  private static volatile ScheduledExecutorService clusterConnectionExecutor;
+
+  /**
+   * Downstream to Upstream Communication Executor: execute auto commit worker and async commit
+   * worker for {@link SubscriptionPullConsumer}
+   */
+  private static volatile ScheduledExecutorService toUpstreamCommunicationExecutor;
+
+  /**
+   * Upstream to Downstream Communication Executor: execute auto poll worker for {@link
+   * SubscriptionPushConsumer}
+   */
+  private static volatile ScheduledExecutorService toDownstreamCommunicationExecutor;
+
+  /////////////////////////////// setter ///////////////////////////////
+
+  public static void setClusterConnectionExecutorCorePoolSize(
+      final int clusterConnectionExecutorCorePoolSize) {
+    if (Objects.nonNull(clusterConnectionExecutor)) {
+      LOGGER.warn(
+          "cluster connection executor has been initialized, set core pool size to {} will be ignored",
+          clusterConnectionExecutorCorePoolSize);
+      return;
+    }
+    SubscriptionExecutorService.clusterConnectionExecutorCorePoolSize =
+        clusterConnectionExecutorCorePoolSize;
+  }
+
+  public static void setToUpstreamCommunicationExecutorCorePoolSize(
+      final int toUpstreamCommunicationExecutorCorePoolSize) {
+    if (Objects.nonNull(toUpstreamCommunicationExecutor)) {
+      LOGGER.warn(
+          "to upstream communication executor has been initialized, set core pool size to {} will be ignored",
+          toUpstreamCommunicationExecutorCorePoolSize);
+    }
+    SubscriptionExecutorService.toUpstreamCommunicationExecutorCorePoolSize =
+        toUpstreamCommunicationExecutorCorePoolSize;
+  }
+
+  public static void setToDownstreamCommunicationExecutorCorePoolSize(
+      final int toDownstreamCommunicationExecutorCorePoolSize) {
+    if (Objects.nonNull(toDownstreamCommunicationExecutor)) {
+      LOGGER.warn(
+          "to downstream communication executor has been initialized, set core pool size to {} will be ignored",
+          toDownstreamCommunicationExecutorCorePoolSize);
+    }
+    SubscriptionExecutorService.toDownstreamCommunicationExecutorCorePoolSize =
+        toDownstreamCommunicationExecutorCorePoolSize;
+  }
 
   /////////////////////////////// shutdown hook ///////////////////////////////
 
@@ -59,25 +110,17 @@ final class SubscriptionExecutorService {
 
     @Override
     public void run() {
-      if (Objects.nonNull(heartbeatWorkerExecutor)) {
-        LOGGER.info("Shutting down heartbeat worker executor...");
-        shutdownExecutor(heartbeatWorkerExecutor);
+      if (Objects.nonNull(clusterConnectionExecutor)) {
+        LOGGER.info("Shutting down cluster connection executor...");
+        shutdownExecutor(clusterConnectionExecutor);
       }
-      if (Objects.nonNull(endpointsSyncerExecutor)) {
-        LOGGER.info("Shutting down endpoints syncer executor...");
-        shutdownExecutor(endpointsSyncerExecutor);
+      if (Objects.nonNull(toUpstreamCommunicationExecutor)) {
+        LOGGER.info("Shutting down to upstream communication executor...");
+        shutdownExecutor(toUpstreamCommunicationExecutor);
       }
-      if (Objects.nonNull(autoCommitWorkerExecutor)) {
-        LOGGER.info("Shutting down auto commit worker executor...");
-        shutdownExecutor(autoCommitWorkerExecutor);
-      }
-      if (Objects.nonNull(autoPollWorkerExecutor)) {
-        LOGGER.info("Shutting down auto poll worker executor...");
-        shutdownExecutor(autoPollWorkerExecutor);
-      }
-      if (Objects.nonNull(asyncCommitWorkerExecutor)) {
-        LOGGER.info("Shutting down async commit worker executor...");
-        shutdownExecutor(asyncCommitWorkerExecutor);
+      if (Objects.nonNull(toDownstreamCommunicationExecutor)) {
+        LOGGER.info("Shutting down to downstream communication executor...");
+        shutdownExecutor(toDownstreamCommunicationExecutor);
       }
     }
   }
@@ -102,25 +145,27 @@ final class SubscriptionExecutorService {
     }
   }
 
-  /////////////////////////////// heartbeat worker ///////////////////////////////
+  /////////////////////////////// launcher ///////////////////////////////
 
-  private static void launchHeartbeatWorkerExecutorIfNeeded(final int heartbeatMaxTasksIfNotExist) {
-    if (Objects.isNull(heartbeatWorkerExecutor)) {
+  private static void launchClusterConnectionExecutorIfNeeded() {
+    if (Objects.isNull(clusterConnectionExecutor)) {
       synchronized (SubscriptionExecutorService.class) {
-        if (Objects.nonNull(heartbeatWorkerExecutor)) {
+        if (Objects.nonNull(clusterConnectionExecutor)) {
           return;
         }
 
-        LOGGER.info("Launching heartbeat worker executor...");
-        heartbeatWorkerExecutor =
+        LOGGER.info(
+            "Launching cluster connection executor with core pool size {}...",
+            clusterConnectionExecutorCorePoolSize);
+        clusterConnectionExecutor =
             Executors.newScheduledThreadPool(
-                heartbeatMaxTasksIfNotExist,
+                clusterConnectionExecutorCorePoolSize,
                 r -> {
                   final Thread t =
                       new Thread(
                           Thread.currentThread().getThreadGroup(),
                           r,
-                          "SubscriptionConsumerHeartbeatWorker",
+                          "SubscriptionClusterConnectionExecutor",
                           0);
                   if (!t.isDaemon()) {
                     t.setDaemon(true);
@@ -134,200 +179,122 @@ final class SubscriptionExecutorService {
     }
   }
 
+  private static void launchToUpstreamCommunicationExecutorIfNeeded() {
+    if (Objects.isNull(toUpstreamCommunicationExecutor)) {
+      synchronized (SubscriptionExecutorService.class) {
+        if (Objects.nonNull(toUpstreamCommunicationExecutor)) {
+          return;
+        }
+
+        LOGGER.info(
+            "Launching to upstream communication executor with core pool size {}...",
+            toUpstreamCommunicationExecutorCorePoolSize);
+        toUpstreamCommunicationExecutor =
+            Executors.newScheduledThreadPool(
+                toUpstreamCommunicationExecutorCorePoolSize,
+                r -> {
+                  final Thread t =
+                      new Thread(
+                          Thread.currentThread().getThreadGroup(),
+                          r,
+                          "SubscriptionToUpstreamCommunicationExecutor",
+                          0);
+                  if (!t.isDaemon()) {
+                    t.setDaemon(true);
+                  }
+                  if (t.getPriority() != Thread.NORM_PRIORITY) {
+                    t.setPriority(Thread.NORM_PRIORITY);
+                  }
+                  return t;
+                });
+      }
+    }
+  }
+
+  private static void launchToDownstreamCommunicationExecutorIfNeeded() {
+    if (Objects.isNull(toDownstreamCommunicationExecutor)) {
+      synchronized (SubscriptionExecutorService.class) {
+        if (Objects.nonNull(toDownstreamCommunicationExecutor)) {
+          return;
+        }
+
+        LOGGER.info(
+            "Launching to downstream communication executor with core pool size {}...",
+            toDownstreamCommunicationExecutorCorePoolSize);
+        toDownstreamCommunicationExecutor =
+            Executors.newScheduledThreadPool(
+                toDownstreamCommunicationExecutorCorePoolSize,
+                r -> {
+                  final Thread t =
+                      new Thread(
+                          Thread.currentThread().getThreadGroup(),
+                          r,
+                          "SubscriptionToDownstreamCommunicationExecutor",
+                          0);
+                  if (!t.isDaemon()) {
+                    t.setDaemon(true);
+                  }
+                  if (t.getPriority() != Thread.NORM_PRIORITY) {
+                    t.setPriority(Thread.NORM_PRIORITY);
+                  }
+                  return t;
+                });
+      }
+    }
+  }
+
+  /////////////////////////////// submitter ///////////////////////////////
+
   @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitHeartbeatWorker(
-      final Runnable task, final int heartbeatMaxTasksIfNotExist, final long heartbeatIntervalMs) {
-    launchHeartbeatWorkerExecutorIfNeeded(heartbeatMaxTasksIfNotExist);
-    return heartbeatWorkerExecutor.scheduleWithFixedDelay(
+      final Runnable task, final long heartbeatIntervalMs) {
+    launchClusterConnectionExecutorIfNeeded();
+    return clusterConnectionExecutor.scheduleWithFixedDelay(
         task,
         generateRandomInitialDelayMs(heartbeatIntervalMs),
         heartbeatIntervalMs,
         TimeUnit.MILLISECONDS);
   }
 
-  /////////////////////////////// endpoints syncer ///////////////////////////////
-
-  private static void launchEndpointsSyncerExecutorIfNeeded(
-      final int endpointsSyncMaxTasksIfNotExist) {
-    if (Objects.isNull(endpointsSyncerExecutor)) {
-      synchronized (SubscriptionExecutorService.class) {
-        if (Objects.nonNull(endpointsSyncerExecutor)) {
-          return;
-        }
-
-        LOGGER.info("Launching endpoints syncer executor...");
-        endpointsSyncerExecutor =
-            Executors.newScheduledThreadPool(
-                endpointsSyncMaxTasksIfNotExist,
-                r -> {
-                  final Thread t =
-                      new Thread(
-                          Thread.currentThread().getThreadGroup(),
-                          r,
-                          "SubscriptionConsumerEndpointsSyncer",
-                          0);
-                  if (!t.isDaemon()) {
-                    t.setDaemon(true);
-                  }
-                  if (t.getPriority() != Thread.NORM_PRIORITY) {
-                    t.setPriority(Thread.NORM_PRIORITY);
-                  }
-                  return t;
-                });
-      }
-    }
-  }
-
   @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitEndpointsSyncer(
-      final Runnable task,
-      final int endpointsSyncMaxTasksIfNotExist,
-      final long endpointsSyncIntervalMs) {
-    launchEndpointsSyncerExecutorIfNeeded(endpointsSyncMaxTasksIfNotExist);
-    return endpointsSyncerExecutor.scheduleWithFixedDelay(
+      final Runnable task, final long endpointsSyncIntervalMs) {
+    launchClusterConnectionExecutorIfNeeded();
+    return clusterConnectionExecutor.scheduleWithFixedDelay(
         task,
         generateRandomInitialDelayMs(endpointsSyncIntervalMs),
         endpointsSyncIntervalMs,
         TimeUnit.MILLISECONDS);
   }
 
-  /////////////////////////////// auto commit worker ///////////////////////////////
-
-  private static void launchAutoCommitWorkerExecutorIfNeeded() {
-    if (Objects.isNull(autoCommitWorkerExecutor)) {
-      synchronized (SubscriptionExecutorService.class) {
-        if (Objects.nonNull(autoCommitWorkerExecutor)) {
-          return;
-        }
-
-        LOGGER.info("Launching auto commit worker executor...");
-        autoCommitWorkerExecutor =
-            Executors.newScheduledThreadPool(
-                getCorePoolSize(),
-                r -> {
-                  final Thread t =
-                      new Thread(
-                          Thread.currentThread().getThreadGroup(),
-                          r,
-                          "SubscriptionPullConsumerAutoCommitWorker",
-                          0);
-                  if (!t.isDaemon()) {
-                    t.setDaemon(true);
-                  }
-                  if (t.getPriority() != Thread.NORM_PRIORITY) {
-                    t.setPriority(Thread.NORM_PRIORITY);
-                  }
-                  return t;
-                });
-      }
-    }
-  }
-
   @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitAutoCommitWorker(
       final Runnable task, final long autoCommitIntervalMs) {
-    launchAutoCommitWorkerExecutorIfNeeded();
-    return autoCommitWorkerExecutor.scheduleWithFixedDelay(
+    launchToUpstreamCommunicationExecutorIfNeeded();
+    return toUpstreamCommunicationExecutor.scheduleWithFixedDelay(
         task,
         generateRandomInitialDelayMs(autoCommitIntervalMs),
         autoCommitIntervalMs,
         TimeUnit.MILLISECONDS);
   }
 
-  /////////////////////////////// auto poll worker ///////////////////////////////
-
-  private static void launchAutoPollWorkerExecutorIfNeeded() {
-    if (Objects.isNull(autoPollWorkerExecutor)) {
-      synchronized (SubscriptionExecutorService.class) {
-        if (Objects.nonNull(autoPollWorkerExecutor)) {
-          return;
-        }
-
-        LOGGER.info("Launching auto poll worker executor...");
-        autoPollWorkerExecutor =
-            Executors.newScheduledThreadPool(
-                getCorePoolSize(),
-                r -> {
-                  final Thread t =
-                      new Thread(
-                          Thread.currentThread().getThreadGroup(),
-                          r,
-                          "SubscriptionPushConsumerAutoPollWorker",
-                          0);
-                  if (!t.isDaemon()) {
-                    t.setDaemon(true);
-                  }
-                  if (t.getPriority() != Thread.NORM_PRIORITY) {
-                    t.setPriority(Thread.NORM_PRIORITY);
-                  }
-                  return t;
-                });
-      }
-    }
+  public static void submitAsyncCommitWorker(final Runnable task) {
+    launchToUpstreamCommunicationExecutorIfNeeded();
+    toUpstreamCommunicationExecutor.submit(task);
   }
 
   @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitAutoPollWorker(
       final Runnable task, final long autoPollIntervalMs) {
-    launchAutoPollWorkerExecutorIfNeeded();
-    return autoPollWorkerExecutor.scheduleWithFixedDelay(
+    launchToDownstreamCommunicationExecutorIfNeeded();
+    return toDownstreamCommunicationExecutor.scheduleWithFixedDelay(
         task,
         generateRandomInitialDelayMs(autoPollIntervalMs),
         autoPollIntervalMs,
         TimeUnit.MILLISECONDS);
   }
 
-  /////////////////////////////// async commit worker ///////////////////////////////
-
-  private static void launchAsyncCommitWorkerExecutorIfNeeded() {
-    if (Objects.isNull(asyncCommitWorkerExecutor)) {
-      synchronized (SubscriptionExecutorService.class) {
-        if (Objects.nonNull(asyncCommitWorkerExecutor)) {
-          return;
-        }
-
-        LOGGER.info("Launching async commit worker executor...");
-        asyncCommitWorkerExecutor =
-            new ThreadPoolExecutor(
-                getCorePoolSize(),
-                getMaximumPoolSize(),
-                KEEP_ALIVE_TIME_MS,
-                TimeUnit.MILLISECONDS,
-                new ArrayBlockingQueue<>(WORK_QUEUE_CAPACITY, true),
-                r -> {
-                  final Thread t =
-                      new Thread(
-                          Thread.currentThread().getThreadGroup(),
-                          r,
-                          "SubscriptionPullConsumerAsyncCommitWorker",
-                          0);
-                  if (!t.isDaemon()) {
-                    t.setDaemon(true);
-                  }
-                  if (t.getPriority() != Thread.NORM_PRIORITY) {
-                    t.setPriority(Thread.NORM_PRIORITY);
-                  }
-                  return t;
-                },
-                new ThreadPoolExecutor.CallerRunsPolicy());
-      }
-    }
-  }
-
-  public static void submitAsyncCommitWorker(final Runnable task) {
-    launchAsyncCommitWorkerExecutorIfNeeded();
-    asyncCommitWorkerExecutor.submit(task);
-  }
-
   /////////////////////////////// utility ///////////////////////////////
-
-  private static int getCorePoolSize() {
-    return Runtime.getRuntime().availableProcessors() / 2;
-  }
-
-  public static int getMaximumPoolSize() {
-    return Runtime.getRuntime().availableProcessors();
-  }
 
   private static long generateRandomInitialDelayMs(final long maxMs) {
     return (long) (Math.random() * maxMs);
