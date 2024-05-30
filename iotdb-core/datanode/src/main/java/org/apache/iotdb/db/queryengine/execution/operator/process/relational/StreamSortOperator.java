@@ -54,6 +54,8 @@ import static org.apache.iotdb.db.utils.sort.SortBufferManager.SORT_BUFFER_SIZE;
 
 public class StreamSortOperator implements ProcessOperator {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(StreamSortOperator.class);
+
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(SortOperator.class);
   private final OperatorContext operatorContext;
@@ -77,7 +79,6 @@ public class StreamSortOperator implements ProcessOperator {
   private List<SortReader> sortReaders;
   private boolean[] noMoreData;
 
-  private static final Logger logger = LoggerFactory.getLogger(SortOperator.class);
 
   private final int maxReturnSize =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
@@ -330,7 +331,7 @@ public class StreamSortOperator implements ProcessOperator {
         }
       }
     } catch (Exception e) {
-      logger.error("Fail to close fileChannel", e);
+      LOGGER.error("Fail to close fileChannel", e);
     }
   }
 
