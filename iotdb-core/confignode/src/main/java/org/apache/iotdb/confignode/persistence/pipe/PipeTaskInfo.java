@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTemporaryMeta;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
@@ -402,10 +403,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus alterPipe(final AlterPipePlanV2 plan) {
     acquireWriteLock();
     try {
+      final PipeTemporaryMeta temporaryMeta =
+          pipeMetaKeeper.getPipeMeta(plan.getPipeStaticMeta().getPipeName()).getTemporaryMeta();
       pipeMetaKeeper.removePipeMeta(plan.getPipeStaticMeta().getPipeName());
       pipeMetaKeeper.addPipeMeta(
           plan.getPipeStaticMeta().getPipeName(),
-          new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
+          new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta(), temporaryMeta));
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       releaseWriteLock();
@@ -505,6 +508,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
                               consensusGroupIdToTaskMetaMap
                                   .get(consensusGroupId.getId())
                                   .setLeaderNodeId(newLeader);
+                              // New region leader may contain un-transferred events
+                              pipeMeta.getTemporaryMeta().markDataNodeUncompleted(newLeader);
                             } else {
                               consensusGroupIdToTaskMetaMap.remove(consensusGroupId.getId());
                             }

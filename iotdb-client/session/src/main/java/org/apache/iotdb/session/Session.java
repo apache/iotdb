@@ -3283,6 +3283,7 @@ public class Session implements ISession {
         }
         return sortedValues;
       case INT32:
+      case DATE:
         int[] intValues = (int[]) valueList;
         int[] sortedIntValues = new int[intValues.length];
         for (int i = 0; i < index.length; i++) {
@@ -3290,6 +3291,7 @@ public class Session implements ISession {
         }
         return sortedIntValues;
       case INT64:
+      case TIMESTAMP:
         long[] longValues = (long[]) valueList;
         long[] sortedLongValues = new long[longValues.length];
         for (int i = 0; i < index.length; i++) {
@@ -3311,6 +3313,8 @@ public class Session implements ISession {
         }
         return sortedDoubleValues;
       case TEXT:
+      case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) valueList;
         Binary[] sortedBinaryValues = new Binary[binaryValues.length];
         for (int i = 0; i < index.length; i++) {

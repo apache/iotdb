@@ -50,6 +50,7 @@ import java.util.List;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 import static org.apache.tsfile.common.constant.TsFileConstant.TIME_COLUMN_ID;
+import static org.apache.tsfile.utils.TsFileGeneratorUtils.getDataType;
 
 public class TsFileGeneratorUtils {
   public static final String testStorageGroup = "root.testsg";
@@ -178,6 +179,8 @@ public class TsFileGeneratorUtils {
   public static void writeNonAlignedPoint(PageWriter pageWriter, long timestamp, boolean isSeq) {
     switch (pageWriter.getStatistics().getType()) {
       case TEXT:
+      case STRING:
+      case BLOB:
         pageWriter.write(
             timestamp, new Binary(isSeq ? "seqText" : "unSeqText", TSFileConfig.STRING_CHARSET));
         break;
@@ -188,9 +191,11 @@ public class TsFileGeneratorUtils {
         pageWriter.write(timestamp, isSeq);
         break;
       case INT64:
+      case TIMESTAMP:
         pageWriter.write(timestamp, isSeq ? timestamp : 100000L + timestamp);
         break;
       case INT32:
+      case DATE:
         pageWriter.write(timestamp, isSeq ? (int) timestamp : (int) (100000 + timestamp));
         break;
       case FLOAT:
@@ -230,6 +235,8 @@ public class TsFileGeneratorUtils {
       ValuePageWriter valuePageWriter, long timestamp, boolean isSeq) {
     switch (valuePageWriter.getStatistics().getType()) {
       case TEXT:
+      case STRING:
+      case BLOB:
         valuePageWriter.write(
             timestamp,
             new Binary(isSeq ? "seqText" : "unSeqText", TSFileConfig.STRING_CHARSET),
@@ -242,9 +249,11 @@ public class TsFileGeneratorUtils {
         valuePageWriter.write(timestamp, isSeq, false);
         break;
       case INT64:
+      case TIMESTAMP:
         valuePageWriter.write(timestamp, isSeq ? timestamp : 100000L + timestamp, false);
         break;
       case INT32:
+      case DATE:
         valuePageWriter.write(
             timestamp, isSeq ? (int) timestamp : (int) (100000 + timestamp), false);
         break;
@@ -329,25 +338,6 @@ public class TsFileGeneratorUtils {
       }
     }
     return compressionTypes;
-  }
-
-  public static TSDataType getDataType(int num) {
-    switch (num % 6) {
-      case 0:
-        return TSDataType.BOOLEAN;
-      case 1:
-        return TSDataType.INT32;
-      case 2:
-        return TSDataType.INT64;
-      case 3:
-        return TSDataType.FLOAT;
-      case 4:
-        return TSDataType.DOUBLE;
-      case 5:
-        return TSDataType.TEXT;
-      default:
-        throw new IllegalArgumentException("Invalid input: " + num % 6);
-    }
   }
 
   public static List<TSDataType> createDataType(int num) {

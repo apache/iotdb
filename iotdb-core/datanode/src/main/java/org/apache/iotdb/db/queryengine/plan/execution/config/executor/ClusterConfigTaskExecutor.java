@@ -62,7 +62,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
@@ -96,6 +95,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
@@ -243,9 +243,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
@@ -915,8 +915,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    List<String> databasePathPattern = Arrays.asList(setTTLStatement.getDatabasePath().getNodes());
-    TSetTTLReq setTTLReq = new TSetTTLReq(databasePathPattern, setTTLStatement.getTTL());
+    List<String> pathPattern = Arrays.asList(setTTLStatement.getPath().getNodes());
+    TSetTTLReq setTTLReq = new TSetTTLReq(pathPattern, setTTLStatement.getTTL(), false);
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
@@ -926,7 +926,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         LOGGER.warn(
             "Failed to execute {} {} in config node, status is {}.",
             taskName,
-            setTTLStatement.getDatabasePath(),
+            setTTLStatement.getPath(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {
@@ -1246,31 +1246,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    List<PartialPath> databasePaths = showTTLStatement.getPaths();
-    Map<String, Long> databaseToTTL = new HashMap<>();
+    Map<String, Long> databaseToTTL = new TreeMap<>();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      ByteBuffer scope = showTTLStatement.getAuthorityScope().serialize();
-      if (showTTLStatement.isAll()) {
-        List<String> allStorageGroupPathPattern = Arrays.asList("root", "**");
-        TGetDatabaseReq req = new TGetDatabaseReq(allStorageGroupPathPattern, scope);
-        TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(req);
-        for (Map.Entry<String, TDatabaseSchema> entry : resp.getDatabaseSchemaMap().entrySet()) {
-          databaseToTTL.put(entry.getKey(), entry.getValue().getTTL());
-        }
-      } else {
-        for (PartialPath databasePath : databasePaths) {
-          List<String> databasePathPattern = Arrays.asList(databasePath.getNodes());
-          TGetDatabaseReq req = new TGetDatabaseReq(databasePathPattern, scope);
-          TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(req);
-          for (Map.Entry<String, TDatabaseSchema> entry : resp.getDatabaseSchemaMap().entrySet()) {
-            if (!databaseToTTL.containsKey(entry.getKey())) {
-              databaseToTTL.put(entry.getKey(), entry.getValue().getTTL());
-            }
-          }
-        }
-      }
-    } catch (IOException | ClientManagerException | TException e) {
+      TShowTTLResp resp = client.showAllTTL();
+      databaseToTTL.putAll(resp.getPathTTLMap());
+    } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
     // build TSBlock
@@ -1672,7 +1653,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (createPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
-              "Failed to create pipe %s in config node, pipe name starting with \"%s\" are not allowed to be created",
+              "Failed to create pipe %s, pipe name starting with \"%s\" are not allowed to be created.",
               createPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
       LOGGER.warn(exceptionMessage);
       future.setException(
@@ -1727,7 +1708,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (alterPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
-              "Failed to alter pipe %s in config node, pipe name starting with \"%s\" are not allowed to be altered",
+              "Failed to alter pipe %s, pipe name starting with \"%s\" are not allowed to be altered.",
               alterPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
       LOGGER.warn(exceptionMessage);
       future.setException(
@@ -1783,7 +1764,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (startPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
-              "Failed to start pipe %s in config node, pipe name starting with \"%s\" are not allowed to be started",
+              "Failed to start pipe %s, pipe name starting with \"%s\" are not allowed to be started.",
               startPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
       LOGGER.warn(exceptionMessage);
       future.setException(
@@ -1815,7 +1796,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (dropPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
-              "Failed to drop pipe %s in config node, pipe name starting with \"%s\" are not allowed to be dropped",
+              "Failed to drop pipe %s, pipe name starting with \"%s\" are not allowed to be dropped.",
               dropPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
       LOGGER.warn(exceptionMessage);
       future.setException(
@@ -1847,7 +1828,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     if (stopPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       String exceptionMessage =
           String.format(
-              "Failed to stop pipe %s in config node, pipe name starting with \"%s\" are not allowed to be stopped",
+              "Failed to stop pipe %s, pipe name starting with \"%s\" are not allowed to be stopped.",
               stopPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX);
       LOGGER.warn(exceptionMessage);
       future.setException(

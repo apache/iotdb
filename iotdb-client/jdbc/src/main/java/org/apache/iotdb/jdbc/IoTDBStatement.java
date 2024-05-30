@@ -284,7 +284,8 @@ public class IoTDBStatement implements Statement {
                 execReq.timeout,
                 execResp.operationType,
                 execResp.getSgColumns(),
-                aliasColumn);
+                aliasColumn,
+                zoneId);
       } else {
         this.resultSet =
             new IoTDBJDBCResultSet(
@@ -300,7 +301,8 @@ public class IoTDBStatement implements Statement {
                 execResp.queryResult,
                 execResp.tracingInfo,
                 execReq.timeout,
-                execResp.moreData);
+                execResp.moreData,
+                zoneId);
       }
       return true;
     }
@@ -433,7 +435,8 @@ public class IoTDBStatement implements Statement {
               execReq.timeout,
               execResp.operationType,
               execResp.sgColumns,
-              aliasColumn);
+              aliasColumn,
+              zoneId);
     } else {
       this.resultSet =
           new IoTDBJDBCResultSet(
@@ -453,7 +456,8 @@ public class IoTDBStatement implements Statement {
               execResp.columns,
               execResp.sgColumns,
               aliasColumn,
-              execResp.moreData);
+              execResp.moreData,
+              zoneId);
     }
     return resultSet;
   }

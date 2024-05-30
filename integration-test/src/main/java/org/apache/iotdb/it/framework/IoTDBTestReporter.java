@@ -24,9 +24,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.NumberFormat;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Stream;
 
 public class IoTDBTestReporter {
@@ -52,11 +55,13 @@ public class IoTDBTestReporter {
                 for (String l : lines) {
                   String[] parts = l.split("\t");
                   if (parts.length == 2) {
-                    IoTDBTestStat stat = new IoTDBTestStat(parts[1], Double.parseDouble(parts[0]));
+                    NumberFormat f = NumberFormat.getInstance(Locale.getDefault());
+                    double seconds = f.parse(parts[0]).doubleValue();
+                    IoTDBTestStat stat = new IoTDBTestStat(parts[1], seconds);
                     stats.add(stat);
                   }
                 }
-              } catch (IOException e) {
+              } catch (IOException | ParseException e) {
                 IoTDBTestLogger.logger.error("read stats file failed", e);
               }
             }

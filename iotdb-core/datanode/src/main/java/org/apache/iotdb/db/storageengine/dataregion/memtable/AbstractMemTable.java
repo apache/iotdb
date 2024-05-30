@@ -236,6 +236,19 @@ public abstract class AbstractMemTable implements IMemTable {
             database,
             Tag.REGION.toString(),
             dataRegionId);
+    if (!insertRowNode.isGeneratedByRemoteConsensusLeader()) {
+      MetricService.getInstance()
+          .count(
+              pointsInserted,
+              Metric.LEADER_QUANTITY.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              METRIC_POINT_IN,
+              Tag.DATABASE.toString(),
+              database,
+              Tag.REGION.toString(),
+              dataRegionId);
+    }
   }
 
   @Override
@@ -275,6 +288,19 @@ public abstract class AbstractMemTable implements IMemTable {
             database,
             Tag.REGION.toString(),
             dataRegionId);
+    if (!insertRowNode.isGeneratedByRemoteConsensusLeader()) {
+      MetricService.getInstance()
+          .count(
+              pointsInserted,
+              Metric.LEADER_QUANTITY.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              METRIC_POINT_IN,
+              Tag.DATABASE.toString(),
+              database,
+              Tag.REGION.toString(),
+              dataRegionId);
+    }
   }
 
   @Override
@@ -298,6 +324,19 @@ public abstract class AbstractMemTable implements IMemTable {
               database,
               Tag.REGION.toString(),
               dataRegionId);
+      if (!insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
+        MetricService.getInstance()
+            .count(
+                pointsInserted,
+                Metric.LEADER_QUANTITY.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                METRIC_POINT_IN,
+                Tag.DATABASE.toString(),
+                database,
+                Tag.REGION.toString(),
+                dataRegionId);
+      }
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }
@@ -324,6 +363,19 @@ public abstract class AbstractMemTable implements IMemTable {
               database,
               Tag.REGION.toString(),
               dataRegionId);
+      if (!insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
+        MetricService.getInstance()
+            .count(
+                pointsInserted,
+                Metric.LEADER_QUANTITY.toString(),
+                MetricLevel.CORE,
+                Tag.NAME.toString(),
+                METRIC_POINT_IN,
+                Tag.DATABASE.toString(),
+                database,
+                Tag.REGION.toString(),
+                dataRegionId);
+      }
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }

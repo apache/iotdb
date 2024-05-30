@@ -226,6 +226,12 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
+  public void markAsGeneratedByRemoteConsensusLeader() {
+    super.markAsGeneratedByRemoteConsensusLeader();
+    insertRowNodeList.forEach(InsertRowNode::markAsGeneratedByRemoteConsensusLeader);
+  }
+
+  @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     Map<TRegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
     List<TEndPoint> redirectInfo = new ArrayList<>();

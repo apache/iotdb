@@ -98,9 +98,7 @@ public class ConfigRegionListeningFilter {
           Collections.singletonList(ConfigPhysicalPlanType.PipeDeactivateTemplate));
 
       OPTION_PLAN_MAP.put(
-          new PartialPath("schema.ttl"),
-          Collections.unmodifiableList(
-              Arrays.asList(ConfigPhysicalPlanType.SetTTL, ConfigPhysicalPlanType.PipeSetTTL)));
+          new PartialPath("schema.ttl"), Collections.singletonList(ConfigPhysicalPlanType.SetTTL));
 
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.role.create"),
@@ -159,7 +157,7 @@ public class ConfigRegionListeningFilter {
   }
 
   public static Set<ConfigPhysicalPlanType> parseListeningPlanTypeSet(PipeParameters parameters)
-      throws IllegalPathException, IllegalArgumentException {
+      throws IllegalPathException {
     Set<ConfigPhysicalPlanType> planTypes = new HashSet<>();
     Set<PartialPath> inclusionOptions =
         parseOptions(

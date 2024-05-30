@@ -455,7 +455,8 @@ public class ExportData extends AbstractDataTool {
                   field -> {
                     String fieldStringValue = field.getStringValue();
                     if (!"null".equals(field.getStringValue())) {
-                      if (field.getDataType() == TSDataType.TEXT
+                      if ((field.getDataType() == TSDataType.TEXT
+                              || field.getDataType() == TSDataType.STRING)
                           && !fieldStringValue.startsWith("root.")) {
                         fieldStringValue = "\"" + fieldStringValue + "\"";
                       }

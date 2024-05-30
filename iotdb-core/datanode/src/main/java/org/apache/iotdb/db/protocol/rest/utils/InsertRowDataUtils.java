@@ -78,8 +78,10 @@ public class InsertRowDataUtils {
       switch (types.get(i)) {
         case BOOLEAN:
         case INT32:
+        case DATE:
           break;
         case INT64:
+        case TIMESTAMP:
           if (val instanceof Number) {
             values.set(i, ((Number) val).longValue());
           }
@@ -95,6 +97,8 @@ public class InsertRowDataUtils {
           }
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           values.set(i, new Binary(val.toString().getBytes(StandardCharsets.UTF_8)));
           break;
         default:

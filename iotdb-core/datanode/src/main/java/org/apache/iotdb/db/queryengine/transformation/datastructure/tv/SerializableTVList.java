@@ -31,8 +31,10 @@ public abstract class SerializableTVList extends BatchData implements Serializab
     SerializationRecorder recorder = new SerializationRecorder(queryId);
     switch (dataType) {
       case INT32:
+      case DATE:
         return new SerializableIntTVList(recorder);
       case INT64:
+      case TIMESTAMP:
         return new SerializableLongTVList(recorder);
       case FLOAT:
         return new SerializableFloatTVList(recorder);
@@ -41,6 +43,8 @@ public abstract class SerializableTVList extends BatchData implements Serializab
       case BOOLEAN:
         return new SerializableBooleanTVList(recorder);
       case TEXT:
+      case STRING:
+      case BLOB:
         return new SerializableBinaryTVList(recorder);
       default:
         throw new UnSupportedDataTypeException(dataType.toString());
@@ -51,9 +55,11 @@ public abstract class SerializableTVList extends BatchData implements Serializab
     int size;
     switch (dataType) {
       case INT32:
+      case DATE:
         size = SerializableIntTVList.calculateCapacity(memoryLimitInMB);
         break;
       case INT64:
+      case TIMESTAMP:
         size = SerializableLongTVList.calculateCapacity(memoryLimitInMB);
         break;
       case FLOAT:
@@ -66,6 +72,8 @@ public abstract class SerializableTVList extends BatchData implements Serializab
         size = SerializableBooleanTVList.calculateCapacity(memoryLimitInMB);
         break;
       case TEXT:
+      case STRING:
+      case BLOB:
         size =
             SerializableBinaryTVList.calculateCapacity(
                 memoryLimitInMB, SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL);

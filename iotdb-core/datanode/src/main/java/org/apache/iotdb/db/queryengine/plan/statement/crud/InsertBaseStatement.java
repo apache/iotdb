@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -153,7 +154,7 @@ public abstract class InsertBaseStatement extends Statement {
 
   public abstract List<ISchemaValidation> getSchemaValidationList();
 
-  public void updateAfterSchemaValidation() throws QueryProcessException {}
+  public void updateAfterSchemaValidation(MPPQueryContext context) throws QueryProcessException {}
 
   /** Check whether data types are matched with measurement schemas */
   protected void selfCheckDataTypes(int index)
