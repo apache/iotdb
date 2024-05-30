@@ -200,7 +200,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   private void submitAutoCommitWorker() {
     final ScheduledFuture<?>[] future = new ScheduledFuture<?>[1];
     future[0] =
-        SubscriptionExecutorService.submitAutoCommitWorker(
+        SubscriptionExecutorServiceManager.submitAutoCommitWorker(
             () -> {
               if (isClosed()) {
                 if (Objects.nonNull(future[0])) {

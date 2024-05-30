@@ -676,7 +676,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private void submitHeartbeatWorker() {
     final ScheduledFuture<?>[] future = new ScheduledFuture<?>[1];
     future[0] =
-        SubscriptionExecutorService.submitHeartbeatWorker(
+        SubscriptionExecutorServiceManager.submitHeartbeatWorker(
             () -> {
               if (isClosed()) {
                 if (Objects.nonNull(future[0])) {
@@ -696,7 +696,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private void submitEndpointsSyncer() {
     final ScheduledFuture<?>[] future = new ScheduledFuture<?>[1];
     future[0] =
-        SubscriptionExecutorService.submitEndpointsSyncer(
+        SubscriptionExecutorServiceManager.submitEndpointsSyncer(
             () -> {
               if (isClosed()) {
                 if (Objects.nonNull(future[0])) {
@@ -715,7 +715,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   protected void commitAsync(
       final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
-    SubscriptionExecutorService.submitAsyncCommitWorker(new AsyncCommitWorker(messages, callback));
+    SubscriptionExecutorServiceManager.submitAsyncCommitWorker(
+        new AsyncCommitWorker(messages, callback));
   }
 
   private class AsyncCommitWorker implements Runnable {
@@ -746,7 +747,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   protected CompletableFuture<Void> commitAsync(final Iterable<SubscriptionMessage> messages) {
     final CompletableFuture<Void> future = new CompletableFuture<>();
-    SubscriptionExecutorService.submitAsyncCommitWorker(
+    SubscriptionExecutorServiceManager.submitAsyncCommitWorker(
         () -> {
           if (isClosed()) {
             return;

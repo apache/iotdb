@@ -140,7 +140,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
   private void submitAutoPollWorker() {
     final ScheduledFuture<?>[] future = new ScheduledFuture<?>[1];
     future[0] =
-        SubscriptionExecutorService.submitAutoPollWorker(
+        SubscriptionExecutorServiceManager.submitAutoPollWorker(
             () -> {
               if (isClosed()) {
                 if (Objects.nonNull(future[0])) {
