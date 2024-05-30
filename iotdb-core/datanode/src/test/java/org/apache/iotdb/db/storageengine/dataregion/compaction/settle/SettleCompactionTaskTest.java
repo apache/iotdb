@@ -430,7 +430,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     return timeseriesPath;
   }
 
-  protected void generateTTL(int deviceNum, long ttl) {
+  protected void generateTTL(int deviceNum, long ttl) throws IllegalPathException {
     for (int dIndex = 0; dIndex < deviceNum; dIndex++) {
       DataNodeTTLCache.getInstance()
           .setTTL(
