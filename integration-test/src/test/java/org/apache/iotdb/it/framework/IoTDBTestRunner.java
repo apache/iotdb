@@ -30,6 +30,8 @@ import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
 import org.slf4j.Logger;
 
+import java.util.TimeZone;
+
 public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
 
   private static final Logger logger = IoTDBTestLogger.logger;
@@ -41,6 +43,7 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
 
   @Override
   public void run(RunNotifier notifier) {
+    TimeZone.setDefault(TimeZone.getTimeZone("Bejing"));
     listener = new IoTDBTestListener(this.getName());
     notifier.addListener(listener);
     super.run(notifier);

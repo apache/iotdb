@@ -817,8 +817,9 @@ public class StorageEngine implements IService {
   public void setDataRegion(DataRegionId regionId, DataRegion newRegion) {
     if (dataRegionMap.containsKey(regionId)) {
       DataRegion oldRegion = dataRegionMap.get(regionId);
-      oldRegion.syncCloseAllWorkingTsFileProcessors();
+      oldRegion.markDeleted();
       oldRegion.abortCompaction();
+      oldRegion.syncCloseAllWorkingTsFileProcessors();
     }
     dataRegionMap.put(regionId, newRegion);
   }

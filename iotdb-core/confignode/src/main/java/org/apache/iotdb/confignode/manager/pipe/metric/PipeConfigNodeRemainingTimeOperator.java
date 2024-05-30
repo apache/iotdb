@@ -56,13 +56,7 @@ class PipeConfigNodeRemainingTimeOperator {
   //////////////////////////// Remaining time calculation ////////////////////////////
 
   /**
-   * This will calculate the estimated remaining time of pipe.
-   *
-   * <p>Notes:
-   *
-   * <p>1. The events in pipe assigner are omitted.
-   *
-   * <p>2. Other pipes' events sharing the same connectorSubtasks may be over-calculated.
+   * This will calculate the estimated remaining time of the given pipe's config region subTask.
    *
    * @return The estimated remaining time
    */

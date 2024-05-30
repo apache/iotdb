@@ -24,9 +24,9 @@ IF "%~1"=="--help" (
     echo Before removing a DataNode, ensure that the cluster has at least the number of data/schema replicas DataNodes.
     echo Usage:
     echo Remove the DataNode with datanode_id
-    echo ./sbin/remove-datanode.sh [datanode_id]
+    echo ./sbin/remove-datanode.bat [datanode_id]
     echo Remove the DataNode with address:port
-    echo ./sbin/remove-confignode.sh [dn_rpc_address:dn_rpc_port]
+    echo ./sbin/remove-datanode.bat [dn_rpc_address:dn_rpc_port]
     EXIT /B 0
 )
 

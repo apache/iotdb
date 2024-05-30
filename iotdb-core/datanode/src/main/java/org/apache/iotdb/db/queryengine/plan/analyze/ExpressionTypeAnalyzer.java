@@ -65,7 +65,10 @@ public class ExpressionTypeAnalyzer {
   public static TSDataType analyzeExpression(Analysis analysis, Expression expression) {
     if (!analysis.getExpressionTypes().containsKey(NodeRef.of(expression))) {
       ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
-      analyzer.analyze(expression, null);
+
+      Map<String, IMeasurementSchema> context =
+          analysis.allDevicesInOneTemplate() ? analysis.getDeviceTemplate().getSchemaMap() : null;
+      analyzer.analyze(expression, context);
 
       addExpressionTypes(analysis, analyzer);
     }
@@ -96,7 +99,9 @@ public class ExpressionTypeAnalyzer {
       Expression expression,
       TemplatedInfo templatedInfo) {
     ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
-    analyzer.analyze(expression, templatedInfo.getSchemaMap());
+
+    Map<String, IMeasurementSchema> schemaMap = templatedInfo.getSchemaMap();
+    analyzer.analyze(expression, schemaMap);
 
     types.putAll(analyzer.getExpressionTypes());
   }
@@ -369,6 +374,7 @@ public class ExpressionTypeAnalyzer {
         return setExpressionType(
             timeSeriesOperand, context.get(timeSeriesOperand.getOutputSymbol()).getType());
       }
+
       return setExpressionType(timeSeriesOperand, timeSeriesOperand.getPath().getSeriesType());
     }
 
