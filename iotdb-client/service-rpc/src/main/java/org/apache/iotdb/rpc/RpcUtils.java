@@ -157,7 +157,7 @@ public class RpcUtils {
         }
       }
     }
-    LOGGER.error(errMsg.toString());
+    LOGGER.warn(errMsg.toString());
     return status;
   }
 
