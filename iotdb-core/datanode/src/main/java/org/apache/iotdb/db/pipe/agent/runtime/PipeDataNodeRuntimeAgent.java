@@ -176,7 +176,7 @@ public class PipeDataNodeRuntimeAgent implements IService {
   public void assignProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
     tsFileResource.updateProgressIndex(
         new RecoverProgressIndex(
-            -DATA_NODE_ID, simpleProgressIndexAssigner.getSimpleProgressIndex()));
+            DATA_NODE_ID, simpleProgressIndexAssigner.getSimpleProgressIndex()));
   }
 
   ////////////////////// Provided for Subscription Agent //////////////////////
