@@ -17,9 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription;
+package org.apache.iotdb.session.subscription.consumer;
 
-public enum ConsumeResult {
-  SUCCESS,
-  FAILURE
+public enum AckStrategy {
+  BEFORE_CONSUME,
+  AFTER_CONSUME;
+
+  public static AckStrategy defaultValue() {
+    // Use AFTER_CONSUME by default
+    return AFTER_CONSUME;
+  }
 }

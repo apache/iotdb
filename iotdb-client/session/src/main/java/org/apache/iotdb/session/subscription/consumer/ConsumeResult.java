@@ -17,11 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription;
+package org.apache.iotdb.session.subscription.consumer;
 
-import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
-
-@FunctionalInterface
-public interface ConsumeListener {
-  ConsumeResult onReceive(SubscriptionMessage message);
+public enum ConsumeResult {
+  SUCCESS,
+  FAILURE
 }
