@@ -28,11 +28,13 @@ import org.apache.iotdb.commons.schema.view.viewExpression.leaf.ConstantViewOper
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.SetTTLProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
@@ -328,5 +330,36 @@ public class PipeEnrichedProcedureTest {
     } catch (Exception e) {
       fail();
     }
+  }
+
+  @Test
+  public void setTTLTest() throws IOException, IllegalPathException {
+    final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+
+    // test1
+    PartialPath path = new PartialPath("root.test.sg1.group1.group1.**");
+    SetTTLPlan setTTLPlan = new SetTTLPlan(Arrays.asList(path.getNodes()), 1928300234200L);
+    SetTTLProcedure proc = new SetTTLProcedure(setTTLPlan, true);
+
+    proc.serialize(outputStream);
+    ByteBuffer buffer =
+        ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    SetTTLProcedure proc2 = (SetTTLProcedure) ProcedureFactory.getInstance().create(buffer);
+    assertEquals(proc, proc2);
+    buffer.clear();
+    byteArrayOutputStream.reset();
+
+    // test2
+    path = new PartialPath("root.**");
+    setTTLPlan = new SetTTLPlan(Arrays.asList(path.getNodes()), -1);
+    proc = new SetTTLProcedure(setTTLPlan, true);
+
+    proc.serialize(outputStream);
+    buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    proc2 = (SetTTLProcedure) ProcedureFactory.getInstance().create(buffer);
+    assertEquals(proc, proc2);
+    buffer.clear();
+    byteArrayOutputStream.reset();
   }
 }

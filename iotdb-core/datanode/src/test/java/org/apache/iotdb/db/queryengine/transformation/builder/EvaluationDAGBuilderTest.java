@@ -127,7 +127,6 @@ public class EvaluationDAGBuilderTest {
     FragmentInstanceContext instanceContext =
         createFragmentInstanceContext(instanceId, stateMachine);
     IDataRegionForQuery dataRegionForQuery = Mockito.mock(DataRegion.class);
-    Mockito.when(dataRegionForQuery.getDataTTL()).thenReturn(1000L);
     instanceContext.setDataRegion(dataRegionForQuery);
     return instanceContext;
   }

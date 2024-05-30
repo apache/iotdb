@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeCo
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
@@ -211,6 +212,13 @@ public interface IManager {
   PipeManager getPipeManager();
 
   /**
+   * Get TTLManager.
+   *
+   * @return TTLManager instance
+   */
+  TTLManager getTTLManager();
+
+  /**
    * Get {@link ClusterQuotaManager}.
    *
    * @return {@link ClusterQuotaManager} instance
@@ -293,6 +301,8 @@ public interface IManager {
   TShowVariablesResp showVariables();
 
   TSStatus setTTL(SetTTLPlan configRequest);
+
+  DataSet showAllTTL(ShowTTLPlan showTTLPlan);
 
   TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorPlan configPhysicalPlan);
 

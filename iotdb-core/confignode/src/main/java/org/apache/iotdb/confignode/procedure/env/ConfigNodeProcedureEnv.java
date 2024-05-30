@@ -44,7 +44,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDat
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
-import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
@@ -493,7 +492,6 @@ public class ConfigNodeProcedureEnv {
 
   private AsyncClientHandler<TCreateDataRegionReq, TSStatus> getCreateDataRegionClientHandler(
       CreateRegionGroupsPlan createRegionGroupsPlan) {
-    Map<String, Long> ttlMap = getTTLMap(createRegionGroupsPlan);
     AsyncClientHandler<TCreateDataRegionReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.CREATE_DATA_REGION);
 
@@ -502,11 +500,10 @@ public class ConfigNodeProcedureEnv {
         createRegionGroupsPlan.getRegionGroupMap().entrySet()) {
       String storageGroup = sgRegionsEntry.getKey();
       List<TRegionReplicaSet> regionReplicaSets = sgRegionsEntry.getValue();
-      long ttl = ttlMap.get(storageGroup);
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
           clientHandler.putRequest(
-              requestId, genCreateDataRegionReq(storageGroup, regionReplicaSet, ttl));
+              requestId, genCreateDataRegionReq(storageGroup, regionReplicaSet));
           clientHandler.putDataNodeLocation(requestId, dataNodeLocation);
           requestId += 1;
         }
@@ -514,20 +511,6 @@ public class ConfigNodeProcedureEnv {
     }
 
     return clientHandler;
-  }
-
-  private Map<String, Long> getTTLMap(CreateRegionGroupsPlan createRegionGroupsPlan) {
-    Map<String, Long> ttlMap = new HashMap<>();
-    for (String storageGroup : createRegionGroupsPlan.getRegionGroupMap().keySet()) {
-      try {
-        ttlMap.put(
-            storageGroup, getClusterSchemaManager().getDatabaseSchemaByName(storageGroup).getTTL());
-      } catch (DatabaseNotExistsException e) {
-        // Notice: This line will never reach since we've checked before
-        LOG.error("StorageGroup doesn't exist", e);
-      }
-    }
-    return ttlMap;
   }
 
   private TCreateSchemaRegionReq genCreateSchemaRegionReq(
@@ -539,16 +522,11 @@ public class ConfigNodeProcedureEnv {
   }
 
   private TCreateDataRegionReq genCreateDataRegionReq(
-      String storageGroup, TRegionReplicaSet regionReplicaSet, long TTL) {
+      String storageGroup, TRegionReplicaSet regionReplicaSet) {
     TCreateDataRegionReq req = new TCreateDataRegionReq();
     req.setStorageGroup(storageGroup);
     req.setRegionReplicaSet(regionReplicaSet);
-    req.setTtl(TTL);
     return req;
-  }
-
-  public long getTTL(String storageGroup) throws DatabaseNotExistsException {
-    return getClusterSchemaManager().getDatabaseSchemaByName(storageGroup).getTTL();
   }
 
   public void persistRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {

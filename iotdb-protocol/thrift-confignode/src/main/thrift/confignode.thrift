@@ -190,16 +190,21 @@ struct TDatabaseSchemaResp {
   2: optional map<string, TDatabaseSchema> databaseSchemaMap
 }
 
+struct TShowTTLResp {
+   1: required common.TSStatus status
+   2: required map<string,i64> pathTTLMap
+}
+
 struct TDatabaseSchema {
   1: required string name
-  2: optional i64 TTL
-  3: optional i32 schemaReplicationFactor
-  4: optional i32 dataReplicationFactor
-  5: optional i64 timePartitionInterval
-  6: optional i32 minSchemaRegionGroupNum
-  7: optional i32 maxSchemaRegionGroupNum
-  8: optional i32 minDataRegionGroupNum
-  9: optional i32 maxDataRegionGroupNum
+    2: optional i64 TTL
+    3: optional i32 schemaReplicationFactor
+    4: optional i32 dataReplicationFactor
+    5: optional i64 timePartitionInterval
+    6: optional i32 minSchemaRegionGroupNum
+    7: optional i32 maxSchemaRegionGroupNum
+    8: optional i32 minDataRegionGroupNum
+    9: optional i32 maxDataRegionGroupNum
 }
 
 // Schema
@@ -1029,9 +1034,6 @@ service IConfigNodeRPCService {
    */
   common.TSStatus deleteDatabases(TDeleteDatabasesReq req)
 
-  /** Update the specific Database's TTL */
-  common.TSStatus setTTL(common.TSetTTLReq req)
-
   /** Update the specific Database's SchemaReplicationFactor */
   common.TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req)
 
@@ -1302,6 +1304,15 @@ service IConfigNodeRPCService {
    * Return the pipe plugin jar list of the plugin name list
    */
   TGetJarInListResp getPipePluginJar(TGetJarInListReq req)
+
+  // ======================================================
+  // TTL
+  // ======================================================
+  /** Show all ttl */
+  TShowTTLResp showAllTTL()
+
+  /** Update the specific device's TTL */
+  common.TSStatus setTTL(common.TSetTTLReq req)
 
   // ======================================================
   // Maintenance Tools

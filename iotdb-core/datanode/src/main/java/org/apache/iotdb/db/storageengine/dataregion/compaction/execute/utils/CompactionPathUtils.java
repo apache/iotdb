@@ -27,6 +27,8 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATER_NO_REGEX;
+
 public class CompactionPathUtils {
 
   private CompactionPathUtils() {}
@@ -38,8 +40,19 @@ public class CompactionPathUtils {
     if (plainDeviceId.contains(TsFileConstant.BACK_QUOTE_STRING)) {
       path = DataNodeDevicePathCache.getInstance().getPartialPath(plainDeviceId);
     } else {
-      path = new PartialPath(((PlainDeviceID) device).toStringID().split("\\."));
+      path = new PartialPath(((PlainDeviceID) device).toStringID().split(PATH_SEPARATER_NO_REGEX));
     }
     return path.concatNode(measurement);
+  }
+
+  public static PartialPath getPath(IDeviceID device) throws IllegalPathException {
+    PartialPath path;
+    String plainDeviceId = ((PlainDeviceID) device).toStringID();
+    if (plainDeviceId.contains(TsFileConstant.BACK_QUOTE_STRING)) {
+      path = DataNodeDevicePathCache.getInstance().getPartialPath(plainDeviceId);
+    } else {
+      path = new PartialPath(((PlainDeviceID) device).toStringID().split(PATH_SEPARATER_NO_REGEX));
+    }
+    return path;
   }
 }

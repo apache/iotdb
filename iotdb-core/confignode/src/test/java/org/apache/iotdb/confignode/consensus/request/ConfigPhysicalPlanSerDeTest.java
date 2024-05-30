@@ -110,7 +110,6 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeac
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeSetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
@@ -261,7 +260,6 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlanType.CreateDatabase,
             new TDatabaseSchema()
                 .setName("sg")
-                .setTTL(Long.MAX_VALUE)
                 .setSchemaReplicationFactor(3)
                 .setDataReplicationFactor(3)
                 .setTimePartitionInterval(604800));
@@ -277,7 +275,6 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlanType.AlterDatabase,
             new TDatabaseSchema()
                 .setName("sg")
-                .setTTL(Long.MAX_VALUE)
                 .setSchemaReplicationFactor(3)
                 .setDataReplicationFactor(3)
                 .setTimePartitionInterval(604800)
@@ -405,7 +402,7 @@ public class ConfigPhysicalPlanSerDeTest {
     plan0.appendRegionMaintainTask(
         new RegionCreateTask(dataNodeLocation, "root.sg", regionReplicaSet));
     plan0.appendRegionMaintainTask(
-        new RegionCreateTask(dataNodeLocation, "root.sg", regionReplicaSet).setTTL(86400));
+        new RegionCreateTask(dataNodeLocation, "root.sg", regionReplicaSet));
     plan0.appendRegionMaintainTask(
         new RegionDeleteTask(
             dataNodeLocation, new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2)));
@@ -1948,16 +1945,6 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         pipeDeactivateTemplatePlan,
         ConfigPhysicalPlan.Factory.create(pipeDeactivateTemplatePlan.serializeToByteBuffer()));
-  }
-
-  @Test
-  public void pipeSetTTLPlanTest() throws IOException {
-    final PipeSetTTLPlan plan =
-        new PipeSetTTLPlan(
-            Arrays.asList(
-                new SetTTLPlan(Arrays.asList("root", "db", "**", "a", "**"), Long.MAX_VALUE),
-                new SetTTLPlan(Arrays.asList("root", "db", "a", "**"), Long.MAX_VALUE)));
-    Assert.assertEquals(plan, ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer()));
   }
 
   @Test

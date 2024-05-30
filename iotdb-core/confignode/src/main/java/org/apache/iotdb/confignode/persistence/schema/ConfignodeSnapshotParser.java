@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.persistence.TTLInfo;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -135,6 +136,14 @@ public class ConfignodeSnapshotParser {
                   new Pair<>(
                       new Pair<>(schemaInfoFile.toPath(), templateInfoFile.toPath()),
                       CNSnapshotFileType.SCHEMA));
+            }
+            // Get ttl info file
+            final File ttlInfoFile =
+                SystemFileFactory.INSTANCE.getFile(
+                    latestSnapshotPath + File.separator + TTLInfo.SNAPSHOT_FILENAME);
+            if (ttlInfoFile.exists()) {
+              snapshotPairList.add(
+                  new Pair<>(new Pair<>(ttlInfoFile.toPath(), null), CNSnapshotFileType.TTL));
             }
           }
         }
