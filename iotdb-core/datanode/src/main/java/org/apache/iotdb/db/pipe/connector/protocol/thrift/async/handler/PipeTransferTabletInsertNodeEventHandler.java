@@ -46,9 +46,7 @@ public class PipeTransferTabletInsertNodeEventHandler
 
   @Override
   protected void updateLeaderCache(TSStatus status) {
-    if (((PipeInsertNodeTabletInsertionEvent) event).getDeviceId() != null) {
-      connector.updateLeaderCache(
-          ((PipeInsertNodeTabletInsertionEvent) event).getDeviceId(), status.getRedirectNode());
-    }
+    connector.updateLeaderCache(
+        ((PipeInsertNodeTabletInsertionEvent) event).getDeviceId(), status.getRedirectNode());
   }
 }
