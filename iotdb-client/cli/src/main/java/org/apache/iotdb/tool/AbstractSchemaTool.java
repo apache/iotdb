@@ -59,8 +59,8 @@ public abstract class AbstractSchemaTool {
   protected static final String USERNAME_NAME = "username";
   protected static final String USERNAME_DEFAULT_VALUE = "root";
 
-  protected static final String TIMEOUT_ARGS = "t";
-  protected static final String TIMEOUT_NAME = "timeout";
+  protected static final String TIMEOUT_ARGS = "timeout";
+  protected static final String TIMEOUT_ARGS_NAME = "queryTimeout";
 
   protected static final int MAX_HELP_CONSOLE_WIDTH = 92;
 

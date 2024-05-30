@@ -53,17 +53,22 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
 public class ExportSchema extends AbstractSchemaTool {
 
   private static final String TARGET_DIR_ARGS = "t";
-  private static final String TARGET_DIR_NAME = "targetDirectory";
+  private static final String TARGET_DIR_ARGS_NAME = "target";
+  private static final String TARGET_DIR_NAME = "targetDir";
 
   private static final String TARGET_PATH_ARGS = "path";
-  private static final String TARGET_PATH_NAME = "targetPathPattern";
+  private static final String TARGET_PATH_ARGS_NAME = "path_pattern";
+  private static final String TARGET_PATH_NAME = "exportPathPattern";
   private static String queryPath;
 
-  private static final String TARGET_FILE_ARGS = "s";
-  private static final String TARGET_FILE_NAME = "targetFile";
+  private static final String TARGET_FILE_ARGS = "pf";
+  private static final String TARGET_FILE_ARGS_NAME = "path_pattern_file";
+  private static final String TARGET_FILE_NAME = "exportPathPatternFile";
 
-  private static final String LINES_PER_FILE_ARGS = "linesPerFile";
-  private static final String LINES_PER_FILE_ARGS_NAME = "Lines Per File";
+  private static final String LINES_PER_FILE_ARGS = "lpf";
+  private static final String LINES_PER_FILE_ARGS_NAME = "lines_per_file";
+  private static final String LINES_PER_FILE_NAME = "linesPerFile";
+  private static int linesPerFile = 10000;
 
   private static final String EXPORT_SCHEMA_CLI_PREFIX = "ExportSchema";
 
@@ -72,9 +77,7 @@ public class ExportSchema extends AbstractSchemaTool {
 
   private static String targetDirectory;
 
-  private static int linesPerFile = 10000;
-
-  private static long timeout = -1;
+  private static long timeout = 60000;
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
@@ -171,7 +174,7 @@ public class ExportSchema extends AbstractSchemaTool {
   }
 
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
-    targetDirectory = checkRequiredArg(TARGET_DIR_ARGS, TARGET_DIR_NAME, commandLine, null);
+    targetDirectory = checkRequiredArg(TARGET_DIR_ARGS, TARGET_DIR_ARGS_NAME, commandLine, null);
     queryPath = commandLine.getOptionValue(TARGET_PATH_ARGS);
     String timeoutString = commandLine.getOptionValue(TIMEOUT_ARGS);
     if (timeoutString != null) {
@@ -199,51 +202,52 @@ public class ExportSchema extends AbstractSchemaTool {
     Option opTargetFile =
         Option.builder(TARGET_DIR_ARGS)
             .required()
-            .argName(TARGET_DIR_NAME)
+            .longOpt(TARGET_DIR_ARGS_NAME)
             .hasArg()
+            .argName(TARGET_DIR_NAME)
             .desc("Target File Directory (required)")
             .build();
     options.addOption(opTargetFile);
 
     Option targetPathPattern =
         Option.builder(TARGET_PATH_ARGS)
-            .argName(TARGET_PATH_NAME)
+            .longOpt(TARGET_PATH_ARGS_NAME)
             .hasArg()
+            .argName(TARGET_PATH_NAME)
             .desc("Export Path Pattern (optional)")
             .build();
     options.addOption(targetPathPattern);
 
     Option targetFileName =
         Option.builder(TARGET_FILE_ARGS)
-            .argName(TARGET_FILE_NAME)
+            .longOpt(TARGET_FILE_ARGS_NAME)
             .hasArg()
+            .argName(TARGET_FILE_NAME)
             .desc("Export File Name (optional)")
             .build();
     options.addOption(targetFileName);
 
     Option opLinesPerFile =
         Option.builder(LINES_PER_FILE_ARGS)
-            .argName(LINES_PER_FILE_ARGS_NAME)
+            .longOpt(LINES_PER_FILE_ARGS_NAME)
             .hasArg()
+            .argName(LINES_PER_FILE_NAME)
             .desc("Lines per dump file.")
             .build();
     options.addOption(opLinesPerFile);
 
-    Option opHelp =
-        Option.builder(HELP_ARGS)
-            .longOpt(HELP_ARGS)
-            .hasArg(false)
-            .desc("Display help information")
-            .build();
-    options.addOption(opHelp);
-
     Option opTimeout =
         Option.builder(TIMEOUT_ARGS)
-            .longOpt(TIMEOUT_NAME)
+            .longOpt(TIMEOUT_ARGS_NAME)
             .hasArg()
-            .desc("Timeout for session query")
+            .argName(TIMEOUT_ARGS)
+            .desc(timeout + " Timeout for session query")
             .build();
     options.addOption(opTimeout);
+
+    Option opHelp =
+        Option.builder(HELP_ARGS).longOpt(HELP_ARGS).desc("Display help information").build();
+    options.addOption(opHelp);
     return options;
   }
 

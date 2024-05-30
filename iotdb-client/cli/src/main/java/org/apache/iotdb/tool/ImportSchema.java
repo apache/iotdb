@@ -63,29 +63,31 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
 public class ImportSchema extends AbstractSchemaTool {
 
   private static final String FILE_ARGS = "s";
-  private static final String FILE_NAME = "file or folder";
+  private static final String FILE_NAME = "source";
+  private static final String FILE_ARGS_NAME = "sourceDir/sourceFile";
 
   private static final String FAILED_FILE_ARGS = "fd";
-  private static final String FAILED_FILE_NAME = "failed file directory";
+  private static final String FAILED_FILE_NAME = "fail_dir";
+  private static final String FAILED_FILE_ARGS_NAME = "failDir";
 
   private static final String ALIGNED_ARGS = "aligned";
-  private static final String ALIGNED_NAME = "import as aligned timeseries";
   private static Boolean aligned = false;
 
   private static final String BATCH_POINT_SIZE_ARGS = "batch";
-  private static final String BATCH_POINT_SIZE_NAME = "batch point size";
-  private static int batchPointSize = 100_000;
+  private static final String BATCH_POINT_SIZE_NAME = "batch_size";
+  private static final String BATCH_POINT_SIZE_ARGS_NAME = "batchSize";
+  private static int batchPointSize = 10_000;
 
   private static final String CSV_SUFFIXS = "csv";
 
-  private static final String LINES_PER_FAILED_FILE_ARGS = "linesPerFailedFile";
-  private static final String LINES_PER_FAILED_FILE_ARGS_NAME = "Lines Per FailedFile";
-
+  private static final String LINES_PER_FAILED_FILE_ARGS = "lpf";
+  private static final String LINES_PER_FAILED_FILE_NAME = "lines_per_file";
+  private static final String LINES_PER_FAILED_FILE_ARGS_NAME = "linesPerFile";
   private static final String IMPORT_SCHEMA_CLI_PREFIX = "ImportSchema";
+  private static int linesPerFailedFile = 10000;
 
   private static String targetPath;
   private static String failedFileDirectory = null;
-  private static int linesPerFailedFile = 10000;
 
   private static final String INSERT_CSV_MEET_ERROR_MSG = "Meet error when insert csv because ";
 
@@ -102,8 +104,9 @@ public class ImportSchema extends AbstractSchemaTool {
     Option opFile =
         Option.builder(FILE_ARGS)
             .required()
-            .argName(FILE_NAME)
+            .longOpt(FILE_NAME)
             .hasArg()
+            .argName(FILE_ARGS_NAME)
             .desc(
                 "If input a file path, load a csv file, "
                     + "otherwise load all csv file under this directory (required)")
@@ -112,8 +115,10 @@ public class ImportSchema extends AbstractSchemaTool {
 
     Option opFailedFile =
         Option.builder(FAILED_FILE_ARGS)
-            .argName(FAILED_FILE_NAME)
+            .required()
+            .longOpt(FAILED_FILE_NAME)
             .hasArg()
+            .argName(FAILED_FILE_ARGS_NAME)
             .desc(
                 "Specifying a directory to save failed file, default YOUR_CSV_FILE_PATH (optional)")
             .build();
@@ -121,36 +126,32 @@ public class ImportSchema extends AbstractSchemaTool {
 
     Option opAligned =
         Option.builder(ALIGNED_ARGS)
-            .argName(ALIGNED_NAME)
-            .hasArg()
+            .longOpt(ALIGNED_ARGS)
             .desc("Whether import schema as aligned timeseries(optional)")
             .build();
     options.addOption(opAligned);
 
-    Option opHelp =
-        Option.builder(HELP_ARGS)
-            .longOpt(HELP_ARGS)
-            .hasArg(false)
-            .desc("Display help information")
-            .build();
-    options.addOption(opHelp);
-
     Option opBatchPointSize =
         Option.builder(BATCH_POINT_SIZE_ARGS)
-            .argName(BATCH_POINT_SIZE_NAME)
+            .longOpt(BATCH_POINT_SIZE_NAME)
             .hasArg()
-            .desc("100000 (only not aligned optional)")
+            .argName(BATCH_POINT_SIZE_ARGS_NAME)
+            .desc("10000 (only not aligned optional)")
             .build();
     options.addOption(opBatchPointSize);
 
     Option opFailedLinesPerFile =
         Option.builder(LINES_PER_FAILED_FILE_ARGS)
+            .longOpt(LINES_PER_FAILED_FILE_NAME)
+            .hasArg()
             .argName(LINES_PER_FAILED_FILE_ARGS_NAME)
-            .hasArgs()
             .desc("Lines per failed file")
             .build();
     options.addOption(opFailedLinesPerFile);
 
+    Option opHelp =
+        Option.builder(HELP_ARGS).longOpt(HELP_ARGS).desc("Display help information").build();
+    options.addOption(opHelp);
     return options;
   }
 
