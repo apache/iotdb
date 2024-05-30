@@ -195,7 +195,7 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
 
     source = commandLine.getOptionValue(SOURCE_ARGS);
-    if(!Files.exists(Paths.get(source))){
+    if (!Files.exists(Paths.get(source))) {
       ioTPrinter.println("source file is not exist");
       System.exit(CODE_OK);
     }
