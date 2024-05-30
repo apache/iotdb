@@ -229,7 +229,7 @@ public class ImportTsFile extends AbstractTsFileTool {
       FileStore store2 = Files.getFileStore(path2);
       return store1.equals(store2);
     } catch (IOException e) {
-      ioTPrinter.println("check file story fail : " + e.getMessage());
+      ioTPrinter.println("check file store fail : " + e.getMessage());
       return false;
     }
   }
@@ -425,14 +425,14 @@ public class ImportTsFile extends AbstractTsFileTool {
     DELETE,
     ;
 
-    public static Operation getOperation(String operation, boolean fileStory) {
+    public static Operation getOperation(String operation, boolean fileStore) {
       switch (operation.toLowerCase()) {
         case "none":
           return Operation.NONE;
         case "mv":
           return Operation.MV;
         case "cp":
-          if (fileStory) {
+          if (fileStore) {
             return Operation.HD;
           } else {
             return Operation.CP;
