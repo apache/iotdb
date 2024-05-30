@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription;
+package org.apache.iotdb.session.subscription.consumer;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -41,6 +41,8 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscrib
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
+import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.SubscriptionSessionConnection;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;

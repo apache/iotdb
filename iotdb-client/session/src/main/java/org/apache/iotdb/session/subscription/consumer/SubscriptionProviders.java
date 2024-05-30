@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription;
+package org.apache.iotdb.session.subscription.consumer;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -46,9 +47,9 @@ final class SubscriptionProviders {
 
   private final ReentrantReadWriteLock subscriptionProvidersLock = new ReentrantReadWriteLock(true);
 
-  private final List<TEndPoint> initialEndpoints;
+  private final Set<TEndPoint> initialEndpoints;
 
-  SubscriptionProviders(final List<TEndPoint> initialEndpoints) {
+  SubscriptionProviders(final Set<TEndPoint> initialEndpoints) {
     this.initialEndpoints = initialEndpoints;
   }
 
@@ -335,5 +336,19 @@ final class SubscriptionProviders {
         }
       }
     }
+  }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("SubscriptionProviders{");
+    for (final Map.Entry<Integer, SubscriptionProvider> entry : subscriptionProviders.entrySet()) {
+      sb.append(entry.getValue().toString()).append(", ");
+    }
+    if (!subscriptionProviders.isEmpty()) {
+      sb.delete(sb.length() - 2, sb.length());
+    }
+    sb.append("}");
+    return sb.toString();
   }
 }

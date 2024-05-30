@@ -17,14 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription;
+package org.apache.iotdb.session.subscription.consumer;
 
-public enum AckStrategy {
-  BEFORE_CONSUME,
-  AFTER_CONSUME;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 
-  public static AckStrategy defaultValue() {
-    // Use AFTER_CONSUME by default
-    return AFTER_CONSUME;
-  }
+@FunctionalInterface
+public interface ConsumeListener {
+  ConsumeResult onReceive(SubscriptionMessage message);
 }

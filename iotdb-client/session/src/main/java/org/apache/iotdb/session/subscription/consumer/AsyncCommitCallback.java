@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.session.subscription;
+package org.apache.iotdb.session.subscription.consumer;
 
 public interface AsyncCommitCallback {
   default void onComplete() {
