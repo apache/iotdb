@@ -42,7 +42,7 @@ public class SubStringFunctionTransformer extends UnaryTransformer {
         (length == Integer.MAX_VALUE ? Integer.MAX_VALUE : beginPosition + length - 1);
     this.beginPosition = beginPosition > 0 ? beginPosition - 1 : 0;
 
-    if (layerReaderDataType != TSDataType.TEXT) {
+    if (layerReaderDataType != TSDataType.TEXT && layerReaderDataType != TSDataType.STRING) {
       throw new UnSupportedDataTypeException("Unsupported data type: " + layerReaderDataType);
     }
   }

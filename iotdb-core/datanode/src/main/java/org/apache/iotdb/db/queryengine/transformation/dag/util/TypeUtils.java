@@ -36,8 +36,10 @@ public class TypeUtils {
   public static ColumnBuilder initColumnBuilder(TSDataType type, int count) {
     switch (type) {
       case INT32:
+      case DATE:
         return new IntColumnBuilder(null, count);
       case INT64:
+      case TIMESTAMP:
         return new LongColumnBuilder(null, count);
       case FLOAT:
         return new FloatColumnBuilder(null, count);
@@ -46,10 +48,12 @@ public class TypeUtils {
       case BOOLEAN:
         return new BooleanColumnBuilder(null, count);
       case TEXT:
+      case BLOB:
+      case STRING:
         return new BinaryColumnBuilder(null, count);
       default:
         throw new UnSupportedDataTypeException(
-            "Do not support create ColumnBuilder with data type" + type);
+            "Do not support create ColumnBuilder with data type " + type);
     }
   }
 
@@ -57,8 +61,10 @@ public class TypeUtils {
       throws QueryProcessException {
     switch (type) {
       case INT32:
+      case DATE:
         return column.getInt(index);
       case INT64:
+      case TIMESTAMP:
         return column.getLong(index);
       case FLOAT:
         return column.getFloat(index);
