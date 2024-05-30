@@ -22,6 +22,9 @@ package org.apache.iotdb.session.subscription.consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -36,14 +39,29 @@ final class SubscriptionExecutorServiceManager {
 
   private static final long AWAIT_TERMINATION_TIMEOUT_MS = 10_000L;
 
+  private static final String CONTROL_FLOW_EXECUTOR_NAME = "SubscriptionControlFlowExecutor";
+  private static final String UPSTREAM_DATA_FLOW_EXECUTOR_NAME =
+      "SubscriptionUpstreamDataFlowExecutor";
+  private static final String DOWNSTREAM_DATA_FLOW_EXECUTOR_NAME =
+      "SubscriptionDownstreamDataFlowExecutor";
+
+  private static final Map<String, SubscriptionExecutorService> EXECUTOR_NAME_TO_EXECUTOR =
+      Collections.unmodifiableMap(
+          new HashMap<String, SubscriptionExecutorService>() {
+            {
+              put(CONTROL_FLOW_EXECUTOR_NAME, CONTROL_FLOW_EXECUTOR);
+              put(UPSTREAM_DATA_FLOW_EXECUTOR_NAME, UPSTREAM_DATA_FLOW_EXECUTOR);
+              put(DOWNSTREAM_DATA_FLOW_EXECUTOR_NAME, DOWNSTREAM_DATA_FLOW_EXECUTOR);
+            }
+          });
+
   /**
    * Control Flow Executor: execute heartbeat worker and endpoints syncer for {@link
    * SubscriptionConsumer}
    */
   private static final SubscriptionExecutorService CONTROL_FLOW_EXECUTOR =
       new SubscriptionExecutorService(
-          "SubscriptionControlFlowExecutor",
-          Math.max(Runtime.getRuntime().availableProcessors() / 2, 1));
+          CONTROL_FLOW_EXECUTOR_NAME, Math.max(Runtime.getRuntime().availableProcessors() / 2, 1));
 
   /**
    * Upstream Data Flow Executor: execute auto commit worker and async commit worker for {@link
@@ -51,7 +69,7 @@ final class SubscriptionExecutorServiceManager {
    */
   private static final SubscriptionExecutorService UPSTREAM_DATA_FLOW_EXECUTOR =
       new SubscriptionExecutorService(
-          "SubscriptionUpstreamDataFlowExecutor",
+          UPSTREAM_DATA_FLOW_EXECUTOR_NAME,
           Math.max(Runtime.getRuntime().availableProcessors() / 2, 1));
 
   /**
@@ -59,37 +77,21 @@ final class SubscriptionExecutorServiceManager {
    */
   private static final SubscriptionExecutorService DOWNSTREAM_DATA_FLOW_EXECUTOR =
       new SubscriptionExecutorService(
-          "SubscriptionDownstreamDataFlowExecutor",
+          DOWNSTREAM_DATA_FLOW_EXECUTOR_NAME,
           Math.max(Runtime.getRuntime().availableProcessors(), 1));
 
-  /////////////////////////////// setter ///////////////////////////////
-
-  private static void setExecutorCorePoolSize(
-      final SubscriptionExecutorService executor, final int corePoolSize) {
-    if (executor.isShutdown()) {
-      synchronized (SubscriptionExecutorServiceManager.class) {
-        if (executor.isShutdown()) {
-          executor.corePoolSize = corePoolSize;
-          return;
-        }
-      }
-    }
-    LOGGER.warn(
-        "{} has been launched, set core pool size to {} will be ignored",
-        executor.name,
-        corePoolSize);
-  }
+  /////////////////////////////// set core pool size ///////////////////////////////
 
   public static void setControlFlowExecutorCorePoolSize(final int corePoolSize) {
-    setExecutorCorePoolSize(CONTROL_FLOW_EXECUTOR, corePoolSize);
+    CONTROL_FLOW_EXECUTOR.setCorePoolSize(corePoolSize);
   }
 
   public static void setUpstreamDataFlowExecutorCorePoolSize(final int corePoolSize) {
-    setExecutorCorePoolSize(UPSTREAM_DATA_FLOW_EXECUTOR, corePoolSize);
+    UPSTREAM_DATA_FLOW_EXECUTOR.setCorePoolSize(corePoolSize);
   }
 
   public static void setDownstreamDataFlowExecutorCorePoolSize(final int corePoolSize) {
-    setExecutorCorePoolSize(DOWNSTREAM_DATA_FLOW_EXECUTOR, corePoolSize);
+    DOWNSTREAM_DATA_FLOW_EXECUTOR.setCorePoolSize(corePoolSize);
   }
 
   /////////////////////////////// shutdown hook ///////////////////////////////
@@ -108,47 +110,10 @@ final class SubscriptionExecutorServiceManager {
     @Override
     public void run() {
       // shutdown executors
-      shutdownExecutor(CONTROL_FLOW_EXECUTOR);
-      shutdownExecutor(UPSTREAM_DATA_FLOW_EXECUTOR);
-      shutdownExecutor(DOWNSTREAM_DATA_FLOW_EXECUTOR);
+      CONTROL_FLOW_EXECUTOR.shutdown();
+      UPSTREAM_DATA_FLOW_EXECUTOR.shutdown();
+      DOWNSTREAM_DATA_FLOW_EXECUTOR.shutdown();
     }
-  }
-
-  private static void shutdownExecutor(final SubscriptionExecutorService executor) {
-    if (!executor.isShutdown()) {
-      synchronized (SubscriptionExecutorServiceManager.class) {
-        if (!executor.isShutdown()) {
-          LOGGER.info("Shutting down {}...", executor.name);
-          executor.shutdown();
-        }
-      }
-    }
-  }
-
-  /////////////////////////////// launcher ///////////////////////////////
-
-  private static void launchExecutorIfNeeded(final SubscriptionExecutorService executor) {
-    if (executor.isShutdown()) {
-      synchronized (SubscriptionExecutorServiceManager.class) {
-        if (executor.isShutdown()) {
-          LOGGER.info(
-              "Launching {} with core pool size {}...", executor.name, executor.corePoolSize);
-          executor.launch();
-        }
-      }
-    }
-  }
-
-  private static void launchControlFlowExecutorIfNeeded() {
-    launchExecutorIfNeeded(CONTROL_FLOW_EXECUTOR);
-  }
-
-  private static void launchUpstreamDataFlowExecutorIfNeeded() {
-    launchExecutorIfNeeded(UPSTREAM_DATA_FLOW_EXECUTOR);
-  }
-
-  private static void launchDownstreamDataFlowExecutorIfNeeded() {
-    launchExecutorIfNeeded(DOWNSTREAM_DATA_FLOW_EXECUTOR);
   }
 
   /////////////////////////////// submitter ///////////////////////////////
@@ -156,7 +121,7 @@ final class SubscriptionExecutorServiceManager {
   @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitHeartbeatWorker(
       final Runnable task, final long heartbeatIntervalMs) {
-    launchControlFlowExecutorIfNeeded();
+    CONTROL_FLOW_EXECUTOR.launchIfNeeded();
     return CONTROL_FLOW_EXECUTOR.scheduleWithFixedDelay(
         task,
         generateRandomInitialDelayMs(heartbeatIntervalMs),
@@ -167,7 +132,7 @@ final class SubscriptionExecutorServiceManager {
   @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitEndpointsSyncer(
       final Runnable task, final long endpointsSyncIntervalMs) {
-    launchControlFlowExecutorIfNeeded();
+    CONTROL_FLOW_EXECUTOR.launchIfNeeded();
     return CONTROL_FLOW_EXECUTOR.scheduleWithFixedDelay(
         task,
         generateRandomInitialDelayMs(endpointsSyncIntervalMs),
@@ -178,7 +143,7 @@ final class SubscriptionExecutorServiceManager {
   @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitAutoCommitWorker(
       final Runnable task, final long autoCommitIntervalMs) {
-    launchUpstreamDataFlowExecutorIfNeeded();
+    UPSTREAM_DATA_FLOW_EXECUTOR.launchIfNeeded();
     return UPSTREAM_DATA_FLOW_EXECUTOR.scheduleWithFixedDelay(
         task,
         generateRandomInitialDelayMs(autoCommitIntervalMs),
@@ -187,14 +152,14 @@ final class SubscriptionExecutorServiceManager {
   }
 
   public static void submitAsyncCommitWorker(final Runnable task) {
-    launchUpstreamDataFlowExecutorIfNeeded();
+    UPSTREAM_DATA_FLOW_EXECUTOR.launchIfNeeded();
     UPSTREAM_DATA_FLOW_EXECUTOR.submit(task);
   }
 
   @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitAutoPollWorker(
       final Runnable task, final long autoPollIntervalMs) {
-    launchDownstreamDataFlowExecutorIfNeeded();
+    DOWNSTREAM_DATA_FLOW_EXECUTOR.launchIfNeeded();
     return DOWNSTREAM_DATA_FLOW_EXECUTOR.scheduleWithFixedDelay(
         task,
         generateRandomInitialDelayMs(autoPollIntervalMs),
@@ -219,70 +184,101 @@ final class SubscriptionExecutorServiceManager {
       return Objects.isNull(executor);
     }
 
-    void launch() {
+    void setCorePoolSize(final int corePoolSize) {
       if (!isShutdown()) {
-        return;
+        synchronized (EXECUTOR_NAME_TO_EXECUTOR.get(name)) {
+          if (!isShutdown()) {
+            this.corePoolSize = corePoolSize;
+            return;
+          }
+        }
       }
+      LOGGER.warn(
+          "{} has been launched, set core pool size to {} will be ignored", name, corePoolSize);
+    }
 
-      this.executor =
-          Executors.newScheduledThreadPool(
-              corePoolSize,
-              r -> {
-                final Thread t = new Thread(Thread.currentThread().getThreadGroup(), r, name, 0);
-                if (!t.isDaemon()) {
-                  t.setDaemon(true);
-                }
-                if (t.getPriority() != Thread.NORM_PRIORITY) {
-                  t.setPriority(Thread.NORM_PRIORITY);
-                }
-                return t;
-              });
+    void launchIfNeeded() {
+      if (isShutdown()) {
+        synchronized (EXECUTOR_NAME_TO_EXECUTOR.get(name)) {
+          if (isShutdown()) {
+            LOGGER.info("Launching {} with core pool size {}...", name, corePoolSize);
+
+            executor =
+                Executors.newScheduledThreadPool(
+                    corePoolSize,
+                    r -> {
+                      final Thread t =
+                          new Thread(Thread.currentThread().getThreadGroup(), r, name, 0);
+                      if (!t.isDaemon()) {
+                        t.setDaemon(true);
+                      }
+                      if (t.getPriority() != Thread.NORM_PRIORITY) {
+                        t.setPriority(Thread.NORM_PRIORITY);
+                      }
+                      return t;
+                    });
+          }
+        }
+      }
     }
 
     void shutdown() {
-      if (isShutdown()) {
-        return;
-      }
+      if (!isShutdown()) {
+        synchronized (EXECUTOR_NAME_TO_EXECUTOR.get(name)) {
+          if (!isShutdown()) {
+            LOGGER.info("Shutting down {}...", name);
 
-      executor.shutdown();
-      try {
-        if (!executor.awaitTermination(AWAIT_TERMINATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-          executor.shutdownNow();
-          LOGGER.warn(
-              "Interrupt the worker, which may cause some task inconsistent. Please check the biz logs.");
-          if (!executor.awaitTermination(AWAIT_TERMINATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-            LOGGER.error(
-                "Thread pool can't be shutdown even with interrupting worker threads, which may cause some task inconsistent. Please check the biz logs.");
+            executor.shutdown();
+            try {
+              if (!executor.awaitTermination(AWAIT_TERMINATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                executor.shutdownNow();
+                LOGGER.warn(
+                    "Interrupt the worker, which may cause some task inconsistent. Please check the biz logs.");
+                if (!executor.awaitTermination(
+                    AWAIT_TERMINATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                  LOGGER.error(
+                      "Thread pool can't be shutdown even with interrupting worker threads, which may cause some task inconsistent. Please check the biz logs.");
+                }
+              }
+            } catch (final InterruptedException e) {
+              executor.shutdownNow();
+              LOGGER.error(
+                  "The current thread is interrupted when it is trying to stop the worker threads. This may leave an inconsistent state. Please check the biz logs.");
+              Thread.currentThread().interrupt();
+            }
+
+            executor = null;
           }
         }
-      } catch (final InterruptedException e) {
-        executor.shutdownNow();
-        LOGGER.error(
-            "The current thread is interrupted when it is trying to stop the worker threads. This may leave an inconsistent state. Please check the biz logs.");
-        Thread.currentThread().interrupt();
       }
-
-      executor = null;
     }
 
     @SuppressWarnings("unsafeThreadSchedule")
     ScheduledFuture<?> scheduleWithFixedDelay(
         final Runnable task, final long initialDelay, final long delay, final TimeUnit unit) {
-      if (isShutdown()) {
-        LOGGER.warn("{} has not been launched, ignore scheduleWithFixedDelay for task", name);
-        return null;
+      if (!isShutdown()) {
+        synchronized (EXECUTOR_NAME_TO_EXECUTOR.get(name)) {
+          if (!isShutdown()) {
+            return executor.scheduleWithFixedDelay(task, initialDelay, delay, unit);
+          }
+        }
       }
 
-      return executor.scheduleWithFixedDelay(task, initialDelay, delay, unit);
+      LOGGER.warn("{} has not been launched, ignore scheduleWithFixedDelay for task", name);
+      return null;
     }
 
     Future<?> submit(final Runnable task) {
-      if (isShutdown()) {
-        LOGGER.warn("{} has not been launched, ignore submit task", name);
-        return null;
+      if (!isShutdown()) {
+        synchronized (EXECUTOR_NAME_TO_EXECUTOR.get(name)) {
+          if (!isShutdown()) {
+            return executor.submit(task);
+          }
+        }
       }
 
-      return executor.submit(task);
+      LOGGER.warn("{} has not been launched, ignore submit task", name);
+      return null;
     }
   }
 
