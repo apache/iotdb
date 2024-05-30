@@ -520,7 +520,11 @@ public class ExpressionAnalyzer {
    * @return normalized expression
    */
   public static Expression normalizeExpression(Expression expression) {
-    return new ExpressionNormalizeVisitor().process(expression, null);
+    return new ExpressionNormalizeVisitor(true).process(expression, null);
+  }
+
+  public static Expression normalizeExpression(Expression expression, boolean removeViewPath) {
+    return new ExpressionNormalizeVisitor(removeViewPath).process(expression, null);
   }
 
   /**

@@ -28,7 +28,6 @@ struct TCreateSchemaRegionReq {
 struct TCreateDataRegionReq {
   1: required common.TRegionReplicaSet regionReplicaSet
   2: required string storageGroup
-  3: optional i64 ttl
 }
 
 struct TInvalidateCacheReq {
@@ -57,7 +56,6 @@ struct TCreatePeerReq {
   1: required common.TConsensusGroupId regionId
   2: required list<common.TDataNodeLocation> regionLocations
   3: required string storageGroup
-  4: optional i64 ttl
 }
 
 struct TMaintainPeerReq {
@@ -865,9 +863,9 @@ service IDataNodeRPCService {
   common.TSStatus killQueryInstance(string queryId)
 
   /**
-   * Config node will Set the TTL for the database on a list of data nodes.
-   */
-  common.TSStatus setTTL(common.TSetTTLReq req)
+     * Config node will Set the TTL for the database on a list of data nodes.
+     */
+    common.TSStatus setTTL(common.TSetTTLReq req)
 
   /**
    * Update template cache when template info or template set info is updated

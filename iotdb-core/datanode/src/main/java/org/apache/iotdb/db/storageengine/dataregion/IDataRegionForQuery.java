@@ -62,9 +62,6 @@ public interface IDataRegionForQuery {
       List<Long> timePartitions)
       throws QueryProcessException;
 
-  /** Get TTL of this DataRegion */
-  long getDataTTL();
-
   /** Get database name of this DataRegion */
   String getDatabaseName();
 }

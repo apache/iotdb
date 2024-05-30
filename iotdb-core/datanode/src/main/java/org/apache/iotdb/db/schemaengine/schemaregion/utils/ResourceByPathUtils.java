@@ -87,7 +87,10 @@ public abstract class ResourceByPathUtils {
       throws QueryProcessException, IOException;
 
   public abstract List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context);
+      RestorableTsFileIOWriter writer,
+      TsFileResource tsFileResource,
+      QueryContext context,
+      long timeLowerBound);
 }
 
 class AlignedResourceByPathUtils extends ResourceByPathUtils {
@@ -238,7 +241,10 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
+      RestorableTsFileIOWriter writer,
+      TsFileResource tsFileResource,
+      QueryContext context,
+      long timeLowerBound) {
     List<List<Modification>> modifications =
         context.getPathModifications(
             tsFileResource, alignedFullPath.getDeviceId(), alignedFullPath.getMeasurementList());
@@ -278,7 +284,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
 
     ModificationUtils.modifyAlignedChunkMetaData(chunkMetadataList, modifications);
-    chunkMetadataList.removeIf(context::chunkNotSatisfy);
+    chunkMetadataList.removeIf(x -> x.getEndTime() < timeLowerBound);
     return new ArrayList<>(chunkMetadataList);
   }
 }
@@ -362,7 +368,10 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
 
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
+      RestorableTsFileIOWriter writer,
+      TsFileResource tsFileResource,
+      QueryContext context,
+      long timeLowerBound) {
     List<Modification> modifications =
         context.getPathModifications(
             tsFileResource, fullPath.getDeviceId(), fullPath.getMeasurement());
@@ -375,7 +384,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
                 fullPath.getMeasurementSchema().getType()));
 
     ModificationUtils.modifyChunkMetaData(chunkMetadataList, modifications);
-    chunkMetadataList.removeIf(context::chunkNotSatisfy);
+    chunkMetadataList.removeIf(x -> x.getEndTime() < timeLowerBound);
     return chunkMetadataList;
   }
 }

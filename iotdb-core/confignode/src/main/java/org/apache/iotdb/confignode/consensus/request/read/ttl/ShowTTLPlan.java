@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,27 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.consensus.request.read.ttl;
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
-public enum CompactionTaskPriorityType {
-  /** default compaction task type */
-  NORMAL(10),
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
-  /**
-   * in either of the following situations: 1. the TsFile has .mods file whose size exceeds 50 MB.
-   * 2. the TsFile has .mods file and the disk availability rate is lower than the
-   * disk_space_warning_threshold.
-   */
-  MOD_SETTLE(20),
-  REPAIR_DATA(30);
-  private final int value;
-
-  CompactionTaskPriorityType(int value) {
-    this.value = value;
+public class ShowTTLPlan extends ConfigPhysicalPlan {
+  public ShowTTLPlan() {
+    super(ConfigPhysicalPlanType.ShowTTL);
   }
 
-  public int getValue() {
-    return value;
-  }
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {}
+
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
 }

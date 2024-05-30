@@ -64,9 +64,6 @@ public class QueryDataSource implements IQueryDataSource {
   /* The traversal order of unseqResources (different for each device) */
   private int[] unSeqFileOrderIndex;
 
-  /** data older than currentTime - dataTTL should be ignored. */
-  private long dataTTL = Long.MAX_VALUE;
-
   private static final Comparator<Long> descendingComparator = (o1, o2) -> Long.compare(o2, o1);
 
   public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
@@ -91,20 +88,10 @@ public class QueryDataSource implements IQueryDataSource {
   }
 
   @Override
-  public long getDataTTL() {
-    return dataTTL;
-  }
-
-  @Override
   public IQueryDataSource clone() {
     QueryDataSource queryDataSource = new QueryDataSource(getSeqResources(), getUnseqResources());
     queryDataSource.setSingleDevice(isSingleDevice());
-    queryDataSource.setDataTTL(getDataTTL());
     return queryDataSource;
-  }
-
-  public void setDataTTL(long dataTTL) {
-    this.dataTTL = dataTTL;
   }
 
   public boolean hasNextSeqResource(int curIndex, boolean ascending, IDeviceID deviceID) {

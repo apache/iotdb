@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -383,6 +384,11 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   @Override
   public boolean definitelyNotContains(IDeviceID device) {
     return !deviceToIndex.containsKey(device);
+  }
+
+  @Override
+  public boolean isDeviceAlive(IDeviceID device, long ttl) {
+    return endTimes[deviceToIndex.get(device)] >= CommonDateTimeUtils.currentTime() - ttl;
   }
 
   @Override

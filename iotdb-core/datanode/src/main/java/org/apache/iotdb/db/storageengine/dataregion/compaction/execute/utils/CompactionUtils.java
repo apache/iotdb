@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -40,7 +41,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -64,18 +64,29 @@ public class CompactionUtils {
    * @throws IOException if io errors occurred
    */
   public static void moveTargetFile(
-      List<TsFileResource> targetResources, boolean isInnerSpace, String fullStorageGroupName)
+      List<TsFileResource> targetResources, CompactionTaskType type, String fullStorageGroupName)
       throws IOException {
-    String fileSuffix;
-    if (isInnerSpace) {
-      fileSuffix = IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX;
-    } else {
-      fileSuffix = IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX;
-    }
+    String fileSuffix = getTmpFileSuffix(type);
     for (TsFileResource targetResource : targetResources) {
       if (targetResource != null) {
         moveOneTargetFile(targetResource, fileSuffix, fullStorageGroupName);
       }
+    }
+  }
+
+  public static String getTmpFileSuffix(CompactionTaskType type) {
+    switch (type) {
+      case INNER_UNSEQ:
+      case INNER_SEQ:
+      case REPAIR:
+        return IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX;
+      case CROSS:
+        return IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX;
+      case SETTLE:
+        return IoTDBConstant.SETTLE_SUFFIX;
+      default:
+        logger.error("Current task type {} does not have tmp file suffix.", type);
+        return "";
     }
   }
 
@@ -289,15 +300,17 @@ public class CompactionUtils {
 
   public static void deleteSourceTsFileAndUpdateFileMetrics(
       List<TsFileResource> resources, boolean seq) {
-    List<TsFileResource> removeResources = new ArrayList<>();
     for (TsFileResource resource : resources) {
+      if (resource.getModFile().exists()) {
+        FileMetrics.getInstance().decreaseModFileNum(1);
+        FileMetrics.getInstance().decreaseModFileSize(resource.getModFile().getSize());
+      }
       if (!resource.remove()) {
         logger.warn(
             "[Compaction] delete file failed, file path is {}",
             resource.getTsFile().getAbsolutePath());
       } else {
         logger.info("[Compaction] delete file: {}", resource.getTsFile().getAbsolutePath());
-        removeResources.add(resource);
       }
     }
     FileMetrics.getInstance().deleteTsFile(seq, resources);

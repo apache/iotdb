@@ -1154,6 +1154,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Set<Expression> aggregationExpressions =
           analysis.getCrossGroupByExpressions().values().stream()
               .flatMap(Set::stream)
+              .map(
+                  expression -> {
+                    Expression normalizedExpression = normalizeExpression(expression);
+                    analyzeExpressionType(analysis, normalizedExpression);
+                    return normalizedExpression;
+                  })
               .collect(Collectors.toSet());
       analysis.setAggregationExpressions(aggregationExpressions);
       return;

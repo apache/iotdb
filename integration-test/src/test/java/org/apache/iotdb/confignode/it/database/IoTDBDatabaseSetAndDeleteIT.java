@@ -81,7 +81,6 @@ public class IoTDBDatabaseSetAndDeleteIT {
       // set Database1 by specific values
       TDatabaseSchema storageGroupSchema1 =
           new TDatabaseSchema(sg1)
-              .setTTL(1024L)
               .setSchemaReplicationFactor(5)
               .setDataReplicationFactor(5)
               .setTimePartitionInterval(2048L);
@@ -115,14 +114,12 @@ public class IoTDBDatabaseSetAndDeleteIT {
       TDatabaseSchema storageGroupSchema = schemaMap.get(sg0);
       Assert.assertNotNull(storageGroupSchema);
       Assert.assertEquals(sg0, storageGroupSchema.getName());
-      Assert.assertEquals(Long.MAX_VALUE, storageGroupSchema.getTTL());
       Assert.assertEquals(1, storageGroupSchema.getSchemaReplicationFactor());
       Assert.assertEquals(1, storageGroupSchema.getDataReplicationFactor());
       Assert.assertEquals(604800000, storageGroupSchema.getTimePartitionInterval());
       storageGroupSchema = schemaMap.get(sg1);
       Assert.assertNotNull(storageGroupSchema);
       Assert.assertEquals(sg1, storageGroupSchema.getName());
-      Assert.assertEquals(1024L, storageGroupSchema.getTTL());
       Assert.assertEquals(5, storageGroupSchema.getSchemaReplicationFactor());
       Assert.assertEquals(5, storageGroupSchema.getDataReplicationFactor());
       Assert.assertEquals(2048L, storageGroupSchema.getTimePartitionInterval());
@@ -133,7 +130,9 @@ public class IoTDBDatabaseSetAndDeleteIT {
 
       // test Database setter interfaces
       PartialPath patternPath = new PartialPath(sg1);
-      status = client.setTTL(new TSetTTLReq(Arrays.asList(patternPath.getNodes()), Long.MAX_VALUE));
+      status =
+          client.setTTL(
+              new TSetTTLReq(Arrays.asList(patternPath.getNodes()), Long.MAX_VALUE, false));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       status = client.setSchemaReplicationFactor(new TSetSchemaReplicationFactorReq(sg1, 1));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -153,7 +152,6 @@ public class IoTDBDatabaseSetAndDeleteIT {
       storageGroupSchema = schemaMap.get(sg1);
       Assert.assertNotNull(storageGroupSchema);
       Assert.assertEquals(sg1, storageGroupSchema.getName());
-      Assert.assertEquals(Long.MAX_VALUE, storageGroupSchema.getTTL());
       Assert.assertEquals(1, storageGroupSchema.getSchemaReplicationFactor());
       Assert.assertEquals(1, storageGroupSchema.getDataReplicationFactor());
       Assert.assertEquals(604800, storageGroupSchema.getTimePartitionInterval());

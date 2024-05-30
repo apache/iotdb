@@ -80,8 +80,6 @@ public class LocalExecutionPlanContext {
   private List<ExchangeOperator> exchangeOperatorList = new ArrayList<>();
   private int exchangeSumNum = 0;
 
-  private final long dataRegionTTL;
-
   private List<TSDataType> cachedDataTypes;
 
   // left is cached last value in last query
@@ -110,7 +108,6 @@ public class LocalExecutionPlanContext {
       DataNodeQueryContext dataNodeQueryContext) {
     this.typeProvider = typeProvider;
     this.allSensorsMap = new ConcurrentHashMap<>();
-    this.dataRegionTTL = instanceContext.getDataRegion().getDataTTL();
     this.nextOperatorId = new AtomicInteger(0);
     this.nextPipelineId = new AtomicInteger(0);
     this.driverContext = new DataDriverContext(instanceContext, getNextPipelineId());
@@ -123,7 +120,6 @@ public class LocalExecutionPlanContext {
     this.nextOperatorId = parentContext.nextOperatorId;
     this.typeProvider = parentContext.typeProvider;
     this.allSensorsMap = parentContext.allSensorsMap;
-    this.dataRegionTTL = parentContext.dataRegionTTL;
     this.nextPipelineId = parentContext.nextPipelineId;
     this.pipelineDriverFactories = parentContext.pipelineDriverFactories;
     this.degreeOfParallelism = parentContext.degreeOfParallelism;
@@ -145,8 +141,6 @@ public class LocalExecutionPlanContext {
     this.nextOperatorId = new AtomicInteger(0);
     this.nextPipelineId = new AtomicInteger(0);
 
-    // there is no ttl in schema region, so we don't care this field
-    this.dataRegionTTL = Long.MAX_VALUE;
     this.driverContext =
         new SchemaDriverContext(instanceContext, schemaRegion, getNextPipelineId());
     this.pipelineDriverFactories = new ArrayList<>();
@@ -321,10 +315,6 @@ public class LocalExecutionPlanContext {
 
   public void setNeedUpdateNullEntry(boolean needUpdateNullEntry) {
     this.needUpdateNullEntry = needUpdateNullEntry;
-  }
-
-  public long getDataRegionTTL() {
-    return dataRegionTTL;
   }
 
   public Filter getGlobalTimeFilter() {

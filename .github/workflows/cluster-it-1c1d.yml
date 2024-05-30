@@ -35,17 +35,16 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [11]
         os: [ ubuntu-latest, windows-latest ]
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK ${{ matrix.java }}
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: liberica
-          java-version: ${{ matrix.java }}
+          java-version: 17
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
