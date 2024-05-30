@@ -34,7 +34,7 @@ public class PipeTemporaryMeta {
     completedDataNodeIds.put(dataNodeId, dataNodeId);
   }
 
-  public void unmarkDataNodeCompleted(final int dataNodeId) {
+  public void markDataNodeUncompleted(final int dataNodeId) {
     completedDataNodeIds.remove(dataNodeId);
   }
 

@@ -509,7 +509,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                                   .get(consensusGroupId.getId())
                                   .setLeaderNodeId(newLeader);
                               // New region leader may contain un-transferred events
-                              pipeMeta.getTemporaryMeta().unmarkDataNodeCompleted(newLeader);
+                              pipeMeta.getTemporaryMeta().markDataNodeUncompleted(newLeader);
                             } else {
                               consensusGroupIdToTaskMetaMap.remove(consensusGroupId.getId());
                             }
