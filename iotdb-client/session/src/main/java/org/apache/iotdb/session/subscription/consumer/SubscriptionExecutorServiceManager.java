@@ -180,6 +180,7 @@ final class SubscriptionExecutorServiceManager {
           }
         }
       }
+
       LOGGER.warn(
           "{} has been launched, set core pool size to {} will be ignored",
           this.name,
