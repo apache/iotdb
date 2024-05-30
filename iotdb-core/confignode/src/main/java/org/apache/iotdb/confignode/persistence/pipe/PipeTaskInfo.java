@@ -508,6 +508,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
                               consensusGroupIdToTaskMetaMap
                                   .get(consensusGroupId.getId())
                                   .setLeaderNodeId(newLeader);
+                              // New region leader may contain un-transferred events
+                              pipeMeta.getTemporaryMeta().unmarkDataNodeCompleted(newLeader);
                             } else {
                               consensusGroupIdToTaskMetaMap.remove(consensusGroupId.getId());
                             }
@@ -518,6 +520,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
                               consensusGroupIdToTaskMetaMap.put(
                                   consensusGroupId.getId(),
                                   new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader));
+                              // New region may contain un-transferred events
+                              pipeMeta.getTemporaryMeta().unmarkDataNodeCompleted(newLeader);
                             }
                             // else:
                             // "The pipe task meta does not contain the data region group {} or

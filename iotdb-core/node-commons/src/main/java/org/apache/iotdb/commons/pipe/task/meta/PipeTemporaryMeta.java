@@ -34,6 +34,10 @@ public class PipeTemporaryMeta {
     completedDataNodeIds.put(dataNodeId, dataNodeId);
   }
 
+  public void unmarkDataNodeCompleted(final int dataNodeId) {
+    completedDataNodeIds.remove(dataNodeId);
+  }
+
   public void setRemainingEvent(final int dataNodeId, final long remainingEventCount) {
     nodeId2RemainingEventMap.put(dataNodeId, remainingEventCount);
   }
