@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.IPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -108,7 +109,12 @@ public class RelationalModelPlanner implements IPlanner {
   @Override
   public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
     try {
-      return new LogicalPlanner(context, metadata, context.getSession(), warningCollector)
+      return new LogicalPlanner(
+              context,
+              metadata,
+              context.getSession(),
+              ClusterPartitionFetcher.getInstance(),
+              warningCollector)
           .plan((Analysis) analysis);
     } catch (IoTDBException e) {
       throw new RuntimeException(e);
