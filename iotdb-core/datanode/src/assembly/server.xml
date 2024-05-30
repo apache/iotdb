@@ -39,8 +39,8 @@
     </fileSets>
     <files>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/src/assembly/resources/conf/iotdb-common.properties</source>
-            <destName>conf/iotdb-common.properties</destName>
+            <source>${maven.multiModuleProjectDirectory}/iotdb-core/node-commons/src/assembly/resources/conf/iotdb-system.properties</source>
+            <destName>conf/iotdb-system.properties</destName>
         </file>
         <!-- copy iotdb-common.sh to different script folders-->
         <file>

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -33,7 +34,8 @@ import java.util.concurrent.Callable;
 
 public class CompactionScheduleTaskWorker implements Callable<Void> {
 
-  private static final Logger logger = LoggerFactory.getLogger(CompactionScheduleTaskWorker.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final List<DataRegion> dataRegionList;
   private final int workerId;
   private final int workerNum;

@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeF
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -52,7 +53,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -60,6 +60,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Stack;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
@@ -130,6 +131,8 @@ public class CNPhysicalPlanGenerator
       generateUserRolePhysicalPlan(false);
     } else if (snapshotFileType == CNSnapshotFileType.USER_ROLE) {
       generateGrantRolePhysicalPlan();
+    } else if (snapshotFileType == CNSnapshotFileType.TTL) {
+      generateSetTTLPlan();
     } else if (snapshotFileType == CNSnapshotFileType.SCHEMA) {
       generateTemplatePlan();
       if (latestException != null) {
@@ -267,6 +270,24 @@ public class CNPhysicalPlanGenerator
     }
   }
 
+  private void generateSetTTLPlan() {
+    try (DataInputStream ttlInputStream =
+        new DataInputStream(new BufferedInputStream(inputStream))) {
+      int size = ReadWriteIOUtils.readInt(ttlInputStream);
+      while (size > 0) {
+        String path = ReadWriteIOUtils.readString(ttlInputStream);
+        long ttl = ReadWriteIOUtils.readLong(ttlInputStream);
+        planDeque.add(
+            new SetTTLPlan(
+                Objects.requireNonNull(path).split(TsFileConstant.PATH_SEPARATER_NO_REGEX), ttl));
+        size--;
+      }
+    } catch (IOException e) {
+      logger.error("Got IOException when deserializing ttl file", e);
+      latestException = e;
+    }
+  }
+
   private void generateGrantPathPlan(
       String userName, boolean isUser, PartialPath path, int priMask) {
     for (int pos = 0; pos < PrivilegeType.getPathPriCount(); pos++) {
@@ -386,11 +407,6 @@ public class CNPhysicalPlanGenerator
     databaseMNode
         .getAsMNode()
         .setDatabaseSchema(ThriftConfigNodeSerDeUtils.deserializeTDatabaseSchema(inputStream));
-    long databaseTTL = -1L;
-    if (databaseMNode.getAsMNode().getDatabaseSchema().isSetTTL()) {
-      databaseTTL = databaseMNode.getAsMNode().getDatabaseSchema().getTTL();
-      databaseMNode.getAsMNode().getDatabaseSchema().unsetTTL();
-    }
 
     if (databaseMNode.getAsMNode().getSchemaTemplateId() >= 0 && !templateTable.isEmpty()) {
       templateNodeList.add((IConfigMNode) databaseMNode);
@@ -400,13 +416,6 @@ public class CNPhysicalPlanGenerator
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.CreateDatabase, databaseMNode.getAsMNode().getDatabaseSchema());
     planDeque.add(createDBPlan);
-    if (databaseTTL != -1L) {
-      final SetTTLPlan setTTLPlan =
-          new SetTTLPlan(
-              Arrays.asList(databaseMNode.getAsMNode().getDatabaseSchema().getName().split("\\.")),
-              databaseTTL);
-      planDeque.add(setTTLPlan);
-    }
     return databaseMNode.getAsMNode();
   }
 

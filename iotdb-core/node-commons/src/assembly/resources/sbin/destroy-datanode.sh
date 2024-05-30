@@ -32,7 +32,13 @@ fi
 nohup bash ${IOTDB_HOME}/sbin/stop-datanode.sh -f >/dev/null 2>&1 &
 
 rm -rf ${IOTDB_HOME}/data/datanode/ >/dev/null 2>&1 &
-IOTDB_DATANODE_CONFIG=${IOTDB_HOME}/conf/iotdb-datanode.properties
+
+if [ -f "${IOTDB_HOME}/conf/iotdb-system.properties" ]; then
+  IOTDB_DATANODE_CONFIG="${IOTDB_HOME}/conf/iotdb-system.properties"
+else
+  IOTDB_DATANODE_CONFIG="${IOTDB_HOME}/conf/iotdb-datanode.properties"
+fi
+
 dn_system_dir=$(echo $(grep '^dn_system_dir=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/system") | sed 's/.*=//')
 dn_data_dirs=$(echo $(grep '^dn_data_dirs=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/data") | sed 's/.*=//')
 dn_consensus_dir=$(echo $(grep '^dn_consensus_dir=' ${IOTDB_DATANODE_CONFIG} || echo "data/datanode/consensus") | sed 's/.*=//')

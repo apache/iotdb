@@ -104,7 +104,8 @@ public class GroupByLevelHelper {
       groupedOutputAggregationExpression = normalizeExpression(groupedOutputAggregationExpression);
       analyzeExpressionType(analysis, groupedOutputAggregationExpression);
 
-      rawAggregationExpression = ExpressionAnalyzer.normalizeExpression(rawAggregationExpression);
+      rawAggregationExpression =
+          ExpressionAnalyzer.normalizeExpression(rawAggregationExpression, false);
       analyzeExpressionType(analysis, rawAggregationExpression);
 
       groupedAggregationExpressionToRawExpressionsMap

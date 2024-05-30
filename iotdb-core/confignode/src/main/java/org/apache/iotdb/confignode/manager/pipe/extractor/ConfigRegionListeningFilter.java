@@ -98,9 +98,7 @@ public class ConfigRegionListeningFilter {
           Collections.singletonList(ConfigPhysicalPlanType.PipeDeactivateTemplate));
 
       OPTION_PLAN_MAP.put(
-          new PartialPath("schema.ttl"),
-          Collections.unmodifiableList(
-              Arrays.asList(ConfigPhysicalPlanType.SetTTL, ConfigPhysicalPlanType.PipeSetTTL)));
+          new PartialPath("schema.ttl"), Collections.singletonList(ConfigPhysicalPlanType.SetTTL));
 
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.role.create"),
