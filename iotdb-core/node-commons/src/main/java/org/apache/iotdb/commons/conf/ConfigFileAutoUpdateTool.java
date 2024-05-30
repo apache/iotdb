@@ -113,7 +113,11 @@ public class ConfigFileAutoUpdateTool {
       Thread.sleep(waitTimeMillsPerCheck);
     }
     logger.warn(
-        "Waiting for {} seconds to acquire configuration file update lock", totalWaitTime / 1000);
+        "Waiting for {} seconds to acquire configuration file update lock."
+            + " There may have been an unexpected interruption in the last"
+            + " configuration file update. Ignore temporary file {}",
+        totalWaitTime / 1000,
+        file.getName());
   }
 
   private void releaseFileLock(File file) throws IOException {
