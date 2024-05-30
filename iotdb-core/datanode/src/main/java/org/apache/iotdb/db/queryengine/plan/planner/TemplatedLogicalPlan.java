@@ -132,15 +132,19 @@ public class TemplatedLogicalPlan {
           .getExpressionTypes()
           .forEach(
               (key, value) ->
-                  context.getTypeProvider().setType(key.getNode().getOutputSymbol(), value));
+                  context
+                      .getTypeProvider()
+                      .setTreeModelType(key.getNode().getOutputSymbol(), value));
     }
 
     if (queryStatement.isOutputEndTime()) {
-      context.getTypeProvider().setType(END_TIME_EXPRESSION.getOutputSymbol(), TSDataType.INT64);
+      context
+          .getTypeProvider()
+          .setTreeModelType(END_TIME_EXPRESSION.getOutputSymbol(), TSDataType.INT64);
     }
     if (queryStatement.isCountTimeAggregation()) {
-      context.getTypeProvider().setType("count_time(*)", TSDataType.INT64);
-      context.getTypeProvider().setType("count_time(Time)", TSDataType.INT64);
+      context.getTypeProvider().setTreeModelType("count_time(*)", TSDataType.INT64);
+      context.getTypeProvider().setTreeModelType("count_time(Time)", TSDataType.INT64);
     }
 
     List<Integer> deviceToMeasurementIndexes =
@@ -454,7 +458,7 @@ public class TemplatedLogicalPlan {
               && !expression.getExpressionString().equals(ENDTIME)) {
             context
                 .getTypeProvider()
-                .setType(expression.getExpressionString(), getPreAnalyzedType(expression));
+                .setTreeModelType(expression.getExpressionString(), getPreAnalyzedType(expression));
           }
         });
   }
