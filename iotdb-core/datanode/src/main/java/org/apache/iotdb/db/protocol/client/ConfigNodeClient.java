@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
@@ -645,6 +646,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus clearCache() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.clearCache(), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus setConfiguration(TSetConfigurationReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.setConfiguration(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

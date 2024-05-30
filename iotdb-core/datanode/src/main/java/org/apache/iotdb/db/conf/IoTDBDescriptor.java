@@ -1846,8 +1846,11 @@ public class IoTDBDescriptor {
       throw new QueryProcessException(
           String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
-    ReloadLevel reloadLevel =
-        MetricConfigDescriptor.getInstance().loadHotProps(commonProperties, false);
+    reloadMetricProperties(commonProperties);
+  }
+
+  public void reloadMetricProperties(Properties properties) {
+    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(properties, false);
     LOGGER.info("Reload metric service in level {}", reloadLevel);
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
       IoTDBInternalReporter internalReporter;

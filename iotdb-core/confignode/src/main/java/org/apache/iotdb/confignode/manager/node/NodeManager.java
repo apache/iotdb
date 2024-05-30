@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
@@ -721,6 +722,21 @@ public class NodeManager {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     AsyncClientHandler<Object, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.CLEAR_CACHE, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseList();
+  }
+
+  public List<TSStatus> setConfiguration(TSetConfigurationReq req) {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    int nodeId = req.getNodeId();
+    if (nodeId >= 0 && dataNodeLocationMap.containsKey(nodeId)) {
+      TDataNodeLocation dataNodeLocation = dataNodeLocationMap.get(nodeId);
+      dataNodeLocationMap = new HashMap<>();
+      dataNodeLocationMap.put(nodeId, dataNodeLocation);
+    }
+    AsyncClientHandler<Object, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.SET_CONFIGURATION, req, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }

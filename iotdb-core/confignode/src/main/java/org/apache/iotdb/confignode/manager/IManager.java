@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -478,6 +479,9 @@ public interface IManager {
 
   /** Clear cache on all DataNodes. */
   TSStatus clearCache();
+
+  /** Set Configuration. */
+  TSStatus setConfiguration(TSetConfigurationReq req);
 
   /** Check and repair unsorted tsfile by compaction. */
   TSStatus startRepairData();

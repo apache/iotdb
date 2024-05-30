@@ -20,11 +20,13 @@ package org.apache.iotdb.db.storageengine;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -80,12 +82,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -597,6 +602,43 @@ public class StorageEngine implements IService {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     BloomFilterCache.getInstance().clear();
+  }
+
+  public TSStatus setConfiguration(TSetConfigurationReq req) {
+    Map<String, String> newConfigItems = req.getConfigs();
+    Properties properties = new Properties();
+    properties.putAll(newConfigItems);
+
+    if (newConfigItems.isEmpty()) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
+    URL configFileUrl = IoTDBDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
+    if (configFileUrl == null || !(new File(configFileUrl.getFile()).exists())) {
+      // configuration file not exist, update in mem
+      try {
+        IoTDBDescriptor.getInstance().loadHotModifiedProps(properties);
+        IoTDBDescriptor.getInstance().reloadMetricProperties(properties);
+      } catch (Exception e) {
+        return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      }
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
+
+    // 1. append new configuration properties to configuration file
+    File configFile = new File(configFileUrl.getFile());
+    try (FileWriter writer = new FileWriter(configFile, true)) {
+      properties.store(writer, null);
+    } catch (IOException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+
+    // 2. load hot modified properties
+    try {
+      IoTDBDescriptor.getInstance().loadHotModifiedProps();
+    } catch (Exception e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   /**

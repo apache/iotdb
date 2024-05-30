@@ -1327,6 +1327,8 @@ service IConfigNodeRPCService {
   /** Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint on all DataNodes */
   common.TSStatus clearCache()
 
+  common.TSStatus setConfiguration(common.TSetConfigurationReq req)
+
   /** Check and repair unsorted tsfile by compaction */
   common.TSStatus startRepairData()
 

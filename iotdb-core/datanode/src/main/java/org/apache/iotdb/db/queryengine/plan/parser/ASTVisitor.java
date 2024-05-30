@@ -196,6 +196,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
@@ -3241,6 +3242,25 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     ClearCacheStatement clearCacheStatement = new ClearCacheStatement(StatementType.CLEAR_CACHE);
     clearCacheStatement.setOnCluster(ctx.LOCAL() == null);
     return clearCacheStatement;
+  }
+
+  // Set Configuration
+
+  @Override
+  public Statement visitSetConfiguration(IoTDBSqlParser.SetConfigurationContext ctx) {
+    SetConfigurationStatement setConfigurationStatement =
+        new SetConfigurationStatement(StatementType.SET_CONFIGURATION);
+    int nodeId =
+        Integer.parseInt(ctx.INTEGER_LITERAL() == null ? "-1" : ctx.INTEGER_LITERAL().getText());
+    Map<String, String> configItems = new HashMap<>();
+    for (IoTDBSqlParser.SetConfigurationEntryContext entry : ctx.setConfigurationEntry()) {
+      String key = entry.STRING_LITERAL(0).getText().replace("\"", "");
+      String value = entry.STRING_LITERAL(1).getText().replace("\"", "");
+      configItems.put(key, value);
+    }
+    setConfigurationStatement.setNodeId(nodeId);
+    setConfigurationStatement.setConfigItems(configItems);
+    return setConfigurationStatement;
   }
 
   // Start Repair Data
