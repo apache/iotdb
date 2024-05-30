@@ -106,7 +106,7 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
       AsyncMethodCallback<TNotifyPeerToCreateConsensusPipeResp> resultHandler)
       throws TException {
     ConsensusGroupId groupId =
-        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.targetPeerConsensusGroupId);
     PipeConsensusServerImpl impl = pipeConsensus.getImpl(groupId);
     if (impl == null) {
       String message =
@@ -140,7 +140,7 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
       AsyncMethodCallback<TNotifyPeerToDropConsensusPipeResp> resultHandler)
       throws TException {
     ConsensusGroupId groupId =
-        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.targetPeerConsensusGroupId);
     PipeConsensusServerImpl impl = pipeConsensus.getImpl(groupId);
     if (impl == null) {
       String message =

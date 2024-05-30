@@ -331,7 +331,6 @@ public class PipeConsensusServerImpl {
         TNotifyPeerToCreateConsensusPipeResp resp =
             client.notifyPeerToCreateConsensusPipe(
                 new TNotifyPeerToCreateConsensusPipeReq(
-                    thisNode.getGroupId().convertToTConsensusGroupId(),
                     targetPeer.getGroupId().convertToTConsensusGroupId(),
                     targetPeer.getEndpoint(),
                     targetPeer.getNodeId()));
@@ -377,7 +376,6 @@ public class PipeConsensusServerImpl {
         TNotifyPeerToDropConsensusPipeResp resp =
             client.notifyPeerToDropConsensusPipe(
                 new TNotifyPeerToDropConsensusPipeReq(
-                    thisNode.getGroupId().convertToTConsensusGroupId(),
                     targetPeer.getGroupId().convertToTConsensusGroupId(),
                     targetPeer.getEndpoint(),
                     targetPeer.getNodeId()));

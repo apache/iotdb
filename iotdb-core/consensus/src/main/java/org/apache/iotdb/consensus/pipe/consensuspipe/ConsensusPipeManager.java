@@ -84,16 +84,6 @@ public class ConsensusPipeManager {
             .build());
   }
 
-  public void startConsensusPipe(Peer senderPeer, Peer receiverPeer) throws Exception {
-    ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
-    dispatcher.startPipe(consensusPipeName.toString());
-  }
-
-  public void stopConsensusPipe(Peer senderPeer, Peer receiverPeer) throws Exception {
-    ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
-    dispatcher.stopPipe(consensusPipeName.toString());
-  }
-
   public void dropConsensusPipe(Peer senderPeer, Peer receiverPeer) throws Exception {
     ConsensusPipeName consensusPipeName = new ConsensusPipeName(senderPeer, receiverPeer);
     dispatcher.dropPipe(consensusPipeName);

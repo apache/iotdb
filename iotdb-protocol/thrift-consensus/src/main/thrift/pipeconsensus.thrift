@@ -58,10 +58,9 @@ struct TSetActiveResp {
 }
 
 struct TNotifyPeerToCreateConsensusPipeReq {
-  1: required common.TConsensusGroupId consensusGroupId
-  2: required common.TConsensusGroupId targetPeerConsensusGroupId
-  3: required common.TEndPoint targetPeerEndPoint
-  4: required i32 targetPeerNodeId
+  1: required common.TConsensusGroupId targetPeerConsensusGroupId
+  2: required common.TEndPoint targetPeerEndPoint
+  3: required i32 targetPeerNodeId
 }
 
 struct TNotifyPeerToCreateConsensusPipeResp {
@@ -69,10 +68,9 @@ struct TNotifyPeerToCreateConsensusPipeResp {
 }
 
 struct TNotifyPeerToDropConsensusPipeReq {
-  1: required common.TConsensusGroupId consensusGroupId
-  2: required common.TConsensusGroupId targetPeerConsensusGroupId
-  3: required common.TEndPoint targetPeerEndPoint
-  4: required i32 targetPeerNodeId
+  1: required common.TConsensusGroupId targetPeerConsensusGroupId
+  2: required common.TEndPoint targetPeerEndPoint
+  3: required i32 targetPeerNodeId
 }
 
 struct TNotifyPeerToDropConsensusPipeResp {
