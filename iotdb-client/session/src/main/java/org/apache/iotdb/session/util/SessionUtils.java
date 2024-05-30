@@ -28,12 +28,14 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -93,9 +95,11 @@ public class SessionUtils {
           res += 1;
           break;
         case INT32:
+        case DATE:
           res += Integer.BYTES;
           break;
         case INT64:
+        case TIMESTAMP:
           res += Long.BYTES;
           break;
         case FLOAT:
@@ -105,12 +109,17 @@ public class SessionUtils {
           res += Double.BYTES;
           break;
         case TEXT:
+        case STRING:
           res += Integer.BYTES;
           if (values.get(i) instanceof Binary) {
             res += ((Binary) values.get(i)).getValues().length;
           } else {
             res += ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET).length;
           }
+          break;
+        case BLOB:
+          res += Integer.BYTES;
+          res += ((Binary) values.get(i)).getValues().length;
           break;
         default:
           throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
@@ -142,7 +151,12 @@ public class SessionUtils {
         case INT32:
           ReadWriteIOUtils.write((Integer) values.get(i), buffer);
           break;
+        case DATE:
+          ReadWriteIOUtils.write(
+              DateUtils.parseDateExpressionToInt((LocalDate) values.get(i)), buffer);
+          break;
         case INT64:
+        case TIMESTAMP:
           ReadWriteIOUtils.write((Long) values.get(i), buffer);
           break;
         case FLOAT:
@@ -152,12 +166,18 @@ public class SessionUtils {
           ReadWriteIOUtils.write((Double) values.get(i), buffer);
           break;
         case TEXT:
+        case STRING:
           byte[] bytes;
           if (values.get(i) instanceof Binary) {
             bytes = ((Binary) values.get(i)).getValues();
           } else {
             bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
           }
+          ReadWriteIOUtils.write(bytes.length, buffer);
+          buffer.put(bytes);
+          break;
+        case BLOB:
+          bytes = ((Binary) values.get(i)).getValues();
           ReadWriteIOUtils.write(bytes.length, buffer);
           buffer.put(bytes);
           break;
@@ -190,6 +210,7 @@ public class SessionUtils {
         }
         break;
       case INT64:
+      case TIMESTAMP:
         long[] longValues = (long[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
           if (tablet.bitMaps == null
@@ -238,10 +259,18 @@ public class SessionUtils {
         }
         break;
       case TEXT:
+      case STRING:
+      case BLOB:
         Binary[] binaryValues = (Binary[]) tablet.values[i];
         for (int index = 0; index < tablet.rowSize; index++) {
           valueBuffer.putInt(binaryValues[index].getLength());
           valueBuffer.put(binaryValues[index].getValues());
+        }
+        break;
+      case DATE:
+        LocalDate[] dateValues = (LocalDate[]) tablet.values[i];
+        for (int index = 0; index < tablet.rowSize; index++) {
+          valueBuffer.putInt(DateUtils.parseDateExpressionToInt(dateValues[index]));
         }
         break;
       default:

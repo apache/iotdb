@@ -85,8 +85,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment(3, 3, 180);
     receiverEnv.initClusterEnvironment(3, 3, 180);
@@ -915,8 +915,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1(time, s1) values (-123, 3)",
-              "insert into root.db.d1(time, s1) values (now(), 3)",
+              // Test the correctness of insertRowsNode transmission
+              "insert into root.db.d1(time, s1) values (-122, 3)",
+              "insert into root.db.d1(time, s1) values (-123, 3), (now(), 3)",
               "flush"))) {
         return;
       }
@@ -925,7 +926,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
-          Collections.singleton("5,"));
+          Collections.singleton("6,"));
     }
   }
 }

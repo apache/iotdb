@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 
 public class MaxByAccumulator extends MaxMinByBaseAccumulator {
   protected MaxByAccumulator(TSDataType xDataType, TSDataType yDataType) {
@@ -44,5 +45,10 @@ public class MaxByAccumulator extends MaxMinByBaseAccumulator {
   @Override
   protected boolean check(double yValue, double yExtremeValue) {
     return yValue > yExtremeValue;
+  }
+
+  @Override
+  protected boolean check(Binary yValue, Binary yExtremeValue) {
+    return yValue.compareTo(yExtremeValue) > 0;
   }
 }

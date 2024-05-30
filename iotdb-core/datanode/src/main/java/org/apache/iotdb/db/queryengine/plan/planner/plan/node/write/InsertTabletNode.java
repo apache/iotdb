@@ -317,12 +317,15 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       if (dataTypes[i] != null) {
         switch (dataTypes[i]) {
           case TEXT:
+          case BLOB:
+          case STRING:
             values[i] = new Binary[rowSize];
             break;
           case FLOAT:
             values[i] = new float[rowSize];
             break;
           case INT32:
+          case DATE:
             values[i] = new int[rowSize];
             break;
           case INT64:
@@ -534,12 +537,14 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   private void serializeColumn(TSDataType dataType, Object column, ByteBuffer buffer) {
     switch (dataType) {
       case INT32:
+      case DATE:
         int[] intValues = (int[]) column;
         for (int j = 0; j < rowCount; j++) {
           ReadWriteIOUtils.write(intValues[j], buffer);
         }
         break;
       case INT64:
+      case TIMESTAMP:
         long[] longValues = (long[]) column;
         for (int j = 0; j < rowCount; j++) {
           ReadWriteIOUtils.write(longValues[j], buffer);
@@ -564,6 +569,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         }
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = 0; j < rowCount; j++) {
           ReadWriteIOUtils.write(binaryValues[j], buffer);
@@ -578,12 +585,14 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       throws IOException {
     switch (dataType) {
       case INT32:
+      case DATE:
         int[] intValues = (int[]) column;
         for (int j = 0; j < rowCount; j++) {
           ReadWriteIOUtils.write(intValues[j], stream);
         }
         break;
       case INT64:
+      case TIMESTAMP:
         long[] longValues = (long[]) column;
         for (int j = 0; j < rowCount; j++) {
           ReadWriteIOUtils.write(longValues[j], stream);
@@ -608,6 +617,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         }
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = 0; j < rowCount; j++) {
           ReadWriteIOUtils.write(binaryValues[j], stream);
@@ -722,9 +733,11 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     int size = 0;
     switch (dataType) {
       case INT32:
+      case DATE:
         size += Integer.BYTES * (end - start);
         break;
       case INT64:
+      case TIMESTAMP:
         size += Long.BYTES * (end - start);
         break;
       case FLOAT:
@@ -737,6 +750,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         size += Byte.BYTES * (end - start);
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = start; j < end; j++) {
           size += ReadWriteIOUtils.sizeToWrite(binaryValues[j]);
@@ -822,12 +837,14 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       TSDataType dataType, Object column, IWALByteBufferView buffer, int start, int end) {
     switch (dataType) {
       case INT32:
+      case DATE:
         int[] intValues = (int[]) column;
         for (int j = start; j < end; j++) {
           buffer.putInt(intValues[j]);
         }
         break;
       case INT64:
+      case TIMESTAMP:
         long[] longValues = (long[]) column;
         for (int j = start; j < end; j++) {
           buffer.putLong(longValues[j]);
@@ -852,6 +869,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         }
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) column;
         for (int j = start; j < end; j++) {
           buffer.putInt(binaryValues[j].getLength());
@@ -977,11 +996,13 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       if (dataTypes[i] != null) {
         switch (dataTypes[i]) {
           case INT32:
+          case DATE:
             if (!Arrays.equals((int[]) this.columns[i], (int[]) columns[i])) {
               return false;
             }
             break;
           case INT64:
+          case TIMESTAMP:
             if (!Arrays.equals((long[]) this.columns[i], (long[]) columns[i])) {
               return false;
             }
@@ -1002,6 +1023,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
             }
             break;
           case TEXT:
+          case BLOB:
+          case STRING:
             if (!Arrays.equals((Binary[]) this.columns[i], (Binary[]) columns[i])) {
               return false;
             }
@@ -1046,10 +1069,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     TsPrimitiveType value;
     switch (dataTypes[measurementIndex]) {
       case INT32:
+      case DATE:
         int[] intValues = (int[]) columns[measurementIndex];
         value = new TsPrimitiveType.TsInt(intValues[lastIdx]);
         break;
       case INT64:
+      case TIMESTAMP:
         long[] longValues = (long[]) columns[measurementIndex];
         value = new TsPrimitiveType.TsLong(longValues[lastIdx]);
         break;
@@ -1066,6 +1091,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         value = new TsPrimitiveType.TsBoolean(boolValues[lastIdx]);
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) columns[measurementIndex];
         value = new TsPrimitiveType.TsBinary(binaryValues[lastIdx]);
         break;

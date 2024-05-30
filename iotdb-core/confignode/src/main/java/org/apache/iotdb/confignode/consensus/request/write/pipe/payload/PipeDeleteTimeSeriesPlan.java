@@ -38,9 +38,8 @@ public class PipeDeleteTimeSeriesPlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.PipeDeleteTimeSeries);
   }
 
-  public PipeDeleteTimeSeriesPlan(ByteBuffer patternTreeBytes) {
+  public PipeDeleteTimeSeriesPlan(final ByteBuffer patternTreeBytes) {
     super(ConfigPhysicalPlanType.PipeDeleteTimeSeries);
-    patternTreeBytes.flip();
     this.patternTreeBytes = patternTreeBytes;
   }
 
@@ -49,25 +48,25 @@ public class PipeDeleteTimeSeriesPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
+  protected void serializeImpl(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(patternTreeBytes, stream);
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
     patternTreeBytes = ByteBuffer.wrap(ReadWriteIOUtils.readBinary(buffer).getValues());
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeDeleteTimeSeriesPlan that = (PipeDeleteTimeSeriesPlan) obj;
+    final PipeDeleteTimeSeriesPlan that = (PipeDeleteTimeSeriesPlan) obj;
     return Arrays.equals(patternTreeBytes.array(), that.patternTreeBytes.array());
   }
 

@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -249,6 +250,26 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
 
   public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    final DeleteDataNode that = (DeleteDataNode) obj;
+    return this.getPlanNodeId().equals(that.getPlanNodeId())
+        && Objects.equals(this.pathList, that.pathList)
+        && Objects.equals(this.deleteStartTime, that.deleteStartTime)
+        && Objects.equals(this.deleteEndTime, that.deleteEndTime);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getPlanNodeId(), pathList, deleteStartTime, deleteEndTime);
   }
 
   public String toString() {

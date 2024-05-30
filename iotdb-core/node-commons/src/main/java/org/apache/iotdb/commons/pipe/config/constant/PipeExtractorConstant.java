@@ -32,6 +32,12 @@ public class PipeExtractorConstant {
   public static final String SOURCE_EXCLUSION_KEY = "source.inclusion.exclusion";
   public static final String EXTRACTOR_EXCLUSION_DEFAULT_VALUE = "";
 
+  public static final String EXTRACTOR_MODE_KEY = "extractor.mode";
+  public static final String SOURCE_MODE_KEY = "source.mode";
+  public static final String EXTRACTOR_MODE_QUERY_VALUE = "query";
+  public static final String EXTRACTOR_MODE_SUBSCRIBE_VALUE = "subscribe";
+  public static final String EXTRACTOR_MODE_DEFAULT_VALUE = EXTRACTOR_MODE_SUBSCRIBE_VALUE;
+
   public static final String EXTRACTOR_PATTERN_KEY = "extractor.pattern";
   public static final String SOURCE_PATTERN_KEY = "source.pattern";
   public static final String EXTRACTOR_PATH_KEY = "extractor.path";
@@ -73,6 +79,8 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_REALTIME_MODE_FORCED_LOG_VALUE = "forced-log";
   public static final String EXTRACTOR_REALTIME_MODE_STREAM_MODE_VALUE = "stream";
   public static final String EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE = "batch";
+  public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_KEY = "extractor.realtime.loose-range";
+  public static final String SOURCE_REALTIME_LOOSE_RANGE_KEY = "source.realtime.loose-range";
 
   public static final String EXTRACTOR_START_TIME_KEY = "extractor.start-time";
   public static final String SOURCE_START_TIME_KEY = "source.start-time";

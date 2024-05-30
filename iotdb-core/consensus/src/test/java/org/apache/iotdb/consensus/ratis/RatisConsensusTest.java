@@ -276,6 +276,21 @@ public class RatisConsensusTest {
   }
 
   @Test
+  public void forceSnapshot() throws Exception {
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
+
+    doConsensus(0, 1, 1); // not enough logs to auto trigger snapshot
+    try {
+      servers.get(0).triggerSnapshot(group.getGroupId(), true);
+    } catch (ConsensusException e) {
+      Assert.fail(e.getMessage());
+    }
+    Assert.assertTrue(miniCluster.hasSnapshot(group.getGroupId(), 0));
+  }
+
+  @Test
   public void parsingAndConstructIDs() throws Exception {
     servers.get(0).createLocalPeer(gid, peers.subList(0, 1));
     doConsensus(0, 10, 10);

@@ -20,28 +20,20 @@
 package org.apache.iotdb.rpc.subscription.payload.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.rpc.subscription.payload.EnrichedTablets;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
-import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.PublicBAOS;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
-  private transient List<EnrichedTablets> enrichedTabletsList = new ArrayList<>();
+  private final transient List<SubscriptionPollResponse> responses = new ArrayList<>();
 
-  public List<EnrichedTablets> getEnrichedTabletsList() {
-    return enrichedTabletsList;
+  public List<SubscriptionPollResponse> getResponses() {
+    return responses;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -51,44 +43,27 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
    * server.
    */
   public static PipeSubscribePollResp toTPipeSubscribeResp(
-      TSStatus status, List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsWithByteBufferList) {
+      final TSStatus status, final List<ByteBuffer> byteBuffers) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
-    resp.enrichedTabletsList =
-        enrichedTabletsWithByteBufferList.stream().map(Pair::getRight).collect(Collectors.toList());
+    // resp.events = events;
 
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
-    resp.type = PipeSubscribeResponseType.POLL_TABLETS.getType();
-    try {
-      resp.body = serializeEnrichedTabletsWithByteBufferList(enrichedTabletsWithByteBufferList);
-    } catch (IOException e) {
-      resp.status = RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_POLL_ERROR, e.getMessage());
-    }
-
-    return resp;
-  }
-
-  public static PipeSubscribePollResp directToTPipeSubscribeResp(
-      TSStatus status, List<ByteBuffer> byteBuffers) {
-    final PipeSubscribePollResp resp = new PipeSubscribePollResp();
-
-    resp.status = status;
-    resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
-    resp.type = PipeSubscribeResponseType.POLL_TABLETS.getType();
+    resp.type = PipeSubscribeResponseType.ACK.getType();
     resp.body = byteBuffers;
 
     return resp;
   }
 
   /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
-  public static PipeSubscribePollResp fromTPipeSubscribeResp(TPipeSubscribeResp pollResp) {
+  public static PipeSubscribePollResp fromTPipeSubscribeResp(final TPipeSubscribeResp pollResp) {
     final PipeSubscribePollResp resp = new PipeSubscribePollResp();
 
     if (Objects.nonNull(pollResp.body)) {
-      for (ByteBuffer byteBuffer : pollResp.body) {
+      for (final ByteBuffer byteBuffer : pollResp.body) {
         if (Objects.nonNull(byteBuffer) && byteBuffer.hasRemaining()) {
-          resp.enrichedTabletsList.add(EnrichedTablets.deserialize(byteBuffer));
+          resp.responses.add(SubscriptionPollResponse.deserialize(byteBuffer));
         }
       }
     }
@@ -101,53 +76,18 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
     return resp;
   }
 
-  /////////////////////////////// Utility ///////////////////////////////
-
-  public static List<ByteBuffer> serializeEnrichedTabletsList(
-      List<EnrichedTablets> enrichedTabletsList) throws IOException {
-    List<ByteBuffer> byteBufferList = new ArrayList<>();
-    for (EnrichedTablets enrichedTablets : enrichedTabletsList) {
-      byteBufferList.add(serializeEnrichedTablets(enrichedTablets));
-    }
-    return byteBufferList;
-  }
-
-  public static List<ByteBuffer> serializeEnrichedTabletsWithByteBufferList(
-      List<Pair<ByteBuffer, EnrichedTablets>> enrichedTabletsWithByteBufferList)
-      throws IOException {
-    List<ByteBuffer> byteBufferList = new ArrayList<>();
-    for (Pair<ByteBuffer, EnrichedTablets> enrichedTabletsWithByteBuffer :
-        enrichedTabletsWithByteBufferList) {
-      if (Objects.nonNull(enrichedTabletsWithByteBuffer.getLeft())) {
-        byteBufferList.add(enrichedTabletsWithByteBuffer.getLeft());
-      } else {
-        byteBufferList.add(serializeEnrichedTablets(enrichedTabletsWithByteBuffer.getRight()));
-      }
-    }
-    return byteBufferList;
-  }
-
-  public static ByteBuffer serializeEnrichedTablets(EnrichedTablets enrichedTablets)
-      throws IOException {
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      enrichedTablets.serialize(outputStream);
-      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    }
-  }
-
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeSubscribePollResp that = (PipeSubscribePollResp) obj;
-    return Objects.equals(this.enrichedTabletsList, that.enrichedTabletsList)
+    final PipeSubscribePollResp that = (PipeSubscribePollResp) obj;
+    return Objects.equals(this.responses, that.responses)
         && Objects.equals(this.status, that.status)
         && this.version == that.version
         && this.type == that.type
@@ -156,6 +96,6 @@ public class PipeSubscribePollResp extends TPipeSubscribeResp {
 
   @Override
   public int hashCode() {
-    return Objects.hash(enrichedTabletsList, status, version, type, body);
+    return Objects.hash(responses, status, version, type, body);
   }
 }

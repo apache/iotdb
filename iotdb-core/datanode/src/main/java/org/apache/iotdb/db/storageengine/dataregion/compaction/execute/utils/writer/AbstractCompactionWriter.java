@@ -138,6 +138,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
       switch (chunkWriterImpl.getDataType()) {
         case TEXT:
+        case STRING:
+        case BLOB:
           chunkWriterImpl.write(timestamp, value.getBinary());
           break;
         case DOUBLE:
@@ -147,9 +149,11 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
           chunkWriterImpl.write(timestamp, value.getBoolean());
           break;
         case INT64:
+        case TIMESTAMP:
           chunkWriterImpl.write(timestamp, value.getLong());
           break;
         case INT32:
+        case DATE:
           chunkWriterImpl.write(timestamp, value.getInt());
           break;
         case FLOAT:

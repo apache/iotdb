@@ -1,0 +1,129 @@
+name: Multi-Language Client
+on:
+  push:
+    branches:
+      - master
+      - "rel/*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  pull_request:
+    branches:
+      - master
+      - "rel/*"
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+
+jobs:
+  cpp:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os}}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install CPP Dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: sudo apt-get update && sudo apt-get install libboost-all-dev
+      - name: Install CPP Dependencies (Mac)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          brew install boost
+          brew install bison
+          echo 'export PATH="/opt/homebrew/opt/bison/bin:$PATH"' >> ~/.bash_profile
+          source ~/.bash_profile && export LDFLAGS="-L/opt/homebrew/opt/bison/lib"
+      - name: Install CPP Dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install winflexbison3
+          choco install boost-msvc-14.3 --version=1.84.0.1
+          echo C:\\local\\boost_1_84_0 >> $env:GITHUB_PATH
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Build IoTDB server and client
+        shell: bash
+        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
+        # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
+        # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
+        run: ./mvnw clean install -P with-cpp -pl distribution,example/client-cpp-example -am -DskipTests
+      - name: Test with Maven
+        shell: bash
+        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
+        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpp-IT-${{ runner.os }}
+          path: iotdb-client/client-cpp/target/build/test/Testing
+          retention-days: 1
+
+  go:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{secrets.GITHUB_TOKEN}}
+          submodules: recursive
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Compile IoTDB Server
+        run: mvn clean package -pl distribution -am -DskipTests
+      - name: Integration test
+        shell: bash
+        run: |
+          cd iotdb-client/client-go/ && make e2e_test_for_parent_git_repo e2e_test_clean_for_parent_git_repo
+
+  python:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Build IoTDB server distribution zip and python client
+        run: mvn -B clean install -pl distribution,iotdb-client/client-py -am -DskipTests
+      - name: Build IoTDB server docker image
+        run: |
+          docker build . -f docker/src/main/Dockerfile-1c1d -t "iotdb:dev"
+          docker images
+      - name: Install IoTDB python client requirements
+        run: pip3 install -r iotdb-client/client-py/requirements_dev.txt
+      - name: Check code style
+        shell: bash
+        run: black iotdb-client/client-py/ --check --diff
+      - name: Integration test
+        shell: bash
+        run: |
+          cd iotdb-client/client-py/ && pytest .
+
+

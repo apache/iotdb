@@ -61,7 +61,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   }
 
   @Override
-  public void register(PipeRealtimeDataRegionExtractor extractor) {
+  public void register(final PipeRealtimeDataRegionExtractor extractor) {
     lock.writeLock().lock();
     try {
       extractors.add(extractor);
@@ -72,7 +72,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   }
 
   @Override
-  public void deregister(PipeRealtimeDataRegionExtractor extractor) {
+  public void deregister(final PipeRealtimeDataRegionExtractor extractor) {
     lock.writeLock().lock();
     try {
       extractors.remove(extractor);
@@ -93,7 +93,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   }
 
   @Override
-  public Set<PipeRealtimeDataRegionExtractor> match(PipeRealtimeEvent event) {
+  public Set<PipeRealtimeDataRegionExtractor> match(final PipeRealtimeEvent event) {
     final Set<PipeRealtimeDataRegionExtractor> matchedExtractors = new HashSet<>();
 
     lock.readLock().lock();
@@ -176,10 +176,10 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     return matchedExtractors;
   }
 
-  protected Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDevice(String device) {
+  protected Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDevice(final String device) {
     final Set<PipeRealtimeDataRegionExtractor> filteredExtractors = new HashSet<>();
 
-    for (PipeRealtimeDataRegionExtractor extractor : extractors) {
+    for (final PipeRealtimeDataRegionExtractor extractor : extractors) {
       // Return if the extractor only extract deletion
       if (!extractor.shouldExtractInsertion()) {
         continue;

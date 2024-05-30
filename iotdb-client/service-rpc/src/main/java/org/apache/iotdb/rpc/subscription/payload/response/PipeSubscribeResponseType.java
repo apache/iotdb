@@ -25,12 +25,11 @@ import java.util.Map;
 
 public enum PipeSubscribeResponseType {
   ACK((short) 0),
-  POLL_TABLETS((short) 1),
   ;
 
   private final short type;
 
-  PipeSubscribeResponseType(short type) {
+  PipeSubscribeResponseType(final short type) {
     this.type = type;
   }
 
@@ -42,14 +41,14 @@ public enum PipeSubscribeResponseType {
       Arrays.stream(PipeSubscribeResponseType.values())
           .collect(
               HashMap::new,
-              (typeMap, pipeRequestType) -> typeMap.put(pipeRequestType.getType(), pipeRequestType),
+              (typeMap, responseType) -> typeMap.put(responseType.getType(), responseType),
               HashMap::putAll);
 
-  public static boolean isValidatedRequestType(short type) {
+  public static boolean isValidatedResponseType(final short type) {
     return TYPE_MAP.containsKey(type);
   }
 
-  public static PipeSubscribeResponseType valueOf(short type) {
+  public static PipeSubscribeResponseType valueOf(final short type) {
     return TYPE_MAP.get(type);
   }
 }

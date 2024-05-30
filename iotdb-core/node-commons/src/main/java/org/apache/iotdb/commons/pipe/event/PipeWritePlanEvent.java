@@ -23,12 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public abstract class PipeWritePlanEvent extends EnrichedEvent implements SerializableEvent {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeWritePlanEvent.class);
 
   protected boolean isGeneratedByPipe;
 
@@ -43,13 +38,13 @@ public abstract class PipeWritePlanEvent extends EnrichedEvent implements Serial
     this.isGeneratedByPipe = isGeneratedByPipe;
   }
 
-  /** This event doesn't share resources with other events. */
+  /** {@link PipeWritePlanEvent} does not share resources with other events. */
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     return true;
   }
 
-  /** This event doesn't share resources with other events. */
+  /** This {@link PipeWritePlanEvent} does not share resources with other events. */
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     return true;
