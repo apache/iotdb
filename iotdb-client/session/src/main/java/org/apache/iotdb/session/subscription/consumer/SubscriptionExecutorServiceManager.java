@@ -22,9 +22,6 @@ package org.apache.iotdb.session.subscription.consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -44,16 +41,6 @@ final class SubscriptionExecutorServiceManager {
       "SubscriptionUpstreamDataFlowExecutor";
   private static final String DOWNSTREAM_DATA_FLOW_EXECUTOR_NAME =
       "SubscriptionDownstreamDataFlowExecutor";
-
-  private static final Map<String, SubscriptionExecutorService> EXECUTOR_NAME_TO_EXECUTOR =
-      Collections.unmodifiableMap(
-          new HashMap<String, SubscriptionExecutorService>() {
-            {
-              put(CONTROL_FLOW_EXECUTOR_NAME, CONTROL_FLOW_EXECUTOR);
-              put(UPSTREAM_DATA_FLOW_EXECUTOR_NAME, UPSTREAM_DATA_FLOW_EXECUTOR);
-              put(DOWNSTREAM_DATA_FLOW_EXECUTOR_NAME, DOWNSTREAM_DATA_FLOW_EXECUTOR);
-            }
-          });
 
   /**
    * Control Flow Executor: execute heartbeat worker and endpoints syncer for {@link
@@ -181,12 +168,12 @@ final class SubscriptionExecutorServiceManager {
     }
 
     boolean isShutdown() {
-      return Objects.isNull(executor);
+      return Objects.isNull(this.executor);
     }
 
     void setCorePoolSize(final int corePoolSize) {
       if (!isShutdown()) {
-        synchronized (EXECUTOR_NAME_TO_EXECUTOR.get(name)) {
+        synchronized (this) {
           if (!isShutdown()) {
             this.corePoolSize = corePoolSize;
             return;
@@ -194,21 +181,23 @@ final class SubscriptionExecutorServiceManager {
         }
       }
       LOGGER.warn(
-          "{} has been launched, set core pool size to {} will be ignored", name, corePoolSize);
+          "{} has been launched, set core pool size to {} will be ignored",
+          this.name,
+          corePoolSize);
     }
 
     void launchIfNeeded() {
       if (isShutdown()) {
-        synchronized (EXECUTOR_NAME_TO_EXECUTOR.get(name)) {
+        synchronized (this) {
           if (isShutdown()) {
-            LOGGER.info("Launching {} with core pool size {}...", name, corePoolSize);
+            LOGGER.info("Launching {} with core pool size {}...", this.name, this.corePoolSize);
 
-            executor =
+            this.executor =
                 Executors.newScheduledThreadPool(
-                    corePoolSize,
+                    this.corePoolSize,
                     r -> {
                       final Thread t =
-                          new Thread(Thread.currentThread().getThreadGroup(), r, name, 0);
+                          new Thread(Thread.currentThread().getThreadGroup(), r, this.name, 0);
                       if (!t.isDaemon()) {
                         t.setDaemon(true);
                       }
@@ -224,30 +213,31 @@ final class SubscriptionExecutorServiceManager {
 
     void shutdown() {
       if (!isShutdown()) {
-        synchronized (EXECUTOR_NAME_TO_EXECUTOR.get(name)) {
+        synchronized (this) {
           if (!isShutdown()) {
-            LOGGER.info("Shutting down {}...", name);
+            LOGGER.info("Shutting down {}...", this.name);
 
-            executor.shutdown();
+            this.executor.shutdown();
             try {
-              if (!executor.awaitTermination(AWAIT_TERMINATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-                executor.shutdownNow();
+              if (!this.executor.awaitTermination(
+                  AWAIT_TERMINATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                this.executor.shutdownNow();
                 LOGGER.warn(
                     "Interrupt the worker, which may cause some task inconsistent. Please check the biz logs.");
-                if (!executor.awaitTermination(
+                if (!this.executor.awaitTermination(
                     AWAIT_TERMINATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
                   LOGGER.error(
                       "Thread pool can't be shutdown even with interrupting worker threads, which may cause some task inconsistent. Please check the biz logs.");
                 }
               }
             } catch (final InterruptedException e) {
-              executor.shutdownNow();
+              this.executor.shutdownNow();
               LOGGER.error(
                   "The current thread is interrupted when it is trying to stop the worker threads. This may leave an inconsistent state. Please check the biz logs.");
               Thread.currentThread().interrupt();
             }
 
-            executor = null;
+            this.executor = null;
           }
         }
       }
@@ -257,27 +247,27 @@ final class SubscriptionExecutorServiceManager {
     ScheduledFuture<?> scheduleWithFixedDelay(
         final Runnable task, final long initialDelay, final long delay, final TimeUnit unit) {
       if (!isShutdown()) {
-        synchronized (EXECUTOR_NAME_TO_EXECUTOR.get(name)) {
+        synchronized (this) {
           if (!isShutdown()) {
-            return executor.scheduleWithFixedDelay(task, initialDelay, delay, unit);
+            return this.executor.scheduleWithFixedDelay(task, initialDelay, delay, unit);
           }
         }
       }
 
-      LOGGER.warn("{} has not been launched, ignore scheduleWithFixedDelay for task", name);
+      LOGGER.warn("{} has not been launched, ignore scheduleWithFixedDelay for task", this.name);
       return null;
     }
 
     Future<?> submit(final Runnable task) {
       if (!isShutdown()) {
-        synchronized (EXECUTOR_NAME_TO_EXECUTOR.get(name)) {
+        synchronized (this) {
           if (!isShutdown()) {
-            return executor.submit(task);
+            return this.executor.submit(task);
           }
         }
       }
 
-      LOGGER.warn("{} has not been launched, ignore submit task", name);
+      LOGGER.warn("{} has not been launched, ignore submit task", this.name);
       return null;
     }
   }
