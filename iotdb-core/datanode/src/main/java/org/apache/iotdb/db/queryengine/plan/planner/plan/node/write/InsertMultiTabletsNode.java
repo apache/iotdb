@@ -257,6 +257,12 @@ public class InsertMultiTabletsNode extends InsertNode {
   }
 
   @Override
+  public void markAsGeneratedByRemoteConsensusLeader() {
+    super.markAsGeneratedByRemoteConsensusLeader();
+    insertTabletNodeList.forEach(InsertTabletNode::markAsGeneratedByRemoteConsensusLeader);
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;

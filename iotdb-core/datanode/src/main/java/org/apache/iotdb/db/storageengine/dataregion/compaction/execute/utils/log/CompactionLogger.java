@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.File;
@@ -32,6 +33,7 @@ public class CompactionLogger implements AutoCloseable {
   public static final String CROSS_COMPACTION_LOG_NAME_SUFFIX = ".cross-compaction.log";
   public static final String INNER_COMPACTION_LOG_NAME_SUFFIX = ".inner-compaction.log";
   public static final String INSERTION_COMPACTION_LOG_NAME_SUFFIX = ".insertion-compaction.log";
+  public static final String SETTLE_COMPACTION_LOG_NAME_SUFFIX = ".settle-compaction.log";
 
   public static final String STR_SOURCE_FILES = "source";
   public static final String STR_TARGET_FILES = "target";
@@ -84,6 +86,38 @@ public class CompactionLogger implements AutoCloseable {
     } else {
       return new File[0];
     }
+  }
+
+  public static File[] findCompactionLogs(CompactionTaskType type, File timePartitionDir) {
+    if (timePartitionDir.exists()) {
+      String logNameSuffix = getLogSuffix(type);
+      return timePartitionDir.listFiles((dir, name) -> name.endsWith(logNameSuffix));
+    } else {
+      return new File[0];
+    }
+  }
+
+  public static String getLogSuffix(CompactionTaskType type) {
+    String logNameSuffix = null;
+    switch (type) {
+      case INNER_SEQ:
+      case INNER_UNSEQ:
+      case REPAIR:
+        logNameSuffix = INNER_COMPACTION_LOG_NAME_SUFFIX;
+        break;
+      case CROSS:
+        logNameSuffix = CROSS_COMPACTION_LOG_NAME_SUFFIX;
+        break;
+      case INSERTION:
+        logNameSuffix = INSERTION_COMPACTION_LOG_NAME_SUFFIX;
+        break;
+      case SETTLE:
+        logNameSuffix = SETTLE_COMPACTION_LOG_NAME_SUFFIX;
+        break;
+      default:
+        break;
+    }
+    return logNameSuffix;
   }
 
   /**

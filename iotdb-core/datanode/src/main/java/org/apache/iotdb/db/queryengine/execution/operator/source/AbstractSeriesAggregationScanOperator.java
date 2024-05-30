@@ -68,6 +68,9 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   /** Time slice for one next call in total, shared by the inner methods of the next() method */
   private long leftRuntimeOfOneNextCall;
 
+  /** Some special data types(like BLOB) cannot use statistics. */
+  private final boolean canUseStatistics;
+
   @SuppressWarnings("squid:S107")
   protected AbstractSeriesAggregationScanOperator(
       PlanNodeId sourceId,
@@ -79,7 +82,8 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
       boolean ascending,
       boolean outputEndTime,
       GroupByTimeParameter groupByTimeParameter,
-      long maxReturnSize) {
+      long maxReturnSize,
+      boolean canUseStatistics) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.ascending = ascending;
@@ -93,6 +97,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
         (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() * 3;
     this.maxReturnSize = maxReturnSize;
     this.outputEndTime = outputEndTime;
+    this.canUseStatistics = canUseStatistics;
   }
 
   @Override
@@ -238,7 +243,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     // start stopwatch
     long start = System.nanoTime();
     while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextFile()) {
-      if (seriesScanUtil.canUseCurrentFileStatistics()) {
+      if (canUseStatistics && seriesScanUtil.canUseCurrentFileStatistics()) {
         Statistics fileTimeStatistics = seriesScanUtil.currentFileTimeStatistics();
         if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
@@ -279,7 +284,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     // start stopwatch
     long start = System.nanoTime();
     while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextChunk()) {
-      if (seriesScanUtil.canUseCurrentChunkStatistics()) {
+      if (canUseStatistics && seriesScanUtil.canUseCurrentChunkStatistics()) {
         Statistics chunkTimeStatistics = seriesScanUtil.currentChunkTimeStatistics();
         if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
@@ -321,7 +326,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     long start = System.nanoTime();
     try {
       while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextPage()) {
-        if (seriesScanUtil.canUseCurrentPageStatistics()) {
+        if (canUseStatistics && seriesScanUtil.canUseCurrentPageStatistics()) {
           Statistics pageTimeStatistics = seriesScanUtil.currentPageTimeStatistics();
           // There is no more eligible points in current time range
           if (pageTimeStatistics.getStartTime() > curTimeRange.getMax()) {

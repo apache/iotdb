@@ -53,7 +53,7 @@ public class IoTDBPipeAutoDropIT extends AbstractPipeDualAutoIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.history.terminate-pipe-on-all-consumed", "true");
+      extractorAttributes.put("extractor.mode", "query");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");

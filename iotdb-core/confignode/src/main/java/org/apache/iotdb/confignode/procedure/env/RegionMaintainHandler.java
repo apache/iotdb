@@ -27,7 +27,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
 import org.apache.iotdb.common.rpc.thrift.TRegionMigrateFailedType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
@@ -46,7 +45,6 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
-import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
@@ -224,7 +222,6 @@ public class RegionMaintainHandler {
 
     String storageGroup = configManager.getPartitionManager().getRegionStorageGroup(regionId);
     TCreatePeerReq req = new TCreatePeerReq(regionId, currentPeerNodes, storageGroup);
-    req.setTtl(getTTL(storageGroup));
 
     status =
         SyncDataNodeClientPool.getInstance()
@@ -437,30 +434,6 @@ public class RegionMaintainHandler {
     configManager
         .getLoadManager()
         .forceUpdateRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
-  }
-
-  public long getTTL(String database) {
-    long ttl = Long.MAX_VALUE;
-    try {
-      ttl = configManager.getClusterSchemaManager().getDatabaseSchemaByName(database).getTTL();
-    } catch (DatabaseNotExistsException e) {
-      LOGGER.warn("Cannot find out the database {}, ttl will be set to Long.MAX_VALUE", database);
-    }
-    return ttl;
-  }
-
-  public void setTTL(TConsensusGroupId regionId, TDataNodeLocation dataNodeLocation) {
-    String storageGroup = configManager.getPartitionManager().getRegionStorageGroup(regionId);
-
-    AsyncClientHandler<TSetTTLReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.SET_TTL);
-
-    TSetTTLReq setTTLReq =
-        new TSetTTLReq(Collections.singletonList(storageGroup), getTTL(storageGroup));
-    clientHandler.putRequest(dataNodeLocation.getDataNodeId(), setTTLReq);
-    clientHandler.putDataNodeLocation(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
   }
 
   public void removeRegionLocation(

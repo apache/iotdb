@@ -50,12 +50,14 @@ public class InTransformer extends UnaryTransformer {
   private void initTypedSet(Set<String> values) {
     switch (layerPointReaderDataType) {
       case INT32:
+      case DATE:
         intSet = new HashSet<>();
         for (String value : values) {
           intSet.add(Integer.valueOf(value));
         }
         break;
       case INT64:
+      case TIMESTAMP:
         longSet = new HashSet<>();
         for (String value : values) {
           longSet.add(Long.valueOf(value));
@@ -80,6 +82,7 @@ public class InTransformer extends UnaryTransformer {
         }
         break;
       case TEXT:
+      case STRING:
         stringSet = values;
         break;
       default:
@@ -97,10 +100,12 @@ public class InTransformer extends UnaryTransformer {
   protected void transformAndCache() throws QueryProcessException, IOException {
     switch (layerPointReaderDataType) {
       case INT32:
+      case DATE:
         int intValue = layerPointReader.currentInt();
         cachedBoolean = satisfy.of(intValue);
         break;
       case INT64:
+      case TIMESTAMP:
         long longValue = layerPointReader.currentLong();
         cachedBoolean = satisfy.of(longValue);
         break;
@@ -117,6 +122,7 @@ public class InTransformer extends UnaryTransformer {
         cachedBoolean = satisfy.of(booleanValue);
         break;
       case TEXT:
+      case STRING:
         Binary binaryValue = layerPointReader.currentBinary();
         cachedBoolean = satisfy.of(binaryValue.getStringValue(TSFileConfig.STRING_CHARSET));
         break;

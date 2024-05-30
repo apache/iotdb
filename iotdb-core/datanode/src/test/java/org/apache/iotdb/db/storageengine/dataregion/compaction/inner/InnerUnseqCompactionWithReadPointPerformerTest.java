@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
@@ -371,7 +372,9 @@ public class InnerUnseqCompactionWithReadPointPerformerTest {
               performer.setSummary(new CompactionTaskSummary());
               performer.perform();
               CompactionUtils.moveTargetFile(
-                  Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
+                  Collections.singletonList(targetTsFileResource),
+                  CompactionTaskType.INNER_SEQ,
+                  COMPACTION_TEST_SG);
               CompactionUtils.combineModsInInnerCompaction(toMergeResources, targetTsFileResource);
               List<TsFileResource> targetTsFileResources = new ArrayList<>();
               targetTsFileResources.add(targetTsFileResource);

@@ -109,7 +109,11 @@ public class PipeHeartbeatScheduler {
             (dataNodeId, resp) ->
                 pipeHeartbeatParser.parseHeartbeat(
                     dataNodeId,
-                    new PipeHeartbeat(resp.getPipeMetaList(), resp.getPipeCompletedList())));
+                    new PipeHeartbeat(
+                        resp.getPipeMetaList(),
+                        resp.getPipeCompletedList(),
+                        resp.getPipeRemainingEventCountList(),
+                        resp.getPipeRemainingTimeList())));
 
     // config node heartbeat
     try {
@@ -117,7 +121,11 @@ public class PipeHeartbeatScheduler {
       PipeConfigNodeAgent.task().collectPipeMetaList(request, configNodeResp);
       pipeHeartbeatParser.parseHeartbeat(
           ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId(),
-          new PipeHeartbeat(configNodeResp.getPipeMetaList(), null));
+          new PipeHeartbeat(
+              configNodeResp.getPipeMetaList(),
+              null,
+              configNodeResp.getPipeRemainingEventCountList(),
+              configNodeResp.getPipeRemainingTimeList()));
     } catch (final Exception e) {
       LOGGER.warn("Failed to collect pipe meta list from config node task agent", e);
     }

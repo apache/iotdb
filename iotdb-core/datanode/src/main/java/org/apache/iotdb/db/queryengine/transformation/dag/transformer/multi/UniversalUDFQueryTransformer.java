@@ -77,9 +77,11 @@ public abstract class UniversalUDFQueryTransformer extends UDFQueryTransformer {
     } else {
       switch (tsDataType) {
         case INT32:
+        case DATE:
           cachedInt = layerPointReader.currentInt();
           break;
         case INT64:
+        case TIMESTAMP:
           cachedLong = layerPointReader.currentLong();
           break;
         case FLOAT:
@@ -92,6 +94,8 @@ public abstract class UniversalUDFQueryTransformer extends UDFQueryTransformer {
           cachedBoolean = layerPointReader.currentBoolean();
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           cachedBinary = layerPointReader.currentBinary();
           break;
         default:

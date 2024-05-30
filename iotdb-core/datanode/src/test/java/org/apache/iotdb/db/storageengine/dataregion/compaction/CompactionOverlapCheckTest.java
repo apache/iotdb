@@ -47,6 +47,8 @@ public class CompactionOverlapCheckTest extends AbstractCompactionTest {
       IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
   long initChunkPointNumLowerBound =
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+  boolean isEnableUnseqSpaceCompaction =
+      IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
 
   @Before
   public void setUp()
@@ -54,6 +56,7 @@ public class CompactionOverlapCheckTest extends AbstractCompactionTest {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setChunkSizeLowerBoundInCompaction(10240);
     IoTDBDescriptor.getInstance().getConfig().setChunkPointNumLowerBoundInCompaction(1000);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
   }
 
   @After
@@ -65,6 +68,9 @@ public class CompactionOverlapCheckTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setChunkPointNumLowerBoundInCompaction(initChunkPointNumLowerBound);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableUnseqSpaceCompaction(isEnableUnseqSpaceCompaction);
   }
 
   @Test

@@ -25,6 +25,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -38,12 +39,17 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -1119,6 +1125,64 @@ public class IoTDBSimpleQueryIT {
           Assert.assertEquals(1.1234f, r1.getDouble(2), 0.001);
         }
         Assert.assertEquals(3, r1.getMetaData().getColumnCount());
+      }
+
+    } catch (SQLException e) {
+      fail();
+    }
+  }
+
+  @Test
+  public void testNewDataType() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s4 WITH DATATYPE=DATE, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s5 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s6 WITH DATATYPE=BLOB, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s7 WITH DATATYPE=STRING, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
+      for (int i = 1; i <= 10; i++) {
+        statement.execute(
+            String.format(
+                "insert into root.sg1.d1(timestamp, s4, s5, s6, s7) values(%d, \"%s\", %d, %s, \"%s\")",
+                i, LocalDate.of(2024, 5, i % 31 + 1), i, "X'cafebabe'", i));
+      }
+
+      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final int columnCount = metaData.getColumnCount();
+        assertEquals(5, columnCount);
+        HashMap<Integer, TSDataType> columnType = new HashMap<>();
+        for (int i = 1; i < columnCount; i++) {
+          if (metaData.getColumnLabel(i).endsWith("s4")) {
+            columnType.put(i, TSDataType.DATE);
+          } else if (metaData.getColumnLabel(i).endsWith("s5")) {
+            columnType.put(i, TSDataType.TIMESTAMP);
+          } else if (metaData.getColumnLabel(i).endsWith("s6")) {
+            columnType.put(i, TSDataType.BLOB);
+          } else if (metaData.getColumnLabel(i).endsWith("s7")) {
+            columnType.put(i, TSDataType.TEXT);
+          }
+        }
+        byte[] byteArray = new byte[] {(byte) 0xCA, (byte) 0xFE, (byte) 0xBA, (byte) 0xBE};
+        while (resultSet.next()) {
+          long time = resultSet.getLong(1);
+          Date date = resultSet.getDate(2);
+          Timestamp timestamp = resultSet.getTimestamp(3);
+          byte[] blob = resultSet.getBytes(4);
+          String text = resultSet.getString(5);
+          assertEquals(2024 - 1900, date.getYear());
+          assertEquals(5 - 1, date.getMonth());
+          assertEquals(time % 31 + 1, date.getDate());
+          assertEquals(time, timestamp.getTime());
+          assertArrayEquals(byteArray, blob);
+          assertEquals(String.valueOf(time), text);
+        }
       }
 
     } catch (SQLException e) {

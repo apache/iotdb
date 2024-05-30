@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
@@ -32,7 +33,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.PointPriorityReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
@@ -46,7 +49,7 @@ import org.apache.tsfile.read.common.TimeRange;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -76,7 +79,8 @@ public abstract class SeriesCompactionExecutor {
 
   protected Map<TsFileResource, TsFileSequenceReader> readerCacheMap;
 
-  private final Map<TsFileResource, List<Modification>> modificationCacheMap;
+  private final Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+      modificationCacheMap;
 
   private final PointPriorityReader pointPriorityReader;
 
@@ -98,7 +102,8 @@ public abstract class SeriesCompactionExecutor {
   protected SeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-      Map<TsFileResource, List<Modification>> modificationCacheMap,
+      Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+          modificationCacheMap,
       IDeviceID deviceId,
       boolean isAligned,
       int subTaskId,
@@ -492,25 +497,19 @@ public abstract class SeriesCompactionExecutor {
   }
 
   /**
-   * Get the modifications of a timeseries in the ModificationFile of a TsFile.
+   * Get the modifications of a timeseries in the ModificationFile of a TsFile. Create ttl
+   * modification from ttl cache.
    *
    * @param path name of the time series
    */
   protected List<Modification> getModificationsFromCache(
       TsFileResource tsFileResource, PartialPath path) {
-    // copy from TsFileResource so queries are not affected
-    List<Modification> modifications =
-        modificationCacheMap.computeIfAbsent(
-            tsFileResource, resource -> new ArrayList<>(resource.getModFile().getModifications()));
-    List<Modification> pathModifications = new ArrayList<>();
-    Iterator<Modification> modificationIterator = modifications.iterator();
-    while (modificationIterator.hasNext()) {
-      Modification modification = modificationIterator.next();
-      if (modification.getPath().matchFullPath(path)) {
-        pathModifications.add(modification);
-      }
+    PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> allModifications =
+        modificationCacheMap.get(tsFileResource.getTsFile().getName());
+    if (allModifications == null) {
+      return Collections.emptyList();
     }
-    return pathModifications;
+    return ModificationFile.sortAndMerge(allModifications.getOverlapped(path));
   }
 
   @SuppressWarnings("squid:S3776")

@@ -54,14 +54,8 @@ public class CacheMNodeFactory implements IMNodeFactory<ICachedMNode> {
   }
 
   @Override
-  public IDatabaseMNode<ICachedMNode> createDatabaseMNode(
-      ICachedMNode parent, String name, long dataTTL) {
-    return new CachedDatabaseMNode(parent, name, dataTTL);
-  }
-
-  @Override
-  public ICachedMNode createDatabaseDeviceMNode(ICachedMNode parent, String name, long dataTTL) {
-    CachedDatabaseMNode databaseMNode = new CachedDatabaseMNode(parent, name, dataTTL);
+  public ICachedMNode createDatabaseDeviceMNode(ICachedMNode parent, String name) {
+    CachedDatabaseMNode databaseMNode = new CachedDatabaseMNode(parent, name);
     databaseMNode.setDeviceInfo(new DeviceInfo<>());
     return databaseMNode;
   }

@@ -21,6 +21,7 @@ package org.apache.iotdb.isession;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
@@ -32,6 +33,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +56,8 @@ public class SessionDataSet implements ISessionDataSet {
       long sessionId,
       List<ByteBuffer> queryResult,
       boolean ignoreTimeStamp,
-      boolean moreData) {
+      boolean moreData,
+      ZoneId zoneId) {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
             sql,
@@ -69,38 +72,9 @@ public class SessionDataSet implements ISessionDataSet {
             sessionId,
             queryResult,
             SessionConfig.DEFAULT_FETCH_SIZE,
-            0);
-  }
-
-  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
-  public SessionDataSet(
-      String sql,
-      List<String> columnNameList,
-      List<String> columnTypeList,
-      Map<String, Integer> columnNameIndex,
-      long queryId,
-      long statementId,
-      IClientRPCService.Iface client,
-      long sessionId,
-      List<ByteBuffer> queryResult,
-      boolean ignoreTimeStamp,
-      long timeout,
-      boolean moreData) {
-    this.ioTDBRpcDataSet =
-        new IoTDBRpcDataSet(
-            sql,
-            columnNameList,
-            columnTypeList,
-            columnNameIndex,
-            ignoreTimeStamp,
-            moreData,
-            queryId,
-            statementId,
-            client,
-            sessionId,
-            queryResult,
-            SessionConfig.DEFAULT_FETCH_SIZE,
-            timeout);
+            0,
+            zoneId,
+            RpcUtils.DEFAULT_TIME_FORMAT);
   }
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
@@ -117,7 +91,42 @@ public class SessionDataSet implements ISessionDataSet {
       boolean ignoreTimeStamp,
       long timeout,
       boolean moreData,
-      int fetchSize) {
+      ZoneId zoneId) {
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            moreData,
+            queryId,
+            statementId,
+            client,
+            sessionId,
+            queryResult,
+            SessionConfig.DEFAULT_FETCH_SIZE,
+            timeout,
+            zoneId,
+            RpcUtils.DEFAULT_TIME_FORMAT);
+  }
+
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
+  public SessionDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      long queryId,
+      long statementId,
+      IClientRPCService.Iface client,
+      long sessionId,
+      List<ByteBuffer> queryResult,
+      boolean ignoreTimeStamp,
+      long timeout,
+      boolean moreData,
+      int fetchSize,
+      ZoneId zoneId) {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
             sql,
@@ -132,7 +141,9 @@ public class SessionDataSet implements ISessionDataSet {
             sessionId,
             queryResult,
             fetchSize,
-            timeout);
+            timeout,
+            zoneId,
+            RpcUtils.DEFAULT_TIME_FORMAT);
   }
 
   public int getFetchSize() {
@@ -186,10 +197,12 @@ public class SessionDataSet implements ISessionDataSet {
             field.setBoolV(booleanValue);
             break;
           case INT32:
+          case DATE:
             int intValue = ioTDBRpcDataSet.getInt(datasetColumnIndex);
             field.setIntV(intValue);
             break;
           case INT64:
+          case TIMESTAMP:
             long longValue = ioTDBRpcDataSet.getLong(datasetColumnIndex);
             field.setLongV(longValue);
             break;
@@ -202,6 +215,8 @@ public class SessionDataSet implements ISessionDataSet {
             field.setDoubleV(doubleValue);
             break;
           case TEXT:
+          case BLOB:
+          case STRING:
             field.setBinaryV(ioTDBRpcDataSet.getBinary(datasetColumnIndex));
             break;
           default:

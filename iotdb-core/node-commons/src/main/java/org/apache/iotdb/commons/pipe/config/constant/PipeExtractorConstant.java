@@ -32,6 +32,12 @@ public class PipeExtractorConstant {
   public static final String SOURCE_EXCLUSION_KEY = "source.inclusion.exclusion";
   public static final String EXTRACTOR_EXCLUSION_DEFAULT_VALUE = "";
 
+  public static final String EXTRACTOR_MODE_KEY = "extractor.mode";
+  public static final String SOURCE_MODE_KEY = "source.mode";
+  public static final String EXTRACTOR_MODE_QUERY_VALUE = "query";
+  public static final String EXTRACTOR_MODE_SUBSCRIBE_VALUE = "subscribe";
+  public static final String EXTRACTOR_MODE_DEFAULT_VALUE = EXTRACTOR_MODE_SUBSCRIBE_VALUE;
+
   public static final String EXTRACTOR_PATTERN_KEY = "extractor.pattern";
   public static final String SOURCE_PATTERN_KEY = "source.pattern";
   public static final String EXTRACTOR_PATH_KEY = "extractor.path";
@@ -61,12 +67,6 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_MODS_ENABLE_KEY = "extractor.mods.enable";
   public static final String SOURCE_MODS_ENABLE_KEY = "source.mods.enable";
   public static final boolean EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE = false;
-  public static final String EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY =
-      "extractor.history.terminate-pipe-on-all-consumed";
-  public static final String SOURCE_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_KEY =
-      "source.history.terminate-pipe-on-all-consumed";
-  public static final boolean EXTRACTOR_HISTORY_TERMINATE_PIPE_ON_ALL_CONSUMED_DEFAULT_VALUE =
-      false;
 
   public static final String EXTRACTOR_REALTIME_ENABLE_KEY = "extractor.realtime.enable";
   public static final String SOURCE_REALTIME_ENABLE_KEY = "source.realtime.enable";
