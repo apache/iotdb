@@ -265,6 +265,7 @@ final class SubscriptionExecutorServiceManager {
       executor = null;
     }
 
+    @SuppressWarnings("unsafeThreadSchedule")
     ScheduledFuture<?> scheduleWithFixedDelay(
         final Runnable task, final long initialDelay, final long delay, final TimeUnit unit) {
       if (isShutdown()) {
