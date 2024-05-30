@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.pattern;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -62,7 +64,7 @@ public class IoTDBPipePatternTest {
       Assert.assertFalse(new IoTDBPipePattern(t).coversDb(db));
     }
 
-    final String device = "root.db.d1";
+    final IDeviceID device = new StringArrayDeviceID("root.db.d1");
 
     // Test pattern cover device
     final String[] patternsCoverDevice = {

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.Arrays;
@@ -74,7 +75,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
   public Optional<PlanNode> visitCreateTimeSeries(
       final CreateTimeSeriesNode node, final IoTDBPipePattern pattern) {
     return pattern.matchesMeasurement(
-            node.getPath().getDeviceString(), node.getPath().getMeasurement())
+            node.getPath().getIDeviceID(), node.getPath().getMeasurement())
         ? Optional.of(node)
         : Optional.empty();
   }
@@ -87,7 +88,8 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
             .filter(
                 index ->
                     pattern.matchesMeasurement(
-                        node.getDevicePath().getFullPath(), node.getMeasurements().get(index)))
+                        node.getDevicePath().getIDeviceIDAsFullDevice(),
+                        node.getMeasurements().get(index)))
             .toArray();
     return filteredIndexes.length > 0
         ? Optional.of(
@@ -115,7 +117,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
                     new Pair<>(
                         entry.getKey(),
                         trimMeasurementGroup(
-                            entry.getKey().getFullPath(), entry.getValue(), pattern)))
+                            entry.getKey().getIDeviceIDAsFullDevice(), entry.getValue(), pattern)))
             .filter(pair -> Objects.nonNull(pair.getRight()))
             .collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
     return !filteredMeasurementGroupMap.isEmpty()
@@ -125,7 +127,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
   }
 
   private static MeasurementGroup trimMeasurementGroup(
-      final String device, final MeasurementGroup group, final IoTDBPipePattern pattern) {
+      final IDeviceID device, final MeasurementGroup group, final IoTDBPipePattern pattern) {
     final int[] filteredIndexes =
         IntStream.range(0, group.size())
             .filter(index -> pattern.matchesMeasurement(device, group.getMeasurements().get(index)))
@@ -154,7 +156,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
   public Optional<PlanNode> visitAlterTimeSeries(
       final AlterTimeSeriesNode node, final IoTDBPipePattern pattern) {
     return pattern.matchesMeasurement(
-            node.getPath().getDeviceString(), node.getPath().getMeasurement())
+            node.getPath().getIDeviceID(), node.getPath().getMeasurement())
         ? Optional.of(node)
         : Optional.empty();
   }
@@ -165,7 +167,9 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
     final MeasurementGroup group =
         pattern.matchPrefixPath(node.getDevicePath().getFullPath())
             ? trimMeasurementGroup(
-                node.getDevicePath().getFullPath(), node.getMeasurementGroup(), pattern)
+                node.getDevicePath().getIDeviceIDAsFullDevice(),
+                node.getMeasurementGroup(),
+                pattern)
             : null;
     return Objects.nonNull(group)
         ? Optional.of(
@@ -209,7 +213,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
                         new Pair<>(
                             entry.getValue().getLeft(),
                             trimMeasurementGroup(
-                                entry.getKey().getFullPath(),
+                                entry.getKey().getIDeviceIDAsFullDevice(),
                                 entry.getValue().getRight(),
                                 pattern))))
             .filter(pair -> Objects.nonNull(pair.getRight().getRight()))
@@ -241,7 +245,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
             .filter(
                 entry ->
                     pattern.matchesMeasurement(
-                        entry.getKey().getDeviceString(), entry.getKey().getMeasurement()))
+                        entry.getKey().getIDeviceID(), entry.getKey().getMeasurement()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     return !filteredViewPathToSourceMap.isEmpty()
         ? Optional.of(new CreateLogicalViewNode(node.getPlanNodeId(), filteredViewPathToSourceMap))
@@ -256,7 +260,7 @@ public class PipePlanPatternParseVisitor extends PlanVisitor<Optional<PlanNode>,
             .filter(
                 entry ->
                     pattern.matchesMeasurement(
-                        entry.getKey().getDeviceString(), entry.getKey().getMeasurement()))
+                        entry.getKey().getIDeviceID(), entry.getKey().getMeasurement()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     return !filteredViewPathToSourceMap.isEmpty()
         ? Optional.of(new AlterLogicalViewNode(node.getPlanNodeId(), filteredViewPathToSourceMap))

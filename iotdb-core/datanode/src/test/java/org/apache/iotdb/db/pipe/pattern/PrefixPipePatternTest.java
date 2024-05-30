@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.pattern;
 
 import org.apache.iotdb.commons.pipe.pattern.PrefixPipePattern;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -57,7 +59,7 @@ public class PrefixPipePatternTest {
       Assert.assertFalse(new PrefixPipePattern(t).coversDb(db));
     }
 
-    final String device = "root.db.d1";
+    final IDeviceID device = new StringArrayDeviceID("root.db.d1");
 
     // Test pattern cover device
     final String[] patternsCoverDevice = {

@@ -33,6 +33,8 @@ import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -62,7 +64,9 @@ public class TabletInsertionDataContainer {
   private final EnrichedEvent
       sourceEvent; // used to report progress and filter value columns by time range
 
-  private String deviceId;
+  // Used to preserve performance
+  private String deviceStr;
+  private IDeviceID deviceId;
   private boolean isAligned;
   private IMeasurementSchema[] measurementSchemaList;
   private String[] columnNameStringList;
@@ -138,7 +142,9 @@ public class TabletInsertionDataContainer {
     final int originColumnSize = insertRowNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
-    this.deviceId = insertRowNode.getDevicePath().getFullPath();
+    // The full path is always cached when device path is deserialized
+    this.deviceStr = insertRowNode.getDevicePath().getFullPath();
+    this.deviceId = insertRowNode.getDeviceID();
     this.isAligned = insertRowNode.isAligned();
 
     final long[] originTimestampColumn = new long[] {insertRowNode.getTime()};
@@ -205,7 +211,9 @@ public class TabletInsertionDataContainer {
     final int originColumnSize = insertTabletNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
-    this.deviceId = insertTabletNode.getDevicePath().getFullPath();
+    // The full path is always cached when device path is deserialized
+    this.deviceStr = insertTabletNode.getDevicePath().getFullPath();
+    this.deviceId = insertTabletNode.getDeviceID();
     this.isAligned = insertTabletNode.isAligned();
 
     final long[] originTimestampColumn = insertTabletNode.getTimes();
@@ -288,7 +296,9 @@ public class TabletInsertionDataContainer {
     final int originColumnSize = tablet.getSchemas().size();
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
-    this.deviceId = tablet.getDeviceId();
+    // Only support tree-model tablet
+    this.deviceStr = tablet.getDeviceId();
+    this.deviceId = new StringArrayDeviceID(tablet.getDeviceId());
     this.isAligned = isAligned;
 
     final long[] originTimestampColumn =
@@ -567,9 +577,10 @@ public class TabletInsertionDataContainer {
     final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, sourceEvent);
     for (int i = 0; i < rowCount; i++) {
       consumer.accept(
+          // Used for tree model
           new PipeRow(
               i,
-              deviceId,
+              getDeviceStr(),
               isAligned,
               measurementSchemaList,
               timestampColumn,
@@ -595,7 +606,8 @@ public class TabletInsertionDataContainer {
       return tablet;
     }
 
-    final Tablet newTablet = new Tablet(deviceId, Arrays.asList(measurementSchemaList), rowCount);
+    final Tablet newTablet =
+        new Tablet(getDeviceStr(), Arrays.asList(measurementSchemaList), rowCount);
     newTablet.timestamps = timestampColumn;
     newTablet.bitMaps = nullValueColumnBitmaps;
     newTablet.values = valueColumns;
@@ -604,5 +616,9 @@ public class TabletInsertionDataContainer {
     tablet = newTablet;
 
     return tablet;
+  }
+
+  private String getDeviceStr() {
+    return Objects.nonNull(deviceStr) ? deviceStr : deviceId.toString();
   }
 }
