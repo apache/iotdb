@@ -126,7 +126,7 @@ public class IoTDBSeriesPermissionIT {
     executeNonQuery("create timeseries root.test1.d1.s1 with dataType = int32");
     executeNonQuery("create timeseries root.test1.d2.s1 with dataType = int32");
     executeNonQuery("create timeseries root.test3.d1.s1 with dataType = int32");
-    executeNonQuery("set TTL to root.** 10000");
+    executeNonQuery("set TTL to root.test 10000");
 
     // show/count timeseries
     resultSetEqualTest(
@@ -173,14 +173,14 @@ public class IoTDBSeriesPermissionIT {
     resultSetEqualTest(
         "show devices",
         showDevicesColumnHeaders.stream().map(ColumnHeader::getColumnName).toArray(String[]::new),
-        new String[] {"root.test.d1,false,null,"},
+        new String[] {"root.test.d1,false,null,10000,"},
         "test1",
         "test123");
     grantUserSeriesPrivilege("test1", PrivilegeType.READ_SCHEMA, "root.test1.d1.**");
     resultSetEqualTest(
         "show devices",
         showDevicesColumnHeaders.stream().map(ColumnHeader::getColumnName).toArray(String[]::new),
-        new String[] {"root.test.d1,false,null,", "root.test1.d1,false,null,"},
+        new String[] {"root.test.d1,false,null,10000,", "root.test1.d1,false,null,INF,"},
         "test1",
         "test123");
     resultSetEqualTest(
@@ -237,9 +237,9 @@ public class IoTDBSeriesPermissionIT {
 
     // TTL
     resultSetEqualTest(
-        "show ttl on root.**",
+        "show all ttl",
         showTTLColumnHeaders.stream().map(ColumnHeader::getColumnName).toArray(String[]::new),
-        new String[] {"root.test1,10000,", "root.test,10000,"},
+        new String[] {"root.**,INF,", "root.test,10000,", "root.test.**,10000,"},
         "test1",
         "test123");
   }

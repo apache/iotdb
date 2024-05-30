@@ -399,7 +399,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
     Assert.assertEquals(
         Collections.singletonList(new PartialPath("root.db.device.**")),
         plans.stream()
-            .map(setTTLPlan -> new PartialPath(setTTLPlan.getDatabasePathPattern()))
+            .map(setTTLPlan -> new PartialPath(setTTLPlan.getPathPattern()))
             .collect(Collectors.toList()));
     Assert.assertEquals(
         Collections.singletonList(Long.MAX_VALUE),

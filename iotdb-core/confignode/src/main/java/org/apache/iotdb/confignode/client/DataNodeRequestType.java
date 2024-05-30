@@ -89,6 +89,7 @@ public enum DataNodeRequestType {
 
   // Schema
   SET_TTL,
+  UPDATE_TTL_CACHE,
 
   CONSTRUCT_SCHEMA_BLACK_LIST,
   ROLLBACK_SCHEMA_BLACK_LIST,

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionExceptionHandler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -79,7 +80,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     try (FileOutputStream os = new FileOutputStream(targetResource.getTsFile(), true);
         FileChannel channel = os.getChannel()) {
       channel.truncate(targetResource.getTsFileSize() - 10);
@@ -131,7 +134,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     compactionLogger.close();
     CompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
@@ -179,7 +184,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     for (TsFileResource resource : seqResources) {
       tsFileManager.getOrCreateSequenceListByTimePartition(0).remove(resource);
     }
@@ -238,7 +245,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     seqResources.get(0).remove();
     try (FileOutputStream os = new FileOutputStream(targetResource.getTsFile(), true);
         FileChannel channel = os.getChannel()) {
@@ -291,7 +300,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
       deleteMap.put(
@@ -369,7 +380,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     seqResources.get(0).remove();
     compactionLogger.close();
 
@@ -431,7 +444,9 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
       deleteMap.put(
@@ -519,7 +534,8 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
         new FastCompactionPerformer(seqResources, Collections.emptyList(), targetResources);
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInInnerCompaction(seqResources, targetResources.get(0));
     seqResources.get(0).remove();
 
@@ -595,7 +611,8 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
         new FastCompactionPerformer(seqResources, Collections.emptyList(), targetResources);
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(
+        targetResources, CompactionTaskType.INNER_SEQ, COMPACTION_TEST_SG);
     CompactionUtils.combineModsInInnerCompaction(seqResources, targetResources.get(0));
 
     // meet errors and handle exception

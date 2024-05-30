@@ -255,7 +255,6 @@ public class ConfigMTreeTest {
       root.setStorageGroup(pathList[i]);
       IDatabaseMNode<IConfigMNode> storageGroupMNode =
           root.getDatabaseNodeByDatabasePath(pathList[i]);
-      storageGroupMNode.setDataTTL(i);
       storageGroupMNode.getAsMNode().getDatabaseSchema().setDataReplicationFactor(i);
       storageGroupMNode.getAsMNode().getDatabaseSchema().setSchemaReplicationFactor(i);
       storageGroupMNode.getAsMNode().getDatabaseSchema().setTimePartitionInterval(i);
@@ -272,7 +271,6 @@ public class ConfigMTreeTest {
     for (int i = 0; i < pathList.length; i++) {
       TDatabaseSchema storageGroupSchema =
           newTree.getDatabaseNodeByDatabasePath(pathList[i]).getAsMNode().getDatabaseSchema();
-      Assert.assertEquals(i, storageGroupSchema.getTTL());
       Assert.assertEquals(i, storageGroupSchema.getSchemaReplicationFactor());
       Assert.assertEquals(i, storageGroupSchema.getDataReplicationFactor());
       Assert.assertEquals(i, storageGroupSchema.getTimePartitionInterval());

@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 
 public class NonAlignedPageElement extends PageElement {
 
-  private final PageHeader pageHeader;
+  private PageHeader pageHeader;
 
   // compressed page data
   private ByteBuffer pageData;
