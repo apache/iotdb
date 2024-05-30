@@ -47,8 +47,8 @@ public class ConsumerConstant {
   public static final String FILE_SAVE_DIR_DEFAULT_VALUE =
       Paths.get(System.getProperty("user.dir"), "iotdb-subscription").toString();
 
-  public static final String FILE_SYNC_KEY = "file-sync";
-  public static final boolean FILE_SYNC_DEFAULT_VALUE = false;
+  public static final String FILE_SAVE_FSYNC_KEY = "file-save-fsync";
+  public static final boolean FILE_SAVE_FSYNC_DEFAULT_VALUE = false;
 
   /////////////////////////////// pull consumer ///////////////////////////////
 

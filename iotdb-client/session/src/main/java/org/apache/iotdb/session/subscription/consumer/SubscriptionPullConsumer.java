@@ -307,8 +307,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     }
 
     @Override
-    public Builder fileSync(final boolean fileSync) {
-      super.fileSync(fileSync);
+    public Builder fileSaveFsync(final boolean fileSaveFsync) {
+      super.fileSaveFsync(fileSaveFsync);
       return this;
     }
 

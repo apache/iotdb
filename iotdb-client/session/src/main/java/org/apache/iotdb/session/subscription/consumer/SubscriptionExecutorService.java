@@ -35,67 +35,65 @@ final class SubscriptionExecutorService {
 
   private static final long AWAIT_TERMINATION_TIMEOUT_MS = 10_000L;
 
-  private static int clusterConnectionExecutorCorePoolSize =
+  private static int controlFlowExecutorCorePoolSize =
       Math.max(Runtime.getRuntime().availableProcessors() / 2, 1);
-  private static int toUpstreamCommunicationExecutorCorePoolSize =
+  private static int upstreamDataFlowExecutorCorePoolSize =
       Math.max(Runtime.getRuntime().availableProcessors() / 2, 1);
-  private static int toDownstreamCommunicationExecutorCorePoolSize =
+  private static int downstreamDataFlowExecutorCorePoolSize =
       Math.max(Runtime.getRuntime().availableProcessors(), 1);
 
   /**
-   * Cluster Connection Executor: execute heartbeat worker and endpoints syncer for {@link
+   * Control Flow Executor: execute heartbeat worker and endpoints syncer for {@link
    * SubscriptionConsumer}
    */
-  private static volatile ScheduledExecutorService clusterConnectionExecutor;
+  private static volatile ScheduledExecutorService controlFlowExecutor;
 
   /**
-   * Downstream to Upstream Communication Executor: execute auto commit worker and async commit
-   * worker for {@link SubscriptionPullConsumer}
+   * Upstream Data Flow Executor: execute auto commit worker and async commit worker for {@link
+   * SubscriptionPullConsumer}
    */
-  private static volatile ScheduledExecutorService toUpstreamCommunicationExecutor;
+  private static volatile ScheduledExecutorService upstreamDataFlowExecutor;
 
   /**
-   * Upstream to Downstream Communication Executor: execute auto poll worker for {@link
-   * SubscriptionPushConsumer}
+   * Downstream Data Flow Executor: execute auto poll worker for {@link SubscriptionPushConsumer}
    */
-  private static volatile ScheduledExecutorService toDownstreamCommunicationExecutor;
+  private static volatile ScheduledExecutorService downstreamDataFlowExecutor;
 
   /////////////////////////////// setter ///////////////////////////////
 
-  public static synchronized void setClusterConnectionExecutorCorePoolSize(
-      final int clusterConnectionExecutorCorePoolSize) {
-    if (Objects.nonNull(clusterConnectionExecutor)) {
+  public static synchronized void setControlFlowExecutorCorePoolSize(
+      final int controlFlowExecutorCorePoolSize) {
+    if (Objects.nonNull(controlFlowExecutor)) {
       LOGGER.warn(
-          "cluster connection executor has been initialized, set core pool size to {} will be ignored",
-          clusterConnectionExecutorCorePoolSize);
+          "control flow executor has been initialized, set core pool size to {} will be ignored",
+          controlFlowExecutorCorePoolSize);
       return;
     }
-    SubscriptionExecutorService.clusterConnectionExecutorCorePoolSize =
-        clusterConnectionExecutorCorePoolSize;
+    SubscriptionExecutorService.controlFlowExecutorCorePoolSize = controlFlowExecutorCorePoolSize;
   }
 
-  public static synchronized void setToUpstreamCommunicationExecutorCorePoolSize(
-      final int toUpstreamCommunicationExecutorCorePoolSize) {
-    if (Objects.nonNull(toUpstreamCommunicationExecutor)) {
+  public static synchronized void setUpstreamDataFlowExecutorCorePoolSize(
+      final int upstreamDataFlowExecutorCorePoolSize) {
+    if (Objects.nonNull(upstreamDataFlowExecutor)) {
       LOGGER.warn(
-          "to upstream communication executor has been initialized, set core pool size to {} will be ignored",
-          toUpstreamCommunicationExecutorCorePoolSize);
+          "upstream data flow executor has been initialized, set core pool size to {} will be ignored",
+          upstreamDataFlowExecutorCorePoolSize);
       return;
     }
-    SubscriptionExecutorService.toUpstreamCommunicationExecutorCorePoolSize =
-        toUpstreamCommunicationExecutorCorePoolSize;
+    SubscriptionExecutorService.upstreamDataFlowExecutorCorePoolSize =
+        upstreamDataFlowExecutorCorePoolSize;
   }
 
-  public static synchronized void setToDownstreamCommunicationExecutorCorePoolSize(
-      final int toDownstreamCommunicationExecutorCorePoolSize) {
-    if (Objects.nonNull(toDownstreamCommunicationExecutor)) {
+  public static synchronized void setDownstreamDataFlowExecutorCorePoolSize(
+      final int downstreamDataFlowExecutorCorePoolSize) {
+    if (Objects.nonNull(downstreamDataFlowExecutor)) {
       LOGGER.warn(
-          "to downstream communication executor has been initialized, set core pool size to {} will be ignored",
-          toDownstreamCommunicationExecutorCorePoolSize);
+          "downstream data flow executor has been initialized, set core pool size to {} will be ignored",
+          downstreamDataFlowExecutorCorePoolSize);
       return;
     }
-    SubscriptionExecutorService.toDownstreamCommunicationExecutorCorePoolSize =
-        toDownstreamCommunicationExecutorCorePoolSize;
+    SubscriptionExecutorService.downstreamDataFlowExecutorCorePoolSize =
+        downstreamDataFlowExecutorCorePoolSize;
   }
 
   /////////////////////////////// shutdown hook ///////////////////////////////
@@ -111,18 +109,18 @@ final class SubscriptionExecutorService {
   private static class SubscriptionExecutorServiceShutdownHook implements Runnable {
 
     @Override
-    public void run() {
-      if (Objects.nonNull(clusterConnectionExecutor)) {
-        LOGGER.info("Shutting down cluster connection executor...");
-        shutdownExecutor(clusterConnectionExecutor);
+    public synchronized void run() {
+      if (Objects.nonNull(controlFlowExecutor)) {
+        LOGGER.info("Shutting down control flow executor...");
+        shutdownExecutor(controlFlowExecutor);
       }
-      if (Objects.nonNull(toUpstreamCommunicationExecutor)) {
-        LOGGER.info("Shutting down to upstream communication executor...");
-        shutdownExecutor(toUpstreamCommunicationExecutor);
+      if (Objects.nonNull(upstreamDataFlowExecutor)) {
+        LOGGER.info("Shutting down upstream data flow executor...");
+        shutdownExecutor(upstreamDataFlowExecutor);
       }
-      if (Objects.nonNull(toDownstreamCommunicationExecutor)) {
-        LOGGER.info("Shutting down to downstream communication executor...");
-        shutdownExecutor(toDownstreamCommunicationExecutor);
+      if (Objects.nonNull(downstreamDataFlowExecutor)) {
+        LOGGER.info("Shutting down downstream data flow executor...");
+        shutdownExecutor(downstreamDataFlowExecutor);
       }
     }
   }
@@ -149,25 +147,25 @@ final class SubscriptionExecutorService {
 
   /////////////////////////////// launcher ///////////////////////////////
 
-  private static void launchClusterConnectionExecutorIfNeeded() {
-    if (Objects.isNull(clusterConnectionExecutor)) {
+  private static void launchControlFlowExecutorIfNeeded() {
+    if (Objects.isNull(controlFlowExecutor)) {
       synchronized (SubscriptionExecutorService.class) {
-        if (Objects.nonNull(clusterConnectionExecutor)) {
+        if (Objects.nonNull(controlFlowExecutor)) {
           return;
         }
 
         LOGGER.info(
-            "Launching cluster connection executor with core pool size {}...",
-            clusterConnectionExecutorCorePoolSize);
-        clusterConnectionExecutor =
+            "Launching control flow executor with core pool size {}...",
+            controlFlowExecutorCorePoolSize);
+        controlFlowExecutor =
             Executors.newScheduledThreadPool(
-                clusterConnectionExecutorCorePoolSize,
+                controlFlowExecutorCorePoolSize,
                 r -> {
                   final Thread t =
                       new Thread(
                           Thread.currentThread().getThreadGroup(),
                           r,
-                          "SubscriptionClusterConnectionExecutor",
+                          "SubscriptionControlFlowExecutor",
                           0);
                   if (!t.isDaemon()) {
                     t.setDaemon(true);
@@ -181,25 +179,25 @@ final class SubscriptionExecutorService {
     }
   }
 
-  private static void launchToUpstreamCommunicationExecutorIfNeeded() {
-    if (Objects.isNull(toUpstreamCommunicationExecutor)) {
+  private static void launchUpstreamDataFlowExecutorIfNeeded() {
+    if (Objects.isNull(upstreamDataFlowExecutor)) {
       synchronized (SubscriptionExecutorService.class) {
-        if (Objects.nonNull(toUpstreamCommunicationExecutor)) {
+        if (Objects.nonNull(upstreamDataFlowExecutor)) {
           return;
         }
 
         LOGGER.info(
-            "Launching to upstream communication executor with core pool size {}...",
-            toUpstreamCommunicationExecutorCorePoolSize);
-        toUpstreamCommunicationExecutor =
+            "Launching upstream data flow executor with core pool size {}...",
+            upstreamDataFlowExecutorCorePoolSize);
+        upstreamDataFlowExecutor =
             Executors.newScheduledThreadPool(
-                toUpstreamCommunicationExecutorCorePoolSize,
+                upstreamDataFlowExecutorCorePoolSize,
                 r -> {
                   final Thread t =
                       new Thread(
                           Thread.currentThread().getThreadGroup(),
                           r,
-                          "SubscriptionToUpstreamCommunicationExecutor",
+                          "SubscriptionUpstreamDataFlowExecutor",
                           0);
                   if (!t.isDaemon()) {
                     t.setDaemon(true);
@@ -213,25 +211,25 @@ final class SubscriptionExecutorService {
     }
   }
 
-  private static void launchToDownstreamCommunicationExecutorIfNeeded() {
-    if (Objects.isNull(toDownstreamCommunicationExecutor)) {
+  private static void launchDownstreamDataFlowExecutorIfNeeded() {
+    if (Objects.isNull(downstreamDataFlowExecutor)) {
       synchronized (SubscriptionExecutorService.class) {
-        if (Objects.nonNull(toDownstreamCommunicationExecutor)) {
+        if (Objects.nonNull(downstreamDataFlowExecutor)) {
           return;
         }
 
         LOGGER.info(
-            "Launching to downstream communication executor with core pool size {}...",
-            toDownstreamCommunicationExecutorCorePoolSize);
-        toDownstreamCommunicationExecutor =
+            "Launching downstream data flow executor with core pool size {}...",
+            downstreamDataFlowExecutorCorePoolSize);
+        downstreamDataFlowExecutor =
             Executors.newScheduledThreadPool(
-                toDownstreamCommunicationExecutorCorePoolSize,
+                downstreamDataFlowExecutorCorePoolSize,
                 r -> {
                   final Thread t =
                       new Thread(
                           Thread.currentThread().getThreadGroup(),
                           r,
-                          "SubscriptionToDownstreamCommunicationExecutor",
+                          "SubscriptionDownstreamDataFlowExecutor",
                           0);
                   if (!t.isDaemon()) {
                     t.setDaemon(true);
@@ -250,8 +248,8 @@ final class SubscriptionExecutorService {
   @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitHeartbeatWorker(
       final Runnable task, final long heartbeatIntervalMs) {
-    launchClusterConnectionExecutorIfNeeded();
-    return clusterConnectionExecutor.scheduleWithFixedDelay(
+    launchControlFlowExecutorIfNeeded();
+    return controlFlowExecutor.scheduleWithFixedDelay(
         task,
         generateRandomInitialDelayMs(heartbeatIntervalMs),
         heartbeatIntervalMs,
@@ -261,8 +259,8 @@ final class SubscriptionExecutorService {
   @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitEndpointsSyncer(
       final Runnable task, final long endpointsSyncIntervalMs) {
-    launchClusterConnectionExecutorIfNeeded();
-    return clusterConnectionExecutor.scheduleWithFixedDelay(
+    launchControlFlowExecutorIfNeeded();
+    return controlFlowExecutor.scheduleWithFixedDelay(
         task,
         generateRandomInitialDelayMs(endpointsSyncIntervalMs),
         endpointsSyncIntervalMs,
@@ -272,8 +270,8 @@ final class SubscriptionExecutorService {
   @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitAutoCommitWorker(
       final Runnable task, final long autoCommitIntervalMs) {
-    launchToUpstreamCommunicationExecutorIfNeeded();
-    return toUpstreamCommunicationExecutor.scheduleWithFixedDelay(
+    launchUpstreamDataFlowExecutorIfNeeded();
+    return upstreamDataFlowExecutor.scheduleWithFixedDelay(
         task,
         generateRandomInitialDelayMs(autoCommitIntervalMs),
         autoCommitIntervalMs,
@@ -281,15 +279,15 @@ final class SubscriptionExecutorService {
   }
 
   public static void submitAsyncCommitWorker(final Runnable task) {
-    launchToUpstreamCommunicationExecutorIfNeeded();
-    toUpstreamCommunicationExecutor.submit(task);
+    launchUpstreamDataFlowExecutorIfNeeded();
+    upstreamDataFlowExecutor.submit(task);
   }
 
   @SuppressWarnings("unsafeThreadSchedule")
   public static ScheduledFuture<?> submitAutoPollWorker(
       final Runnable task, final long autoPollIntervalMs) {
-    launchToDownstreamCommunicationExecutorIfNeeded();
-    return toDownstreamCommunicationExecutor.scheduleWithFixedDelay(
+    launchDownstreamDataFlowExecutorIfNeeded();
+    return downstreamDataFlowExecutor.scheduleWithFixedDelay(
         task,
         generateRandomInitialDelayMs(autoPollIntervalMs),
         autoPollIntervalMs,
