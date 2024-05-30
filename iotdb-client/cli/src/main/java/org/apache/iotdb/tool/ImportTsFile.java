@@ -322,10 +322,18 @@ public class ImportTsFile extends AbstractTsFileTool {
         try {
           sessionPool.executeNonQueryStatement(sql);
           ioTPrinter.println("Import [ " + filePath + " ] file success");
-          processingSuccess(filePath);
+          try {
+            processingSuccess(filePath);
+          }catch (Exception e1) {
+            ioTPrinter.println("processing success file fail: " + e1.getMessage());
+          }
         } catch (Exception e) {
           ioTPrinter.println("Import [ " + filePath + " ] file fail: " + e.getMessage());
-          processingFailed(filePath);
+          try {
+            processingFailed(filePath);
+          }catch (Exception e1) {
+            ioTPrinter.println("processing fail file fail: " + e1.getMessage());
+          }
         }
       }
     } catch (Exception e) {
@@ -359,8 +367,12 @@ public class ImportTsFile extends AbstractTsFileTool {
           Files.createLink(targetPath, sourcePath);
         } catch (FileAlreadyExistsException e) {
           ioTPrinter.println("File hardlink fail: File Already Exists " + e.getMessage());
-        } catch (IOException e) {
-          ioTPrinter.println("File hardlink fail: " + e.getMessage());
+        } catch (Exception e) {
+          try {
+            Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+          } catch (IOException e1) {
+            ioTPrinter.println("File copied fail: " + e1.getMessage());
+          }
         }
         break;
       case MV:
@@ -401,8 +413,12 @@ public class ImportTsFile extends AbstractTsFileTool {
           Files.createLink(targetPath, sourcePath);
         } catch (FileAlreadyExistsException e) {
           ioTPrinter.println("File hardlink fail: File Already Exists " + e.getMessage());
-        } catch (IOException e) {
-          ioTPrinter.println("File hardlink fail: " + e.getMessage());
+        } catch (Exception e) {
+          try {
+            Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+          } catch (IOException e1) {
+            ioTPrinter.println("File copied fail: " + e1.getMessage());
+          }
         }
         break;
       case MV:
