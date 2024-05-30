@@ -133,7 +133,7 @@ public class AddRegionPeerProcedure
           }
         case UPDATE_REGION_LOCATION_CACHE:
           handler.forceUpdateRegionCache(consensusGroupId, destDataNode, RegionStatus.Running);
-          handler.setTTL(consensusGroupId, destDataNode);
+          handler.setAllTTL(destDataNode);
           setKillPoint(state);
           LOGGER.info("[pid{}][AddRegion] state {} complete", getProcId(), state);
           LOGGER.info(

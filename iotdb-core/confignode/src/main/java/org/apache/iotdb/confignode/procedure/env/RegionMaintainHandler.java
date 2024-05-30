@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionMaintainTaskStatus;
 import org.apache.iotdb.common.rpc.thrift.TRegionMigrateFailedType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetAllTTLReq;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
@@ -44,6 +45,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
@@ -63,6 +65,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -434,6 +437,20 @@ public class RegionMaintainHandler {
     configManager
         .getLoadManager()
         .forceUpdateRegionCache(regionId, newLocation.getDataNodeId(), regionStatus);
+  }
+
+  public void setAllTTL(TDataNodeLocation dataNodeLocation) {
+    AsyncClientHandler<TSetAllTTLReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.UPDATE_TTL_CACHE);
+
+    TSetAllTTLReq setAllTTLReq =
+        new TSetAllTTLReq(
+            ByteBuffer.wrap(
+                DataNodeRegisterResp.convertAllTTLInformation(
+                    configManager.getTTLManager().getAllTTL())));
+    clientHandler.putRequest(dataNodeLocation.getDataNodeId(), setAllTTLReq);
+    clientHandler.putDataNodeLocation(dataNodeLocation.getDataNodeId(), dataNodeLocation);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
   }
 
   public void removeRegionLocation(

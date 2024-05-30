@@ -127,6 +127,10 @@ struct TSetTTLReq {
   3: required bool isDataBase
 }
 
+struct TSetAllTTLReq {
+  1: required binary allTTLInformation
+}
+
 // for File
 struct TFile {
   1: required string fileName
