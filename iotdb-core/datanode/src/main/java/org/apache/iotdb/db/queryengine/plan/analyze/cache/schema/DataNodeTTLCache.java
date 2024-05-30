@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
-import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -100,7 +99,6 @@ public class DataNodeTTLCache {
   }
 
   /** Clear all ttl of cache. */
-  @TestOnly
   public void clearAllTTL() {
     lock.writeLock().lock();
     try {

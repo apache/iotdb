@@ -965,7 +965,7 @@ public class DataNode implements DataNodeMBean {
     resourcesInformationHolder.setPipePluginMetaList(list);
   }
 
-  private void initTTLInformation(byte[] allTTLInformation) {
+  public void initTTLInformation(byte[] allTTLInformation) {
     if (allTTLInformation == null) {
       return;
     }

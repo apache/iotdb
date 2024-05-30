@@ -20,6 +20,7 @@ package org.apache.iotdb.db.storageengine;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetAllTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -53,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCach
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
+import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -761,6 +763,13 @@ public class StorageEngine implements IService {
       oldRegion.syncCloseAllWorkingTsFileProcessors();
     }
     dataRegionMap.put(regionId, newRegion);
+  }
+
+  /** Update all ttl cache in dataNode. */
+  public TSStatus setAllTTL(TSetAllTTLReq req) {
+    DataNodeTTLCache.getInstance().clearAllTTL();
+    DataNode.getInstance().initTTLInformation(req.getAllTTLInformation());
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   /** Update ttl cache in dataNode. */

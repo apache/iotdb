@@ -858,9 +858,14 @@ service IDataNodeRPCService {
   common.TSStatus killQueryInstance(string queryId)
 
   /**
-     * Config node will Set the TTL for the database on a list of data nodes.
-     */
-    common.TSStatus setTTL(common.TSetTTLReq req)
+   * Config node will Set the TTL for the database on a list of data nodes.
+   */
+  common.TSStatus setTTL(common.TSetTTLReq req)
+
+  /**
+   * Config node will update all TTL.
+   */
+  common.TSStatus setAllTTL(common.TSetAllTTLReq req)
 
   /**
    * Update template cache when template info or template set info is updated
