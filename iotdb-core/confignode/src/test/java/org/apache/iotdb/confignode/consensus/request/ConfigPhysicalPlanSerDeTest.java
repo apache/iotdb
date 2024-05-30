@@ -261,7 +261,6 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlanType.CreateDatabase,
             new TDatabaseSchema()
                 .setName("sg")
-                .setTTL(Long.MAX_VALUE)
                 .setSchemaReplicationFactor(3)
                 .setDataReplicationFactor(3)
                 .setTimePartitionInterval(604800));
@@ -277,7 +276,6 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlanType.AlterDatabase,
             new TDatabaseSchema()
                 .setName("sg")
-                .setTTL(Long.MAX_VALUE)
                 .setSchemaReplicationFactor(3)
                 .setDataReplicationFactor(3)
                 .setTimePartitionInterval(604800)
@@ -405,7 +403,7 @@ public class ConfigPhysicalPlanSerDeTest {
     plan0.appendRegionMaintainTask(
         new RegionCreateTask(dataNodeLocation, "root.sg", regionReplicaSet));
     plan0.appendRegionMaintainTask(
-        new RegionCreateTask(dataNodeLocation, "root.sg", regionReplicaSet).setTTL(86400));
+        new RegionCreateTask(dataNodeLocation, "root.sg", regionReplicaSet));
     plan0.appendRegionMaintainTask(
         new RegionDeleteTask(
             dataNodeLocation, new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2)));

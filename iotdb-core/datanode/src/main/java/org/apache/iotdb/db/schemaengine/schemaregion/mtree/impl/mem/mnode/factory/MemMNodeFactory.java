@@ -54,14 +54,8 @@ public class MemMNodeFactory implements IMNodeFactory<IMemMNode> {
   }
 
   @Override
-  public IDatabaseMNode<IMemMNode> createDatabaseMNode(
-      IMemMNode parent, String name, long dataTTL) {
-    return new DatabaseMNode(parent, name, dataTTL);
-  }
-
-  @Override
-  public IMemMNode createDatabaseDeviceMNode(IMemMNode parent, String name, long dataTTL) {
-    DatabaseMNode databaseMNode = new DatabaseMNode(parent, name, dataTTL);
+  public IMemMNode createDatabaseDeviceMNode(IMemMNode parent, String name) {
+    DatabaseMNode databaseMNode = new DatabaseMNode(parent, name);
     databaseMNode.setDeviceInfo(new DeviceInfo<>());
     return databaseMNode.getAsMNode();
   }

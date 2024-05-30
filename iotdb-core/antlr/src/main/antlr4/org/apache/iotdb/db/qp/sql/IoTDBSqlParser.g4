@@ -47,7 +47,7 @@ ddlStatement
     | setSchemaTemplate | unsetSchemaTemplate
     | alterSchemaTemplate
     // TTL
-    | setTTL | unsetTTL | showTTL | showAllTTL
+    | setTTL | unsetTTL | showAllTTL
     // Function
     | createFunction | dropFunction | showFunctions
     // Trigger
@@ -317,17 +317,12 @@ alterSchemaTemplate
 // TTL =============================================================================================
 // ---- Set TTL
 setTTL
-    : SET TTL TO path=prefixPath time=INTEGER_LITERAL
+    : SET TTL TO path=prefixPath time=(INTEGER_LITERAL | INF)
     ;
 
 // ---- Unset TTL
 unsetTTL
     : UNSET TTL TO path=prefixPath
-    ;
-
-// ---- Show TTL
-showTTL
-    : SHOW TTL ON prefixPath (COMMA prefixPath)*
     ;
 
 // ---- Show All TTL
