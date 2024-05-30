@@ -21,7 +21,16 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
+import org.apache.iotdb.db.qp.sql.SqlLexer;
+import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
+import org.apache.iotdb.db.queryengine.plan.parser.SqlParseError;
 
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.atn.PredictionMode;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.TimeDuration;
 
 import java.time.DateTimeException;
@@ -37,6 +46,7 @@ import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
 import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 public class DateTimeUtils {
 
@@ -44,6 +54,24 @@ public class DateTimeUtils {
     // forbidding instantiation
   }
 
+  private static Function<Long, Long> CAST_TIMESTAMP_TO_MS;
+
+  static {
+    switch (CommonDescriptor.getInstance().getConfig().getTimestampPrecision()) {
+      case "us":
+        CAST_TIMESTAMP_TO_MS = timestamp -> timestamp / 1000;
+        break;
+      case "ns":
+        CAST_TIMESTAMP_TO_MS = timestamp -> timestamp / 1000000;
+        break;
+      case "ms":
+      default:
+        CAST_TIMESTAMP_TO_MS = timestamp -> timestamp;
+        break;
+    }
+  }
+
+  private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
   public static final DateTimeFormatter ISO_LOCAL_DATE_WIDTH_1_2;
 
   static {
@@ -779,5 +807,28 @@ public class DateTimeUtils {
       }
     }
     return new TimeDuration((int) monthDuration, nonMonthDuration);
+  }
+
+  public static Long parseDateTimeExpressionToLong(String dateExpression, ZoneId zoneId) {
+    ASTVisitor astVisitor = new ASTVisitor();
+    astVisitor.setZoneId(zoneId);
+
+    CharStream charStream1 = CharStreams.fromString(dateExpression);
+
+    SqlLexer lexer1 = new SqlLexer(charStream1);
+    lexer1.removeErrorListeners();
+    lexer1.addErrorListener(SqlParseError.INSTANCE);
+
+    CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
+
+    IoTDBSqlParser parser1 = new IoTDBSqlParser(tokens1);
+    parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
+    parser1.removeErrorListeners();
+    parser1.addErrorListener(SqlParseError.INSTANCE);
+    return astVisitor.parseDateExpression(parser1.dateExpression(), "ms");
+  }
+
+  public static Integer parseDateExpressionToInt(String dateExpression) {
+    return DateUtils.parseDateExpressionToInt(dateExpression);
   }
 }

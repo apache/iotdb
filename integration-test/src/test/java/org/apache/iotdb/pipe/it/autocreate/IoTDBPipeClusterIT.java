@@ -915,8 +915,9 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
-              "insert into root.db.d1(time, s1) values (-123, 3)",
-              "insert into root.db.d1(time, s1) values (now(), 3)",
+              // Test the correctness of insertRowsNode transmission
+              "insert into root.db.d1(time, s1) values (-122, 3)",
+              "insert into root.db.d1(time, s1) values (-123, 3), (now(), 3)",
               "flush"))) {
         return;
       }
@@ -925,7 +926,7 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
-          Collections.singleton("5,"));
+          Collections.singleton("6,"));
     }
   }
 }

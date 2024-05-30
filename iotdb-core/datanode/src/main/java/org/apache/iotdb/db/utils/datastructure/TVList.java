@@ -72,12 +72,16 @@ public abstract class TVList implements WALEntryValue {
   public static TVList newList(TSDataType dataType) {
     switch (dataType) {
       case TEXT:
+      case BLOB:
+      case STRING:
         return BinaryTVList.newList();
       case FLOAT:
         return FloatTVList.newList();
       case INT32:
+      case DATE:
         return IntTVList.newList();
       case INT64:
+      case TIMESTAMP:
         return LongTVList.newList();
       case DOUBLE:
         return DoubleTVList.newList();
@@ -360,20 +364,6 @@ public abstract class TVList implements WALEntryValue {
       TSEncoding encoding,
       List<TimeRange> deletionList);
 
-  protected boolean isPointDeleted(
-      long timestamp, List<TimeRange> deletionList, Integer deleteCursor) {
-    while (deletionList != null && deleteCursor < deletionList.size()) {
-      if (deletionList.get(deleteCursor).contains(timestamp)) {
-        return true;
-      } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
-        deleteCursor++;
-      } else {
-        return false;
-      }
-    }
-    return false;
-  }
-
   protected float roundValueWithGivenPrecision(
       float value, int floatPrecision, TSEncoding encoding) {
     if (!Float.isNaN(value) && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
@@ -396,12 +386,16 @@ public abstract class TVList implements WALEntryValue {
     TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
     switch (dataType) {
       case TEXT:
+      case BLOB:
+      case STRING:
         return BinaryTVList.deserialize(stream);
       case FLOAT:
         return FloatTVList.deserialize(stream);
       case INT32:
+      case DATE:
         return IntTVList.deserialize(stream);
       case INT64:
+      case TIMESTAMP:
         return LongTVList.deserialize(stream);
       case DOUBLE:
         return DoubleTVList.deserialize(stream);
@@ -413,5 +407,9 @@ public abstract class TVList implements WALEntryValue {
         break;
     }
     return null;
+  }
+
+  public List<long[]> getTimestamps() {
+    return timestamps;
   }
 }

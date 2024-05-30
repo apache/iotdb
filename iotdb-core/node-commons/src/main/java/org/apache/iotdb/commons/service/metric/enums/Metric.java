@@ -94,6 +94,7 @@ public enum Metric {
   CACHE("cache"),
   CACHE_HIT_RATE("cache_hit"),
   QUANTITY("quantity"),
+  LEADER_QUANTITY("leader_quantity"),
   SCHEMA_REGION("schema_region"),
   SCHEMA_ENGINE("schema_engine"),
   // query engine related
@@ -163,6 +164,12 @@ public enum Metric {
   UNTRANSFERRED_CONFIG_COUNT("untransferred_config_count"),
   PIPE_CONNECTOR_CONFIG_TRANSFER("pipe_connector_config_transfer"),
   PIPE_CONFIGNODE_REMAINING_TIME("pipe_confignode_remaining_time"),
+  PIPE_GLOBAL_REMAINING_EVENT_COUNT("pipe_global_remaining_event_count"),
+  PIPE_GLOBAL_REMAINING_TIME("pipe_global_remaining_time"),
+  // subscription related
+  SUBSCRIPTION_UNCOMMITTED_EVENT_COUNT("subscription_uncommitted_event_count"),
+  SUBSCRIPTION_CURRENT_COMMIT_ID("subscription_current_commit_id"),
+  SUBSCRIPTION_EVENT_TRANSFER("subscription_event_transfer"),
   // load related
   LOAD_MEM("load_mem");
 

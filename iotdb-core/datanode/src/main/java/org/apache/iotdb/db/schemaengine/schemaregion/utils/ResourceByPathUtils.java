@@ -31,7 +31,6 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -89,21 +88,10 @@ public abstract class ResourceByPathUtils {
       throws QueryProcessException, IOException;
 
   public abstract List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context);
-
-  /** get modifications from a memtable. */
-  protected List<Modification> getModificationsForMemtable(
-      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable) {
-    List<Modification> modifications = new ArrayList<>();
-    boolean foundMemtable = false;
-    for (Pair<Modification, IMemTable> entry : modsToMemtable) {
-      if (foundMemtable || entry.right.equals(memTable)) {
-        modifications.add(entry.left);
-        foundMemtable = true;
-      }
-    }
-    return modifications;
-  }
+      RestorableTsFileIOWriter writer,
+      TsFileResource tsFileResource,
+      QueryContext context,
+      long timeLowerBound);
 }
 
 class AlignedResourceByPathUtils extends ResourceByPathUtils {
@@ -218,7 +206,9 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     TVList alignedTvListCopy = alignedMemChunk.getSortedTvListForQuery(partialPath.getSchemaList());
     List<List<TimeRange>> deletionList = null;
     if (modsToMemtable != null) {
-      deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
+      deletionList =
+          ModificationUtils.constructDeletionList(
+              partialPath, memTable, modsToMemtable, timeLowerBound);
     }
     return new AlignedReadOnlyMemChunk(
         context, getMeasurementSchema(), alignedTvListCopy, deletionList);
@@ -245,31 +235,12 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
         partialPath.getSchemaList().get(0).getCompressor());
   }
 
-  private List<List<TimeRange>> constructDeletionList(
-      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound) {
-    List<List<TimeRange>> deletionList = new ArrayList<>();
-    for (String measurement : partialPath.getMeasurementList()) {
-      List<TimeRange> columnDeletionList = new ArrayList<>();
-      columnDeletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
-      for (Modification modification : getModificationsForMemtable(memTable, modsToMemtable)) {
-        if (modification instanceof Deletion) {
-          Deletion deletion = (Deletion) modification;
-          PartialPath fullPath = partialPath.concatNode(measurement);
-          if (deletion.getPath().matchFullPath(fullPath)
-              && deletion.getEndTime() > timeLowerBound) {
-            long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
-            columnDeletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
-          }
-        }
-      }
-      deletionList.add(TimeRange.sortAndMerge(columnDeletionList));
-    }
-    return deletionList;
-  }
-
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
+      RestorableTsFileIOWriter writer,
+      TsFileResource tsFileResource,
+      QueryContext context,
+      long timeLowerBound) {
     List<List<Modification>> modifications =
         context.getPathModifications(tsFileResource, partialPath);
 
@@ -307,7 +278,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
 
     ModificationUtils.modifyAlignedChunkMetaData(chunkMetadataList, modifications);
-    chunkMetadataList.removeIf(context::chunkNotSatisfy);
+    chunkMetadataList.removeIf(x -> x.getEndTime() < timeLowerBound);
     return new ArrayList<>(chunkMetadataList);
   }
 }
@@ -371,7 +342,9 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
     List<TimeRange> deletionList = null;
     if (modsToMemtable != null) {
-      deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
+      deletionList =
+          ModificationUtils.constructDeletionList(
+              partialPath, memTable, modsToMemtable, timeLowerBound);
     }
     return new ReadOnlyMemChunk(
         context,
@@ -383,47 +356,12 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         deletionList);
   }
 
-  /**
-   * construct a deletion list from a memtable.
-   *
-   * @param memTable memtable
-   * @param timeLowerBound time watermark
-   */
-  private List<TimeRange> constructDeletionList(
-      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound) {
-    List<TimeRange> deletionList = new ArrayList<>();
-    deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
-    for (Modification modification : getModificationsForMemtable(memTable, modsToMemtable)) {
-      if (modification instanceof Deletion) {
-        Deletion deletion = (Deletion) modification;
-        if (deletion.getPath().matchFullPath(partialPath)
-            && deletion.getEndTime() > timeLowerBound) {
-          long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
-          deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
-        }
-      }
-    }
-    return TimeRange.sortAndMerge(deletionList);
-  }
-
-  /** get modifications from a memtable. */
-  @Override
-  protected List<Modification> getModificationsForMemtable(
-      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable) {
-    List<Modification> modifications = new ArrayList<>();
-    boolean foundMemtable = false;
-    for (Pair<Modification, IMemTable> entry : modsToMemtable) {
-      if (foundMemtable || entry.right.equals(memTable)) {
-        modifications.add(entry.left);
-        foundMemtable = true;
-      }
-    }
-    return modifications;
-  }
-
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
+      RestorableTsFileIOWriter writer,
+      TsFileResource tsFileResource,
+      QueryContext context,
+      long timeLowerBound) {
     List<Modification> modifications = context.getPathModifications(tsFileResource, partialPath);
 
     List<IChunkMetadata> chunkMetadataList =
@@ -434,7 +372,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
                 partialPath.getSeriesType()));
 
     ModificationUtils.modifyChunkMetaData(chunkMetadataList, modifications);
-    chunkMetadataList.removeIf(context::chunkNotSatisfy);
+    chunkMetadataList.removeIf(x -> x.getEndTime() < timeLowerBound);
     return chunkMetadataList;
   }
 }

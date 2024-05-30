@@ -411,7 +411,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", null);
-      extractorAttributes.put("extractor.inclusion", "data");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -461,19 +461,19 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show devices",
-          "Device,IsAligned,Template,",
+          "Device,IsAligned,Template,TTL,",
           new HashSet<>(
               Arrays.asList(
-                  "root.nonAligned.1TS,false,null,",
-                  "root.nonAligned.100TS,false,null,",
-                  "root.nonAligned.1000TS,false,null,",
-                  "root.nonAligned.`1(TS)`,false,null,",
-                  "root.nonAligned.6TS.`6`,false,null,",
-                  "root.aligned.1TS,true,null,",
-                  "root.aligned.100TS,true,null,",
-                  "root.aligned.1000TS,true,null,",
-                  "root.aligned.`1(TS)`,true,null,",
-                  "root.aligned.6TS.`6`,true,null,")));
+                  "root.nonAligned.1TS,false,null,INF,",
+                  "root.nonAligned.100TS,false,null,INF,",
+                  "root.nonAligned.1000TS,false,null,INF,",
+                  "root.nonAligned.`1(TS)`,false,null,INF,",
+                  "root.nonAligned.6TS.`6`,false,null,INF,",
+                  "root.aligned.1TS,true,null,INF,",
+                  "root.aligned.100TS,true,null,INF,",
+                  "root.aligned.1000TS,true,null,INF,",
+                  "root.aligned.`1(TS)`,true,null,INF,",
+                  "root.aligned.6TS.`6`,true,null,INF,")));
     }
   }
 
@@ -491,7 +491,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", "root.db1");
-      extractorAttributes.put("extractor.inclusion", "data");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.batch.enable", "false");
@@ -589,7 +589,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
-      extractorAttributes.put("extractor.inclusion", "data");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.pattern", "root.db.d2");
       extractorAttributes.put("extractor.history.enable", "false");
       extractorAttributes.put("extractor.realtime.enable", "true");
@@ -632,8 +632,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
               "insert into root.db.d1 (time, at1) values (2, 11)",
               "insert into root.db.d2 (time, at1) values (2, 21)",
               "insert into root.db.d3 (time, at1) values (2, 31)",
-              "insert into root.db.d4 (time, at1) values (2, 41)",
-              "flush"))) {
+              "insert into root.db.d4 (time, at1) values (2, 41), (3, 51)"))) {
         return;
       }
 
@@ -646,7 +645,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select count(*) from root.** where time >= 2",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
-          Collections.singleton("1,1,0,"));
+          Collections.singleton("2,1,0,"));
     }
   }
 
@@ -675,7 +674,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.pattern", "root.db.d1");
-      extractorAttributes.put("extractor.inclusion", "data");
+      extractorAttributes.put("extractor.inclusion", "data.insert");
       extractorAttributes.put("extractor.history.enable", "true");
       // 1970-01-01T08:00:02+08:00
       extractorAttributes.put("extractor.history.start-time", "2000");
@@ -825,7 +824,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("source.pattern", "root.db.d1");
-      extractorAttributes.put("source.inclusion", "data");
+      extractorAttributes.put("source.inclusion", "data.insert");
       extractorAttributes.put("source.start-time", "1970-01-01T08:00:02+08:00");
       // 1970-01-01T08:00:04+08:00
       extractorAttributes.put("source.end-time", "4000");

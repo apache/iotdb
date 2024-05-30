@@ -257,7 +257,7 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   // We do not support AlterLogicalViewNode parsing and use direct rpc instead
 
   @Override
-  public DeleteDataStatement visitDeleteData(DeleteDataNode node, final Void context) {
+  public DeleteDataStatement visitDeleteData(final DeleteDataNode node, final Void context) {
     final DeleteDataStatement statement = new DeleteDataStatement();
     statement.setDeleteEndTime(node.getDeleteEndTime());
     statement.setDeleteStartTime(node.getDeleteStartTime());

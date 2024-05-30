@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -174,7 +175,7 @@ public class SeriesScanUtil implements Accountable {
     this.dataSource = dataSource;
 
     // updated filter concerning TTL
-    scanOptions.setTTL(dataSource.getDataTTL());
+    scanOptions.setTTL(DataNodeTTLCache.getInstance().getTTL(seriesPath.getDevice()));
 
     // init file index
     orderUtils.setCurSeqFileIndex(dataSource);
@@ -914,9 +915,11 @@ public class SeriesScanUtil implements Accountable {
         builder.getColumnBuilder(0).writeBoolean(timeValuePair.getValue().getBoolean());
         break;
       case INT32:
+      case DATE:
         builder.getColumnBuilder(0).writeInt(timeValuePair.getValue().getInt());
         break;
       case INT64:
+      case TIMESTAMP:
         builder.getColumnBuilder(0).writeLong(timeValuePair.getValue().getLong());
         break;
       case FLOAT:
@@ -926,6 +929,8 @@ public class SeriesScanUtil implements Accountable {
         builder.getColumnBuilder(0).writeDouble(timeValuePair.getValue().getDouble());
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
         break;
       case VECTOR:

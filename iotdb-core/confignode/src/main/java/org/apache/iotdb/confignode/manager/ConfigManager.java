@@ -44,6 +44,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -62,6 +63,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateD
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
@@ -82,6 +84,7 @@ import org.apache.iotdb.confignode.consensus.response.partition.RegionInfoListRe
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
+import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
@@ -100,6 +103,7 @@ import org.apache.iotdb.confignode.manager.subscription.SubscriptionManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.TTLInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
@@ -270,6 +274,9 @@ public class ConfigManager implements IManager {
   /** Manage quotas */
   private final ClusterQuotaManager clusterQuotaManager;
 
+  /** TTL */
+  private final TTLManager ttlManager;
+
   /** Subscription */
   private final SubscriptionManager subscriptionManager;
 
@@ -292,6 +299,7 @@ public class ConfigManager implements IManager {
     CQInfo cqInfo = new CQInfo();
     PipeInfo pipeInfo = new PipeInfo();
     QuotaInfo quotaInfo = new QuotaInfo();
+    TTLInfo ttlInfo = new TTLInfo();
     SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
 
     // Build state machine and executor
@@ -308,7 +316,8 @@ public class ConfigManager implements IManager {
             cqInfo,
             pipeInfo,
             subscriptionInfo,
-            quotaInfo);
+            quotaInfo,
+            ttlInfo);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -337,6 +346,7 @@ public class ConfigManager implements IManager {
 
     this.retryFailedTasksThread = new RetryFailedTasksThread(this);
     this.clusterQuotaManager = new ClusterQuotaManager(this, quotaInfo);
+    this.ttlManager = new TTLManager(this, ttlInfo);
   }
 
   public void initConsensusManager() throws IOException {
@@ -542,7 +552,11 @@ public class ConfigManager implements IManager {
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setTTL(setTTLPlan, false);
+      if (setTTLPlan.getTTL() == TTLCache.NULL_TTL) {
+        return ttlManager.unsetTTL(setTTLPlan, false);
+      } else {
+        return ttlManager.setTTL(setTTLPlan, false);
+      }
     } else {
       return status;
     }
@@ -602,6 +616,18 @@ public class ConfigManager implements IManager {
       DatabaseSchemaResp dataSet = new DatabaseSchemaResp();
       dataSet.setStatus(status);
       return dataSet;
+    }
+  }
+
+  @Override
+  public DataSet showAllTTL(ShowTTLPlan showTTLPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return ttlManager.showAllTTL(showTTLPlan);
+    } else {
+      ShowTTLResp resp = new ShowTTLResp();
+      resp.setStatus(status);
+      return resp;
     }
   }
 
@@ -1057,6 +1083,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TTLManager getTTLManager() {
+    return ttlManager;
+  }
+
+  @Override
   public SubscriptionManager getSubscriptionManager() {
     return subscriptionManager;
   }
@@ -1280,7 +1311,7 @@ public class ConfigManager implements IManager {
 
     for (int i = 0; i < rpcTimeoutInMS / retryIntervalInMS; i++) {
       try {
-        if (consensusManager.get() == null) {
+        if (consensusManager.get() == null || !consensusManager.get().isInitialized()) {
           TimeUnit.MILLISECONDS.sleep(retryIntervalInMS);
         } else {
           // When add non Seed-ConfigNode to the ConfigNodeGroup, the parameter should be emptyList

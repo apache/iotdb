@@ -30,7 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant
 
 public class CompactionConfigRestorer {
   private boolean enableSeqSpaceCompaction = true;
-  private boolean enableUnseqSpaceCompaction = false;
+  private boolean enableUnseqSpaceCompaction = true;
   private boolean enableCrossSpaceCompaction = true;
   private CrossCompactionSelector crossStrategy = CrossCompactionSelector.REWRITE;
   private InnerSequenceCompactionSelector innerStrategy =

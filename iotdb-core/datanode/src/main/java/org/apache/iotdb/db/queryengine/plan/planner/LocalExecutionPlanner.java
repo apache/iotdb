@@ -213,7 +213,27 @@ public class LocalExecutionPlanner {
     }
   }
 
-  public synchronized void releaseToFreeMemoryForOperators(long memoryInBytes) {
+  public synchronized void reserveMemoryForQueryFrontEnd(
+      final long memoryInBytes, final long reservedBytes, final String queryId) {
+    if (memoryInBytes > freeMemoryForOperators) {
+      throw new MemoryNotEnoughException(
+          String.format(
+              "There is not enough memory for planning-stage of Query %s, "
+                  + "current remaining free memory is %dB, "
+                  + "estimated memory usage is %dB, reserved memory for FE of this query in total is %dB",
+              queryId, freeMemoryForOperators, memoryInBytes, reservedBytes));
+    } else {
+      freeMemoryForOperators -= memoryInBytes;
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "[ConsumeMemory] consume: {}, current remaining memory: {}",
+            memoryInBytes,
+            freeMemoryForOperators);
+      }
+    }
+  }
+
+  public synchronized void releaseToFreeMemoryForOperators(final long memoryInBytes) {
     freeMemoryForOperators += memoryInBytes;
   }
 

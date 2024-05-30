@@ -56,6 +56,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssi
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -71,7 +72,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 /** A skeleton class for expression */
-public abstract class Expression extends StatementNode {
+public abstract class Expression extends StatementNode implements Accountable {
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Operations that Class Expression is not responsible for should be done through a visitor
   /////////////////////////////////////////////////////////////////////////////////////////////////

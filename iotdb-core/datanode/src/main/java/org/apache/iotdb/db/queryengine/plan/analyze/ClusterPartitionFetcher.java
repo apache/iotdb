@@ -254,7 +254,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
 
     Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
-        splitDataPartitionQueryParam(dataPartitionQueryParams, true, userName);
+        splitDataPartitionQueryParam(
+            dataPartitionQueryParams, config.isAutoCreateSchemaEnabled(), userName);
     DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
 
     if (null == dataPartition) {

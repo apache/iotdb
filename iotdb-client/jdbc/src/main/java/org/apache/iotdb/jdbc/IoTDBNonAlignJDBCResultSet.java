@@ -36,6 +36,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -72,7 +73,8 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       long timeout,
       String operationType,
       List<String> sgColumns,
-      BitSet aliasColumnMap)
+      BitSet aliasColumnMap,
+      ZoneId zoneId)
       throws SQLException {
     super(
         statement,
@@ -86,7 +88,8 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
         sessionId,
         timeout,
         sgColumns,
-        aliasColumnMap);
+        aliasColumnMap,
+        zoneId);
     times = new byte[columnNameList.size()][Long.BYTES];
     this.operationType = operationType;
     ioTDBRpcDataSet.columnNameList = new ArrayList<>();
