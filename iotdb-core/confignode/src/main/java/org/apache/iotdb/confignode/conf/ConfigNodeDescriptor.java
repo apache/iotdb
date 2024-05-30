@@ -381,14 +381,6 @@ public class ConfigNodeDescriptor {
                     String.valueOf(conf.isEnableAutoLeaderBalanceForIoTConsensus()))
                 .trim()));
 
-    conf.setEnableAutoLeaderBalanceForFastIoTConsensus(
-        Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "enable_auto_leader_balance_for_fast_iot_consensus",
-                    String.valueOf(conf.isEnableAutoLeaderBalanceForFastIoTConsensus()))
-                .trim()));
-
     String routePriorityPolicy =
         properties.getProperty("route_priority_policy", conf.getRoutePriorityPolicy()).trim();
     if (IPriorityBalancer.GREEDY_POLICY.equals(routePriorityPolicy)

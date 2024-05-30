@@ -862,9 +862,11 @@ public class PipeConsensusReceiver {
     return PipeConsensusRequestVersion.VERSION_1;
   }
 
-  // Clear corresponding TsFileWriter. Don't need to clear ReqExecutor's resource because
-  // ReqExecutor's buffer is a TreeSet, which will properly cope with the resend duplicate event
-  // from sender.
+  /**
+   * Clear corresponding TsFileWriter. Don't need to clear ReqExecutor's resource because
+   * ReqExecutor's buffer is a TreeSet, which will properly cope with the resend duplicate event
+   * from sender.
+   */
   public void handleClientExit(TCommitId commitId) {
     pipeConsensusTsFileWriterPool.handleClientExit(commitId, consensusGroupId);
   }

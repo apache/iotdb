@@ -54,11 +54,12 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
 
   private final int thisNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
-  // For each consensus Pipe task, there is an independent receiver. So for every replica, it has
-  // (n-1) receivers, n is the num of replicas.
-  // 1 DataNode --has--> 1 PipeConsensusReceiverAgent & n replicas
-  // 1 PipeConsensusReceiverAgent --manages--> n replicas' receivers
-  // 1 replica --has--> (n-1) receivers
+  /**
+   * For each consensus Pipe task, there is an independent receiver. So for every replica, it has
+   * (n-1) receivers, n is the num of replicas. 1 DataNode --has--> 1 PipeConsensusReceiverAgent & n
+   * replicas 1 PipeConsensusReceiverAgent --manages--> n replicas' receivers 1 replica --has-->
+   * (n-1) receivers
+   */
   private final Map<
           ConsensusGroupId, Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>>>
       replicaReceiverMap = new ConcurrentHashMap<>();
@@ -150,7 +151,7 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     return receiverReference.get();
   }
 
-  // Release given pipeConsensusTask client's corresponding receiver.
+  /** Release given pipeConsensusTask client's corresponding receiver. */
   @Override
   public void handleClientExit(
       ConsensusGroupId consensusGroupId, int senderDataNodeId, TCommitId commitId) {
@@ -168,7 +169,7 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
     }
   }
 
-  // Release receiver of given pipeConsensusTask
+  /** Release receiver of given pipeConsensusTask */
   @Override
   public final void handleDropPipeConsensusTask(ConsensusPipeName pipeName) {
     // 1. Route to given consensusGroup's receiver map
