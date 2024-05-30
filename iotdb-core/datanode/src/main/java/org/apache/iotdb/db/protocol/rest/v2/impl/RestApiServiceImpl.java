@@ -17,6 +17,7 @@
 
 package org.apache.iotdb.db.protocol.rest.v2.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
@@ -51,6 +52,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
+import java.util.List;
 
 public class RestApiServiceImpl extends RestApiService {
 
@@ -219,14 +221,20 @@ public class RestApiServiceImpl extends RestApiService {
                     .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
                     .message(TSStatusCode.SUCCESS_STATUS.name()))
             .build();
-      } else if (result.status.message == null
-          && result.status.subStatus != null
-          && result.status.subStatus.size() > 0) {
+      } else if (result.status.code == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+        List<TSStatus> subStatus = result.status.getSubStatus();
+        StringBuilder errMsg = new StringBuilder();
+        for (TSStatus status : subStatus) {
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+            errMsg.append(status.getMessage()).append("; ");
+          }
+        }
         return Response.ok()
             .entity(
                 new ExecutionStatus()
-                    .code(result.status.getCode())
-                    .message(result.status.subStatus.get(0).message))
+                    .code(TSStatusCode.MULTIPLE_ERROR.getStatusCode())
+                    .message(errMsg.toString()))
             .build();
       } else {
         return Response.ok()
