@@ -575,6 +575,11 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
+  public R visitStreamSort(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode node, C context) {
+    return visitPlan(node, context);
+  }
+
   public R visitTopK(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode node, C context) {
     return visitPlan(node, context);

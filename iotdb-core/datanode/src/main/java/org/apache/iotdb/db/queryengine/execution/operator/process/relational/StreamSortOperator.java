@@ -79,7 +79,6 @@ public class StreamSortOperator implements ProcessOperator {
   private List<SortReader> sortReaders;
   private boolean[] noMoreData;
 
-
   private final int maxReturnSize =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
