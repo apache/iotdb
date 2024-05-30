@@ -121,11 +121,6 @@ public class IoTDBJDBCResultSetTest {
   @Before
   public void before() throws Exception {
     MockitoAnnotations.initMocks(this);
-
-    statement = new IoTDBStatement(connection, client, sessionId, zoneID);
-
-    execResp.queryResult = FakedFirstFetchTsBlockResult();
-
     when(connection.getCharset()).thenReturn(IoTDBCharsetConstant.UTF_8);
     when(connection.isClosed()).thenReturn(false);
     when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execResp);
@@ -140,6 +135,9 @@ public class IoTDBJDBCResultSetTest {
 
     TSStatus closeResp = successStatus;
     when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(closeResp);
+
+    statement = new IoTDBStatement(connection, client, sessionId, zoneID);
+    execResp.queryResult = FakedFirstFetchTsBlockResult();
   }
 
   @SuppressWarnings("resource")
