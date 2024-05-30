@@ -181,6 +181,10 @@ public class TransformOperator implements ProcessOperator {
         }
 
         Column[] columns = transformers[index].current();
+
+        int count = columns[0].getPositionCount();
+        Column[] valueColumns = {columns[0]};
+        TsBlock.wrapBlocksWithoutCopy(count, (TimeColumn) columns[1], valueColumns);
         TsBlock block = new TsBlock((TimeColumn) columns[1], columns[0]);
         outputColumns[index] = block;
         currentIndexes[index] = 0;

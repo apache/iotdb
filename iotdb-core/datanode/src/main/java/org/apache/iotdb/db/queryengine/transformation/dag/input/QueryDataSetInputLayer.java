@@ -74,7 +74,7 @@ public class QueryDataSetInputLayer {
     private Column[] cachedColumns = null;
     private int cacheConsumed = 0;
 
-    private RowListForwardIterator iterator = rowList.constructIterator();
+    private final RowListForwardIterator iterator = rowList.constructIterator();
 
     BlockColumnReader(int columnIndex) {
       this.columnIndex = columnIndex;
