@@ -34,6 +34,16 @@ import java.util.Properties;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * The {@link SubscriptionPushConsumer} corresponds to the push consumption mode in the message
+ * queue.
+ *
+ * <p>User code is triggered by newly arrived data events and only needs to pre-configure message
+ * acknowledgment strategy ({@link #ackStrategy}) and consumption handling logic ({@link
+ * #consumeListener}).
+ *
+ * <p>User code does not need to manually commit the consumption progress.
+ */
 public class SubscriptionPushConsumer extends SubscriptionConsumer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPushConsumer.class);

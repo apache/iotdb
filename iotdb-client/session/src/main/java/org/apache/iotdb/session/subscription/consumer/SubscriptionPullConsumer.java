@@ -40,6 +40,18 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * The {@link SubscriptionPullConsumer} corresponds to the pull consumption mode in the message
+ * queue.
+ *
+ * <p>User code needs to actively call the data retrieval logic, i.e., the {@link #poll} method.
+ *
+ * <p>Auto-commit for consumption progress can be configured in {@link #autoCommit}.
+ *
+ * <p>NOTE: It is not recommended to use the {@link #poll} method with the same consumer in a
+ * multithreaded environment. Instead, it is advised to increase the number of consumers to improve
+ * data retrieval parallelism.
+ */
 public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPullConsumer.class);
