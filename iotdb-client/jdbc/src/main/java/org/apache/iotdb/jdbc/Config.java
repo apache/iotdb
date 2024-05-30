@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.jdbc.Constant.Version;
+import org.apache.iotdb.jdbc.charset.IoTDBCharsetConstant;
 
 public class Config {
 
@@ -78,4 +79,9 @@ public class Config {
   public static final String TRUST_STORE = "trust_store";
 
   public static final String TRUST_STORE_PWD = "trust_store_pwd";
+
+  /** Key of the charset. */
+  public static final String CHARSET = "charset";
+
+  public static final String DEFAULT_CHARSET = IoTDBCharsetConstant.UTF_8;
 }

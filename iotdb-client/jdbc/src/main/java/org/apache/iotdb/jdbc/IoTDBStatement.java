@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.charset.IoTDBCharsetUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -75,6 +76,8 @@ public class IoTDBStatement implements Statement {
   private long stmtId = -1;
   private long queryId = -1;
 
+  protected String charset;
+
   /** Constructor of IoTDBStatement. */
   IoTDBStatement(
       IoTDBConnection connection,
@@ -91,6 +94,7 @@ public class IoTDBStatement implements Statement {
     this.batchSQLList = new ArrayList<>();
     this.zoneId = zoneId;
     this.queryTimeout = seconds;
+    this.charset = connection.getCharset();
     requestStmtId();
   }
 
@@ -143,7 +147,9 @@ public class IoTDBStatement implements Statement {
     if (batchSQLList == null) {
       batchSQLList = new ArrayList<>();
     }
-    batchSQLList.add(sql);
+    final String sqlUtf8 = IoTDBCharsetUtils.convertToUTF8(sql, charset);
+
+    batchSQLList.add(sqlUtf8);
   }
 
   @Override
@@ -210,12 +216,14 @@ public class IoTDBStatement implements Statement {
   public boolean execute(String sql) throws SQLException {
     checkConnection("execute");
     isClosed = false;
+    final String sqlUtf8 = IoTDBCharsetUtils.convertToUTF8(sql, charset);
+
     try {
-      return executeSQL(sql);
+      return executeSQL(sqlUtf8);
     } catch (TException e) {
       if (reConnect()) {
         try {
-          return executeSQL(sql);
+          return executeSQL(sqlUtf8);
         } catch (TException e2) {
           throw new SQLException(e2);
         }
@@ -376,20 +384,23 @@ public class IoTDBStatement implements Statement {
   public ResultSet executeQuery(String sql, long timeoutInMS) throws SQLException {
     checkConnection("execute query");
     isClosed = false;
+    final String sqlUtf8 = IoTDBCharsetUtils.convertToUTF8(sql, charset);
+
     try {
-      return executeQuerySQL(sql, timeoutInMS);
+      return executeQuerySQL(sqlUtf8, timeoutInMS);
     } catch (TException e) {
       if (reConnect()) {
         try {
-          return executeQuerySQL(sql, timeoutInMS);
+          return executeQuerySQL(sqlUtf8, timeoutInMS);
         } catch (TException e2) {
           throw new SQLException(
-              "Fail to executeQuery " + sql + "after reconnecting. please check server status", e2);
+              "Fail to executeQuery " + sqlUtf8 + "after reconnecting. please check server status",
+              e2);
         }
       } else {
         throw new SQLException(
             "Fail to reconnect to server when execute query "
-                + sql
+                + sqlUtf8
                 + ". please check server status",
             e);
       }
@@ -457,7 +468,8 @@ public class IoTDBStatement implements Statement {
               execResp.sgColumns,
               aliasColumn,
               execResp.moreData,
-              zoneId);
+              zoneId,
+              charset);
     }
     return resultSet;
   }
@@ -474,21 +486,25 @@ public class IoTDBStatement implements Statement {
   public int executeUpdate(String sql) throws SQLException {
     checkConnection("execute update");
     isClosed = false;
+    final String sqlUtf8 = IoTDBCharsetUtils.convertToUTF8(sql, charset);
+
     try {
-      return executeUpdateSQL(sql);
+      return executeUpdateSQL(sqlUtf8);
     } catch (TException e) {
       if (reConnect()) {
         try {
-          return executeUpdateSQL(sql);
+          return executeUpdateSQL(sqlUtf8);
         } catch (TException e2) {
           throw new SQLException(
-              "Fail to execute update " + sql + "after reconnecting. please check server status",
+              "Fail to execute update "
+                  + sqlUtf8
+                  + "after reconnecting. please check server status",
               e2);
         }
       } else {
         throw new SQLException(
             "Fail to reconnect to server when execute update "
-                + sql
+                + sqlUtf8
                 + ". please check server status",
             e);
       }
@@ -718,5 +734,9 @@ public class IoTDBStatement implements Statement {
 
   public long getStmtId() {
     return stmtId;
+  }
+
+  public String getCharset() {
+    return charset;
   }
 }

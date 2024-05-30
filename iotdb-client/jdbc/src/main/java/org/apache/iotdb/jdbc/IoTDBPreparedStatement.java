@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.charset.IoTDBCharsetUtils;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
 
 import org.apache.thrift.TException;
@@ -75,7 +76,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       IoTDBConnection connection, Iface client, Long sessionId, String sql, ZoneId zoneId)
       throws SQLException {
     super(connection, client, sessionId, zoneId);
-    this.sql = sql;
+    this.sql = IoTDBCharsetUtils.convertToUTF8(sql, charset);
   }
 
   @Override
@@ -880,11 +881,14 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setString(int parameterIndex, String x) {
+    String xUtf8 = IoTDBCharsetUtils.convertToUTF8(x, charset);
     // if the sql is insert and the value is not a string literal, add double quotes
-    if (sql.trim().toUpperCase().startsWith("INSERT") && !x.startsWith("\"") && !x.endsWith("'")) {
-      this.parameters.put(parameterIndex, "\"" + x + "\"");
+    if (sql.trim().toUpperCase().startsWith("INSERT")
+        && !xUtf8.startsWith("\"")
+        && !xUtf8.endsWith("'")) {
+      this.parameters.put(parameterIndex, "\"" + xUtf8 + "\"");
     } else {
-      this.parameters.put(parameterIndex, x);
+      this.parameters.put(parameterIndex, xUtf8);
     }
   }
 

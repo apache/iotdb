@@ -25,6 +25,8 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.jdbc.Config.CHARSET;
+
 /** Utils to convert between thrift format and TsFile format. */
 public class Utils {
 
@@ -117,6 +119,10 @@ public class Utils {
       params.setTrustStorePwd(info.getProperty(Config.TRUST_STORE_PWD));
     }
 
+    if (info.containsKey(CHARSET)) {
+      params.setCharset(info.getProperty(Config.CHARSET));
+    }
+
     return params;
   }
 
@@ -154,6 +160,7 @@ public class Utils {
         case Config.TRUST_STORE_PWD:
         case Config.VERSION:
         case Config.NETWORK_TIMEOUT:
+        case Config.CHARSET:
           info.put(key, value);
           break;
         case Config.TIME_ZONE:

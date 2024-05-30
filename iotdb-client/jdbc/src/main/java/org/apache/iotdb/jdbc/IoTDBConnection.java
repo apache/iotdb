@@ -91,6 +91,7 @@ public class IoTDBConnection implements Connection {
   private ZoneId zoneId;
   private boolean autoCommit;
   private String url;
+  private String charset;
 
   public String getUserName() {
     return userName;
@@ -111,6 +112,7 @@ public class IoTDBConnection implements Connection {
     this.userName = info.get("user").toString();
     this.networkTimeout = params.getNetworkTimeout();
     this.zoneId = ZoneId.of(params.getTimeZone());
+    this.charset = params.getCharset();
     openTransport();
     if (Config.rpcThriftCompressionEnable) {
       setClient(new IClientRPCService.Client(new TCompactProtocol(transport)));
@@ -587,5 +589,9 @@ public class IoTDBConnection implements Connection {
 
   public ServerProperties getServerProperties() throws TException {
     return getClient().getProperties();
+  }
+
+  public String getCharset() {
+    return charset;
   }
 }

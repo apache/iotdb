@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.charset.IoTDBCharsetUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
@@ -97,7 +98,6 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     // deduplicate and map
     ioTDBRpcDataSet.columnOrdinalMap = new HashMap<>();
     ioTDBRpcDataSet.columnOrdinalMap.put(TIMESTAMP_STR, 1);
-    ioTDBRpcDataSet.columnTypeDeduplicatedList = new ArrayList<>();
     ioTDBRpcDataSet.columnTypeDeduplicatedList = new ArrayList<>(columnNameIndex.size());
     for (int i = 0; i < columnNameIndex.size(); i++) {
       ioTDBRpcDataSet.columnTypeDeduplicatedList.add(null);
@@ -272,15 +272,16 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   @Override
   protected String getValueByName(String columnName) throws SQLException {
     checkRecord();
-    if (columnName.startsWith(TIMESTAMP_STR)) {
-      String column = columnName.substring(TIMESTAMP_STR_LENGTH);
+    String columnNameUtf8 = IoTDBCharsetUtils.convertToUTF8(columnName, charset);
+    if (columnNameUtf8.startsWith(TIMESTAMP_STR)) {
+      String column = columnNameUtf8.substring(TIMESTAMP_STR_LENGTH);
       int index = ioTDBRpcDataSet.columnOrdinalMap.get(column) - START_INDEX;
       if (times[index] == null || times[index].length == 0) {
         return null;
       }
       return String.valueOf(BytesUtils.bytesToLong(times[index]));
     }
-    int index = ioTDBRpcDataSet.columnOrdinalMap.get(columnName) - START_INDEX;
+    int index = ioTDBRpcDataSet.columnOrdinalMap.get(columnNameUtf8) - START_INDEX;
     if (index < 0
         || index >= ioTDBRpcDataSet.values.length
         || ioTDBRpcDataSet.values[index] == null
@@ -294,15 +295,16 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   @Override
   protected Object getObjectByName(String columnName) throws SQLException {
     checkRecord();
-    if (columnName.startsWith(TIMESTAMP_STR)) {
-      String column = columnName.substring(TIMESTAMP_STR_LENGTH);
+    String columnNameUtf8 = IoTDBCharsetUtils.convertToUTF8(columnName, charset);
+    if (columnNameUtf8.startsWith(TIMESTAMP_STR)) {
+      String column = columnNameUtf8.substring(TIMESTAMP_STR_LENGTH);
       int index = ioTDBRpcDataSet.columnOrdinalMap.get(column) - START_INDEX;
       if (times[index] == null || times[index].length == 0) {
         return null;
       }
       return BytesUtils.bytesToLong(times[index]);
     }
-    int index = ioTDBRpcDataSet.columnOrdinalMap.get(columnName) - START_INDEX;
+    int index = ioTDBRpcDataSet.columnOrdinalMap.get(columnNameUtf8) - START_INDEX;
     if (index < 0
         || index >= ioTDBRpcDataSet.values.length
         || ioTDBRpcDataSet.values[index] == null

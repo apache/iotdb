@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.jdbc.charset.IoTDBCharsetUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -71,6 +72,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   private List<String> columns = null;
   private List<String> sgColumns = null;
   private String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
+  private final String charset;
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   public IoTDBJDBCResultSet(
@@ -91,7 +93,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
       List<String> sgColumns,
       BitSet aliasColumnMap,
       boolean moreData,
-      ZoneId zoneId)
+      ZoneId zoneId,
+      String charset)
       throws SQLException {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
@@ -121,6 +124,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
     this.operationType = operationType;
     this.columns = columns;
     this.sgColumns = sgColumns;
+    this.charset = charset;
   }
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
@@ -163,6 +167,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
       ioTDBRpcTracingInfo = new IoTDBTracingInfo();
       ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
     }
+    this.charset = ((IoTDBStatement) statement).getCharset();
   }
 
   @Override
@@ -308,7 +313,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public boolean getBoolean(String columnName) throws SQLException {
     try {
-      return ioTDBRpcDataSet.getBoolean(columnName);
+      String columnNameUtf8 = IoTDBCharsetUtils.convertToUTF8(columnName, charset);
+      return ioTDBRpcDataSet.getBoolean(columnNameUtf8);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -336,7 +342,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public byte[] getBytes(String columnName) throws SQLException {
     try {
-      return ioTDBRpcDataSet.getBinary(columnName).getValues();
+      String columnNameUtf8 = IoTDBCharsetUtils.convertToUTF8(columnName, charset);
+      return ioTDBRpcDataSet.getBinary(columnNameUtf8).getValues();
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -407,13 +414,14 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public double getDouble(String columnName) throws SQLException {
     try {
+      String columnNameUtf8 = IoTDBCharsetUtils.convertToUTF8(columnName, charset);
       if (ioTDBRpcDataSet
           .columnTypeList
-          .get(ioTDBRpcDataSet.columnNameList.indexOf(columnName))
+          .get(ioTDBRpcDataSet.columnNameList.indexOf(columnNameUtf8))
           .equals("FLOAT")) {
-        return ioTDBRpcDataSet.getFloat(columnName);
+        return ioTDBRpcDataSet.getFloat(columnNameUtf8);
       }
-      return ioTDBRpcDataSet.getDouble(columnName);
+      return ioTDBRpcDataSet.getDouble(columnNameUtf8);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -451,7 +459,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public float getFloat(String columnName) throws SQLException {
     try {
-      return ioTDBRpcDataSet.getFloat(columnName);
+      String columnNameUtf8 = IoTDBCharsetUtils.convertToUTF8(columnName, charset);
+      return ioTDBRpcDataSet.getFloat(columnNameUtf8);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -474,7 +483,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public int getInt(String columnName) throws SQLException {
     try {
-      return ioTDBRpcDataSet.getInt(columnName);
+      String columnNameUtf8 = IoTDBCharsetUtils.convertToUTF8(columnName, charset);
+      return ioTDBRpcDataSet.getInt(columnNameUtf8);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -492,7 +502,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public long getLong(String columnName) throws SQLException {
     try {
-      return ioTDBRpcDataSet.getLong(columnName);
+      String columnNameUtf8 = IoTDBCharsetUtils.convertToUTF8(columnName, charset);
+      return ioTDBRpcDataSet.getLong(columnNameUtf8);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -514,7 +525,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
         nonAlign,
         sgColumns,
         operationTypeColumn,
-        ioTDBRpcDataSet.columnNameList,
+        IoTDBCharsetUtils.convertBatchFromUTF8(ioTDBRpcDataSet.columnNameList, charset),
         ioTDBRpcDataSet.columnTypeList,
         ioTDBRpcDataSet.ignoreTimeStamp);
   }
@@ -644,7 +655,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public String getString(String columnName) throws SQLException {
-    return getValueByName(columnName);
+    return IoTDBCharsetUtils.convertFromUTF8(getValueByName(columnName), charset);
   }
 
   @Override
@@ -1224,7 +1235,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   protected String getValueByName(String columnName) throws SQLException {
     try {
-      return ioTDBRpcDataSet.getValueByName(columnName);
+      String columnNameUtf8 = IoTDBCharsetUtils.convertToUTF8(columnName, charset);
+      return ioTDBRpcDataSet.getValueByName(columnNameUtf8);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -1232,7 +1244,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   protected Object getObjectByName(String columnName) throws SQLException {
     try {
-      return ioTDBRpcDataSet.getObjectByName(columnName);
+      String columnNameUtf8 = IoTDBCharsetUtils.convertToUTF8(columnName, charset);
+      return ioTDBRpcDataSet.getObjectByName(columnNameUtf8);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -1270,10 +1283,10 @@ public class IoTDBJDBCResultSet implements ResultSet {
   }
 
   public List<String> getColumns() {
-    return this.columns;
+    return IoTDBCharsetUtils.convertBatchFromUTF8(this.columns, charset);
   }
 
   public List<String> getSgColumns() {
-    return sgColumns;
+    return IoTDBCharsetUtils.convertBatchFromUTF8(this.sgColumns, charset);
   }
 }

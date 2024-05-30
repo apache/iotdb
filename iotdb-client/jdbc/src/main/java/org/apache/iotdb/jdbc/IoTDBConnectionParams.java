@@ -45,6 +45,8 @@ public class IoTDBConnectionParams {
   private String trustStore;
   private String trustStorePwd;
 
+  private String charset = Config.DEFAULT_CHARSET;
+
   public IoTDBConnectionParams(String url) {
     this.jdbcUriString = url;
   }
@@ -163,5 +165,13 @@ public class IoTDBConnectionParams {
 
   public void setTrustStorePwd(String trustStorePwd) {
     this.trustStorePwd = trustStorePwd;
+  }
+
+  public String getCharset() {
+    return charset;
+  }
+
+  public void setCharset(String charset) {
+    this.charset = charset;
   }
 }
