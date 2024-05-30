@@ -223,11 +223,6 @@ public class MultiInputLayer extends IntermediateLayer implements IUDFInputDataS
       }
 
       @Override
-      public void consumed(int count) {
-        // Currently do nothing
-      }
-
-      @Override
       public void consumedAll() {
         // Currently do nothing
       }

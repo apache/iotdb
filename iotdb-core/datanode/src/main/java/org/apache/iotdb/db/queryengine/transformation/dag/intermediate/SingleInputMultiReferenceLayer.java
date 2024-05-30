@@ -115,22 +115,6 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
       }
 
       @Override
-      public void consumed(int consumed) {
-        assert cacheConsumed + consumed <= cachedTimes.getPositionCount();
-        cacheConsumed += consumed;
-
-        safetyPile.moveForward(consumed);
-        tvList.setEvictionUpperBound(safetyLine.getSafetyLine());
-
-        // Invalid cache
-        if (cacheConsumed == cachedTimes.getPositionCount()) {
-          cacheConsumed = 0;
-          cachedTimes = null;
-          cachedValues = null;
-        }
-      }
-
-      @Override
       public void consumedAll() {
         int steps = cachedTimes.getPositionCount() - cacheConsumed;
         safetyPile.moveForward(steps);

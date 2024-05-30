@@ -56,7 +56,8 @@ public class MappableUDFQueryRowTransformer extends UDFQueryTransformer {
 
     executor.execute(columns, valueColumnBuilder);
 
-    Column timeColumn = columns[1];
+    int timeColumnIndex = columns.length - 1;
+    Column timeColumn = columns[timeColumnIndex];
     Column valueColumn = valueColumnBuilder.build();
     return new Column[] {valueColumn, timeColumn};
   }

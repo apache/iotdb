@@ -102,11 +102,6 @@ public class ConstantInputReader implements LayerReader {
   }
 
   @Override
-  public void consumed(int consumed) {
-    // Do nothing
-  }
-
-  @Override
   public void consumedAll() {
     // Do nothing
   }

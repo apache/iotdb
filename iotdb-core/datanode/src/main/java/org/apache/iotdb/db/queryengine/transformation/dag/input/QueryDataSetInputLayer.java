@@ -108,23 +108,6 @@ public class QueryDataSetInputLayer {
     }
 
     @Override
-    public void consumed(int consumed) {
-      assert cachedColumns != null
-          && cacheConsumed + consumed <= cachedColumns[0].getPositionCount();
-      cacheConsumed += consumed;
-
-      safetyPile.moveForward(consumed);
-      // Will be called by TransformOperator
-      // rowList.setEvictionUpperBound(safetyLine.getSafetyLine());
-
-      // Invalid cache
-      if (cacheConsumed == cachedColumns[0].getPositionCount()) {
-        cacheConsumed = 0;
-        cachedColumns = null;
-      }
-    }
-
-    @Override
     public void consumedAll() {
       int steps = cachedColumns[0].getPositionCount() - cacheConsumed;
       safetyPile.moveForward(steps);

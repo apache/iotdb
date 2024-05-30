@@ -29,8 +29,6 @@ public interface LayerReader extends YieldableReader {
   // This method is only used in PointReader
   boolean isConstantPointReader();
 
-  void consumed(int count);
-
   void consumedAll();
 
   Column[] current() throws IOException;

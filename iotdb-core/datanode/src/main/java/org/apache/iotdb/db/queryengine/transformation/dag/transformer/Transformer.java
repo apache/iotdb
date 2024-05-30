@@ -42,16 +42,6 @@ public abstract class Transformer implements LayerReader {
   }
 
   @Override
-  public void consumed(int count) {
-    assert cachedColumns != null && cacheConsumed + count <= cachedColumns[0].getPositionCount();
-    cacheConsumed += count;
-
-    if (cacheConsumed == cachedColumns[0].getPositionCount()) {
-      invalidCache();
-    }
-  }
-
-  @Override
   public void consumedAll() {
     invalidCache();
   }
