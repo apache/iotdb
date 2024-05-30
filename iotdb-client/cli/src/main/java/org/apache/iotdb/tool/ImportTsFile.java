@@ -39,7 +39,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class ImportTsFile extends AbstractTsFileTool {
@@ -66,6 +68,9 @@ public class ImportTsFile extends AbstractTsFileTool {
 
   private static final String TS_FILE_CLI_PREFIX = "ImportTsFile";
 
+  public static final String RESOURCE = ".resource";
+  public static final String MODS = ".mods";
+
   private static String source;
   private static String sourceFullPath;
   private static String successDir = "success/";
@@ -75,6 +80,7 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static int threadNum = 8;
   private static final LinkedBlockingQueue<String> linkedBlockingQueue =
       new LinkedBlockingQueue<>();
+  private static final Set<String> resourceOrModsSet = new HashSet<>();
 
   private static void createOptions() {
     createBaseOptions();
@@ -272,6 +278,7 @@ public class ImportTsFile extends AbstractTsFileTool {
         return CODE_ERROR;
       }
       traverse(file);
+      addNoResourceOrModsToQueue();
       asyncImportTsFiles();
     } catch (InterruptedException e) {
       ioTPrinter.println("Traversing file exceptions: " + e.getMessage());
@@ -284,9 +291,26 @@ public class ImportTsFile extends AbstractTsFileTool {
     return CODE_OK;
   }
 
+  public static void addNoResourceOrModsToQueue() throws InterruptedException {
+    String tsfilePath;
+    for (String filePath : resourceOrModsSet) {
+      tsfilePath =
+          filePath.endsWith(RESOURCE)
+              ? filePath.substring(0, filePath.length() - RESOURCE.length())
+              : filePath.substring(0, filePath.length() - MODS.length());
+      if (!linkedBlockingQueue.contains(tsfilePath)) {
+        linkedBlockingQueue.put(filePath);
+      }
+    }
+  }
+
   public static void traverse(File file) throws InterruptedException {
     if (file.isFile()) {
-      linkedBlockingQueue.put(file.getAbsolutePath());
+      if (file.getName().endsWith(RESOURCE) || file.getName().endsWith(MODS)) {
+        resourceOrModsSet.add(file.getAbsolutePath());
+      } else {
+        linkedBlockingQueue.put(file.getAbsolutePath());
+      }
     } else if (file.isDirectory()) {
       File[] files = file.listFiles();
       if (files != null) {
@@ -323,15 +347,15 @@ public class ImportTsFile extends AbstractTsFileTool {
           sessionPool.executeNonQueryStatement(sql);
           ioTPrinter.println("Import [ " + filePath + " ] file success");
           try {
-            processingSuccess(filePath);
-          }catch (Exception e1) {
+            processingFile(filePath, successDir, successOperation);
+          } catch (Exception e1) {
             ioTPrinter.println("processing success file fail: " + e1.getMessage());
           }
         } catch (Exception e) {
           ioTPrinter.println("Import [ " + filePath + " ] file fail: " + e.getMessage());
           try {
-            processingFailed(filePath);
-          }catch (Exception e1) {
+            processingFile(filePath, failDir, failOperation);
+          } catch (Exception e1) {
             ioTPrinter.println("processing fail file fail: " + e1.getMessage());
           }
         }
@@ -341,16 +365,29 @@ public class ImportTsFile extends AbstractTsFileTool {
     }
   }
 
-  public static void processingSuccess(String filePath) {
+  public static void processingFile(String filePath, String dir, Operation operation) {
     String relativePath = filePath.substring(sourceFullPath.length() + 1);
     Path sourcePath = Paths.get(filePath);
-    Path targetPath =
-        Paths.get(successDir + File.separator + relativePath.replace(File.separator, "_"));
+    String target = dir + File.separator + relativePath.replace(File.separator, "_");
+    Path targetPath = Paths.get(target);
 
-    switch (successOperation) {
+    Path sourceResourcePath = Paths.get(sourcePath + RESOURCE);
+    sourceResourcePath = Files.exists(sourceResourcePath) ? sourceResourcePath : null;
+    Path targetResourcePath = Paths.get(target + RESOURCE);
+    Path sourceModsPath = Paths.get(sourcePath + MODS);
+    sourceModsPath = Files.exists(sourceModsPath) ? sourceModsPath : null;
+    Path targetModsPath = Paths.get(target + MODS);
+
+    switch (operation) {
       case DELETE:
         try {
           Files.delete(sourcePath);
+          if (null != sourceResourcePath) {
+            Files.delete(sourceResourcePath);
+          }
+          if (null != sourceModsPath) {
+            Files.delete(sourceModsPath);
+          }
         } catch (IOException e) {
           ioTPrinter.println("File delete fail: " + e.getMessage());
         }
@@ -358,6 +395,12 @@ public class ImportTsFile extends AbstractTsFileTool {
       case CP:
         try {
           Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+          if (null != sourceResourcePath) {
+            Files.copy(sourceResourcePath, targetResourcePath, StandardCopyOption.REPLACE_EXISTING);
+          }
+          if (null != sourceModsPath) {
+            Files.copy(sourceModsPath, targetModsPath, StandardCopyOption.REPLACE_EXISTING);
+          }
         } catch (IOException e) {
           ioTPrinter.println("File copied fail: " + e.getMessage());
         }
@@ -374,59 +417,32 @@ public class ImportTsFile extends AbstractTsFileTool {
             ioTPrinter.println("File copied fail: " + e1.getMessage());
           }
         }
-        break;
-      case MV:
-        try {
-          Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-          ioTPrinter.println("File moved fail: " + e.getMessage());
-        }
-        break;
-      default:
-        break;
-    }
-  }
 
-  public static void processingFailed(String filePath) {
-    String relativePath = filePath.substring(sourceFullPath.length() + 1);
-    Path sourcePath = Paths.get(filePath);
-    Path targetPath =
-        Paths.get(failDir + File.separator + relativePath.replace(File.separator, "_"));
-
-    switch (failOperation) {
-      case DELETE:
         try {
-          Files.delete(sourcePath);
-        } catch (IOException e) {
-          ioTPrinter.println("File delete fail: " + e.getMessage());
-        }
-        break;
-      case CP:
-        try {
-          Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+          if (null != sourceResourcePath) {
+            Files.copy(sourceResourcePath, targetResourcePath, StandardCopyOption.REPLACE_EXISTING);
+          }
+          if (null != sourceModsPath) {
+            Files.copy(sourceModsPath, targetModsPath, StandardCopyOption.REPLACE_EXISTING);
+          }
         } catch (IOException e) {
           ioTPrinter.println("File copied fail: " + e.getMessage());
         }
-        break;
-      case HD:
-        try {
-          Files.createLink(targetPath, sourcePath);
-        } catch (FileAlreadyExistsException e) {
-          ioTPrinter.println("File hardlink fail: File Already Exists " + e.getMessage());
-        } catch (Exception e) {
-          try {
-            Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
-          } catch (IOException e1) {
-            ioTPrinter.println("File copied fail: " + e1.getMessage());
-          }
-        }
+
         break;
       case MV:
         try {
           Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+          if (null != sourceResourcePath) {
+            Files.move(sourceResourcePath, targetResourcePath, StandardCopyOption.REPLACE_EXISTING);
+          }
+          if (null != sourceModsPath) {
+            Files.move(sourceModsPath, targetModsPath, StandardCopyOption.REPLACE_EXISTING);
+          }
         } catch (IOException e) {
           ioTPrinter.println("File moved fail: " + e.getMessage());
         }
+
         break;
       default:
         break;
