@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+/** TTL Cache Tree, which is a prefix B+ tree with each node storing TTL. */
 @NotThreadSafe
 public class TTLCache {
 

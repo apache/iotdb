@@ -873,7 +873,7 @@ public class DataRegion implements IDataRegionForQuery {
   public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
     // reject insertions that are out of ttl
     long deviceTTL =
-        DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getFullPath());
+        DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getNodes());
     if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
       throw new OutOfTTLException(
           insertRowNode.getTime(), (CommonDateTimeUtils.currentTime() - deviceTTL));
@@ -939,7 +939,7 @@ public class DataRegion implements IDataRegionForQuery {
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
       boolean noFailure = true;
       long deviceTTL =
-          DataNodeTTLCache.getInstance().getTTL(insertTabletNode.getDevicePath().getFullPath());
+          DataNodeTTLCache.getInstance().getTTL(insertTabletNode.getDevicePath().getNodes());
 
       /*
        * assume that batch has been sorted by client
@@ -3227,7 +3227,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       long deviceTTL =
           DataNodeTTLCache.getInstance()
-              .getTTL(insertRowsOfOneDeviceNode.getDevicePath().getFullPath());
+              .getTTL(insertRowsOfOneDeviceNode.getDevicePath().getNodes());
       long[] costsForMetrics = new long[4];
       Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
@@ -3343,7 +3343,7 @@ public class DataRegion implements IDataRegionForQuery {
       for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
         long deviceTTL =
-            DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getFullPath());
+            DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getNodes());
         if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
           insertRowsNode
               .getResults()
