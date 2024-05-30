@@ -56,13 +56,16 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_REALTIME_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_START_TIME_KEY;
 
 public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
@@ -97,6 +100,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   private boolean shouldTransferModFile; // Whether to transfer mods
 
+  private boolean sloppyTimeRange; // true to disable time range filter after extraction
+
   // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
   protected final UnboundedBlockingPendingQueue<Event> pendingQueue =
@@ -111,7 +116,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   }
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     final PipeParameters parameters = validator.getParameters();
 
     try {
@@ -134,14 +139,15 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
                 SOURCE_END_TIME_KEY,
                 EXTRACTOR_END_TIME_KEY));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       // compatible with the current validation framework
       throw new PipeParameterNotValidException(e.getMessage());
     }
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
     final PipeTaskExtractorRuntimeEnvironment environment =
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
@@ -193,6 +199,19 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         parameters.getBooleanOrDefault(
             Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
             EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE || shouldExtractDeletion);
+
+    sloppyTimeRange =
+        Arrays.stream(
+                parameters
+                    .getStringOrDefault(
+                        Arrays.asList(
+                            EXTRACTOR_REALTIME_LOOSE_RANGE_KEY, SOURCE_REALTIME_LOOSE_RANGE_KEY),
+                        "")
+                    .split(","))
+            .map(String::trim)
+            .map(String::toLowerCase)
+            .collect(Collectors.toSet())
+            .contains("time");
   }
 
   @Override
@@ -235,7 +254,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   /**
    * @param event the {@link Event} from the {@link StorageEngine}
    */
-  public final void extract(PipeRealtimeEvent event) {
+  public final void extract(final PipeRealtimeEvent event) {
     if (isDbNameCoveredByPattern) {
       event.skipParsingPattern();
     }
@@ -258,6 +277,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     // If there is no intersection, it indicates that this data will be filtered out by the
     // extractor, and the extract process is skipped.
     if (!event.shouldParseTime() || event.getEvent().mayEventTimeOverlappedWithTimeRange()) {
+      if (sloppyTimeRange) {
+        // only skip parsing time for events whose data timestamps may intersect with the time range
+        event.skipParsingTime();
+      }
       doExtract(event);
     } else {
       event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
@@ -270,9 +293,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  protected abstract void doExtract(PipeRealtimeEvent event);
+  protected abstract void doExtract(final PipeRealtimeEvent event);
 
-  protected void extractHeartbeat(PipeRealtimeEvent event) {
+  protected void extractHeartbeat(final PipeRealtimeEvent event) {
     // Bind extractor so that the heartbeat event can later inform the extractor of queue size
     ((PipeHeartbeatEvent) event.getEvent()).bindExtractor(this);
 
@@ -308,7 +331,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  protected void extractDeletion(PipeRealtimeEvent event) {
+  protected void extractDeletion(final PipeRealtimeEvent event) {
     if (!pendingQueue.waitedOffer(event)) {
       // This would not happen, but just in case.
       // Pending is unbounded, so it should never reach capacity.
@@ -325,11 +348,11 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  protected Event supplyHeartbeat(PipeRealtimeEvent event) {
+  protected Event supplyHeartbeat(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName())) {
       return event.getEvent();
     } else {
-      // this would not happen, but just in case.
+      // This would not happen, but just in case.
       LOGGER.error(
           "Heartbeat Event {} can not be supplied because "
               + "the reference count can not be increased",
@@ -342,7 +365,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     }
   }
 
-  protected Event supplyDeletion(PipeRealtimeEvent event) {
+  protected Event supplyDeletion(final PipeRealtimeEvent event) {
     if (event.increaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName())) {
       return event.getEvent();
     } else {
@@ -393,7 +416,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     return realtimeDataExtractionEndTime;
   }
 
-  public void setDataRegionTimePartitionIdBound(@NonNull Pair<Long, Long> timePartitionIdBound) {
+  public void setDataRegionTimePartitionIdBound(
+      @NonNull final Pair<Long, Long> timePartitionIdBound) {
     LOGGER.info(
         "PipeRealtimeDataRegionExtractor({}) observed data region {} time partition growth, recording time partition id bound: {}.",
         taskID,
@@ -444,6 +468,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public int getPipeHeartbeatEventCount() {
     return pendingQueue.getPipeHeartbeatEventCount();
+  }
+
+  public int getEventCount() {
+    return pendingQueue.size();
   }
 
   public String getTaskID() {

@@ -28,6 +28,7 @@ public class MppJVMConfig implements JVMConfig {
   private int initHeapSize;
   private int maxHeapSize;
   private int maxDirectMemorySize;
+  private String timezone;
 
   @Override
   public JVMConfig setInitHeapSize(int initSize) {
@@ -52,6 +53,13 @@ public class MppJVMConfig implements JVMConfig {
     return this;
   }
 
+  public JVMConfig setTimezone(String timezone) {
+    if (timezone != null) {
+      this.timezone = timezone;
+    }
+    return this;
+  }
+
   public int getInitHeapSize() {
     return initHeapSize;
   }
@@ -62,6 +70,10 @@ public class MppJVMConfig implements JVMConfig {
 
   public int getMaxDirectMemorySize() {
     return maxDirectMemorySize;
+  }
+
+  public String getTimezone() {
+    return timezone;
   }
 
   private void validate() {
@@ -81,6 +93,7 @@ public class MppJVMConfig implements JVMConfig {
     this.setInitHeapSize(config.getInitHeapSize());
     this.setMaxHeapSize(config.getMaxHeapSize());
     this.setMaxDirectMemorySize(config.getMaxDirectMemorySize());
+    this.setTimezone(config.getTimezone());
   }
 
   public static Builder builder() {
@@ -106,6 +119,11 @@ public class MppJVMConfig implements JVMConfig {
 
     public Builder setMaxDirectMemorySize(int size) {
       this.config.setMaxDirectMemorySize(size);
+      return this;
+    }
+
+    public Builder setTimezone(String timezone) {
+      this.config.setTimezone(timezone);
       return this;
     }
 

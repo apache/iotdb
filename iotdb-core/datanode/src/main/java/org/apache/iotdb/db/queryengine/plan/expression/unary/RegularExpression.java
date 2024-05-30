@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.unary;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 
 import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -34,6 +36,9 @@ import java.util.regex.Pattern;
 import static org.apache.tsfile.utils.RegexUtils.compileRegex;
 
 public class RegularExpression extends UnaryExpression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RegularExpression.class);
 
   private final String patternString;
   private final Pattern pattern;
@@ -110,5 +115,12 @@ public class RegularExpression extends UnaryExpression {
   @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitRegularExpression(this, context);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression)
+        + RamUsageEstimator.sizeOf(patternString);
   }
 }

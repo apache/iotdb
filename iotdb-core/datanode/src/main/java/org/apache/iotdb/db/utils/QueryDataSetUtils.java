@@ -142,6 +142,7 @@ public class QueryDataSetUtils {
         TSDataType type = column.getDataType();
         switch (type) {
           case INT32:
+          case DATE:
             for (int i = 0; i < currentCount; i++) {
               rowCount++;
               if (column.isNull(i)) {
@@ -159,6 +160,7 @@ public class QueryDataSetUtils {
             }
             break;
           case INT64:
+          case TIMESTAMP:
             for (int i = 0; i < currentCount; i++) {
               rowCount++;
               if (column.isNull(i)) {
@@ -227,6 +229,8 @@ public class QueryDataSetUtils {
             }
             break;
           case TEXT:
+          case BLOB:
+          case STRING:
             for (int i = 0; i < currentCount; i++) {
               rowCount++;
               if (column.isNull(i)) {
@@ -316,6 +320,7 @@ public class QueryDataSetUtils {
       TSDataType type = column.getDataType();
       switch (type) {
         case INT32:
+        case DATE:
           doWithInt32Column(
               rowCount,
               column,
@@ -326,6 +331,7 @@ public class QueryDataSetUtils {
               dataBitmapOutputStream);
           break;
         case INT64:
+        case TIMESTAMP:
           doWithInt64Column(
               rowCount,
               column,
@@ -366,6 +372,8 @@ public class QueryDataSetUtils {
               dataBitmapOutputStream);
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           doWithTextColumn(
               rowCount,
               column,
@@ -707,6 +715,7 @@ public class QueryDataSetUtils {
           values[i] = boolValues;
           break;
         case INT32:
+        case DATE:
           int[] intValues = new int[size];
           for (int index = 0; index < size; index++) {
             intValues[index] = buffer.getInt();
@@ -714,6 +723,7 @@ public class QueryDataSetUtils {
           values[i] = intValues;
           break;
         case INT64:
+        case TIMESTAMP:
           long[] longValues = new long[size];
           for (int index = 0; index < size; index++) {
             longValues[index] = buffer.getLong();
@@ -735,6 +745,8 @@ public class QueryDataSetUtils {
           values[i] = doubleValues;
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           Binary[] binaryValues = new Binary[size];
           for (int index = 0; index < size; index++) {
             int binarySize = buffer.getInt();

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -34,8 +35,8 @@ public abstract class AbstractDataSourceOperator extends AbstractSourceOperator
   protected TsBlockBuilder resultTsBlockBuilder;
 
   @Override
-  public void initQueryDataSource(QueryDataSource dataSource) {
-    seriesScanUtil.initQueryDataSource(dataSource);
+  public void initQueryDataSource(IQueryDataSource dataSource) {
+    seriesScanUtil.initQueryDataSource((QueryDataSource) dataSource);
     resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
   }
 

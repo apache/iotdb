@@ -70,7 +70,9 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.analyz
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchAggregationExpressions;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpressionForTemplatedQuery;
+import static org.apache.iotdb.db.queryengine.plan.analyze.TemplatedAggregationAnalyze.canBuildAggregationPlanUseTemplate;
 
 /**
  * This class provides accelerated implementation for multiple devices align by device query. This
@@ -96,9 +98,7 @@ public class TemplatedAnalyze {
       IPartitionFetcher partitionFetcher,
       ISchemaTree schemaTree,
       MPPQueryContext context) {
-    if (queryStatement.isAggregationQuery()
-        || queryStatement.isGroupBy()
-        || queryStatement.isGroupByTime()
+    if (queryStatement.getGroupByComponent() != null
         || queryStatement.isSelectInto()
         || queryStatement.hasFill()
         || schemaTree.hasNormalTimeSeries()) {
@@ -106,58 +106,66 @@ public class TemplatedAnalyze {
     }
 
     List<Template> templates = schemaTree.getUsingTemplates();
-    if (templates.size() != 1) {
+    if (templates.size() != 1 || templates.get(0) == null) {
       return false;
     }
 
     Template template = templates.get(0);
 
+    if (queryStatement.isAggregationQuery()) {
+      return canBuildAggregationPlanUseTemplate(
+          analysis, queryStatement, partitionFetcher, schemaTree, context, template);
+    }
+
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset());
-    if (template != null) {
-      for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
-        Expression expression = resultColumn.getExpression();
-        if ("*".equals(expression.getOutputSymbol())) {
-          for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
-            if (paginationController.hasCurOffset()) {
-              paginationController.consumeOffset();
-            } else if (paginationController.hasCurLimit()) {
-              String measurementName = entry.getKey();
-              IMeasurementSchema measurementSchema = entry.getValue();
-              TimeSeriesOperand measurementPath =
-                  new TimeSeriesOperand(
-                      new MeasurementPath(new String[] {measurementName}, measurementSchema));
-              outputExpressions.add(new Pair<>(measurementPath, null));
-              paginationController.consumeLimit();
-            } else {
-              break;
-            }
+
+    for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+      Expression expression = resultColumn.getExpression();
+      if ("*".equals(expression.getOutputSymbol())) {
+        for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
+          if (paginationController.hasCurOffset()) {
+            paginationController.consumeOffset();
+          } else if (paginationController.hasCurLimit()) {
+            String measurementName = entry.getKey();
+            IMeasurementSchema measurementSchema = entry.getValue();
+            TimeSeriesOperand measurementPath =
+                new TimeSeriesOperand(
+                    new MeasurementPath(new String[] {measurementName}, measurementSchema));
+            // reserve memory for this expression
+            context.reserveMemoryForFrontEnd(measurementPath.ramBytesUsed());
+            outputExpressions.add(new Pair<>(measurementPath, null));
+            paginationController.consumeLimit();
+          } else {
+            break;
           }
-          if (queryStatement.getSelectComponent().getResultColumns().size() == 1
-              && queryStatement.getSeriesOffset() == 0
-              && queryStatement.getSeriesLimit() == 0) {
-            analysis.setTemplateWildCardQuery();
-          }
-        } else if (expression instanceof TimeSeriesOperand) {
-          String measurementName = ((TimeSeriesOperand) expression).getPath().getMeasurement();
-          if (template.getSchemaMap().containsKey(measurementName)) {
-            if (paginationController.hasCurOffset()) {
-              paginationController.consumeOffset();
-            } else if (paginationController.hasCurLimit()) {
-              IMeasurementSchema measurementSchema = template.getSchemaMap().get(measurementName);
-              TimeSeriesOperand measurementPath =
-                  new TimeSeriesOperand(
-                      new MeasurementPath(new String[] {measurementName}, measurementSchema));
-              outputExpressions.add(new Pair<>(measurementPath, resultColumn.getAlias()));
-            } else {
-              break;
-            }
-          }
-        } else {
-          return false;
         }
+        if (queryStatement.getSelectComponent().getResultColumns().size() == 1
+            && queryStatement.getSeriesOffset() == 0
+            && queryStatement.getSeriesLimit() == 0) {
+          analysis.setTemplateWildCardQuery();
+        }
+      } else if (expression instanceof TimeSeriesOperand) {
+        String measurementName = ((TimeSeriesOperand) expression).getPath().getMeasurement();
+        if (template.getSchemaMap().containsKey(measurementName)) {
+          if (paginationController.hasCurOffset()) {
+            paginationController.consumeOffset();
+          } else if (paginationController.hasCurLimit()) {
+            IMeasurementSchema measurementSchema = template.getSchemaMap().get(measurementName);
+            TimeSeriesOperand measurementPath =
+                new TimeSeriesOperand(
+                    new MeasurementPath(new String[] {measurementName}, measurementSchema));
+            // reserve memory for this expression
+            context.reserveMemoryForFrontEnd(measurementPath.ramBytesUsed());
+            outputExpressions.add(new Pair<>(measurementPath, resultColumn.getAlias()));
+          } else {
+            break;
+          }
+        }
+      } else {
+        return false;
       }
     }
 
@@ -183,12 +191,11 @@ public class TemplatedAnalyze {
     }
     analysis.setDeviceList(deviceList);
 
-    analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceList);
+    analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceList, context);
     analyzeDeviceToSourceTransform(analysis);
     analyzeDeviceToSource(analysis);
 
     analyzeDeviceViewOutput(analysis, queryStatement);
-    analyzeDeviceViewInput(analysis);
 
     analyzeFill(analysis, queryStatement);
 
@@ -228,8 +235,7 @@ public class TemplatedAnalyze {
     analysis.setMeasurementSchemaList(measurementSchemaList);
   }
 
-  private static List<PartialPath> analyzeFrom(
-      QueryStatement queryStatement, ISchemaTree schemaTree) {
+  static List<PartialPath> analyzeFrom(QueryStatement queryStatement, ISchemaTree schemaTree) {
     // device path patterns in FROM clause
     List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
 
@@ -246,12 +252,12 @@ public class TemplatedAnalyze {
         : deviceSet.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
   }
 
-  private static void analyzeDeviceToWhere(Analysis analysis, QueryStatement queryStatement) {
+  static void analyzeDeviceToWhere(Analysis analysis, QueryStatement queryStatement) {
     if (!queryStatement.hasWhere()) {
       return;
     }
 
-    analysis.setOnlyQueryTemplateMeasurements(false);
+    analysis.setNoWhereAndAggregation(false);
     Expression wherePredicate =
         new TemplatedConcatRemoveUnExistentMeasurementVisitor()
             .process(
@@ -268,11 +274,12 @@ public class TemplatedAnalyze {
     }
   }
 
-  private static void analyzeDeviceToOrderBy(
+  static void analyzeDeviceToOrderBy(
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
-      List<PartialPath> deviceSet) {
+      List<PartialPath> deviceSet,
+      MPPQueryContext queryContext) {
     if (!queryStatement.hasOrderByExpression()) {
       return;
     }
@@ -285,7 +292,8 @@ public class TemplatedAnalyze {
       Set<Expression> orderByExpressionsForOneDevice = new LinkedHashSet<>();
       for (Expression expressionForItem : queryStatement.getExpressionSortItemList()) {
         List<Expression> expressions =
-            concatDeviceAndBindSchemaForExpression(expressionForItem, device, schemaTree);
+            concatDeviceAndBindSchemaForExpression(
+                expressionForItem, device, schemaTree, queryContext);
         if (expressions.isEmpty()) {
           throw new SemanticException(
               String.format(
@@ -325,30 +333,38 @@ public class TemplatedAnalyze {
     analysis.setDeviceToSourceTransformExpressions(analysis.getDeviceToSelectExpressions());
   }
 
-  private static void analyzeDeviceViewOutput(Analysis analysis, QueryStatement queryStatement) {
+  static void analyzeDeviceViewOutput(Analysis analysis, QueryStatement queryStatement) {
     Set<Expression> selectExpressions = analysis.getSelectExpressions();
-    // TODO if no order by, just set deviceViewOutputExpressions as selectExpressions
-    Set<Expression> deviceViewOutputExpressions = new LinkedHashSet<>(selectExpressions);
-    if (queryStatement.hasOrderByExpression()) {
-      deviceViewOutputExpressions.addAll(analysis.getOrderByExpressions());
+    // if no order by, just set deviceViewOutputExpressions as selectExpressions
+    Set<Expression> deviceViewOutputExpressions = new LinkedHashSet<>();
+
+    if (queryStatement.isAggregationQuery()) {
+      deviceViewOutputExpressions.add(DEVICE_EXPRESSION);
+      if (queryStatement.isOutputEndTime()) {
+        deviceViewOutputExpressions.add(END_TIME_EXPRESSION);
+      }
+      for (Expression selectExpression : selectExpressions) {
+        deviceViewOutputExpressions.addAll(searchAggregationExpressions(selectExpression));
+      }
+      if (queryStatement.hasHaving()) {
+        deviceViewOutputExpressions.addAll(
+            searchAggregationExpressions(analysis.getHavingExpression()));
+      }
+      if (queryStatement.hasOrderByExpression()) {
+        for (Expression orderByExpression : analysis.getOrderByExpressions()) {
+          deviceViewOutputExpressions.addAll(searchAggregationExpressions(orderByExpression));
+        }
+      }
+    } else {
+      deviceViewOutputExpressions.addAll(selectExpressions);
+      if (queryStatement.hasOrderByExpression()) {
+        deviceViewOutputExpressions.addAll(analysis.getOrderByExpressions());
+      }
     }
+
     analysis.setDeviceViewOutputExpressions(deviceViewOutputExpressions);
     analysis.setDeviceViewSpecialProcess(
         analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement, analysis));
-  }
-
-  private static void analyzeDeviceViewInput(Analysis analysis) {
-    List<Integer> indexes = new ArrayList<>();
-
-    // index-0 is `Device`
-    for (int i = 1; i < analysis.getSelectExpressions().size(); i++) {
-      indexes.add(i);
-    }
-    Map<String, List<Integer>> deviceViewInputIndexesMap = new HashMap<>();
-    for (PartialPath devicePath : analysis.getDeviceList()) {
-      deviceViewInputIndexesMap.put(devicePath.getFullPath(), indexes);
-    }
-    analysis.setDeviceViewInputIndexesMap(deviceViewInputIndexesMap);
   }
 
   private static void analyzeDeviceToSource(Analysis analysis) {
@@ -356,7 +372,7 @@ public class TemplatedAnalyze {
     analysis.setDeviceToOutputExpressions(analysis.getDeviceToSelectExpressions());
   }
 
-  private static void analyzeDataPartition(
+  static void analyzeDataPartition(
       Analysis analysis,
       ISchemaTree schemaTree,
       IPartitionFetcher partitionFetcher,

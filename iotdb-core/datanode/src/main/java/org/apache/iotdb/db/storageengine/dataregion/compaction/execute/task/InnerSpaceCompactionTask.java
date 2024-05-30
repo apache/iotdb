@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
@@ -167,6 +169,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   @SuppressWarnings({"squid:S6541", "squid:S3776", "squid:S2142"})
   protected boolean doCompaction() {
     if (!tsFileManager.isAllowCompaction()) {
+      return true;
+    }
+    if ((sequence && !IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction())
+        || (!sequence
+            && !IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction())) {
+      return true;
+    }
+    if (this.compactionConfigVersion
+        < CompactionTaskManager.getInstance().getCurrentCompactionConfigVersion()) {
       return true;
     }
     long startTime = System.currentTimeMillis();
@@ -520,5 +531,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     } else {
       this.summary = new CompactionTaskSummary();
     }
+  }
+
+  @Override
+  public long getCompactionConfigVersion() {
+    return this.compactionConfigVersion;
+  }
+
+  @Override
+  public void setCompactionConfigVersion(long compactionConfigVersion) {
+    this.compactionConfigVersion = Math.min(this.compactionConfigVersion, compactionConfigVersion);
   }
 }

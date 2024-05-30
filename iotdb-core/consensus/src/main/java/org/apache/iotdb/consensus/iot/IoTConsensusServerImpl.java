@@ -874,8 +874,7 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  public void cleanupTransferredSnapshot(String snapshotId)
-      throws ConsensusGroupModifyPeerException {
+  public void cleanupSnapshot(String snapshotId) throws ConsensusGroupModifyPeerException {
     File snapshotDir = new File(storageDir, snapshotId);
     if (snapshotDir.exists()) {
       try {
@@ -883,6 +882,17 @@ public class IoTConsensusServerImpl {
       } catch (IOException e) {
         throw new ConsensusGroupModifyPeerException(e);
       }
+    } else {
+      logger.info("File not exist: {}", snapshotDir);
+    }
+  }
+
+  public void cleanupLocalSnapshot() {
+    try {
+      cleanupSnapshot(newSnapshotDirName);
+    } catch (ConsensusGroupModifyPeerException e) {
+      logger.warn(
+          "Cleanup local snapshot fail. You may manually delete {}.", newSnapshotDirName, e);
     }
   }
 
