@@ -437,10 +437,7 @@ public class ClusterSchemaManager {
             .add(database);
       }
     }
-    LOGGER.info(
-        "Set TTL for DataNodes: {} to {}",
-        dnlToSgMap.keySet(),
-        setTTLPlan.getTTL());
+    LOGGER.info("Set TTL for DataNodes: {} to {}", dnlToSgMap.keySet(), setTTLPlan.getTTL());
 
     AsyncClientHandler<TSetTTLReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.SET_TTL);

@@ -444,9 +444,7 @@ public class RegionMaintainHandler {
     try {
       ttl = configManager.getClusterSchemaManager().getDatabaseSchemaByName(database).getTTL();
     } catch (DatabaseNotExistsException e) {
-      LOGGER.warn(
-              "Cannot find out the database {}, ttl will be set to Long.MAX_VALUE",
-              database);
+      LOGGER.warn("Cannot find out the database {}, ttl will be set to Long.MAX_VALUE", database);
     }
     return ttl;
   }
@@ -455,10 +453,10 @@ public class RegionMaintainHandler {
     String storageGroup = configManager.getPartitionManager().getRegionStorageGroup(regionId);
 
     AsyncClientHandler<TSetTTLReq, TSStatus> clientHandler =
-            new AsyncClientHandler<>(DataNodeRequestType.SET_TTL);
+        new AsyncClientHandler<>(DataNodeRequestType.SET_TTL);
 
     TSetTTLReq setTTLReq =
-            new TSetTTLReq(Collections.singletonList(storageGroup), getTTL(storageGroup));
+        new TSetTTLReq(Collections.singletonList(storageGroup), getTTL(storageGroup));
     clientHandler.putRequest(dataNodeLocation.getDataNodeId(), setTTLReq);
     clientHandler.putDataNodeLocation(dataNodeLocation.getDataNodeId(), dataNodeLocation);
 
