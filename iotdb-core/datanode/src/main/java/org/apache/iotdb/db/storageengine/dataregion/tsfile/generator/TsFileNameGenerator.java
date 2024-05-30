@@ -270,7 +270,7 @@ public class TsFileNameGenerator {
     long maxVersion = Long.MIN_VALUE;
     long maxInnerMergeCount = Long.MIN_VALUE;
     long maxCrossMergeCount = Long.MIN_VALUE;
-    int maxTierLevel = Integer.MIN_VALUE;
+    int maxTierLevel = 0;
     for (TsFileResource resource : tsFileResources) {
       TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
       minTime = Math.min(tsFileName.time, minTime);
