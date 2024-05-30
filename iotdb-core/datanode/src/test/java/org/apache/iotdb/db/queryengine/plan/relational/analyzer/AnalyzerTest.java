@@ -21,13 +21,20 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
+import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -37,12 +44,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.RelationalDistributionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -55,11 +64,14 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
+import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.eq;
 
@@ -133,38 +145,71 @@ public class AnalyzerTest {
     System.out.println(actualAnalysis.getTypes());
   }
 
-  @Ignore
-  @Test
-  public void testSingleTableQuery() throws IoTDBException {
-    // no sort
-    String sql = "SELECT tag1, s1 FROM table1";
-    // + "WHERE time>1 AND tag1='A' OR s2>3";
-    Metadata metadata = new TestMatadata();
+  QueryId queryId = new QueryId("tmp_query");
+  SessionInfo sessionInfo =
+      new SessionInfo(
+          1L,
+          "iotdb-user",
+          ZoneId.systemDefault(),
+          IoTDBConstant.ClientVersion.V_1_0,
+          "db",
+          IClientSession.SqlDialect.TABLE);
+  Metadata metadata = new TestMatadata();
 
+  @Test
+  public void singleTableNoFilterTest() throws IoTDBException {
+    // 1. wildcard
+    String sql = "SELECT * FROM table1";
     Analysis actualAnalysis = analyzeSQL(sql, metadata);
     assertNotNull(actualAnalysis);
-    System.out.println(actualAnalysis.getTypes());
+    assertEquals(1, actualAnalysis.getTables().size());
 
-    QueryId queryId = new QueryId("tmp_query");
-    MPPQueryContext context = new MPPQueryContext(queryId);
-    SessionInfo sessionInfo =
-        new SessionInfo(
-            1L,
-            "iotdb-user",
-            ZoneId.systemDefault(),
-            IoTDBConstant.ClientVersion.V_1_0,
-            "db",
-            IClientSession.SqlDialect.TABLE);
-    WarningCollector warningCollector = WarningCollector.NOOP;
+    MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     LogicalPlanner logicalPlanner =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector);
+        new LogicalPlanner(
+            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
     LogicalQueryPlan logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
-    System.out.println(logicalQueryPlan);
+    PlanNode rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(((OutputNode) rootNode).getChild() instanceof TableScanNode);
+    TableScanNode tableScanNode = (TableScanNode) ((OutputNode) rootNode).getChild();
+    assertEquals("table1", tableScanNode.getQualifiedTableName());
+    assertEquals(8, tableScanNode.getOutputSymbols().size());
+    assertEquals(8, tableScanNode.getAssignments().size());
+    assertEquals(1, tableScanNode.getDeviceEntries().size());
+    assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(ASC, tableScanNode.getScanOrder());
 
-    RelationalDistributionPlanner distributionPlanner =
-        new RelationalDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    TableDistributionPlanner distributionPlanner =
+        new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
     DistributedQueryPlan distributedQueryPlan = distributionPlanner.plan();
-    System.out.println(distributedQueryPlan);
+    assertEquals(4, distributedQueryPlan.getInstances().size());
+
+    // 2. global time filter
+    sql = "SELECT * FROM table1 where time > 1";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    assertNotNull(actualAnalysis);
+    assertEquals(1, actualAnalysis.getTables().size());
+
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalPlanner =
+        new LogicalPlanner(
+            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(((OutputNode) rootNode).getChild() instanceof TableScanNode);
+    tableScanNode = (TableScanNode) ((OutputNode) rootNode).getChild();
+    assertEquals("table1", tableScanNode.getQualifiedTableName());
+    assertEquals(8, tableScanNode.getOutputSymbols().size());
+    assertEquals(8, tableScanNode.getAssignments().size());
+    assertEquals(1, tableScanNode.getDeviceEntries().size());
+    assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(ASC, tableScanNode.getScanOrder());
+
+    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(4, distributedQueryPlan.getInstances().size());
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {
@@ -191,6 +236,71 @@ public class AnalyzerTest {
     }
     fail();
     return null;
+  }
+
+  private static final DataPartition DATA_PARTITION = MockTablePartition.constructDataPartition();
+  private static final SchemaPartition SCHEMA_PARTITION =
+      MockTablePartition.constructSchemaPartition();
+
+  private static IPartitionFetcher getFakePartitionFetcher() {
+
+    return new IPartitionFetcher() {
+
+      @Override
+      public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
+        return SCHEMA_PARTITION;
+      }
+
+      @Override
+      public SchemaPartition getOrCreateSchemaPartition(
+          PathPatternTree patternTree, String userName) {
+        return SCHEMA_PARTITION;
+      }
+
+      @Override
+      public DataPartition getDataPartition(
+          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+        return DATA_PARTITION;
+      }
+
+      @Override
+      public DataPartition getDataPartitionWithUnclosedTimeRange(
+          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+        return DATA_PARTITION;
+      }
+
+      @Override
+      public DataPartition getOrCreateDataPartition(
+          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+        return DATA_PARTITION;
+      }
+
+      @Override
+      public DataPartition getOrCreateDataPartition(
+          List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
+        return DATA_PARTITION;
+      }
+
+      @Override
+      public SchemaNodeManagementPartition getSchemaNodeManagementPartition(
+          PathPatternTree patternTree, PathPatternTree scope) {
+        return IPartitionFetcher.super.getSchemaNodeManagementPartition(patternTree, scope);
+      }
+
+      @Override
+      public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
+          PathPatternTree patternTree, PathPatternTree scope, Integer level) {
+        return null;
+      }
+
+      @Override
+      public boolean updateRegionCache(TRegionRouteReq req) {
+        return false;
+      }
+
+      @Override
+      public void invalidAllCache() {}
+    };
   }
 
   private static class NopAccessControl implements AccessControl {}
