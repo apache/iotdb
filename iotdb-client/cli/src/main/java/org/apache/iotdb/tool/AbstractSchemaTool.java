@@ -153,17 +153,12 @@ public abstract class AbstractSchemaTool {
   /**
    * write data to CSV file.
    *
-   * @param headerNames the header names of CSV file
    * @param records the records of CSV file
    * @param filePath the directory to save the file
    */
-  public static Boolean writeCsvFile(
-      List<String> headerNames, List<List<Object>> records, String filePath) {
+  public static Boolean writeCsvFile(List<List<Object>> records, String filePath) {
     try {
       final CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(filePath);
-      if (headerNames != null) {
-        csvPrinterWrapper.printRecord(headerNames);
-      }
       for (List<Object> CsvRecord : records) {
         csvPrinterWrapper.printRecordln(CsvRecord);
       }

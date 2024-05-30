@@ -52,7 +52,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
 /** Export Schema CSV file. */
 public class ExportSchema extends AbstractSchemaTool {
 
-  private static final String TARGET_DIR_ARGS = "td";
+  private static final String TARGET_DIR_ARGS = "t";
   private static final String TARGET_DIR_NAME = "targetDirectory";
 
   private static final String TARGET_PATH_ARGS = "path";
@@ -271,6 +271,10 @@ public class ExportSchema extends AbstractSchemaTool {
    * @param index used to create dump file name
    */
   private static void dumpResult(String pattern, int index) {
+    File file = new File(targetDirectory);
+    if (!file.isDirectory()) {
+      file.mkdir();
+    }
     final String path = targetDirectory + targetFile + index;
     try {
       SessionDataSet sessionDataSet =
@@ -296,9 +300,11 @@ public class ExportSchema extends AbstractSchemaTool {
       int i = 0;
       final String finalFilePath = filePath + "_" + fileIndex + ".csv";
       final CSVPrinterWrapper csvPrinterWrapper = new CSVPrinterWrapper(finalFilePath);
-      csvPrinterWrapper.printRecord(HEAD_COLUMNS);
       while (i++ < linesPerFile) {
         if (sessionDataSet.hasNext()) {
+          if (i == 1) {
+            csvPrinterWrapper.printRecord(HEAD_COLUMNS);
+          }
           RowRecord rowRecord = sessionDataSet.next();
           List<Field> fields = rowRecord.getFields();
           if (fields.get(timeseriesIndex).getStringValue().startsWith(SYSTEM_DATABASE)

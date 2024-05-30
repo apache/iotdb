@@ -47,6 +47,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +62,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE;
 /** Import Schema CSV file. */
 public class ImportSchema extends AbstractSchemaTool {
 
-  private static final String FILE_ARGS = "f";
+  private static final String FILE_ARGS = "s";
   private static final String FILE_NAME = "file or folder";
 
   private static final String FAILED_FILE_ARGS = "fd";
@@ -246,6 +248,8 @@ public class ImportSchema extends AbstractSchemaTool {
         if (files == null) {
           return CODE_OK;
         }
+        // 按文件名排序
+        Arrays.sort(files, (f1, f2) -> f1.getName().compareTo(f2.getName()));
         for (File subFile : files) {
           if (subFile.isFile()) {
             importFromSingleFile(subFile);
@@ -319,6 +323,10 @@ public class ImportSchema extends AbstractSchemaTool {
     List<TSDataType> dataTypes = new ArrayList<>();
     List<TSEncoding> encodings = new ArrayList<>();
     List<CompressionType> compressors = new ArrayList<>();
+    List<String> pathsWithAlias = new ArrayList<>();
+    List<TSDataType> dataTypesWithAlias = new ArrayList<>();
+    List<TSEncoding> encodingsWithAlias = new ArrayList<>();
+    List<CompressionType> compressorsWithAlias = new ArrayList<>();
     List<String> measurementAlias = new ArrayList<>();
 
     AtomicReference<Boolean> hasStarted = new AtomicReference<>(false);
@@ -341,6 +349,16 @@ public class ImportSchema extends AbstractSchemaTool {
                     null,
                     null,
                     measurementAlias,
+                    3);
+                writeAndEmptyDataSet(
+                    pathsWithAlias,
+                    dataTypesWithAlias,
+                    encodingsWithAlias,
+                    compressorsWithAlias,
+                    null,
+                    null,
+                    null,
+                    null,
                     3);
                 paths.clear();
                 dataTypes.clear();
@@ -396,11 +414,18 @@ public class ImportSchema extends AbstractSchemaTool {
             failedRecords.add(recordObj.stream().collect(Collectors.toList()));
             failed = true;
           } else {
-            paths.add(path);
-            dataTypes.add(dataType);
-            encodings.add(encodingType);
-            compressors.add(compressionType);
-            measurementAlias.add(StringUtils.isBlank(alias) ? "null" : alias);
+            if (StringUtils.isBlank(alias)) {
+              paths.add(path);
+              dataTypes.add(dataType);
+              encodings.add(encodingType);
+              compressors.add(compressionType);
+            } else {
+              pathsWithAlias.add(path);
+              dataTypesWithAlias.add(dataType);
+              encodingsWithAlias.add(encodingType);
+              compressorsWithAlias.add(compressionType);
+              measurementAlias.add(alias);
+            }
             pointSize.getAndIncrement();
           }
           if (!failed && aligned) {
@@ -410,20 +435,39 @@ public class ImportSchema extends AbstractSchemaTool {
                 deviceId, paths, dataTypes, encodings, compressors, measurementAlias, 3);
           }
         });
-    if (CollectionUtils.isNotEmpty(paths)) {
-      try {
-        writeAndEmptyDataSet(
-            paths, dataTypes, encodings, compressors, null, null, null, measurementAlias, 3);
-        pointSize.set(0);
-      } catch (Exception e) {
-        failedRecords.add((List<Object>) (List<?>) paths);
+    try {
+      if (CollectionUtils.isNotEmpty(paths)) {
+        writeAndEmptyDataSet(paths, dataTypes, encodings, compressors, null, null, null, null, 3);
       }
+    } catch (Exception e) {
+      paths.forEach(t -> failedRecords.add(Collections.singletonList(t)));
     }
+    try {
+      if (CollectionUtils.isNotEmpty(pathsWithAlias)) {
+        writeAndEmptyDataSet(
+            pathsWithAlias,
+            dataTypesWithAlias,
+            encodingsWithAlias,
+            compressorsWithAlias,
+            null,
+            null,
+            null,
+            measurementAlias,
+            3);
+      }
+    } catch (Exception e) {
+      pathsWithAlias.forEach(t -> failedRecords.add(Collections.singletonList(t)));
+    }
+    pointSize.set(0);
     if (!failedRecords.isEmpty()) {
-      writeFailedLinesFile(headerNames, failedFilePath, failedRecords);
+      writeFailedLinesFile(failedFilePath, failedRecords);
     }
     if (Boolean.TRUE.equals(hasStarted.get())) {
-      ioTPrinter.println(fileName + " : Import completely!");
+      if (!failedRecords.isEmpty()) {
+        ioTPrinter.println(fileName + " : Import completely fail!");
+      } else {
+        ioTPrinter.println(fileName + " : Import completely successful!");
+      }
     } else {
       ioTPrinter.println(fileName + " : No records!");
     }
@@ -444,17 +488,14 @@ public class ImportSchema extends AbstractSchemaTool {
   }
 
   private static void writeFailedLinesFile(
-      List<String> headerNames, String failedFilePath, ArrayList<List<Object>> failedRecords) {
+      String failedFilePath, ArrayList<List<Object>> failedRecords) {
     int fileIndex = 0;
     int from = 0;
     int failedRecordsSize = failedRecords.size();
     int restFailedRecords = failedRecordsSize;
     while (from < failedRecordsSize) {
       int step = Math.min(restFailedRecords, linesPerFailedFile);
-      writeCsvFile(
-          headerNames,
-          failedRecords.subList(from, from + step),
-          failedFilePath + "_" + fileIndex++);
+      writeCsvFile(failedRecords.subList(from, from + step), failedFilePath + "_" + fileIndex++);
       from += step;
       restFailedRecords -= step;
     }
