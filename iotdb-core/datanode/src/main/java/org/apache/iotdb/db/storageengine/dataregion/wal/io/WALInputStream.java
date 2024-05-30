@@ -260,9 +260,10 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       }
       dataBuffer = ByteBuffer.allocate(currSegmentSize);
       channel.read(dataBuffer);
+      dataBuffer.flip();
       dataBuffer.position((int) posRemain);
     } else {
-      dataBuffer.clear();
+      dataBuffer = null;
       channel.position(pos);
     }
   }

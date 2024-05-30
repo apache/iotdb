@@ -75,6 +75,7 @@ public class WALWriter extends LogWriter {
     buffer.putInt(metaDataSize);
     // add magic string
     buffer.put(MAGIC_STRING.getBytes());
+    size += buffer.position();
     writeMetadata(buffer);
   }
 

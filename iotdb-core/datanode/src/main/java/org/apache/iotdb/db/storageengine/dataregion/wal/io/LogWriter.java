@@ -61,6 +61,7 @@ public abstract class LogWriter implements ILogWriter {
     this.logChannel = this.logStream.getChannel();
     if (!logFile.exists() || logFile.length() == 0) {
       this.logChannel.write(ByteBuffer.wrap(WALWriter.MAGIC_STRING.getBytes()));
+      size += logChannel.position();
     }
     if (compressionAlg != CompressionType.UNCOMPRESSED) {
       compressedByteBuffer =
