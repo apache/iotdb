@@ -64,14 +64,12 @@ public class ImportTsFile extends AbstractTsFileTool {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
-  private static final String TSFILEDB_CLI_PREFIX = "ImportTsFile";
+  private static final String TS_FILE_CLI_PREFIX = "ImportTsFile";
 
   private static String source;
   private static String sourceFullPath;
-  private static String failDir = "fail/";
   private static String successDir = "success/";
-  private static String onSuccess;
-  private static String onFail;
+  private static String failDir = "fail/";
   private static Operation successOperation;
   private static Operation failOperation;
   private static int threadNum = 8;
@@ -84,9 +82,8 @@ public class ImportTsFile extends AbstractTsFileTool {
     Option opSource =
         Option.builder(SOURCE_ARGS)
             .longOpt(SOURCE_NAME)
-            .required()
-            .required()
             .argName(SOURCE_NAME)
+            .required()
             .hasArg()
             .desc(
                 "If input a file path, load a file, "
@@ -121,7 +118,7 @@ public class ImportTsFile extends AbstractTsFileTool {
             .longOpt(SUCCESS_DIR_NAME)
             .argName(SUCCESS_DIR_NAME)
             .hasArg()
-            .desc("When os is mv, cp, you need to specify the folder to operate on.")
+            .desc("The target folder when 'os' is 'mv' or 'cp'.")
             .build();
     options.addOption(opSuccessDir);
 
@@ -130,7 +127,7 @@ public class ImportTsFile extends AbstractTsFileTool {
             .longOpt(FAIL_DIR_NAME)
             .argName(FAIL_DIR_NAME)
             .hasArg()
-            .desc("When of is mv, cp, you need to specify the folder to operate on.")
+            .desc("The target folder when 'of' is 'mv' or 'cp'.")
             .build();
     options.addOption(opFailDir);
 
@@ -139,7 +136,7 @@ public class ImportTsFile extends AbstractTsFileTool {
             .longOpt(THREAD_NUM_NAME)
             .argName(THREAD_NUM_NAME)
             .hasArgs()
-            .desc("Support for concurrent parameters")
+            .desc("Concurrency of tsfile loading")
             .build();
     options.addOption(opThreadNum);
   }
@@ -154,19 +151,19 @@ public class ImportTsFile extends AbstractTsFileTool {
 
     if (args == null || args.length == 0) {
       ioTPrinter.println("Too few params input, please check the following hint.");
-      hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+      hf.printHelp(TS_FILE_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
 
     try {
       CommandLine helpCommandLine = parser.parse(helpOptions, args, true);
       if (helpCommandLine.hasOption(HELP_ARGS)) {
-        hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+        hf.printHelp(TS_FILE_CLI_PREFIX, options, true);
         System.exit(CODE_ERROR);
       }
     } catch (ParseException e) {
       ioTPrinter.println("Parse error: " + e.getMessage());
-      hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+      hf.printHelp(TS_FILE_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
 
@@ -174,7 +171,7 @@ public class ImportTsFile extends AbstractTsFileTool {
       commandLine = parser.parse(options, args, true);
     } catch (ParseException e) {
       ioTPrinter.println("Parse error: " + e.getMessage());
-      hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+      hf.printHelp(TS_FILE_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
 
@@ -193,47 +190,45 @@ public class ImportTsFile extends AbstractTsFileTool {
   }
 
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
-
     source = commandLine.getOptionValue(SOURCE_ARGS);
     if (!Files.exists(Paths.get(source))) {
       ioTPrinter.println("source file is not exist");
-      System.exit(CODE_OK);
+      System.exit(CODE_ERROR);
     }
-    onSuccess = commandLine.getOptionValue(ON_SUCCESS_ARGS);
-    onFail = commandLine.getOptionValue(ON_FAIL_ARGS);
+    String onSuccess = commandLine.getOptionValue(ON_SUCCESS_ARGS);
+    String onFail = commandLine.getOptionValue(ON_FAIL_ARGS);
 
-    boolean checkSuccessFileStory = false;
+    boolean isSuccessDirEqualsSourceDir = false;
     if (Operation.MV.name().equalsIgnoreCase(onSuccess)
         || Operation.CP.name().equalsIgnoreCase(onSuccess)) {
-      File file = createSuccessDir(commandLine);
-      checkSuccessFileStory = checkFileStory(source, file);
+      File dir = createSuccessDir(commandLine);
+      isSuccessDirEqualsSourceDir = store(source, dir);
     }
 
-    boolean checkFailFileStory = false;
+    boolean isFailDirEqualsSourceDir = false;
     if (Operation.MV.name().equalsIgnoreCase(onFail)
         || Operation.CP.name().equalsIgnoreCase(onFail)) {
-      File file = createFailDir(commandLine);
-      checkFailFileStory = checkFileStory(source, file);
+      File dir = createFailDir(commandLine);
+      isFailDirEqualsSourceDir = store(source, dir);
     }
 
-    successOperation = Operation.getOperation(onSuccess, checkSuccessFileStory);
-    failOperation = Operation.getOperation(onFail, checkFailFileStory);
+    successOperation = Operation.getOperation(onSuccess, isSuccessDirEqualsSourceDir);
+    failOperation = Operation.getOperation(onFail, isFailDirEqualsSourceDir);
 
     if (commandLine.getOptionValue(THREAD_NUM_ARGS) != null) {
       threadNum = Integer.parseInt(commandLine.getOptionValue(THREAD_NUM_ARGS));
     }
   }
 
-  public static boolean checkFileStory(String filePath1, File file) {
+  public static boolean store(String filePath1, File dir) {
     Path path1 = Paths.get(filePath1);
-    Path path2 = file.toPath();
+    Path path2 = dir.toPath();
 
     try {
       FileStore store1 = Files.getFileStore(path1);
       FileStore store2 = Files.getFileStore(path2);
       return store1.equals(store2);
     } catch (IOException e) {
-      e.printStackTrace();
       ioTPrinter.println("check file story fail : " + e.getMessage());
       return false;
     }
@@ -245,7 +240,10 @@ public class ImportTsFile extends AbstractTsFileTool {
     }
     File file = new File(successDir);
     if (!file.isDirectory()) {
-      file.mkdirs();
+      if (!file.mkdirs()) {
+        ioTPrinter.println("create successDir fail, please check sd param");
+        System.exit(CODE_ERROR);
+      }
     }
     return file;
   }
@@ -256,7 +254,10 @@ public class ImportTsFile extends AbstractTsFileTool {
     }
     File file = new File(failDir);
     if (!file.isDirectory()) {
-      file.mkdirs();
+      if (!file.mkdirs()) {
+        ioTPrinter.println("create successDir fail, please check fd param");
+        System.exit(CODE_ERROR);
+      }
     }
     return file;
   }
@@ -334,43 +335,37 @@ public class ImportTsFile extends AbstractTsFileTool {
 
   public static void processingSuccess(String filePath) {
     String relativePath = filePath.substring(sourceFullPath.length() + 1);
+    Path sourcePath = Paths.get(filePath);
+    Path targetPath =
+        Paths.get(failDir + File.separator + relativePath.replace(File.separator, "_"));
 
     switch (successOperation) {
       case DELETE:
         try {
-          Files.delete(Paths.get(filePath));
+          Files.delete(sourcePath);
         } catch (IOException e) {
           ioTPrinter.println("File delete fail: " + e.getMessage());
         }
         break;
       case CP:
         try {
-          Files.copy(
-              Paths.get(filePath),
-              Paths.get(successDir + File.separator + relativePath.replace(File.separator, "_")),
-              StandardCopyOption.REPLACE_EXISTING);
+          Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
           ioTPrinter.println("File copied fail: " + e.getMessage());
         }
         break;
       case HD:
         try {
-          Files.createLink(
-              Paths.get(successDir + File.separator + relativePath.replace(File.separator, "_")),
-              Paths.get(filePath));
+          Files.createLink(targetPath, sourcePath);
         } catch (FileAlreadyExistsException e) {
-          ioTPrinter.println("File headlinked fail: File Already Exists " + e.getMessage());
+          ioTPrinter.println("File hardlink fail: File Already Exists " + e.getMessage());
         } catch (IOException e) {
-          e.printStackTrace();
-          ioTPrinter.println("File headlinked fail: " + e.getMessage());
+          ioTPrinter.println("File hardlink fail: " + e.getMessage());
         }
         break;
       case MV:
         try {
-          Files.move(
-              Paths.get(filePath),
-              Paths.get(successDir + File.separator + relativePath.replace(File.separator, "_")),
-              StandardCopyOption.REPLACE_EXISTING);
+          Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
           ioTPrinter.println("File moved fail: " + e.getMessage());
         }
@@ -382,42 +377,37 @@ public class ImportTsFile extends AbstractTsFileTool {
 
   public static void processingFailed(String filePath) {
     String relativePath = filePath.substring(sourceFullPath.length() + 1);
+    Path sourcePath = Paths.get(filePath);
+    Path targetPath =
+        Paths.get(failDir + File.separator + relativePath.replace(File.separator, "_"));
 
     switch (failOperation) {
       case DELETE:
         try {
-          Files.delete(Paths.get(filePath));
+          Files.delete(sourcePath);
         } catch (IOException e) {
           ioTPrinter.println("File delete fail: " + e.getMessage());
         }
         break;
       case CP:
         try {
-          Files.copy(
-              Paths.get(filePath),
-              Paths.get(failDir + File.separator + relativePath.replace(File.separator, "_")),
-              StandardCopyOption.REPLACE_EXISTING);
+          Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
           ioTPrinter.println("File copied fail: " + e.getMessage());
         }
         break;
       case HD:
         try {
-          Files.createLink(
-              Paths.get(failDir + File.separator + relativePath.replace(File.separator, "_")),
-              Paths.get(filePath));
+          Files.createLink(targetPath, sourcePath);
         } catch (FileAlreadyExistsException e) {
-          ioTPrinter.println("File headlinked fail: File Already Exists " + e.getMessage());
+          ioTPrinter.println("File hardlink fail: File Already Exists " + e.getMessage());
         } catch (IOException e) {
-          ioTPrinter.println("File headlinked fail: " + e.getMessage());
+          ioTPrinter.println("File hardlink fail: " + e.getMessage());
         }
         break;
       case MV:
         try {
-          Files.move(
-              Paths.get(filePath),
-              Paths.get(failDir + File.separator + relativePath.replace(File.separator, "_")),
-              StandardCopyOption.REPLACE_EXISTING);
+          Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
           ioTPrinter.println("File moved fail: " + e.getMessage());
         }
