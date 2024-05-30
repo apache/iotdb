@@ -146,7 +146,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     waitUntilSystemAllowApply();
     do {
       try {
-        if (isLeader) {
+        if (!isLeader) {
           deserializedRequest.markAsGeneratedByRemoteConsensusLeader();
         }
         final TSStatus result = applicationStateMachine.write(deserializedRequest);
