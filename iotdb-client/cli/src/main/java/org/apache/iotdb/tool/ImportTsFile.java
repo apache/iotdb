@@ -337,7 +337,7 @@ public class ImportTsFile extends AbstractTsFileTool {
     String relativePath = filePath.substring(sourceFullPath.length() + 1);
     Path sourcePath = Paths.get(filePath);
     Path targetPath =
-        Paths.get(failDir + File.separator + relativePath.replace(File.separator, "_"));
+        Paths.get(successDir + File.separator + relativePath.replace(File.separator, "_"));
 
     switch (successOperation) {
       case DELETE:
