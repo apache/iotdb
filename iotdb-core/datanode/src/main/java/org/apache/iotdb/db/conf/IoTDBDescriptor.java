@@ -363,13 +363,6 @@ public class IoTDBDescriptor {
 
     conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()));
 
-    int mlogBufferSize =
-        Integer.parseInt(
-            properties.getProperty("mlog_buffer_size", Integer.toString(conf.getMlogBufferSize())));
-    if (mlogBufferSize > 0) {
-      conf.setMlogBufferSize(mlogBufferSize);
-    }
-
     long forceMlogPeriodInMs =
         Long.parseLong(
             properties.getProperty(

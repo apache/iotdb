@@ -243,14 +243,6 @@ public class IoTDBConfig {
   private volatile long deleteWalFilesPeriodInMs = 20 * 1000L;
 
   // endregion
-
-  /**
-   * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan is
-   * larger than this parameter, then the MetaData operation plan will be rejected by SchemaRegion.
-   * Unit: byte
-   */
-  private int mlogBufferSize = 1024 * 1024;
-
   /**
    * The cycle when metadata log is periodically forced to be written to disk(in milliseconds) If
    * set this parameter to 0 it means call channel.force(true) after every each operation
@@ -2706,14 +2698,6 @@ public class IoTDBConfig {
   public void setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
     ZeroCopyRpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
-  }
-
-  public int getMlogBufferSize() {
-    return mlogBufferSize;
-  }
-
-  public void setMlogBufferSize(int mlogBufferSize) {
-    this.mlogBufferSize = mlogBufferSize;
   }
 
   public long getSyncMlogPeriodInMs() {
