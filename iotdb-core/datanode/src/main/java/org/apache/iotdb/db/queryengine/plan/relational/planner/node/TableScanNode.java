@@ -65,6 +65,8 @@ public class TableScanNode extends SourceNode {
   // push down offset for result set. The default value is 0
   private long pushDownOffset;
 
+  private boolean pushLimitToEachDevice = false;
+
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
@@ -308,6 +310,10 @@ public class TableScanNode extends SourceNode {
 
   public long getPushDownOffset() {
     return this.pushDownOffset;
+  }
+
+  public boolean isPushLimitToEachDevice() {
+    return pushLimitToEachDevice;
   }
 
   public TRegionReplicaSet getRegionReplicaSet() {
