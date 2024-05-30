@@ -521,9 +521,8 @@ public class ConfigPlanExecutor {
         // Will not be actually executed.
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       case PipeUnsetTemplate:
-      case PipeSetTTL:
-        // PipeUnsetTemplate/PipeSetTTL plan will not be written here, and exists only after pipe
-        // sender collects UnsetTemplatePlan/SetTTLPlan and before receiver calls ConfigManager.
+        // PipeUnsetTemplate plan will not be written here, and exists only after pipe
+        // sender collects UnsetTemplatePlan and before receiver calls ConfigManager.
         throw new UnsupportedOperationException(
             String.format("Plan type %s is not supported.", physicalPlan.getType()));
       case TestOnly:

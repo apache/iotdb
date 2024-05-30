@@ -80,12 +80,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent {
                     ConfigPhysicalPlanType.CreateSchemaTemplate.getPlanType(),
                     ConfigPhysicalPlanType.CommitSetSchemaTemplate.getPlanType()))));
     SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
-        CNSnapshotFileType.TTL,
-        Collections.unmodifiableSet(
-            new HashSet<>(
-                Arrays.asList(
-                    ConfigPhysicalPlanType.SetTTL.getPlanType(),
-                    ConfigPhysicalPlanType.PipeSetTTL.getPlanType()))));
+        CNSnapshotFileType.TTL, Collections.singleton(ConfigPhysicalPlanType.SetTTL.getPlanType()));
   }
 
   public PipeConfigRegionSnapshotEvent() {
