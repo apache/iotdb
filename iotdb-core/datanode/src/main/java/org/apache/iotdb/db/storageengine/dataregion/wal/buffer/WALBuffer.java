@@ -541,7 +541,7 @@ public class WALBuffer extends AbstractWALBuffer {
       // try to roll log writer
       if (info.rollWALFileWriterListener != null
           || (forceFlag
-              && currentWALFileWriter.oiginalSize() >= config.getWalFileSizeThresholdInByte())) {
+              && currentWALFileWriter.originalSize() >= config.getWalFileSizeThresholdInByte())) {
         try {
           rollLogWriter(searchIndex, currentWALFileWriter.getWalFileStatus());
           forceSuccess = true;
@@ -583,7 +583,7 @@ public class WALBuffer extends AbstractWALBuffer {
             position += fsyncListener.getWalEntryHandler().getSize();
           }
         }
-        lastFsyncPosition = currentWALFileWriter.size();
+        lastFsyncPosition = currentWALFileWriter.originalSize();
       }
       WRITING_METRICS.recordWALBufferEntriesCount(info.fsyncListeners.size());
       WRITING_METRICS.recordSyncWALBufferCost(System.nanoTime() - startTime, forceFlag);

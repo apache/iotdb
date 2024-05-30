@@ -133,7 +133,7 @@ public abstract class LogWriter implements ILogWriter {
     return size;
   }
 
-  public long oiginalSize() {
+  public long originalSize() {
     return originalSize;
   }
 
