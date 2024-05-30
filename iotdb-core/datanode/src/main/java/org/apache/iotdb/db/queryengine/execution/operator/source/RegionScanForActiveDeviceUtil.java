@@ -10,6 +10,7 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -20,6 +21,11 @@ import java.util.Map;
 import java.util.Set;
 
 public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDataUtil {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RegionScanForActiveDeviceUtil.class)
+          + RamUsageEstimator.shallowSizeOfInstance(Set.class)
+          + RamUsageEstimator.shallowSizeOfInstance(List.class);
 
   private final Set<IDeviceID> deviceSetForCurrentTsFile;
   private final List<IDeviceID> activeDevices;
@@ -140,5 +146,10 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
     queryDataSource.releaseFileScanHandle();
     deviceSetForCurrentTsFile.clear();
     activeDevices.clear();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + super.ramBytesUsed();
   }
 }

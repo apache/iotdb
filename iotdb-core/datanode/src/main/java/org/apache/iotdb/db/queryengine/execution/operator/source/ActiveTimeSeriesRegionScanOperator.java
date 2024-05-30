@@ -26,12 +26,14 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.util.List;
@@ -43,6 +45,11 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
   // Timeseries which need to be checked.
   private final Map<IDeviceID, Map<String, TimeseriesSchemaInfo>> timeSeriesToSchemasInfo;
   private static final Binary VIEW_TYPE = new Binary("BASE".getBytes());
+  private final Binary dataBaseName;
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ActiveTimeSeriesRegionScanOperator.class)
+          + RamUsageEstimator.shallowSizeOfInstance(Map.class)
+          + RamUsageEstimator.shallowSizeOfInstance(Binary.class);
 
   public ActiveTimeSeriesRegionScanOperator(
       OperatorContext operatorContext,
@@ -53,6 +60,14 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
     this.sourceId = sourceId;
     this.timeSeriesToSchemasInfo = timeSeriesToSchemasInfo;
     this.regionScanUtil = new RegionScanForActiveTimeSeriesUtil(timeFilter);
+    this.dataBaseName =
+        new Binary(
+            operatorContext
+                .getDriverContext()
+                .getFragmentInstanceContext()
+                .getDataRegion()
+                .getDatabaseName()
+                .getBytes(TSFileConfig.STRING_CHARSET));
   }
 
   @Override
@@ -106,39 +121,48 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
       IDeviceID deviceID = entry.getKey();
       String deviceStr = ((PlainDeviceID) deviceID).toStringID();
       List<String> timeSeriesList = entry.getValue();
+      Map<String, TimeseriesSchemaInfo> timeSeriesInfo = timeSeriesToSchemasInfo.get(deviceID);
       for (String timeSeries : timeSeriesList) {
-        TimeseriesSchemaInfo schemaInfo = timeSeriesToSchemasInfo.get(deviceID).get(timeSeries);
+        TimeseriesSchemaInfo schemaInfo = timeSeriesInfo.get(timeSeries);
         timeColumnBuilder.writeLong(-1);
         columnBuilders[0].writeBinary(
             new Binary(contactDeviceAndMeasurement(deviceStr, timeSeries)));
         columnBuilders[1].appendNull(); // alias
-        columnBuilders[2].writeBinary(new Binary(schemaInfo.getDataBase().getBytes())); // Database
-        columnBuilders[3].writeBinary(new Binary(schemaInfo.getDataType().getBytes())); // DataType
-        columnBuilders[4].writeBinary(new Binary(schemaInfo.getEncoding().getBytes())); // Encoding
+        columnBuilders[2].writeBinary(dataBaseName); // Database
+        columnBuilders[3].writeBinary(
+            new Binary(schemaInfo.getDataType().getBytes(TSFileConfig.STRING_CHARSET))); // DataType
+        columnBuilders[4].writeBinary(
+            new Binary(schemaInfo.getEncoding().getBytes(TSFileConfig.STRING_CHARSET))); // Encoding
         columnBuilders[5].writeBinary(
-            new Binary(schemaInfo.getCompression().getBytes())); // Compression
+            new Binary(
+                schemaInfo.getCompression().getBytes(TSFileConfig.STRING_CHARSET))); // Compression
 
         if (schemaInfo.getTags() == null) {
           columnBuilders[6].appendNull(); // Tags
         } else {
-          columnBuilders[6].writeBinary(new Binary(schemaInfo.getTags().getBytes())); // Tags
+          columnBuilders[6].writeBinary(
+              new Binary(schemaInfo.getTags().getBytes(TSFileConfig.STRING_CHARSET))); // Tags
         }
         columnBuilders[7].appendNull(); // Attributes
-        columnBuilders[8].writeBinary(new Binary(schemaInfo.getDeadband().getBytes())); // Deadband
+        columnBuilders[8].writeBinary(
+            new Binary(schemaInfo.getDeadband().getBytes(TSFileConfig.STRING_CHARSET))); // Deadband
         columnBuilders[9].writeBinary(
-            new Binary(schemaInfo.getDeadbandParameters().getBytes())); // DeadbandParameters
+            new Binary(
+                schemaInfo
+                    .getDeadbandParameters()
+                    .getBytes(TSFileConfig.STRING_CHARSET))); // DeadbandParameters
         columnBuilders[10].writeBinary(VIEW_TYPE); // ViewType
         resultTsBlockBuilder.declarePosition();
-        timeSeriesToSchemasInfo.get(deviceID).remove(timeSeries);
+        timeSeriesInfo.remove(timeSeries);
       }
-      if (timeSeriesToSchemasInfo.get(deviceID).isEmpty()) {
+      if (timeSeriesInfo.isEmpty()) {
         timeSeriesToSchemasInfo.remove(deviceID);
       }
     }
   }
 
   private byte[] contactDeviceAndMeasurement(String deviceStr, String measurementId) {
-    return (deviceStr + "." + measurementId).getBytes();
+    return (deviceStr + "." + measurementId).getBytes(TSFileConfig.STRING_CHARSET);
   }
 
   @Override
@@ -146,5 +170,10 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
     return ColumnHeaderConstant.showTimeSeriesColumnHeaders.stream()
         .map(ColumnHeader::getColumnType)
         .collect(Collectors.toList());
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return super.ramBytesUsed() + INSTANCE_SIZE;
   }
 }

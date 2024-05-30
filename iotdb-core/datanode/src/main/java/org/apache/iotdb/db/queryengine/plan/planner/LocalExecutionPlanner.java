@@ -98,7 +98,8 @@ public class LocalExecutionPlanner {
 
     instanceContext.setSourcePaths(collectSourcePaths(context));
     instanceContext.setDevicePathsToAligned(collectDevicePathsToAligned(context));
-    instanceContext.setQueryDataSourceType(getQueryDataSourceType(context));
+    instanceContext.setQueryDataSourceType(
+        getQueryDataSourceType((DataDriverContext) context.getDriverContext()));
 
     context.getTimePartitions().ifPresent(instanceContext::setTimePartitions);
 
@@ -185,13 +186,8 @@ public class LocalExecutionPlanner {
     return estimatedMemorySize;
   }
 
-  private QueryDataSourceType getQueryDataSourceType(LocalExecutionPlanContext context) {
-    QueryDataSourceType type =
-        ((DataDriverContext) context.getDriverContext()).getQueryDataSourceType();
-    if (type == null) {
-      return QueryDataSourceType.SERIES_SCAN;
-    }
-    return type;
+  private QueryDataSourceType getQueryDataSourceType(DataDriverContext dataDriverContext) {
+    return dataDriverContext.getQueryDataSourceType().orElse(QueryDataSourceType.SERIES_SCAN);
   }
 
   private Map<IDeviceID, Boolean> collectDevicePathsToAligned(LocalExecutionPlanContext context) {

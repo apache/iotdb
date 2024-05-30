@@ -144,15 +144,4 @@ public class TimeseriesSchemaInfo {
   public int hashCode() {
     return Objects.hash(dataType, encoding, compression, tags, deadband, deadbandParameters);
   }
-
-  // Some info which can be calculated when executing query, we don't need to store them.
-  private String dataBase;
-
-  public void setDataBase(String dataBase) {
-    this.dataBase = dataBase;
-  }
-
-  public String getDataBase() {
-    return dataBase;
-  }
 }

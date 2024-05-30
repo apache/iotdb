@@ -30,31 +30,36 @@ public class AlignedDeviceChunkMetaData extends AbstractDeviceChunkMetaData {
 
   private int alignedChunkMetadataIndex;
   private int valueChunkMetadataIndex;
-  private final int valueSize;
+  private int curValueSize;
   private final List<AlignedChunkMetadata> alignedChunkMetadataList;
 
   public AlignedDeviceChunkMetaData(
       IDeviceID devicePath, List<AlignedChunkMetadata> alignedChunkMetadataList) {
     super(devicePath);
     this.alignedChunkMetadataList = alignedChunkMetadataList;
-    this.valueSize = alignedChunkMetadataList.get(0).getValueChunkMetadataList().size();
     this.alignedChunkMetadataIndex = 0;
+    this.curValueSize = alignedChunkMetadataList.get(0).getValueChunkMetadataList().size();
     this.valueChunkMetadataIndex = -1;
   }
 
   @Override
   public boolean hasNextValueChunkMetadata() {
     return alignedChunkMetadataIndex < alignedChunkMetadataList.size() - 1
-        || valueChunkMetadataIndex < valueSize - 1;
+        || valueChunkMetadataIndex < curValueSize - 1;
   }
 
   @Override
   public IChunkMetadata nextValueChunkMetadata() {
-    if (valueChunkMetadataIndex < valueSize - 1) {
+    if (valueChunkMetadataIndex < curValueSize - 1) {
       valueChunkMetadataIndex++;
     } else {
       alignedChunkMetadataIndex++;
       valueChunkMetadataIndex = 0;
+      curValueSize =
+          alignedChunkMetadataList
+              .get(alignedChunkMetadataIndex)
+              .getValueChunkMetadataList()
+              .size();
     }
     return alignedChunkMetadataList
         .get(alignedChunkMetadataIndex)

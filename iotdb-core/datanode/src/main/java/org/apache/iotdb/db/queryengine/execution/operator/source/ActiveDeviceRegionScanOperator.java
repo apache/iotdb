@@ -31,6 +31,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.util.List;
@@ -41,6 +42,10 @@ import java.util.stream.Collectors;
 public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSourceOperator {
   // The devices which need to be checked.
   private final Map<IDeviceID, Boolean> deviceToAlignedMap;
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ActiveDeviceRegionScanOperator.class)
+          + RamUsageEstimator.shallowSizeOfInstance(Map.class);
 
   public ActiveDeviceRegionScanOperator(
       OperatorContext operatorContext,
@@ -122,5 +127,10 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
     return ColumnHeaderConstant.showDevicesColumnHeaders.stream()
         .map(ColumnHeader::getColumnType)
         .collect(Collectors.toList());
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return super.ramBytesUsed() + INSTANCE_SIZE;
   }
 }

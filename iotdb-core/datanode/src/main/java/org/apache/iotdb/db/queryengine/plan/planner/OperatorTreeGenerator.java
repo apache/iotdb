@@ -3462,9 +3462,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       PartialPath path = entry.getKey();
       context.addPath(path);
       if (path instanceof MeasurementPath) {
-        TimeseriesSchemaInfo timeseriesSchemaInfo = entry.getValue().get(0);
-        timeseriesSchemaInfo.setDataBase(path.getDevicePath().getDevice());
-        timeseriesSchemaInfoMap.put(path.getMeasurement(), timeseriesSchemaInfo);
+        timeseriesSchemaInfoMap.put(path.getMeasurement(), entry.getValue().get(0));
       } else if (path instanceof AlignedPath) {
         AlignedPath alignedPath = (AlignedPath) path;
         List<String> measurementList = alignedPath.getMeasurementList();
@@ -3473,9 +3471,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               "The size of measurementList and timeseriesSchemaInfoList should be equal in aligned path.");
         }
         for (int i = 0; i < measurementList.size(); i++) {
-          TimeseriesSchemaInfo timeseriesSchemaInfo = entry.getValue().get(i);
-          timeseriesSchemaInfo.setDataBase(alignedPath.getDevicePath().getDevice());
-          timeseriesSchemaInfoMap.put(measurementList.get(i), timeseriesSchemaInfo);
+          timeseriesSchemaInfoMap.put(measurementList.get(i), entry.getValue().get(i));
         }
       }
     }

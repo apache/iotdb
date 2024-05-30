@@ -25,22 +25,22 @@ import java.util.List;
 
 public class QueryDataSourceForRegionScan implements IQueryDataSource {
 
-  private final List<IFileScanHandle> seqFileScanHandle;
-
+  private final List<IFileScanHandle> seqFileScanHandles;
   private final List<IFileScanHandle> unseqFileScanHandles;
-
+  private final int unSeqSize;
   private long dataTTL = Long.MAX_VALUE;
-
-  int curIndex = -1;
+  private int curIndex;
 
   public QueryDataSourceForRegionScan(
       List<IFileScanHandle> seqFileScanHandle, List<IFileScanHandle> unseqFileScanHandles) {
-    this.seqFileScanHandle = seqFileScanHandle;
+    this.seqFileScanHandles = seqFileScanHandle;
     this.unseqFileScanHandles = unseqFileScanHandles;
+    this.unSeqSize = this.unseqFileScanHandles.size();
+    this.curIndex = unSeqSize + this.seqFileScanHandles.size();
   }
 
   public List<IFileScanHandle> getSeqFileScanHandles() {
-    return seqFileScanHandle;
+    return seqFileScanHandles;
   }
 
   public List<IFileScanHandle> getUnseqFileScanHandles() {
@@ -50,7 +50,7 @@ public class QueryDataSourceForRegionScan implements IQueryDataSource {
   @Override
   public IQueryDataSource clone() {
     QueryDataSourceForRegionScan queryDataSourceForRegionScan =
-        new QueryDataSourceForRegionScan(seqFileScanHandle, unseqFileScanHandles);
+        new QueryDataSourceForRegionScan(seqFileScanHandles, unseqFileScanHandles);
     queryDataSourceForRegionScan.setDataTTL(getDataTTL());
     return queryDataSourceForRegionScan;
   }
@@ -65,23 +65,27 @@ public class QueryDataSourceForRegionScan implements IQueryDataSource {
   }
 
   public boolean hasNext() {
-    return curIndex < seqFileScanHandle.size() + unseqFileScanHandles.size() - 1;
+    return curIndex >= 0;
   }
 
+  /**
+   * Iterate the list in descending order of time, as more recent entries are less likely to have
+   * their TsFile resources downgraded
+   */
   public IFileScanHandle next() {
-    curIndex++;
-    if (curIndex < seqFileScanHandle.size()) {
-      return seqFileScanHandle.get(curIndex);
+    curIndex--;
+    if (curIndex >= unSeqSize) {
+      return seqFileScanHandles.get(curIndex - unSeqSize);
     } else {
-      return unseqFileScanHandles.get(curIndex - seqFileScanHandle.size());
+      return unseqFileScanHandles.get(curIndex);
     }
   }
 
   public void releaseFileScanHandle() {
-    if (curIndex < seqFileScanHandle.size()) {
-      seqFileScanHandle.set(curIndex, null);
+    if (curIndex >= unSeqSize) {
+      seqFileScanHandles.set(curIndex - unSeqSize, null);
     } else {
-      unseqFileScanHandles.set(curIndex - seqFileScanHandle.size(), null);
+      unseqFileScanHandles.set(curIndex, null);
     }
   }
 }

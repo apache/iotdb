@@ -30,6 +30,9 @@ import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.Abstract
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.basic.TimeFilter;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -37,7 +40,12 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public abstract class AbstractRegionScanForActiveDataUtil {
+public abstract class AbstractRegionScanForActiveDataUtil implements Accountable {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(List.class)
+          + RamUsageEstimator.shallowSizeOfInstance(List.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TimeFilter.class);
 
   protected QueryDataSourceForRegionScan queryDataSource;
   protected final Filter timeFilter;
@@ -166,5 +174,10 @@ public abstract class AbstractRegionScanForActiveDataUtil {
 
   public boolean isFinished() {
     return queryDataSource == null || !queryDataSource.hasNext();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE;
   }
 }

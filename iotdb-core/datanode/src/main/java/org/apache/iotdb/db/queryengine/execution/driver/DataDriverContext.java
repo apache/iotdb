@@ -32,6 +32,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class DataDriverContext extends DriverContext {
 
@@ -85,8 +86,8 @@ public class DataDriverContext extends DriverContext {
     return deviceIDToAligned;
   }
 
-  public QueryDataSourceType getQueryDataSourceType() {
-    return queryDataSourceType;
+  public Optional<QueryDataSourceType> getQueryDataSourceType() {
+    return Optional.ofNullable(queryDataSourceType);
   }
 
   public void clearPaths() {

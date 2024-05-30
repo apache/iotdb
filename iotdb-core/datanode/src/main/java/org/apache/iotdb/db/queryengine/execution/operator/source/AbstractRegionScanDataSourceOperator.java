@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -83,7 +84,8 @@ public abstract class AbstractRegionScanDataSourceOperator extends AbstractSourc
 
   @Override
   public long ramBytesUsed() {
-    return 0;
+    return (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes())
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(regionScanUtil);
   }
 
   protected abstract List<TSDataType> getResultDataTypes();

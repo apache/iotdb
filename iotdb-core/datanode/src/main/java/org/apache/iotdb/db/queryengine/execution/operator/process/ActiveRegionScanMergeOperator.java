@@ -166,7 +166,7 @@ public class ActiveRegionScanMergeOperator extends AbstractConsumeAllOperator {
     if (outputCount) {
       count++;
     } else {
-      timeColumnBuilder.writeLong(inputTsBlocks[i].getTimeColumn().getLong(curTsBlockRowIndex));
+      timeColumnBuilder.writeLong(-1);
       for (int j = 0; j < valueColumnBuilders.length; j++) {
         if (inputTsBlocks[i].getValueColumns()[j].isNull(curTsBlockRowIndex)) {
           valueColumnBuilders[j].appendNull();

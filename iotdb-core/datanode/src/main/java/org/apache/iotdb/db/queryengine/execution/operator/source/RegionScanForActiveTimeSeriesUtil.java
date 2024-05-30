@@ -30,6 +30,7 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -44,6 +45,9 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
 
   private final Map<IDeviceID, Set<String>> timeSeriesForCurrentTsFile;
   private final Map<IDeviceID, List<String>> activeTimeSeries;
+  private final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(Map.class)
+          + RamUsageEstimator.shallowSizeOfInstance(Map.class);
 
   public RegionScanForActiveTimeSeriesUtil(Filter timeFilter) {
     super(timeFilter);
@@ -150,11 +154,17 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
   }
 
   private void removeTimeSeriesForCurrentTsFile(IDeviceID deviceID, String measurementPath) {
-    if (timeSeriesForCurrentTsFile.containsKey(deviceID)) {
-      timeSeriesForCurrentTsFile.get(deviceID).remove(measurementPath);
-      if (timeSeriesForCurrentTsFile.get(deviceID).isEmpty()) {
+    Set<String> measurements = timeSeriesForCurrentTsFile.get(deviceID);
+    if (measurements != null) {
+      measurements.remove(measurementPath);
+      if (measurements.isEmpty()) {
         timeSeriesForCurrentTsFile.remove(deviceID);
       }
     }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + super.ramBytesUsed();
   }
 }
