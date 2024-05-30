@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.commons.conf;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -29,6 +32,9 @@ import java.util.concurrent.TimeUnit;
 public class ConfigFileAutoUpdateTool {
 
   private final String lockFileSuffix = ".lock";
+  private final long maxTimeMillsToAcquireLock = TimeUnit.SECONDS.toMillis(20);
+  private final long waitTimeMillsPerCheck = TimeUnit.MILLISECONDS.toMillis(100);
+  private Logger logger = LoggerFactory.getLogger(ConfigFileAutoUpdateTool.class);
   private String license =
       "#\n"
           + "# Licensed to the Apache Software Foundation (ASF) under one\n"
@@ -98,13 +104,16 @@ public class ConfigFileAutoUpdateTool {
   }
 
   private void acquireTargetFileLock(File file) throws IOException, InterruptedException {
-    long waitTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(20);
-    while (System.currentTimeMillis() < waitTime) {
+    long totalWaitTime = 0;
+    while (totalWaitTime < maxTimeMillsToAcquireLock) {
       if (file.createNewFile()) {
         return;
       }
-      Thread.sleep(TimeUnit.MICROSECONDS.toMillis(100));
+      totalWaitTime += waitTimeMillsPerCheck;
+      Thread.sleep(waitTimeMillsPerCheck);
     }
+    logger.warn(
+        "Waiting for {} seconds to acquire configuration file update lock", totalWaitTime / 1000);
   }
 
   private void releaseFileLock(File file) throws IOException {
