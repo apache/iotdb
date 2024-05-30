@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.persistence.partition.maintainer;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
@@ -40,7 +39,6 @@ public class RegionCreateTask extends RegionMaintainTask {
 
   private String storageGroup;
   private TRegionReplicaSet regionReplicaSet;
-  private long TTL;
 
   public RegionCreateTask() {
     super(RegionMaintainType.CREATE);
@@ -62,15 +60,6 @@ public class RegionCreateTask extends RegionMaintainTask {
     return regionReplicaSet;
   }
 
-  public long getTTL() {
-    return TTL;
-  }
-
-  public RegionCreateTask setTTL(long TTL) {
-    this.TTL = TTL;
-    return this;
-  }
-
   @Override
   public TConsensusGroupId getRegionId() {
     return regionReplicaSet.getRegionId();
@@ -83,9 +72,6 @@ public class RegionCreateTask extends RegionMaintainTask {
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(targetDataNode, stream);
     ReadWriteIOUtils.write(storageGroup, stream);
     ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, stream);
-    if (TConsensusGroupType.DataRegion.equals(regionReplicaSet.getRegionId().getType())) {
-      ReadWriteIOUtils.write(TTL, stream);
-    }
   }
 
   @Override
@@ -93,9 +79,6 @@ public class RegionCreateTask extends RegionMaintainTask {
     this.targetDataNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer);
     this.storageGroup = ReadWriteIOUtils.readString(buffer);
     this.regionReplicaSet = ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer);
-    if (TConsensusGroupType.DataRegion.equals(regionReplicaSet.getRegionId().getType())) {
-      this.TTL = ReadWriteIOUtils.readLong(buffer);
-    }
   }
 
   @Override
@@ -106,9 +89,6 @@ public class RegionCreateTask extends RegionMaintainTask {
     this.targetDataNode.write(protocol);
     ReadWriteIOUtils.write(storageGroup, outputStream);
     this.regionReplicaSet.write(protocol);
-    if (TConsensusGroupType.DataRegion.equals(regionReplicaSet.getRegionId().getType())) {
-      ReadWriteIOUtils.write(TTL, outputStream);
-    }
   }
 
   @Override
@@ -119,9 +99,6 @@ public class RegionCreateTask extends RegionMaintainTask {
     this.storageGroup = ReadWriteIOUtils.readString(inputStream);
     this.regionReplicaSet = new TRegionReplicaSet();
     this.regionReplicaSet.read(protocol);
-    if (TConsensusGroupType.DataRegion.equals(regionReplicaSet.getRegionId().getType())) {
-      this.TTL = ReadWriteIOUtils.readLong(inputStream);
-    }
   }
 
   @Override
@@ -130,13 +107,11 @@ public class RegionCreateTask extends RegionMaintainTask {
     if (!(o instanceof RegionCreateTask)) return false;
     if (!super.equals(o)) return false;
     RegionCreateTask that = (RegionCreateTask) o;
-    return TTL == that.TTL
-        && storageGroup.equals(that.storageGroup)
-        && regionReplicaSet.equals(that.regionReplicaSet);
+    return storageGroup.equals(that.storageGroup) && regionReplicaSet.equals(that.regionReplicaSet);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), storageGroup, regionReplicaSet, TTL);
+    return Objects.hash(super.hashCode(), storageGroup, regionReplicaSet);
   }
 }

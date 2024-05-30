@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
-import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionCreateTask;
 import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDeleteTask;
@@ -130,14 +129,6 @@ public class CreateRegionGroupsProcedure
                                         RegionCreateTask createTask =
                                             new RegionCreateTask(
                                                 targetDataNode, database, regionReplicaSet);
-                                        if (TConsensusGroupType.DataRegion.equals(
-                                            regionReplicaSet.getRegionId().getType())) {
-                                          try {
-                                            createTask.setTTL(env.getTTL(database));
-                                          } catch (DatabaseNotExistsException e) {
-                                            LOGGER.error("Can't get TTL", e);
-                                          }
-                                        }
                                         offerPlan.appendRegionMaintainTask(createTask);
                                       });
 

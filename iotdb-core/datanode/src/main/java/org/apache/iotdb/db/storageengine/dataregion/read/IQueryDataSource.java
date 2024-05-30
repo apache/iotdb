@@ -22,6 +22,4 @@ package org.apache.iotdb.db.storageengine.dataregion.read;
 public interface IQueryDataSource {
 
   IQueryDataSource clone();
-
-  long getDataTTL();
 }

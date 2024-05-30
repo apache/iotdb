@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -42,6 +44,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -64,11 +68,12 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
+import static java.lang.Thread.sleep;
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TTLTest {
 
@@ -99,8 +104,10 @@ public class TTLTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
+    dataRegion.abortCompaction();
     EnvironmentUtils.cleanEnv();
     CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(prevPartitionInterval);
+    DataNodeTTLCache.getInstance().clearAllTTL();
   }
 
   @Test
@@ -121,8 +128,7 @@ public class TTLTest {
 
     // ok without ttl
     dataRegion.insert(node);
-
-    dataRegion.setDataTTL(1000);
+    DataNodeTTLCache.getInstance().setTTL(sg1, 1000);
     // with ttl
     node.setTime(System.currentTimeMillis() - 1001);
     boolean caught = false;
@@ -187,7 +193,7 @@ public class TTLTest {
     assertEquals(4, seqResource.size());
     assertEquals(4, unseqResource.size());
 
-    dataRegion.setDataTTL(500);
+    DataNodeTTLCache.getInstance().setTTL(sg1, 500);
 
     // files after ttl
     dataSource =
@@ -199,8 +205,8 @@ public class TTLTest {
             null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
-    assertTrue(seqResource.size() < 4);
-    assertEquals(0, unseqResource.size());
+    assertEquals(4, seqResource.size());
+    assertEquals(4, unseqResource.size());
     MeasurementPath path = mockMeasurementPath();
 
     IDataBlockReader reader =
@@ -220,7 +226,7 @@ public class TTLTest {
     // we cannot offer the exact number since when exactly ttl will be checked is unknown
     assertTrue(cnt <= 1000);
 
-    dataRegion.setDataTTL(0);
+    DataNodeTTLCache.getInstance().setTTL(sg1, 1);
     dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
@@ -230,8 +236,25 @@ public class TTLTest {
             null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
-    assertEquals(0, seqResource.size());
-    assertEquals(0, unseqResource.size());
+    assertEquals(4, seqResource.size());
+    assertEquals(4, unseqResource.size());
+
+    reader =
+        new SeriesDataBlockReader(
+            path,
+            FragmentInstanceContext.createFragmentInstanceContextForCompaction(TEST_QUERY_JOB_ID),
+            seqResource,
+            unseqResource,
+            true);
+
+    cnt = 0;
+    while (reader.hasNextBatch()) {
+      TsBlock tsblock = reader.nextBatch();
+      cnt += tsblock.getPositionCount();
+    }
+    reader.close();
+    // we cannot offer the exact number since when exactly ttl will be checked is unknown
+    assertTrue(cnt == 0);
   }
 
   private MeasurementPath mockMeasurementPath() throws MetadataException {
@@ -249,8 +272,11 @@ public class TTLTest {
   public void testTTLRemoval()
       throws StorageEngineException,
           WriteProcessException,
-          QueryProcessException,
-          IllegalPathException {
+          IllegalPathException,
+          InterruptedException {
+    boolean isEnableCrossCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
     prepareData();
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
@@ -293,12 +319,25 @@ public class TTLTest {
     assertEquals(4, unseqFiles.size());
 
     try {
-      Thread.sleep(500);
+      sleep(500);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    dataRegion.setDataTTL(500);
-    dataRegion.checkFilesTTL();
+    DataNodeTTLCache.getInstance().setTTL(sg1, 500);
+    for (long timePartition : dataRegion.getTimePartitions()) {
+      CompactionScheduler.tryToSubmitSettleCompactionTask(
+          dataRegion.getTsFileManager(), timePartition, new CompactionScheduleSummary(), true);
+    }
+    long totalWaitingTime = 0;
+    while (dataRegion.getTsFileManager().getTsFileList(true).size()
+            + dataRegion.getTsFileManager().getTsFileList(false).size()
+        != 0) {
+      sleep(200);
+      totalWaitingTime += 200;
+      if (totalWaitingTime >= 5000) {
+        fail();
+      }
+    }
 
     // files after ttl
     seqFiles = new ArrayList<>();
@@ -333,6 +372,9 @@ public class TTLTest {
 
     assertTrue(seqFiles.size() <= 2);
     assertEquals(0, unseqFiles.size());
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableCrossSpaceCompaction(isEnableCrossCompaction);
   }
 
   @Test
@@ -341,14 +383,14 @@ public class TTLTest {
         (SetTTLStatement)
             StatementGenerator.createStatement(
                 "SET TTL TO " + sg1 + " 10000", ZoneId.systemDefault());
-    assertEquals(sg1, statement1.getDatabasePath().getFullPath());
+    assertEquals(sg1, statement1.getPath().getFullPath());
     assertEquals(10000, statement1.getTTL());
 
     UnSetTTLStatement statement2 =
         (UnSetTTLStatement)
             StatementGenerator.createStatement("UNSET TTL TO " + sg2, ZoneId.systemDefault());
-    assertEquals(sg2, statement2.getDatabasePath().getFullPath());
-    assertEquals(Long.MAX_VALUE, statement2.getTTL());
+    assertEquals(sg2, statement2.getPath().getFullPath());
+    assertEquals(TTLCache.NULL_TTL, statement2.getTTL());
   }
 
   @Test
@@ -357,33 +399,40 @@ public class TTLTest {
         (ShowTTLStatement)
             StatementGenerator.createStatement("SHOW ALL TTL", ZoneId.systemDefault());
     assertTrue(statement1.getPaths().isEmpty());
-
-    List<String> sgs = new ArrayList<>();
-    sgs.add("root.sg1");
-    sgs.add("root.sg2");
-    sgs.add("root.sg3");
-    ShowTTLStatement statement2 =
-        (ShowTTLStatement)
-            StatementGenerator.createStatement(
-                "SHOW TTL ON root.sg1,root.sg2,root.sg3", ZoneId.systemDefault());
-    assertEquals(
-        sgs,
-        statement2.getPaths().stream().map(PartialPath::getFullPath).collect(Collectors.toList()));
   }
 
   @Test
   public void testTTLCleanFile()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws WriteProcessException, IllegalPathException, InterruptedException {
+    boolean isEnableCrossCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
     prepareData();
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     assertEquals(4, dataRegion.getSequenceFileList().size());
     assertEquals(4, dataRegion.getUnSequenceFileList().size());
 
-    dataRegion.setDataTTL(0);
-    dataRegion.checkFilesTTL();
+    DataNodeTTLCache.getInstance().setTTL(sg1, 1);
+    for (long timePartition : dataRegion.getTimePartitions()) {
+      CompactionScheduler.tryToSubmitSettleCompactionTask(
+          dataRegion.getTsFileManager(), timePartition, new CompactionScheduleSummary(), true);
+    }
+    long totalWaitingTime = 0;
+    while (dataRegion.getTsFileManager().getTsFileList(true).size()
+            + dataRegion.getTsFileManager().getTsFileList(false).size()
+        != 0) {
+      sleep(200);
+      totalWaitingTime += 200;
+      if (totalWaitingTime >= 5000) {
+        fail();
+      }
+    }
 
     assertEquals(0, dataRegion.getSequenceFileList().size());
     assertEquals(0, dataRegion.getUnSequenceFileList().size());
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableCrossSpaceCompaction(isEnableCrossCompaction);
   }
 }

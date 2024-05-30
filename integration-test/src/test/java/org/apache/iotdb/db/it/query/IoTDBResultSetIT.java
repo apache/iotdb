@@ -191,6 +191,8 @@ public class IoTDBResultSetIT {
             + ColumnHeaderConstant.IS_ALIGNED
             + ","
             + ColumnHeaderConstant.TEMPLATE
+            + ","
+            + ColumnHeaderConstant.COLUMN_TTL
             + ",";
     resultSetEqualTest("show devices root.sg1.**", expectedHeader, emptyResultSet);
   }

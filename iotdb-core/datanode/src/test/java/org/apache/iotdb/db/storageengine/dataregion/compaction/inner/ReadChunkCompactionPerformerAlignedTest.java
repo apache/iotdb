@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.TestUtilsForAlignedSeries;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
@@ -150,8 +151,10 @@ public class ReadChunkCompactionPerformerAlignedTest {
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-    CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -224,7 +227,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -291,7 +295,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -361,7 +366,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -429,7 +435,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -499,7 +506,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -570,7 +578,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
@@ -652,7 +661,8 @@ public class ReadChunkCompactionPerformerAlignedTest {
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
-    CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
+    CompactionUtils.moveTargetFile(
+        Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,

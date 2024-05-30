@@ -670,7 +670,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     List<TsFileResource> resources = tsFileManager.getOrCreateSequenceListByTimePartition(0);
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(resources);
-    Assert.assertEquals(1, innerSpaceCompactionTasks.size());
+    Assert.assertEquals(3, innerSpaceCompactionTasks.size());
     mockModiFicationFile.remove();
   }
 
