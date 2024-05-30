@@ -27,12 +27,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant
 import org.apache.tsfile.file.IMetadataIndexEntry;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
-import org.apache.tsfile.file.metadata.IChunkMetadata;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.MetadataIndexNodeType;
-import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Pair;
@@ -43,7 +40,6 @@ import java.nio.ByteBuffer;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -55,6 +51,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class CompactionTsFileReader extends TsFileSequenceReader {
   /** Tracks the total amount of data (in bytes) that has been read. */
   private AtomicLong readDataSize = new AtomicLong(0L);
+
+  private long metadataOffset = 0;
 
   /** The type of compaction running. */
   CompactionType compactionType;
@@ -73,6 +71,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
     super(file);
     this.tsFileInput = new CompactionTsFileInput(tsFileInput);
     this.compactionType = compactionType;
+    this.metadataOffset = readFileMetadata().getMetaOffset();
   }
 
   @Override
@@ -80,6 +79,10 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
     acquireReadDataSizeWithCompactionReadRateLimiter(totalSize);
     ByteBuffer buffer = super.readData(position, totalSize);
     readDataSize.addAndGet(totalSize);
+    if (position >= metadataOffset) {
+      CompactionMetrics.getInstance()
+          .recordReadInfo(compactionType, CompactionIoDataType.METADATA, totalSize);
+    }
     return buffer;
   }
 
@@ -127,74 +130,12 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
     return readData(startOffset, pageSize);
   }
 
-  @Override
-  public TsFileDeviceIterator getAllDevicesIteratorWithIsAligned() throws IOException {
-    long before = readDataSize.get();
-    TsFileDeviceIterator iterator = super.getAllDevicesIteratorWithIsAligned();
-    long dataSize = readDataSize.get() - before;
-    CompactionMetrics.getInstance()
-        .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
-    return iterator;
-  }
-
-  @Override
-  public List<IChunkMetadata> getChunkMetadataListByTimeseriesMetadataOffset(
-      long startOffset, long endOffset) throws IOException {
-    long before = readDataSize.get();
-    List<IChunkMetadata> chunkMetadataList =
-        super.getChunkMetadataListByTimeseriesMetadataOffset(startOffset, endOffset);
-    long dataSize = readDataSize.get() - before;
-    CompactionMetrics.getInstance()
-        .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
-    return chunkMetadataList;
-  }
-
-  @Override
-  public void getDevicesAndEntriesOfOneLeafNode(
-      Long startOffset, Long endOffset, Queue<Pair<IDeviceID, long[]>> measurementNodeOffsetQueue)
-      throws IOException {
-    long before = readDataSize.get();
-    super.getDevicesAndEntriesOfOneLeafNode(startOffset, endOffset, measurementNodeOffsetQueue);
-    long dataSize = readDataSize.get() - before;
-    CompactionMetrics.getInstance()
-        .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
-  }
-
-  @Override
-  public MetadataIndexNode readMetadataIndexNode(long start, long end, boolean isDeviceLevel)
-      throws IOException {
-    long before = readDataSize.get();
-    MetadataIndexNode metadataIndexNode = super.readMetadataIndexNode(start, end, isDeviceLevel);
-    long dataSize = readDataSize.get() - before;
-    CompactionMetrics.getInstance()
-        .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
-    return metadataIndexNode;
-  }
-
-  @Override
-  public Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>>
-      getTimeseriesMetadataOffsetByDevice(
-          MetadataIndexNode measurementNode,
-          Set<String> excludedMeasurementIds,
-          boolean needChunkMetadata)
-          throws IOException {
-    long before = readDataSize.get();
-    Map<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> result =
-        super.getTimeseriesMetadataOffsetByDevice(
-            measurementNode, excludedMeasurementIds, needChunkMetadata);
-    long dataSize = readDataSize.get() - before;
-    CompactionMetrics.getInstance()
-        .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
-    return result;
-  }
-
   public Map<String, Pair<TimeseriesMetadata, Pair<Long, Long>>>
       getTimeseriesMetadataAndOffsetByDevice(
           MetadataIndexNode measurementNode,
           Set<String> excludedMeasurementIds,
           boolean needChunkMetadata)
           throws IOException {
-    long before = readDataSize.get();
     Map<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
         new LinkedHashMap<>();
     List<IMetadataIndexEntry> childrenEntryList = measurementNode.getChildren();
@@ -229,26 +170,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
                 nextLayerMeasurementNode, excludedMeasurementIds, needChunkMetadata));
       }
     }
-
-    long dataSize = readDataSize.get() - before;
-    CompactionMetrics.getInstance()
-        .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
     return timeseriesMetadataOffsetMap;
-  }
-
-  @Override
-  public void getDeviceTimeseriesMetadata(
-      List<TimeseriesMetadata> timeseriesMetadataList,
-      MetadataIndexNode measurementNode,
-      Set<String> excludedMeasurementIds,
-      boolean needChunkMetadata)
-      throws IOException {
-    long before = readDataSize.get();
-    super.getDeviceTimeseriesMetadata(
-        timeseriesMetadataList, measurementNode, excludedMeasurementIds, needChunkMetadata);
-    long dataSize = readDataSize.get() - before;
-    CompactionMetrics.getInstance()
-        .recordReadInfo(compactionType, CompactionIoDataType.METADATA, dataSize);
   }
 
   private void acquireReadDataSizeWithCompactionReadRateLimiter(int readDataSize) {
