@@ -129,9 +129,20 @@ public class TimeSeriesMetadataCache {
         }
         TimeseriesMetadata timeseriesMetadata =
             reader.readTimeseriesMetadata(key.device, key.measurement, ignoreNotExists);
-        return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
-            ? null
-            : timeseriesMetadata;
+        if (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0) {
+          return null;
+        } else if (timeseriesMetadata.getStatistics().getEndTime()
+            < timeseriesMetadata.getStatistics().getStartTime()) {
+          logger.warn(
+              "Found endTime({}) of timeseries metadata statistics{} less than startTime({}), file is {}",
+              timeseriesMetadata.getStatistics().getEndTime(),
+              timeseriesMetadata.getStatistics(),
+              timeseriesMetadata.getStatistics().getStartTime(),
+              key);
+          return null;
+        } else {
+          return timeseriesMetadata;
+        }
       }
 
       TimeseriesMetadata timeseriesMetadata = lruCache.getIfPresent(key);
@@ -185,11 +196,25 @@ public class TimeSeriesMetadataCache {
                       key.compactionVersion,
                       key.device,
                       metadata.getMeasurementId());
+              long startTime1 = metadata.getStatistics().getStartTime();
+              long endTime1 = metadata.getStatistics().getEndTime();
               if (metadata.getStatistics().getCount() != 0) {
-                lruCache.put(k, metadata);
+                if (endTime1 < startTime1) {
+                  logger.warn(
+                      "Found endTime({}) of timeseries metadata statistics{} less than startTime({}), file is {}",
+                      endTime1,
+                      metadata.getStatistics(),
+                      startTime1,
+                      key);
+                } else {
+                  lruCache.put(k, metadata);
+                }
               }
               if (metadata.getMeasurementId().equals(key.measurement)) {
-                timeseriesMetadata = metadata.getStatistics().getCount() == 0 ? null : metadata;
+                timeseriesMetadata =
+                    (metadata.getStatistics().getCount() == 0 || endTime1 < startTime1)
+                        ? null
+                        : metadata;
               }
             }
           }
