@@ -21,7 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
@@ -30,7 +31,9 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -43,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils.createTimeseries;
+import static org.apache.tsfile.utils.TsFileGeneratorUtils.getDataType;
 
 public class TTLQueryTest extends AbstractCompactionTest {
 
@@ -72,16 +76,28 @@ public class TTLQueryTest extends AbstractCompactionTest {
     dataRegion.getTsFileManager().addAll(unseqResources, false);
     tsFileManager = dataRegion.getTsFileManager();
 
-    List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1", "s0"));
-    pathList.add(new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d3", "s1"));
-    pathList.add(new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d5", "s2"));
+    List<IFullPath> pathList = new ArrayList<>();
+    pathList.add(
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
+                COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1"),
+            new MeasurementSchema("s0", getDataType(0))));
+    pathList.add(
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
+                COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d3"),
+            new MeasurementSchema("s1", getDataType(1))));
+    pathList.add(
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
+                COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d5"),
+            new MeasurementSchema("s2", getDataType(2))));
 
     QueryDataSource queryDataSource =
         dataRegion.query(pathList, null, EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 10, false), Collections.emptyList());
     Assert.assertEquals(1000, sourceDatas.get(pathList.get(0)).size());
     Assert.assertEquals(1000, sourceDatas.get(pathList.get(1)).size());
@@ -111,12 +127,21 @@ public class TTLQueryTest extends AbstractCompactionTest {
     Assert.assertTrue(sourceDatas.get(pathList.get(2)).get(0).getTimestamp() >= 1707137815000L);
 
     pathList.clear();
-    pathList.add(new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d5", "s1"));
-    pathList.add(new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d5", "s2"));
+    pathList.add(
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
+                COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d5"),
+            new MeasurementSchema("s1", getDataType(1))));
+    pathList.add(
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
+                COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d5"),
+            new MeasurementSchema("s2", getDataType(2))));
     queryDataSource =
         dataRegion.query(
             pathList,
-            COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d5",
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
+                COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d5"),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -125,10 +150,26 @@ public class TTLQueryTest extends AbstractCompactionTest {
 
     // reset ttl to 1
     pathList.clear();
-    pathList.add(new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1", "s0"));
-    pathList.add(new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d3", "s1"));
-    pathList.add(new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d5", "s2"));
-    pathList.add(new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0", "s2"));
+    pathList.add(
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
+                COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1"),
+            new MeasurementSchema("s0", getDataType(0))));
+    pathList.add(
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
+                COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d3"),
+            new MeasurementSchema("s1", getDataType(1))));
+    pathList.add(
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
+                COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d5"),
+            new MeasurementSchema("s2", getDataType(2))));
+    pathList.add(
+        new NonAlignedFullPath(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
+                COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0"),
+            new MeasurementSchema("s2", getDataType(2))));
 
     DataNodeTTLCache.getInstance()
         .setTTL(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1", 1L);

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.utils.TestOnly;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -70,10 +72,20 @@ public class DataNodeTTLCache {
     }
   }
 
-  public long getTTL(String path) {
+  public long getTTL(String[] path) {
     lock.readLock().lock();
     try {
-      return ttlCache.getClosestTTL(path.split(PATH_SEPARATER_NO_REGEX));
+      return ttlCache.getClosestTTL(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  public long getTTL(IDeviceID deviceID) {
+    lock.readLock().lock();
+    try {
+      // TODO Tien change this way
+      return ttlCache.getClosestTTL(deviceID.toString().split(PATH_SEPARATER_NO_REGEX));
     } finally {
       lock.readLock().unlock();
     }

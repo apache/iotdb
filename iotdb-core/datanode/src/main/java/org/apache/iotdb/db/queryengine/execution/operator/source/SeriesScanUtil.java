@@ -175,7 +175,7 @@ public class SeriesScanUtil implements Accountable {
     this.dataSource = dataSource;
 
     // updated filter concerning TTL
-    scanOptions.setTTL(DataNodeTTLCache.getInstance().getTTL(seriesPath.getDevice()));
+    scanOptions.setTTL(DataNodeTTLCache.getInstance().getTTL(seriesPath.getDeviceId()));
 
     // init file index
     orderUtils.setCurSeqFileIndex(dataSource);

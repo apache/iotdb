@@ -84,7 +84,6 @@ import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -1709,7 +1708,7 @@ public class TsFileProcessor {
 
   private List<IChunkMetadata> getVisibleMetadataListFromWriterByDeviceID(
       QueryContext queryContext, IDeviceID deviceID) throws IllegalPathException {
-    long timeLowerBound = getQueryTimeLowerBound(((PlainDeviceID) deviceID).toStringID());
+    long timeLowerBound = getQueryTimeLowerBound(deviceID);
     List<List<ChunkMetadata>> chunkMetaDataListForDevice =
         writer.getVisibleMetadataList(deviceID, null);
     List<ChunkMetadata> processedChunkMetadataForOneDevice = new ArrayList<>();
@@ -1762,7 +1761,7 @@ public class TsFileProcessor {
       }
     }
 
-    long timeLowerBound = getQueryTimeLowerBound(((PlainDeviceID) deviceID).toStringID());
+    long timeLowerBound = getQueryTimeLowerBound(deviceID);
     ModificationUtils.modifyAlignedChunkMetaData(alignedChunkMetadataForOneDevice, modifications);
     alignedChunkMetadataForOneDevice.removeIf(x -> x.getEndTime() < timeLowerBound);
     return new ArrayList<>(alignedChunkMetadataForOneDevice);
@@ -1782,7 +1781,8 @@ public class TsFileProcessor {
         for (IFullPath seriesPath : pathList) {
           Map<String, List<IChunkMetadata>> measurementToChunkMetaList = new HashMap<>();
           Map<String, List<IChunkHandle>> measurementToChunkHandleList = new HashMap<>();
-          long timeLowerBound = getQueryTimeLowerBound(seriesPath.getDevice());
+          // TODO Tien change the way
+          long timeLowerBound = getQueryTimeLowerBound(seriesPath.getDeviceId());
           for (IMemTable flushingMemTable : flushingMemTables) {
             if (flushingMemTable.isSignalMemTable()) {
               continue;
@@ -1866,7 +1866,7 @@ public class TsFileProcessor {
         for (Map.Entry<IDeviceID, Boolean> entry : devicePathToAligned.entrySet()) {
           IDeviceID devicePath = entry.getKey();
           boolean isAligned = entry.getValue();
-          long timeLowerBound = getQueryTimeLowerBound(((PlainDeviceID) devicePath).toStringID());
+          long timeLowerBound = getQueryTimeLowerBound(devicePath);
           Map<String, List<IChunkMetadata>> measurementToChunkMetadataList = new HashMap<>();
           Map<String, List<IChunkHandle>> measurementToMemChunkHandleList = new HashMap<>();
           for (IMemTable flushingMemTable : flushingMemTables) {
@@ -1956,7 +1956,7 @@ public class TsFileProcessor {
       try {
         for (IFullPath seriesPath : seriesPaths) {
           List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
-          long timeLowerBound = getQueryTimeLowerBound(seriesPath.getDevice());
+          long timeLowerBound = getQueryTimeLowerBound(seriesPath.getDeviceId());
           for (IMemTable flushingMemTable : flushingMemTables) {
             if (flushingMemTable.isSignalMemTable()) {
               continue;
@@ -2017,8 +2017,8 @@ public class TsFileProcessor {
     }
   }
 
-  private long getQueryTimeLowerBound(String device) {
-    long deviceTTL = DataNodeTTLCache.getInstance().getTTL(device);
+  private long getQueryTimeLowerBound(IDeviceID deviceID) {
+    long deviceTTL = DataNodeTTLCache.getInstance().getTTL(deviceID);
     return deviceTTL != Long.MAX_VALUE
         ? CommonDateTimeUtils.currentTime() - deviceTTL
         : Long.MIN_VALUE;

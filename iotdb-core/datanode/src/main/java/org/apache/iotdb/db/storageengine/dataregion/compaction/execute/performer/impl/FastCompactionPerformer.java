@@ -46,7 +46,6 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -142,7 +141,7 @@ public class FastCompactionPerformer
                         device,
                         DataNodeTTLCache.getInstance()
                             // TODO: remove deviceId conversion
-                            .getTTL(((PlainDeviceID) device).toStringID())));
+                            .getTTL(device)));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
 
         if (sortedSourceFiles.isEmpty()) {

@@ -38,7 +38,6 @@ import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -407,8 +406,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                 // TODO: remove deviceId conversion
                 long timeLowerBound =
                     CommonDateTimeUtils.currentTime()
-                        - DataNodeTTLCache.getInstance()
-                            .getTTL(((PlainDeviceID) device).toStringID());
+                        - DataNodeTTLCache.getInstance().getTTL(device);
                 if (r.getStartTime(device) < timeLowerBound) {
                   try {
                     list.add(
@@ -637,8 +635,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                       // TODO: remove deviceId conversion
                       long timeLowerBound =
                           CommonDateTimeUtils.currentTime()
-                              - DataNodeTTLCache.getInstance()
-                                  .getTTL(((PlainDeviceID) device).toStringID());
+                              - DataNodeTTLCache.getInstance().getTTL(device);
                       if (r.getStartTime(device) < timeLowerBound) {
                         try {
                           list.add(
