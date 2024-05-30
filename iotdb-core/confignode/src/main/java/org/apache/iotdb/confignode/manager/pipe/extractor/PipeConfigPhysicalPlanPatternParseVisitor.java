@@ -31,7 +31,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeSetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -46,7 +45,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -275,13 +273,10 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
         pattern.matchPrefixPath(partialPath.getFullPath())
             ? Collections.singletonList(partialPath)
             : pattern.getIntersection(partialPath);
+    // The intersectionList is either a singleton list or an empty list, because the pipe
+    // pattern and TTL path are each either a prefix path or a full path
     return !intersectionList.isEmpty()
-        ? Optional.of(
-            new PipeSetTTLPlan(
-                intersectionList.stream()
-                    .map(
-                        path -> new SetTTLPlan(Arrays.asList(path.getNodes()), setTTLPlan.getTTL()))
-                    .collect(Collectors.toList())))
+        ? Optional.of(new SetTTLPlan(intersectionList.get(0).getNodes(), setTTLPlan.getTTL()))
         : Optional.empty();
   }
 }
