@@ -105,7 +105,8 @@ public class IoTDBStatement implements Statement {
       long sessionId,
       ZoneId zoneId,
       int seconds,
-      long statementId) {
+      long statementId,
+      String charset) {
     this.connection = connection;
     this.client = client;
     this.sessionId = sessionId;
@@ -114,6 +115,7 @@ public class IoTDBStatement implements Statement {
     this.zoneId = zoneId;
     this.queryTimeout = seconds;
     this.stmtId = statementId;
+    this.charset = charset;
   }
 
   IoTDBStatement(

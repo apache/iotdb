@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.charset.IoTDBCharsetConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
@@ -69,7 +70,9 @@ public class IoTDBDatabaseMetadataTest {
     MockitoAnnotations.initMocks(this);
 
     when(connection.createStatement())
-        .thenReturn(new IoTDBStatement(connection, client, sessionId, zoneID, 0, 1L));
+        .thenReturn(
+            new IoTDBStatement(
+                connection, client, sessionId, zoneID, 0, 1L, IoTDBCharsetConstant.UTF_8));
     databaseMetaData = new IoTDBDatabaseMetadata(connection, client, sessionId, zoneID);
     when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
     when(client.getProperties()).thenReturn(properties);

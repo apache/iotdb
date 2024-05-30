@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.charset.IoTDBCharsetConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
@@ -125,6 +126,7 @@ public class IoTDBJDBCResultSetTest {
 
     execResp.queryResult = FakedFirstFetchTsBlockResult();
 
+    when(connection.getCharset()).thenReturn(IoTDBCharsetConstant.UTF_8);
     when(connection.isClosed()).thenReturn(false);
     when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execResp);
     when(execResp.getQueryId()).thenReturn(queryId);

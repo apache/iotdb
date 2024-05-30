@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.charset.IoTDBCharsetConstant;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
@@ -62,6 +63,8 @@ public class IoTDBPreparedStatementTest {
     when(execStatementResp.getQueryId()).thenReturn(queryId);
 
     when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
+
+    when(connection.getCharset()).thenReturn(IoTDBCharsetConstant.UTF_8);
   }
 
   @SuppressWarnings("resource")

@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.jdbc.charset.IoTDBCharsetConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
@@ -59,7 +60,9 @@ public class BatchTest {
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     when(connection.createStatement())
-        .thenReturn(new IoTDBStatement(connection, client, sessionId, zoneID, 0, 1L));
+        .thenReturn(
+            new IoTDBStatement(
+                connection, client, sessionId, zoneID, 0, 1L, IoTDBCharsetConstant.UTF_8));
   }
 
   @After
