@@ -237,7 +237,6 @@ final class SubscriptionExecutorServiceManager {
                 }
                 return t;
               });
-      ;
     }
 
     void shutdown() {
