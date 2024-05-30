@@ -21,12 +21,13 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskPriorityType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionPriority;
@@ -324,9 +325,16 @@ public class CompactionTaskComparatorTest {
         resources.add(
             new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), j));
       }
-      FakedInnerSpaceCompactionTask innerTask =
-          new FakedInnerSpaceCompactionTask("fakeSg", 0, tsFileManager, true, resources, 0);
-      compactionTaskQueue.put(innerTask);
+      SettleCompactionTask settleTask =
+          new SettleCompactionTask(
+              0,
+              tsFileManager,
+              Collections.emptyList(),
+              resources,
+              true,
+              new FastCompactionPerformer(false),
+              0);
+      compactionTaskQueue.put(settleTask);
     }
 
     String targetFileName = "101-101-0-0.tsfile";
@@ -334,11 +342,16 @@ public class CompactionTaskComparatorTest {
         new FakedTsFileResource(new File(targetFileName), 100);
     fakedTsFileResource.getModFile().write(new Deletion(new PartialPath("root.test.d1"), 1, 1));
     compactionTaskQueue.put(
-        new FakedInnerSpaceCompactionTask(
-            "fakeSg", 0, tsFileManager, true, Collections.singletonList(fakedTsFileResource), 0));
-    FakedInnerSpaceCompactionTask task = (FakedInnerSpaceCompactionTask) compactionTaskQueue.take();
-    Assert.assertEquals(
-        targetFileName, task.getSelectedTsFileResourceList().get(0).getTsFile().getName());
+        new SettleCompactionTask(
+            0,
+            tsFileManager,
+            Collections.emptyList(),
+            Collections.singletonList(fakedTsFileResource),
+            true,
+            new FastCompactionPerformer(false),
+            0));
+    SettleCompactionTask task = (SettleCompactionTask) compactionTaskQueue.take();
+    Assert.assertEquals(targetFileName, task.getPartiallyDirtyFiles().get(0).getTsFile().getName());
     fakedTsFileResource.getModFile().remove();
   }
 
@@ -406,15 +419,15 @@ public class CompactionTaskComparatorTest {
             new DefaultCompactionTaskComparatorImpl());
 
     candidateCompactionTaskQueue.put(
-        new FakedInnerSpaceCompactionTask(
-            "fakeSg",
+        new SettleCompactionTask(
             1,
             tsFileManager,
-            true,
+            Collections.emptyList(),
             Collections.singletonList(
                 new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", 1, 1)), 1)),
-            0,
-            CompactionTaskPriorityType.MOD_SETTLE));
+            true,
+            new FastCompactionPerformer(false),
+            0));
     candidateCompactionTaskQueue.put(
         new FakedInnerSpaceCompactionTask(
             "fakeSg",
@@ -423,28 +436,24 @@ public class CompactionTaskComparatorTest {
             true,
             Collections.singletonList(
                 new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", 1, 2)), 1)),
-            0,
-            CompactionTaskPriorityType.NORMAL));
+            0));
     candidateCompactionTaskQueue.put(
-        new FakedInnerSpaceCompactionTask(
-            "fakeSg",
+        new SettleCompactionTask(
             1,
             tsFileManager,
-            true,
+            Collections.emptyList(),
             Collections.singletonList(
                 new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", 1, 3)), 1)),
-            0,
-            CompactionTaskPriorityType.MOD_SETTLE));
+            true,
+            new FastCompactionPerformer(false),
+            0));
 
     Assert.assertEquals(
-        candidateCompactionTaskQueue.take().getCompactionTaskPriorityType(),
-        CompactionTaskPriorityType.MOD_SETTLE);
+        candidateCompactionTaskQueue.take().getCompactionTaskType(), CompactionTaskType.SETTLE);
     Assert.assertEquals(
-        candidateCompactionTaskQueue.take().getCompactionTaskPriorityType(),
-        CompactionTaskPriorityType.MOD_SETTLE);
+        candidateCompactionTaskQueue.take().getCompactionTaskType(), CompactionTaskType.SETTLE);
     Assert.assertEquals(
-        candidateCompactionTaskQueue.take().getCompactionTaskPriorityType(),
-        CompactionTaskPriorityType.NORMAL);
+        candidateCompactionTaskQueue.take().getCompactionTaskType(), CompactionTaskType.INNER_SEQ);
   }
 
   private static class FakedInnerSpaceCompactionTask extends InnerSpaceCompactionTask {
@@ -463,24 +472,6 @@ public class CompactionTaskComparatorTest {
           sequence,
           new FastCompactionPerformer(false),
           serialId);
-    }
-
-    public FakedInnerSpaceCompactionTask(
-        String storageGroupName,
-        long timePartition,
-        TsFileManager tsFileManager,
-        boolean sequence,
-        List<TsFileResource> selectedTsFileResourceList,
-        long serialId,
-        CompactionTaskPriorityType compactionTaskPriorityType) {
-      super(
-          timePartition,
-          tsFileManager,
-          selectedTsFileResourceList,
-          sequence,
-          new FastCompactionPerformer(false),
-          serialId,
-          compactionTaskPriorityType);
     }
 
     @Override

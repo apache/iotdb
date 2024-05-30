@@ -31,10 +31,19 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.recon
 
 public class ExpressionNormalizeVisitor extends ReconstructVisitor<Void> {
 
+  private final boolean removeViewPath;
+
+  public ExpressionNormalizeVisitor(boolean removeViewPath) {
+    super();
+    this.removeViewPath = removeViewPath;
+  }
+
   @Override
   public Expression process(Expression expression, Void context) {
     Expression resultExpression = expression.accept(this, context);
-    resultExpression.setViewPath(null);
+    if (removeViewPath) {
+      resultExpression.setViewPath(null);
+    }
     return resultExpression;
   }
 
@@ -52,6 +61,10 @@ public class ExpressionNormalizeVisitor extends ReconstructVisitor<Void> {
     if (newPath.isMeasurementAliasExists()) {
       ((MeasurementPath) newPath).removeMeasurementAlias();
     }
-    return new TimeSeriesOperand(newPath);
+    TimeSeriesOperand newOperand = new TimeSeriesOperand(newPath);
+    if (timeSeriesOperand.isViewExpression()) {
+      newOperand.setViewPath(timeSeriesOperand.getViewPath());
+    }
+    return newOperand;
   }
 }

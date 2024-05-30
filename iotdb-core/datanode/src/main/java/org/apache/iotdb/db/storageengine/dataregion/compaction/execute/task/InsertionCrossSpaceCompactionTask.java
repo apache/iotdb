@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
@@ -82,7 +83,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   public InsertionCrossSpaceCompactionTask(
       String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile) {
-    super(databaseName, dataRegionId, 0L, tsFileManager, 0L, CompactionTaskPriorityType.NORMAL);
+    super(databaseName, dataRegionId, 0L, tsFileManager, 0L);
     this.logFile = logFile;
     this.needRecoverTaskInfoFromLogFile = true;
     this.selectedSeqFiles = Collections.emptyList();
@@ -160,7 +161,6 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           Collections.singletonList(unseqFileToInsert), Collections.singletonList(targetFile));
 
       lockWrite(Collections.singletonList(unseqFileToInsert));
-      CompactionUtils.deleteCompactionModsFile(selectedSeqFiles, selectedUnseqFiles);
       CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
           Collections.singletonList(unseqFileToInsert), false);
 
@@ -353,6 +353,11 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   protected void createSummary() {
     this.summary = new CompactionTaskSummary();
+  }
+
+  @Override
+  public CompactionTaskType getCompactionTaskType() {
+    return CompactionTaskType.INSERTION;
   }
 
   private void releaseAllLocks() {

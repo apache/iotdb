@@ -24,23 +24,14 @@ import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 
 public class DatabaseInfo<N extends IMNode<N>> implements IDatabaseInfo<N> {
 
-  private long dataTTL;
+  // TODO: Useless
+  private long dataTTL = Long.MAX_VALUE;
 
   public DatabaseInfo() {}
 
   @Override
   public void moveDataToNewMNode(IDatabaseMNode<N> newMNode) {
-    newMNode.setDataTTL(dataTTL);
-  }
-
-  @Override
-  public long getDataTTL() {
-    return dataTTL;
-  }
-
-  @Override
-  public void setDataTTL(long dataTTL) {
-    this.dataTTL = dataTTL;
+    // Do nothing
   }
 
   /**
