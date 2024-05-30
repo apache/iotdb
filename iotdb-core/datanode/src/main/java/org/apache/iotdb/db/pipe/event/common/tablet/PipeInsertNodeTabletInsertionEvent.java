@@ -322,10 +322,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
                 ? ((InsertRowsNode) node)
                     .getInsertRowNodeList().stream()
                         .anyMatch(
-                            insertRowNode ->
-                                !pipePattern.coversDevice(
-                                    insertRowNode.getDevicePath().getFullPath()))
-                : !pipePattern.coversDevice(node.getDevicePath().getFullPath())));
+                            insertRowNode -> !pipePattern.coversDevice(insertRowNode.getDeviceID()))
+                : !pipePattern.coversDevice(node.getDeviceID())));
   }
 
   public List<PipeRawTabletInsertionEvent> toRawTabletInsertionEvents() {
