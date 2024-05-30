@@ -38,6 +38,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.BinaryUtils.MIN_ARRAY_HEADER_SIZE;
 import static org.apache.iotdb.db.queryengine.transformation.datastructure.util.BinaryUtils.MIN_OBJECT_HEADER_SIZE;
@@ -124,7 +125,7 @@ public class SerializableTVList implements SerializableList {
 
   // region single data methods
   public long getTime(int index) {
-    assert index < size;
+    checkState(index < size);
 
     long ret = 0;
     int total = 0;
@@ -142,7 +143,7 @@ public class SerializableTVList implements SerializableList {
   }
 
   public int getInt(int index) {
-    assert index < size;
+    checkState(index < size);
 
     int ret = 0;
     int total = 0;
@@ -160,7 +161,7 @@ public class SerializableTVList implements SerializableList {
   }
 
   public long getLong(int index) {
-    assert index < size;
+    checkState(index < size);
 
     long ret = 0;
     int total = 0;
@@ -178,7 +179,7 @@ public class SerializableTVList implements SerializableList {
   }
 
   public float getFloat(int index) {
-    assert index < size;
+    checkState(index < size);
 
     float ret = 0;
     int total = 0;
@@ -196,7 +197,7 @@ public class SerializableTVList implements SerializableList {
   }
 
   public double getDouble(int index) {
-    assert index < size;
+    checkState(index < size);
 
     double ret = 0;
     int total = 0;
@@ -214,7 +215,7 @@ public class SerializableTVList implements SerializableList {
   }
 
   public boolean getBoolean(int index) {
-    assert index < size;
+    checkState(index < size);
 
     boolean ret = false;
     int total = 0;
@@ -232,7 +233,7 @@ public class SerializableTVList implements SerializableList {
   }
 
   public Binary getBinary(int index) {
-    assert index < size;
+    checkState(index < size);
 
     Binary ret = null;
     int total = 0;
@@ -250,7 +251,7 @@ public class SerializableTVList implements SerializableList {
   }
 
   public boolean isNull(int index) {
-    assert index < size;
+    checkState(index < size);
 
     boolean ret = false;
     int total = 0;
@@ -271,12 +272,12 @@ public class SerializableTVList implements SerializableList {
 
   // region batch data method
   public TimeColumn getTimeColumn(int index) {
-    assert index < timeColumns.size();
+    checkState(index < timeColumns.size());
     return timeColumns.get(index);
   }
 
   public Column getValueColumn(int index) {
-    assert index < valueColumns.size();
+    checkState(index < valueColumns.size());
     return valueColumns.get(index);
   }
 
@@ -292,12 +293,12 @@ public class SerializableTVList implements SerializableList {
   // endregion
 
   public int getColumnSize(int index) {
-    assert index < columnSizes.size();
+    checkState(index < columnSizes.size());
     return columnSizes.get(index);
   }
 
   public int getColumnIndex(int pointIndex) {
-    assert pointIndex < size;
+    checkState(pointIndex < size);
 
     int ret = -1;
     int total = 0;
@@ -314,7 +315,7 @@ public class SerializableTVList implements SerializableList {
   }
 
   public int getTVOffsetInColumns(int index) {
-    assert index < size;
+    checkState(index < size);
 
     int ret = -1;
     int total = 0;

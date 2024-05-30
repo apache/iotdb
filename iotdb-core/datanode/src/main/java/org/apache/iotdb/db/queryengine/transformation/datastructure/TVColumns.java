@@ -44,12 +44,16 @@ public class TVColumns {
   }
 
   public long getTimeByIndex(int index) {
-    assert !isConstant;
+    if (isConstant) {
+      throw new UnsupportedOperationException();
+    }
     return timeColumn.getLong(index);
   }
 
   public long getEndTime() {
-    assert !isConstant;
+    if (isConstant) {
+      throw new UnsupportedOperationException();
+    }
     return timeColumn.getEndTime();
   }
 
@@ -58,7 +62,9 @@ public class TVColumns {
   }
 
   public Column getTimeColumn() {
-    assert !isConstant;
+    if (isConstant) {
+      throw new UnsupportedOperationException();
+    }
     return timeColumn;
   }
 
