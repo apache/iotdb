@@ -21,11 +21,8 @@ package org.apache.iotdb.tool;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 
@@ -54,14 +51,12 @@ public abstract class AbstractTsFileTool {
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
   protected static Options options;
-  protected static HelpFormatter hf;
   protected static Options helpOptions;
+
   protected static String host = "127.0.0.1";
   protected static String port = "6667";
   protected static String username = "root";
   protected static String password = "root";
-  protected static Session session;
-  protected static SessionPool sessionPool;
 
   protected AbstractTsFileTool() {}
 

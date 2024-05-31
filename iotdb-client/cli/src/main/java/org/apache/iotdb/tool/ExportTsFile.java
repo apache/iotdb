@@ -72,6 +72,9 @@ public class ExportTsFile extends AbstractTsFileTool {
   private static final String QUERY_COMMAND_NAME = "queryCommand";
   private static final String DUMP_FILE_NAME_DEFAULT = "dump";
   private static final String TSFILEDB_CLI_PREFIX = "ExportTsFile";
+
+  private static Session session;
+
   private static String targetDirectory;
   private static String targetFile = DUMP_FILE_NAME_DEFAULT;
   private static String queryCommand;
