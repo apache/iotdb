@@ -51,10 +51,10 @@ public interface IFileScanHandle {
    * Check whether timestamp is deleted in specified device.
    *
    * @param deviceID the devicePath needs to be checked.
-   * @param timeArray time value needed to be checked, which should be ordered.
-   * @return A boolean array, which indicates whether the timestamp in timeArray is deleted.
+   * @param timeStamp time value needed to be checked.
+   * @return A boolean value, which indicates whether the timestamp is deleted.
    */
-  boolean[] isDeviceTimeDeleted(IDeviceID deviceID, long[] timeArray) throws IllegalPathException;
+  boolean isDeviceTimeDeleted(IDeviceID deviceID, long timeStamp) throws IllegalPathException;
 
   /**
    * Get all the chunkMetaData in current TsFile. ChunkMetaData will be organized in device level.
@@ -69,10 +69,10 @@ public interface IFileScanHandle {
    *
    * @param deviceID the devicePath needs to be checked.
    * @param timeSeriesName the timeSeries needs to be checked.
-   * @param timeArray time value needed to be checked, which should be ordered.
-   * @return A boolean array, which indicates whether the timestamp in timeArray is deleted.
+   * @param timeStamp time value needed to be checked
+   * @return A boolean value, which indicates whether the timestamp is deleted.
    */
-  boolean[] isTimeSeriesTimeDeleted(IDeviceID deviceID, String timeSeriesName, long[] timeArray)
+  boolean isTimeSeriesTimeDeleted(IDeviceID deviceID, String timeSeriesName, long timeStamp)
       throws IllegalPathException;
 
   /**
@@ -85,7 +85,8 @@ public interface IFileScanHandle {
    */
   Iterator<IChunkHandle> getChunkHandles(
       List<AbstractChunkOffset> chunkInfoList,
-      List<Statistics<? extends Serializable>> statisticsList)
+      List<Statistics<? extends Serializable>> statisticsList,
+      List<Integer> orderedList)
       throws IOException;
 
   /** If the TsFile of this handle is closed. */

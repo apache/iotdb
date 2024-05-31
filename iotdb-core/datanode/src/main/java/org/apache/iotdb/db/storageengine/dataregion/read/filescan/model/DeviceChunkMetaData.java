@@ -27,19 +27,31 @@ import java.util.List;
 public class DeviceChunkMetaData extends AbstractDeviceChunkMetaData {
 
   private final List<IChunkMetadata> measurementChunkMetadata;
+  private int index;
 
   public DeviceChunkMetaData(
       IDeviceID devicePath, List<IChunkMetadata> measurementChunkMetadataMap) {
     super(devicePath);
     this.measurementChunkMetadata = measurementChunkMetadataMap;
-  }
-
-  public List<IChunkMetadata> getMeasurementChunkMetadataMap() {
-    return measurementChunkMetadata;
+    this.index = -1;
   }
 
   @Override
-  public boolean isAligned() {
-    return false;
+  public boolean hasNextValueChunkMetadata() {
+    return index < measurementChunkMetadata.size() - 1;
+  }
+
+  @Override
+  public IChunkMetadata nextValueChunkMetadata() {
+    index++;
+    return measurementChunkMetadata.get(index);
+  }
+
+  @Override
+  public AbstractChunkOffset getChunkOffset() {
+    return new ChunkOffset(
+        measurementChunkMetadata.get(index).getOffsetOfChunkHeader(),
+        getDevicePath(),
+        measurementChunkMetadata.get(index).getMeasurementUid());
   }
 }

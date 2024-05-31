@@ -21,20 +21,31 @@ package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 import java.io.IOException;
 
 public class MemChunkHandleImpl implements IChunkHandle {
   protected final long[] dataOfTimestamp;
-
+  protected final String measurement;
   protected boolean hasRead = false;
 
-  public MemChunkHandleImpl(long[] dataOfTimestamp) {
+  protected IDeviceID deviceID;
+
+  public MemChunkHandleImpl(IDeviceID deviceID, String measurement, long[] dataOfTimestamp) {
+    this.deviceID = deviceID;
+    this.measurement = measurement;
     this.dataOfTimestamp = dataOfTimestamp;
   }
 
   @Override
   public boolean hasNextPage() throws IOException {
     return !hasRead;
+  }
+
+  @Override
+  public void nextPage() throws IOException {
+    // do nothing, there is only one page in MemChunk
   }
 
   // MemChunk only has one page in handle
@@ -52,5 +63,15 @@ public class MemChunkHandleImpl implements IChunkHandle {
   public long[] getDataTime() throws IOException {
     hasRead = true;
     return dataOfTimestamp;
+  }
+
+  @Override
+  public IDeviceID getDeviceID() {
+    return deviceID;
+  }
+
+  @Override
+  public String getMeasurement() {
+    return measurement;
   }
 }
