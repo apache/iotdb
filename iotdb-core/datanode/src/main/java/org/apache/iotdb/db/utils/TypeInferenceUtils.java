@@ -52,9 +52,6 @@ public class TypeInferenceUtils {
   private static final TSDataType nanStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
 
-  private static final int inferStringMaxLength =
-      IoTDBDescriptor.getInstance().getConfig().getInferStringMaxLength();
-
   private TypeInferenceUtils() {}
 
   private static boolean isBlob(String s) {
