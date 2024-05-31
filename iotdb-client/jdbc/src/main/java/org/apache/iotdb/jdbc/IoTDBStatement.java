@@ -31,6 +31,7 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.common.conf.TSFileConfig;
 
 import java.nio.charset.Charset;
 import java.sql.BatchUpdateException;
@@ -153,7 +154,7 @@ public class IoTDBStatement implements Statement {
     this.fetchSize = Config.DEFAULT_FETCH_SIZE;
     this.batchSQLList = new ArrayList<>();
     this.zoneId = zoneId;
-    this.charset = Charset.defaultCharset();
+    this.charset = TSFileConfig.STRING_CHARSET;
     this.queryTimeout = seconds;
     this.stmtId = statementId;
   }
