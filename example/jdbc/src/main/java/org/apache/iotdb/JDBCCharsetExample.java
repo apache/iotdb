@@ -25,7 +25,7 @@ import org.apache.iotdb.jdbc.IoTDBStatement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -48,17 +48,30 @@ public class JDBCCharsetExample {
           "insert into root.测试(timestamp, 维语, 彝语, 繁体, 蒙文, 简体, 标点符号, 藏语) values(1, 'ئۇيغۇر تىلى', 'ꆈꌠꉙ', \"繁體\", 'ᠮᠣᠩᠭᠣᠯ ᠬᠡᠯᠡ', '简体', '——？！', \"བོད་སྐད།\");";
       final byte[] insertSQLWithGB18030Bytes = insertSQLWithGB18030.getBytes("GB18030");
       statement.execute(insertSQLWithGB18030Bytes);
+    } catch (IoTDBSQLException e) {
+      LOGGER.error("IoTDB Jdbc example error", e);
+    }
 
-      ResultSet resultSet = statement.executeQuery("select ** from root");
-      outputResult(resultSet);
+    outputResult("GB18030");
+    outputResult("UTF-8");
+    outputResult("UTF-16");
+    outputResult("GBK");
+    outputResult("ISO-8859-1");
+  }
+
+  private static void outputResult(String charset) throws SQLException {
+    System.out.println("[Charset: " + charset + "]");
+    try (final Connection connection =
+            DriverManager.getConnection(
+                "jdbc:iotdb://127.0.0.1:6667?charset=" + charset, "root", "root");
+        final IoTDBStatement statement = (IoTDBStatement) connection.createStatement()) {
+      outputResult(statement.executeQuery("select ** from root"), Charset.forName(charset));
     } catch (IoTDBSQLException e) {
       LOGGER.error("IoTDB Jdbc example error", e);
     }
   }
 
-  @SuppressWarnings({"squid:S106"})
-  private static void outputResult(ResultSet resultSet)
-      throws SQLException, UnsupportedEncodingException {
+  private static void outputResult(ResultSet resultSet, Charset charset) throws SQLException {
     if (resultSet != null) {
       System.out.println("--------------------------");
       final ResultSetMetaData metaData = resultSet.getMetaData();
@@ -71,7 +84,7 @@ public class JDBCCharsetExample {
       while (resultSet.next()) {
         for (int i = 1; ; i++) {
           System.out.print(
-              resultSet.getString(i) + " (" + new String(resultSet.getBytes(i), "GB18030") + ")");
+              resultSet.getString(i) + " (" + new String(resultSet.getBytes(i), charset) + ")");
           if (i < columnCount) {
             System.out.print(", ");
           } else {
