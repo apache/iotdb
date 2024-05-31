@@ -363,13 +363,6 @@ public class IoTDBDescriptor {
 
     conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()));
 
-    int mlogBufferSize =
-        Integer.parseInt(
-            properties.getProperty("mlog_buffer_size", Integer.toString(conf.getMlogBufferSize())));
-    if (mlogBufferSize > 0) {
-      conf.setMlogBufferSize(mlogBufferSize);
-    }
-
     long forceMlogPeriodInMs =
         Long.parseLong(
             properties.getProperty(
@@ -429,12 +422,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "compaction_schedule_interval_in_ms",
                 Long.toString(conf.getCompactionScheduleIntervalInMs()))));
-
-    conf.setCompactionSubmissionIntervalInMs(
-        Long.parseLong(
-            properties.getProperty(
-                "compaction_submission_interval_in_ms",
-                Long.toString(conf.getCompactionSubmissionIntervalInMs()))));
 
     conf.setEnableCrossSpaceCompaction(
         Boolean.parseBoolean(
