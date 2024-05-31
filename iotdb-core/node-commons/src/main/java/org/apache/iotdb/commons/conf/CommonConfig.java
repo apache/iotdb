@@ -233,6 +233,7 @@ public class CommonConfig {
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
   private double pipeRemainingTimeCommitRateSmoothingFactor = 0.5;
+  private int pipeConnectorRPCCompressionZSTDCompressorLevel = 0;
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
@@ -1020,6 +1021,16 @@ public class CommonConfig {
   public void setPipeRemainingTimeCommitRateSmoothingFactor(
       double pipeRemainingTimeCommitRateSmoothingFactor) {
     this.pipeRemainingTimeCommitRateSmoothingFactor = pipeRemainingTimeCommitRateSmoothingFactor;
+  }
+
+  public int getPipeConnectorRPCCompressionZSTDCompressorLevel() {
+    return pipeConnectorRPCCompressionZSTDCompressorLevel;
+  }
+
+  public void setPipeConnectorRPCCompressionZSTDCompressorLevel(
+      int pipeConnectorRPCCompressionZSTDCompressorLevel) {
+    this.pipeConnectorRPCCompressionZSTDCompressorLevel =
+        pipeConnectorRPCCompressionZSTDCompressorLevel;
   }
 
   public double getPipeAllSinksRateLimitBytesPerSecond() {

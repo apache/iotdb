@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.connector.compressor;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,7 +39,10 @@ public class PipeCompressorFactory {
     COMPRESSOR_NAME_TO_INSTANCE.put(CONNECTOR_COMPRESSOR_SNAPPY, new PipeSnappyCompressor());
     COMPRESSOR_NAME_TO_INSTANCE.put(CONNECTOR_COMPRESSOR_GZIP, new PipeGZIPCompressor());
     COMPRESSOR_NAME_TO_INSTANCE.put(CONNECTOR_COMPRESSOR_LZ4, new PipeLZ4Compressor());
-    COMPRESSOR_NAME_TO_INSTANCE.put(CONNECTOR_COMPRESSOR_ZSTD, new PipeZSTDCompressor());
+    COMPRESSOR_NAME_TO_INSTANCE.put(
+        CONNECTOR_COMPRESSOR_ZSTD,
+        new PipeZSTDCompressor(
+            PipeConfig.getInstance().getPipeConnectorRPCCompressionZSTDCompressorLevel()));
     COMPRESSOR_NAME_TO_INSTANCE.put(CONNECTOR_COMPRESSOR_LZMA2, new PipeLZMA2Compressor());
     COMPRESSOR_NAME_TO_INSTANCE = Collections.unmodifiableMap(COMPRESSOR_NAME_TO_INSTANCE);
   }
@@ -54,15 +59,20 @@ public class PipeCompressorFactory {
 
   static {
     COMPRESSOR_INDEX_TO_INSTANCE.put(
-        PipeCompressor.PipeCompressionType.SNAPPY.getIndex(), new PipeSnappyCompressor());
+        PipeCompressor.PipeCompressionType.SNAPPY.getIndex(),
+        COMPRESSOR_NAME_TO_INSTANCE.get(CONNECTOR_COMPRESSOR_SNAPPY));
     COMPRESSOR_INDEX_TO_INSTANCE.put(
-        PipeCompressor.PipeCompressionType.GZIP.getIndex(), new PipeGZIPCompressor());
+        PipeCompressor.PipeCompressionType.GZIP.getIndex(),
+        COMPRESSOR_NAME_TO_INSTANCE.get(CONNECTOR_COMPRESSOR_GZIP));
     COMPRESSOR_INDEX_TO_INSTANCE.put(
-        PipeCompressor.PipeCompressionType.LZ4.getIndex(), new PipeLZ4Compressor());
+        PipeCompressor.PipeCompressionType.LZ4.getIndex(),
+        COMPRESSOR_NAME_TO_INSTANCE.get(CONNECTOR_COMPRESSOR_LZ4));
     COMPRESSOR_INDEX_TO_INSTANCE.put(
-        PipeCompressor.PipeCompressionType.ZSTD.getIndex(), new PipeZSTDCompressor());
+        PipeCompressor.PipeCompressionType.ZSTD.getIndex(),
+        COMPRESSOR_NAME_TO_INSTANCE.get(CONNECTOR_COMPRESSOR_ZSTD));
     COMPRESSOR_INDEX_TO_INSTANCE.put(
-        PipeCompressor.PipeCompressionType.LZMA2.getIndex(), new PipeLZMA2Compressor());
+        PipeCompressor.PipeCompressionType.LZMA2.getIndex(),
+        COMPRESSOR_NAME_TO_INSTANCE.get(CONNECTOR_COMPRESSOR_LZMA2));
     COMPRESSOR_INDEX_TO_INSTANCE = Collections.unmodifiableMap(COMPRESSOR_INDEX_TO_INSTANCE);
   }
 

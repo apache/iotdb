@@ -545,6 +545,12 @@ public class CommonDescriptor {
                 "pipe_remaining_time_commit_rate_smoothing_factor",
                 String.valueOf(config.getPipeRemainingTimeCommitRateSmoothingFactor()))));
 
+    config.setPipeConnectorRPCCompressionZSTDCompressorLevel(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_connector_rpc_compression_zstd_compressor_level",
+                String.valueOf(config.getPipeConnectorRPCCompressionZSTDCompressorLevel()))));
+
     config.setTwoStageAggregateMaxCombinerLiveTimeInMs(
         Long.parseLong(
             properties.getProperty(
