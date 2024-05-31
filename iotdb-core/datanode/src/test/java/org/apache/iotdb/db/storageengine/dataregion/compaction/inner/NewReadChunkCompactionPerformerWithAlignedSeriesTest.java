@@ -212,7 +212,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
             "d0",
-            Arrays.asList("s0", "s1", "s2"),
+            Arrays.asList("s0", "s1"),
             new TimeRange[] {new TimeRange(600000, 700000), new TimeRange(800000, 900000)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
