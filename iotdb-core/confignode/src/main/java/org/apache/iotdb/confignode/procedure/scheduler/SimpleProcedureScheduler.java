@@ -21,12 +21,13 @@ package org.apache.iotdb.confignode.procedure.scheduler;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
 
-import java.util.ArrayDeque;
+import java.util.concurrent.LinkedBlockingDeque;
 
 /** Simple scheduler for procedures */
 public class SimpleProcedureScheduler extends AbstractProcedureScheduler {
-  private final ArrayDeque<Procedure> runnables = new ArrayDeque<>();
-  private final ArrayDeque<Procedure> waitings = new ArrayDeque<>();
+  // Use "LinkedBlockingDeque" to ensure thread-safety
+  private final LinkedBlockingDeque<Procedure> runnables = new LinkedBlockingDeque<>();
+  private final LinkedBlockingDeque<Procedure> waitings = new LinkedBlockingDeque<>();
 
   @Override
   protected void enqueue(final Procedure procedure, final boolean addFront) {
