@@ -179,7 +179,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       throws IOException, MetadataException, InterruptedException {
     writer.startChunkGroup(device);
     MultiTsFileDeviceIterator.MultiTsFileNonAlignedMeasurementMetadataListIterator seriesIterator =
-        deviceIterator.iterateNotAlignedSeriesAndChunkMetadataList(device);
+        deviceIterator.iterateNotAlignedSeriesAndChunkMetadataListOfCurrentDevice();
     while (seriesIterator.hasNextSeries()) {
       checkThreadInterrupted();
       String series = seriesIterator.nextSeries();
