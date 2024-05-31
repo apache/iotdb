@@ -22,8 +22,10 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.ternary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
@@ -34,19 +36,24 @@ public abstract class CompareTernaryTransformer extends TernaryTransformer {
   @FunctionalInterface
   public interface Evaluator {
 
-    boolean evaluate() throws QueryProcessException, IOException;
+    boolean evaluate(
+        Column firstValues,
+        int firstIndex,
+        Column secondValues,
+        int secondIndex,
+        Column thirdValues,
+        int thirdIndex)
+        throws QueryProcessException, IOException;
   }
 
   protected final Evaluator evaluator;
 
   protected CompareTernaryTransformer(
-      LayerPointReader firstPointReader,
-      LayerPointReader secondPointReader,
-      LayerPointReader thirdPointReader)
+      LayerReader firstReader, LayerReader secondReader, LayerReader thirdReader)
       throws UnSupportedDataTypeException {
-    super(firstPointReader, secondPointReader, thirdPointReader);
+    super(firstReader, secondReader, thirdReader);
     evaluator =
-        TSDataType.TEXT.equals(firstPointReaderDataType)
+        TSDataType.TEXT.equals(firstReaderDataType)
             ? constructTextEvaluator()
             : constructNumberEvaluator();
   }
@@ -57,31 +64,41 @@ public abstract class CompareTernaryTransformer extends TernaryTransformer {
 
   @Override
   protected final void checkType() {
-    if ((firstPointReaderDataType).equals(secondPointReaderDataType)
-        && (firstPointReaderDataType).equals(thirdPointReaderDataType)) {
+    if ((firstReaderDataType).equals(secondReaderDataType)
+        && (firstReaderDataType).equals(thirdReaderDataType)) {
       return;
     }
 
-    if (firstPointReaderDataType.equals(TSDataType.BOOLEAN)
-        || secondPointReaderDataType.equals(TSDataType.BOOLEAN)
-        || thirdPointReaderDataType.equals(TSDataType.BOOLEAN)) {
+    if (firstReaderDataType.equals(TSDataType.BOOLEAN)
+        || secondReaderDataType.equals(TSDataType.BOOLEAN)
+        || thirdReaderDataType.equals(TSDataType.BOOLEAN)) {
       throw new UnSupportedDataTypeException(TSDataType.BOOLEAN.toString());
     }
 
-    if (firstPointReaderDataType.equals(TSDataType.TEXT)
-        || secondPointReaderDataType.equals(TSDataType.TEXT)
-        || thirdPointReaderDataType.equals(TSDataType.TEXT)) {
+    if (firstReaderDataType.equals(TSDataType.TEXT)
+        || secondReaderDataType.equals(TSDataType.TEXT)
+        || thirdReaderDataType.equals(TSDataType.TEXT)) {
       throw new UnSupportedDataTypeException(TSDataType.TEXT.toString());
     }
   }
 
   @Override
-  protected final void transformAndCache() throws QueryProcessException, IOException {
-    cachedBoolean = evaluator.evaluate();
+  protected final void transformAndCache(
+      Column firstValues,
+      int firstIndex,
+      Column secondValues,
+      int secondIndex,
+      Column thirdValues,
+      int thirdIndex,
+      ColumnBuilder builder)
+      throws QueryProcessException, IOException {
+    builder.writeBoolean(
+        evaluator.evaluate(
+            firstValues, firstIndex, secondValues, secondIndex, thirdValues, thirdIndex));
   }
 
   @Override
-  public TSDataType getDataType() {
-    return TSDataType.BOOLEAN;
+  public TSDataType[] getDataTypes() {
+    return new TSDataType[] {TSDataType.BOOLEAN};
   }
 }

@@ -19,32 +19,33 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary;
 
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-public class CompareNonEqualTransformer extends CompareBinaryTransformer {
+import static org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils.castValueToDouble;
 
-  public CompareNonEqualTransformer(
-      LayerPointReader leftPointReader, LayerPointReader rightPointReader)
+public class CompareNonEqualTransformer extends CompareBinaryTransformer {
+  public CompareNonEqualTransformer(LayerReader leftReader, LayerReader rightReader)
       throws UnSupportedDataTypeException {
-    super(leftPointReader, rightPointReader);
+    super(leftReader, rightReader);
   }
 
   @Override
   protected Evaluator constructNumberEvaluator() {
-    return () ->
+    return (Column leftValues, int leftIndex, Column rightValues, int rightIndex) ->
         Double.compare(
-                castCurrentValueToDoubleOperand(leftPointReader, leftPointReaderDataType),
-                castCurrentValueToDoubleOperand(rightPointReader, rightPointReaderDataType))
+                castValueToDouble(leftValues, leftReaderDataType, leftIndex),
+                castValueToDouble(rightValues, rightReaderDataType, rightIndex))
             != 0;
   }
 
   @Override
   protected Evaluator constructTextEvaluator() {
-    return () ->
-        TransformUtils.compare(leftPointReader.currentBinary(), rightPointReader.currentBinary())
+    return (Column leftValues, int leftIndex, Column rightValues, int rightIndex) ->
+        TransformUtils.compare(leftValues.getBinary(leftIndex), rightValues.getBinary(rightIndex))
             != 0;
   }
 }

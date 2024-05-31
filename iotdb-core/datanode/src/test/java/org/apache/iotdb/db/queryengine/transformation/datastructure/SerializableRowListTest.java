@@ -19,11 +19,20 @@
 
 package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
-import org.apache.iotdb.db.queryengine.transformation.datastructure.row.SerializableRowRecordList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.row.SerializableRowList;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.block.column.BooleanColumnBuilder;
+import org.apache.tsfile.read.common.block.column.DoubleColumnBuilder;
+import org.apache.tsfile.read.common.block.column.FloatColumnBuilder;
+import org.apache.tsfile.read.common.block.column.IntColumnBuilder;
+import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
+import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -36,7 +45,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class SerializableRowRecordListTest extends SerializableListTest {
+public class SerializableRowListTest extends SerializableListTest {
 
   private static final TSDataType[] DATA_TYPES = {
     TSDataType.INT32,
@@ -48,16 +57,14 @@ public class SerializableRowRecordListTest extends SerializableListTest {
   };
 
   private List<RowRecord> originalList;
-  private SerializableRowRecordList testList;
+  private SerializableRowList testList;
 
   @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
     originalList = new ArrayList<>();
-    testList =
-        SerializableRowRecordList.newSerializableRowRecordList(
-            QUERY_ID, DATA_TYPES, INTERNAL_ROW_RECORD_LIST_CAPACITY);
+    testList = SerializableRowList.construct(QUERY_ID, DATA_TYPES);
   }
 
   @Override
@@ -69,21 +76,17 @@ public class SerializableRowRecordListTest extends SerializableListTest {
   @Test
   public void serializeAndDeserializeTest() {
     for (int i = 0; i < ITERATION_TIMES; ++i) {
-      generateData(i);
+      RowRecord row = generateRowRecord(i);
+      originalList.add(row);
     }
-    serializeAndDeserializeOnce();
-    serializeAndDeserializeOnce();
-    originalList.clear();
-    testList.release();
-    testList.init();
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      generateData(i);
-    }
+    Column[] columns = generateColumns();
+    testList.putColumns(columns);
+
     serializeAndDeserializeOnce();
     serializeAndDeserializeOnce();
   }
 
-  protected void generateData(int index) {
+  protected RowRecord generateRowRecord(int index) {
     RowRecord rowRecord = new RowRecord(index);
     for (TSDataType dataType : DATA_TYPES) {
       switch (dataType) {
@@ -107,36 +110,64 @@ public class SerializableRowRecordListTest extends SerializableListTest {
           break;
       }
     }
-    originalList.add(rowRecord);
-    testList.put(convertRowRecordToRowInObjects(rowRecord));
+
+    return rowRecord;
   }
 
-  protected Object[] convertRowRecordToRowInObjects(RowRecord rowRecord) {
-    Object[] rowInObjects = new Object[rowRecord.getFields().size() + 1];
-    rowInObjects[rowRecord.getFields().size()] = rowRecord.getTimestamp();
-    for (int i = 0; i < rowRecord.getFields().size(); ++i) {
-      switch (rowRecord.getFields().get(i).getDataType()) {
-        case INT32:
-          rowInObjects[i] = rowRecord.getFields().get(i).getIntV();
-          break;
-        case INT64:
-          rowInObjects[i] = rowRecord.getFields().get(i).getLongV();
-          break;
-        case FLOAT:
-          rowInObjects[i] = rowRecord.getFields().get(i).getFloatV();
-          break;
-        case DOUBLE:
-          rowInObjects[i] = rowRecord.getFields().get(i).getDoubleV();
-          break;
-        case BOOLEAN:
-          rowInObjects[i] = rowRecord.getFields().get(i).getBoolV();
-          break;
-        case TEXT:
-          rowInObjects[i] = rowRecord.getFields().get(i).getBinaryV();
-          break;
-      }
+  protected Column[] generateColumns() {
+    Column[] columns = new Column[DATA_TYPES.length + 1];
+
+    // Int columns
+    IntColumnBuilder intColumnBuilder = new IntColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      intColumnBuilder.writeInt(i);
     }
-    return rowInObjects;
+    columns[0] = intColumnBuilder.build();
+
+    // Long columns
+    LongColumnBuilder longColumnBuilder = new LongColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      longColumnBuilder.writeLong(i);
+    }
+    columns[1] = longColumnBuilder.build();
+
+    // Float columns
+    FloatColumnBuilder floatColumnBuilder = new FloatColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      floatColumnBuilder.writeFloat(i);
+    }
+    columns[2] = floatColumnBuilder.build();
+
+    // Double columns
+    DoubleColumnBuilder doubleColumnBuilder = new DoubleColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      doubleColumnBuilder.writeDouble(i);
+    }
+    columns[3] = doubleColumnBuilder.build();
+
+    // Boolean columns
+    BooleanColumnBuilder booleanColumnBuilder = new BooleanColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      booleanColumnBuilder.writeBoolean(i % 2 == 0);
+    }
+    columns[4] = booleanColumnBuilder.build();
+
+    // Binary columns
+    BinaryColumnBuilder binaryColumnBuilder = new BinaryColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      Binary binary = BytesUtils.valueOf(String.valueOf(i));
+      binaryColumnBuilder.writeBinary(binary);
+    }
+    columns[5] = binaryColumnBuilder.build();
+
+    // The last time columns
+    TimeColumnBuilder timeColumnBuilder = new TimeColumnBuilder(null, ITERATION_TIMES);
+    for (int i = 0; i < ITERATION_TIMES; i++) {
+      timeColumnBuilder.writeLong(i);
+    }
+    columns[6] = timeColumnBuilder.build();
+
+    return columns;
   }
 
   protected void serializeAndDeserializeOnce() {
@@ -155,7 +186,7 @@ public class SerializableRowRecordListTest extends SerializableListTest {
     for (int i = 0; i < testList.size(); ++i) {
       assertEquals(originalList.get(i).getTimestamp(), testList.getTime(i));
       List<Field> originalFields = originalList.get(i).getFields();
-      Object[] testFields = testList.getRowRecord(i);
+      Object[] testFields = testList.getRow(i);
       for (int j = 0; j < DATA_TYPES.length; ++j) {
         switch (DATA_TYPES[j]) {
           case INT32:

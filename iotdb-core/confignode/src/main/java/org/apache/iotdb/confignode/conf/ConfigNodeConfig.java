@@ -27,7 +27,6 @@ import org.apache.iotdb.confignode.manager.load.balancer.router.leader.AbstractL
 import org.apache.iotdb.confignode.manager.load.balancer.router.priority.IPriorityBalancer;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupExtensionPolicy;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -112,15 +111,6 @@ public class ConfigNodeConfig {
 
   /** Max concurrent client number. */
   private int rpcMaxConcurrentClientNum = 65535;
-
-  /** whether to use Snappy compression before sending data through the network. */
-  private boolean rpcAdvancedCompressionEnable = false;
-
-  /** max frame size. */
-  private int thriftMaxFrameSize = 536870912;
-
-  /** buffer size. */
-  private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
   /** just for test wait for 60 second by default. */
   private int thriftServerAwaitTimeForStopService = 60;
@@ -424,30 +414,6 @@ public class ConfigNodeConfig {
 
   public void setCnRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
-  }
-
-  public boolean isCnRpcAdvancedCompressionEnable() {
-    return rpcAdvancedCompressionEnable;
-  }
-
-  public void setCnRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
-    this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
-  }
-
-  public int getCnThriftMaxFrameSize() {
-    return thriftMaxFrameSize;
-  }
-
-  public void setCnThriftMaxFrameSize(int thriftMaxFrameSize) {
-    this.thriftMaxFrameSize = thriftMaxFrameSize;
-  }
-
-  public int getCnThriftDefaultBufferSize() {
-    return thriftDefaultBufferSize;
-  }
-
-  public void setCnThriftDefaultBufferSize(int thriftDefaultBufferSize) {
-    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
   }
 
   public int getMaxClientNumForEachNode() {
