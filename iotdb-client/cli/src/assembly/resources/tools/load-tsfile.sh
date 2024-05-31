@@ -54,7 +54,7 @@ fi
 set -o noglob
 iotdb_cli_params="-Dlogback.configurationFile=${IOTDB_CLI_CONF}/logback-tool.xml"
 
-echo "start loading TsFiles, please wait..."
+echo "Starting..."
 exec "$JAVA" $iotdb_cli_params -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
 
 exit $?

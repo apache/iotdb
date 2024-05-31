@@ -43,7 +43,7 @@ if EXIST %IOTDB_HOME%\lib (set CLASSPATH="%IOTDB_HOME%\lib\*") else set CLASSPAT
 
 set PARAMETERS=%*
 
-echo start loading TsFiles, please wait...
+echo Starting...
 "%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %PARAMETERS%
 set ret_code=%ERRORLEVEL%
 
