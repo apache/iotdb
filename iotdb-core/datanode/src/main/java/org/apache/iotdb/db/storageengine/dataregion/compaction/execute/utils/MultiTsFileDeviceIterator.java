@@ -403,14 +403,14 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
               List<Modification> list =
                   new LinkedList<>(ModificationFile.getNormalMods(r).getModifications());
               // add outdated device mods by ttl
-              for (IDeviceID device : r.getDevices()) {
-                // TODO: remove deviceId conversion
-                long timeLowerBound =
-                    CommonDateTimeUtils.currentTime()
-                        - DataNodeTTLCache.getInstance()
-                            .getTTL(((PlainDeviceID) device).toStringID());
-                if (r.getStartTime(device) < timeLowerBound) {
-                  try {
+              try {
+                for (IDeviceID device : r.getDevices()) {
+                  // TODO: remove deviceId conversion
+                  long timeLowerBound =
+                      CommonDateTimeUtils.currentTime()
+                          - DataNodeTTLCache.getInstance()
+                              .getTTL(((PlainDeviceID) device).toStringID());
+                  if (r.getStartTime(device) < timeLowerBound) {
                     list.add(
                         new Deletion(
                             CompactionPathUtils.getPath(device)
@@ -418,10 +418,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                             Long.MAX_VALUE,
                             Long.MIN_VALUE,
                             timeLowerBound));
-                  } catch (IllegalPathException e) {
-                    throw new RuntimeException(e);
                   }
                 }
+              } catch (IllegalPathException e) {
+                throw new RuntimeException(e);
               }
               return list;
             });
@@ -629,14 +629,14 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                     List<Modification> list =
                         new LinkedList<>(ModificationFile.getNormalMods(r).getModifications());
                     // add outdated device mods by ttl
-                    for (IDeviceID device : r.getDevices()) {
-                      // TODO: remove deviceId conversion
-                      long timeLowerBound =
-                          CommonDateTimeUtils.currentTime()
-                              - DataNodeTTLCache.getInstance()
-                                  .getTTL(((PlainDeviceID) device).toStringID());
-                      if (r.getStartTime(device) < timeLowerBound) {
-                        try {
+                    try {
+                      for (IDeviceID device : r.getDevices()) {
+                        // TODO: remove deviceId conversion
+                        long timeLowerBound =
+                            CommonDateTimeUtils.currentTime()
+                                - DataNodeTTLCache.getInstance()
+                                    .getTTL(((PlainDeviceID) device).toStringID());
+                        if (r.getStartTime(device) < timeLowerBound) {
                           list.add(
                               new Deletion(
                                   CompactionPathUtils.getPath(device)
@@ -644,10 +644,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                                   Long.MAX_VALUE,
                                   Long.MIN_VALUE,
                                   timeLowerBound));
-                        } catch (IllegalPathException e) {
-                          throw new RuntimeException(e);
                         }
                       }
+                    } catch (IllegalPathException e) {
+                      throw new RuntimeException(e);
                     }
                     return list;
                   });

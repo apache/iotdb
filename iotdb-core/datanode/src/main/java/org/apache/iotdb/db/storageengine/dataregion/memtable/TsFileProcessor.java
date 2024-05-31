@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -1713,7 +1714,9 @@ public class TsFileProcessor {
 
   private List<IChunkMetadata> getVisibleMetadataListFromWriterByDeviceID(
       QueryContext queryContext, IDeviceID deviceID) throws IllegalPathException {
-    long timeLowerBound = getQueryTimeLowerBound(((PlainDeviceID) deviceID).toStringID());
+    long timeLowerBound =
+        getQueryTimeLowerBound(
+            PathUtils.splitPathToDetachedNodes(((PlainDeviceID) deviceID).toStringID()));
     List<List<ChunkMetadata>> chunkMetaDataListForDevice =
         writer.getVisibleMetadataList(deviceID, null);
     List<ChunkMetadata> processedChunkMetadataForOneDevice = new ArrayList<>();
@@ -1732,7 +1735,8 @@ public class TsFileProcessor {
   }
 
   private List<IChunkMetadata> getAlignedVisibleMetadataListFromWriterByDeviceID(
-      QueryContext queryContext, IDeviceID deviceID) throws QueryProcessException {
+      QueryContext queryContext, IDeviceID deviceID)
+      throws QueryProcessException, IllegalPathException {
     List<AlignedChunkMetadata> alignedChunkMetadataForOneDevice = new ArrayList<>();
     List<List<Modification>> modifications = new ArrayList<>();
     List<List<ChunkMetadata>> chunkMetaDataListForDevice =
@@ -1766,7 +1770,9 @@ public class TsFileProcessor {
       }
     }
 
-    long timeLowerBound = getQueryTimeLowerBound(((PlainDeviceID) deviceID).toStringID());
+    long timeLowerBound =
+        getQueryTimeLowerBound(
+            PathUtils.splitPathToDetachedNodes(((PlainDeviceID) deviceID).toStringID()));
     ModificationUtils.modifyAlignedChunkMetaData(alignedChunkMetadataForOneDevice, modifications);
     alignedChunkMetadataForOneDevice.removeIf(x -> x.getEndTime() < timeLowerBound);
     return new ArrayList<>(alignedChunkMetadataForOneDevice);
@@ -1786,7 +1792,7 @@ public class TsFileProcessor {
         for (PartialPath seriesPath : pathList) {
           Map<String, List<IChunkMetadata>> measurementToChunkMetaList = new HashMap<>();
           Map<String, List<IChunkHandle>> measurementToChunkHandleList = new HashMap<>();
-          long timeLowerBound = getQueryTimeLowerBound(seriesPath.getDevice());
+          long timeLowerBound = getQueryTimeLowerBound(seriesPath.getDevicePath().getNodes());
           for (IMemTable flushingMemTable : flushingMemTables) {
             if (flushingMemTable.isSignalMemTable()) {
               continue;
@@ -1871,7 +1877,9 @@ public class TsFileProcessor {
         for (Map.Entry<IDeviceID, Boolean> entry : devicePathToAligned.entrySet()) {
           IDeviceID devicePath = entry.getKey();
           boolean isAligned = entry.getValue();
-          long timeLowerBound = getQueryTimeLowerBound(((PlainDeviceID) devicePath).toStringID());
+          long timeLowerBound =
+              getQueryTimeLowerBound(
+                  PathUtils.splitPathToDetachedNodes(((PlainDeviceID) devicePath).toStringID()));
           Map<String, List<IChunkMetadata>> measurementToChunkMetadataList = new HashMap<>();
           Map<String, List<IChunkHandle>> measurementToMemChunkHandleList = new HashMap<>();
           for (IMemTable flushingMemTable : flushingMemTables) {
@@ -1961,7 +1969,7 @@ public class TsFileProcessor {
       try {
         for (PartialPath seriesPath : seriesPaths) {
           List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
-          long timeLowerBound = getQueryTimeLowerBound(seriesPath.getDevice());
+          long timeLowerBound = getQueryTimeLowerBound(seriesPath.getDevicePath().getNodes());
           for (IMemTable flushingMemTable : flushingMemTables) {
             if (flushingMemTable.isSignalMemTable()) {
               continue;
@@ -2022,7 +2030,7 @@ public class TsFileProcessor {
     }
   }
 
-  private long getQueryTimeLowerBound(String device) {
+  private long getQueryTimeLowerBound(String[] device) {
     long deviceTTL = DataNodeTTLCache.getInstance().getTTL(device);
     return deviceTTL != Long.MAX_VALUE
         ? CommonDateTimeUtils.currentTime() - deviceTTL
