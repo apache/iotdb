@@ -20,9 +20,10 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.io.IOException;
@@ -30,31 +31,14 @@ import java.io.IOException;
 public class IsNullTransformer extends UnaryTransformer {
   private final boolean isNot;
 
-  public IsNullTransformer(LayerPointReader layerPointReader, boolean isNot) {
-    super(layerPointReader);
+  public IsNullTransformer(LayerReader layerReader, boolean isNot) {
+    super(layerReader);
     this.isNot = isNot;
   }
 
   @Override
-  public TSDataType getDataType() {
-    return TSDataType.BOOLEAN;
-  }
-
-  @Override
-  public final YieldableState yieldValue() throws Exception {
-    final YieldableState yieldableState = layerPointReader.yield();
-    if (!YieldableState.YIELDABLE.equals(yieldableState)) {
-      return yieldableState;
-    }
-
-    if (!isLayerPointReaderConstant) {
-      cachedTime = layerPointReader.currentTime();
-    }
-
-    transformAndCache();
-
-    layerPointReader.readyForNext();
-    return YieldableState.YIELDABLE;
+  public TSDataType[] getDataTypes() {
+    return new TSDataType[] {TSDataType.BOOLEAN};
   }
 
   /*
@@ -65,7 +49,12 @@ public class IsNullTransformer extends UnaryTransformer {
    * So we need use '^' here.
    */
   @Override
-  protected void transformAndCache() throws QueryProcessException, IOException {
-    cachedBoolean = layerPointReader.isCurrentNull() ^ isNot;
+  protected void transform(Column[] columns, ColumnBuilder builder)
+      throws QueryProcessException, IOException {
+    int count = columns[0].getPositionCount();
+    boolean[] isNulls = columns[0].isNull();
+    for (int i = 0; i < count; i++) {
+      builder.writeBoolean(isNulls[i] ^ isNot);
+    }
   }
 }

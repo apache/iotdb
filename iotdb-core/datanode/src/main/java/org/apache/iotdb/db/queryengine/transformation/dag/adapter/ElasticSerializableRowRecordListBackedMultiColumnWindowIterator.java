@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.adapter;
 
-import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowRecordList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
 
@@ -28,7 +28,7 @@ import java.io.IOException;
 public class ElasticSerializableRowRecordListBackedMultiColumnWindowIterator
     implements RowIterator {
 
-  private final ElasticSerializableRowRecordList rowRecordList;
+  private final ElasticSerializableRowList rowRecordList;
   private final int beginIndex;
   private final int size;
 
@@ -36,7 +36,7 @@ public class ElasticSerializableRowRecordListBackedMultiColumnWindowIterator
   private int rowIndex;
 
   public ElasticSerializableRowRecordListBackedMultiColumnWindowIterator(
-      ElasticSerializableRowRecordList rowRecordList, int beginIndex, int endIndex) {
+      ElasticSerializableRowList rowRecordList, int beginIndex, int endIndex) {
     this.rowRecordList = rowRecordList;
     this.beginIndex = beginIndex;
     size = endIndex - beginIndex;

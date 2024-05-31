@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
@@ -29,22 +31,34 @@ import java.io.IOException;
 
 public class LogicNotTransformer extends UnaryTransformer {
 
-  public LogicNotTransformer(LayerPointReader layerPointReader) {
-    super(layerPointReader);
+  public LogicNotTransformer(LayerReader layerReader) {
+    super(layerReader);
 
-    if (layerPointReaderDataType != TSDataType.BOOLEAN) {
+    if (layerReaderDataType != TSDataType.BOOLEAN) {
       throw new UnSupportedDataTypeException(
-          "Unsupported data type: " + layerPointReader.getDataType().toString());
+          "Unsupported data type: " + layerReader.getDataTypes()[0].toString());
     }
   }
 
   @Override
-  public TSDataType getDataType() {
-    return TSDataType.BOOLEAN;
+  public TSDataType[] getDataTypes() {
+    return new TSDataType[] {TSDataType.BOOLEAN};
   }
 
   @Override
-  protected void transformAndCache() throws QueryProcessException, IOException {
-    cachedBoolean = !layerPointReader.currentBoolean();
+  protected void transform(Column[] columns, ColumnBuilder builder)
+      throws QueryProcessException, IOException {
+    int count = columns[0].getPositionCount();
+    boolean[] values = columns[0].getBooleans();
+    boolean[] isNulls = columns[0].isNull();
+
+    for (int i = 0; i < count; i++) {
+      if (!isNulls[i]) {
+        boolean res = !values[i];
+        builder.writeBoolean(res);
+      } else {
+        builder.appendNull();
+      }
+    }
   }
 }

@@ -20,43 +20,44 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.io.IOException;
+import static org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils.castValueToDouble;
 
 public abstract class ArithmeticBinaryTransformer extends BinaryTransformer {
 
-  protected ArithmeticBinaryTransformer(
-      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
-    super(leftPointReader, rightPointReader);
+  protected ArithmeticBinaryTransformer(LayerReader leftReader, LayerReader rightReader) {
+    super(leftReader, rightReader);
   }
 
   @Override
   protected void checkType() {
-    if (leftPointReaderDataType == TSDataType.BOOLEAN
-        || rightPointReaderDataType == TSDataType.BOOLEAN) {
+    if (leftReaderDataType == TSDataType.BOOLEAN || rightReaderDataType == TSDataType.BOOLEAN) {
       throw new UnSupportedDataTypeException(TSDataType.BOOLEAN.name());
     }
-    if (leftPointReaderDataType == TSDataType.TEXT || rightPointReaderDataType == TSDataType.TEXT) {
+    if (leftReaderDataType == TSDataType.TEXT || rightReaderDataType == TSDataType.TEXT) {
       throw new UnSupportedDataTypeException(TSDataType.TEXT.name());
     }
   }
 
   @Override
-  protected void transformAndCache() throws QueryProcessException, IOException {
-    cachedDouble =
-        evaluate(
-            castCurrentValueToDoubleOperand(leftPointReader, leftPointReaderDataType),
-            castCurrentValueToDoubleOperand(rightPointReader, rightPointReaderDataType));
+  protected void transformAndCache(
+      Column leftValues, int leftIndex, Column rightValues, int rightIndex, ColumnBuilder builder)
+      throws QueryProcessException {
+    double leftValue = castValueToDouble(leftValues, leftReaderDataType, leftIndex);
+    double rightValue = castValueToDouble(rightValues, rightReaderDataType, rightIndex);
+    builder.writeDouble(evaluate(leftValue, rightValue));
   }
 
   protected abstract double evaluate(double leftOperand, double rightOperand);
 
   @Override
-  public TSDataType getDataType() {
-    return TSDataType.DOUBLE;
+  public TSDataType[] getDataTypes() {
+    return new TSDataType[] {TSDataType.DOUBLE};
   }
 }

@@ -19,105 +19,51 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 
-import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.block.column.Column;
 
-import java.io.IOException;
+public abstract class Transformer implements LayerReader {
 
-public abstract class Transformer implements LayerPointReader {
+  protected Column[] cachedColumns;
+  protected int cacheConsumed;
 
-  protected boolean hasCachedValue;
-
-  protected long cachedTime;
-
-  protected int cachedInt;
-  protected long cachedLong;
-  protected float cachedFloat;
-  protected double cachedDouble;
-  protected boolean cachedBoolean;
-  protected Binary cachedBinary;
-  protected boolean currentNull;
-
-  protected Transformer() {
-    hasCachedValue = false;
-  }
-
-  @Override
-  public final boolean next() throws QueryProcessException, IOException {
-    if (!hasCachedValue) {
-      hasCachedValue = cacheValue();
-    }
-    return hasCachedValue;
-  }
-
-  /** if this method returns true, at least one of the cached field should be set. */
-  protected abstract boolean cacheValue() throws QueryProcessException, IOException;
+  protected Transformer() {}
 
   @Override
   public final YieldableState yield() throws Exception {
-    if (hasCachedValue) {
+    if (cachedColumns != null && cacheConsumed < cachedColumns[0].getPositionCount()) {
       return YieldableState.YIELDABLE;
     }
 
-    final YieldableState yieldableState = yieldValue();
-    if (YieldableState.YIELDABLE == yieldableState) {
-      hasCachedValue = true;
+    // Put concrete logic into yieldValue function call
+    return yieldValue();
+  }
+
+  @Override
+  public void consumedAll() {
+    invalidCache();
+  }
+
+  @Override
+  public Column[] current() {
+    if (cacheConsumed == 0) {
+      return cachedColumns;
     }
-    return yieldableState;
+
+    Column[] ret = new Column[cachedColumns.length];
+    for (int i = 0; i < cachedColumns.length; i++) {
+      ret[i] = cachedColumns[i].subColumn(cacheConsumed);
+    }
+
+    return ret;
   }
 
-  /**
-   * if this method returns YieldableState.YIELDABLE, at least one of the cached field should be
-   * set.
-   */
+  private void invalidCache() {
+    cacheConsumed = 0;
+    cachedColumns = null;
+  }
+
   protected abstract YieldableState yieldValue() throws Exception;
-
-  @Override
-  public final void readyForNext() {
-    hasCachedValue = false;
-    currentNull = false;
-  }
-
-  @Override
-  public final long currentTime() {
-    return cachedTime;
-  }
-
-  @Override
-  public final int currentInt() {
-    return cachedInt;
-  }
-
-  @Override
-  public final long currentLong() {
-    return cachedLong;
-  }
-
-  @Override
-  public final float currentFloat() {
-    return cachedFloat;
-  }
-
-  @Override
-  public final double currentDouble() {
-    return cachedDouble;
-  }
-
-  @Override
-  public final boolean currentBoolean() {
-    return cachedBoolean;
-  }
-
-  @Override
-  public final Binary currentBinary() {
-    return cachedBinary;
-  }
-
-  @Override
-  public final boolean isCurrentNull() {
-    return currentNull;
-  }
 }
