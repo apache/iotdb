@@ -88,6 +88,7 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
             .map(Deletion.class::cast)
             .map(Deletion::getTimeRange)
             .collect(Collectors.toList());
+    TimeRange.sortAndMerge(timeRangeList);
 
     int[] deleteCursor = {0};
     for (int i = 0; i < timeArray.length; i++) {
@@ -123,6 +124,7 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
             .map(Deletion.class::cast)
             .map(Deletion::getTimeRange)
             .collect(Collectors.toList());
+    TimeRange.sortAndMerge(timeRangeList);
     deviceToModifications
         .computeIfAbsent(deviceID, k -> new HashMap<>())
         .put(timeSeriesName, timeRangeList);
@@ -182,10 +184,11 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
   @Override
   public Iterator<IChunkHandle> getChunkHandles(
       List<AbstractChunkOffset> chunkInfoList,
-      List<Statistics<? extends Serializable>> statisticsList) {
+      List<Statistics<? extends Serializable>> statisticsList,
+      List<Integer> orderedIndexList) {
     String filePath = tsFileResource.getTsFilePath();
     List<IChunkHandle> chunkHandleList = new ArrayList<>();
-    for (int i = 0; i < chunkInfoList.size(); i++) {
+    for (int i : orderedIndexList) {
       AbstractChunkOffset chunkOffset = chunkInfoList.get(i);
       chunkHandleList.add(chunkOffset.generateChunkHandle(filePath, statisticsList.get(i)));
     }

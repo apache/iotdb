@@ -61,10 +61,14 @@ public class MemAlignedChunkHandleImpl extends MemChunkHandleImpl {
     List<Long> timeList = new ArrayList<>();
     int[] deletionCursor = {0};
     for (int i = 0; i < dataOfTimestamp.length; i++) {
-      int arrayIndex = i / ARRAY_SIZE;
-      int elementIndex = i % ARRAY_SIZE;
-      if (!bitMapOfValue.get(arrayIndex).isMarked(elementIndex)
-          && !ModificationUtils.isPointDeleted(dataOfTimestamp[i], deletionList, deletionCursor)
+      if (!bitMapOfValue.isEmpty()) {
+        int arrayIndex = i / ARRAY_SIZE;
+        int elementIndex = i % ARRAY_SIZE;
+        if (bitMapOfValue.get(arrayIndex).isMarked(elementIndex)) {
+          continue;
+        }
+      }
+      if (!ModificationUtils.isPointDeleted(dataOfTimestamp[i], deletionList, deletionCursor)
           && (i == dataOfTimestamp.length - 1 || dataOfTimestamp[i] != dataOfTimestamp[i + 1])) {
         timeList.add(dataOfTimestamp[i]);
       }

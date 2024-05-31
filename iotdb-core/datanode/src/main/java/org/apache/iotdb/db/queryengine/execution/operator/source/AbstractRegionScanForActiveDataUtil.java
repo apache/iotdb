@@ -37,6 +37,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
@@ -114,7 +115,10 @@ public abstract class AbstractRegionScanForActiveDataUtil implements Accountable
     }
 
     if (chunkHandleIterator == null) {
-      chunkHandleIterator = curFileScanHandle.getChunkHandles(chunkToBeScanned, chunkStatistics);
+      chunkHandleIterator =
+          curFileScanHandle.getChunkHandles(chunkToBeScanned, chunkStatistics, getOrderedIndex());
+      chunkToBeScanned.clear();
+      chunkStatistics.clear();
     }
 
     // 1. init a chunkHandle with data
@@ -170,6 +174,15 @@ public abstract class AbstractRegionScanForActiveDataUtil implements Accountable
       }
     }
     return currentChunkHandle.hasNextPage() || chunkHandleIterator.hasNext();
+  }
+
+  private List<Integer> getOrderedIndex() {
+    List<Integer> indexList = new ArrayList<>();
+    for (int i = 0; i < chunkToBeScanned.size(); i++) {
+      indexList.add(i);
+    }
+    indexList.sort(Comparator.comparingLong(i -> chunkToBeScanned.get(i).getOffSet()));
+    return indexList;
   }
 
   public boolean isFinished() {

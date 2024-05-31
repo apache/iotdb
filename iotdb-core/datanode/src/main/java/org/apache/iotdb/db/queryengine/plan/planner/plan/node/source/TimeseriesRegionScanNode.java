@@ -22,9 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -41,7 +39,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -137,7 +134,7 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
       int pathSize = ReadWriteIOUtils.readInt(buffer);
       Map<PartialPath, List<TimeseriesSchemaInfo>> measurementToSchemaInfo = new HashMap<>();
       for (int j = 0; j < pathSize; j++) {
-        PartialPath path = deserializePartialPath(nodes, buffer);
+        PartialPath path = PartialPath.deserialize(buffer);
         int schemaSize = ReadWriteIOUtils.readInt(buffer);
         List<TimeseriesSchemaInfo> schemaInfos = new ArrayList<>();
         for (int k = 0; k < schemaSize; k++) {
@@ -150,22 +147,6 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
     boolean outputCount = ReadWriteIOUtils.readBool(buffer);
     return new TimeseriesRegionScanNode(
         PlanNodeId.deserialize(buffer), deviceToTimeseriesSchemaInfo, outputCount, null);
-  }
-
-  private static PartialPath deserializePartialPath(String[] deviceNodes, ByteBuffer buffer) {
-    byte pathType = buffer.get();
-    if (pathType == 0) {
-      String[] newNodes = Arrays.copyOf(deviceNodes, deviceNodes.length + 1);
-      newNodes[deviceNodes.length] = ReadWriteIOUtils.readString(buffer);
-      return new MeasurementPath(newNodes);
-    } else {
-      int size = ReadWriteIOUtils.readInt(buffer);
-      List<String> measurements = new ArrayList<>();
-      for (int i = 0; i < size; i++) {
-        measurements.add(ReadWriteIOUtils.readString(buffer));
-      }
-      return new AlignedPath(deviceNodes, measurements);
-    }
   }
 
   @TestOnly
@@ -269,7 +250,7 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
       ReadWriteIOUtils.write(entry.getValue().size(), byteBuffer);
       for (Map.Entry<PartialPath, List<TimeseriesSchemaInfo>> timseriesEntry :
           entry.getValue().entrySet()) {
-        serializeMeasurements(timseriesEntry.getKey(), byteBuffer);
+        timseriesEntry.getKey().serialize(byteBuffer);
         ReadWriteIOUtils.write(timseriesEntry.getValue().size(), byteBuffer);
         for (TimeseriesSchemaInfo timeseriesSchemaInfo : timseriesEntry.getValue()) {
           timeseriesSchemaInfo.serializeAttributes(byteBuffer);
@@ -296,7 +277,7 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
       ReadWriteIOUtils.write(entry.getValue().size(), stream);
       for (Map.Entry<PartialPath, List<TimeseriesSchemaInfo>> timseriesEntry :
           entry.getValue().entrySet()) {
-        serializeMeasurements(timseriesEntry.getKey(), stream);
+        timseriesEntry.getKey().serialize(stream);
         ReadWriteIOUtils.write(timseriesEntry.getValue().size(), stream);
         for (TimeseriesSchemaInfo timeseriesSchemaInfo : timseriesEntry.getValue()) {
           timeseriesSchemaInfo.serializeAttributes(stream);
@@ -304,33 +285,5 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
       }
     }
     ReadWriteIOUtils.write(outputCount, stream);
-  }
-
-  private void serializeMeasurements(PartialPath path, DataOutputStream stream) throws IOException {
-    if (path instanceof MeasurementPath) {
-      PathType.Measurement.serialize(stream);
-      ReadWriteIOUtils.write(path.getMeasurement(), stream);
-    } else if (path instanceof AlignedPath) {
-      PathType.Aligned.serialize(stream);
-      AlignedPath alignedPath = (AlignedPath) path;
-      ReadWriteIOUtils.write(alignedPath.getMeasurementList().size(), stream);
-      for (String measurement : alignedPath.getMeasurementList()) {
-        ReadWriteIOUtils.write(measurement, stream);
-      }
-    }
-  }
-
-  private void serializeMeasurements(PartialPath path, ByteBuffer buffer) {
-    if (path instanceof MeasurementPath) {
-      PathType.Measurement.serialize(buffer);
-      ReadWriteIOUtils.write(path.getMeasurement(), buffer);
-    } else if (path instanceof AlignedPath) {
-      PathType.Aligned.serialize(buffer);
-      AlignedPath alignedPath = (AlignedPath) path;
-      ReadWriteIOUtils.write(alignedPath.getMeasurementList().size(), buffer);
-      for (String measurement : alignedPath.getMeasurementList()) {
-        ReadWriteIOUtils.write(measurement, buffer);
-      }
-    }
   }
 }

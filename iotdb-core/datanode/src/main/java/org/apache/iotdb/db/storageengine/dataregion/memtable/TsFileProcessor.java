@@ -91,6 +91,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -1747,6 +1748,10 @@ public class TsFileProcessor {
     List<List<ChunkMetadata>> chunkMetaDataListForDevice =
         writer.getVisibleMetadataList(deviceID, null);
 
+    if (chunkMetaDataListForDevice.isEmpty()) {
+      return Collections.emptyList();
+    }
+
     int timeChunkMetadataListIndex =
         searchTimeChunkMetaDataIndexAndSetModifications(
             chunkMetaDataListForDevice, deviceID, modifications, queryContext);
@@ -1825,8 +1830,12 @@ public class TsFileProcessor {
               measurementToChunkHandleList);
 
           if (!measurementToChunkHandleList.isEmpty() || !measurementToChunkMetaList.isEmpty()) {
-            deviceToMemChunkHandleMap.put(deviceID, measurementToChunkHandleList);
-            deviceToChunkMetadataListMap.put(deviceID, measurementToChunkMetaList);
+            deviceToMemChunkHandleMap
+                .computeIfAbsent(deviceID, k -> new HashMap<>())
+                .putAll(measurementToChunkHandleList);
+            deviceToChunkMetadataListMap
+                .computeIfAbsent(deviceID, k -> new HashMap<>())
+                .putAll(measurementToChunkMetaList);
           }
         }
       } catch (QueryProcessException | MetadataException | IOException e) {

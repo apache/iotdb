@@ -65,7 +65,7 @@ public class QueryDataSourceForRegionScan implements IQueryDataSource {
   }
 
   public boolean hasNext() {
-    return curIndex >= 0;
+    return curIndex > 0;
   }
 
   /**

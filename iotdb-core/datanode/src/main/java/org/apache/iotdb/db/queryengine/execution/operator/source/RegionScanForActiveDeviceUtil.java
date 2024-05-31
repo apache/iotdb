@@ -62,7 +62,7 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
       // If this device has already been removed by another TsFileHandle, we should skip it.
       // If the time range is filtered, the devicePath is not active in this time range.
       if (!targetDevices.containsKey(deviceID)
-          || !timeFilter.satisfyStartEndTime(startTime, endTime)) {
+          || (endTime >= 0 && !timeFilter.satisfyStartEndTime(startTime, endTime))) {
         continue;
       }
 
@@ -70,7 +70,7 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
           curFileScanHandle.isDeviceTimeDeleted(
               deviceStartEndTime.getDevicePath(), new long[] {startTime, endTime});
       if ((!isDeleted[0] && timeFilter.satisfy(startTime, null)
-          || (!isDeleted[1] && timeFilter.satisfy(endTime, null)))) {
+          || (endTime >= 0 && !isDeleted[1] && timeFilter.satisfy(endTime, null)))) {
         // Only if one time is not deleted, the devicePath is active in this time range.
         activeDevices.add(deviceID);
       } else {

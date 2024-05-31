@@ -60,7 +60,7 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
 
   @Override
   public boolean hasNext() throws Exception {
-    if (retainedTsBlock != null) {
+    if (!resultTsBlockBuilder.isEmpty() || retainedTsBlock != null) {
       return true;
     }
     try {
@@ -78,7 +78,7 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
 
         // For filter method, it will return false if the phase of calculation is finished,
         // otherwise, it will return true to execute in the next loop.
-        if (regionScanUtil.filterChunkMetaData()) {
+        if (regionScanUtil.filterChunkMetaData() && !regionScanUtil.isCurrentTsFileFinished()) {
           // There is still some chunkMetaData in current TsFile
           continue;
         }

@@ -85,7 +85,8 @@ public interface IFileScanHandle {
    */
   Iterator<IChunkHandle> getChunkHandles(
       List<AbstractChunkOffset> chunkInfoList,
-      List<Statistics<? extends Serializable>> statisticsList)
+      List<Statistics<? extends Serializable>> statisticsList,
+      List<Integer> orderedList)
       throws IOException;
 
   /** If the TsFile of this handle is closed. */

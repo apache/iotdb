@@ -57,7 +57,7 @@ public class SharedTimeDataBuffer {
     }
     Chunk timeChunk = reader.readMemChunk(timeChunkMetaData.getOffsetOfChunkHeader());
     timeChunkHeader = timeChunk.getHeader();
-    timeBuffer = timeChunk.getData().duplicate();
+    timeBuffer = timeChunk.getData();
   }
 
   public long[] getPageTime(int pageId) throws IOException {

@@ -73,7 +73,7 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
       long startTime = deviceStartEndTime.getStartTime();
       long endTime = deviceStartEndTime.getEndTime();
       if (!targetTimeseries.containsKey(deviceID)
-          || !timeFilter.satisfyStartEndTime(startTime, endTime)) {
+          || (endTime >= 0 && !timeFilter.satisfyStartEndTime(startTime, endTime))) {
         continue;
       }
 
@@ -129,8 +129,10 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
       String measurementId = valueChunkMetaData.getMeasurementUid();
       long startTime = valueChunkMetaData.getStartTime();
       long endTime = valueChunkMetaData.getEndTime();
-      if (!timeFilter.satisfyStartEndTime(startTime, endTime)
-          || !timeSeriesForCurrentTsFile.get(deviceID).contains(measurementId)) {
+      Set<String> measurementForCurrentTsFile = timeSeriesForCurrentTsFile.get(deviceID);
+      if (!(measurementForCurrentTsFile != null
+              && measurementForCurrentTsFile.contains(measurementId))
+          || !timeFilter.satisfyStartEndTime(startTime, endTime)) {
         continue;
       }
       boolean[] isDeleted =

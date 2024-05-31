@@ -130,6 +130,12 @@ public class ActiveRegionScanMergeOperator extends AbstractConsumeAllOperator {
   }
 
   @Override
+  protected TsBlock getNextTsBlock(int childIndex) throws Exception {
+    inputIndex[childIndex] = 0;
+    return children.get(childIndex).nextWithTimer();
+  }
+
+  @Override
   protected boolean canSkipCurrentChild(int currentChildIndex) {
     return noMoreTsBlocks[currentChildIndex]
         || !isEmpty(currentChildIndex)
@@ -145,7 +151,7 @@ public class ActiveRegionScanMergeOperator extends AbstractConsumeAllOperator {
   }
 
   private TsBlock returnResultIfNoMoreData() throws Exception {
-    if (isFinished()) {
+    if (isFinished() || finished) {
       tsBlockBuilder.reset();
       TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
       ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
@@ -202,7 +208,7 @@ public class ActiveRegionScanMergeOperator extends AbstractConsumeAllOperator {
         }
       }
     }
-    return false;
+    return count != -1;
   }
 
   @Override

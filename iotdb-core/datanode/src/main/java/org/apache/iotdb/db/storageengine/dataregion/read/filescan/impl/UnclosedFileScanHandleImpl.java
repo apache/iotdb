@@ -24,7 +24,6 @@ import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandl
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AlignedDeviceChunkMetaData;
-import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.ChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.DeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
@@ -151,13 +150,15 @@ public class UnclosedFileScanHandleImpl implements IFileScanHandle {
   @Override
   public Iterator<IChunkHandle> getChunkHandles(
       List<AbstractChunkOffset> chunkInfoList,
-      List<Statistics<? extends Serializable>> statisticsList) {
+      List<Statistics<? extends Serializable>> statisticsList,
+      List<Integer> orderedIndexList) {
     List<IChunkHandle> chunkHandleList = new ArrayList<>();
-    for (AbstractChunkOffset chunkOffsetInfo : chunkInfoList) {
+    for (int index : orderedIndexList) {
+      AbstractChunkOffset chunkOffsetInfo = chunkInfoList.get(index);
       List<IChunkHandle> chunkHandle =
           deviceToMemChunkHandleMap
               .get(chunkOffsetInfo.getDeviceID())
-              .get(((ChunkOffset) chunkOffsetInfo).getMeasurement());
+              .get(chunkOffsetInfo.getMeasurement());
       chunkHandleList.addAll(chunkHandle);
     }
     return chunkHandleList.iterator();
