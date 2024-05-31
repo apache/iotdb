@@ -49,7 +49,7 @@ public class QueryDataSourceForRegionScan implements IQueryDataSource {
   @Override
   public IQueryDataSource clone() {
     QueryDataSourceForRegionScan queryDataSourceForRegionScan =
-        new QueryDataSourceForRegionScan(seqFileScanHandle, unseqFileScanHandles);
+        new QueryDataSourceForRegionScan(seqFileScanHandles, unseqFileScanHandles);
     return queryDataSourceForRegionScan;
   }
 

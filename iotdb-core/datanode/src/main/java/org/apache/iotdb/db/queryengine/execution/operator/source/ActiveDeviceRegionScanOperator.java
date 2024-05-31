@@ -82,6 +82,7 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
           new Binary(
               String.valueOf(deviceToAlignedMap.get(deviceID)), TSFileConfig.STRING_CHARSET));
       columnBuilders[2].appendNull();
+      columnBuilders[3].appendNull();
       resultTsBlockBuilder.declarePosition();
       deviceToAlignedMap.remove(deviceID);
     }

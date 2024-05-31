@@ -1819,23 +1819,25 @@ public class TsFileProcessor {
                 measurementToChunkMetaList,
                 measurementToChunkHandleList,
                 modsToMemtable);
-            if (workMemTable != null) {
-              workMemTable.queryForSeriesRegionScan(
-                  seriesPath,
-                  timeLowerBound,
-                  measurementToChunkMetaList,
-                  measurementToChunkHandleList,
-                  null);
-            }
-
-            // Some memTable have been flushed already, so we need to get the chunk metadata from
-            // writer and build chunk handle for disk scanning
-            buildChunkHandleForFlushedMemTable(
-                ResourceByPathUtils.getResourceInstance(seriesPath)
-                    .getVisibleMetadataListFromWriter(
-                        writer, tsFileResource, queryContext, timeLowerBound),
+          }
+          if (workMemTable != null) {
+            workMemTable.queryForSeriesRegionScan(
+                seriesPath,
+                timeLowerBound,
                 measurementToChunkMetaList,
-                measurementToChunkHandleList);
+                measurementToChunkHandleList,
+                null);
+          }
+          IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(seriesPath.getDevice());
+          // Some memTable have been flushed already, so we need to get the chunk metadata from
+          // writer and build chunk handle for disk scanning
+          buildChunkHandleForFlushedMemTable(
+              deviceID,
+              ResourceByPathUtils.getResourceInstance(seriesPath)
+                  .getVisibleMetadataListFromWriter(
+                      writer, tsFileResource, queryContext, timeLowerBound),
+              measurementToChunkMetaList,
+              measurementToChunkHandleList);
 
           if (!measurementToChunkHandleList.isEmpty() || !measurementToChunkMetaList.isEmpty()) {
             deviceToMemChunkHandleMap
@@ -1896,7 +1898,7 @@ public class TsFileProcessor {
           boolean isAligned = entry.getValue();
           long timeLowerBound =
               getQueryTimeLowerBound(
-                  PathUtils.splitPathToDetachedNodes(((PlainDeviceID) devicePath).toStringID()));
+                  PathUtils.splitPathToDetachedNodes(((PlainDeviceID) deviceID).toStringID()));
           Map<String, List<IChunkMetadata>> measurementToChunkMetadataList = new HashMap<>();
           Map<String, List<IChunkHandle>> measurementToMemChunkHandleList = new HashMap<>();
           for (IMemTable flushingMemTable : flushingMemTables) {

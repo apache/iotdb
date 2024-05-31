@@ -143,16 +143,17 @@ public class TimeseriesSchemaInfo {
       return false;
     }
     TimeseriesSchemaInfo that = (TimeseriesSchemaInfo) obj;
-    return dataType.equals(that.dataType)
+    return Objects.equals(dataType, that.dataType)
+        && Objects.equals(alias, that.alias)
         && encoding.equals(that.encoding)
-        && compression.equals(that.compression)
-        && tags.equals(that.tags)
-        && deadband.equals(that.deadband)
-        && deadbandParameters.equals(that.deadbandParameters);
+        && Objects.equals(compression, that.compression)
+        && Objects.equals(tags, that.tags)
+        && Objects.equals(deadband, that.deadband)
+        && Objects.equals(deadbandParameters, that.deadbandParameters);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dataType, encoding, compression, tags, deadband, deadbandParameters);
+    return Objects.hash(dataType, alias, encoding, compression, tags, deadband, deadbandParameters);
   }
 }
