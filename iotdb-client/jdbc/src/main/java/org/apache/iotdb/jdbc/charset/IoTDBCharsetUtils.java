@@ -31,7 +31,7 @@ public class IoTDBCharsetUtils {
   }
 
   public static String convertFromUTF8(String str, String charset) {
-    return charset.equalsIgnoreCase(IoTDBCharsetConstant.UTF_8)
+    return IoTDBCharsetConstant.UTF_8.equalsIgnoreCase(charset)
         ? str
         : convertToCharset(str, charset);
   }
