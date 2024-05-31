@@ -127,7 +127,7 @@ public class IoTDBActiveRegionScanIT {
       };
 
   public static final String[] SHOW_DEVICES_COLUMN_NAMES =
-      new String[] {"Device", "IsAligned", "Template","TTL"};
+      new String[] {"Device", "IsAligned", "Template", "TTL"};
   public static final String[] SHOW_TIMESERIES_COLUMN_NAMES =
       new String[] {
         "Timeseries",
