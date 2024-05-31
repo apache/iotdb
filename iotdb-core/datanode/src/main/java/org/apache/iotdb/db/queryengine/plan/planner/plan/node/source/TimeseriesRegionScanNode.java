@@ -216,6 +216,11 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
   }
 
   @Override
+  public long getSize() {
+    return deviceToTimeseriesSchemaInfo.values().stream().mapToLong(Map::size).sum();
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -39,17 +41,18 @@ public class ActiveRegionScanMergeNode extends MultiChildProcessNode {
 
   private final boolean needMerge;
 
-  protected ActiveRegionScanMergeNode(
-      PlanNodeId id, List<PlanNode> children, boolean outputCount, boolean needMerge) {
-    super(id, children);
+  private final long estimatedSize;
+
+  public ActiveRegionScanMergeNode(
+      PlanNodeId id, boolean outputCount, boolean needMerge, long size) {
+    super(id);
+    this.estimatedSize = size;
     this.outputCount = outputCount;
     this.needMerge = needMerge;
   }
 
-  public ActiveRegionScanMergeNode(PlanNodeId id, boolean outputCount, boolean needMerge) {
-    super(id);
-    this.outputCount = outputCount;
-    this.needMerge = needMerge;
+  public long getEstimatedSize() {
+    return estimatedSize;
   }
 
   public boolean isOutputCount() {
@@ -62,7 +65,7 @@ public class ActiveRegionScanMergeNode extends MultiChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new ActiveRegionScanMergeNode(this.id, outputCount, needMerge);
+    return new ActiveRegionScanMergeNode(this.id, outputCount, needMerge, estimatedSize);
   }
 
   @Override
@@ -79,8 +82,9 @@ public class ActiveRegionScanMergeNode extends MultiChildProcessNode {
   public static ActiveRegionScanMergeNode deserialize(ByteBuffer byteBuffer) {
     boolean outputCount = byteBuffer.get() == 1;
     boolean needMerge = byteBuffer.get() == 1;
+    long estimatedSize = ReadWriteIOUtils.read(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new ActiveRegionScanMergeNode(planNodeId, outputCount, needMerge);
+    return new ActiveRegionScanMergeNode(planNodeId, outputCount, needMerge, estimatedSize);
   }
 
   @Override
@@ -88,6 +92,7 @@ public class ActiveRegionScanMergeNode extends MultiChildProcessNode {
     PlanNodeType.REGION_MERGE.serialize(byteBuffer);
     byteBuffer.put((byte) (outputCount ? 1 : 0));
     byteBuffer.put((byte) (needMerge ? 1 : 0));
+    ReadWriteIOUtils.write(estimatedSize, byteBuffer);
   }
 
   @Override
@@ -95,6 +100,7 @@ public class ActiveRegionScanMergeNode extends MultiChildProcessNode {
     PlanNodeType.REGION_MERGE.serialize(stream);
     stream.writeBoolean(outputCount);
     stream.writeBoolean(needMerge);
+    ReadWriteIOUtils.write(estimatedSize, stream);
   }
 
   @Override

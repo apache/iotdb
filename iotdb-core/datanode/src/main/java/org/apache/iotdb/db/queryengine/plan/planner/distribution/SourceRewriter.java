@@ -724,7 +724,8 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
         new ActiveRegionScanMergeNode(
             context.queryContext.getQueryId().genPlanNodeId(),
             node.isOutputCount(),
-            !outputCountInScanNode);
+            !outputCountInScanNode,
+            node.getSize());
     for (PlanNode planNode : planNodeList) {
       ((RegionScanNode) planNode).setOutputCount(outputCountInScanNode);
       regionMergeNode.addChild(planNode);

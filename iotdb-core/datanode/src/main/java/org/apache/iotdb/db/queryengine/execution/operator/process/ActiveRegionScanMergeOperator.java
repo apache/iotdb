@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 
@@ -28,6 +29,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -38,6 +40,12 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class ActiveRegionScanMergeOperator extends AbstractConsumeAllOperator {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ActiveRegionScanMergeOperator.class)
+          + RamUsageEstimator.shallowSizeOfInstance(Set.class);
+
+  private static final long REFERENCE_SIZE = 8;
+
   private final int[] inputIndex;
   private final boolean[] noMoreTsBlocks;
   private final TsBlockBuilder tsBlockBuilder;
@@ -47,12 +55,15 @@ public class ActiveRegionScanMergeOperator extends AbstractConsumeAllOperator {
   private Set<String> deduplicatedSet;
   private long count = -1;
 
+  private long estimatedSetSize = 0;
+
   public ActiveRegionScanMergeOperator(
       OperatorContext operatorContext,
       List<Operator> children,
       List<TSDataType> dataTypes,
       boolean outputCount,
-      boolean needMergeBeforeCount) {
+      boolean needMergeBeforeCount,
+      long estimatedSize) {
     super(operatorContext, children);
     this.inputIndex = new int[this.inputOperatorsCount];
     this.noMoreTsBlocks = new boolean[this.inputOperatorsCount];
@@ -62,6 +73,7 @@ public class ActiveRegionScanMergeOperator extends AbstractConsumeAllOperator {
     this.needMergeBeforeCount = needMergeBeforeCount;
     if (!outputCount || needMergeBeforeCount) {
       this.deduplicatedSet = new HashSet<>();
+      estimatedSetSize = estimatedSize * REFERENCE_SIZE;
     }
     if (outputCount) {
       count = 0;
@@ -229,21 +241,48 @@ public class ActiveRegionScanMergeOperator extends AbstractConsumeAllOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return 0;
+    long maxPeekMemory = estimatedSetSize;
+    long childrenMaxPeekMemory = 0;
+    for (Operator child : children) {
+      childrenMaxPeekMemory =
+          Math.max(
+              childrenMaxPeekMemory, maxPeekMemory + child.calculateMaxPeekMemoryWithCounter());
+      maxPeekMemory +=
+          (child.calculateMaxReturnSize() + child.calculateRetainedSizeAfterCallingNext());
+    }
+
+    maxPeekMemory += calculateMaxReturnSize();
+    return Math.max(maxPeekMemory, childrenMaxPeekMemory);
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return 0;
+    return maxReturnSize;
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0;
+    long currentRetainedSize = 0;
+    long minChildReturnSize = Long.MAX_VALUE;
+    for (Operator child : children) {
+      long maxReturnSize = child.calculateMaxReturnSize();
+      currentRetainedSize += (maxReturnSize + child.calculateRetainedSizeAfterCallingNext());
+      minChildReturnSize = Math.min(minChildReturnSize, maxReturnSize);
+    }
+    // max cached TsBlock
+    return currentRetainedSize - minChildReturnSize;
   }
 
   @Override
   public long ramBytesUsed() {
-    return 0;
+    return INSTANCE_SIZE
+        + children.stream()
+            .mapToLong(MemoryEstimationHelper::getEstimatedSizeOfAccountableObject)
+            .sum()
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + RamUsageEstimator.sizeOf(canCallNext)
+        + RamUsageEstimator.sizeOf(noMoreTsBlocks)
+        + RamUsageEstimator.sizeOf(inputIndex)
+        + tsBlockBuilder.getRetainedSizeInBytes();
   }
 }

@@ -3392,7 +3392,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               node.getChildren().get(0).getOutputColumnNames().size(), TSDataType.TEXT);
     }
     return new ActiveRegionScanMergeOperator(
-        operatorContext, operatorList, dataTypes, node.isOutputCount(), node.isNeedMerge());
+        operatorContext,
+        operatorList,
+        dataTypes,
+        node.isOutputCount(),
+        node.isNeedMerge(),
+        node.getEstimatedSize());
   }
 
   @Override

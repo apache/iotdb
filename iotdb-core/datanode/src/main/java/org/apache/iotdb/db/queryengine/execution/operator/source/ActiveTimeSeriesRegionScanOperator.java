@@ -80,6 +80,14 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
     return timeSeriesToSchemasInfo.isEmpty();
   }
 
+  private void checkAndAppend(String info, ColumnBuilder columnBuilders) {
+    if (info == null) {
+      columnBuilders.appendNull();
+    } else {
+      columnBuilders.writeBinary(new Binary(info.getBytes(TSFileConfig.STRING_CHARSET)));
+    }
+  }
+
   @Override
   protected void updateActiveData() {
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
@@ -97,30 +105,16 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
         timeColumnBuilder.writeLong(-1);
         columnBuilders[0].writeBinary(
             new Binary(contactDeviceAndMeasurement(deviceStr, timeSeries)));
-        columnBuilders[1].appendNull(); // alias
-        columnBuilders[2].writeBinary(dataBaseName); // Database
-        columnBuilders[3].writeBinary(
-            new Binary(schemaInfo.getDataType().getBytes(TSFileConfig.STRING_CHARSET))); // DataType
-        columnBuilders[4].writeBinary(
-            new Binary(schemaInfo.getEncoding().getBytes(TSFileConfig.STRING_CHARSET))); // Encoding
-        columnBuilders[5].writeBinary(
-            new Binary(
-                schemaInfo.getCompression().getBytes(TSFileConfig.STRING_CHARSET))); // Compression
 
-        if (schemaInfo.getTags() == null) {
-          columnBuilders[6].appendNull(); // Tags
-        } else {
-          columnBuilders[6].writeBinary(
-              new Binary(schemaInfo.getTags().getBytes(TSFileConfig.STRING_CHARSET))); // Tags
-        }
+        checkAndAppend(schemaInfo.getAlias(), columnBuilders[1]); // Measurement
+        columnBuilders[2].writeBinary(dataBaseName); // Database
+        checkAndAppend(schemaInfo.getDataType(), columnBuilders[3]); // DataType
+        checkAndAppend(schemaInfo.getEncoding(), columnBuilders[4]); // Encoding
+        checkAndAppend(schemaInfo.getCompression(), columnBuilders[5]); // Compression
+        checkAndAppend(schemaInfo.getTags(), columnBuilders[6]); // Tags
         columnBuilders[7].appendNull(); // Attributes
-        columnBuilders[8].writeBinary(
-            new Binary(schemaInfo.getDeadband().getBytes(TSFileConfig.STRING_CHARSET))); // Deadband
-        columnBuilders[9].writeBinary(
-            new Binary(
-                schemaInfo
-                    .getDeadbandParameters()
-                    .getBytes(TSFileConfig.STRING_CHARSET))); // DeadbandParameters
+        checkAndAppend(schemaInfo.getDeadband(), columnBuilders[8]); // Description
+        checkAndAppend(schemaInfo.getDeadbandParameters(), columnBuilders[9]); // DeadbandParameters
         columnBuilders[10].writeBinary(VIEW_TYPE); // ViewType
         resultTsBlockBuilder.declarePosition();
         timeSeriesInfo.remove(timeSeries);
