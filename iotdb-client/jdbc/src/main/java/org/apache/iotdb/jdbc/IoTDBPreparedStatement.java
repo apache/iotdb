@@ -32,6 +32,7 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.math.BigDecimal;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.Clob;
@@ -72,9 +73,22 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   private final Map<Integer, String> parameters = new HashMap<>();
 
   IoTDBPreparedStatement(
+      IoTDBConnection connection,
+      Iface client,
+      Long sessionId,
+      String sql,
+      ZoneId zoneId,
+      Charset charset)
+      throws SQLException {
+    super(connection, client, sessionId, zoneId, charset);
+    this.sql = sql;
+  }
+
+  // Only for tests
+  IoTDBPreparedStatement(
       IoTDBConnection connection, Iface client, Long sessionId, String sql, ZoneId zoneId)
       throws SQLException {
-    super(connection, client, sessionId, zoneId);
+    super(connection, client, sessionId, zoneId, Charset.defaultCharset());
     this.sql = sql;
   }
 

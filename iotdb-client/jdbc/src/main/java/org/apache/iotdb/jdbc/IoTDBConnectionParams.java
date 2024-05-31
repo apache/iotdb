@@ -21,6 +21,7 @@ package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.rpc.RpcUtils;
 
+import java.nio.charset.Charset;
 import java.time.ZoneId;
 
 public class IoTDBConnectionParams {
@@ -40,6 +41,7 @@ public class IoTDBConnectionParams {
   private int networkTimeout = Config.DEFAULT_CONNECTION_TIMEOUT_MS;
 
   private String timeZone = ZoneId.systemDefault().toString();
+  private Charset charset = Charset.defaultCharset();
 
   private boolean useSSL = false;
   private String trustStore;
@@ -139,6 +141,14 @@ public class IoTDBConnectionParams {
 
   public String getTimeZone() {
     return this.timeZone;
+  }
+
+  public void setCharset(String charsetName) {
+    this.charset = Charset.forName(charsetName);
+  }
+
+  public Charset getCharset() {
+    return charset;
   }
 
   public boolean isUseSSL() {

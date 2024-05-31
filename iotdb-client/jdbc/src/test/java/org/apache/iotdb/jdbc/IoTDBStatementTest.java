@@ -31,6 +31,7 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.time.ZoneId;
 
@@ -84,7 +85,9 @@ public class IoTDBStatementTest {
   @Test
   public void testSetFetchSize3() throws SQLException {
     final int fetchSize = 10000;
-    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessionId, fetchSize, zoneID, 0);
+    IoTDBStatement stmt =
+        new IoTDBStatement(
+            connection, client, sessionId, fetchSize, zoneID, Charset.defaultCharset(), 0);
     assertEquals(fetchSize, stmt.getFetchSize());
   }
 
@@ -97,7 +100,8 @@ public class IoTDBStatementTest {
 
   @Test
   public void setTimeoutTest() throws SQLException {
-    IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID, 60);
+    IoTDBStatement statement =
+        new IoTDBStatement(connection, client, sessionId, zoneID, Charset.defaultCharset(), 60);
     Assert.assertEquals(60, statement.getQueryTimeout());
     statement.setQueryTimeout(100);
     Assert.assertEquals(100, statement.getQueryTimeout());
