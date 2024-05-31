@@ -330,11 +330,17 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
         readSourceFiles(createTimeseries(6, 6, isAligned), Collections.emptyList());
 
     List<TsFileResource> selectedFiles = new ArrayList<>(seqResources);
-    selectedFiles.addAll(unseqResources);
 
     SettleCompactionTask task =
         new SettleCompactionTask(
             0, tsFileManager, Collections.emptyList(), selectedFiles, true, getPerformer(), 0);
+    Assert.assertTrue(task.start());
+
+    selectedFiles.clear();
+    selectedFiles.addAll(unseqResources);
+    task =
+        new SettleCompactionTask(
+            0, tsFileManager, Collections.emptyList(), selectedFiles, false, getPerformer(), 0);
     Assert.assertTrue(task.start());
 
     for (TsFileResource tsFileResource : seqResources) {
