@@ -67,7 +67,7 @@ public class InnerSequenceCompactionSpeedTest extends AbstractCompactionTest {
   public void testManyAlignedDeviceTsFile() throws IOException, InterruptedException {
     List<String> deviceNames = new ArrayList<>();
     for (int i = 0; i < 100000; i++) {
-      deviceNames.add(String.valueOf(i));
+      deviceNames.add("d" + i);
     }
     TsFileResource resource = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
@@ -101,7 +101,7 @@ public class InnerSequenceCompactionSpeedTest extends AbstractCompactionTest {
   public void testManyNotAlignedDeviceTsFile() throws IOException {
     List<String> deviceNames = new ArrayList<>();
     for (int i = 0; i < 100000; i++) {
-      deviceNames.add(String.valueOf(i));
+      deviceNames.add("d" + i);
     }
     TsFileResource resource = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
