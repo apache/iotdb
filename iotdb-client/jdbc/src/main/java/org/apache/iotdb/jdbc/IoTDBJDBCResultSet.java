@@ -27,6 +27,8 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +73,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   private String operationType = "";
   private List<String> columns = null;
   private List<String> sgColumns = null;
-  private Charset charset = Charset.defaultCharset();
+  private Charset charset = TSFileConfig.STRING_CHARSET;
   private String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
@@ -375,7 +377,9 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public byte[] getBytes(int columnIndex) throws SQLException {
     try {
-      return ioTDBRpcDataSet.getString(columnIndex).getBytes(charset);
+      return ioTDBRpcDataSet.getDataType(columnIndex).equals(TSDataType.BLOB)
+          ? ioTDBRpcDataSet.getBinary(columnIndex).getValues()
+          : ioTDBRpcDataSet.getString(columnIndex).getBytes(charset);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -384,7 +388,9 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public byte[] getBytes(String columnName) throws SQLException {
     try {
-      return ioTDBRpcDataSet.getString(columnName).getBytes(charset);
+      return ioTDBRpcDataSet.getDataType(columnName).equals(TSDataType.BLOB)
+          ? ioTDBRpcDataSet.getBinary(columnName).getValues()
+          : ioTDBRpcDataSet.getString(columnName).getBytes(charset);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
