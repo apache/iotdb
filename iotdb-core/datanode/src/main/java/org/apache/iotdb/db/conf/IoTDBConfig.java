@@ -243,14 +243,6 @@ public class IoTDBConfig {
   private volatile long deleteWalFilesPeriodInMs = 20 * 1000L;
 
   // endregion
-
-  /**
-   * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan is
-   * larger than this parameter, then the MetaData operation plan will be rejected by SchemaRegion.
-   * Unit: byte
-   */
-  private int mlogBufferSize = 1024 * 1024;
-
   /**
    * The cycle when metadata log is periodically forced to be written to disk(in milliseconds) If
    * set this parameter to 0 it means call channel.force(true) after every each operation
@@ -539,9 +531,6 @@ public class IoTDBConfig {
    * then expired data of this tsfile will be cleaned by compaction.
    */
   private float expiredDataRatio = 0.3f;
-
-  /** The interval of compaction task submission from queue in CompactionTaskMananger */
-  private long compactionSubmissionIntervalInMs = 60_000L;
 
   /**
    * The number of sub compaction threads to be set up to perform compaction. Currently only works
@@ -2711,14 +2700,6 @@ public class IoTDBConfig {
     ZeroCopyRpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
   }
 
-  public int getMlogBufferSize() {
-    return mlogBufferSize;
-  }
-
-  public void setMlogBufferSize(int mlogBufferSize) {
-    this.mlogBufferSize = mlogBufferSize;
-  }
-
   public long getSyncMlogPeriodInMs() {
     return syncMlogPeriodInMs;
   }
@@ -2953,14 +2934,6 @@ public class IoTDBConfig {
 
   public void setMinCrossCompactionUnseqFileLevel(int minCrossCompactionUnseqFileLevel) {
     this.minCrossCompactionUnseqFileLevel = minCrossCompactionUnseqFileLevel;
-  }
-
-  public long getCompactionSubmissionIntervalInMs() {
-    return compactionSubmissionIntervalInMs;
-  }
-
-  public void setCompactionSubmissionIntervalInMs(long interval) {
-    compactionSubmissionIntervalInMs = interval;
   }
 
   public int getSubCompactionTaskNum() {

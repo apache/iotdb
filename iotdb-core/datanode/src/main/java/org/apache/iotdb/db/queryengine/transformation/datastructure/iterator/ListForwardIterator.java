@@ -17,38 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.transformation.api;
-
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
+package org.apache.iotdb.db.queryengine.transformation.datastructure.iterator;
 
 import java.io.IOException;
 
-public interface LayerPointReader extends YieldableReader {
+public interface ListForwardIterator {
+  boolean hasNext() throws IOException;
 
-  boolean isConstantPointReader();
-
-  boolean next() throws QueryProcessException, IOException;
-
-  void readyForNext();
-
-  TSDataType getDataType();
-
-  long currentTime() throws IOException;
-
-  int currentInt() throws IOException;
-
-  long currentLong() throws IOException;
-
-  float currentFloat() throws IOException;
-
-  double currentDouble() throws IOException;
-
-  boolean currentBoolean() throws IOException;
-
-  boolean isCurrentNull() throws IOException;
-
-  Binary currentBinary() throws IOException;
+  void next() throws IOException;
 }

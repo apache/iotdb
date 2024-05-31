@@ -20,13 +20,12 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scalar;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
-
-import java.io.IOException;
 
 public class DiffFunctionTransformer extends UnaryTransformer {
   private final boolean ignoreNull;
@@ -37,69 +36,129 @@ public class DiffFunctionTransformer extends UnaryTransformer {
   // indicate whether lastValue is null
   private boolean lastValueIsNull = true;
 
-  public DiffFunctionTransformer(LayerPointReader layerPointReader, boolean ignoreNull) {
-    super(layerPointReader);
+  public DiffFunctionTransformer(LayerReader layerReader, boolean ignoreNull) {
+    super(layerReader);
     this.ignoreNull = ignoreNull;
   }
 
   @Override
-  public TSDataType getDataType() {
-    return TSDataType.DOUBLE;
+  public TSDataType[] getDataTypes() {
+    return new TSDataType[] {TSDataType.DOUBLE};
   }
 
   @Override
-  public final YieldableState yieldValue() throws Exception {
-    final YieldableState yieldableState = layerPointReader.yield();
-    if (!YieldableState.YIELDABLE.equals(yieldableState)) {
-      return yieldableState;
+  public void transform(Column[] columns, ColumnBuilder builder) throws QueryProcessException {
+    switch (layerReaderDataType) {
+      case INT32:
+        transformInt(columns, builder);
+        return;
+      case INT64:
+        transformLong(columns, builder);
+        return;
+      case FLOAT:
+        transformFloat(columns, builder);
+        return;
+      case DOUBLE:
+        transformDouble(columns, builder);
+        return;
+      default:
+        throw new QueryProcessException("Unsupported data type: " + layerReaderDataType);
     }
-
-    if (!isLayerPointReaderConstant) {
-      cachedTime = layerPointReader.currentTime();
-    }
-
-    transformAndCache();
-
-    layerPointReader.readyForNext();
-    return YieldableState.YIELDABLE;
   }
 
-  @Override
-  protected void transformAndCache() throws QueryProcessException, IOException {
-    if (layerPointReader.isCurrentNull()) {
-      currentNull = true; // currValue is null, append null
+  private void transformInt(Column[] columns, ColumnBuilder builder) {
+    // Position count at first iteration is count
+    // Then it become count - 1 at latter iteration
+    int count = columns[0].getPositionCount();
 
-      // When currValue is null:
-      // ignoreNull = true, keep lastValueIsNull as before
-      // ignoreNull = false, update lastValueIsNull to true
-      lastValueIsNull |= !ignoreNull;
-    } else {
-      double currValue;
-      switch (layerPointReaderDataType) {
-        case INT32:
-          currValue = layerPointReader.currentInt();
-          break;
-        case INT64:
-          currValue = layerPointReader.currentLong();
-          break;
-        case FLOAT:
-          currValue = layerPointReader.currentFloat();
-          break;
-        case DOUBLE:
-          currValue = layerPointReader.currentDouble();
-          break;
-        default:
-          throw new QueryProcessException(
-              "Unsupported data type: " + layerPointReader.getDataType().toString());
-      }
-      if (lastValueIsNull) {
-        currentNull = true; // lastValue is null, append null
+    for (int i = 0; i < count; i++) {
+      if (columns[0].isNull(i)) {
+        lastValueIsNull |= !ignoreNull;
+        builder.appendNull();
       } else {
-        cachedDouble = currValue - lastValue;
-      }
+        double currentValue = columns[0].getInt(i);
 
-      lastValue = currValue; // currValue is not null, update lastValue
-      lastValueIsNull = false;
+        if (lastValueIsNull) {
+          builder.appendNull();
+        } else {
+          builder.writeDouble(currentValue - lastValue);
+        }
+
+        lastValue = currentValue;
+        lastValueIsNull = false;
+      }
+    }
+  }
+
+  private void transformLong(Column[] columns, ColumnBuilder builder) {
+    // Position count at first iteration is count
+    // Then it become count - 1 at latter iteration
+    int count = columns[0].getPositionCount();
+
+    for (int i = 0; i < count; i++) {
+      if (columns[0].isNull(i)) {
+        lastValueIsNull |= !ignoreNull;
+        builder.appendNull();
+      } else {
+        double currentValue = columns[0].getLong(i);
+
+        if (lastValueIsNull) {
+          builder.appendNull();
+        } else {
+          builder.writeDouble(currentValue - lastValue);
+        }
+
+        lastValue = currentValue;
+        lastValueIsNull = false;
+      }
+    }
+  }
+
+  private void transformFloat(Column[] columns, ColumnBuilder builder) {
+    // Position count at first iteration is count
+    // Then it become count - 1 at latter iteration
+    int count = columns[0].getPositionCount();
+
+    for (int i = 0; i < count; i++) {
+      if (columns[0].isNull(i)) {
+        lastValueIsNull |= !ignoreNull;
+        builder.appendNull();
+      } else {
+        double currentValue = columns[0].getFloat(i);
+
+        if (lastValueIsNull) {
+          builder.appendNull();
+        } else {
+          builder.writeDouble(currentValue - lastValue);
+        }
+
+        lastValue = currentValue;
+        lastValueIsNull = false;
+      }
+    }
+  }
+
+  private void transformDouble(Column[] columns, ColumnBuilder builder) {
+    // Position count at first iteration is count
+    // Then it become count - 1 at latter iteration
+    int count = columns[0].getPositionCount();
+
+    for (int i = 0; i < count; i++) {
+      if (columns[0].isNull(i)) {
+        lastValueIsNull |= !ignoreNull;
+        builder.appendNull();
+      } else {
+        double currentValue = columns[0].getDouble(i);
+
+        if (lastValueIsNull) {
+          builder.appendNull();
+        } else {
+          builder.writeDouble(currentValue - lastValue);
+        }
+
+        lastValue = currentValue;
+        lastValueIsNull = false;
+      }
     }
   }
 }

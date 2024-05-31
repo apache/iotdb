@@ -19,25 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.transformation.api;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.udf.api.access.Row;
-
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.io.IOException;
 
-public interface LayerRowReader extends YieldableReader {
+public interface LayerReader extends YieldableReader {
+  // As its name suggests,
+  // This method is only used in PointReader
+  boolean isConstantPointReader();
 
-  boolean next() throws IOException, QueryProcessException;
+  void consumedAll();
 
-  void readyForNext();
+  Column[] current() throws IOException;
 
   TSDataType[] getDataTypes();
-
-  long currentTime() throws IOException;
-
-  Row currentRow();
-
-  /** whether current row fields are all null. */
-  boolean isCurrentNull();
 }
