@@ -207,23 +207,27 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
     source = commandLine.getOptionValue(SOURCE_ARGS);
     if (!Files.exists(Paths.get(source))) {
-      ioTPrinter.println(String.format("source file or directory %s does not exist", source));
+      ioTPrinter.println(String.format("Source file or directory %s does not exist", source));
       System.exit(CODE_ERROR);
     }
 
     final String onSuccess = commandLine.getOptionValue(ON_SUCCESS_ARGS).trim().toLowerCase();
     final String onFail = commandLine.getOptionValue(ON_FAIL_ARGS).trim().toLowerCase();
+    if (!Operation.isValidOperation(onSuccess) || !Operation.isValidOperation(onFail)) {
+      ioTPrinter.println("Args error: os/of must be one of none, mv, cp, delete");
+      System.exit(CODE_ERROR);
+    }
 
     boolean isSuccessDirEqualsSourceDir = false;
-    if (Operation.MOVE.name().equalsIgnoreCase(onSuccess)
-        || Operation.COPY.name().equalsIgnoreCase(onSuccess)) {
+    if (Operation.MV.name().equalsIgnoreCase(onSuccess)
+        || Operation.CP.name().equalsIgnoreCase(onSuccess)) {
       File dir = createSuccessDir(commandLine);
       isSuccessDirEqualsSourceDir = isFileStoreEquals(source, dir);
     }
 
     boolean isFailDirEqualsSourceDir = false;
-    if (Operation.MOVE.name().equalsIgnoreCase(onFail)
-        || Operation.COPY.name().equalsIgnoreCase(onFail)) {
+    if (Operation.MV.name().equalsIgnoreCase(onFail)
+        || Operation.CP.name().equalsIgnoreCase(onFail)) {
       File dir = createFailDir(commandLine);
       isFailDirEqualsSourceDir = isFileStoreEquals(source, dir);
     }
@@ -423,7 +427,7 @@ public class ImportTsFile extends AbstractTsFileTool {
           }
           break;
         }
-      case COPY:
+      case CP:
         {
           try {
             Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
@@ -468,7 +472,7 @@ public class ImportTsFile extends AbstractTsFileTool {
           }
           break;
         }
-      case MOVE:
+      case MV:
         {
           try {
             Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
@@ -491,23 +495,30 @@ public class ImportTsFile extends AbstractTsFileTool {
 
   public enum Operation {
     NONE,
-    MOVE,
+    MV,
     HARDLINK,
-    COPY,
+    CP,
     DELETE,
     ;
+
+    public static boolean isValidOperation(String operation) {
+      return "none".equalsIgnoreCase(operation)
+          || "mv".equalsIgnoreCase(operation)
+          || "cp".equalsIgnoreCase(operation)
+          || "delete".equalsIgnoreCase(operation);
+    }
 
     public static Operation getOperation(String operation, boolean isFileStoreEquals) {
       switch (operation.toLowerCase()) {
         case "none":
           return Operation.NONE;
         case "mv":
-          return Operation.MOVE;
+          return Operation.MV;
         case "cp":
           if (isFileStoreEquals) {
             return Operation.HARDLINK;
           } else {
-            return Operation.COPY;
+            return Operation.CP;
           }
         case "delete":
           return Operation.DELETE;
