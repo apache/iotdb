@@ -417,11 +417,10 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "io_task_queue_size_for_flushing",
                 Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
-
+    boolean enableWALCompression =
+        Boolean.parseBoolean(properties.getProperty("enable_wal_compression", "false"));
     conf.setWALCompressionAlgorithm(
-        CompressionType.valueOf(
-            properties.getProperty(
-                "wal_compression_algorithm", conf.getWALCompressionAlgorithm().toString())));
+        enableWALCompression ? CompressionType.LZ4 : CompressionType.UNCOMPRESSED);
 
     conf.setCompactionScheduleIntervalInMs(
         Long.parseLong(

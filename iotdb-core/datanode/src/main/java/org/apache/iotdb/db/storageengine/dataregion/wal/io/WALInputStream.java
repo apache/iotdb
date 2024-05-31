@@ -250,10 +250,14 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         buffer.clear();
         channel.read(buffer);
         buffer.flip();
-        buffer.get();
+        CompressionType type = CompressionType.deserialize(buffer.get());
         currSegmentSize = buffer.getInt();
         if (posRemain >= currSegmentSize) {
           posRemain -= currSegmentSize;
+          channel.position(
+              channel.position()
+                  + currSegmentSize
+                  + (type == CompressionType.UNCOMPRESSED ? 0 : Integer.BYTES));
         } else {
           break;
         }
