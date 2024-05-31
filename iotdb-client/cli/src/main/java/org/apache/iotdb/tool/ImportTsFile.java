@@ -385,7 +385,6 @@ public class ImportTsFile extends AbstractTsFileTool {
           }
         } finally {
           ioTPrinter.println("Processed file [ " + filePath + " ] completely!");
-          ioTPrinter.println();
         }
       }
     } catch (Exception e) {
