@@ -80,9 +80,9 @@ public class ActiveRegionScanMergeNode extends MultiChildProcessNode {
   }
 
   public static ActiveRegionScanMergeNode deserialize(ByteBuffer byteBuffer) {
-    boolean outputCount = byteBuffer.get() == 1;
-    boolean needMerge = byteBuffer.get() == 1;
-    long estimatedSize = ReadWriteIOUtils.read(byteBuffer);
+    boolean outputCount = ReadWriteIOUtils.readBool(byteBuffer);
+    boolean needMerge = ReadWriteIOUtils.readBool(byteBuffer);
+    long estimatedSize = ReadWriteIOUtils.readLong(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new ActiveRegionScanMergeNode(planNodeId, outputCount, needMerge, estimatedSize);
   }
@@ -90,16 +90,16 @@ public class ActiveRegionScanMergeNode extends MultiChildProcessNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.REGION_MERGE.serialize(byteBuffer);
-    byteBuffer.put((byte) (outputCount ? 1 : 0));
-    byteBuffer.put((byte) (needMerge ? 1 : 0));
+    ReadWriteIOUtils.write(outputCount, byteBuffer);
+    ReadWriteIOUtils.write(needMerge, byteBuffer);
     ReadWriteIOUtils.write(estimatedSize, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.REGION_MERGE.serialize(stream);
-    stream.writeBoolean(outputCount);
-    stream.writeBoolean(needMerge);
+    ReadWriteIOUtils.write(outputCount, stream);
+    ReadWriteIOUtils.write(needMerge, stream);
     ReadWriteIOUtils.write(estimatedSize, stream);
   }
 
