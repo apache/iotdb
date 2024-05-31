@@ -431,7 +431,7 @@ public class DataNode implements DataNodeMBean {
       logger.error("Cannot register into cluster after {} retries.", DEFAULT_RETRY);
       throw new StartupException(
           "Cannot register into the cluster. "
-              + "Please check whether the dn_seed_config_node in iotdb-datanode.properties is correct or alive.");
+              + "Please check whether the dn_seed_config_node in iotdb-system.properties is correct or alive.");
     }
 
     if (dataNodeRegisterResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
