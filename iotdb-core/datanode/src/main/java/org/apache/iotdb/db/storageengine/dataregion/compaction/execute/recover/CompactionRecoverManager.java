@@ -51,6 +51,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.SETTLE_SUFFIX;
 public class CompactionRecoverManager {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  private static final Pattern timePartitionDirPattern = Pattern.compile("\\d*");
+
   private final TsFileManager tsFileManager;
   private final String logicalStorageGroupName;
   private final String dataRegionId;
@@ -69,6 +71,7 @@ public class CompactionRecoverManager {
     dataDirLists.add(TierManager.getInstance().getAllLocalUnSequenceFileFolders());
 
     for (List<String> dataDirs : dataDirLists) {
+      //TODO: any chance to do it in parallel? IOTDB-6329
       for (String dir : dataDirs) {
         File storageGroupDir =
             new File(
@@ -86,7 +89,7 @@ public class CompactionRecoverManager {
         }
         for (File timePartitionDir : timePartitionDirs) {
           if (!timePartitionDir.isDirectory()
-              || !Pattern.compile("\\d*").matcher(timePartitionDir.getName()).matches()) {
+              || !timePartitionDirPattern.matcher(timePartitionDir.getName()).matches()) {
             continue;
           }
           logger.info(

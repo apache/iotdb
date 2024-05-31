@@ -51,10 +51,10 @@ import java.util.stream.Collectors;
 
 /**
  * CompactionScheduler schedules and submits the compaction task periodically, and it counts the
- * total number of running compaction task. There are three compaction strategy: BALANCE,
- * INNER_CROSS, CROSS_INNER. Difference strategies will lead to different compaction preferences.
+ * total number of running compaction tasks. There are three compaction strategies: BALANCE,
+ * INNER_CROSS, CROSS_INNER. Different strategies will lead to different compaction preferences.
  * For different types of compaction task(e.g. InnerSpaceCompaction), CompactionScheduler will call
- * the corresponding {@link ICompactionSelector selector} according to the compaction machanism of
+ * the corresponding {@link ICompactionSelector selector} according to the compaction mechanism of
  * the task(e.g. LevelCompaction, SizeTiredCompaction), and the selection and submission process is
  * carried out in the {@link ICompactionSelector#selectInnerSpaceTask(List)} () and {@link
  * ICompactionSelector#selectCrossSpaceTask(List, List)}} in selector.
@@ -66,7 +66,7 @@ public class CompactionScheduler {
 
   private CompactionScheduler() {}
 
-  /** avoid timed compaction schedule conflict with manually triggered schedule */
+  /** avoid timed compaction schedules conflicting with manually triggered schedules */
   private static final ReadWriteLock compactionTaskSelectionLock = new ReentrantReadWriteLock();
 
   public static void sharedLockCompactionSelection() {
@@ -86,12 +86,12 @@ public class CompactionScheduler {
   }
 
   /**
-   * Select compaction task and submit them to CompactionTaskManager.
+   * Select compaction tasks and submit them to CompactionTaskManager.
    *
    * @param tsFileManager tsfileManager that contains source files
    * @param timePartition the time partition to execute the selection
    * @param summary the summary of compaction schedule
-   * @return the count of submitted task
+   * @return the count of submitted tasks
    */
   public static int scheduleCompaction(
       TsFileManager tsFileManager, long timePartition, CompactionScheduleSummary summary)
@@ -99,7 +99,8 @@ public class CompactionScheduler {
     if (!tsFileManager.isAllowCompaction()) {
       return 0;
     }
-    // the name of this variable is trySubmitCount, because the task submitted to the queue could be
+    // the name of thisS variable is trySubmitCount, because the task submitted to the queue
+    // could be
     // evicted due to the low priority of the task
     int trySubmitCount = 0;
     try {
