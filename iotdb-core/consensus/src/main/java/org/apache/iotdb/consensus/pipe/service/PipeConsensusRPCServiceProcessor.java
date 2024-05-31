@@ -29,7 +29,6 @@ import org.apache.iotdb.consensus.pipe.PipeConsensusServerImpl;
 import org.apache.iotdb.consensus.pipe.thrift.PipeConsensusIService;
 import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompletedReq;
 import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompletedResp;
-import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToCreateConsensusPipeReq;
 import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToCreateConsensusPipeResp;
 import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToDropConsensusPipeReq;
@@ -207,11 +206,5 @@ public class PipeConsensusRPCServiceProcessor implements PipeConsensusIService.A
     resultHandler.onComplete(new TCheckConsensusPipeCompletedResp(responseStatus, isCompleted));
   }
 
-  // Release corresponding receiver's resource such as TsFileWriter.
-  public void handleClientExit(
-      ConsensusGroupId consensusGroupId, int senderDataNodeId, TCommitId tCommitId) {
-    config
-        .getConsensusPipeReceiver()
-        .handleClientExit(consensusGroupId, senderDataNodeId, tCommitId);
-  }
+  public void handleExit() {}
 }

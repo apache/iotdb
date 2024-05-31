@@ -26,7 +26,6 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeReceiver;
-import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -149,24 +148,6 @@ public class PipeConsensusReceiverAgent implements ConsensusPipeReceiver {
           String.format("Unsupported pipeConsensus request version %d", reqVersion));
     }
     return receiverReference.get();
-  }
-
-  /** Release given pipeConsensusTask client's corresponding receiver. */
-  @Override
-  public void handleClientExit(
-      ConsensusGroupId consensusGroupId, int senderDataNodeId, TCommitId commitId) {
-    // 1. Route to given consensusGroup's receiver map
-    Map<ConsensusPipeName, AtomicReference<PipeConsensusReceiver>> consensusPipe2ReciverMap =
-        replicaReceiverMap.getOrDefault(consensusGroupId, new ConcurrentHashMap<>());
-    // 2. Route to given consensusPipeTask's receiver
-    AtomicReference<PipeConsensusReceiver> receiverReference =
-        consensusPipe2ReciverMap.getOrDefault(
-            new ConsensusPipeName(consensusGroupId, senderDataNodeId, thisNodeId), null);
-    // 3. Release client's resource
-    if (receiverReference != null) {
-      receiverReference.get().handleClientExit(commitId);
-      receiverReference.set(null);
-    }
   }
 
   /** Release receiver of given pipeConsensusTask */

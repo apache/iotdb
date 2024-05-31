@@ -19,16 +19,11 @@
 
 package org.apache.iotdb.consensus.pipe.consensuspipe;
 
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 
 public interface ConsensusPipeReceiver {
   TPipeConsensusTransferResp receive(TPipeConsensusTransferReq req);
-
-  void handleClientExit(
-      ConsensusGroupId consensusGroupId, int senderDataNodeId, TCommitId commitId);
 
   void handleDropPipeConsensusTask(ConsensusPipeName pipeName);
 }

@@ -862,15 +862,6 @@ public class PipeConsensusReceiver {
     return PipeConsensusRequestVersion.VERSION_1;
   }
 
-  /**
-   * Clear corresponding TsFileWriter. Don't need to clear ReqExecutor's resource because
-   * ReqExecutor's buffer is a TreeSet, which will properly cope with the resend duplicate event
-   * from sender.
-   */
-  public void handleClientExit(TCommitId commitId) {
-    pipeConsensusTsFileWriterPool.handleClientExit(commitId, consensusGroupId);
-  }
-
   public synchronized void handleExit() {
     // Clear the diskBuffers
     pipeConsensusTsFileWriterPool.handleExit(consensusGroupId);
@@ -948,19 +939,6 @@ public class PipeConsensusReceiver {
       }
 
       return diskBuffer.get();
-    }
-
-    public void handleClientExit(TCommitId commitId, ConsensusGroupId consensusGroupId) {
-      Optional<PipeConsensusTsFileWriter> tsFileWriter =
-          pipeConsensusTsFileWriterPool.stream()
-              .filter(
-                  item -> Objects.equals(commitId, item.getCommitIdOfCorrespondingHolderEvent()))
-              .findFirst();
-
-      if (tsFileWriter.isPresent()) {
-        tsFileWriter.get().returnSelf();
-        tsFileWriter.get().closeSelf(consensusGroupId);
-      }
     }
 
     public void handleExit(ConsensusGroupId consensusGroupId) {
