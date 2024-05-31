@@ -24,6 +24,7 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -31,7 +32,6 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.time.ZoneId;
 
@@ -87,7 +87,7 @@ public class IoTDBStatementTest {
     final int fetchSize = 10000;
     IoTDBStatement stmt =
         new IoTDBStatement(
-            connection, client, sessionId, fetchSize, zoneID, Charset.defaultCharset(), 0);
+            connection, client, sessionId, fetchSize, zoneID, TSFileConfig.STRING_CHARSET, 0);
     assertEquals(fetchSize, stmt.getFetchSize());
   }
 
@@ -101,7 +101,7 @@ public class IoTDBStatementTest {
   @Test
   public void setTimeoutTest() throws SQLException {
     IoTDBStatement statement =
-        new IoTDBStatement(connection, client, sessionId, zoneID, Charset.defaultCharset(), 60);
+        new IoTDBStatement(connection, client, sessionId, zoneID, TSFileConfig.STRING_CHARSET, 60);
     Assert.assertEquals(60, statement.getQueryTimeout());
     statement.setQueryTimeout(100);
     Assert.assertEquals(100, statement.getQueryTimeout());

@@ -136,7 +136,7 @@ public class IoTDBStatement implements Statement {
         sessionId,
         Config.DEFAULT_FETCH_SIZE,
         zoneId,
-        Charset.defaultCharset(),
+        TSFileConfig.STRING_CHARSET,
         seconds);
   }
 
@@ -169,7 +169,7 @@ public class IoTDBStatement implements Statement {
         sessionId,
         Config.DEFAULT_FETCH_SIZE,
         zoneId,
-        Charset.defaultCharset(),
+        TSFileConfig.STRING_CHARSET,
         0);
   }
 
