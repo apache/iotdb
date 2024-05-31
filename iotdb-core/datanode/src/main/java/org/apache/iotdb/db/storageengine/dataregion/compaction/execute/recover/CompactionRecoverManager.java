@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
@@ -32,6 +34,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -59,55 +62,47 @@ public class CompactionRecoverManager {
     this.dataRegionId = dataRegionId;
   }
 
-  public void recoverInnerSpaceCompaction(boolean isSequence) {
-    logger.info(
-        "{} [Compaction][Recover] recovering {} inner compaction",
-        logicalStorageGroupName,
-        isSequence ? "sequence" : "unsequence");
-    recoverCompaction(true, isSequence);
-  }
-
-  public void recoverCrossSpaceCompaction() {
-    logger.info("{} [Compaction][Recover] recovering cross compaction", logicalStorageGroupName);
-    recoverCompaction(false, true);
-  }
-
   @SuppressWarnings("squid:S3776")
-  private void recoverCompaction(boolean isInnerSpace, boolean isLogSequence) {
-    List<String> dirs;
-    if (isLogSequence) {
-      dirs = TierManager.getInstance().getAllLocalSequenceFileFolders();
-    } else {
-      dirs = TierManager.getInstance().getAllLocalUnSequenceFileFolders();
-    }
-    for (String dir : dirs) {
-      File storageGroupDir =
-          new File(dir + File.separator + logicalStorageGroupName + File.separator + dataRegionId);
-      logger.info(
-          "{} [Compaction][Recover] recover compaction in data region dir {}",
-          logicalStorageGroupName,
-          storageGroupDir.getAbsolutePath());
-      if (!storageGroupDir.exists()) {
-        return;
-      }
-      File[] timePartitionDirs = storageGroupDir.listFiles();
-      if (timePartitionDirs == null) {
-        return;
-      }
-      for (File timePartitionDir : timePartitionDirs) {
-        if (!timePartitionDir.isDirectory()
-            || !Pattern.compile("\\d*").matcher(timePartitionDir.getName()).matches()) {
-          continue;
-        }
-        logger.info(
-            "{} [Compaction][Recover] recover compaction in time partition dir {}",
-            logicalStorageGroupName,
-            timePartitionDir.getAbsolutePath());
-        // recover temporary files generated during compacted
-        recoverCompaction(isInnerSpace, timePartitionDir);
+  public void recoverCompaction() {
+    List<List<String>> dataDirLists = new ArrayList<>();
+    dataDirLists.add(TierManager.getInstance().getAllLocalSequenceFileFolders());
+    dataDirLists.add(TierManager.getInstance().getAllLocalUnSequenceFileFolders());
 
-        // recover temporary files generated during .mods file settled
-        recoverModSettleFile(timePartitionDir.toPath());
+    for (List<String> dataDirs : dataDirLists) {
+      for (String dir : dataDirs) {
+        File storageGroupDir =
+            new File(
+                dir + File.separator + logicalStorageGroupName + File.separator + dataRegionId);
+        logger.info(
+            "{} [Compaction][Recover] recover compaction in data region dir {}",
+            logicalStorageGroupName,
+            storageGroupDir.getAbsolutePath());
+        if (!storageGroupDir.exists()) {
+          return;
+        }
+        File[] timePartitionDirs = storageGroupDir.listFiles();
+        if (timePartitionDirs == null) {
+          return;
+        }
+        for (File timePartitionDir : timePartitionDirs) {
+          if (!timePartitionDir.isDirectory()
+              || !Pattern.compile("\\d*").matcher(timePartitionDir.getName()).matches()) {
+            continue;
+          }
+          logger.info(
+              "{} [Compaction][Recover] recover compaction in time partition dir {}",
+              logicalStorageGroupName,
+              timePartitionDir.getAbsolutePath());
+          // including repair task
+          recoverCompaction(CompactionTaskType.INNER_SEQ, timePartitionDir);
+          recoverCompaction(CompactionTaskType.INNER_UNSEQ, timePartitionDir);
+          recoverCompaction(CompactionTaskType.CROSS, timePartitionDir);
+          recoverCompaction(CompactionTaskType.INSERTION, timePartitionDir);
+          recoverCompaction(CompactionTaskType.SETTLE, timePartitionDir);
+
+          // recover temporary files generated during .mods file settled
+          recoverModSettleFile(timePartitionDir.toPath());
+        }
       }
     }
   }
@@ -137,23 +132,35 @@ public class CompactionRecoverManager {
     }
   }
 
-  public void recoverCompaction(boolean isInnerSpace, File timePartitionDir) {
-    File[] compactionLogs =
-        CompactionLogger.findCompactionLogs(isInnerSpace, timePartitionDir.getPath());
+  private void recoverCompaction(CompactionTaskType type, File timePartitionDir) {
+    File[] compactionLogs = CompactionLogger.findCompactionLogs(type, timePartitionDir);
     for (File compactionLog : compactionLogs) {
-      logger.info(
-          "{} [Compaction][Recover] calling compaction recover task.", logicalStorageGroupName);
-      if (!isInnerSpace
-          && compactionLog
-              .getAbsolutePath()
-              .endsWith(CompactionLogger.INSERTION_COMPACTION_LOG_NAME_SUFFIX)) {
-        new InsertionCrossSpaceCompactionTask(
-                logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog)
-            .recover();
-      } else {
-        new CompactionRecoverTask(
-                logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog, isInnerSpace)
-            .doCompaction();
+      switch (type) {
+        case INNER_SEQ:
+        case INNER_UNSEQ:
+        case REPAIR:
+          new CompactionRecoverTask(
+                  logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog, true)
+              .doCompaction();
+          break;
+        case CROSS:
+          new CompactionRecoverTask(
+                  logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog, false)
+              .doCompaction();
+          break;
+        case INSERTION:
+          new InsertionCrossSpaceCompactionTask(
+                  logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog)
+              .recover();
+          break;
+        case SETTLE:
+          new SettleCompactionTask(
+                  logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog)
+              .recover();
+          break;
+        default:
+          logger.warn("Unknown compaction task type {}", type);
+          return;
       }
     }
   }

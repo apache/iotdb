@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -47,6 +48,7 @@ import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
@@ -74,6 +76,7 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.schedule.DriverScheduler;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanVisitor;
@@ -104,6 +107,7 @@ import org.apache.iotdb.udf.api.exception.UDFManagementException;
 
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.apache.thrift.TException;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,6 +118,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -360,7 +365,8 @@ public class DataNode implements DataNodeMBean {
    * <p>6. All TTL information
    */
   private void storeRuntimeConfigurations(
-      List<TConfigNodeLocation> configNodeLocations, TRuntimeConfiguration runtimeConfiguration) {
+      List<TConfigNodeLocation> configNodeLocations, TRuntimeConfiguration runtimeConfiguration)
+      throws StartupException {
     /* Store ConfigNodeList */
     List<TEndPoint> configNodeList = new ArrayList<>();
     for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
@@ -382,7 +388,7 @@ public class DataNode implements DataNodeMBean {
     getPipeInformationList(runtimeConfiguration.getAllPipeInformation());
 
     /* Store ttl information */
-    StorageEngine.getInstance().updateTTLInfo(runtimeConfiguration.getAllTTLInformation());
+    initTTLInformation(runtimeConfiguration.getAllTTLInformation());
 
     /* Store cluster ID */
     IoTDBDescriptor.getInstance().getConfig().setClusterId(runtimeConfiguration.getClusterId());
@@ -960,6 +966,25 @@ public class DataNode implements DataNodeMBean {
       }
     }
     resourcesInformationHolder.setPipePluginMetaList(list);
+  }
+
+  private void initTTLInformation(byte[] allTTLInformation) throws StartupException {
+    if (allTTLInformation == null) {
+      return;
+    }
+    ByteBuffer buffer = ByteBuffer.wrap(allTTLInformation);
+    int mapSize = ReadWriteIOUtils.readInt(buffer);
+    for (int i = 0; i < mapSize; i++) {
+      try {
+        DataNodeTTLCache.getInstance()
+            .setTTL(
+                PathUtils.splitPathToDetachedNodes(
+                    Objects.requireNonNull(ReadWriteIOUtils.readString(buffer))),
+                ReadWriteIOUtils.readLong(buffer));
+      } catch (IllegalPathException e) {
+        throw new StartupException(e);
+      }
+    }
   }
 
   private void initSchemaEngine() {

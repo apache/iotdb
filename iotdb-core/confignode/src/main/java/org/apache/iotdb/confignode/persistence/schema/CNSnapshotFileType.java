@@ -27,7 +27,8 @@ public enum CNSnapshotFileType {
   USER((byte) 1),
   ROLE((byte) 2),
   USER_ROLE((byte) 3),
-  SCHEMA((byte) 4);
+  SCHEMA((byte) 4),
+  TTL((byte) 5);
 
   private static final Map<Byte, CNSnapshotFileType> TYPE_SNAPSHOT_MAP = new HashMap<>();
 

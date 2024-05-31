@@ -26,6 +26,7 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.constant.TestConstant;
 import org.apache.iotdb.util.AbstractSchemaIT;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
@@ -40,6 +41,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
@@ -220,6 +223,48 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
           statement.execute(sql);
         } catch (SQLException e) {
           Assert.assertTrue(e.getMessage().contains("Path [root.sg0.d3.s1] does not exist"));
+        }
+      }
+    }
+  }
+
+  /**
+   * insert data when database hasn't been set, timeseries hasn't been created and have null values
+   */
+  @Test
+  public void testAutoCreateDataType() throws SQLException {
+    String SQL =
+        "INSERT INTO root.sg0.d1(time,s1,s2,s3,s4,s5,s6) values(1,true,1,now(),X'cafe',\"string\",\"2024-01-01\")";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(SQL);
+      ResultSet resultSet = statement.executeQuery("show timeseries");
+      while (resultSet.next()) {
+        switch (resultSet.getString(ColumnHeaderConstant.TIMESERIES)) {
+          case "root.sg0.d1.s1":
+            assertEquals(
+                TSDataType.BOOLEAN.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
+            break;
+          case "root.sg0.d1.s2":
+            assertEquals(
+                TSDataType.DOUBLE.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
+            break;
+          case "root.sg0.d1.s3":
+            assertEquals(
+                TSDataType.INT64.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
+            break;
+          case "root.sg0.d1.s4":
+            assertEquals(
+                TSDataType.BLOB.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
+            break;
+          case "root.sg0.d1.s5":
+            assertEquals(
+                TSDataType.TEXT.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
+            break;
+          case "root.sg0.d1.s6":
+            assertEquals(
+                TSDataType.TEXT.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
+            break;
         }
       }
     }

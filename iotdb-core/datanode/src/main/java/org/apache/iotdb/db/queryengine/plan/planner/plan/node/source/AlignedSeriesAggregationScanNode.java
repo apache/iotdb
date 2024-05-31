@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -35,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
@@ -47,12 +50,20 @@ import java.util.List;
 import java.util.Objects;
 
 public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNode {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AlignedSeriesAggregationScanNode.class);
 
   // The paths of the target series which will be aggregated.
   private AlignedPath alignedPath;
 
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
+
+  // this variable is only used in aggregation align by device query, with all devices in one
+  // template,
+  // 0 represent ascending descriptors, 1 represent descending descriptors, 2 represent count_time
+  // descriptors
+  private byte descriptorType;
 
   public AlignedSeriesAggregationScanNode(
       PlanNodeId id,
@@ -96,7 +107,8 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
       boolean outputEndTime,
       @Nullable Expression pushDownPredicate,
       @Nullable GroupByTimeParameter groupByTimeParameter,
-      TRegionReplicaSet dataRegionReplicaSet) {
+      TRegionReplicaSet dataRegionReplicaSet,
+      byte descriptorType) {
     this(
         id,
         alignedPath,
@@ -106,6 +118,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
         groupByTimeParameter,
         dataRegionReplicaSet);
     setOutputEndTime(outputEndTime);
+    setDescriptorType(descriptorType);
   }
 
   public AlignedPath getAlignedPath() {
@@ -116,9 +129,12 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
     this.alignedPath = alignedPath;
   }
 
-  @Override
-  public Ordering getScanOrder() {
-    return scanOrder;
+  public byte getDescriptorType() {
+    return this.descriptorType;
+  }
+
+  public void setDescriptorType(byte descriptorType) {
+    this.descriptorType = descriptorType;
   }
 
   @Override
@@ -172,7 +188,8 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
         isOutputEndTime(),
         getPushDownPredicate(),
         getGroupByTimeParameter(),
-        getRegionReplicaSet());
+        getRegionReplicaSet(),
+        getDescriptorType());
   }
 
   @Override
@@ -256,7 +273,52 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
         outputEndTime,
         pushDownPredicate,
         groupByTimeParameter,
-        null);
+        null,
+        (byte) 0);
+  }
+
+  @Override
+  public void serializeUseTemplate(DataOutputStream stream, TypeProvider typeProvider)
+      throws IOException {
+    PlanNodeType.ALIGNED_SERIES_AGGREGATE_SCAN.serialize(stream);
+    id.serialize(stream);
+    ReadWriteIOUtils.write(alignedPath.getNodes().length, stream);
+    for (String node : alignedPath.getNodes()) {
+      ReadWriteIOUtils.write(node, stream);
+    }
+    ReadWriteIOUtils.write(descriptorType, stream);
+  }
+
+  public static AlignedSeriesAggregationScanNode deserializeUseTemplate(
+      ByteBuffer byteBuffer, TypeProvider typeProvider) {
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+
+    int nodeSize = ReadWriteIOUtils.readInt(byteBuffer);
+    String[] nodes = new String[nodeSize];
+    for (int i = 0; i < nodeSize; i++) {
+      nodes[i] = ReadWriteIOUtils.readString(byteBuffer);
+    }
+    AlignedPath alignedPath = new AlignedPath(new PartialPath(nodes));
+    alignedPath.setMeasurementList(typeProvider.getTemplatedInfo().getMeasurementList());
+    alignedPath.addSchemas(typeProvider.getTemplatedInfo().getSchemaList());
+    byte descriptorType = ReadWriteIOUtils.readByte(byteBuffer);
+    List<AggregationDescriptor> aggregationDescriptorList = null;
+    if (descriptorType == 0 || descriptorType == 2) {
+      aggregationDescriptorList = typeProvider.getTemplatedInfo().getAscendingDescriptorList();
+    } else if (descriptorType == 1) {
+      aggregationDescriptorList = typeProvider.getTemplatedInfo().getDescendingDescriptorList();
+    }
+
+    return new AlignedSeriesAggregationScanNode(
+        planNodeId,
+        alignedPath,
+        aggregationDescriptorList,
+        typeProvider.getTemplatedInfo().getScanOrder(),
+        typeProvider.getTemplatedInfo().isOutputEndTime(),
+        typeProvider.getTemplatedInfo().getPushDownPredicate(),
+        typeProvider.getTemplatedInfo().getGroupByTimeParameter(),
+        null,
+        descriptorType);
   }
 
   @Override
@@ -293,5 +355,12 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
         this.getAlignedPath().getFormattedString(),
         this.getAggregationDescriptorList(),
         PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(id)
+        + MemoryEstimationHelper.getEstimatedSizeOfPartialPath(alignedPath);
   }
 }

@@ -45,7 +45,6 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
-import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
@@ -223,15 +222,6 @@ public class RegionMaintainHandler {
 
     String storageGroup = configManager.getPartitionManager().getRegionStorageGroup(regionId);
     TCreatePeerReq req = new TCreatePeerReq(regionId, currentPeerNodes, storageGroup);
-    long ttl = Long.MAX_VALUE;
-    try {
-      ttl = configManager.getClusterSchemaManager().getDatabaseSchemaByName(storageGroup).getTTL();
-    } catch (DatabaseNotExistsException e) {
-      LOGGER.warn(
-          "Cannot find out the database which region {} belongs to, ttl will be set to Long.MAX_VALUE",
-          regionId);
-    }
-    req.setTtl(ttl);
 
     status =
         SyncDataNodeClientPool.getInstance()

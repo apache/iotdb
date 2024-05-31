@@ -29,11 +29,14 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -48,6 +51,7 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileManager;
 import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileRateLimiter;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -74,20 +78,17 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.utils.FilePathUtils;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.ConcurrentModificationException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -108,7 +109,6 @@ public class StorageEngine implements IService {
   private static final Logger LOGGER = LoggerFactory.getLogger(StorageEngine.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
   /**
@@ -126,15 +126,11 @@ public class StorageEngine implements IService {
   private final ConcurrentHashMap<DataRegionId, DataRegion> deletingDataRegionMap =
       new ConcurrentHashMap<>();
 
-  /** Database name -> ttl, for region recovery only */
-  private final Map<String, Long> ttlMapForRecover = new ConcurrentHashMap<>();
-
   /** number of ready data region */
   private AtomicInteger readyDataRegionNum;
 
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
 
-  private ScheduledExecutorService ttlCheckThread;
   private ScheduledExecutorService seqMemtableTimedFlushCheckThread;
   private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
 
@@ -181,19 +177,6 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void updateTTLInfo(byte[] allTTLInformation) {
-    if (allTTLInformation == null) {
-      return;
-    }
-    ByteBuffer buffer = ByteBuffer.wrap(allTTLInformation);
-    int mapSize = ReadWriteIOUtils.readInt(buffer);
-    for (int i = 0; i < mapSize; i++) {
-      ttlMapForRecover.put(
-          Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)),
-          ReadWriteIOUtils.readLong(buffer));
-    }
-  }
-
   public boolean isAllSgReady() {
     return isAllSgReady.get();
   }
@@ -226,7 +209,6 @@ public class StorageEngine implements IService {
               checkResults(futures, "StorageEngine failed to recover.");
               recoverRepairData();
               setAllSgReady(true);
-              ttlMapForRecover.clear();
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
     recoverEndTrigger.start();
@@ -246,11 +228,7 @@ public class StorageEngine implements IService {
             () -> {
               DataRegion dataRegion = null;
               try {
-                dataRegion =
-                    buildNewDataRegion(
-                        sgName,
-                        dataRegionId,
-                        ttlMapForRecover.getOrDefault(sgName, Long.MAX_VALUE));
+                dataRegion = buildNewDataRegion(sgName, dataRegionId);
               } catch (DataRegionException e) {
                 LOGGER.error(
                     "Failed to recover data region {}[{}]", sgName, dataRegionId.getId(), e);
@@ -306,31 +284,9 @@ public class StorageEngine implements IService {
 
     asyncRecover();
 
-    ttlCheckThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.TTL_CHECK.getName());
-    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-        ttlCheckThread,
-        this::checkTTL,
-        TTL_CHECK_INTERVAL,
-        TTL_CHECK_INTERVAL,
-        TimeUnit.MILLISECONDS);
     LOGGER.info("start ttl check thread successfully.");
 
     startTimedService();
-  }
-
-  private void checkTTL() {
-    try {
-      for (DataRegion dataRegion : dataRegionMap.values()) {
-        if (dataRegion != null) {
-          dataRegion.checkFilesTTL();
-        }
-      }
-    } catch (ConcurrentModificationException e) {
-      // ignore
-    } catch (Exception e) {
-      LOGGER.error("An error occurred when checking TTL", e);
-    }
   }
 
   private void startTimedService() {
@@ -386,7 +342,6 @@ public class StorageEngine implements IService {
       }
     }
     syncCloseAllProcessor();
-    ThreadUtils.stopThreadPool(ttlCheckThread, ThreadName.TTL_CHECK);
     ThreadUtils.stopThreadPool(
         seqMemtableTimedFlushCheckThread, ThreadName.TIMED_FLUSH_SEQ_MEMTABLE);
     ThreadUtils.stopThreadPool(
@@ -409,7 +364,6 @@ public class StorageEngine implements IService {
     } catch (TsFileProcessorException e) {
       throw new ShutdownException(e);
     }
-    shutdownTimedService(ttlCheckThread, "TTlCheckThread");
     shutdownTimedService(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
     shutdownTimedService(unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
     cachedThreadPool.shutdownNow();
@@ -439,8 +393,7 @@ public class StorageEngine implements IService {
    * @param dataRegionId data region id e.g. 1
    * @param logicalStorageGroupName database name e.g. root.sg1
    */
-  public DataRegion buildNewDataRegion(
-      String logicalStorageGroupName, DataRegionId dataRegionId, long ttl)
+  public DataRegion buildNewDataRegion(String logicalStorageGroupName, DataRegionId dataRegionId)
       throws DataRegionException {
     DataRegion dataRegion;
     LOGGER.info(
@@ -459,7 +412,6 @@ public class StorageEngine implements IService {
     WRITING_METRICS.createWalFlushMemTableCounterMetrics(dataRegionId);
     WRITING_METRICS.createTimedFlushMemTableCounterMetrics(dataRegionId);
     WRITING_METRICS.createActiveMemtableCounterMetrics(dataRegionId);
-    dataRegion.setDataTTLWithTimePrecisionCheck(ttl);
     dataRegion.setCustomFlushListeners(customFlushListeners);
     dataRegion.setCustomCloseFileListeners(customCloseFileListeners);
     return dataRegion;
@@ -650,15 +602,6 @@ public class StorageEngine implements IService {
     BloomFilterCache.getInstance().clear();
   }
 
-  public void setTTL(List<DataRegionId> dataRegionIdList, long dataTTL) {
-    for (DataRegionId dataRegionId : dataRegionIdList) {
-      DataRegion dataRegion = dataRegionMap.get(dataRegionId);
-      if (dataRegion != null) {
-        dataRegion.setDataTTLWithTimePrecisionCheck(dataTTL);
-      }
-    }
-  }
-
   /**
    * Add a listener to listen flush start/end events. Notice that this addition only applies to
    * TsFileProcessors created afterwards.
@@ -690,8 +633,7 @@ public class StorageEngine implements IService {
 
   // When registering a new region, the coordinator needs to register the corresponding region with
   // the local storageengine before adding the corresponding consensusGroup to the consensus layer
-  public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl)
-      throws DataRegionException {
+  public DataRegion createDataRegion(DataRegionId regionId, String sg) throws DataRegionException {
     makeSureNoOldRegion(regionId);
     AtomicReference<DataRegionException> exceptionAtomicReference = new AtomicReference<>(null);
     DataRegion dataRegion =
@@ -699,7 +641,7 @@ public class StorageEngine implements IService {
             regionId,
             x -> {
               try {
-                return buildNewDataRegion(sg, x, ttl);
+                return buildNewDataRegion(sg, x);
               } catch (DataRegionException e) {
                 exceptionAtomicReference.set(e);
               }
@@ -817,22 +759,33 @@ public class StorageEngine implements IService {
   public void setDataRegion(DataRegionId regionId, DataRegion newRegion) {
     if (dataRegionMap.containsKey(regionId)) {
       DataRegion oldRegion = dataRegionMap.get(regionId);
-      oldRegion.syncCloseAllWorkingTsFileProcessors();
+      oldRegion.markDeleted();
       oldRegion.abortCompaction();
+      oldRegion.syncCloseAllWorkingTsFileProcessors();
     }
     dataRegionMap.put(regionId, newRegion);
   }
 
-  public TSStatus setTTL(TSetTTLReq req) {
-    Map<String, List<DataRegionId>> localDataRegionInfo =
-        StorageEngine.getInstance().getLocalDataRegionInfo();
-    List<DataRegionId> dataRegionIdList = new ArrayList<>();
-    req.storageGroupPathPattern.forEach(
-        storageGroup -> dataRegionIdList.addAll(localDataRegionInfo.get(storageGroup)));
-    for (DataRegionId dataRegionId : dataRegionIdList) {
-      DataRegion dataRegion = dataRegionMap.get(dataRegionId);
-      if (dataRegion != null) {
-        dataRegion.setDataTTLWithTimePrecisionCheck(req.TTL);
+  /** Update ttl cache in dataNode. */
+  public TSStatus setTTL(TSetTTLReq req) throws IllegalPathException {
+    String[] path = PathUtils.splitPathToDetachedNodes(req.getPathPattern().get(0));
+    long ttl = req.getTTL();
+    boolean isDataBase = req.isDataBase;
+    if (ttl == TTLCache.NULL_TTL) {
+      DataNodeTTLCache.getInstance().unsetTTL(path);
+      if (isDataBase) {
+        // unset ttl to path.**
+        String[] pathWithWildcard = Arrays.copyOf(path, path.length + 1);
+        pathWithWildcard[pathWithWildcard.length - 1] = IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+        DataNodeTTLCache.getInstance().unsetTTL(pathWithWildcard);
+      }
+    } else {
+      DataNodeTTLCache.getInstance().setTTL(path, ttl);
+      if (isDataBase) {
+        // set ttl to path.**
+        String[] pathWithWildcard = Arrays.copyOf(path, path.length + 1);
+        pathWithWildcard[pathWithWildcard.length - 1] = IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+        DataNodeTTLCache.getInstance().setTTL(pathWithWildcard, ttl);
       }
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);

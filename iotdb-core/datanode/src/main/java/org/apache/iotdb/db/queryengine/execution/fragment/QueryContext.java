@@ -30,7 +30,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
 
-import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
@@ -55,8 +54,6 @@ public class QueryContext {
       new ConcurrentHashMap<>();
 
   protected long queryId;
-
-  private long queryTimeLowerBound = Long.MIN_VALUE;
 
   private boolean debug;
 
@@ -167,18 +164,6 @@ public class QueryContext {
 
   public boolean isDebug() {
     return debug;
-  }
-
-  public long getQueryTimeLowerBound() {
-    return queryTimeLowerBound;
-  }
-
-  public void setQueryTimeLowerBound(long queryTimeLowerBound) {
-    this.queryTimeLowerBound = queryTimeLowerBound;
-  }
-
-  public boolean chunkNotSatisfy(IChunkMetadata chunkMetaData) {
-    return chunkMetaData.getEndTime() < queryTimeLowerBound;
   }
 
   public long getStartTime() {

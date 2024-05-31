@@ -28,6 +28,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.sql.Timestamp;
+import java.util.TimeZone;
 
 public class TimeRangeIteratorTest {
   private static final long MS_TO_DAY = 86400_000L;
@@ -218,116 +219,124 @@ public class TimeRangeIteratorTest {
 
   @Test
   public void testNaturalMonthTimeRange() {
-    String[] res1 = {
-      "[ 1604102400000 : 1606694399999 ]",
-      "[ 1606694400000 : 1609372799999 ]",
-      "[ 1609372800000 : 1612051199999 ]",
-      "[ 1612051200000 : 1614470399999 ]",
-      "[ 1614470400000 : 1617148799999 ]"
-    };
-    String[] res2 = {
-      "[ 1604102400000 : 1604966399999 ]",
-      "[ 1606694400000 : 1607558399999 ]",
-      "[ 1609372800000 : 1610236799999 ]",
-      "[ 1612051200000 : 1612915199999 ]",
-      "[ 1614470400000 : 1615334399999 ]"
-    };
-    String[] res3 = {
-      "[ 1604102400000 : 1606694399999 ]",
-      "[ 1604966400000 : 1607558399999 ]",
-      "[ 1605830400000 : 1608422399999 ]",
-      "[ 1606694400000 : 1609286399999 ]",
-      "[ 1607558400000 : 1610150399999 ]",
-      "[ 1608422400000 : 1611014399999 ]",
-      "[ 1609286400000 : 1611878399999 ]",
-      "[ 1610150400000 : 1612742399999 ]",
-      "[ 1611014400000 : 1613606399999 ]",
-      "[ 1611878400000 : 1614470399999 ]",
-      "[ 1612742400000 : 1615334399999 ]",
-      "[ 1613606400000 : 1616198399999 ]",
-      "[ 1614470400000 : 1617062399999 ]",
-      "[ 1615334400000 : 1617148799999 ]",
-      "[ 1616198400000 : 1617148799999 ]",
-      "[ 1617062400000 : 1617148799999 ]"
-    };
-    String[] res4 = {
-      "[ 1604102400000 : 1604966399999 ]",
-      "[ 1604966400000 : 1605830399999 ]",
-      "[ 1605830400000 : 1606694399999 ]",
-      "[ 1606694400000 : 1607558399999 ]",
-      "[ 1607558400000 : 1608422399999 ]",
-      "[ 1608422400000 : 1609286399999 ]",
-      "[ 1609286400000 : 1610150399999 ]",
-      "[ 1610150400000 : 1611014399999 ]",
-      "[ 1611014400000 : 1611878399999 ]",
-      "[ 1611878400000 : 1612742399999 ]",
-      "[ 1612742400000 : 1613606399999 ]",
-      "[ 1613606400000 : 1614470399999 ]",
-      "[ 1614470400000 : 1615334399999 ]",
-      "[ 1615334400000 : 1616198399999 ]",
-      "[ 1616198400000 : 1617062399999 ]",
-      "[ 1617062400000 : 1617148799999 ]"
-    };
-    checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L,
-            1617148800000L,
-            new TimeDuration(1, 0),
-            new TimeDuration(1, 0),
-            true,
-            true,
-            false),
-        res1);
-    checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L,
-            1617148800000L,
-            new TimeDuration(1, 0),
-            new TimeDuration(1, 0),
-            true,
-            true,
-            true),
-        res1);
-    checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L,
-            1617148800000L,
-            new TimeDuration(0, 10 * MS_TO_DAY),
-            new TimeDuration(1, 0),
-            true,
-            true,
-            false),
-        res2);
-    checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L,
-            1617148800000L,
-            new TimeDuration(0, 10 * MS_TO_DAY),
-            new TimeDuration(1, 0),
-            true,
-            true,
-            true),
-        res2);
-    checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L,
-            1617148800000L,
-            new TimeDuration(1, 0),
-            new TimeDuration(0, 10 * MS_TO_DAY),
-            true,
-            true,
-            false),
-        res3);
-    checkRes(
-        TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L,
-            1617148800000L,
-            new TimeDuration(1, 0),
-            new TimeDuration(0, 10 * MS_TO_DAY),
-            true,
-            true,
-            true),
-        res4);
+    // The following test results greatly depend on the timezone the test is run in.
+    TimeZone oldDefault = TimeZone.getDefault();
+    try {
+      TimeZone.setDefault(TimeZone.getTimeZone("Bejing"));
+
+      String[] res1 = {
+        "[ 1604102400000 : 1606694399999 ]",
+        "[ 1606694400000 : 1609372799999 ]",
+        "[ 1609372800000 : 1612051199999 ]",
+        "[ 1612051200000 : 1614470399999 ]",
+        "[ 1614470400000 : 1617148799999 ]"
+      };
+      String[] res2 = {
+        "[ 1604102400000 : 1604966399999 ]",
+        "[ 1606694400000 : 1607558399999 ]",
+        "[ 1609372800000 : 1610236799999 ]",
+        "[ 1612051200000 : 1612915199999 ]",
+        "[ 1614470400000 : 1615334399999 ]"
+      };
+      String[] res3 = {
+        "[ 1604102400000 : 1606694399999 ]",
+        "[ 1604966400000 : 1607558399999 ]",
+        "[ 1605830400000 : 1608422399999 ]",
+        "[ 1606694400000 : 1609286399999 ]",
+        "[ 1607558400000 : 1610150399999 ]",
+        "[ 1608422400000 : 1611014399999 ]",
+        "[ 1609286400000 : 1611878399999 ]",
+        "[ 1610150400000 : 1612742399999 ]",
+        "[ 1611014400000 : 1613606399999 ]",
+        "[ 1611878400000 : 1614470399999 ]",
+        "[ 1612742400000 : 1615334399999 ]",
+        "[ 1613606400000 : 1616198399999 ]",
+        "[ 1614470400000 : 1617062399999 ]",
+        "[ 1615334400000 : 1617148799999 ]",
+        "[ 1616198400000 : 1617148799999 ]",
+        "[ 1617062400000 : 1617148799999 ]"
+      };
+      String[] res4 = {
+        "[ 1604102400000 : 1604966399999 ]",
+        "[ 1604966400000 : 1605830399999 ]",
+        "[ 1605830400000 : 1606694399999 ]",
+        "[ 1606694400000 : 1607558399999 ]",
+        "[ 1607558400000 : 1608422399999 ]",
+        "[ 1608422400000 : 1609286399999 ]",
+        "[ 1609286400000 : 1610150399999 ]",
+        "[ 1610150400000 : 1611014399999 ]",
+        "[ 1611014400000 : 1611878399999 ]",
+        "[ 1611878400000 : 1612742399999 ]",
+        "[ 1612742400000 : 1613606399999 ]",
+        "[ 1613606400000 : 1614470399999 ]",
+        "[ 1614470400000 : 1615334399999 ]",
+        "[ 1615334400000 : 1616198399999 ]",
+        "[ 1616198400000 : 1617062399999 ]",
+        "[ 1617062400000 : 1617148799999 ]"
+      };
+      checkRes(
+          TimeRangeIteratorFactory.getTimeRangeIterator(
+              1604102400000L,
+              1617148800000L,
+              new TimeDuration(1, 0),
+              new TimeDuration(1, 0),
+              true,
+              true,
+              false),
+          res1);
+      checkRes(
+          TimeRangeIteratorFactory.getTimeRangeIterator(
+              1604102400000L,
+              1617148800000L,
+              new TimeDuration(1, 0),
+              new TimeDuration(1, 0),
+              true,
+              true,
+              true),
+          res1);
+      checkRes(
+          TimeRangeIteratorFactory.getTimeRangeIterator(
+              1604102400000L,
+              1617148800000L,
+              new TimeDuration(0, 10 * MS_TO_DAY),
+              new TimeDuration(1, 0),
+              true,
+              true,
+              false),
+          res2);
+      checkRes(
+          TimeRangeIteratorFactory.getTimeRangeIterator(
+              1604102400000L,
+              1617148800000L,
+              new TimeDuration(0, 10 * MS_TO_DAY),
+              new TimeDuration(1, 0),
+              true,
+              true,
+              true),
+          res2);
+      checkRes(
+          TimeRangeIteratorFactory.getTimeRangeIterator(
+              1604102400000L,
+              1617148800000L,
+              new TimeDuration(1, 0),
+              new TimeDuration(0, 10 * MS_TO_DAY),
+              true,
+              true,
+              false),
+          res3);
+      checkRes(
+          TimeRangeIteratorFactory.getTimeRangeIterator(
+              1604102400000L,
+              1617148800000L,
+              new TimeDuration(1, 0),
+              new TimeDuration(0, 10 * MS_TO_DAY),
+              true,
+              true,
+              true),
+          res4);
+    } finally {
+      TimeZone.setDefault(oldDefault);
+    }
   }
 
   @Test

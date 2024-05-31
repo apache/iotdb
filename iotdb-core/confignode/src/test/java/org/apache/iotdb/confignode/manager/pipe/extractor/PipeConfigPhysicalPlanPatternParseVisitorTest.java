@@ -31,7 +31,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeSetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -52,7 +51,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class PipeConfigPhysicalPlanPatternParseVisitorTest {
 
@@ -387,22 +385,16 @@ public class PipeConfigPhysicalPlanPatternParseVisitorTest {
 
   @Test
   public void testSetTTL() throws IllegalPathException {
-    final List<SetTTLPlan> plans =
-        ((PipeSetTTLPlan)
-                IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
-                    .visitTTL(
-                        new SetTTLPlan(Arrays.asList("root", "db", "**"), Long.MAX_VALUE),
-                        prefixPathPattern)
-                    .orElseThrow(AssertionError::new))
-            .getSetTTLPlans();
+    final SetTTLPlan plan =
+        ((SetTTLPlan)
+            IoTDBConfigRegionExtractor.PATTERN_PARSE_VISITOR
+                .visitTTL(
+                    new SetTTLPlan(Arrays.asList("root", "db", "**"), Long.MAX_VALUE),
+                    prefixPathPattern)
+                .orElseThrow(AssertionError::new));
 
     Assert.assertEquals(
-        Collections.singletonList(new PartialPath("root.db.device.**")),
-        plans.stream()
-            .map(setTTLPlan -> new PartialPath(setTTLPlan.getDatabasePathPattern()))
-            .collect(Collectors.toList()));
-    Assert.assertEquals(
-        Collections.singletonList(Long.MAX_VALUE),
-        plans.stream().map(SetTTLPlan::getTTL).collect(Collectors.toList()));
+        new PartialPath("root.db.device.**"), new PartialPath(plan.getPathPattern()));
+    Assert.assertEquals(Long.MAX_VALUE, plan.getTTL());
   }
 }

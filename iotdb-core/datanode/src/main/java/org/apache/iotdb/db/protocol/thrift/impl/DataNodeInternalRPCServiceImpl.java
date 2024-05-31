@@ -425,7 +425,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return createTLoadResp(
           new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
     }
-
     TSStatus resultStatus =
         StorageEngine.getInstance()
             .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, req.uuid);
@@ -471,8 +470,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus createDataRegion(TCreateDataRegionReq req) {
-    return regionManager.createDataRegion(
-        req.getRegionReplicaSet(), req.getStorageGroup(), req.getTtl());
+    return regionManager.createDataRegion(req.getRegionReplicaSet(), req.getStorageGroup());
   }
 
   @Override
@@ -1760,7 +1758,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
-    return storageEngine.setTTL(req);
+    try {
+      return storageEngine.setTTL(req);
+    } catch (IllegalPathException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
   }
 
   @Override
@@ -1905,7 +1907,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                         location.getDataNodeId(),
                         getConsensusEndPoint(location, regionId)))
             .collect(Collectors.toList());
-    TSStatus status = createNewRegion(regionId, req.getStorageGroup(), req.getTtl());
+    TSStatus status = createNewRegion(regionId, req.getStorageGroup());
     if (!isSucceed(status)) {
       return status;
     }
@@ -1977,8 +1979,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return RegionMigrateService.getInstance().getRegionMaintainResult(taskId);
   }
 
-  private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup, long ttl) {
-    return regionManager.createNewRegion(regionId, storageGroup, ttl);
+  private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup) {
+    return regionManager.createNewRegion(regionId, storageGroup);
   }
 
   @Override

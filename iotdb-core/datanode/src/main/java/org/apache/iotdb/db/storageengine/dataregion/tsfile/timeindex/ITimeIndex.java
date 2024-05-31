@@ -198,6 +198,8 @@ public interface ITimeIndex {
    */
   boolean definitelyNotContains(IDeviceID device);
 
+  boolean isDeviceAlive(IDeviceID device, long ttl);
+
   /**
    * @return null if the deviceId doesn't exist, otherwise index 0 is startTime, index 1 is endTime
    */

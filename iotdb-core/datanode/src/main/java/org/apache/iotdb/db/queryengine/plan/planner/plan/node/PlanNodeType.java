@@ -470,14 +470,18 @@ public enum PlanNodeType {
   public static PlanNode deserializeWithTemplate(ByteBuffer buffer, TypeProvider typeProvider) {
     short nodeType = buffer.getShort();
     switch (nodeType) {
+      case 1:
+        return DeviceViewNode.deserializeUseTemplate(buffer, typeProvider);
       case 3:
         return FilterNode.deserializeUseTemplate(buffer, typeProvider);
-      case 33:
-        return AlignedSeriesScanNode.deserializeUseTemplate(buffer, typeProvider);
-      case 65:
-        return SingleDeviceViewNode.deserializeUseTemplate(buffer, typeProvider);
       case 32:
         return ProjectNode.deserializeUseTemplate(buffer, typeProvider);
+      case 33:
+        return AlignedSeriesScanNode.deserializeUseTemplate(buffer, typeProvider);
+      case 34:
+        return AlignedSeriesAggregationScanNode.deserializeUseTemplate(buffer, typeProvider);
+      case 65:
+        return SingleDeviceViewNode.deserializeUseTemplate(buffer, typeProvider);
       default:
         return deserialize(buffer, nodeType);
     }

@@ -155,6 +155,7 @@ public class DataMigrationExample {
                 tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getInt(j + 2));
                 break;
               case INT64:
+              case TIMESTAMP:
                 tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getLong(j + 2));
                 break;
               case FLOAT:
@@ -166,8 +167,14 @@ public class DataMigrationExample {
                     schemaList.get(j).getMeasurementId(), row, dataIter.getDouble(j + 2));
                 break;
               case TEXT:
+              case STRING:
                 tablet.addValue(
                     schemaList.get(j).getMeasurementId(), row, dataIter.getString(j + 2));
+                break;
+              case DATE:
+              case BLOB:
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementId(), row, dataIter.getObject(j + 2));
                 break;
               default:
                 LOGGER.info("Migration of this type of data is not supported");

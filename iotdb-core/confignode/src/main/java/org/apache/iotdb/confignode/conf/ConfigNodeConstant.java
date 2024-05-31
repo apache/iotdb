@@ -25,7 +25,6 @@ public class ConfigNodeConstant {
   public static final String CONFIGNODE_CONF = "CONFIGNODE_CONF";
   public static final String CONFIGNODE_HOME = "CONFIGNODE_HOME";
 
-  public static final String CONF_FILE_NAME = "iotdb-confignode.properties";
   public static final String SYSTEM_FILE_NAME = "confignode-system.properties";
 
   public static final String CONFIGNODE_PACKAGE = "org.apache.iotdb.confignode.service";

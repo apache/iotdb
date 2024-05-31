@@ -58,6 +58,10 @@ public class IoTDBMinByIT {
         "CREATE TIMESERIES root.db.d1.x4 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.db.d1.x5 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.db.d1.x6 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d1.x7 WITH DATATYPE=STRING, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d1.x8 WITH DATATYPE=BLOB, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d1.x9 WITH DATATYPE=DATE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d1.x10 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN",
         // y input
         "CREATE TIMESERIES root.db.d1.y1 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE TIMESERIES root.db.d1.y2 WITH DATATYPE=INT64, ENCODING=PLAIN",
@@ -65,12 +69,16 @@ public class IoTDBMinByIT {
         "CREATE TIMESERIES root.db.d1.y4 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.db.d1.y5 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.db.d1.y6 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-        "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6) values(1, 1, 1, 1, 1, true, \"1\")",
-        "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6) values(2, 2, 2, 2, 2, false, \"2\")",
-        "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6) values(3, 3, 3, 3, 3, false, \"3\")",
-        "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6) values(2, 3, 3, 3, 3, true, \"4\")",
-        "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6) values(3, 2, 2, 2, 2, false, \"3\")",
-        "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6) values(4, 1, 1, 1, 1, false, \"4\")",
+        "CREATE TIMESERIES root.db.d1.y7 WITH DATATYPE=STRING, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d1.y8 WITH DATATYPE=BLOB, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d1.y9 WITH DATATYPE=DATE, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d1.y10 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN",
+        "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10) values(1, 1, 1, 1, 1, true, \"1\", '1', X'11', '2024-01-01', 1)",
+        "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10) values(2, 2, 2, 2, 2, false, \"2\", '2', X'22', '2024-01-02', 2)",
+        "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10) values(3, 3, 3, 3, 3, false, \"3\", '3', X'33', '2024-01-03', 3)",
+        "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6,y7,y8,y9,y10) values(2, 3, 3, 3, 3, true, \"4\", '3', X'33', '2024-01-03', 3)",
+        "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6,y7,y8,y9,y10) values(3, 2, 2, 2, 2, false, \"3\", '2', X'22', '2024-01-02', 2)",
+        "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6,y7,y8,y9,y10) values(4, 1, 1, 1, 1, false, \"4\", '1', X'11', '2024-01-01', 1)",
         "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6) values(8, 3, 3, 3, 3, false, \"3\")",
         "INSERT INTO root.db.d1(timestamp,y1,y2,y3,y4,y5,y6) values(8, 8, 8, 8, 8, false, \"4\")",
         "INSERT INTO root.db.d1(timestamp,x1,x2,x3,x4,x5,x6) values(12, 3, 3, 3, 3, false, \"3\")",
@@ -178,6 +186,15 @@ public class IoTDBMinByIT {
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage(), e.getMessage().contains(UNSUPPORTED_TYPE_MESSAGE));
       }
+      try {
+        try (ResultSet resultSet =
+            statement.executeQuery("SELECT max_by(x6, y8) FROM root.db.d1")) {
+          resultSet.next();
+          fail();
+        }
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(UNSUPPORTED_TYPE_MESSAGE));
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -191,15 +208,16 @@ public class IoTDBMinByIT {
       Map<String, String[]> expectedHeaders =
           generateExpectedHeadersForMaxByTest(
               "root.db.d1",
-              new String[] {"x1", "x2", "x3", "x4", "x5", "x6"},
-              new String[] {"y1", "y2", "y3", "y4"});
-      String[] retArray = new String[] {"3,3,3.0,3.0,false,3,"};
+              new String[] {"x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10"},
+              new String[] {"y1", "y2", "y3", "y4", "y7", "y9", "y10"});
+      String[] retArray =
+          new String[] {"3,3,3.0,3.0,false,3,3,0x33,2024-01-03,1970-01-01T00:00:00.003Z,"};
       for (Map.Entry<String, String[]> expectedHeader : expectedHeaders.entrySet()) {
         String y = expectedHeader.getKey();
         resultSetEqualTest(
             String.format(
-                "select min_by(x1,%s),min_by(x2,%s),min_by(x3,%s),min_by(x4,%s),min_by(x5,%s),min_by(x6,%s) from root.db.d1 where time <= 3",
-                y, y, y, y, y, y),
+                "select min_by(x1,%s),min_by(x2,%s),min_by(x3,%s),min_by(x4,%s),min_by(x5,%s),min_by(x6,%s),min_by(x7,%s),min_by(x8,%s),min_by(x9,%s),min_by(x10,%s) from root.db.d1 where time <= 3",
+                y, y, y, y, y, y, y, y, y, y),
             expectedHeader.getValue(),
             retArray);
       }
@@ -216,15 +234,15 @@ public class IoTDBMinByIT {
       Map<String, String[]> expectedHeaders =
           generateExpectedHeadersForMaxByTest(
               "root.db.d1",
-              new String[] {"x1", "x2", "x3", "x4", "x5", "x6"},
-              new String[] {"y1", "y2", "y3", "y4"});
-      String[] retArray = new String[] {"null,null,null,null,null,null,"};
+              new String[] {"x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10"},
+              new String[] {"y1", "y2", "y3", "y4", "y7", "y9", "y10"});
+      String[] retArray = new String[] {"null,null,null,null,null,null,null,null,null,null,"};
       for (Map.Entry<String, String[]> expectedHeader : expectedHeaders.entrySet()) {
         String y = expectedHeader.getKey();
         resultSetEqualTest(
             String.format(
-                "select min_by(x1,%s),min_by(x2,%s),min_by(x3,%s),min_by(x4,%s),min_by(x5,%s),min_by(x6,%s) from root.db.d1 where time <= 4",
-                y, y, y, y, y, y),
+                "select min_by(x1,%s),min_by(x2,%s),min_by(x3,%s),min_by(x4,%s),min_by(x5,%s),min_by(x6,%s),min_by(x7,%s),min_by(x8,%s),min_by(x9,%s),min_by(x10,%s) from root.db.d1 where time <= 4",
+                y, y, y, y, y, y, y, y, y, y),
             expectedHeader.getValue(),
             retArray);
       }

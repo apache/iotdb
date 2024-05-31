@@ -92,11 +92,6 @@ public class VirtualDataRegion implements IDataRegionForQuery {
   }
 
   @Override
-  public long getDataTTL() {
-    return Long.MAX_VALUE;
-  }
-
-  @Override
   public String getDatabaseName() {
     return VIRTUAL_DB_NAME;
   }

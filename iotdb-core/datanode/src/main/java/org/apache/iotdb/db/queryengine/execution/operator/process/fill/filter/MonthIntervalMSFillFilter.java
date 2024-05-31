@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.fill.filter;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 
 public class MonthIntervalMSFillFilter extends AbstractMonthIntervalFillFilter {
 
@@ -33,10 +34,11 @@ public class MonthIntervalMSFillFilter extends AbstractMonthIntervalFillFilter {
   public boolean needFill(long time, long previousTime) {
     long smaller = Math.min(time, previousTime);
     long greater = Math.max(time, previousTime);
-    Instant instant = Instant.ofEpochMilli(smaller);
-    LocalDateTime localDateTime = LocalDateTime.ofInstant(instant, zone);
+    Instant smallerInstant = Instant.ofEpochMilli(smaller);
+    LocalDateTime smallerDateTime = LocalDateTime.ofInstant(smallerInstant, zone);
+    ZoneOffset smallerOffset = zone.getRules().getStandardOffset(smallerInstant);
     long epochMilli =
-        localDateTime.plusMonths(monthDuration).toInstant(zoneOffset).toEpochMilli()
+        smallerDateTime.plusMonths(monthDuration).toInstant(smallerOffset).toEpochMilli()
             + nonMonthDuration;
     return epochMilli >= greater;
   }

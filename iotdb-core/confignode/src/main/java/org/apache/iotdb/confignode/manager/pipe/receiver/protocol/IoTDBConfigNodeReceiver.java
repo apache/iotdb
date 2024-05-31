@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransf
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -40,7 +41,6 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeac
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeSetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -85,7 +85,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
@@ -216,7 +215,6 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             ConfigNodeDescriptor.getInstance().getConf().getDefaultDataRegionGroupNumPerDatabase());
         schema.setMaxSchemaRegionGroupNum(schema.getMinSchemaRegionGroupNum());
         schema.setMaxDataRegionGroupNum(schema.getMinDataRegionGroupNum());
-        schema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
         return configManager.getClusterSchemaManager().setDatabase((DatabaseSchemaPlan) plan, true);
       case AlterDatabase:
         return configManager
@@ -272,14 +270,9 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
             new TDropTriggerReq(((DeleteTriggerInTablePlan) plan).getTriggerName())
                 .setIsGeneratedByPipe(true));
       case SetTTL:
-        return configManager.getClusterSchemaManager().setTTL((SetTTLPlan) plan, true);
-      case PipeSetTTL:
-        // The prior status won't be altered by the status visitor
-        return PipeReceiverStatusHandler.getPriorStatus(
-            ((PipeSetTTLPlan) plan)
-                .getSetTTLPlans().stream()
-                    .map(this::executePlanAndClassifyExceptions)
-                    .collect(Collectors.toList()));
+        return ((SetTTLPlan) plan).getTTL() == TTLCache.NULL_TTL
+            ? configManager.getTTLManager().unsetTTL((SetTTLPlan) plan, true)
+            : configManager.getTTLManager().setTTL((SetTTLPlan) plan, true);
       case DropUser:
       case DropRole:
       case GrantRole:

@@ -65,7 +65,10 @@ public class ExpressionTypeAnalyzer {
   public static TSDataType analyzeExpression(Analysis analysis, Expression expression) {
     if (!analysis.getExpressionTypes().containsKey(NodeRef.of(expression))) {
       ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
-      analyzer.analyze(expression, null);
+
+      Map<String, IMeasurementSchema> context =
+          analysis.allDevicesInOneTemplate() ? analysis.getDeviceTemplate().getSchemaMap() : null;
+      analyzer.analyze(expression, context);
 
       addExpressionTypes(analysis, analyzer);
     }
@@ -96,7 +99,9 @@ public class ExpressionTypeAnalyzer {
       Expression expression,
       TemplatedInfo templatedInfo) {
     ExpressionTypeAnalyzer analyzer = new ExpressionTypeAnalyzer();
-    analyzer.analyze(expression, templatedInfo.getSchemaMap());
+
+    Map<String, IMeasurementSchema> schemaMap = templatedInfo.getSchemaMap();
+    analyzer.analyze(expression, schemaMap);
 
     types.putAll(analyzer.getExpressionTypes());
   }
@@ -153,7 +158,8 @@ public class ExpressionTypeAnalyzer {
       checkInputExpressionDataType(
           likeExpression.getExpression().getExpressionString(),
           process(likeExpression.getExpression(), context),
-          TSDataType.TEXT);
+          TSDataType.TEXT,
+          TSDataType.STRING);
       return setExpressionType(likeExpression, TSDataType.BOOLEAN);
     }
 
@@ -163,7 +169,8 @@ public class ExpressionTypeAnalyzer {
       checkInputExpressionDataType(
           regularExpression.getExpression().getExpressionString(),
           process(regularExpression.getExpression(), context),
-          TSDataType.TEXT);
+          TSDataType.TEXT,
+          TSDataType.STRING);
       return setExpressionType(regularExpression, TSDataType.BOOLEAN);
     }
 
@@ -248,12 +255,33 @@ public class ExpressionTypeAnalyzer {
               leftExpressionString, leftExpressionDataType, TSDataType.BOOLEAN);
           checkInputExpressionDataType(
               rightExpressionString, rightExpressionDataType, TSDataType.BOOLEAN);
+        } else if (TSDataType.DATE.equals(leftExpressionDataType)
+            || TSDataType.DATE.equals(rightExpressionDataType)) {
+          checkInputExpressionDataType(
+              leftExpressionString, leftExpressionDataType, TSDataType.DATE, TSDataType.TEXT);
+          checkInputExpressionDataType(
+              rightExpressionString, rightExpressionDataType, TSDataType.DATE, TSDataType.TEXT);
         } else if (TSDataType.TEXT.equals(leftExpressionDataType)
             || TSDataType.TEXT.equals(rightExpressionDataType)) {
           checkInputExpressionDataType(
-              leftExpressionString, leftExpressionDataType, TSDataType.TEXT);
+              leftExpressionString, leftExpressionDataType, TSDataType.TEXT, TSDataType.STRING);
           checkInputExpressionDataType(
-              rightExpressionString, rightExpressionDataType, TSDataType.TEXT);
+              rightExpressionString, rightExpressionDataType, TSDataType.TEXT, TSDataType.STRING);
+        } else if (TSDataType.BLOB.equals(leftExpressionDataType)
+            || TSDataType.BLOB.equals(rightExpressionDataType)) {
+          checkInputExpressionDataType(
+              leftExpressionString, leftExpressionDataType, TSDataType.BLOB);
+          checkInputExpressionDataType(
+              rightExpressionString, rightExpressionDataType, TSDataType.BLOB);
+        } else if (TSDataType.TIMESTAMP.equals(leftExpressionDataType)
+            || TSDataType.TIMESTAMP.equals(rightExpressionDataType)) {
+          checkInputExpressionDataType(
+              leftExpressionString, leftExpressionDataType, TSDataType.TIMESTAMP, TSDataType.INT64);
+          checkInputExpressionDataType(
+              rightExpressionString,
+              rightExpressionDataType,
+              TSDataType.TIMESTAMP,
+              TSDataType.INT64);
         } else {
           checkInputExpressionDataType(
               leftExpressionString,
@@ -346,6 +374,7 @@ public class ExpressionTypeAnalyzer {
         return setExpressionType(
             timeSeriesOperand, context.get(timeSeriesOperand.getOutputSymbol()).getType());
       }
+
       return setExpressionType(timeSeriesOperand, timeSeriesOperand.getPath().getSeriesType());
     }
 

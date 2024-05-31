@@ -36,7 +36,10 @@ import java.util.concurrent.TimeUnit;
 
 public class CommonConfig {
 
-  public static final String CONFIG_NAME = "iotdb-common.properties";
+  public static final String OLD_CONFIG_NODE_CONFIG_NAME = "iotdb-confignode.properties";
+  public static final String OLD_DATA_NODE_CONFIG_NAME = "iotdb-datanode.properties";
+  public static final String OLD_COMMON_CONFIG_NAME = "iotdb-common.properties";
+  public static final String SYSTEM_CONFIG_NAME = "iotdb-system.properties";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
 
   // Open ID Secret
@@ -119,6 +122,9 @@ public class CommonConfig {
    */
   private long[] tierTTLInMs = {Long.MAX_VALUE};
 
+  /** The maximum number of TTL rules stored in the system, the default is 1000. */
+  private int ttlRuleCapacity = 1000;
+
   /** Thrift socket and connection timeout between data node and config node. */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(60);
 
@@ -194,6 +200,8 @@ public class CommonConfig {
   private int pipeAsyncConnectorSelectorNumber = 4;
   private int pipeAsyncConnectorMaxClientNumber = 16;
 
+  private double pipeAllSinksRateLimitBytesPerSecond = -1;
+
   private boolean isSeperatedPipeHeartbeatEnabled = true;
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
@@ -233,15 +241,17 @@ public class CommonConfig {
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
   private long twoStageAggregateSenderEndPointsCacheInMs = 3 * 60 * 1000L; // 3 minutes
 
+  private float subscriptionCacheMemoryUsagePercentage = 0.2F;
+
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
-  private int subscriptionMaxTabletsPerPrefetching = 16;
+  private int subscriptionMaxTabletsPerPrefetching = 64;
+  private int subscriptionMaxTabletsSizeInBytesPerPrefetching = 8388608; // 8MB
   private int subscriptionPollMaxBlockingTimeMs = 500;
   private int subscriptionSerializeMaxBlockingTimeMs = 100;
   private long subscriptionLaunchRetryIntervalMs = 1000;
-  private int subscriptionRecycleUncommittedEventIntervalMs = 240000; // 240s
-  private long subscriptionDefaultPollTimeoutMs = 30000;
-  private long subscriptionMinPollTimeoutMs = 500;
+  private int subscriptionRecycleUncommittedEventIntervalMs = 60000; // 60s
+  private int subscriptionReadFileBufferSize = 8388608; // 8MB
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -412,6 +422,14 @@ public class CommonConfig {
 
   public void setTierTTLInMs(long[] tierTTLInMs) {
     this.tierTTLInMs = tierTTLInMs;
+  }
+
+  public int getTTlRuleCapacity() {
+    return ttlRuleCapacity;
+  }
+
+  public void setTTlRuleCapacity(int ttlRuleCapacity) {
+    this.ttlRuleCapacity = ttlRuleCapacity;
   }
 
   public int getConnectionTimeoutInMS() {
@@ -1007,6 +1025,14 @@ public class CommonConfig {
     this.pipeRemainingTimeCommitRateSmoothingFactor = pipeRemainingTimeCommitRateSmoothingFactor;
   }
 
+  public double getPipeAllSinksRateLimitBytesPerSecond() {
+    return pipeAllSinksRateLimitBytesPerSecond;
+  }
+
+  public void setPipeAllSinksRateLimitBytesPerSecond(double pipeAllSinksRateLimitBytesPerSecond) {
+    this.pipeAllSinksRateLimitBytesPerSecond = pipeAllSinksRateLimitBytesPerSecond;
+  }
+
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
     return twoStageAggregateMaxCombinerLiveTimeInMs;
   }
@@ -1035,6 +1061,15 @@ public class CommonConfig {
     this.twoStageAggregateSenderEndPointsCacheInMs = twoStageAggregateSenderEndPointsCacheInMs;
   }
 
+  public float getSubscriptionCacheMemoryUsagePercentage() {
+    return subscriptionCacheMemoryUsagePercentage;
+  }
+
+  public void setSubscriptionCacheMemoryUsagePercentage(
+      float subscriptionCacheMemoryUsagePercentage) {
+    this.subscriptionCacheMemoryUsagePercentage = subscriptionCacheMemoryUsagePercentage;
+  }
+
   public int getSubscriptionSubtaskExecutorMaxThreadNum() {
     return subscriptionSubtaskExecutorMaxThreadNum;
   }
@@ -1053,6 +1088,16 @@ public class CommonConfig {
 
   public void setSubscriptionMaxTabletsPerPrefetching(int subscriptionMaxTabletsPerPrefetching) {
     this.subscriptionMaxTabletsPerPrefetching = subscriptionMaxTabletsPerPrefetching;
+  }
+
+  public int getSubscriptionMaxTabletsSizeInBytesPerPrefetching() {
+    return subscriptionMaxTabletsSizeInBytesPerPrefetching;
+  }
+
+  public void setSubscriptionMaxTabletsSizeInBytesPerPrefetching(
+      int subscriptionMaxTabletsSizeInBytesPerPrefetching) {
+    this.subscriptionMaxTabletsSizeInBytesPerPrefetching =
+        subscriptionMaxTabletsSizeInBytesPerPrefetching;
   }
 
   public int getSubscriptionPollMaxBlockingTimeMs() {
@@ -1090,20 +1135,12 @@ public class CommonConfig {
         subscriptionRecycleUncommittedEventIntervalMs;
   }
 
-  public long getSubscriptionDefaultPollTimeoutMs() {
-    return subscriptionDefaultPollTimeoutMs;
+  public int getSubscriptionReadFileBufferSize() {
+    return subscriptionReadFileBufferSize;
   }
 
-  public void setSubscriptionDefaultPollTimeoutMs(long subscriptionDefaultPollTimeoutMs) {
-    this.subscriptionDefaultPollTimeoutMs = subscriptionDefaultPollTimeoutMs;
-  }
-
-  public long getSubscriptionMinPollTimeoutMs() {
-    return subscriptionMinPollTimeoutMs;
-  }
-
-  public void setSubscriptionMinPollTimeoutMs(long subscriptionMinPollTimeoutMs) {
-    this.subscriptionMinPollTimeoutMs = subscriptionMinPollTimeoutMs;
+  public void setSubscriptionReadFileBufferSize(int subscriptionReadFileBufferSize) {
+    this.subscriptionReadFileBufferSize = subscriptionReadFileBufferSize;
   }
 
   public String getSchemaEngineMode() {

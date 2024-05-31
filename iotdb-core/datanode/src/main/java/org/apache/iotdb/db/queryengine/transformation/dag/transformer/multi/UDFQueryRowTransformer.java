@@ -19,46 +19,44 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerRowReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils;
 
-import java.io.IOException;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 
 public class UDFQueryRowTransformer extends UniversalUDFQueryTransformer {
 
-  protected final LayerRowReader layerRowReader;
+  protected final LayerReader layerReader;
 
-  public UDFQueryRowTransformer(LayerRowReader layerRowReader, UDTFExecutor executor) {
+  public UDFQueryRowTransformer(LayerReader layerReader, UDTFExecutor executor) {
     super(executor);
-    this.layerRowReader = layerRowReader;
+    this.layerReader = layerReader;
   }
 
   @Override
   protected YieldableState tryExecuteUDFOnce() throws Exception {
-    final YieldableState yieldableState = layerRowReader.yield();
+    final YieldableState yieldableState = layerReader.yield();
     if (yieldableState != YieldableState.YIELDABLE) {
       return yieldableState;
     }
-    if (layerRowReader.isCurrentNull()) {
-      currentNull = true;
-    }
-    executor.execute(layerRowReader.currentRow(), currentNull);
-    layerRowReader.readyForNext();
+
+    Column[] columns = layerReader.current();
+    cachedColumns = execute(columns);
+
+    layerReader.consumedAll();
     return YieldableState.YIELDABLE;
   }
 
-  @Override
-  protected boolean executeUDFOnce() throws IOException, QueryProcessException {
-    if (!layerRowReader.next()) {
-      return false;
-    }
-    if (layerRowReader.isCurrentNull()) {
-      currentNull = true;
-    }
-    executor.execute(layerRowReader.currentRow(), currentNull);
-    layerRowReader.readyForNext();
-    return true;
+  private Column[] execute(Column[] columns) throws Exception {
+    int count = columns[0].getPositionCount();
+    TimeColumnBuilder timeColumnBuilder = new TimeColumnBuilder(null, count);
+    ColumnBuilder valueColumnBuilder = TypeUtils.initColumnBuilder(tsDataType, count);
+
+    executor.execute(columns, timeColumnBuilder, valueColumnBuilder);
+    return executor.getCurrentBlock();
   }
 }

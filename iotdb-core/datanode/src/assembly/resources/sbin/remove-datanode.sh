@@ -18,6 +18,17 @@
 # under the License.
 #
 
+if [ "$#" -eq 1 ] && [ "$1" == "--help" ]; then
+    echo "The script will remove a DataNode."
+    echo "Before removing a DataNode, ensure that the cluster has at least the number of data/schema replicas DataNodes."
+    echo "Usage:"
+    echo "Remove the DataNode with datanode_id"
+    echo "./sbin/remove-datanode.sh [datanode_id]"
+    echo "Remove the DataNode with address:port"
+    echo "./sbin/remove-datanode.sh [dn_rpc_address:dn_rpc_port]"
+    exit 0
+fi
+
 echo ---------------------
 echo "Starting to remove a DataNode"
 echo ---------------------

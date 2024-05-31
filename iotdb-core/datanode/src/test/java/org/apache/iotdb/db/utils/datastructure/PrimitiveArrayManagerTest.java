@@ -79,10 +79,12 @@ public class PrimitiveArrayManagerTest {
             Assert.assertEquals(ARRAY_SIZE, ((boolean[]) o).length);
             break;
           case INT32:
+          case DATE:
             Assert.assertTrue(o instanceof int[]);
             Assert.assertEquals(ARRAY_SIZE, ((int[]) o).length);
             break;
           case INT64:
+          case TIMESTAMP:
             Assert.assertTrue(o instanceof long[]);
             Assert.assertEquals(ARRAY_SIZE, ((long[]) o).length);
             break;
@@ -95,6 +97,8 @@ public class PrimitiveArrayManagerTest {
             Assert.assertEquals(ARRAY_SIZE, ((double[]) o).length);
             break;
           case TEXT:
+          case BLOB:
+          case STRING:
             Assert.assertTrue(o instanceof Binary[]);
             Assert.assertEquals(ARRAY_SIZE, ((Binary[]) o).length);
             break;

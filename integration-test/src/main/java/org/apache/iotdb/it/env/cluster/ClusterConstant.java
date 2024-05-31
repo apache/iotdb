@@ -118,6 +118,7 @@ public class ClusterConstant {
   public static final String CONFIG_NODE_PROPERTIES_FILE = "iotdb-confignode.properties";
   public static final String DATA_NODE_PROPERTIES_FILE = "iotdb-datanode.properties";
   public static final String COMMON_PROPERTIES_FILE = "iotdb-common.properties";
+  public static final String IOTDB_SYSTEM_PROPERTIES_FILE = "iotdb-system.properties";
 
   public static final String SYSTEM_PROPERTIES_FILE = "system.properties";
   public static final String CONFIG_NODE_SYSTEM_PROPERTIES_FILE = "confignode-system.properties";
@@ -199,6 +200,7 @@ public class ClusterConstant {
   public static final int NODE_START_TIMEOUT = 100;
   public static final int PROBE_TIMEOUT_MS = 2000;
   public static final int NODE_NETWORK_TIMEOUT_MS = 0;
+  public static final String ZERO_TIME_ZONE = "GMT+0";
 
   public static final String DELIMITER = ",";
   public static final String TAB = "  ";
