@@ -195,7 +195,7 @@ public class DataNode implements DataNodeMBean {
       isFirstStart = prepareDataNode();
 
       if (isFirstStart) {
-        // Set target ConfigNodeList from iotdb-datanode.properties file
+        // Set target ConfigNodeList from iotdb-system.properties file
         ConfigNodeInfo.getInstance()
             .updateConfigNodeList(Collections.singletonList(config.getSeedConfigNode()));
       } else {
@@ -310,7 +310,7 @@ public class DataNode implements DataNodeMBean {
           DEFAULT_RETRY);
       throw new StartupException(
           "Cannot pull system configurations from ConfigNode-leader. "
-              + "Please check whether the dn_seed_config_node in iotdb-datanode.properties is correct or alive.");
+              + "Please check whether the dn_seed_config_node in iotdb-system.properties is correct or alive.");
     }
 
     /* Load system configurations */
@@ -434,7 +434,7 @@ public class DataNode implements DataNodeMBean {
       logger.error("Cannot register into cluster after {} retries.", DEFAULT_RETRY);
       throw new StartupException(
           "Cannot register into the cluster. "
-              + "Please check whether the dn_seed_config_node in iotdb-datanode.properties is correct or alive.");
+              + "Please check whether the dn_seed_config_node in iotdb-system.properties is correct or alive.");
     }
 
     if (dataNodeRegisterResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -523,7 +523,7 @@ public class DataNode implements DataNodeMBean {
           DEFAULT_RETRY);
       throw new StartupException(
           "Cannot send restart DataNode request to ConfigNode-leader. "
-              + "Please check whether the dn_seed_config_node in iotdb-datanode.properties is correct or alive.");
+              + "Please check whether the dn_seed_config_node in iotdb-system.properties is correct or alive.");
     }
 
     if (dataNodeRestartResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

@@ -52,7 +52,12 @@ IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
   set dn_rpc_port=6667
 )
 
-IF EXIST "%IOTDB_CONF%\iotdb-confignode.properties" (
+IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
+  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_internal_port"
+    "%IOTDB_CONF%\iotdb-system.properties"') do (
+      set cn_internal_port=%%i
+  )
+) ELSE IF EXIST "%IOTDB_CONF%\iotdb-confignode.properties" (
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^cn_internal_port"
     "%IOTDB_CONF%\iotdb-confignode.properties"') do (
       set cn_internal_port=%%i
