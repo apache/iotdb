@@ -88,7 +88,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   IoTDBPreparedStatement(
       IoTDBConnection connection, Iface client, Long sessionId, String sql, ZoneId zoneId)
       throws SQLException {
-    super(connection, client, sessionId, zoneId, Charset.defaultCharset());
+    super(connection, client, sessionId, zoneId, TSFileConfig.STRING_CHARSET);
     this.sql = sql;
   }
 
