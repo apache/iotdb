@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -36,7 +37,6 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSourceOperator {
@@ -59,52 +59,17 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
   }
 
   @Override
-  public boolean hasNext() throws Exception {
-    if (!resultTsBlockBuilder.isEmpty() || retainedTsBlock != null) {
-      return true;
-    }
-    try {
-      // start stopwatch
-      long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
-      long start = System.nanoTime();
-
-      do {
-        if (regionScanUtil.isCurrentTsFileFinished()
-            && !((RegionScanForActiveDeviceUtil) regionScanUtil)
-                .nextTsFileHandle(deviceToAlignedMap)) {
-          // There is no more fileScanHandles in queryDataSource
-          break;
-        }
-
-        // For filter method, it will return false if the phase of calculation is finished,
-        // otherwise, it will return true to execute in the next loop.
-        if (regionScanUtil.filterChunkMetaData() && !regionScanUtil.isCurrentTsFileFinished()) {
-          // There is still some chunkMetaData in current TsFile
-          continue;
-        }
-
-        if (regionScanUtil.filterChunkData() && !regionScanUtil.isCurrentTsFileFinished()) {
-          // There is still some pageData in current TsFile
-          continue;
-        }
-
-        updateActiveDevices();
-        regionScanUtil.finishCurrentFile();
-
-      } while (System.nanoTime() - start < maxRuntime && !resultTsBlockBuilder.isFull());
-
-      finished =
-          resultTsBlockBuilder.isEmpty()
-              && ((!regionScanUtil.hasMoreData() && regionScanUtil.isCurrentTsFileFinished())
-                  || deviceToAlignedMap.isEmpty());
-
-      return !finished;
-    } catch (IOException e) {
-      throw new IOException("Error happened while scanning active devices", e);
-    }
+  protected boolean getNextTsFileHandle() throws IOException, IllegalPathException {
+    return ((RegionScanForActiveDeviceUtil) regionScanUtil).nextTsFileHandle(deviceToAlignedMap);
   }
 
-  private void updateActiveDevices() {
+  @Override
+  protected boolean isAllDataChecked() {
+    return deviceToAlignedMap.isEmpty();
+  }
+
+  @Override
+  protected void updateActiveData() {
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
 

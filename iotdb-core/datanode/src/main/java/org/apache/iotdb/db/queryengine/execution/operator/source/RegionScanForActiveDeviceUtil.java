@@ -66,15 +66,14 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
         continue;
       }
 
-      boolean[] isDeleted =
-          curFileScanHandle.isDeviceTimeDeleted(
-              deviceStartEndTime.getDevicePath(), new long[] {startTime, endTime});
-      if ((!isDeleted[0] && timeFilter.satisfy(startTime, null)
-          || (endTime >= 0 && !isDeleted[1] && timeFilter.satisfy(endTime, null)))) {
-        // Only if one time is not deleted, the devicePath is active in this time range.
+      if ((timeFilter.satisfy(startTime, null)
+              && !curFileScanHandle.isDeviceTimeDeleted(deviceID, startTime))
+          || (endTime >= 0
+              && timeFilter.satisfy(endTime, null)
+              && !curFileScanHandle.isDeviceTimeDeleted(deviceID, endTime))) {
         activeDevices.add(deviceID);
       } else {
-        // Else, we need more infos to check if the device is active in the following procedure
+        // We need more information to check if the device is active in the following procedure
         deviceSetForCurrentTsFile.add(deviceID);
       }
     }
@@ -119,13 +118,13 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
       if (!timeFilter.satisfyStartEndTime(startTime, endTime)) {
         continue;
       }
-      boolean[] isDeleted =
-          curFileScanHandle.isTimeSeriesTimeDeleted(
-              deviceID, valueChunkMetaData.getMeasurementUid(), new long[] {startTime, endTime});
-      if ((!isDeleted[0] && timeFilter.satisfy(startTime, null))
-          || (!isDeleted[1] && timeFilter.satisfy(endTime, null))) {
-        // If the chunkMeta in curDevice has valid start or end time, curDevice is active in this
-        // time range.
+      String measurement = valueChunkMetaData.getMeasurementUid();
+      // If the chunkMeta in curDevice has valid start or end time, curDevice is active in this
+      // time range.
+      if ((timeFilter.satisfy(startTime, null)
+              && !curFileScanHandle.isTimeSeriesTimeDeleted(deviceID, measurement, startTime))
+          || (timeFilter.satisfy(endTime, null)
+              && !curFileScanHandle.isTimeSeriesTimeDeleted(deviceID, measurement, endTime))) {
         return true;
       }
       chunkOffsetsForCurrentDevice.add(deviceChunkMetaData.getChunkOffset());

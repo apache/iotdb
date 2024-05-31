@@ -87,6 +87,11 @@ public abstract class AbstractRegionScanForActiveDataUtil implements Accountable
     return queryDataSource != null && queryDataSource.hasNext();
   }
 
+  // Filter the chunkMetaData in current TsFile and build chunkOffset if we need more information
+  // from real data.
+  // return true if there is still some chunkMetaData to be checked.
+  // return false if all the chunkMetaData in current TsFile is checked or current tsFile is
+  // finished.
   public boolean filterChunkMetaData() throws IOException, IllegalPathException {
 
     if (isCurrentTsFileFinished()) {
@@ -122,7 +127,8 @@ public abstract class AbstractRegionScanForActiveDataUtil implements Accountable
     }
 
     // 1. init a chunkHandle with data
-    // if there is no more chunkHandle, all the data in current TsFile is scanned, just return true.
+    // if there is no more chunkHandle, all the data in current TsFile is scanned, just return
+    // false.
     while (currentChunkHandle == null || !currentChunkHandle.hasNextPage()) {
       if (!chunkHandleIterator.hasNext()) {
         chunkHandleIterator = null;
@@ -145,15 +151,14 @@ public abstract class AbstractRegionScanForActiveDataUtil implements Accountable
       currentChunkHandle.skipCurrentPage();
       return true;
     }
-    boolean[] isDeleted =
-        curFileScanHandle.isTimeSeriesTimeDeleted(
-            curDevice,
-            currentChunkHandle.getMeasurement(),
-            new long[] {pageStatistics[0], pageStatistics[1]});
-    if ((!isDeleted[0] && timeFilter.satisfy(pageStatistics[0], null)
-        || !isDeleted[1] && timeFilter.satisfy(pageStatistics[1], null))) {
-      // If the page in curChunk has valid start or end time, curChunk is active in this time
-      // range.
+
+    if ((timeFilter.satisfy(pageStatistics[0], null)
+            && !curFileScanHandle.isTimeSeriesTimeDeleted(
+                curDevice, curMeasurement, pageStatistics[0]))
+        || (timeFilter.satisfy(pageStatistics[1], null)
+            && !curFileScanHandle.isTimeSeriesTimeDeleted(
+                curDevice, curMeasurement, pageStatistics[1]))) {
+      // If the page in curChunk has valid start time, curChunk is active in this time range.
       processActiveChunk(curDevice, curMeasurement);
       return true;
     }
@@ -164,10 +169,8 @@ public abstract class AbstractRegionScanForActiveDataUtil implements Accountable
       if (!timeFilter.satisfy(time, null)) {
         continue;
       }
-      isDeleted =
-          curFileScanHandle.isTimeSeriesTimeDeleted(
-              curDevice, currentChunkHandle.getMeasurement(), new long[] {time});
-      if (!isDeleted[0]) {
+
+      if (!curFileScanHandle.isTimeSeriesTimeDeleted(curDevice, curMeasurement, time)) {
         // If the chunkData in curDevice has valid time, curChunk is active.
         processActiveChunk(curDevice, curMeasurement);
         return true;

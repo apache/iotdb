@@ -78,9 +78,8 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
   }
 
   @Override
-  public boolean[] isDeviceTimeDeleted(IDeviceID deviceID, long[] timeArray)
+  public boolean isDeviceTimeDeleted(IDeviceID deviceID, long timestamp)
       throws IllegalPathException {
-    boolean[] result = new boolean[2];
     List<Modification> modifications = queryContext.getPathModifications(tsFileResource, deviceID);
     List<TimeRange> timeRangeList =
         modifications.stream()
@@ -88,32 +87,16 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
             .map(Deletion.class::cast)
             .map(Deletion::getTimeRange)
             .collect(Collectors.toList());
-    TimeRange.sortAndMerge(timeRangeList);
-
-    int[] deleteCursor = {0};
-    for (int i = 0; i < timeArray.length; i++) {
-      result[i] = ModificationUtils.isPointDeleted(timeArray[i], timeRangeList, deleteCursor);
-    }
-    return result;
-  }
-
-  private boolean[] calculateBooleanArray(List<TimeRange> timeRangeList, long[] timeArray) {
-    boolean[] result = new boolean[timeArray.length];
-    int[] deleteCursor = {0};
-    for (int i = 0; i < timeArray.length; i++) {
-      result[i] = ModificationUtils.isPointDeleted(timeArray[i], timeRangeList, deleteCursor);
-    }
-    return result;
+    return ModificationUtils.isPointDeletedWithoutOrderedRange(timestamp, timeRangeList);
   }
 
   @Override
-  public boolean[] isTimeSeriesTimeDeleted(
-      IDeviceID deviceID, String timeSeriesName, long[] timeArray) throws IllegalPathException {
+  public boolean isTimeSeriesTimeDeleted(IDeviceID deviceID, String timeSeriesName, long timestamp)
+      throws IllegalPathException {
 
-    if (deviceToModifications.containsKey(deviceID)
-        && deviceToModifications.get(deviceID).containsKey(timeSeriesName)) {
-      return calculateBooleanArray(
-          deviceToModifications.get(deviceID).get(timeSeriesName), timeArray);
+    Map<String, List<TimeRange>> modificationTimeRange = deviceToModifications.get(deviceID);
+    if (modificationTimeRange != null && modificationTimeRange.containsKey(timeSeriesName)) {
+      return ModificationUtils.isPointDeleted(timestamp, modificationTimeRange.get(timeSeriesName));
     }
 
     List<Modification> modifications =
@@ -128,7 +111,7 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
     deviceToModifications
         .computeIfAbsent(deviceID, k -> new HashMap<>())
         .put(timeSeriesName, timeRangeList);
-    return calculateBooleanArray(timeRangeList, timeArray);
+    return ModificationUtils.isPointDeleted(timestamp, timeRangeList);
   }
 
   @Override

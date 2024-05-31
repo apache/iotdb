@@ -38,7 +38,6 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSourceOperator {
@@ -71,47 +70,18 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
   }
 
   @Override
-  public boolean hasNext() throws Exception {
-    if (retainedTsBlock != null) {
-      return true;
-    }
-    try {
-      // start stopwatch
-      long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
-      long start = System.nanoTime();
-
-      do {
-        if (regionScanUtil.isCurrentTsFileFinished()
-            && !((RegionScanForActiveTimeSeriesUtil) regionScanUtil)
-                .nextTsFileHandle(timeSeriesToSchemasInfo)) {
-          break;
-        }
-
-        if (regionScanUtil.filterChunkMetaData() && !regionScanUtil.isCurrentTsFileFinished()) {
-          continue;
-        }
-
-        if (regionScanUtil.filterChunkData() && !regionScanUtil.isCurrentTsFileFinished()) {
-          continue;
-        }
-
-        updateActiveTimeSeries();
-        regionScanUtil.finishCurrentFile();
-
-      } while (System.nanoTime() - start < maxRuntime && !resultTsBlockBuilder.isFull());
-
-      finished =
-          resultTsBlockBuilder.isEmpty()
-              && ((!regionScanUtil.hasMoreData() && regionScanUtil.isCurrentTsFileFinished())
-                  || timeSeriesToSchemasInfo.isEmpty());
-
-      return !finished;
-    } catch (IOException e) {
-      throw new IOException("Error occurs when scanning active time series.", e);
-    }
+  protected boolean getNextTsFileHandle() throws IOException {
+    return ((RegionScanForActiveTimeSeriesUtil) regionScanUtil)
+        .nextTsFileHandle(timeSeriesToSchemasInfo);
   }
 
-  private void updateActiveTimeSeries() {
+  @Override
+  protected boolean isAllDataChecked() {
+    return timeSeriesToSchemasInfo.isEmpty();
+  }
+
+  @Override
+  protected void updateActiveData() {
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
 

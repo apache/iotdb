@@ -135,11 +135,11 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
           || !timeFilter.satisfyStartEndTime(startTime, endTime)) {
         continue;
       }
-      boolean[] isDeleted =
-          curFileScanHandle.isTimeSeriesTimeDeleted(
-              deviceID, valueChunkMetaData.getMeasurementUid(), new long[] {startTime, endTime});
-      if ((!isDeleted[0] && timeFilter.satisfy(startTime, null)
-          || (!isDeleted[1] && timeFilter.satisfy(endTime, null)))) {
+
+      if ((timeFilter.satisfy(startTime, null)
+              && !curFileScanHandle.isTimeSeriesTimeDeleted(deviceID, measurementId, startTime))
+          || (timeFilter.satisfy(endTime, null)
+              && !curFileScanHandle.isTimeSeriesTimeDeleted(deviceID, measurementId, endTime))) {
         removeTimeSeriesForCurrentTsFile(deviceID, measurementId);
         activeTimeSeries.computeIfAbsent(deviceID, k -> new ArrayList<>()).add(measurementId);
       } else {

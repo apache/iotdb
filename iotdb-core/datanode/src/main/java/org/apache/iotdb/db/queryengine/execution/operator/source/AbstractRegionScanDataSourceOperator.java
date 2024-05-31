@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 
@@ -27,7 +28,9 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public abstract class AbstractRegionScanDataSourceOperator extends AbstractSourceOperator
     implements DataSourceOperator {
@@ -36,6 +39,14 @@ public abstract class AbstractRegionScanDataSourceOperator extends AbstractSourc
 
   protected AbstractRegionScanForActiveDataUtil regionScanUtil;
   protected TsBlockBuilder resultTsBlockBuilder;
+
+  protected abstract boolean getNextTsFileHandle() throws IOException, IllegalPathException;
+
+  protected abstract boolean isAllDataChecked();
+
+  protected abstract void updateActiveData();
+
+  protected abstract List<TSDataType> getResultDataTypes();
 
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
@@ -54,6 +65,46 @@ public abstract class AbstractRegionScanDataSourceOperator extends AbstractSourc
     resultTsBlock = resultTsBlockBuilder.build();
     resultTsBlockBuilder.reset();
     return checkTsBlockSizeAndGetResult();
+  }
+
+  @Override
+  public boolean hasNext() throws Exception {
+    if (!resultTsBlockBuilder.isEmpty() || retainedTsBlock != null) {
+      return true;
+    }
+    try {
+      // start stopwatch
+      long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+      long start = System.nanoTime();
+
+      do {
+        if (regionScanUtil.isCurrentTsFileFinished() && !getNextTsFileHandle()) {
+          break;
+        }
+
+        // continue if there are more
+        if (regionScanUtil.filterChunkMetaData() && !regionScanUtil.isCurrentTsFileFinished()) {
+          continue;
+        }
+
+        if (regionScanUtil.filterChunkData() && !regionScanUtil.isCurrentTsFileFinished()) {
+          continue;
+        }
+
+        updateActiveData();
+        regionScanUtil.finishCurrentFile();
+
+      } while (System.nanoTime() - start < maxRuntime && !resultTsBlockBuilder.isFull());
+
+      finished =
+          resultTsBlockBuilder.isEmpty()
+              && ((!regionScanUtil.hasMoreData() && regionScanUtil.isCurrentTsFileFinished())
+                  || isAllDataChecked());
+
+      return !finished;
+    } catch (IOException e) {
+      throw new IOException("Error occurs when scanning active time series.", e);
+    }
   }
 
   @Override
@@ -87,6 +138,4 @@ public abstract class AbstractRegionScanDataSourceOperator extends AbstractSourc
     return (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes())
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(regionScanUtil);
   }
-
-  protected abstract List<TSDataType> getResultDataTypes();
 }
