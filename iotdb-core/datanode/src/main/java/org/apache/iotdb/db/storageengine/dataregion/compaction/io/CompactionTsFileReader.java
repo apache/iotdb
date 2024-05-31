@@ -41,7 +41,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This class extends the TsFileSequenceReader class to read and manage TsFile with a focus on
@@ -49,8 +48,6 @@ import java.util.concurrent.atomic.AtomicLong;
  * data read and distinguishing between aligned and not aligned series during compaction.
  */
 public class CompactionTsFileReader extends TsFileSequenceReader {
-  /** Tracks the total amount of data (in bytes) that has been read. */
-  private AtomicLong readDataSize = new AtomicLong(0L);
 
   private long metadataOffset = 0;
 
@@ -78,10 +75,17 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
   protected ByteBuffer readData(long position, int totalSize) throws IOException {
     acquireReadDataSizeWithCompactionReadRateLimiter(totalSize);
     ByteBuffer buffer = super.readData(position, totalSize);
-    readDataSize.addAndGet(totalSize);
     if (position >= metadataOffset) {
       CompactionMetrics.getInstance()
           .recordReadInfo(compactionType, CompactionIoDataType.METADATA, totalSize);
+    } else {
+      CompactionMetrics.getInstance()
+          .recordReadInfo(
+              compactionType,
+              readingAlignedSeries
+                  ? CompactionIoDataType.ALIGNED
+                  : CompactionIoDataType.NOT_ALIGNED,
+              totalSize);
     }
     return buffer;
   }
@@ -98,20 +102,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
 
   @Override
   public Chunk readMemChunk(ChunkMetadata metaData) throws IOException {
-    synchronized (this) {
-      // using synchronized to avoid concurrent read that makes readDataSize not correct
-      long before = readDataSize.get();
-      Chunk chunk = super.readMemChunk(metaData);
-      long dataSize = readDataSize.get() - before;
-      CompactionMetrics.getInstance()
-          .recordReadInfo(
-              compactionType,
-              readingAlignedSeries
-                  ? CompactionIoDataType.ALIGNED
-                  : CompactionIoDataType.NOT_ALIGNED,
-              dataSize);
-      return chunk;
-    }
+    return super.readMemChunk(metaData);
   }
 
   public ChunkHeader readChunkHeader(long position) throws IOException {
