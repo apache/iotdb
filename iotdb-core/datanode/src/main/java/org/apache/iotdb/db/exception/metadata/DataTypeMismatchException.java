@@ -47,6 +47,19 @@ public class DataTypeMismatchException extends MetadataException {
             value == null ? "null" : processValue(value.toString())));
   }
 
+  public DataTypeMismatchException(
+      String deviceName, String measurementName, TSDataType insertType, long time, Object value) {
+    super(
+        String.format(
+            "data type and value of %s.%s is not consistent, "
+                + "inserting type %s, timestamp %s, value %s",
+            deviceName,
+            measurementName,
+            insertType,
+            time,
+            value == null ? "null" : processValue(value.toString())));
+  }
+
   private static String processValue(String value) {
     return value.length() < 100 ? value : value.substring(0, 100);
   }
