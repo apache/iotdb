@@ -23,12 +23,16 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
+import org.apache.iotdb.commons.client.property.PipeConsensusClientProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty.DefaultProperty;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.client.sync.SyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -252,6 +256,74 @@ public class ClientPoolFactory {
                   ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
                   .setMaxClientNumForEachNode(conf.getPipeAsyncConnectorMaxClientNumber())
+                  .build()
+                  .getConfig());
+      ClientManagerMetrics.getInstance()
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
+      return clientPool;
+    }
+  }
+
+  public static class SyncPipeConsensusServiceClientPoolFactory
+      implements IClientPoolFactory<TEndPoint, SyncPipeConsensusServiceClient> {
+
+    private final PipeConsensusClientProperty config;
+
+    public SyncPipeConsensusServiceClientPoolFactory(PipeConsensusClientProperty config) {
+      this.config = config;
+    }
+
+    @Override
+    public KeyedObjectPool<TEndPoint, SyncPipeConsensusServiceClient> createClientPool(
+        ClientManager<TEndPoint, SyncPipeConsensusServiceClient> manager) {
+      GenericKeyedObjectPool<TEndPoint, SyncPipeConsensusServiceClient> clientPool =
+          new GenericKeyedObjectPool<>(
+              new SyncPipeConsensusServiceClient.Factory(
+                  manager,
+                  new ThriftClientProperty.Builder()
+                      // TODO: consider timeout and evict strategy.
+                      .setConnectionTimeoutMs(DefaultProperty.CONNECTION_NEVER_TIMEOUT_MS)
+                      .setRpcThriftCompressionEnabled(config.isRpcThriftCompressionEnabled())
+                      .setPrintLogWhenEncounterException(
+                          config.isPrintLogWhenThriftClientEncounterException())
+                      .build()),
+              new ClientPoolProperty.Builder<SyncPipeConsensusServiceClient>()
+                  .setMaxClientNumForEachNode(config.getMaxClientNumForEachNode())
+                  .build()
+                  .getConfig());
+      ClientManagerMetrics.getInstance()
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
+      return clientPool;
+    }
+  }
+
+  public static class AsyncPipeConsensusServiceClientPoolFactory
+      implements IClientPoolFactory<TEndPoint, AsyncPipeConsensusServiceClient> {
+
+    private final PipeConsensusClientProperty config;
+
+    public AsyncPipeConsensusServiceClientPoolFactory(PipeConsensusClientProperty config) {
+      this.config = config;
+    }
+
+    @Override
+    public KeyedObjectPool<TEndPoint, AsyncPipeConsensusServiceClient> createClientPool(
+        ClientManager<TEndPoint, AsyncPipeConsensusServiceClient> manager) {
+      GenericKeyedObjectPool<TEndPoint, AsyncPipeConsensusServiceClient> clientPool =
+          new GenericKeyedObjectPool<>(
+              new AsyncPipeConsensusServiceClient.Factory(
+                  manager,
+                  new ThriftClientProperty.Builder()
+                      // TODO: consider timeout and evict strategy.
+                      .setConnectionTimeoutMs(DefaultProperty.CONNECTION_NEVER_TIMEOUT_MS)
+                      .setRpcThriftCompressionEnabled(config.isRpcThriftCompressionEnabled())
+                      .setSelectorNumOfAsyncClientManager(config.getSelectorNumOfClientManager())
+                      .setPrintLogWhenEncounterException(
+                          config.isPrintLogWhenThriftClientEncounterException())
+                      .build(),
+                  ThreadName.ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL.getName()),
+              new ClientPoolProperty.Builder<AsyncPipeConsensusServiceClient>()
+                  .setMaxClientNumForEachNode(config.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()

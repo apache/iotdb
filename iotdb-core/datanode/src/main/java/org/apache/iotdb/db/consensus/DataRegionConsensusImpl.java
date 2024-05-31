@@ -23,17 +23,23 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig.RPC;
+import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.config.RatisConfig.Snapshot;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataRegionStateMachine;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataRegionStateMachine;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeDispatcher;
+import org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeRuntimeAgentGuardian;
+import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
@@ -74,6 +80,7 @@ public class DataRegionConsensusImpl {
     // Make sure both statics are initialized.
     static {
       reinitializeStatics();
+      PipeAgent.receiver().pipeConsensus().initConsensusInRuntime();
     }
 
     private static void reinitializeStatics() {
@@ -130,6 +137,37 @@ public class DataRegionConsensusImpl {
                           .setMaxMemoryRatioForQueue(CONF.getMaxMemoryRatioForQueue())
                           .setRegionMigrationSpeedLimitBytesPerSecond(
                               CONF.getRegionMigrationSpeedLimitBytesPerSecond())
+                          .build())
+                  .build())
+          .setPipeConsensusConfig(
+              PipeConsensusConfig.newBuilder()
+                  .setRPC(
+                      PipeConsensusConfig.RPC
+                          .newBuilder()
+                          .setConnectionTimeoutInMs(CONF.getConnectionTimeoutInMS())
+                          .setRpcSelectorThreadNum(CONF.getRpcSelectorThreadCount())
+                          .setRpcMinConcurrentClientNum(CONF.getRpcMinConcurrentClientNum())
+                          .setRpcMaxConcurrentClientNum(CONF.getRpcMaxConcurrentClientNum())
+                          .setIsRpcThriftCompressionEnabled(CONF.isRpcThriftCompressionEnable())
+                          .setThriftServerAwaitTimeForStopService(
+                              CONF.getThriftServerAwaitTimeForStopService())
+                          .setThriftMaxFrameSize(CONF.getThriftMaxFrameSize())
+                          .build())
+                  .setPipe(
+                      PipeConsensusConfig.Pipe.newBuilder()
+                          .setExtractorPluginName(
+                              BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+                          .setProcessorPluginName(
+                              BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName())
+                          .setConnectorPluginName(
+                              BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName())
+                          // name
+                          .setConsensusPipeDispatcher(new ConsensusPipeDataNodeDispatcher())
+                          .setConsensusPipeGuardian(new ConsensusPipeDataNodeRuntimeAgentGuardian())
+                          .setConsensusPipeSelector(() -> PipeAgent.task().getAllConsensusPipe())
+                          .setConsensusPipeReceiver(PipeAgent.receiver().pipeConsensus())
+                          .setProgressIndexManager(new ProgressIndexDataNodeManager())
+                          .setConsensusPipeGuardJobIntervalInSeconds(300) // TODO: move to config
                           .build())
                   .build())
           .setRatisConfig(

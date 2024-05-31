@@ -1056,10 +1056,12 @@ public class IoTDBDescriptor {
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
     loadIoTConsensusProps(properties);
+    loadPipeConsensusProps(properties);
   }
 
   private void reloadConsensusProps(Properties properties) {
     loadIoTConsensusProps(properties);
+    loadPipeConsensusProps(properties);
     DataRegionConsensusImpl.reloadConsensusConfig();
   }
 
@@ -1098,6 +1100,17 @@ public class IoTDBDescriptor {
                     "region_migration_speed_limit_bytes_per_second",
                     String.valueOf(conf.getRegionMigrationSpeedLimitBytesPerSecond()))
                 .trim()));
+  }
+
+  private void loadPipeConsensusProps(Properties properties) {
+    conf.setPipeConsensusPipelineSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "fast_iot_consensus_pipeline_size",
+                Integer.toString(conf.getPipeConsensusPipelineSize()))));
+    if (conf.getPipeConsensusPipelineSize() <= 0) {
+      conf.setPipeConsensusPipelineSize(5);
+    }
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -2180,6 +2193,17 @@ public class IoTDBDescriptor {
                 properties
                     .getProperty(
                         "pipe_receiver_file_dirs", String.join(",", conf.getPipeReceiverFileDirs()))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+
+    conf.setPipeConsensusReceiverFileDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "pipe_consensus_receiver_file_dirs",
+                        String.join(",", conf.getPipeConsensusReceiverFileDirs()))
                     .trim()
                     .split(","))
             .filter(dir -> !dir.isEmpty())

@@ -121,7 +121,7 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
 
   @Override
   public String toString() {
-    return String.format("AsyncConfigNodeIServiceClient{%s}", endpoint);
+    return String.format("AsyncIoTConsensusServiceClient{%s}", endpoint);
   }
 
   public static class Factory
