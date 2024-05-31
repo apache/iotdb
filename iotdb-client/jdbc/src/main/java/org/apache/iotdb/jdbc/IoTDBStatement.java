@@ -129,7 +129,14 @@ public class IoTDBStatement implements Statement {
       ZoneId zoneId,
       int seconds)
       throws SQLException {
-    this(connection, client, sessionId, Config.DEFAULT_FETCH_SIZE, zoneId, Charset.defaultCharset(), seconds);
+    this(
+        connection,
+        client,
+        sessionId,
+        Config.DEFAULT_FETCH_SIZE,
+        zoneId,
+        Charset.defaultCharset(),
+        seconds);
   }
 
   // Only for tests
