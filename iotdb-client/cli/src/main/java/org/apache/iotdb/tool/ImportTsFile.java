@@ -193,11 +193,8 @@ public class ImportTsFile extends AbstractTsFileTool {
     try {
       parseBasicParams(commandLine);
       parseSpecialParams(commandLine);
-    } catch (ArgsErrorException e) {
-      ioTPrinter.println("Args error: " + e.getMessage());
-      System.exit(CODE_ERROR);
     } catch (Exception e) {
-      ioTPrinter.println("Encounter an error, because: " + e.getMessage());
+      ioTPrinter.println("Encounter an error when parsing the provided options: " + e.getMessage());
       System.exit(CODE_ERROR);
     }
 
