@@ -381,13 +381,11 @@ public class ImportTsFile extends AbstractTsFileTool {
         final String sql = "load '" + filePath + "' onSuccess=none ";
 
         try {
-          ioTPrinter.println("Importing [ " + filePath + " ] file ...");
           sessionPool.executeNonQueryStatement(sql);
           loadFileSuccessfulNum.increment();
           ioTPrinter.println("Imported [ " + filePath + " ] file successfully!");
 
           try {
-            ioTPrinter.println("Processing success file [ " + filePath + " ] ...");
             processingFile(filePath, successDir, successOperation);
             processingLoadSuccessfulFileSuccessfulNum.increment();
             ioTPrinter.println("Processed success file [ " + filePath + " ] successfully!");
@@ -403,7 +401,6 @@ public class ImportTsFile extends AbstractTsFileTool {
           ioTPrinter.println("Failed to import [ " + filePath + " ] file: " + e.getMessage());
 
           try {
-            ioTPrinter.println("Processing fail file [ " + filePath + " ] ...");
             processingFile(filePath, failDir, failOperation);
             processingLoadFailedFileSuccessfulNum.increment();
             ioTPrinter.println("Processed fail file [ " + filePath + " ] successfully!");
@@ -414,8 +411,6 @@ public class ImportTsFile extends AbstractTsFileTool {
                     + " ]: "
                     + processFailException.getMessage());
           }
-        } finally {
-          ioTPrinter.println("Processed file [ " + filePath + " ] completely!");
         }
       }
     } catch (Exception e) {
