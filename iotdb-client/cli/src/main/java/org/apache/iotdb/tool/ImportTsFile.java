@@ -83,8 +83,8 @@ public class ImportTsFile extends AbstractTsFileTool {
 
   private static int threadNum = 8;
 
-  private static LongAdder successfulFileNum = new LongAdder();
-  private static LongAdder failedFileNum = new LongAdder();
+  private static final LongAdder successfulFileNum = new LongAdder();
+  private static final LongAdder failedFileNum = new LongAdder();
 
   private static final LinkedBlockingQueue<String> tsfileQueue = new LinkedBlockingQueue<>();
   private static final Set<String> tsfileSet = new HashSet<>();
