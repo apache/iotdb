@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.LongAdder;
 
 public class ImportTsFile extends AbstractTsFileTool {
 
@@ -81,6 +82,11 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static Operation failOperation;
 
   private static int threadNum = 8;
+
+  private static final LongAdder loadFileSuccessfulNum = new LongAdder();
+  private static final LongAdder loadFileFailedNum = new LongAdder();
+  private static final LongAdder processingLoadSuccessfulFileSuccessfulNum = new LongAdder();
+  private static final LongAdder processingLoadFailedFileSuccessfulNum = new LongAdder();
 
   private static final LinkedBlockingQueue<String> tsfileQueue = new LinkedBlockingQueue<>();
   private static final Set<String> tsfileSet = new HashSet<>();
@@ -156,6 +162,7 @@ public class ImportTsFile extends AbstractTsFileTool {
   }
 
   public static void main(String[] args) {
+    long startTime = System.currentTimeMillis();
     createOptions();
 
     final CommandLineParser parser = new DefaultParser();
@@ -197,8 +204,26 @@ public class ImportTsFile extends AbstractTsFileTool {
       ioTPrinter.println("Encounter an error when parsing the provided options: " + e.getMessage());
       System.exit(CODE_ERROR);
     }
-
-    System.exit(importFromTargetPath());
+    int resultCode = importFromTargetPath();
+    ioTPrinter.println(
+        "Successfully load "
+            + loadFileSuccessfulNum.sum()
+            + " files ("
+            + processingLoadSuccessfulFileSuccessfulNum.sum()
+            + " files operations succeed, "
+            + (loadFileSuccessfulNum.sum() - processingLoadSuccessfulFileSuccessfulNum.sum())
+            + " failed)");
+    ioTPrinter.println(
+        "Failed load "
+            + loadFileFailedNum.sum()
+            + " files ("
+            + processingLoadFailedFileSuccessfulNum.sum()
+            + " files operations succeed, "
+            + (loadFileFailedNum.sum() - processingLoadFailedFileSuccessfulNum.sum())
+            + " failed)");
+    ioTPrinter.println("Total operation time(ms) : " + (System.currentTimeMillis() - startTime));
+    ioTPrinter.println("Work has been completed");
+    System.exit(resultCode);
   }
 
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
@@ -289,6 +314,7 @@ public class ImportTsFile extends AbstractTsFileTool {
 
       traverseAndCollectFiles(file);
       addNoResourceOrModsToQueue();
+      ioTPrinter.println("Load file total number : " + tsfileQueue.size());
       asyncImportTsFiles();
       return CODE_OK;
     } catch (InterruptedException e) {
@@ -357,11 +383,13 @@ public class ImportTsFile extends AbstractTsFileTool {
         try {
           ioTPrinter.println("Importing [ " + filePath + " ] file ...");
           sessionPool.executeNonQueryStatement(sql);
+          loadFileSuccessfulNum.increment();
           ioTPrinter.println("Imported [ " + filePath + " ] file successfully!");
 
           try {
             ioTPrinter.println("Processing success file [ " + filePath + " ] ...");
             processingFile(filePath, successDir, successOperation);
+            processingLoadSuccessfulFileSuccessfulNum.increment();
             ioTPrinter.println("Processed success file [ " + filePath + " ] successfully!");
           } catch (Exception processSuccessException) {
             ioTPrinter.println(
@@ -371,11 +399,13 @@ public class ImportTsFile extends AbstractTsFileTool {
                     + processSuccessException.getMessage());
           }
         } catch (Exception e) {
+          loadFileFailedNum.increment();
           ioTPrinter.println("Failed to import [ " + filePath + " ] file: " + e.getMessage());
 
           try {
             ioTPrinter.println("Processing fail file [ " + filePath + " ] ...");
             processingFile(filePath, failDir, failOperation);
+            processingLoadFailedFileSuccessfulNum.increment();
             ioTPrinter.println("Processed fail file [ " + filePath + " ] successfully!");
           } catch (Exception processFailException) {
             ioTPrinter.println(
