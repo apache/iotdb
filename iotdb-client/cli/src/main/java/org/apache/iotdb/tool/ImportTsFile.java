@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.LongAdder;
 
 public class ImportTsFile extends AbstractTsFileTool {
 
@@ -81,6 +82,9 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static Operation failOperation;
 
   private static int threadNum = 8;
+
+  private static LongAdder successfulFileNum = new LongAdder();
+  private static LongAdder failedFileNum = new LongAdder();
 
   private static final LinkedBlockingQueue<String> tsfileQueue = new LinkedBlockingQueue<>();
   private static final Set<String> tsfileSet = new HashSet<>();
@@ -156,6 +160,7 @@ public class ImportTsFile extends AbstractTsFileTool {
   }
 
   public static void main(String[] args) {
+    long startTime = System.currentTimeMillis();
     createOptions();
 
     final CommandLineParser parser = new DefaultParser();
@@ -197,8 +202,12 @@ public class ImportTsFile extends AbstractTsFileTool {
       ioTPrinter.println("Encounter an error when parsing the provided options: " + e.getMessage());
       System.exit(CODE_ERROR);
     }
-
-    System.exit(importFromTargetPath());
+    int resultCode = importFromTargetPath();
+    ioTPrinter.println("Load file successful number : " + successfulFileNum.sum());
+    ioTPrinter.println("Load file failed number : " + failedFileNum.sum());
+    ioTPrinter.println("Total operation time(ms) : " + (System.currentTimeMillis() - startTime));
+    ioTPrinter.println("Work has been completed");
+    System.exit(resultCode);
   }
 
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
@@ -289,6 +298,7 @@ public class ImportTsFile extends AbstractTsFileTool {
 
       traverseAndCollectFiles(file);
       addNoResourceOrModsToQueue();
+      ioTPrinter.println("Load file number : " + tsfileQueue.size());
       asyncImportTsFiles();
       return CODE_OK;
     } catch (InterruptedException e) {
@@ -357,6 +367,7 @@ public class ImportTsFile extends AbstractTsFileTool {
         try {
           ioTPrinter.println("Importing [ " + filePath + " ] file ...");
           sessionPool.executeNonQueryStatement(sql);
+          successfulFileNum.increment();
           ioTPrinter.println("Imported [ " + filePath + " ] file successfully!");
 
           try {
@@ -371,6 +382,7 @@ public class ImportTsFile extends AbstractTsFileTool {
                     + processSuccessException.getMessage());
           }
         } catch (Exception e) {
+          failedFileNum.increment();
           ioTPrinter.println("Failed to import [ " + filePath + " ] file: " + e.getMessage());
 
           try {
