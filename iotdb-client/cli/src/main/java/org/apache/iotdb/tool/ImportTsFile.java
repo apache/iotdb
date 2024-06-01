@@ -83,8 +83,10 @@ public class ImportTsFile extends AbstractTsFileTool {
 
   private static int threadNum = 8;
 
-  private static final LongAdder successfulFileNum = new LongAdder();
-  private static final LongAdder failedFileNum = new LongAdder();
+  private static final LongAdder loadFileSuccessfulNum = new LongAdder();
+  private static final LongAdder loadFileFailedNum = new LongAdder();
+  private static final LongAdder processingLoadSuccessfulFileSuccessfulNum = new LongAdder();
+  private static final LongAdder processingLoadFailedFileSuccessfulNum = new LongAdder();
 
   private static final LinkedBlockingQueue<String> tsfileQueue = new LinkedBlockingQueue<>();
   private static final Set<String> tsfileSet = new HashSet<>();
@@ -203,8 +205,22 @@ public class ImportTsFile extends AbstractTsFileTool {
       System.exit(CODE_ERROR);
     }
     int resultCode = importFromTargetPath();
-    ioTPrinter.println("Load file successful number : " + successfulFileNum.sum());
-    ioTPrinter.println("Load file failed number : " + failedFileNum.sum());
+    ioTPrinter.println(
+        "Successfully load "
+            + loadFileSuccessfulNum.sum()
+            + " files ("
+            + processingLoadSuccessfulFileSuccessfulNum.sum()
+            + " files operations succeed, "
+            + (loadFileSuccessfulNum.sum() - processingLoadSuccessfulFileSuccessfulNum.sum())
+            + " fail)");
+    ioTPrinter.println(
+        "Failed load "
+            + loadFileFailedNum.sum()
+            + " files ("
+            + processingLoadFailedFileSuccessfulNum.sum()
+            + " files operations succeed, "
+            + (loadFileFailedNum.sum() - processingLoadFailedFileSuccessfulNum.sum())
+            + " fail)");
     ioTPrinter.println("Total operation time(ms) : " + (System.currentTimeMillis() - startTime));
     ioTPrinter.println("Work has been completed");
     System.exit(resultCode);
@@ -367,12 +383,13 @@ public class ImportTsFile extends AbstractTsFileTool {
         try {
           ioTPrinter.println("Importing [ " + filePath + " ] file ...");
           sessionPool.executeNonQueryStatement(sql);
-          successfulFileNum.increment();
+          loadFileSuccessfulNum.increment();
           ioTPrinter.println("Imported [ " + filePath + " ] file successfully!");
 
           try {
             ioTPrinter.println("Processing success file [ " + filePath + " ] ...");
             processingFile(filePath, successDir, successOperation);
+            processingLoadSuccessfulFileSuccessfulNum.increment();
             ioTPrinter.println("Processed success file [ " + filePath + " ] successfully!");
           } catch (Exception processSuccessException) {
             ioTPrinter.println(
@@ -382,12 +399,13 @@ public class ImportTsFile extends AbstractTsFileTool {
                     + processSuccessException.getMessage());
           }
         } catch (Exception e) {
-          failedFileNum.increment();
+          loadFileFailedNum.increment();
           ioTPrinter.println("Failed to import [ " + filePath + " ] file: " + e.getMessage());
 
           try {
             ioTPrinter.println("Processing fail file [ " + filePath + " ] ...");
             processingFile(filePath, failDir, failOperation);
+            processingLoadFailedFileSuccessfulNum.increment();
             ioTPrinter.println("Processed fail file [ " + filePath + " ] successfully!");
           } catch (Exception processFailException) {
             ioTPrinter.println(
