@@ -212,7 +212,7 @@ public class ImportTsFile extends AbstractTsFileTool {
             + processingLoadSuccessfulFileSuccessfulNum.sum()
             + " files operations succeed, "
             + (loadFileSuccessfulNum.sum() - processingLoadSuccessfulFileSuccessfulNum.sum())
-            + " fail)");
+            + " failed)");
     ioTPrinter.println(
         "Failed load "
             + loadFileFailedNum.sum()
@@ -220,7 +220,7 @@ public class ImportTsFile extends AbstractTsFileTool {
             + processingLoadFailedFileSuccessfulNum.sum()
             + " files operations succeed, "
             + (loadFileFailedNum.sum() - processingLoadFailedFileSuccessfulNum.sum())
-            + " fail)");
+            + " failed)");
     ioTPrinter.println("Total operation time(ms) : " + (System.currentTimeMillis() - startTime));
     ioTPrinter.println("Work has been completed");
     System.exit(resultCode);
