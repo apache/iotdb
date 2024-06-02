@@ -46,12 +46,15 @@ public abstract class Expression extends Node {
   }
 
   public TableExpressionType getExpressionType() {
-    return null;
+    throw new UnsupportedOperationException(
+        "getExpressionType is not implemented yet: " + this.getClass().getSimpleName());
   }
 
+  // TODO make abstract later
   protected void serialize(ByteBuffer byteBuffer) {}
 
-  protected void serialize(DataOutputStream stream) {}
+  // TODO make abstract later
+  protected void serialize(DataOutputStream stream) throws IOException {}
 
   public static void serialize(Expression expression, ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(
@@ -68,10 +71,79 @@ public abstract class Expression extends Node {
   public static Expression deserialize(ByteBuffer byteBuffer) {
     short type = ReadWriteIOUtils.readShort(byteBuffer);
 
-    Expression expression;
+    Expression expression = null;
     switch (type) {
-      case 0:
+        //      case 1:
+        //        expression = new ArithmeticBinaryExpression(byteBuffer);
+        //        break;
+        //      case 2:
+        //        expression = new ArithmeticUnaryExpression(byteBuffer);
+        //        break;
+        //      case 3:
+        //        expression = new LikePredicate(byteBuffer);
+        //        break;
+        //      case 4:
+        //        expression = new InListExpression(byteBuffer);
+        //        break;
+        //      case 5:
+        //        expression = new IsNotNullPredicate(byteBuffer);
+        //        break;
+        //      case 6:
+        //        expression = new IsNullPredicate(byteBuffer);
+        //        break;
+        //      case 7:
+        //        expression = new FunctionCall(byteBuffer);
+        //        break;
+        //      case 8:
+        //        expression = new Identifier(byteBuffer);
+        //        break;
+        //      case 9:
+        //        expression = new Cast(byteBuffer);
+        //        break;
+        //      case 10:
+        //        expression = new GenericDataType(byteBuffer);
+        //        break;
+        //      case 11:
+        //        expression = new BetweenPredicate(byteBuffer);
+        //        break;
+        //      case 12:
+        //        expression = new InPredicate(byteBuffer);
+        //        break;
+        //      case 13:
+        //        expression = new LogicalExpression(byteBuffer);
+        //        break;
+        //      case 14:
+        //        expression = new NotExpression(byteBuffer);
+        //        break;
+      case 15:
         expression = new ComparisonExpression(byteBuffer);
+        break;
+        //      case 16:
+        //        expression = new BinaryLiteral(byteBuffer);
+        //        break;
+        //      case 17:
+        //        expression = new BooleanLiteral(byteBuffer);
+        //        break;
+        //      case 18:
+        //        expression = new DecimalLiteral(byteBuffer);
+        //        break;
+        //      case 19:
+        //        expression = new DoubleLiteral(byteBuffer);
+        //        break;
+        //      case 20:
+        //        expression = new GenericLiteral(byteBuffer);
+        //        break;
+      case 21:
+        expression = new LongLiteral(byteBuffer);
+        break;
+        //      case 22:
+        //        expression = new NullLiteral(byteBuffer);
+        //        break;
+        //      case 23:
+        //        expression = new StringLiteral(byteBuffer);
+        //        break;
+      case 24:
+        expression = new SymbolReference(byteBuffer);
         break;
       default:
         throw new IllegalArgumentException("Invalid expression type: " + type);
