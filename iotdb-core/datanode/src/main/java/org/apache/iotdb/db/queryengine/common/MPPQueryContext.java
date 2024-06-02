@@ -223,6 +223,10 @@ public class MPPQueryContext {
         PredicateUtils.convertPredicateToTimeFilter(analysis.getGlobalTimePredicate());
   }
 
+  public void setGlobalTimeFilter(Filter globalTimeFilter) {
+    this.globalTimeFilter = globalTimeFilter;
+  }
+
   public Filter getGlobalTimeFilter() {
     // time filter may be stateful, so we need to copy it
     return globalTimeFilter != null ? globalTimeFilter.copy() : null;

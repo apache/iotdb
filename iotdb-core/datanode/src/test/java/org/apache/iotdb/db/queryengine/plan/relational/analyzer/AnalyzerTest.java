@@ -155,21 +155,29 @@ public class AnalyzerTest {
           "db",
           IClientSession.SqlDialect.TABLE);
   Metadata metadata = new TestMatadata();
+  String sql;
+  Analysis actualAnalysis;
+  MPPQueryContext context;
+  LogicalPlanner logicalPlanner;
+  LogicalQueryPlan logicalQueryPlan;
+  PlanNode rootNode;
+  TableDistributionPlanner distributionPlanner;
+  DistributedQueryPlan distributedQueryPlan;
 
   @Test
   public void singleTableNoFilterTest() throws IoTDBException {
     // 1. wildcard
-    String sql = "SELECT * FROM table1";
-    Analysis actualAnalysis = analyzeSQL(sql, metadata);
+    sql = "SELECT * FROM table1";
+    actualAnalysis = analyzeSQL(sql, metadata);
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
 
-    MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    LogicalPlanner logicalPlanner =
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalPlanner =
         new LogicalPlanner(
             context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
-    LogicalQueryPlan logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
-    PlanNode rootNode = logicalQueryPlan.getRootNode();
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
     assertTrue(((OutputNode) rootNode).getChild() instanceof TableScanNode);
     TableScanNode tableScanNode = (TableScanNode) ((OutputNode) rootNode).getChild();
@@ -180,11 +188,13 @@ public class AnalyzerTest {
     assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
     assertEquals(ASC, tableScanNode.getScanOrder());
 
-    TableDistributionPlanner distributionPlanner =
-        new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
     DistributedQueryPlan distributedQueryPlan = distributionPlanner.plan();
     assertEquals(4, distributedQueryPlan.getInstances().size());
+  }
 
+  @Test
+  public void singleTableWithTimeFilterTest() throws IoTDBException {
     // 2. global time filter
     sql = "SELECT * FROM table1 where time > 1";
     actualAnalysis = analyzeSQL(sql, metadata);
@@ -199,7 +209,7 @@ public class AnalyzerTest {
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
     assertTrue(((OutputNode) rootNode).getChild() instanceof TableScanNode);
-    tableScanNode = (TableScanNode) ((OutputNode) rootNode).getChild();
+    TableScanNode tableScanNode = (TableScanNode) ((OutputNode) rootNode).getChild();
     assertEquals("table1", tableScanNode.getQualifiedTableName());
     assertEquals(8, tableScanNode.getOutputSymbols().size());
     assertEquals(8, tableScanNode.getAssignments().size());
