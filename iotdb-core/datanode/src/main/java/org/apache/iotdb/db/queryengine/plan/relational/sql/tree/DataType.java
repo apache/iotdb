@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.tree;
 import javax.annotation.Nullable;
 
 public abstract class DataType extends Expression {
-
   DataType(@Nullable NodeLocation location) {
     super(location);
   }

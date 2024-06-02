@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -38,6 +39,7 @@ public class TreeModelTimePredicate implements TimePredicate {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write((byte) 0, stream);
     Expression.serialize(timePredicate, stream);
   }
 
