@@ -99,7 +99,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private long historicalDataExtractionEndTime = Long.MAX_VALUE; // Event time
   private long historicalDataExtractionTimeLowerBound; // Arrival time
 
-  private boolean sloppyRange; // true to disable time range filter after extraction
+  private boolean sloppyFilter; // true to disable range filter after extraction
 
   private boolean shouldExtractInsertion;
   private boolean shouldTransferModFile; // Whether to transfer mods
@@ -282,7 +282,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       }
     }
 
-    sloppyRange =
+    sloppyFilter =
         Arrays.stream(
                 parameters
                     .getStringOrDefault(
@@ -303,7 +303,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         historicalDataExtractionStartTime,
         DateTimeUtils.convertLongToDate(historicalDataExtractionEndTime),
         historicalDataExtractionEndTime,
-        sloppyRange);
+        sloppyFilter);
   }
 
   private void flushDataRegionAllTsFiles() {
@@ -514,11 +514,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             pipePattern,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
-    if (sloppyRange || isDbNameCoveredByPattern) {
+    if (sloppyFilter || isDbNameCoveredByPattern) {
       event.skipParsingPattern();
     }
 
-    if (sloppyRange || isTsFileResourceCoveredByTimeRange(resource)) {
+    if (sloppyFilter || isTsFileResourceCoveredByTimeRange(resource)) {
       event.skipParsingTime();
     }
 
