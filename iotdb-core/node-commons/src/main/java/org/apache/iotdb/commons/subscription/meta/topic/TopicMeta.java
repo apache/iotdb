@@ -185,8 +185,8 @@ public class TopicMeta {
     extractorAttributes.putAll(config.getAttributesWithTimeRange(creationTime));
     // realtime mode
     extractorAttributes.putAll(config.getAttributesWithRealtimeMode());
-    // mode
-    extractorAttributes.put("mode", "query");
+    // source mode
+    extractorAttributes.putAll(config.getAttributesWithSourceMode());
     return extractorAttributes;
   }
 

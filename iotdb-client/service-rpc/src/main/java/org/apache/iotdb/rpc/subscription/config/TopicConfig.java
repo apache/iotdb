@@ -101,6 +101,13 @@ public class TopicConfig extends PipeParameters {
         : Collections.singletonMap("realtime.mode", "hybrid");
   }
 
+  public Map<String, String> getAttributesWithSourceMode() {
+    return TopicConstant.MODE_QUERY_VALUE.equals(
+            attributes.getOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE))
+        ? Collections.singletonMap("mode", "query")
+        : Collections.singletonMap("mode", "subscribe");
+  }
+
   public Map<String, String> getAttributesWithProcessorPrefix() {
     final Map<String, String> attributesWithProcessorPrefix = new HashMap<>();
     attributes.forEach(
