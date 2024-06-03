@@ -222,6 +222,24 @@ public class AnalyzerTest {
     assertEquals(4, distributedQueryPlan.getInstances().size());
   }
 
+  @Test
+  public void singleTableProjectTest() throws IoTDBException {
+    // 1. wildcard
+    sql = "SELECT tag1, attr1, s1 FROM table1";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    assertNotNull(actualAnalysis);
+    assertEquals(1, actualAnalysis.getTables().size());
+
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalPlanner =
+        new LogicalPlanner(
+            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+
+    // TODO add TableScanNode outputColumns examination
+  }
+
   public static Analysis analyzeSQL(String sql, Metadata metadata) {
     try {
       SqlParser sqlParser = new SqlParser();

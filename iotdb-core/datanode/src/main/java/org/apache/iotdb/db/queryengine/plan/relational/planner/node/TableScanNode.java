@@ -45,8 +45,8 @@ public class TableScanNode extends SourceNode {
 
   // db.tablename
   private final String qualifiedTableName;
-  private final List<Symbol> outputSymbols;
-  private final Map<Symbol, ColumnSchema> assignments;
+  private List<Symbol> outputSymbols;
+  private Map<Symbol, ColumnSchema> assignments;
 
   private List<DeviceEntry> deviceEntries;
   private Map<Symbol, Integer> idAndAttributeIndexMap;
@@ -276,6 +276,18 @@ public class TableScanNode extends SourceNode {
     return this.qualifiedTableName;
   }
 
+  public void setOutputSymbols(List<Symbol> outputSymbols) {
+    this.outputSymbols = outputSymbols;
+  }
+
+  public void setAssignments(Map<Symbol, ColumnSchema> assignments) {
+    this.assignments = assignments;
+  }
+
+  public Map<Symbol, ColumnSchema> getAssignments() {
+    return this.assignments;
+  }
+
   public void setDeviceEntries(List<DeviceEntry> deviceEntries) {
     this.deviceEntries = deviceEntries;
   }
@@ -286,10 +298,6 @@ public class TableScanNode extends SourceNode {
 
   public void setIdAndAttributeIndexMap(Map<Symbol, Integer> idAndAttributeIndexMap) {
     this.idAndAttributeIndexMap = idAndAttributeIndexMap;
-  }
-
-  public Map<Symbol, ColumnSchema> getAssignments() {
-    return this.assignments;
   }
 
   public Ordering getScanOrder() {

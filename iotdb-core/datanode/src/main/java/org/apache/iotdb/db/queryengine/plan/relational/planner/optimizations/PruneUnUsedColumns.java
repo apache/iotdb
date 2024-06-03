@@ -20,9 +20,11 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DefaultTraversalVisitor;
@@ -30,11 +32,24 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-public class PruneTableScanColumns implements RelationalPlanOptimizer {
+import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
+
+/**
+ * Remove unused columns in TableScanNode.
+ *
+ * <p>For example, The output columns of TableScanNode in `select * from table1` query are `tag1,
+ * attr1, s1`, but the output columns of TableScanNode in `select s1 from table1` query can only be
+ * `s1`.
+ */
+public class PruneUnUsedColumns implements RelationalPlanOptimizer {
+
   @Override
   public PlanNode optimize(
       PlanNode planNode,
@@ -47,6 +62,7 @@ public class PruneTableScanColumns implements RelationalPlanOptimizer {
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
+
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
       for (PlanNode child : node.getChildren()) {
@@ -56,8 +72,16 @@ public class PruneTableScanColumns implements RelationalPlanOptimizer {
     }
 
     @Override
+    public PlanNode visitOutput(OutputNode node, RewriterContext context) {
+      context.allUsedSymbolSet.addAll(node.getOutputSymbols());
+      node.getChild().accept(this, context);
+      return node;
+    }
+
+    @Override
     public PlanNode visitProject(ProjectNode node, RewriterContext context) {
-      context.symbolHashSet.addAll(node.getOutputSymbols());
+      // TODO add project existence judgement
+      context.allUsedSymbolSet.addAll(node.getOutputSymbols());
       node.getChild().accept(this, context);
       return node;
     }
@@ -67,13 +91,23 @@ public class PruneTableScanColumns implements RelationalPlanOptimizer {
       ImmutableList.Builder<Symbol> symbolBuilder = ImmutableList.builder();
       new SymbolBuilderVisitor().process(node.getPredicate(), ImmutableList.builder());
       List<Symbol> ret = symbolBuilder.build();
-      context.symbolHashSet.addAll(ret);
+      context.allUsedSymbolSet.addAll(ret);
       node.getChild().accept(this, context);
       return node;
     }
 
     @Override
     public PlanNode visitTableScan(TableScanNode node, RewriterContext context) {
+      List<Symbol> newOutputSymbols = new ArrayList<>();
+      Map<Symbol, ColumnSchema> newAssignments = new HashMap<>();
+      for (Symbol symbol : node.getOutputSymbols()) {
+        if (TIME.equalsIgnoreCase(symbol.getName()) || context.allUsedSymbolSet.contains(symbol)) {
+          newOutputSymbols.add(symbol);
+          newAssignments.put(symbol, node.getAssignments().get(symbol));
+        }
+      }
+      node.setOutputSymbols(newOutputSymbols);
+      node.setAssignments(newAssignments);
       return node;
     }
   }
@@ -89,6 +123,6 @@ public class PruneTableScanColumns implements RelationalPlanOptimizer {
   }
 
   private static class RewriterContext {
-    Set<Symbol> symbolHashSet = new HashSet<>();
+    Set<Symbol> allUsedSymbolSet = new HashSet<>();
   }
 }
