@@ -30,14 +30,13 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 
@@ -60,7 +59,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 public class AlignedSeriesTestUtil {
 
   public static void setUp(
-      List<IMeasurementSchema> measurementSchemas,
+      List<MeasurementSchema> measurementSchemas,
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
       String sgName)
@@ -83,7 +82,7 @@ public class AlignedSeriesTestUtil {
   private static void prepareFiles(
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
-      List<IMeasurementSchema> measurementSchemas,
+      List<MeasurementSchema> measurementSchemas,
       String sgName)
       throws IOException, WriteProcessException {
     int seqFileNum = 5;
@@ -129,7 +128,7 @@ public class AlignedSeriesTestUtil {
       long timeOffset,
       long ptNum,
       long valueOffset,
-      List<IMeasurementSchema> measurementSchemas)
+      List<MeasurementSchema> measurementSchemas)
       throws IOException, WriteProcessException {
     File file = tsFileResource.getTsFile();
     if (!file.getParentFile().exists()) {
@@ -148,7 +147,7 @@ public class AlignedSeriesTestUtil {
 
       TSRecord record = new TSRecord(i, device0);
       int index = 0;
-      for (IMeasurementSchema measurementSchema : measurementSchemas) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
         record.addTuple(
             DataPoint.getDataPoint(
                 measurementSchema.getType(),
@@ -159,18 +158,18 @@ public class AlignedSeriesTestUtil {
         index++;
       }
       fileWriter.writeAligned(record);
-      tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device0), i);
-      tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device0), i);
+      tsFileResource.updateStartTime(new PlainDeviceID(device0), i);
+      tsFileResource.updateEndTime(new PlainDeviceID(device0), i);
 
-      record.deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(device1);
+      record.deviceId = device1;
       fileWriter.writeAligned(record);
-      tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device1), i);
-      tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device1), i);
+      tsFileResource.updateStartTime(new PlainDeviceID(device1), i);
+      tsFileResource.updateEndTime(new PlainDeviceID(device1), i);
 
-      record.deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(device2);
+      record.deviceId = device2;
       fileWriter.write(record);
-      tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device2), i);
-      tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(device2), i);
+      tsFileResource.updateStartTime(new PlainDeviceID(device2), i);
+      tsFileResource.updateEndTime(new PlainDeviceID(device2), i);
 
       long flushInterval = 20;
       if ((i + 1) % flushInterval == 0) {
@@ -180,7 +179,7 @@ public class AlignedSeriesTestUtil {
     fileWriter.close();
   }
 
-  private static void prepareSeries(List<IMeasurementSchema> measurementSchemas, String sgName)
+  private static void prepareSeries(List<MeasurementSchema> measurementSchemas, String sgName)
       throws MetadataException {
 
     measurementSchemas.add(

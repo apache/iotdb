@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
-import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.commons.path.IFullPath;
-import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -57,14 +56,12 @@ public class SeriesScanOptions {
     this.allSensors = allSensors;
   }
 
-  public static SeriesScanOptions getDefaultSeriesScanOptions(IFullPath seriesPath) {
+  public static SeriesScanOptions getDefaultSeriesScanOptions(PartialPath seriesPath) {
     Builder builder = new Builder();
-    if (seriesPath instanceof AlignedFullPath) {
-      builder.withAllSensors(new HashSet<>(((AlignedFullPath) seriesPath).getMeasurementList()));
+    if (seriesPath instanceof AlignedPath) {
+      builder.withAllSensors(new HashSet<>(((AlignedPath) seriesPath).getMeasurementList()));
     } else {
-      builder.withAllSensors(
-          new HashSet<>(
-              Collections.singletonList(((NonAlignedFullPath) seriesPath).getMeasurement())));
+      builder.withAllSensors(new HashSet<>(Collections.singletonList(seriesPath.getMeasurement())));
     }
     return builder.build();
   }

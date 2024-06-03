@@ -44,12 +44,12 @@ public abstract class RowTsFileConnectorTestBase {
   protected TSFileConfig config = new TSFileConfig();
   protected String[] filedNames = {
     QueryConstant.RESERVED_TIME,
-    "db1.device_1.sensor_1",
-    "db1.device_1.sensor_2",
-    "db1.device_1.sensor_3",
-    "db2.device_2.sensor_1",
-    "db2.device_2.sensor_2",
-    "db2.device_2.sensor_3"
+    "device_1.sensor_1",
+    "device_1.sensor_2",
+    "device_1.sensor_3",
+    "device_2.sensor_1",
+    "device_2.sensor_2",
+    "device_2.sensor_3"
   };
   protected TypeInformation[] typeInformations =
       new TypeInformation[] {

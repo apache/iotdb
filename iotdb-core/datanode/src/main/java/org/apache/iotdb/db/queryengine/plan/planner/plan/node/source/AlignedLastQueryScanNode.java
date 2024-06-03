@@ -220,7 +220,7 @@ public class AlignedLastQueryScanNode extends LastSeriesSourceNode {
       return outputViewPath;
     }
     if (seriesPath.getMeasurementList().size() > 1) {
-      return seriesPath.getIDeviceID().toString();
+      return seriesPath.getDevice();
     }
     return seriesPath.transformToPartialPath().getFullPath();
   }

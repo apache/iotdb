@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -28,7 +30,6 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
 
 import org.apache.tsfile.file.metadata.IChunkMetadata;
-import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -82,8 +83,7 @@ public class QueryContext {
    * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
    */
-  public List<Modification> getPathModifications(
-      TsFileResource tsFileResource, IDeviceID deviceID, String measurementId) {
+  public List<Modification> getPathModifications(TsFileResource tsFileResource, PartialPath path) {
     // if the mods file does not exist, do not add it to the cache
     if (nonExistentModFiles.contains(tsFileResource.getTsFileID())) {
       return Collections.emptyList();
@@ -106,7 +106,7 @@ public class QueryContext {
               }
               return modifications;
             });
-    return ModificationFile.sortAndMerge(allModifications.getOverlapped(deviceID, measurementId));
+    return ModificationFile.sortAndMerge(allModifications.getOverlapped(path));
   }
 
   /**
@@ -114,11 +114,11 @@ public class QueryContext {
    * them from 'modFile' and put then into the cache.
    */
   public List<List<Modification>> getPathModifications(
-      TsFileResource tsFileResource, IDeviceID deviceID, List<String> measurementList) {
-    int n = measurementList.size();
+      TsFileResource tsFileResource, AlignedPath path) {
+    int n = path.getMeasurementList().size();
     List<List<Modification>> ans = new ArrayList<>(n);
-    for (String s : measurementList) {
-      ans.add(getPathModifications(tsFileResource, deviceID, s));
+    for (int i = 0; i < n; i++) {
+      ans.add(getPathModifications(tsFileResource, path.getPathWithMeasurement(i)));
     }
     return ans;
   }

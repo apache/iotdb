@@ -223,7 +223,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
       } else {
         // internal measurement node
         MetadataIndexNode nextLayerMeasurementNode =
-            getDeserializeContext().deserializeMetadataIndexNode(nextBuffer, false);
+            MetadataIndexNode.deserializeFrom(nextBuffer, false);
         timeseriesMetadataOffsetMap.putAll(
             getTimeseriesMetadataAndOffsetByDevice(
                 nextLayerMeasurementNode, excludedMeasurementIds, needChunkMetadata));

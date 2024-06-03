@@ -44,7 +44,6 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
@@ -142,7 +141,7 @@ public class PipeDataNodeThriftRequestTest {
   @Test
   public void testPipeTransferTabletReq() {
     try {
-      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      List<MeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s3", TSDataType.FLOAT));
@@ -204,7 +203,7 @@ public class PipeDataNodeThriftRequestTest {
     binaryBuffers.add(ByteBuffer.wrap(new byte[] {'a', 'b'}));
 
     // Raw buffer
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.FLOAT));

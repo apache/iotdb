@@ -39,7 +39,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -751,7 +751,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
     TsFileWriter fileWriter = new TsFileWriter(firstFile);
     for (IDeviceID deviceId : deviceIds) {
-      for (IMeasurementSchema measurementSchema : measurementSchemas) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
@@ -804,7 +804,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     }
     fileWriter = new TsFileWriter(secondFile);
     for (IDeviceID deviceId : deviceIds) {
-      for (IMeasurementSchema measurementSchema : measurementSchemas) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
@@ -850,7 +850,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     }
     fileWriter = new TsFileWriter(thirdFile);
     for (IDeviceID deviceId : deviceIds) {
-      for (IMeasurementSchema measurementSchema : measurementSchemas) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
@@ -896,7 +896,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     }
     fileWriter = new TsFileWriter(fourthFile);
     for (IDeviceID deviceId : deviceIds) {
-      for (IMeasurementSchema measurementSchema : measurementSchemas) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }

@@ -226,9 +226,7 @@ public class CreateLogicalViewNode extends WritePlanNode implements ICreateLogic
       // build a map from TRegionReplicaSet to this entry.
       // Please note that getSchemaRegionReplicaSet needs a device path as parameter.
       TRegionReplicaSet regionReplicaSet =
-          analysis
-              .getSchemaPartitionInfo()
-              .getSchemaRegionReplicaSet(entry.getKey().getIDeviceID().toString());
+          analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(entry.getKey().getDevice());
 
       // create a map if the key(regionReplicaSet) is not exists,
       // then put this entry into this map(from regionReplicaSet to this entry)

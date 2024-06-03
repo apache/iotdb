@@ -20,7 +20,6 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -35,18 +34,6 @@ public class SchemaTestUtils {
     PartialPath path = new PartialPath(pathPatternString);
     return new MeasurementPath(
         path,
-        new MeasurementSchema(
-            path.getMeasurement(),
-            TSDataType.DOUBLE,
-            TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED));
-  }
-
-  public static NonAlignedFullPath getNonAlignedFullPath(String pathPatternString)
-      throws MetadataException {
-    PartialPath path = new PartialPath(pathPatternString);
-    return new NonAlignedFullPath(
-        path.getIDeviceID(),
         new MeasurementSchema(
             path.getMeasurement(),
             TSDataType.DOUBLE,

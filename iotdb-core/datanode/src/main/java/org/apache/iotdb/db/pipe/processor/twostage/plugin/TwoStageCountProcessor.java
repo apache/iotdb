@@ -244,7 +244,7 @@ public class TwoStageCountProcessor implements PipeProcessor {
 
       final Tablet tablet =
           new Tablet(
-              outputSeries.getDeviceString(),
+              outputSeries.getDevice(),
               Collections.singletonList(
                   new MeasurementSchema(outputSeries.getMeasurement(), TSDataType.INT64)),
               1);

@@ -28,7 +28,7 @@ import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -63,7 +63,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   public PartialPath() {}
 
   public PartialPath(IDeviceID device) throws IllegalPathException {
-    this(device.toString());
+    this(((PlainDeviceID) device).toStringID());
   }
 
   /**
@@ -86,7 +86,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   public PartialPath(IDeviceID device, String measurement) throws IllegalPathException {
-    this(device.toString(), measurement);
+    this(((PlainDeviceID) device).toStringID(), measurement);
   }
 
   public PartialPath(String device, String measurement) throws IllegalPathException {
@@ -320,17 +320,6 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    */
   public boolean matchFullPath(PartialPath rPath) {
     return matchPath(rPath.getNodes(), 0, 0, false, false);
-  }
-
-  public boolean matchFullPath(IDeviceID deviceID, String measurement) {
-    // TODO change this way
-    PartialPath devicePath;
-    try {
-      devicePath = new PartialPath(deviceID.toString());
-    } catch (IllegalPathException e) {
-      throw new RuntimeException(e);
-    }
-    return matchPath(devicePath.concatNode(measurement).getNodes(), 0, 0, false, false);
   }
 
   /**
@@ -742,38 +731,19 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   @Override
-  public IDeviceID getIDeviceID() {
+  public String getDevice() {
     if (device != null) {
       return device;
     } else {
       if (nodes.length == 1) {
-        device = Factory.DEFAULT_FACTORY.create("");
-        return device;
+        return "";
       }
       StringBuilder s = new StringBuilder(nodes[0]);
       for (int i = 1; i < nodes.length - 1; i++) {
         s.append(TsFileConstant.PATH_SEPARATOR);
         s.append(nodes[i]);
       }
-      device = Factory.DEFAULT_FACTORY.create(s.toString());
-    }
-    return device;
-  }
-
-  /** This PartialPath represents for full device path */
-  public IDeviceID getIDeviceIDAsFullDevice() {
-    if (device != null) {
-      return device;
-    } else {
-      if (nodes.length == 1) {
-        return Factory.DEFAULT_FACTORY.create("");
-      }
-      StringBuilder s = new StringBuilder(nodes[0]);
-      for (int i = 1; i < nodes.length; i++) {
-        s.append(TsFileConstant.PATH_SEPARATOR);
-        s.append(nodes[i]);
-      }
-      device = Factory.DEFAULT_FACTORY.create(s.toString());
+      device = s.toString();
     }
     return device;
   }
@@ -852,7 +822,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   @TestOnly
   public Path toTSFilePath() {
-    return new Path(getIDeviceID(), getMeasurement(), true);
+    return new Path(getDevice(), getMeasurement(), true);
   }
 
   public static List<String> toStringList(List<PartialPath> pathList) {
@@ -944,7 +914,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     }
     partialPath.nodes = nodes;
     partialPath.setMeasurement(path.getMeasurement());
-    partialPath.device = path.getIDeviceID();
+    partialPath.device = path.getDevice();
     partialPath.fullPath = path.getFullPath();
     return partialPath;
   }

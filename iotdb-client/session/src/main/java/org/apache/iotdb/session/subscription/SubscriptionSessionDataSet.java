@@ -27,7 +27,7 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -64,8 +64,8 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
     columnNameList = new ArrayList<>();
     columnNameList.add("Time");
 
-    String deviceId = tablet.getDeviceId();
-    List<IMeasurementSchema> schemas = tablet.getSchemas();
+    String deviceId = tablet.deviceId;
+    List<MeasurementSchema> schemas = tablet.getSchemas();
     columnNameList.addAll(
         schemas.stream()
             .map((schema) -> deviceId + "." + schema.getMeasurementId())
@@ -82,7 +82,7 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
     columnTypeList = new ArrayList<>();
     columnTypeList.add(TSDataType.INT64.toString());
 
-    List<IMeasurementSchema> schemas = tablet.getSchemas();
+    List<MeasurementSchema> schemas = tablet.getSchemas();
     columnTypeList.addAll(
         schemas.stream().map((schema) -> schema.getType().toString()).collect(Collectors.toList()));
     return columnTypeList;

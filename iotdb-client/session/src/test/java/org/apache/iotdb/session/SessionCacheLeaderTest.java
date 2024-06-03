@@ -34,7 +34,6 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 import org.junit.Test;
@@ -438,7 +437,7 @@ public class SessionCacheLeaderTest {
     assertNull(session.endPointToSessionConnection);
 
     String deviceId = "root.sg2.d2";
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
@@ -516,7 +515,7 @@ public class SessionCacheLeaderTest {
             add("root.sg4.d1");
           }
         };
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
@@ -775,7 +774,7 @@ public class SessionCacheLeaderTest {
             add("root.sg4.d1");
           }
         };
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));

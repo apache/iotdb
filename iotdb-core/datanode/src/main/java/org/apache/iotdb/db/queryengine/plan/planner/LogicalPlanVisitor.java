@@ -102,8 +102,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.table.ShowTableDevicesStat
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -427,16 +427,16 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         }
 
         if (COUNT_TIME.equalsIgnoreCase(functionExpression.getFunctionName())) {
-          IDeviceID alignedDeviceId = null;
+          String alignedDeviceId = "";
           for (Expression countTimeExpression : sourceTransformExpressions) {
             TimeSeriesOperand ts = (TimeSeriesOperand) countTimeExpression;
             if (!(ts.getPath() instanceof AlignedPath
                 || ((MeasurementPath) ts.getPath()).isUnderAlignedEntity())) {
               return true;
             }
-            if (alignedDeviceId == null) {
-              alignedDeviceId = ts.getPath().getIDeviceID();
-            } else if (!alignedDeviceId.equals(ts.getPath().getIDeviceID())) {
+            if (StringUtils.isEmpty(alignedDeviceId)) {
+              alignedDeviceId = ts.getPath().getDevice();
+            } else if (!alignedDeviceId.equalsIgnoreCase(ts.getPath().getDevice())) {
               // count_time from only one aligned device can use AlignedSeriesAggScan
               return true;
             }

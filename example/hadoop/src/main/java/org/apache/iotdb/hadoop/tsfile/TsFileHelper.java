@@ -25,7 +25,6 @@ import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
@@ -56,7 +55,7 @@ public class TsFileHelper {
 
       Schema schema = new Schema();
 
-      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      List<MeasurementSchema> schemaList = new ArrayList<>();
 
       // the number of rows to include in the tablet
       int rowNum = 1000000;

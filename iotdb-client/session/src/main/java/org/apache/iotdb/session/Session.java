@@ -2578,15 +2578,15 @@ public class Session implements ISession {
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
     try {
-      getSessionConnection(tablet.getDeviceId()).insertTablet(request);
+      getSessionConnection(tablet.deviceId).insertTablet(request);
     } catch (RedirectException e) {
-      handleRedirection(tablet.getDeviceId(), e.getEndPoint());
+      handleRedirection(tablet.deviceId, e.getEndPoint());
     } catch (IoTDBConnectionException e) {
       if (enableRedirection
           && !deviceIdToEndpoint.isEmpty()
-          && deviceIdToEndpoint.get(tablet.getDeviceId()) != null) {
-        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(tablet.getDeviceId()));
-        deviceIdToEndpoint.remove(tablet.getDeviceId());
+          && deviceIdToEndpoint.get(tablet.deviceId) != null) {
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(tablet.deviceId));
+        deviceIdToEndpoint.remove(tablet.deviceId);
 
         // reconnect with default connection
         try {
@@ -2626,15 +2626,15 @@ public class Session implements ISession {
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, true);
     try {
-      getSessionConnection(tablet.getDeviceId()).insertTablet(request);
+      getSessionConnection(tablet.deviceId).insertTablet(request);
     } catch (RedirectException e) {
-      handleRedirection(tablet.getDeviceId(), e.getEndPoint());
+      handleRedirection(tablet.deviceId, e.getEndPoint());
     } catch (IoTDBConnectionException e) {
       if (enableRedirection
           && !deviceIdToEndpoint.isEmpty()
-          && deviceIdToEndpoint.get(tablet.getDeviceId()) != null) {
-        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(tablet.getDeviceId()));
-        deviceIdToEndpoint.remove(tablet.getDeviceId());
+          && deviceIdToEndpoint.get(tablet.deviceId) != null) {
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(tablet.deviceId));
+        deviceIdToEndpoint.remove(tablet.deviceId);
 
         // reconnect with default connection
         try {
@@ -2659,7 +2659,7 @@ public class Session implements ISession {
       request.addToTypes(measurementSchema.getType().ordinal());
     }
 
-    request.setPrefixPath(tablet.getDeviceId());
+    request.setPrefixPath(tablet.deviceId);
     request.setIsAligned(isAligned);
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
     request.setValues(SessionUtils.getValueBuffer(tablet));
@@ -2770,7 +2770,7 @@ public class Session implements ISession {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
     }
-    request.addToPrefixPaths(tablet.getDeviceId());
+    request.addToPrefixPaths(tablet.deviceId);
     List<String> measurements = new ArrayList<>();
     List<Integer> dataTypes = new ArrayList<>();
     request.setIsAligned(isAligned);
@@ -2833,7 +2833,7 @@ public class Session implements ISession {
         }
       }
     }
-    List<IMeasurementSchema> schemaList = new ArrayList<>(measuremenMap.size());
+    List<MeasurementSchema> schemaList = new ArrayList<>(measuremenMap.size());
     // use measurementType to build schemaList
     for (Entry<String, Pair<TSDataType, Boolean>> entry : measuremenMap.entrySet()) {
       schemaList.add(new MeasurementSchema(entry.getKey(), entry.getValue().getLeft()));
@@ -2918,11 +2918,11 @@ public class Session implements ISession {
       rowMap.merge(device, 1, Integer::sum);
     }
     // device -> schema
-    Map<String, List<IMeasurementSchema>> schemaMap = new HashMap<>(deviceSize + 1, 1);
+    Map<String, List<MeasurementSchema>> schemaMap = new HashMap<>(deviceSize + 1, 1);
     // use measurementTypeMap to build schemaMap
     for (Map.Entry<String, Map<String, Pair<TSDataType, Boolean>>> entry :
         deviceMeasuremenMap.entrySet()) {
-      List<IMeasurementSchema> schemaList = new ArrayList<>(entry.getValue().size() + 1);
+      List<MeasurementSchema> schemaList = new ArrayList<>(entry.getValue().size() + 1);
       for (Map.Entry<String, Pair<TSDataType, Boolean>> schemaEntry : entry.getValue().entrySet()) {
         schemaList.add(
             new MeasurementSchema(schemaEntry.getKey(), schemaEntry.getValue().getLeft()));

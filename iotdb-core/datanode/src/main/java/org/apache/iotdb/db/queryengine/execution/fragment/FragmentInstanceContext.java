@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
-import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -34,7 +34,6 @@ import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManag
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +63,7 @@ public class FragmentInstanceContext extends QueryContext {
   private Filter globalTimeFilter;
 
   // it will only be used once, after sharedQueryDataSource being inited, it will be set to null
-  private List<IFullPath> sourcePaths;
+  private List<PartialPath> sourcePaths;
   // Shared by all scan operators in this fragment instance to avoid memory problem
   private QueryDataSource sharedQueryDataSource;
   /** closed tsfile used in this fragment instance. */
@@ -339,22 +338,22 @@ public class FragmentInstanceContext extends QueryContext {
     return dataRegion;
   }
 
-  public void setSourcePaths(List<IFullPath> sourcePaths) {
+  public void setSourcePaths(List<PartialPath> sourcePaths) {
     this.sourcePaths = sourcePaths;
   }
 
-  public void initQueryDataSource(List<IFullPath> sourcePaths) throws QueryProcessException {
+  public void initQueryDataSource(List<PartialPath> sourcePaths) throws QueryProcessException {
     long startTime = System.nanoTime();
     if (sourcePaths == null) {
       return;
     }
     dataRegion.readLock();
     try {
-      List<IFullPath> pathList = new ArrayList<>();
-      Set<IDeviceID> selectedDeviceIdSet = new HashSet<>();
-      for (IFullPath path : sourcePaths) {
+      List<PartialPath> pathList = new ArrayList<>();
+      Set<String> selectedDeviceIdSet = new HashSet<>();
+      for (PartialPath path : sourcePaths) {
         pathList.add(path);
-        selectedDeviceIdSet.add(path.getDeviceId());
+        selectedDeviceIdSet.add(path.getDevice());
       }
 
       this.sharedQueryDataSource =

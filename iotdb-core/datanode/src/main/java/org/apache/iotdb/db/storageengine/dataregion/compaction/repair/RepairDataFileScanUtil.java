@@ -25,11 +25,10 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFi
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
@@ -40,6 +39,7 @@ import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileDeviceIterator;
@@ -110,7 +110,6 @@ public class RepairDataFileScanUtil {
 
   private void checkAlignedDeviceSeries(TsFileSequenceReader reader, IDeviceID device)
       throws IOException {
-    String deviceStr = device.toString();
     List<AlignedChunkMetadata> chunkMetadataList = reader.getAlignedChunkMetadata(device);
     for (AlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
       IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
@@ -135,7 +134,7 @@ public class RepairDataFileScanUtil {
             Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
         while (decoder.hasNext(uncompressedPageData)) {
           long currentTime = decoder.readLong(uncompressedPageData);
-          checkPreviousTimeAndUpdate(deviceStr, currentTime);
+          checkPreviousTimeAndUpdate(((PlainDeviceID) device).toStringID(), currentTime);
         }
       }
     }
@@ -151,17 +150,16 @@ public class RepairDataFileScanUtil {
           measurementChunkMetadataListMapIterator.next();
       for (Map.Entry<String, List<ChunkMetadata>> measurementChunkMetadataListEntry :
           measurementChunkMetadataListMap.entrySet()) {
-        String path =
-            device + TsFileConstant.PATH_SEPARATOR + measurementChunkMetadataListEntry.getKey();
+        String measurement = measurementChunkMetadataListEntry.getKey();
         List<ChunkMetadata> chunkMetadataList = measurementChunkMetadataListEntry.getValue();
-        checkSingleNonAlignedSeries(reader, path, chunkMetadataList);
+        checkSingleNonAlignedSeries(reader, measurement, chunkMetadataList);
         previousTime = Long.MIN_VALUE;
       }
     }
   }
 
   private void checkSingleNonAlignedSeries(
-      TsFileSequenceReader reader, String path, List<ChunkMetadata> chunkMetadataList)
+      TsFileSequenceReader reader, String measurement, List<ChunkMetadata> chunkMetadataList)
       throws IOException {
     for (ChunkMetadata chunkMetadata : chunkMetadataList) {
       if (chunkMetadata == null || chunkMetadata.getStatistics().getCount() == 0) {
@@ -190,7 +188,7 @@ public class RepairDataFileScanUtil {
                 TSDataType.INT64);
         while (timeDecoder.hasNext(timeBuffer)) {
           long currentTime = timeDecoder.readLong(timeBuffer);
-          checkPreviousTimeAndUpdate(path, currentTime);
+          checkPreviousTimeAndUpdate(measurement, currentTime);
         }
       }
     }
@@ -237,7 +235,7 @@ public class RepairDataFileScanUtil {
           || resource.getStatus() == TsFileResourceStatus.DELETED) {
         continue;
       }
-      ArrayDeviceTimeIndex deviceTimeIndex;
+      DeviceTimeIndex deviceTimeIndex;
       try {
         deviceTimeIndex = getDeviceTimeIndex(resource);
       } catch (Exception ignored) {
@@ -272,11 +270,10 @@ public class RepairDataFileScanUtil {
     return overlapResources;
   }
 
-  private static ArrayDeviceTimeIndex getDeviceTimeIndex(TsFileResource resource)
-      throws IOException {
+  private static DeviceTimeIndex getDeviceTimeIndex(TsFileResource resource) throws IOException {
     ITimeIndex timeIndex = resource.getTimeIndex();
-    if (timeIndex instanceof ArrayDeviceTimeIndex) {
-      return (ArrayDeviceTimeIndex) timeIndex;
+    if (timeIndex instanceof DeviceTimeIndex) {
+      return (DeviceTimeIndex) timeIndex;
     }
     return resource.buildDeviceTimeIndex();
   }

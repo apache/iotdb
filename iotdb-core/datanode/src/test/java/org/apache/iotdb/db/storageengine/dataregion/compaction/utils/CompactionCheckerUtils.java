@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -44,6 +43,7 @@ import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -197,7 +197,7 @@ public class CompactionCheckerUtils {
         // Because we do not know how many chunks a ChunkGroup may have, we should read one byte
         // (the
         // marker) ahead and judge accordingly.
-        IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("");
+        IDeviceID device = new PlainDeviceID("");
         String measurementID = "";
         List<TimeValuePair> currTimeValuePairs = new ArrayList<>();
         reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
@@ -323,7 +323,7 @@ public class CompactionCheckerUtils {
     Map<IDeviceID, long[]> devicePointNumMap = new HashMap<>();
     for (Entry<String, List<TimeValuePair>> dataEntry : sourceData.entrySet()) {
       PartialPath partialPath = new PartialPath(dataEntry.getKey());
-      IDeviceID device = partialPath.getIDeviceID();
+      IDeviceID device = new PlainDeviceID(partialPath.getDevice());
       long[] statistics =
           devicePointNumMap.computeIfAbsent(
               device, k -> new long[] {Long.MAX_VALUE, Long.MIN_VALUE});
@@ -391,7 +391,7 @@ public class CompactionCheckerUtils {
     Map<String, List<List<Long>>> mergedChunkPagePointsNum = new HashMap<>();
     List<Long> pagePointsNum = new ArrayList<>();
     try (TsFileSequenceReader reader = new TsFileSequenceReader(mergedFile.getTsFilePath())) {
-      IDeviceID entity = IDeviceID.Factory.DEFAULT_FACTORY.create("");
+      IDeviceID entity = new PlainDeviceID("");
       String measurement = "";
       // Sequential reading of one ChunkGroup now follows this order:
       // first the CHUNK_GROUP_HEADER, then SeriesChunks (headers and data) in one ChunkGroup
@@ -501,20 +501,20 @@ public class CompactionCheckerUtils {
    * @throws IllegalPathException
    * @throws IOException
    */
-  public static Map<IFullPath, List<TimeValuePair>> getDataByQuery(
-      List<IFullPath> fullPaths,
+  public static Map<PartialPath, List<TimeValuePair>> getDataByQuery(
+      List<PartialPath> fullPaths,
       List<IMeasurementSchema> schemas,
       List<TsFileResource> sequenceResources,
       List<TsFileResource> unsequenceResources)
       throws IllegalPathException, IOException {
-    Map<IFullPath, List<TimeValuePair>> pathDataMap = new HashMap<>();
+    Map<PartialPath, List<TimeValuePair>> pathDataMap = new HashMap<>();
     for (int i = 0; i < fullPaths.size(); ++i) {
       FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
       TimeSeriesMetadataCache.getInstance().clear();
       ChunkCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();
 
-      IFullPath path = fullPaths.get(i);
+      PartialPath path = fullPaths.get(i);
       List<TimeValuePair> dataList = new LinkedList<>();
 
       IDataBlockReader reader =
@@ -543,9 +543,9 @@ public class CompactionCheckerUtils {
   }
 
   public static void validDataByValueList(
-      Map<IFullPath, List<TimeValuePair>> expectedData,
-      Map<IFullPath, List<TimeValuePair>> actualData) {
-    for (IFullPath path : expectedData.keySet()) {
+      Map<PartialPath, List<TimeValuePair>> expectedData,
+      Map<PartialPath, List<TimeValuePair>> actualData) {
+    for (PartialPath path : expectedData.keySet()) {
       List<TimeValuePair> expectedTimeValueList = expectedData.get(path);
       List<TimeValuePair> actualTimeValueList = actualData.get(path);
 

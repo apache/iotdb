@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
@@ -58,9 +58,8 @@ public class TestUtilsForAlignedSeries {
         } else {
           writeNotAlignedChunkGroup(writer, device, schemas, startTime, endTime, randomNull[i]);
         }
-        tsFileResource.updateStartTime(
-            IDeviceID.Factory.DEFAULT_FACTORY.create(devices[i]), startTime);
-        tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(devices[i]), endTime);
+        tsFileResource.updateStartTime(new PlainDeviceID(devices[i]), startTime);
+        tsFileResource.updateEndTime(new PlainDeviceID(devices[i]), endTime);
       }
       writer.endFile();
     }
@@ -76,7 +75,7 @@ public class TestUtilsForAlignedSeries {
       long endTime,
       boolean randomNull)
       throws IOException {
-    writer.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create(device));
+    writer.startChunkGroup(new PlainDeviceID(device));
     AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(Arrays.asList(schemas));
     Random random = new Random();
     for (long time = startTime; time < endTime; ++time) {
@@ -125,7 +124,7 @@ public class TestUtilsForAlignedSeries {
       long endTime,
       boolean randomNull)
       throws IOException {
-    writer.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create(device));
+    writer.startChunkGroup(new PlainDeviceID(device));
     Random random = new Random();
     for (IMeasurementSchema schema : schemas) {
       ChunkWriterImpl chunkWriter = new ChunkWriterImpl(schema);

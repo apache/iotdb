@@ -31,8 +31,6 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 
 public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWriter {
   protected CompactionTsFileWriter fileWriter;
@@ -56,11 +54,6 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
                 ? CompactionType.INNER_SEQ_COMPACTION
                 : CompactionType.INNER_UNSEQ_COMPACTION);
     isEmptyFile = true;
-  }
-
-  @Override
-  protected List<CompactionTsFileWriter> getAllTargetFileWriter() {
-    return Collections.singletonList(fileWriter);
   }
 
   @Override

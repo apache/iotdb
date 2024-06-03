@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
-import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.TestUtilsForAlignedSeries;
@@ -39,7 +39,6 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -127,7 +126,7 @@ public class FastCompactionPerformerAlignedTest {
     }
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
-    List<IFullPath> fullPaths = new ArrayList<>();
+    List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
@@ -136,11 +135,9 @@ public class FastCompactionPerformerAlignedTest {
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
-      fullPaths.add(
-          new AlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
+      fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
-    Map<IFullPath, List<TimeValuePair>> originData =
+    Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
@@ -149,7 +146,7 @@ public class FastCompactionPerformerAlignedTest {
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-    Map<IFullPath, List<TimeValuePair>> compactedData =
+    Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
             iMeasurementSchemas,
@@ -203,7 +200,7 @@ public class FastCompactionPerformerAlignedTest {
     }
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
-    List<IFullPath> fullPaths = new ArrayList<>();
+    List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
@@ -212,11 +209,9 @@ public class FastCompactionPerformerAlignedTest {
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
-      fullPaths.add(
-          new AlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
+      fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
-    Map<IFullPath, List<TimeValuePair>> originData =
+    Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
@@ -224,7 +219,7 @@ public class FastCompactionPerformerAlignedTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-    Map<IFullPath, List<TimeValuePair>> compactedData =
+    Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
             iMeasurementSchemas,
@@ -272,7 +267,7 @@ public class FastCompactionPerformerAlignedTest {
     }
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
-    List<IFullPath> fullPaths = new ArrayList<>();
+    List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
@@ -281,11 +276,9 @@ public class FastCompactionPerformerAlignedTest {
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
-      fullPaths.add(
-          new AlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
+      fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
-    Map<IFullPath, List<TimeValuePair>> originData =
+    Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
@@ -293,7 +286,7 @@ public class FastCompactionPerformerAlignedTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-    Map<IFullPath, List<TimeValuePair>> compactedData =
+    Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
             iMeasurementSchemas,
@@ -344,7 +337,7 @@ public class FastCompactionPerformerAlignedTest {
     }
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
-    List<IFullPath> fullPaths = new ArrayList<>();
+    List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
@@ -353,11 +346,9 @@ public class FastCompactionPerformerAlignedTest {
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
-      fullPaths.add(
-          new AlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
+      fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
-    Map<IFullPath, List<TimeValuePair>> originData =
+    Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
@@ -365,7 +356,7 @@ public class FastCompactionPerformerAlignedTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-    Map<IFullPath, List<TimeValuePair>> compactedData =
+    Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
             iMeasurementSchemas,
@@ -414,7 +405,7 @@ public class FastCompactionPerformerAlignedTest {
     }
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
-    List<IFullPath> fullPaths = new ArrayList<>();
+    List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
@@ -423,11 +414,9 @@ public class FastCompactionPerformerAlignedTest {
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
-      fullPaths.add(
-          new AlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
+      fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
-    Map<IFullPath, List<TimeValuePair>> originData =
+    Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
@@ -435,7 +424,7 @@ public class FastCompactionPerformerAlignedTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-    Map<IFullPath, List<TimeValuePair>> compactedData =
+    Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
             iMeasurementSchemas,
@@ -486,7 +475,7 @@ public class FastCompactionPerformerAlignedTest {
     }
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
-    List<IFullPath> fullPaths = new ArrayList<>();
+    List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
@@ -495,11 +484,9 @@ public class FastCompactionPerformerAlignedTest {
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
-      fullPaths.add(
-          new AlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
+      fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
-    Map<IFullPath, List<TimeValuePair>> originData =
+    Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
@@ -507,7 +494,7 @@ public class FastCompactionPerformerAlignedTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-    Map<IFullPath, List<TimeValuePair>> compactedData =
+    Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
             iMeasurementSchemas,
@@ -559,7 +546,7 @@ public class FastCompactionPerformerAlignedTest {
     }
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
-    List<IFullPath> fullPaths = new ArrayList<>();
+    List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
@@ -568,11 +555,9 @@ public class FastCompactionPerformerAlignedTest {
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
-      fullPaths.add(
-          new AlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
+      fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
-    Map<IFullPath, List<TimeValuePair>> originData =
+    Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
@@ -580,7 +565,7 @@ public class FastCompactionPerformerAlignedTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-    Map<IFullPath, List<TimeValuePair>> compactedData =
+    Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
             iMeasurementSchemas,
@@ -643,7 +628,7 @@ public class FastCompactionPerformerAlignedTest {
     resources.add(resource);
     TsFileResource targetResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
-    List<IFullPath> fullPaths = new ArrayList<>();
+    List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
     List<String> measurementIds = new ArrayList<>();
     schemas.forEach(
@@ -652,11 +637,9 @@ public class FastCompactionPerformerAlignedTest {
         });
     for (String device : devices) {
       iMeasurementSchemas.addAll(schemas);
-      fullPaths.add(
-          new AlignedFullPath(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
+      fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
-    Map<IFullPath, List<TimeValuePair>> originData =
+    Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
@@ -664,7 +647,7 @@ public class FastCompactionPerformerAlignedTest {
     performer.setSummary(new FastCompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(Collections.singletonList(targetResource), true, storageGroup);
-    Map<IFullPath, List<TimeValuePair>> compactedData =
+    Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
             iMeasurementSchemas,

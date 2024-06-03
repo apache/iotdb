@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.commons.path.IFullPath;
-import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -70,7 +69,7 @@ public class SeriesScanUtil {
   protected final QueryContext context;
 
   // The path of the target series which will be scanned.
-  protected final IFullPath seriesPath;
+  protected final PartialPath seriesPath;
 
   private final IDeviceID deviceID;
   protected boolean isAligned = false;
@@ -113,12 +112,12 @@ public class SeriesScanUtil {
       SeriesScanCostMetricSet.getInstance();
 
   public SeriesScanUtil(
-      IFullPath seriesPath,
+      PartialPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context) {
     this.seriesPath = seriesPath;
-    this.deviceID = seriesPath.getDeviceId();
+    this.deviceID = seriesPath.getIDeviceID();
     this.dataType = seriesPath.getSeriesType();
 
     this.scanOptions = scanOptions;
@@ -1148,7 +1147,7 @@ public class SeriesScanUtil {
       throws IOException {
     return FileLoaderUtils.loadTimeSeriesMetadata(
         resource,
-        (NonAlignedFullPath) seriesPath,
+        seriesPath,
         context,
         scanOptions.getGlobalTimeFilter(),
         scanOptions.getAllSensors(),

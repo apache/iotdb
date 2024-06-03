@@ -544,7 +544,7 @@ public class ExpressionAnalyzer {
       throw new IllegalArgumentException(
           "unsupported expression type for source expression: " + expression.getExpressionType());
     }
-    return ((TimeSeriesOperand) expression).getPath().getIDeviceID().toString();
+    return ((TimeSeriesOperand) expression).getPath().getDevice();
   }
 
   public static Expression getMeasurementExpression(Expression expression, Analysis analysis) {

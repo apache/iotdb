@@ -30,6 +30,7 @@ import org.apache.tsfile.file.metadata.DeviceMetadataIndexEntry;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.TsFileMetadata;
 import org.apache.tsfile.file.metadata.enums.MetadataIndexNodeType;
@@ -40,7 +41,6 @@ import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.BloomFilter;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.schema.Schema;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -91,8 +91,7 @@ public class TsFileSketchTool {
       // get metadata information
       tsFileMetaData = reader.readFileMetadata();
       allChunkGroupMetadata = new ArrayList<>();
-      if (reader.selfCheck(new Schema(), allChunkGroupMetadata, false)
-          != TsFileCheckStatus.COMPLETE_FILE) {
+      if (reader.selfCheck(null, allChunkGroupMetadata, false) != TsFileCheckStatus.COMPLETE_FILE) {
         throw new IOException(
             String.format("Cannot load file %s because the file has crashed.", filename));
       }
@@ -116,7 +115,7 @@ public class TsFileSketchTool {
     printChunk(allChunkGroupMetadata);
 
     // metadata begins
-    if (tsFileMetaData.getTableMetadataIndexNodeMap().isEmpty()) {
+    if (tsFileMetaData.getMetadataIndex().getChildren().isEmpty()) {
       printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos() - 1) + "|\t[marker] 2");
     } else {
       printlnBoth(
@@ -127,30 +126,29 @@ public class TsFileSketchTool {
     Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap =
         reader.getAllTimeseriesMetadataWithOffset();
 
-    // get all IndexOfTimerseriesIndex (excluding the root node in TsFileMetadata
+    // get all IndexOfTimerseriesIndex (excluding the root node in TsFileMetadata)
+    MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
     TreeMap<Long, MetadataIndexNode> metadataIndexNodeMap = new TreeMap<>();
     List<String> treeOutputStringBuffer = new ArrayList<>();
-    for (MetadataIndexNode metadataIndexNode :
-        tsFileMetaData.getTableMetadataIndexNodeMap().values()) {
-      loadIndexTree(metadataIndexNode, metadataIndexNodeMap, treeOutputStringBuffer, 0);
+    loadIndexTree(metadataIndexNode, metadataIndexNodeMap, treeOutputStringBuffer, 0);
 
-      // iterate timeseriesMetadataMap and metadataIndexNodeMap to print info in increasing order of
-      // position
-      Iterator<Entry<Long, Pair<Path, TimeseriesMetadata>>> ite1 =
-          timeseriesMetadataMap.entrySet().iterator();
-      Iterator<Entry<Long, MetadataIndexNode>> ite2 = metadataIndexNodeMap.entrySet().iterator();
-      Entry<Long, Pair<Path, TimeseriesMetadata>> value1 = (ite1.hasNext() ? ite1.next() : null);
-      Entry<Long, MetadataIndexNode> value2 = (ite2.hasNext() ? ite2.next() : null);
-      while (value1 != null || value2 != null) {
-        if (value2 == null || (value1 != null && value1.getKey().compareTo(value2.getKey()) <= 0)) {
-          printTimeseriesIndex(value1.getKey(), value1.getValue());
-          value1 = (ite1.hasNext() ? ite1.next() : null);
-        } else {
-          printIndexOfTimerseriesIndex(value2.getKey(), value2.getValue());
-          value2 = (ite2.hasNext() ? ite2.next() : null);
-        }
+    // iterate timeseriesMetadataMap and metadataIndexNodeMap to print info in increasing order of
+    // position
+    Iterator<Entry<Long, Pair<Path, TimeseriesMetadata>>> ite1 =
+        timeseriesMetadataMap.entrySet().iterator();
+    Iterator<Entry<Long, MetadataIndexNode>> ite2 = metadataIndexNodeMap.entrySet().iterator();
+    Entry<Long, Pair<Path, TimeseriesMetadata>> value1 = (ite1.hasNext() ? ite1.next() : null);
+    Entry<Long, MetadataIndexNode> value2 = (ite2.hasNext() ? ite2.next() : null);
+    while (value1 != null || value2 != null) {
+      if (value2 == null || (value1 != null && value1.getKey().compareTo(value2.getKey()) <= 0)) {
+        printTimeseriesIndex(value1.getKey(), value1.getValue());
+        value1 = (ite1.hasNext() ? ite1.next() : null);
+      } else {
+        printIndexOfTimerseriesIndex(value2.getKey(), value2.getValue());
+        value2 = (ite2.hasNext() ? ite2.next() : null);
       }
     }
+
     // print TsFile Metadata
     printTsFileMetadata(tsFileMetaData);
 
@@ -179,9 +177,8 @@ public class TsFileSketchTool {
       printlnBoth(pw, splitStr + " [TsFileMetadata] begins");
 
       // metadataIndex
-      for (MetadataIndexNode rootNode : tsFileMetaData.getTableMetadataIndexNodeMap().values()) {
-        printIndexOfTimerseriesIndex(reader.getFileMetadataPos(), rootNode);
-      }
+      MetadataIndexNode rootNode = tsFileMetaData.getMetadataIndex();
+      printIndexOfTimerseriesIndex(reader.getFileMetadataPos(), rootNode);
 
       // metaOffset
       printlnBoth(
@@ -279,7 +276,6 @@ public class TsFileSketchTool {
 
   private void printChunk(List<ChunkGroupMetadata> allChunkGroupMetadata) {
     try {
-      reader.position(0);
       long nextChunkGroupHeaderPos =
           (long) TSFileConfig.MAGIC_STRING.getBytes().length + Byte.BYTES;
       // ChunkGroup begins
@@ -297,10 +293,7 @@ public class TsFileSketchTool {
             reader.readChunkGroupHeader(nextChunkGroupHeaderPos, false);
         printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 0");
         printlnBoth(
-            pw,
-            String.format("%20s", "")
-                + "|\t\t[deviceID] "
-                + chunkGroupHeader.getDeviceID().toString());
+            pw, String.format("%20s", "") + "|\t\t[deviceID] " + chunkGroupHeader.getDeviceID());
         // chunk begins
         for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
           Chunk chunk = reader.readMemChunk(chunkMetadata);
@@ -380,7 +373,12 @@ public class TsFileSketchTool {
             break;
         }
 
-        printlnBoth(pw, splitStr + " [Chunk Group] of " + chunkGroupMetadata.getDevice() + " ends");
+        printlnBoth(
+            pw,
+            splitStr
+                + " [Chunk Group] of "
+                + ((PlainDeviceID) chunkGroupMetadata.getDevice()).toStringID()
+                + " ends");
       }
     } catch (IOException e) {
       e.printStackTrace();
@@ -547,8 +545,7 @@ public class TsFileSketchTool {
           }
           boolean currentChildLevelIsDevice = MetadataIndexNodeType.INTERNAL_DEVICE.equals(type);
           MetadataIndexNode metadataIndexNode =
-              getDeserializeContext()
-                  .deserializeMetadataIndexNode(buffer, currentChildLevelIsDevice);
+              MetadataIndexNode.deserializeFrom(buffer, currentChildLevelIsDevice);
           int metadataIndexListSize = metadataIndexNode.getChildren().size();
           for (int i = 0; i < metadataIndexListSize; i++) {
             long endOffset = metadataIndexNode.getEndOffset();
@@ -623,8 +620,7 @@ public class TsFileSketchTool {
           }
           boolean isDeviceLevel = MetadataIndexNodeType.INTERNAL_DEVICE.equals(type);
           MetadataIndexNode metadataIndexNode =
-              getDeserializeContext()
-                  .deserializeMetadataIndexNode(tsFileInput.wrapAsInputStream(), isDeviceLevel);
+              MetadataIndexNode.deserializeFrom(tsFileInput.wrapAsInputStream(), isDeviceLevel);
           int metadataIndexListSize = metadataIndexNode.getChildren().size();
           for (int i = 0; i < metadataIndexListSize; i++) {
             long endOffset = metadataIndexNode.getEndOffset();
@@ -651,29 +647,25 @@ public class TsFileSketchTool {
       if (tsFileMetaData == null) {
         readFileMetadata();
       }
-
+      MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
       Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
-      for (MetadataIndexNode metadataIndexNode :
-          tsFileMetaData.getTableMetadataIndexNodeMap().values()) {
-        List<IMetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
-        for (int i = 0; i < metadataIndexEntryList.size(); i++) {
-          IMetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
-          long endOffset = metadataIndexNode.getEndOffset();
-          if (i != metadataIndexEntryList.size() - 1) {
-            endOffset = metadataIndexEntryList.get(i + 1).getOffset();
-          }
-          ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
-          generateMetadataIndexWithOffset(
-              metadataIndexEntry.getOffset(),
-              metadataIndexEntry,
-              buffer,
-              null,
-              metadataIndexNode.getNodeType(),
-              timeseriesMetadataMap,
-              false);
+      List<IMetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
+      for (int i = 0; i < metadataIndexEntryList.size(); i++) {
+        IMetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
+        long endOffset = tsFileMetaData.getMetadataIndex().getEndOffset();
+        if (i != metadataIndexEntryList.size() - 1) {
+          endOffset = metadataIndexEntryList.get(i + 1).getOffset();
         }
+        ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
+        generateMetadataIndexWithOffset(
+            metadataIndexEntry.getOffset(),
+            metadataIndexEntry,
+            buffer,
+            null,
+            metadataIndexNode.getNodeType(),
+            timeseriesMetadataMap,
+            false);
       }
-
       return timeseriesMetadataMap;
     }
   }

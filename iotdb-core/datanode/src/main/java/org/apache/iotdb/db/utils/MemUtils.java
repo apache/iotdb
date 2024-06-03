@@ -144,7 +144,7 @@ public class MemUtils {
   public static long getTsRecordMem(TSRecord tsRecord) {
     long memUsed = 8; // time
     memUsed += 8; // deviceId reference
-    memUsed += tsRecord.deviceId.ramBytesUsed();
+    memUsed += getStringMem(tsRecord.deviceId);
     for (DataPoint dataPoint : tsRecord.dataPointList) {
       memUsed += 8; // dataPoint reference
       memUsed += getDataPointMem(dataPoint);

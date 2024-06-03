@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -46,13 +46,13 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.filter.factory.TimeFilterApi;
 import org.apache.tsfile.utils.TimeDuration;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -78,7 +78,7 @@ public class AlignedSeriesAggregationScanOperatorTest {
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-  private static final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+  private static final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private static final List<TsFileResource> seqResources = new ArrayList<>();
   private static final List<TsFileResource> unSeqResources = new ArrayList<>();
@@ -706,14 +706,15 @@ public class AlignedSeriesAggregationScanOperatorTest {
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter)
       throws IllegalPathException {
-    AlignedFullPath alignedPath =
-        new AlignedFullPath(
-            IDeviceID.Factory.DEFAULT_FACTORY.create(
-                SERIES_AGGREGATION_SCAN_OPERATOR_TEST_SG + ".device0"),
+    AlignedPath alignedPath =
+        new AlignedPath(
+            SERIES_AGGREGATION_SCAN_OPERATOR_TEST_SG + ".device0",
             measurementSchemas.stream()
-                .map(IMeasurementSchema::getMeasurementId)
+                .map(MeasurementSchema::getMeasurementId)
                 .collect(Collectors.toList()),
-            new ArrayList<>(measurementSchemas));
+            measurementSchemas.stream()
+                .map(m -> (IMeasurementSchema) m)
+                .collect(Collectors.toList()));
 
     QueryId queryId = new QueryId("stub_query");
     FragmentInstanceId instanceId =

@@ -31,7 +31,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +49,7 @@ public class TsFileGenerator implements AutoCloseable {
   private final File tsFile;
   private final TsFileWriter writer;
   private final Map<String, TreeSet<Long>> device2TimeSet;
-  private final Map<String, List<IMeasurementSchema>> device2MeasurementSchema;
+  private final Map<String, List<MeasurementSchema>> device2MeasurementSchema;
   private Random random;
 
   public TsFileGenerator(File tsFile) throws IOException {
@@ -68,7 +68,7 @@ public class TsFileGenerator implements AutoCloseable {
     random = new Random(seed);
   }
 
-  public void registerTimeseries(String path, List<IMeasurementSchema> measurementSchemaList) {
+  public void registerTimeseries(String path, List<MeasurementSchema> measurementSchemaList) {
     if (device2MeasurementSchema.containsKey(path)) {
       LOGGER.error("Register same device {}.", path);
       return;
@@ -78,7 +78,7 @@ public class TsFileGenerator implements AutoCloseable {
     device2MeasurementSchema.put(path, measurementSchemaList);
   }
 
-  public void registerAlignedTimeseries(String path, List<IMeasurementSchema> measurementSchemaList)
+  public void registerAlignedTimeseries(String path, List<MeasurementSchema> measurementSchemaList)
       throws WriteProcessException {
     if (device2MeasurementSchema.containsKey(path)) {
       LOGGER.error("Register same device {}.", path);
@@ -91,7 +91,7 @@ public class TsFileGenerator implements AutoCloseable {
 
   public void generateData(String device, int number, long timeGap, boolean isAligned)
       throws IOException, WriteProcessException {
-    List<IMeasurementSchema> schemas = device2MeasurementSchema.get(device);
+    List<MeasurementSchema> schemas = device2MeasurementSchema.get(device);
     TreeSet<Long> timeSet = device2TimeSet.get(device);
     Tablet tablet = new Tablet(device, schemas);
     long[] timestamps = tablet.timestamps;
@@ -133,7 +133,7 @@ public class TsFileGenerator implements AutoCloseable {
   public void generateData(
       String device, int number, long timeGap, boolean isAligned, long startTimestamp)
       throws IOException, WriteProcessException {
-    List<IMeasurementSchema> schemas = device2MeasurementSchema.get(device);
+    List<MeasurementSchema> schemas = device2MeasurementSchema.get(device);
     TreeSet<Long> timeSet = device2TimeSet.get(device);
     Tablet tablet = new Tablet(device, schemas);
     long[] timestamps = tablet.timestamps;
@@ -172,7 +172,7 @@ public class TsFileGenerator implements AutoCloseable {
     LOGGER.info("Write {} points into device {}", number, device);
   }
 
-  private void generateDataPoint(Object obj, int row, IMeasurementSchema schema) {
+  private void generateDataPoint(Object obj, int row, MeasurementSchema schema) {
     switch (schema.getType()) {
       case INT32:
         generateINT32(obj, row);
@@ -242,7 +242,7 @@ public class TsFileGenerator implements AutoCloseable {
       for (int i = 0; i < number; i++) {
         int endTime = random.nextInt((int) (maxTime)) + 1;
         int startTime = random.nextInt(endTime);
-        for (IMeasurementSchema measurementSchema : device2MeasurementSchema.get(device)) {
+        for (MeasurementSchema measurementSchema : device2MeasurementSchema.get(device)) {
           Deletion deletion =
               new Deletion(
                   new PartialPath(

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -42,7 +41,7 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -452,7 +451,7 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public ReadOnlyMemChunk query(
       QueryContext context,
-      IFullPath fullPath,
+      PartialPath fullPath,
       long ttlLowerBound,
       List<Pair<Modification, IMemTable>> modsToMemtable)
       throws IOException, QueryProcessException {
@@ -605,7 +604,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     int size = FIXED_SERIALIZED_SIZE;
     for (Map.Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
-      size += entry.getKey().serializedSize();
+      size += ReadWriteIOUtils.sizeToWrite(((PlainDeviceID) entry.getKey()).toStringID());
       size += Byte.BYTES;
       size += entry.getValue().serializedSize();
     }
@@ -630,7 +629,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
     buffer.putInt(memTableMap.size());
     for (Map.Entry<IDeviceID, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
-      WALWriteUtils.write(entry.getKey(), buffer);
+      WALWriteUtils.write(((PlainDeviceID) entry.getKey()).toStringID(), buffer);
+
       IWritableMemChunkGroup memChunkGroup = entry.getValue();
       WALWriteUtils.write(memChunkGroup instanceof AlignedWritableMemChunkGroup, buffer);
       memChunkGroup.serializeToWAL(buffer);
@@ -648,7 +648,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
     int memTableMapSize = stream.readInt();
     for (int i = 0; i < memTableMapSize; ++i) {
-      IDeviceID deviceID = Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(stream);
+
+      IDeviceID deviceID = deviceIDFactory.getDeviceID(ReadWriteIOUtils.readString(stream));
       boolean isAligned = ReadWriteIOUtils.readBool(stream);
       IWritableMemChunkGroup memChunkGroup;
       if (isAligned) {

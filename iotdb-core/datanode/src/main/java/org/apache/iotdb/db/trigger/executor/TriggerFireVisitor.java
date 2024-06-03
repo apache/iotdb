@@ -52,7 +52,6 @@ import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.thrift.TException;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,7 +108,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     long time = node.getTime();
     boolean hasFailedTrigger = false;
     for (Map.Entry<String, List<String>> entry : triggerNameToMeasurementList.entrySet()) {
-      List<IMeasurementSchema> schemas =
+      List<MeasurementSchema> schemas =
           entry.getValue().stream()
               .map(measurement -> measurementSchemas[measurementToSchemaIndexMap.get(measurement)])
               .collect(Collectors.toList());
@@ -166,7 +165,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
                 rowCount);
       } else {
         // choose specified columns
-        List<IMeasurementSchema> schemas =
+        List<MeasurementSchema> schemas =
             entry.getValue().stream()
                 .map(
                     measurement -> measurementSchemas[measurementToSchemaIndexMap.get(measurement)])

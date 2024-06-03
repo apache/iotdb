@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -118,9 +118,10 @@ public class TsFileProcessorTest {
     this.sgInfo.initTsFileProcessorInfo(processor);
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    NonAlignedFullPath fullPath =
-        new NonAlignedFullPath(
-            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
+    MeasurementPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            measurementId,
             new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
@@ -176,9 +177,10 @@ public class TsFileProcessorTest {
     this.sgInfo.initTsFileProcessorInfo(processor);
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    NonAlignedFullPath fullPath =
-        new NonAlignedFullPath(
-            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
+    MeasurementPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            measurementId,
             new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
@@ -259,9 +261,10 @@ public class TsFileProcessorTest {
     this.sgInfo.initTsFileProcessorInfo(processor);
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    NonAlignedFullPath fullPath =
-        new NonAlignedFullPath(
-            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
+    MeasurementPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            measurementId,
             new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
@@ -428,9 +431,10 @@ public class TsFileProcessorTest {
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
-    NonAlignedFullPath fullPath =
-        new NonAlignedFullPath(
-            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
+    MeasurementPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            measurementId,
             new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);

@@ -94,7 +94,7 @@ public class ConfigNodeConfig {
 
   /** The policy of extension DataRegionGroup for each Database. */
   private RegionGroupExtensionPolicy dataRegionGroupExtensionPolicy =
-      RegionGroupExtensionPolicy.AUTO;
+      RegionGroupExtensionPolicy.CUSTOM;
 
   /**
    * When set data_region_group_extension_policy=CUSTOM, this parameter is the default number of

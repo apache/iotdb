@@ -32,7 +32,6 @@ import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
@@ -301,7 +300,7 @@ public class AlignedTimeseriesSessionExample {
       throws IoTDBConnectionException, StatementExecutionException {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
@@ -335,7 +334,7 @@ public class AlignedTimeseriesSessionExample {
       throws IoTDBConnectionException, StatementExecutionException {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
@@ -371,7 +370,7 @@ public class AlignedTimeseriesSessionExample {
       throws IoTDBConnectionException, StatementExecutionException {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
 
@@ -543,15 +542,15 @@ public class AlignedTimeseriesSessionExample {
   private static void insertTabletsWithAlignedTimeseries()
       throws IoTDBConnectionException, StatementExecutionException {
 
-    List<IMeasurementSchema> schemaList1 = new ArrayList<>();
+    List<MeasurementSchema> schemaList1 = new ArrayList<>();
     schemaList1.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList1.add(new MeasurementSchema("s2", TSDataType.INT64));
 
-    List<IMeasurementSchema> schemaList2 = new ArrayList<>();
+    List<MeasurementSchema> schemaList2 = new ArrayList<>();
     schemaList2.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList2.add(new MeasurementSchema("s2", TSDataType.INT64));
 
-    List<IMeasurementSchema> schemaList3 = new ArrayList<>();
+    List<MeasurementSchema> schemaList3 = new ArrayList<>();
     schemaList3.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList3.add(new MeasurementSchema("s2", TSDataType.INT64));
 

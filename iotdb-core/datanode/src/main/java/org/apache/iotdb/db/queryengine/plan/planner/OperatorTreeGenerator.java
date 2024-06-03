@@ -20,11 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -328,12 +325,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   @Override
   public Operator visitSeriesScan(SeriesScanNode node, LocalExecutionPlanContext context) {
-    NonAlignedFullPath seriesPath =
-        (NonAlignedFullPath) IFullPath.convertToIFullPath(node.getSeriesPath());
+    PartialPath seriesPath = node.getSeriesPath();
 
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(node, context);
     scanOptionsBuilder.withAllSensors(
-        context.getAllSensors(seriesPath.getDeviceId(), seriesPath.getMeasurement()));
+        context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
     scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
     scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
 
@@ -355,7 +351,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 SeriesScanOperator.class.getSimpleName());
-    operatorContext.recordSpecifiedInfo("SeriesPath", seriesPath.toString());
+    operatorContext.recordSpecifiedInfo("SeriesPath", seriesPath.getFullPath());
     SeriesScanOperator seriesScanOperator =
         new SeriesScanOperator(
             operatorContext,
@@ -388,8 +384,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitAlignedSeriesScan(
       AlignedSeriesScanNode node, LocalExecutionPlanContext context) {
-    AlignedFullPath seriesPath =
-        (AlignedFullPath) IFullPath.convertToIFullPath(node.getAlignedPath());
+    AlignedPath seriesPath = node.getAlignedPath();
 
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(node, context);
     scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
@@ -527,8 +522,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitSeriesAggregationScan(
       SeriesAggregationScanNode node, LocalExecutionPlanContext context) {
-    NonAlignedFullPath seriesPath =
-        (NonAlignedFullPath) IFullPath.convertToIFullPath(node.getSeriesPath());
+    PartialPath seriesPath = node.getSeriesPath();
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<AggregationDescriptor> aggregationDescriptors = node.getAggregationDescriptorList();
     List<Aggregator> aggregators = new ArrayList<>();
@@ -555,7 +549,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(node, context);
     scanOptionsBuilder.withAllSensors(
-        context.getAllSensors(seriesPath.getDeviceId(), seriesPath.getMeasurement()));
+        context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
 
     OperatorContext operatorContext =
         context
@@ -586,8 +580,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitAlignedSeriesAggregationScan(
       AlignedSeriesAggregationScanNode node, LocalExecutionPlanContext context) {
-    AlignedFullPath seriesPath =
-        (AlignedFullPath) IFullPath.convertToIFullPath(node.getAlignedPath());
+    AlignedPath seriesPath = node.getAlignedPath();
     boolean ascending = node.getScanOrder() == Ordering.ASC;
     List<Aggregator> aggregators = new ArrayList<>();
     for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
@@ -601,7 +594,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 .getPath()
                 .getMeasurement();
         int seriesIndex = seriesPath.getMeasurementList().indexOf(inputSeries);
-        TSDataType seriesDataType = seriesPath.getSchemaList().get(seriesIndex).getType();
+        TSDataType seriesDataType =
+            seriesPath.getMeasurementSchema().getSubMeasurementsTSDataTypeList().get(seriesIndex);
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
@@ -2531,8 +2525,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   private AlignedUpdateLastCacheOperator createAlignedUpdateLastCacheOperator(
       AlignedLastQueryScanNode node, AlignedPath unCachedPath, LocalExecutionPlanContext context) {
     AlignedSeriesAggregationScanOperator lastQueryScan =
-        createLastQueryScanOperator(
-            node, (AlignedFullPath) IFullPath.convertToIFullPath(unCachedPath), context);
+        createLastQueryScanOperator(node, unCachedPath, context);
 
     if (node.getOutputViewPath() == null) {
       OperatorContext operatorContext =
@@ -2570,8 +2563,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   private SeriesAggregationScanOperator createLastQueryScanOperator(
       LastQueryScanNode node, LocalExecutionPlanContext context) {
-    NonAlignedFullPath seriesPath =
-        (NonAlignedFullPath) IFullPath.convertToIFullPath(node.getSeriesPath());
+    MeasurementPath seriesPath = node.getSeriesPath();
     OperatorContext operatorContext =
         context
             .getDriverContext()
@@ -2587,7 +2579,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(
-        context.getAllSensors(seriesPath.getDeviceId(), seriesPath.getMeasurement()));
+        context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
     scanOptionsBuilder.withGlobalTimeFilter(context.getGlobalTimeFilter());
 
     SeriesAggregationScanOperator seriesAggregationScanOperator =
@@ -2608,9 +2600,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   private AlignedSeriesAggregationScanOperator createLastQueryScanOperator(
-      AlignedLastQueryScanNode node,
-      AlignedFullPath unCachedPath,
-      LocalExecutionPlanContext context) {
+      AlignedLastQueryScanNode node, AlignedPath unCachedPath, LocalExecutionPlanContext context) {
     // last_time, last_value
     List<Aggregator> aggregators = new ArrayList<>();
     for (int i = 0; i < unCachedPath.getMeasurementList().size(); i++) {

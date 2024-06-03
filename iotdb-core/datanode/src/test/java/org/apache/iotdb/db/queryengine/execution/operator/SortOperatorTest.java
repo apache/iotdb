@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -48,9 +49,7 @@ import io.airlift.units.Duration;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -69,12 +68,13 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class SortOperatorTest {
 
   private static final String SORT_OPERATOR_TEST_SG = "root.SortOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
-  private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
@@ -115,102 +115,106 @@ public class SortOperatorTest {
   public Operator genSortOperator(Ordering timeOrdering, boolean getSortOperator) {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "sortOperator-test-instance-notification");
-    // Construct operator tree
-    QueryId queryId = new QueryId("stub_query");
+    try {
+      // Construct operator tree
+      QueryId queryId = new QueryId("stub_query");
 
-    FragmentInstanceId instanceId =
-        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-    FragmentInstanceStateMachine stateMachine =
-        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-    FragmentInstanceContext fragmentInstanceContext =
-        createFragmentInstanceContext(instanceId, stateMachine);
-    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
-    PlanNodeId planNodeId1 = new PlanNodeId("1");
-    driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
-    PlanNodeId planNodeId2 = new PlanNodeId("2");
-    driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
-    driverContext.addOperatorContext(
-        3, new PlanNodeId("3"), FullOuterTimeJoinOperator.class.getSimpleName());
-    driverContext.addOperatorContext(4, new PlanNodeId("4"), SortOperator.class.getSimpleName());
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+      PlanNodeId planNodeId1 = new PlanNodeId("1");
+      driverContext.addOperatorContext(1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      PlanNodeId planNodeId2 = new PlanNodeId("2");
+      driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
+      driverContext.addOperatorContext(
+          3, new PlanNodeId("3"), FullOuterTimeJoinOperator.class.getSimpleName());
+      driverContext.addOperatorContext(4, new PlanNodeId("4"), SortOperator.class.getSimpleName());
 
-    NonAlignedFullPath measurementPath1 =
-        new NonAlignedFullPath(
-            IDeviceID.Factory.DEFAULT_FACTORY.create(SORT_OPERATOR_TEST_SG + ".device0"),
-            new MeasurementSchema("sensor0", TSDataType.INT32));
-    NonAlignedFullPath measurementPath2 =
-        new NonAlignedFullPath(
-            IDeviceID.Factory.DEFAULT_FACTORY.create(SORT_OPERATOR_TEST_SG + ".device1"),
-            new MeasurementSchema("sensor0", TSDataType.INT32));
+      MeasurementPath measurementPath1 =
+          new MeasurementPath(SORT_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
+      MeasurementPath measurementPath2 =
+          new MeasurementPath(SORT_OPERATOR_TEST_SG + ".device1.sensor0", TSDataType.INT32);
 
-    SeriesScanOperator seriesScanOperator1 =
-        new SeriesScanOperator(
-            driverContext.getOperatorContexts().get(0),
-            planNodeId1,
-            measurementPath1,
-            timeOrdering,
-            SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath1));
-    seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-    seriesScanOperator1
-        .getOperatorContext()
-        .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      SeriesScanOperator seriesScanOperator1 =
+          new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(0),
+              planNodeId1,
+              measurementPath1,
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath1));
+      seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-    SeriesScanOperator seriesScanOperator2 =
-        new SeriesScanOperator(
-            driverContext.getOperatorContexts().get(1),
-            planNodeId2,
-            measurementPath2,
-            timeOrdering,
-            SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath2));
-    seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-    seriesScanOperator2
-        .getOperatorContext()
-        .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      SeriesScanOperator seriesScanOperator2 =
+          new SeriesScanOperator(
+              driverContext.getOperatorContexts().get(1),
+              planNodeId2,
+              measurementPath2,
+              timeOrdering,
+              SeriesScanOptions.getDefaultSeriesScanOptions(measurementPath2));
+      seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
+      seriesScanOperator2
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-    List<TSDataType> tsDataTypes =
-        new LinkedList<>(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
+      List<TSDataType> tsDataTypes =
+          new LinkedList<>(Arrays.asList(TSDataType.INT32, TSDataType.INT32));
 
-    FullOuterTimeJoinOperator timeJoinOperator1 =
-        new FullOuterTimeJoinOperator(
-            driverContext.getOperatorContexts().get(2),
-            Arrays.asList(seriesScanOperator1, seriesScanOperator2),
-            timeOrdering,
-            Arrays.asList(TSDataType.INT32, TSDataType.INT32),
-            Arrays.asList(
-                new SingleColumnMerger(
-                    new InputLocation(0, 0),
-                    timeOrdering == Ordering.ASC
-                        ? new AscTimeComparator()
-                        : new DescTimeComparator()),
-                new SingleColumnMerger(
-                    new InputLocation(1, 0),
-                    timeOrdering == Ordering.ASC
-                        ? new AscTimeComparator()
-                        : new DescTimeComparator())),
-            timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
-    timeJoinOperator1.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      FullOuterTimeJoinOperator timeJoinOperator1 =
+          new FullOuterTimeJoinOperator(
+              driverContext.getOperatorContexts().get(2),
+              Arrays.asList(seriesScanOperator1, seriesScanOperator2),
+              timeOrdering,
+              Arrays.asList(TSDataType.INT32, TSDataType.INT32),
+              Arrays.asList(
+                  new SingleColumnMerger(
+                      new InputLocation(0, 0),
+                      timeOrdering == Ordering.ASC
+                          ? new AscTimeComparator()
+                          : new DescTimeComparator()),
+                  new SingleColumnMerger(
+                      new InputLocation(1, 0),
+                      timeOrdering == Ordering.ASC
+                          ? new AscTimeComparator()
+                          : new DescTimeComparator())),
+              timeOrdering == Ordering.ASC ? new AscTimeComparator() : new DescTimeComparator());
+      timeJoinOperator1
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
-    if (!getSortOperator) return timeJoinOperator1;
+      if (!getSortOperator) return timeJoinOperator1;
 
-    Comparator<SortKey> comparator =
-        Comparator.comparing(
-            (SortKey sortKey) -> sortKey.tsBlock.getColumn(0).getInt(sortKey.rowIndex));
+      Comparator<SortKey> comparator =
+          Comparator.comparing(
+              (SortKey sortKey) -> sortKey.tsBlock.getColumn(0).getInt(sortKey.rowIndex));
 
-    OperatorContext operatorContext = driverContext.getOperatorContexts().get(3);
-    String filePrefix =
-        "target"
-            + File.separator
-            + operatorContext
-                .getDriverContext()
-                .getFragmentInstanceContext()
-                .getId()
-                .getFragmentInstanceId()
-            + File.separator
-            + operatorContext.getDriverContext().getPipelineId()
-            + File.separator;
-    SortOperator sortOperator =
-        new SortOperator(operatorContext, timeJoinOperator1, tsDataTypes, filePrefix, comparator);
-    sortOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
-    return sortOperator;
+      OperatorContext operatorContext = driverContext.getOperatorContexts().get(3);
+      String filePrefix =
+          "target"
+              + File.separator
+              + operatorContext
+                  .getDriverContext()
+                  .getFragmentInstanceContext()
+                  .getId()
+                  .getFragmentInstanceId()
+              + File.separator
+              + operatorContext.getDriverContext().getPipelineId()
+              + File.separator;
+      SortOperator sortOperator =
+          new SortOperator(operatorContext, timeJoinOperator1, tsDataTypes, filePrefix, comparator);
+      sortOperator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+      return sortOperator;
+    } catch (IllegalPathException e) {
+      e.printStackTrace();
+      fail();
+      return null;
+    }
   }
 
   long getValue(long expectedTime) {

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -50,7 +50,6 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -179,7 +178,7 @@ public class TTLTest {
     QueryDataSource dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
-            IDeviceID.Factory.DEFAULT_FACTORY.create(sg1),
+            sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -194,7 +193,7 @@ public class TTLTest {
     dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
-            IDeviceID.Factory.DEFAULT_FACTORY.create(sg1),
+            sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -202,7 +201,7 @@ public class TTLTest {
     unseqResource = dataSource.getUnseqResources();
     assertTrue(seqResource.size() < 4);
     assertEquals(0, unseqResource.size());
-    NonAlignedFullPath path = mockMeasurementPath();
+    MeasurementPath path = mockMeasurementPath();
 
     IDataBlockReader reader =
         new SeriesDataBlockReader(
@@ -225,7 +224,7 @@ public class TTLTest {
     dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
-            IDeviceID.Factory.DEFAULT_FACTORY.create(sg1),
+            sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -235,9 +234,9 @@ public class TTLTest {
     assertEquals(0, unseqResource.size());
   }
 
-  private NonAlignedFullPath mockMeasurementPath() {
-    return new NonAlignedFullPath(
-        IDeviceID.Factory.DEFAULT_FACTORY.create(sg1),
+  private MeasurementPath mockMeasurementPath() throws MetadataException {
+    return new MeasurementPath(
+        new PartialPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1),
         new MeasurementSchema(
             s1,
             TSDataType.INT64,

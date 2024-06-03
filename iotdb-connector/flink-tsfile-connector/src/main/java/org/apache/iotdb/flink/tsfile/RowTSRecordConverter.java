@@ -24,7 +24,6 @@ import org.apache.flink.types.Row;
 import org.apache.flink.util.Collector;
 import org.apache.tsfile.common.constant.QueryConstant;
 import org.apache.tsfile.common.constant.TsFileConstant;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.TSRecord;
@@ -69,9 +68,8 @@ public class RowTSRecordConverter implements TSRecordConverter<Row> {
         dataPointIndexMapping[i] = -1;
         continue;
       }
-      String deviceIdStr =
+      String deviceId =
           fieldName.substring(0, fieldName.lastIndexOf(TsFileConstant.PATH_SEPARATOR));
-      IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIdStr);
       String measurementId =
           fieldName.substring(fieldName.lastIndexOf(TsFileConstant.PATH_SEPARATOR) + 1);
       int tsRecordIndex =

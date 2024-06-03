@@ -50,7 +50,6 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -213,7 +212,7 @@ public class SessionPoolTest {
 
   @Test
   public void testInsertTablet() throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -257,7 +256,7 @@ public class SessionPoolTest {
 
   @Test
   public void testTestInsertTablet1() throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -276,7 +275,7 @@ public class SessionPoolTest {
 
   @Test
   public void testTestInsertTablet2() throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -295,7 +294,7 @@ public class SessionPoolTest {
 
   @Test
   public void testTestInsertTablets() throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -317,7 +316,7 @@ public class SessionPoolTest {
   @Test
   public void testTestInsertTablets2()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -396,7 +395,7 @@ public class SessionPoolTest {
   @Test
   public void testInsertAlignedTablet()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -415,7 +414,7 @@ public class SessionPoolTest {
 
   @Test
   public void testInsertTablets() throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -437,7 +436,7 @@ public class SessionPoolTest {
   @Test
   public void testInsertAlignedTablets()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -1189,7 +1188,7 @@ public class SessionPoolTest {
 
   @Test
   public void testSortTablet() throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);

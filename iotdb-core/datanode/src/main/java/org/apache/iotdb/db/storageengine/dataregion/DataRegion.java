@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -110,6 +109,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
@@ -1779,8 +1779,8 @@ public class DataRegion implements IDataRegionForQuery {
   /** used for queryengine */
   @Override
   public QueryDataSource query(
-      List<IFullPath> pathList,
-      IDeviceID singleDeviceId,
+      List<PartialPath> pathList,
+      String singleDeviceId,
       QueryContext context,
       Filter globalTimeFilter,
       List<Long> timePartitions)
@@ -1848,8 +1848,8 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources,
-      List<IFullPath> pathList,
-      IDeviceID singleDeviceId,
+      List<PartialPath> pathList,
+      String singleDeviceId,
       QueryContext context,
       Filter globalTimeFilter,
       boolean isSeq)
@@ -1872,7 +1872,11 @@ public class DataRegion implements IDataRegionForQuery {
 
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.isSatisfied(
-          singleDeviceId, globalTimeFilter, isSeq, dataTTL, context.isDebug())) {
+          singleDeviceId == null ? null : new PlainDeviceID(singleDeviceId),
+          globalTimeFilter,
+          isSeq,
+          dataTTL,
+          context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -2062,15 +2066,13 @@ public class DataRegion implements IDataRegionForQuery {
             return true;
           }
         }
-        if (databaseName.contentEquals(device.getIDeviceID().toString())) {
+        if (databaseName.contentEquals(device.getDevice())) {
           return false;
         }
         Pair<Long, Long> startAndEndTime =
             tsFileResource.getPossibleStartTimeAndEndTime(
                 device,
-                deviceMatchInfo.stream()
-                    .map(IDeviceID.Factory.DEFAULT_FACTORY::create)
-                    .collect(Collectors.toSet()));
+                deviceMatchInfo.stream().map(PlainDeviceID::new).collect(Collectors.toSet()));
         if (startAndEndTime == null) {
           continue;
         }
@@ -2078,7 +2080,7 @@ public class DataRegion implements IDataRegionForQuery {
         deviceEndTime = startAndEndTime.getRight();
       } else {
         // TODO: DELETE
-        IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(device.getFullPath());
+        IDeviceID deviceId = new PlainDeviceID(device.getFullPath());
         if (tsFileResource.definitelyNotContains(deviceId)) {
           // resource does not contain this device
           continue;

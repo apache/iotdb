@@ -34,6 +34,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.BloomFilter;
@@ -113,7 +114,6 @@ public class TimeSeriesMetadataCache {
     long startTime = System.nanoTime();
     boolean cacheHit = true;
     try {
-      String deviceStringFormat = key.device.toString();
       if (!CACHE_ENABLE) {
         cacheHit = false;
 
@@ -122,7 +122,9 @@ public class TimeSeriesMetadataCache {
         BloomFilter bloomFilter = reader.readBloomFilter();
         if (bloomFilter != null
             && !bloomFilter.contains(
-                deviceStringFormat + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+                ((PlainDeviceID) key.device).toStringID()
+                    + IoTDBConstant.PATH_SEPARATOR
+                    + key.measurement)) {
           return null;
         }
         TimeseriesMetadata timeseriesMetadata =
@@ -142,7 +144,8 @@ public class TimeSeriesMetadataCache {
         // allow for the parallelism of different devices
         synchronized (
             devices.computeIfAbsent(
-                deviceStringFormat + SEPARATOR + filePath, WeakReference::new)) {
+                ((PlainDeviceID) key.device).toStringID() + SEPARATOR + filePath,
+                WeakReference::new)) {
           // double check
           timeseriesMetadata = lruCache.getIfPresent(key);
           if (timeseriesMetadata == null) {
@@ -161,7 +164,9 @@ public class TimeSeriesMetadataCache {
                         debug);
             if (bloomFilter != null
                 && !bloomFilter.contains(
-                    deviceStringFormat + TsFileConstant.PATH_SEPARATOR + key.measurement)) {
+                    ((PlainDeviceID) key.device).toStringID()
+                        + TsFileConstant.PATH_SEPARATOR
+                        + key.measurement)) {
               if (debug) {
                 DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
               }
@@ -329,7 +334,7 @@ public class TimeSeriesMetadataCache {
           + ", compactionVersion="
           + compactionVersion
           + ", device='"
-          + device
+          + ((PlainDeviceID) device).toStringID()
           + '\''
           + ", measurement='"
           + measurement

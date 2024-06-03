@@ -27,7 +27,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Arrays;
 import java.util.List;
@@ -38,7 +38,7 @@ public class PipeRow implements Row {
 
   protected final String deviceId;
   protected final boolean isAligned;
-  protected final IMeasurementSchema[] measurementSchemaList;
+  protected final MeasurementSchema[] measurementSchemaList;
 
   protected final long[] timestampColumn;
   protected final TSDataType[] valueColumnTypes;
@@ -51,7 +51,7 @@ public class PipeRow implements Row {
       int rowIndex,
       String deviceId,
       boolean isAligned,
-      IMeasurementSchema[] measurementSchemaList,
+      MeasurementSchema[] measurementSchemaList,
       long[] timestampColumn,
       TSDataType[] valueColumnTypes,
       Object[] valueColumns,
@@ -179,7 +179,7 @@ public class PipeRow implements Row {
     return isAligned;
   }
 
-  public IMeasurementSchema[] getMeasurementSchemaList() {
+  public MeasurementSchema[] getMeasurementSchemaList() {
     return measurementSchemaList;
   }
 }

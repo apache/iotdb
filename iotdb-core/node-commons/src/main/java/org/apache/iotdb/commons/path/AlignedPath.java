@@ -23,10 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -74,12 +71,6 @@ public class AlignedPath extends PartialPath {
 
   public AlignedPath(
       String vectorPath, List<String> measurementList, List<IMeasurementSchema> schemaList)
-      throws IllegalPathException {
-    this(Factory.DEFAULT_FACTORY.create(vectorPath), measurementList, schemaList);
-  }
-
-  public AlignedPath(
-      IDeviceID vectorPath, List<String> measurementList, List<IMeasurementSchema> schemaList)
       throws IllegalPathException {
     super(vectorPath);
     // check whether measurement is legal
@@ -146,22 +137,8 @@ public class AlignedPath extends PartialPath {
   }
 
   @Override
-  public IDeviceID getIDeviceID() {
-    if (device != null) {
-      return device;
-    } else {
-      if (nodes.length == 1) {
-        device = Factory.DEFAULT_FACTORY.create("");
-        return device;
-      }
-      StringBuilder s = new StringBuilder(nodes[0]);
-      for (int i = 1; i < nodes.length; i++) {
-        s.append(TsFileConstant.PATH_SEPARATOR);
-        s.append(nodes[i]);
-      }
-      device = Factory.DEFAULT_FACTORY.create(s.toString());
-    }
-    return device;
+  public String getDevice() {
+    return getFullPath();
   }
 
   @Override
@@ -306,7 +283,7 @@ public class AlignedPath extends PartialPath {
     try {
       alignedPath =
           new AlignedPath(
-              this.getIDeviceID(),
+              this.getDevice(),
               new ArrayList<>(this.measurementList),
               new ArrayList<>(this.schemaList));
     } catch (IllegalPathException e) {
@@ -386,7 +363,7 @@ public class AlignedPath extends PartialPath {
     alignedPath.measurementList = measurements;
     alignedPath.schemaList = measurementSchemas;
     alignedPath.nodes = partialPath.getNodes();
-    alignedPath.device = partialPath.getIDeviceID();
+    alignedPath.device = partialPath.getDevice();
     alignedPath.fullPath = partialPath.getFullPath();
     return alignedPath;
   }

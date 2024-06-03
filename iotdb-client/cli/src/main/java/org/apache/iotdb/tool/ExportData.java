@@ -491,7 +491,7 @@ public class ExportData extends AbstractDataTool {
         seriesList.remove("Device");
       } else {
         Path path = new Path(seriesList.get(1), true);
-        deviceName = path.getDeviceString();
+        deviceName = path.getDevice();
         seriesList.remove("Time");
         for (int i = 0; i < seriesList.size(); i++) {
           String series = seriesList.get(i);

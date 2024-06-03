@@ -91,12 +91,8 @@ public class FileTimeIndex implements ITimeIndex {
         FSFactoryProducer.getFSFactory()
             .getBufferedInputStream(tsFilePath + TsFileResource.RESOURCE_SUFFIX)) {
       // The first byte is VERSION_NUMBER, second byte is timeIndexType.
-      byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, 2);
-      if (bytes[1] == ARRAY_DEVICE_TIME_INDEX_TYPE) {
-        return ArrayDeviceTimeIndex.getDevices(inputStream);
-      } else {
-        return PlainDeviceTimeIndex.getDevices(inputStream);
-      }
+      ReadWriteIOUtils.readBytes(inputStream, 2);
+      return DeviceTimeIndex.getDevices(inputStream);
     } catch (NoSuchFileException e) {
       // deleted by ttl
       if (tsFileResource.isDeleted()) {
@@ -215,7 +211,7 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public int compareDegradePriority(ITimeIndex timeIndex) {
-    if (timeIndex instanceof ArrayDeviceTimeIndex) {
+    if (timeIndex instanceof DeviceTimeIndex) {
       return 1;
     } else if (timeIndex instanceof FileTimeIndex) {
       return Long.compare(startTime, timeIndex.getMinStartTime());

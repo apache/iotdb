@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -49,10 +49,8 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.TimeDuration;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -76,7 +74,7 @@ public class SlidingWindowAggregationOperatorTest {
   private static final String AGGREGATION_OPERATOR_TEST_SG =
       "root.SlidingWindowAggregationOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
-  private final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
@@ -236,10 +234,8 @@ public class SlidingWindowAggregationOperatorTest {
               operatorContext.setMaxRunTime(TEST_TIME_SLICE);
             });
 
-    NonAlignedFullPath d0s0 =
-        new NonAlignedFullPath(
-            IDeviceID.Factory.DEFAULT_FACTORY.create(AGGREGATION_OPERATOR_TEST_SG + ".device0"),
-            new MeasurementSchema("sensor0", TSDataType.INT32));
+    MeasurementPath d0s0 =
+        new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
 
     List<Aggregator> aggregators = new ArrayList<>();
     AccumulatorFactory.createBuiltinAccumulators(

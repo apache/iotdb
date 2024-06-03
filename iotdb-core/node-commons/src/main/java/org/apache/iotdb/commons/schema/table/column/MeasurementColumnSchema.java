@@ -23,7 +23,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
@@ -69,7 +68,7 @@ public class MeasurementColumnSchema extends TsTableColumnSchema {
     return compressor;
   }
 
-  public IMeasurementSchema getMeasurementSchema() {
+  public MeasurementSchema getMeasurementSchema() {
     return new MeasurementSchema(columnName, dataType, encoding, compressor, props);
   }
 

@@ -40,6 +40,7 @@ import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -144,10 +145,9 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     }
     int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length;
     reader.position(headerLength);
-    byte version = reader.readMarker();
-    if (version != (byte) 3 && version != (byte) 4) {
+    if (reader.readMarker() != 3) {
       throw new WriteProcessException(
-          "The version of this tsfile is too low, please upgrade it to the version 4.");
+          "The version of this tsfile is too low, please upgrade it to the version 3.");
     }
     // start to scan chunks and chunkGroups
     byte marker;
@@ -265,7 +265,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
         if (currentDeletion
                 .getPath()
                 .matchFullPath(
-                    new PartialPath(deviceId.toString() + "." + schema.getMeasurementId()))
+                    new PartialPath(
+                        ((PlainDeviceID) deviceId).toStringID() + "." + schema.getMeasurementId()))
             && currentDeletion.getFileOffset() > chunkHeaderOffset) {
           if (pageHeader.getStartTime() <= currentDeletion.getEndTime()
               && pageHeader.getEndTime() >= currentDeletion.getStartTime()) {
@@ -399,7 +400,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
         if (currentDeletion
                 .getPath()
                 .matchFullPath(
-                    new PartialPath(deviceId.toString() + "." + schema.getMeasurementId()))
+                    new PartialPath(
+                        ((PlainDeviceID) deviceId).toStringID() + "." + schema.getMeasurementId()))
             && currentDeletion.getFileOffset() > chunkHeaderOffset) {
           chunkMetadata.insertIntoSortedDeletions(
               new TimeRange(currentDeletion.getStartTime(), currentDeletion.getEndTime()));

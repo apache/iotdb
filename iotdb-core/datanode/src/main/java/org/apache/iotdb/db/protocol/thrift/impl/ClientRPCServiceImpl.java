@@ -31,9 +31,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
-import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.commons.path.IFullPath;
-import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -179,7 +178,6 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -746,17 +744,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     IMeasurementSchema measurementSchema = new MeasurementSchema(measurement, dataType);
     AbstractSeriesAggregationScanOperator operator;
-    IFullPath path;
+    PartialPath path;
     if (isAligned) {
       path =
-          new AlignedFullPath(
-              Factory.DEFAULT_FACTORY.create(device),
+          new AlignedPath(
+              device,
               Collections.singletonList(measurement),
               Collections.singletonList(measurementSchema));
       operator =
           new AlignedSeriesAggregationScanOperator(
               planNodeId,
-              (AlignedFullPath) path,
+              (AlignedPath) path,
               Ordering.ASC,
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
@@ -765,7 +763,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               groupByTimeParameter,
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
     } else {
-      path = new NonAlignedFullPath(Factory.DEFAULT_FACTORY.create(device), measurementSchema);
+      path = new MeasurementPath(device, measurement, measurementSchema);
       operator =
           new SeriesAggregationScanOperator(
               planNodeId,

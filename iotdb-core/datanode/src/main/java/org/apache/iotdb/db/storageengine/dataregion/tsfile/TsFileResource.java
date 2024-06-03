@@ -22,7 +22,6 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -35,10 +34,9 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PlainDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
@@ -145,13 +143,13 @@ public class TsFileResource {
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a read
    * process.
    */
-  private Map<IFullPath, List<IChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
+  private Map<PartialPath, List<IChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
 
   /** Mem chunk data. Only be set in a temporal TsFileResource in a read process. */
-  private Map<IFullPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
+  private Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
 
   /** used for unsealed file to get TimeseriesMetadata */
-  private Map<IFullPath, ITimeSeriesMetadata> pathToTimeSeriesMetadataMap = new HashMap<>();
+  private Map<PartialPath, ITimeSeriesMetadata> pathToTimeSeriesMetadataMap = new HashMap<>();
 
   /**
    * If it is not null, it indicates that the current tsfile resource is a snapshot of the
@@ -200,8 +198,8 @@ public class TsFileResource {
 
   /** unsealed TsFile, for read */
   public TsFileResource(
-      Map<IFullPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap,
-      Map<IFullPath, List<IChunkMetadata>> pathToChunkMetadataListMap,
+      Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap,
+      Map<PartialPath, List<IChunkMetadata>> pathToChunkMetadataListMap,
       TsFileResource originTsFileResource)
       throws IOException {
     this.file = originTsFileResource.file;
@@ -313,11 +311,11 @@ public class TsFileResource {
     return getCompactionModFile().exists();
   }
 
-  public List<IChunkMetadata> getChunkMetadataList(IFullPath seriesPath) {
+  public List<IChunkMetadata> getChunkMetadataList(PartialPath seriesPath) {
     return new ArrayList<>(pathToChunkMetadataListMap.get(seriesPath));
   }
 
-  public List<ReadOnlyMemChunk> getReadOnlyMemChunk(IFullPath seriesPath) {
+  public List<ReadOnlyMemChunk> getReadOnlyMemChunk(PartialPath seriesPath) {
     return pathToReadOnlyMemChunkMap.get(seriesPath);
   }
 
@@ -415,7 +413,7 @@ public class TsFileResource {
     return timeIndex.getDevices(file.getPath(), this);
   }
 
-  public ArrayDeviceTimeIndex buildDeviceTimeIndex() throws IOException {
+  public DeviceTimeIndex buildDeviceTimeIndex() throws IOException {
     readLock();
     try {
       if (!resourceFileExists()) {
@@ -426,10 +424,10 @@ public class TsFileResource {
               .getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
         ReadWriteIOUtils.readByte(inputStream);
         ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
-        if (!(timeIndexFromResourceFile instanceof ArrayDeviceTimeIndex)) {
+        if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
           throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
         }
-        return (ArrayDeviceTimeIndex) timeIndexFromResourceFile;
+        return (DeviceTimeIndex) timeIndexFromResourceFile;
       } catch (Exception e) {
         throw new IOException(
             "Can't read file " + file.getPath() + RESOURCE_SUFFIX + " from disk", e);
@@ -818,8 +816,11 @@ public class TsFileResource {
    *
    * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
    */
-  public ITimeSeriesMetadata getTimeSeriesMetadata(IFullPath seriesPath) {
-    return pathToTimeSeriesMetadataMap.get(seriesPath);
+  public ITimeSeriesMetadata getTimeSeriesMetadata(PartialPath seriesPath) {
+    if (pathToTimeSeriesMetadataMap.containsKey(seriesPath)) {
+      return pathToTimeSeriesMetadataMap.get(seriesPath);
+    }
+    return null;
   }
 
   public DataRegion.SettleTsFileCallBack getSettleTsFileCallBack() {
@@ -1048,14 +1049,11 @@ public class TsFileResource {
   @TestOnly
   public void setTimeIndexType(byte type) {
     switch (type) {
-      case ITimeIndex.ARRAY_DEVICE_TIME_INDEX_TYPE:
-        this.timeIndex = new ArrayDeviceTimeIndex();
+      case ITimeIndex.DEVICE_TIME_INDEX_TYPE:
+        this.timeIndex = new DeviceTimeIndex();
         break;
       case ITimeIndex.FILE_TIME_INDEX_TYPE:
         this.timeIndex = new FileTimeIndex();
-        break;
-      case ITimeIndex.PLAIN_DEVICE_TIME_INDEX_TYPE:
-        this.timeIndex = new PlainDeviceTimeIndex();
         break;
       default:
         throw new UnsupportedOperationException();
@@ -1088,7 +1086,7 @@ public class TsFileResource {
   }
 
   private void generatePathToTimeSeriesMetadataMap() throws IOException {
-    for (IFullPath path : pathToChunkMetadataListMap.keySet()) {
+    for (PartialPath path : pathToChunkMetadataListMap.keySet()) {
       pathToTimeSeriesMetadataMap.put(
           path,
           ResourceByPathUtils.getResourceInstance(path)

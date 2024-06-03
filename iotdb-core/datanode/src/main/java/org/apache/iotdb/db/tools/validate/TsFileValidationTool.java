@@ -30,6 +30,7 @@ import org.apache.tsfile.file.header.ChunkGroupHeader;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
@@ -207,7 +208,7 @@ public class TsFileValidationTool {
           Map<IDeviceID, Boolean> hasCheckedDeviceOverlap = new HashMap<>();
           reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
           byte marker;
-          IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create("");
+          IDeviceID deviceID = new PlainDeviceID("");
           Map<String, boolean[]> hasMeasurementPrintedDetails = new HashMap<>();
           // measurementId -> lastChunkEndTime in current file
           Map<String, Long> lashChunkEndTime = new HashMap<>();
@@ -228,7 +229,9 @@ public class TsFileValidationTool {
                 }
                 long currentChunkEndTime = Long.MIN_VALUE;
                 String measurementID =
-                    deviceID.toString() + PATH_SEPARATOR + header.getMeasurementID();
+                    ((PlainDeviceID) deviceID).toStringID()
+                        + PATH_SEPARATOR
+                        + header.getMeasurementID();
                 hasMeasurementPrintedDetails.computeIfAbsent(measurementID, k -> new boolean[4]);
                 measurementLastTime.computeIfAbsent(
                     measurementID,
@@ -435,7 +438,7 @@ public class TsFileValidationTool {
                         currentChunkEndTime));
                 break;
               case MetaMarker.CHUNK_GROUP_HEADER:
-                if (!deviceID.equals(IDeviceID.Factory.DEFAULT_FACTORY.create(""))) {
+                if (!deviceID.equals(new PlainDeviceID(""))) {
                   // record the end time of last device in current file
                   if (resource.getEndTime(deviceID)
                       > deviceEndTime.computeIfAbsent(

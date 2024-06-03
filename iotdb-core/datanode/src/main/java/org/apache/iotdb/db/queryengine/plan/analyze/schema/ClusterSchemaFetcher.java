@@ -39,7 +39,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -358,7 +358,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    List<IMeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
+    List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
     for (int i = 0; i < measurements.length; i++) {
       if (schemaList.get(i) == null) {
         indexOfMissingMeasurements.add(i);
@@ -384,7 +384,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    List<IMeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
+    List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
     for (int i = 0, size = schemaList.size(); i < size; i++) {
       if (schemaList.get(i) == null) {
         indexOfMissingMeasurements.add(indexOfTargetMeasurements.get(i));

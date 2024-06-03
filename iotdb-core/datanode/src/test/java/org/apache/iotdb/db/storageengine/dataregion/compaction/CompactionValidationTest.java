@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
@@ -29,14 +29,13 @@ import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -71,7 +70,7 @@ public class CompactionValidationTest {
       }
 
       try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
-        List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+        List<MeasurementSchema> measurementSchemas = new ArrayList<>();
         measurementSchemas.add(new MeasurementSchema(SENSOR_1, TSDataType.TEXT, TSEncoding.PLAIN));
         measurementSchemas.add(new MeasurementSchema(SENSOR_2, TSDataType.TEXT, TSEncoding.PLAIN));
         measurementSchemas.add(new MeasurementSchema(SENSOR_3, TSDataType.TEXT, TSEncoding.PLAIN));
@@ -79,7 +78,7 @@ public class CompactionValidationTest {
         // register nonAligned timeseries
         tsFileWriter.registerTimeseries(new Path(DEVICE_1), measurementSchemas);
 
-        List<IMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
+        List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
         // example 1
         writeMeasurementScheams.add(measurementSchemas.get(0));
         writeMeasurementScheams.add(measurementSchemas.get(1));
@@ -94,7 +93,7 @@ public class CompactionValidationTest {
   private void writeWithTablet(
       TsFileWriter tsFileWriter,
       String deviceId,
-      List<IMeasurementSchema> schemas,
+      List<MeasurementSchema> schemas,
       long rowNum,
       long startTime,
       long startValue)
@@ -216,9 +215,9 @@ public class CompactionValidationTest {
   public void testTsFileResourceIsDeletedByOtherCompactionTaskWhenValidateOverlap1() {
     TsFileResource resource1 = new TsFileResource();
     resource1.setFile(new File(dir + File.separator + "1-1-0-0.tsfile"));
-    resource1.setTimeIndex(new ArrayDeviceTimeIndex());
-    resource1.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 1);
-    resource1.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 2);
+    resource1.setTimeIndex(new DeviceTimeIndex());
+    resource1.updateStartTime(new PlainDeviceID("d1"), 1);
+    resource1.updateEndTime(new PlainDeviceID("d1"), 2);
 
     TsFileResource resource2 = new TsFileResource();
     resource2.setFile(new File(dir + File.separator + "2-2-0-0.tsfile"));
@@ -226,9 +225,9 @@ public class CompactionValidationTest {
 
     TsFileResource resource3 = new TsFileResource();
     resource3.setFile(new File(dir + File.separator + "3-3-0-0.tsfile"));
-    resource3.setTimeIndex(new ArrayDeviceTimeIndex());
-    resource3.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 4);
-    resource3.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 5);
+    resource3.setTimeIndex(new DeviceTimeIndex());
+    resource3.updateStartTime(new PlainDeviceID("d1"), 4);
+    resource3.updateEndTime(new PlainDeviceID("d1"), 5);
 
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
@@ -238,10 +237,10 @@ public class CompactionValidationTest {
   @Test
   public void testTsFileResourceIsDeletedByOtherCompactionTaskWhenValidateOverlap2() {
     TsFileResource resource1 = new TsFileResource();
-    resource1.setTimeIndex(new ArrayDeviceTimeIndex());
+    resource1.setTimeIndex(new DeviceTimeIndex());
     resource1.setFile(new File(dir + File.separator + "1-1-0-0.tsfile"));
-    resource1.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 1);
-    resource1.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 2);
+    resource1.updateStartTime(new PlainDeviceID("d1"), 1);
+    resource1.updateEndTime(new PlainDeviceID("d1"), 2);
 
     TsFileResource resource2 = new TsFileResource();
     resource2.setFile(new File(dir + File.separator + "2-2-0-0.tsfile"));
@@ -249,9 +248,9 @@ public class CompactionValidationTest {
 
     TsFileResource resource3 = new TsFileResource();
     resource3.setFile(new File(dir + File.separator + "3-3-0-0.tsfile"));
-    resource3.setTimeIndex(new ArrayDeviceTimeIndex());
-    resource3.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 1);
-    resource3.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 5);
+    resource3.setTimeIndex(new DeviceTimeIndex());
+    resource3.updateStartTime(new PlainDeviceID("d1"), 1);
+    resource3.updateEndTime(new PlainDeviceID("d1"), 5);
 
     Assert.assertFalse(
         TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
@@ -261,10 +260,10 @@ public class CompactionValidationTest {
   @Test
   public void testTsFileResourceIsBrokenWhenValidateOverlap1() throws IOException {
     TsFileResource resource1 = new TsFileResource();
-    resource1.setTimeIndex(new ArrayDeviceTimeIndex());
+    resource1.setTimeIndex(new DeviceTimeIndex());
     resource1.setFile(new File(dir + File.separator + "1-1-0-0.tsfile"));
-    resource1.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 1);
-    resource1.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 2);
+    resource1.updateStartTime(new PlainDeviceID("d1"), 1);
+    resource1.updateEndTime(new PlainDeviceID("d1"), 2);
 
     TsFileResource resource2 = new TsFileResource();
     File tsFile2 = new File(dir + File.separator + "2-2-0-0.tsfile");
@@ -276,9 +275,9 @@ public class CompactionValidationTest {
 
     TsFileResource resource3 = new TsFileResource();
     resource3.setFile(new File(dir + File.separator + "3-3-0-0.tsfile"));
-    resource3.setTimeIndex(new ArrayDeviceTimeIndex());
-    resource3.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 4);
-    resource3.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 5);
+    resource3.setTimeIndex(new DeviceTimeIndex());
+    resource3.updateStartTime(new PlainDeviceID("d1"), 4);
+    resource3.updateEndTime(new PlainDeviceID("d1"), 5);
 
     Assert.assertTrue(
         TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(
@@ -288,10 +287,10 @@ public class CompactionValidationTest {
   @Test
   public void testTsFileResourceIsBrokenWhenValidateOverlap2() throws IOException {
     TsFileResource resource1 = new TsFileResource();
-    resource1.setTimeIndex(new ArrayDeviceTimeIndex());
+    resource1.setTimeIndex(new DeviceTimeIndex());
     resource1.setFile(new File(dir + File.separator + "1-1-0-0.tsfile"));
-    resource1.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("db1.d1"), 1);
-    resource1.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("db1.d1"), 2);
+    resource1.updateStartTime(new PlainDeviceID("d1"), 1);
+    resource1.updateEndTime(new PlainDeviceID("d1"), 2);
 
     TsFileResource resource2 = new TsFileResource();
     File tsFile2 = new File(dir + File.separator + "2-2-0-0.tsfile");
@@ -303,9 +302,9 @@ public class CompactionValidationTest {
 
     TsFileResource resource3 = new TsFileResource();
     resource3.setFile(new File(dir + File.separator + "3-3-0-0.tsfile"));
-    resource3.setTimeIndex(new ArrayDeviceTimeIndex());
-    resource3.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("db1.d1"), 1);
-    resource3.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("db1.d1"), 5);
+    resource3.setTimeIndex(new DeviceTimeIndex());
+    resource3.updateStartTime(new PlainDeviceID("d1"), 1);
+    resource3.updateEndTime(new PlainDeviceID("d1"), 5);
 
     Assert.assertFalse(
         TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(

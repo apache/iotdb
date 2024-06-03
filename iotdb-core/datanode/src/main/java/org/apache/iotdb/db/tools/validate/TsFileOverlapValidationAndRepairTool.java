@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 
 import java.io.File;
 import java.io.IOException;
@@ -189,7 +190,7 @@ public class TsFileOverlapValidationAndRepairTool {
                   + " device in current file start time is %d\n",
               deviceLastExistTsFileMap.get(device).getTsFilePath(),
               resource.getTsFilePath(),
-              device.toString(),
+              ((PlainDeviceID) device).toStringID(),
               deviceEndTimeInPreviousFile,
               deviceStartTimeInCurrentFile);
           fileHasOverlap = true;

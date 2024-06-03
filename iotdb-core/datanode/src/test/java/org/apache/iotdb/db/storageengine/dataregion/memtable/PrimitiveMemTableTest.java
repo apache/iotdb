@@ -20,8 +20,8 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -36,7 +36,6 @@ import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -66,30 +65,6 @@ public class PrimitiveMemTableTest {
   String database = "root.test";
   String dataRegionId = "1";
   double delta;
-
-  private IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create("d1");
-
-  NonAlignedFullPath nonAlignedFullPath =
-      new NonAlignedFullPath(
-          deviceID,
-          new MeasurementSchema(
-              "s0",
-              TSDataType.INT32,
-              TSEncoding.RLE,
-              CompressionType.UNCOMPRESSED,
-              Collections.emptyMap()));
-
-  AlignedFullPath alignedFullPath =
-      new AlignedFullPath(
-          deviceID,
-          Collections.singletonList("s0"),
-          Collections.singletonList(
-              new MeasurementSchema(
-                  "s0",
-                  TSDataType.INT32,
-                  TSEncoding.RLE,
-                  CompressionType.UNCOMPRESSED,
-                  Collections.emptyMap())));
 
   @Before
   public void setUp() {
@@ -145,6 +120,7 @@ public class PrimitiveMemTableTest {
   public void simpleTest() throws IOException, QueryProcessException, MetadataException {
     IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
     int count = 10;
+    String deviceId = "d1";
     String[] measurementId = new String[count];
     for (int i = 0; i < measurementId.length; i++) {
       measurementId[i] = "s" + i;
@@ -153,7 +129,7 @@ public class PrimitiveMemTableTest {
     int dataSize = 10000;
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
-          deviceID,
+          DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
               new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           dataSize - i - 1,
@@ -161,15 +137,23 @@ public class PrimitiveMemTableTest {
     }
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
-          deviceID,
+          DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
               new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           i,
           new Object[] {i});
     }
-
-    ReadOnlyMemChunk memChunk =
-        memTable.query(new QueryContext(), nonAlignedFullPath, Long.MIN_VALUE, null);
+    MeasurementPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            measurementId[0],
+            new MeasurementSchema(
+                measurementId[0],
+                TSDataType.INT32,
+                TSEncoding.RLE,
+                CompressionType.UNCOMPRESSED,
+                Collections.emptyMap()));
+    ReadOnlyMemChunk memChunk = memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null);
     IPointReader iterator = memChunk.getPointReader();
     for (int i = 0; i < dataSize; i++) {
       iterator.hasNextTimeValuePair();
@@ -233,6 +217,7 @@ public class PrimitiveMemTableTest {
   public void queryWithDeletionTest() throws IOException, QueryProcessException, MetadataException {
     IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
     int count = 10;
+    String deviceId = "d1";
     String[] measurementId = new String[count];
     for (int i = 0; i < measurementId.length; i++) {
       measurementId[i] = "s" + i;
@@ -241,7 +226,7 @@ public class PrimitiveMemTableTest {
     int dataSize = 10000;
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
-          deviceID,
+          DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
               new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           dataSize - i - 1,
@@ -249,18 +234,28 @@ public class PrimitiveMemTableTest {
     }
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
-          deviceID,
+          DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
               new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           i,
           new Object[] {i});
     }
+    MeasurementPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            measurementId[0],
+            new MeasurementSchema(
+                measurementId[0],
+                TSDataType.INT32,
+                TSEncoding.RLE,
+                CompressionType.UNCOMPRESSED,
+                Collections.emptyMap()));
     List<Pair<Modification, IMemTable>> modsToMemtable = new ArrayList<>();
     Modification deletion =
-        new Deletion(new PartialPath(deviceID, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
+        new Deletion(new PartialPath(deviceId, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
     modsToMemtable.add(new Pair<>(deletion, memTable));
     ReadOnlyMemChunk memChunk =
-        memTable.query(new QueryContext(), nonAlignedFullPath, Long.MIN_VALUE, modsToMemtable);
+        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, modsToMemtable);
     IPointReader iterator = memChunk.getPointReader();
     int cnt = 0;
     while (iterator.hasNextTimeValuePair()) {
@@ -277,6 +272,7 @@ public class PrimitiveMemTableTest {
       throws IOException, QueryProcessException, MetadataException {
     IMemTable memTable = new PrimitiveMemTable(database, dataRegionId);
     int count = 10;
+    String deviceId = "d1";
     String[] measurementId = new String[count];
     for (int i = 0; i < measurementId.length; i++) {
       measurementId[i] = "s" + i;
@@ -285,7 +281,7 @@ public class PrimitiveMemTableTest {
     int dataSize = 10000;
     for (int i = 0; i < dataSize; i++) {
       memTable.writeAlignedRow(
-          deviceID,
+          DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
               new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           dataSize - i - 1,
@@ -293,19 +289,29 @@ public class PrimitiveMemTableTest {
     }
     for (int i = 0; i < dataSize; i++) {
       memTable.writeAlignedRow(
-          deviceID,
+          DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
               new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           i,
           new Object[] {i});
     }
-
+    AlignedPath fullPath =
+        new AlignedPath(
+            deviceId,
+            Collections.singletonList(measurementId[0]),
+            Collections.singletonList(
+                new MeasurementSchema(
+                    measurementId[0],
+                    TSDataType.INT32,
+                    TSEncoding.RLE,
+                    CompressionType.UNCOMPRESSED,
+                    Collections.emptyMap())));
     List<Pair<Modification, IMemTable>> modsToMemtable = new ArrayList<>();
     Modification deletion =
-        new Deletion(new PartialPath(deviceID, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
+        new Deletion(new PartialPath(deviceId, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
     modsToMemtable.add(new Pair<>(deletion, memTable));
     ReadOnlyMemChunk memChunk =
-        memTable.query(new QueryContext(), alignedFullPath, Long.MIN_VALUE, modsToMemtable);
+        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, modsToMemtable);
     IPointReader iterator = memChunk.getPointReader();
     int cnt = 0;
     while (iterator.hasNextTimeValuePair()) {
@@ -334,9 +340,10 @@ public class PrimitiveMemTableTest {
           aRet.getTimestamp(),
           new Object[] {aRet.getValue().getValue()});
     }
-    NonAlignedFullPath fullPath =
-        new NonAlignedFullPath(
-            IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId),
+    MeasurementPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            sensorId,
             new MeasurementSchema(
                 sensorId,
                 dataType,
@@ -378,11 +385,9 @@ public class PrimitiveMemTableTest {
       throws IOException, QueryProcessException, MetadataException, WriteProcessException {
     memTable.insertAlignedTablet(genInsertTableNode(), 0, 100);
 
-    IDeviceID tmpDeviceId = IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.device5");
-
-    AlignedFullPath tmpAlignedFullPath =
-        new AlignedFullPath(
-            tmpDeviceId,
+    AlignedPath fullPath =
+        new AlignedPath(
+            "root.sg.device5",
             Collections.singletonList("sensor1"),
             Collections.singletonList(
                 new MeasurementSchema(
@@ -392,9 +397,7 @@ public class PrimitiveMemTableTest {
                     CompressionType.UNCOMPRESSED,
                     Collections.emptyMap())));
     IPointReader tvPair =
-        memTable
-            .query(new QueryContext(), tmpAlignedFullPath, Long.MIN_VALUE, null)
-            .getPointReader();
+        memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null).getPointReader();
     for (int i = 0; i < 100; i++) {
       tvPair.hasNextTimeValuePair();
       TimeValuePair next = tvPair.nextTimeValuePair();
@@ -402,9 +405,9 @@ public class PrimitiveMemTableTest {
       Assert.assertEquals(i, next.getValue().getVector()[0].getLong());
     }
 
-    tmpAlignedFullPath =
-        new AlignedFullPath(
-            tmpDeviceId,
+    fullPath =
+        new AlignedPath(
+            "root.sg.device5",
             Arrays.asList("sensor0", "sensor1"),
             Arrays.asList(
                 new MeasurementSchema(
@@ -420,10 +423,7 @@ public class PrimitiveMemTableTest {
                     CompressionType.UNCOMPRESSED,
                     Collections.emptyMap())));
 
-    tvPair =
-        memTable
-            .query(new QueryContext(), tmpAlignedFullPath, Long.MIN_VALUE, null)
-            .getPointReader();
+    tvPair = memTable.query(new QueryContext(), fullPath, Long.MIN_VALUE, null).getPointReader();
     for (int i = 0; i < 100; i++) {
       tvPair.hasNextTimeValuePair();
       TimeValuePair next = tvPair.nextTimeValuePair();

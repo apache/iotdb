@@ -133,7 +133,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(
         String.format(
             "Series: %s%s",
-            node.getAlignedPath().getIDeviceID(), node.getAlignedPath().getMeasurementList()));
+            node.getAlignedPath().getDevice(), node.getAlignedPath().getMeasurementList()));
 
     long limit = node.getPushDownLimit();
     long offset = node.getPushDownOffset();
@@ -178,7 +178,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(
         String.format(
             "Series: %s%s",
-            node.getAlignedPath().getIDeviceID(), node.getAlignedPath().getMeasurementList()));
+            node.getAlignedPath().getDevice(), node.getAlignedPath().getMeasurementList()));
     for (int i = 0; i < node.getAggregationDescriptorList().size(); i++) {
       AggregationDescriptor descriptor = node.getAggregationDescriptorList().get(i);
       boxValue.add(
@@ -480,7 +480,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
               "%s -> %s %s",
               sourceTargetPathPair.left,
               sourceTargetPathPair.right,
-              targetDeviceToAlignedMap.get(sourceTargetPathPair.right.getIDeviceID().toString())
+              targetDeviceToAlignedMap.get(sourceTargetPathPair.right.getDevice())
                   ? "[ALIGNED]"
                   : ""));
     }
@@ -506,7 +506,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(
         String.format(
             "Series: %s%s",
-            node.getSeriesPath().getIDeviceID(), node.getSeriesPath().getMeasurementList()));
+            node.getSeriesPath().getDevice(), node.getSeriesPath().getMeasurementList()));
     if (StringUtil.isNotBlank(node.getOutputViewPath())) {
       boxValue.add(String.format("ViewPath: %s", node.getOutputViewPath()));
     }

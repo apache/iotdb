@@ -153,7 +153,7 @@ public class CommonConfig {
   private long timePartitionInterval = 604_800_000;
 
   /** This variable set timestamp precision as millisecond, microsecond or nanosecond. */
-  private String timestampPrecision = "ms";
+  private String timestampPrecision = "ns";
 
   private boolean timestampPrecisionCheckEnabled = true;
 
@@ -247,7 +247,7 @@ public class CommonConfig {
   private String schemaEngineMode = "Memory";
 
   /** Whether to enable Last cache. */
-  private boolean lastCacheEnable = true;
+  private boolean lastCacheEnable = false;
 
   // Max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;

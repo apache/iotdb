@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
@@ -31,12 +31,12 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.D
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.MemAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.MemChunkMetadataLoader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -75,7 +75,7 @@ public class FileLoaderUtils {
    */
   public static TimeseriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,
-      NonAlignedFullPath seriesPath,
+      PartialPath seriesPath,
       QueryContext context,
       Filter globalTimeFilter,
       Set<String> allSensors,
@@ -96,16 +96,13 @@ public class FileLoaderUtils {
                     resource.getTsFilePath(),
                     new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
                         resource.getTsFileID(),
-                        seriesPath.getDeviceId(),
+                        new PlainDeviceID(seriesPath.getDevice()),
                         seriesPath.getMeasurement()),
                     allSensors,
-                    resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
+                    resource.getTimeIndexType() != 1,
                     context.isDebug());
         if (timeSeriesMetadata != null) {
-          // TODO directly pass IDeviceId and measurement
-          List<Modification> pathModifications =
-              context.getPathModifications(
-                  resource, seriesPath.getDeviceId(), seriesPath.getMeasurement());
+          List<Modification> pathModifications = context.getPathModifications(resource, seriesPath);
           timeSeriesMetadata.setModified(!pathModifications.isEmpty());
           timeSeriesMetadata.setChunkMetadataLoader(
               new DiskChunkMetadataLoader(resource, context, globalTimeFilter, pathModifications));
@@ -168,7 +165,7 @@ public class FileLoaderUtils {
    */
   public static AlignedTimeSeriesMetadata loadAlignedTimeSeriesMetadata(
       TsFileResource resource,
-      AlignedFullPath alignedPath,
+      AlignedPath alignedPath,
       QueryContext context,
       Filter globalTimeFilter,
       boolean isSeq)
@@ -238,7 +235,7 @@ public class FileLoaderUtils {
 
   private static AlignedTimeSeriesMetadata loadAlignedTimeSeriesMetadataFromDisk(
       TsFileResource resource,
-      AlignedFullPath alignedPath,
+      AlignedPath alignedPath,
       QueryContext context,
       Filter globalTimeFilter)
       throws IOException {
@@ -252,7 +249,7 @@ public class FileLoaderUtils {
     allSensors.add("");
     boolean isDebug = context.isDebug();
     String filePath = resource.getTsFilePath();
-    IDeviceID deviceId = alignedPath.getDeviceId();
+    IDeviceID deviceId = alignedPath.getIDeviceID();
 
     // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
     // we should not ignore the non-exist of device in TsFileMetadata
@@ -261,7 +258,7 @@ public class FileLoaderUtils {
             filePath,
             new TimeSeriesMetadataCacheKey(resource.getTsFileID(), deviceId, ""),
             allSensors,
-            resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
+            resource.getTimeIndexType() != 1,
             isDebug);
     if (timeColumn != null) {
       // only need time column, like count_time aggregation
@@ -283,7 +280,7 @@ public class FileLoaderUtils {
                   new TimeSeriesMetadataCacheKey(
                       resource.getTsFileID(), deviceId, valueMeasurement),
                   allSensors,
-                  resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
+                  resource.getTimeIndexType() != 1,
                   isDebug);
           exist = (exist || (valueColumn != null));
           valueTimeSeriesMetadataList.add(valueColumn);
@@ -307,18 +304,17 @@ public class FileLoaderUtils {
   private static List<List<Modification>> setModifications(
       TsFileResource resource,
       AlignedTimeSeriesMetadata alignedTimeSeriesMetadata,
-      AlignedFullPath alignedPath,
+      AlignedPath alignedPath,
       QueryContext context) {
     List<TimeseriesMetadata> valueTimeSeriesMetadataList =
         alignedTimeSeriesMetadata.getValueTimeseriesMetadataList();
     List<List<Modification>> res = new ArrayList<>();
     boolean modified = false;
-    for (TimeseriesMetadata timeseriesMetadata : valueTimeSeriesMetadataList) {
-      if (timeseriesMetadata != null) {
+    for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
+      if (valueTimeSeriesMetadataList.get(i) != null) {
         List<Modification> pathModifications =
-            context.getPathModifications(
-                resource, alignedPath.getDeviceId(), timeseriesMetadata.getMeasurementId());
-        timeseriesMetadata.setModified(!pathModifications.isEmpty());
+            context.getPathModifications(resource, alignedPath.getPathWithMeasurement(i));
+        valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
         res.add(pathModifications);
         modified = (modified || !pathModifications.isEmpty());
       } else {

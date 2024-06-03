@@ -30,7 +30,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -298,7 +297,7 @@ public class IoTDBSessionInsertWithTriggerExecutionIT {
 
   private void insertTablet(ISession session, String device, List<String> measurementList)
       throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<MeasurementSchema> schemaList = new ArrayList<>();
     measurementList.forEach(
         measurement -> schemaList.add(new MeasurementSchema(measurement, TSDataType.INT32)));
 

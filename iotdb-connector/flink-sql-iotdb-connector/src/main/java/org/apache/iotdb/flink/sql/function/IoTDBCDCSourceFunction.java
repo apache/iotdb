@@ -41,7 +41,7 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.enums.ReadyState;
 import org.slf4j.Logger;
@@ -232,11 +232,11 @@ public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
   }
 
   public void collectTablet(Tablet tablet, SourceContext<RowData> ctx) {
-    List<IMeasurementSchema> schemas = tablet.getSchemas();
+    List<MeasurementSchema> schemas = tablet.getSchemas();
     int rowSize = tablet.rowSize;
     HashMap<String, Pair<BitMap, List<Object>>> values = new HashMap<>();
-    for (IMeasurementSchema schema : schemas) {
-      String timeseries = String.format("%s.%s", tablet.getDeviceId(), schema.getMeasurementId());
+    for (MeasurementSchema schema : schemas) {
+      String timeseries = String.format("%s.%s", tablet.deviceId, schema.getMeasurementId());
       TSDataType iotdbType = schema.getType();
       int index = timeseriesList.indexOf(timeseries);
       if (index == -1) {

@@ -33,7 +33,6 @@ import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
 import org.junit.Test;
@@ -85,7 +84,7 @@ public class TsFileSelfCheckToolTest {
       // the number of values to include in the tablet
       int sensorNum = 10;
 
-      List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
         MeasurementSchema measurementSchema =
@@ -199,7 +198,7 @@ public class TsFileSelfCheckToolTest {
       // ChunkMetadata, the Statistics of ChunkMetadata here uses the Statistics of
       // TimeseriesMetadata.
       // Therefore, Chunk's Statistics error will be reported.
-      assertEquals("Chunk exists statistics mistakes at position 23", e.getMessage());
+      assertEquals("Chunk exists statistics mistakes at position 22", e.getMessage());
     }
     tearDown(filePath);
   }
@@ -217,7 +216,7 @@ public class TsFileSelfCheckToolTest {
     byte[] serialArr = bo.toByteArray();
     // timeseriesMetadata begins at 878364
     // randomly modify timeseriesMetadata region
-    raf.seek(966123);
+    raf.seek(965844);
     raf.write(serialArr, 0, serialArr.length);
     bo.close();
     raf.close();

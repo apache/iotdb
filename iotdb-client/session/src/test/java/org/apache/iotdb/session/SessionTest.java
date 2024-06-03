@@ -35,7 +35,6 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -800,7 +799,7 @@ public class SessionTest {
 
   @Test
   public void testInsertTablet() throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -819,7 +818,7 @@ public class SessionTest {
   @Test
   public void testInsertTabletOutOfOrder()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -838,7 +837,7 @@ public class SessionTest {
   @Test
   public void testInsertAlignedTablet()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.INT32);
@@ -857,7 +856,7 @@ public class SessionTest {
   @Test
   public void testInsertAlignedTablet2()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.INT32);
@@ -876,7 +875,7 @@ public class SessionTest {
   @Test
   public void testInsertTabletsSorted()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.INT32);
@@ -902,7 +901,7 @@ public class SessionTest {
   @Test
   public void testInsertAlignedTablets()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.FLOAT);
@@ -921,7 +920,7 @@ public class SessionTest {
   @Test
   public void testInsertAlignedTabletsSorted()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.DOUBLE);
@@ -941,7 +940,7 @@ public class SessionTest {
   public void testInsertAlignedTabletsSortedEnableRedirection()
       throws IoTDBConnectionException, StatementExecutionException {
     Whitebox.setInternalState(session, "enableRedirection", false);
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.TEXT);
@@ -973,7 +972,7 @@ public class SessionTest {
 
   @Test
   public void testTestInsertTablet() throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -992,7 +991,7 @@ public class SessionTest {
   @Test
   public void testTestInsertTabletSorted()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -1010,7 +1009,7 @@ public class SessionTest {
 
   @Test
   public void testTestInsertTablets() throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
@@ -1029,7 +1028,7 @@ public class SessionTest {
   @Test
   public void testTestInsertTabletsSorted()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<IMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     MeasurementSchema schema = new MeasurementSchema();
     schema.setMeasurementId("pressure");
     schema.setType(TSDataType.BOOLEAN);
