@@ -280,6 +280,10 @@ public class CommonConfig {
   private final Set<String> enabledKillPoints =
       KillPoint.parseKillPoints(System.getProperty(IoTDBConstant.INTEGRATION_TEST_KILL_POINTS));
 
+  private volatile boolean retryForUnknownErrors = true;
+
+  private volatile int remoteWriteMaxRetryCount = 10;
+
   CommonConfig() {
     // Empty constructor
   }
@@ -1209,5 +1213,21 @@ public class CommonConfig {
 
   public Set<String> getEnabledKillPoints() {
     return enabledKillPoints;
+  }
+
+  public boolean isRetryForUnknownErrors() {
+    return retryForUnknownErrors;
+  }
+
+  public void setRetryForUnknownErrors(boolean retryForUnknownErrors) {
+    this.retryForUnknownErrors = retryForUnknownErrors;
+  }
+
+  public int getRemoteWriteMaxRetryCount() {
+    return remoteWriteMaxRetryCount;
+  }
+
+  public void setRemoteWriteMaxRetryCount(int remoteWriteMaxRetryCount) {
+    this.remoteWriteMaxRetryCount = remoteWriteMaxRetryCount;
   }
 }

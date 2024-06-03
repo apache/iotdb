@@ -112,6 +112,8 @@ public class PerformanceOverviewMetrics implements IMetricSet {
   private static final String LOCAL_SCHEDULE = "local_scheduler";
   private static final String REMOTE_SCHEDULE = "remote_scheduler";
 
+  private static final String REMOTE_RETRY_SLEEP = "remote_retry";
+
   static {
     metricInfoMap.put(
         LOCAL_SCHEDULE,
@@ -127,10 +129,19 @@ public class PerformanceOverviewMetrics implements IMetricSet {
             PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
             Tag.STAGE.toString(),
             REMOTE_SCHEDULE));
+    metricInfoMap.put(
+        REMOTE_RETRY_SLEEP,
+        new MetricInfo(
+            MetricType.TIMER,
+            PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
+            Tag.STAGE.toString(),
+            REMOTE_RETRY_SLEEP));
   }
 
   private Timer localScheduleTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer remoteScheduleTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  private Timer remoteRetrySleepTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   /** Record the time cost of local schedule. */
   public void recordScheduleLocalCost(long costTimeInNanos) {
@@ -140,6 +151,11 @@ public class PerformanceOverviewMetrics implements IMetricSet {
   /** Record the time cost of remote schedule. */
   public void recordScheduleRemoteCost(long costTimeInNanos) {
     remoteScheduleTimer.updateNanos(costTimeInNanos);
+  }
+
+  /** Record the time cost of remote schedule. */
+  public void recordRemoteRetrySleepCost(long costTimeInNanos) {
+    remoteRetrySleepTimer.updateNanos(costTimeInNanos);
   }
 
   // endregion
@@ -327,6 +343,13 @@ public class PerformanceOverviewMetrics implements IMetricSet {
             MetricLevel.CORE,
             Tag.STAGE.toString(),
             REMOTE_SCHEDULE);
+    remoteRetrySleepTimer =
+        metricService.getOrCreateTimer(
+            PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL,
+            MetricLevel.CORE,
+            Tag.STAGE.toString(),
+            REMOTE_RETRY_SLEEP);
+
     // bind local schedule metrics
     schemaValidateTimer =
         metricService.getOrCreateTimer(
