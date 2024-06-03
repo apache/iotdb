@@ -127,7 +127,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return {@code true} if the value of the specified column is null
    */
-  boolean isNull(int columnIndex);
+  boolean isNull(int columnIndex) throws IOException;
 
   /**
    * Returns the number of columns.

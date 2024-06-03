@@ -29,7 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RegionMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
@@ -91,7 +91,7 @@ public class RegionScanPlanningTest {
     PlanNode f1Root = plan.getInstances().get(0).getFragment().getPlanNodeTree();
     assertTrue(f1Root instanceof IdentitySinkNode);
     f1Root = f1Root.getChildren().get(0);
-    assertTrue(f1Root instanceof RegionMergeNode);
+    assertTrue(f1Root instanceof ActiveRegionScanMergeNode);
     assertEquals(4, f1Root.getChildren().size());
     assertTrue(f1Root.getChildren().get(0) instanceof DeviceRegionScanNode);
     Set<PartialPath> targetPaths =
@@ -125,7 +125,7 @@ public class RegionScanPlanningTest {
     PlanNode f1Root = plan.getInstances().get(0).getFragment().getPlanNodeTree();
     assertTrue(f1Root instanceof IdentitySinkNode);
     f1Root = f1Root.getChildren().get(0);
-    assertTrue(f1Root instanceof RegionMergeNode);
+    assertTrue(f1Root instanceof ActiveRegionScanMergeNode);
     assertEquals(4, f1Root.getChildren().size());
     assertTrue(f1Root.getChildren().get(0) instanceof TimeseriesRegionScanNode);
     Set<PartialPath> targetDevicePaths =

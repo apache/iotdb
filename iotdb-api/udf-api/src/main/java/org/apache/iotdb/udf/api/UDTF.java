@@ -85,6 +85,11 @@ public interface UDTF extends UDF {
   @SuppressWarnings("squid:S112")
   void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception;
 
+  default void transform(Column[] columns, ColumnBuilder timesBuilder, ColumnBuilder valuesBuilder)
+      throws Exception {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * When the user specifies {@link RowByRowAccessStrategy} to access the original data in {@link
    * UDTFConfigurations}, this method will be called to process the transformation. In a single UDF

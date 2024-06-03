@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATER_NO_REGEX;
 
 public class DataNodeTTLCache {
   private final TTLCache ttlCache;
@@ -43,57 +43,67 @@ public class DataNodeTTLCache {
     private static final DataNodeTTLCache INSTANCE = new DataNodeTTLCache();
   }
 
-  public void setTTL(String path, long ttl) {
+  @TestOnly
+  public void setTTL(String path, long ttl) throws IllegalPathException {
     lock.writeLock().lock();
     try {
-      ttlCache.setTTL(path.split(PATH_SEPARATER_NO_REGEX), ttl);
+      ttlCache.setTTL(PathUtils.splitPathToDetachedNodes(path), ttl);
     } finally {
       lock.writeLock().unlock();
     }
   }
 
-  public void setTTL(Map<String, Long> pathTTLs) {
+  public void setTTL(String[] path, long ttl) {
     lock.writeLock().lock();
     try {
-      pathTTLs.forEach((k, v) -> ttlCache.setTTL(k.split(PATH_SEPARATER_NO_REGEX), v));
+      ttlCache.setTTL(path, ttl);
     } finally {
       lock.writeLock().unlock();
     }
   }
 
-  public void unsetTTL(String path) {
+  public void unsetTTL(String[] path) {
     lock.writeLock().lock();
     try {
-      ttlCache.unsetTTL(path.split(PATH_SEPARATER_NO_REGEX));
+      ttlCache.unsetTTL(path);
     } finally {
       lock.writeLock().unlock();
     }
   }
 
-  public long getTTL(String path) {
+  public long getTTL(String path) throws IllegalPathException {
     lock.readLock().lock();
     try {
-      return ttlCache.getClosestTTL(path.split(PATH_SEPARATER_NO_REGEX));
+      return ttlCache.getClosestTTL(PathUtils.splitPathToDetachedNodes(path));
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  public long getTTL(String[] path) {
+    lock.readLock().lock();
+    try {
+      return ttlCache.getClosestTTL(path);
     } finally {
       lock.readLock().unlock();
     }
   }
 
   /** Get all ttl map under path node. */
-  public Map<String, Long> getTTLUnderOneNode(String path) {
+  public Map<String, Long> getTTLUnderOneNode(String path) throws IllegalPathException {
     lock.readLock().lock();
     try {
-      return ttlCache.getAllTTLUnderOneNode(path.split(PATH_SEPARATER_NO_REGEX));
+      return ttlCache.getAllTTLUnderOneNode(PathUtils.splitPathToDetachedNodes(path));
     } finally {
       lock.readLock().unlock();
     }
   }
 
   /** Get ttl of one specific path node. If this node does not set ttl, then return -1. */
-  public long getNodeTTL(String path) {
+  public long getNodeTTL(String path) throws IllegalPathException {
     lock.readLock().lock();
     try {
-      return ttlCache.getLastNodeTTL(path.split(PATH_SEPARATER_NO_REGEX));
+      return ttlCache.getLastNodeTTL(PathUtils.splitPathToDetachedNodes(path));
     } finally {
       lock.readLock().unlock();
     }

@@ -98,6 +98,10 @@ public enum ThreadName {
   CONFIG_NODE_TIMEOUT_EXECUTOR("ProcedureTimeoutExecutor"),
   CONFIG_NODE_WORKER_THREAD_MONITOR("ProcedureWorkerThreadMonitor"),
   CONFIG_NODE_RETRY_FAILED_TASK("Cluster-RetryFailedTasks-Service"),
+  // -------------------------- PipeConsensus --------------------------
+  PIPE_CONSENSUS_RPC_SERVICE("PipeConsensusRPC-Service"),
+  PIPE_CONSENSUS_RPC_PROCESSOR("PipeConsensusRPC-Processor"),
+  ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL("AsyncDataNodePipeConsensusServiceClientPool"),
 
   // -------------------------- IoTConsensus --------------------------
   IOT_CONSENSUS_RPC_SERVICE("IoTConsensusRPC-Service"),
@@ -127,6 +131,7 @@ public enum ThreadName {
   PIPE_EXTRACTOR_DISRUPTOR("Pipe-Extractor-Disruptor"),
   PIPE_PROCESSOR_EXECUTOR_POOL("Pipe-Processor-Executor-Pool"),
   PIPE_CONNECTOR_EXECUTOR_POOL("Pipe-Connector-Executor-Pool"),
+  PIPE_CONSENSUS_EXECUTOR_POOL("Pipe-Consensus-Executor-Pool"),
   PIPE_CONFIGNODE_EXECUTOR_POOL("Pipe-ConfigNode-Executor-Pool"),
   PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL("Pipe-SubTask-Callback-Executor-Pool"),
   PIPE_RUNTIME_META_SYNCER("Pipe-Runtime-Meta-Syncer"),
@@ -240,6 +245,13 @@ public enum ThreadName {
               LOG_DISPATCHER,
               IOT_CONSENSUS_BACKGROUND_TASK_EXECUTOR));
 
+  private static final Set<ThreadName> pipeConsensusThreadNames =
+      new HashSet<>(
+          Arrays.asList(
+              PIPE_CONSENSUS_RPC_SERVICE,
+              PIPE_CONSENSUS_RPC_PROCESSOR,
+              ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL));
+
   private static final Set<ThreadName> ratisThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -264,6 +276,7 @@ public enum ThreadName {
               PIPE_EXTRACTOR_DISRUPTOR,
               PIPE_PROCESSOR_EXECUTOR_POOL,
               PIPE_CONNECTOR_EXECUTOR_POOL,
+              PIPE_CONSENSUS_EXECUTOR_POOL,
               PIPE_CONFIGNODE_EXECUTOR_POOL,
               PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL,
               PIPE_RUNTIME_META_SYNCER,
@@ -361,6 +374,7 @@ public enum ThreadName {
         schemaEngineThreadNames,
         clientServiceThreadNames,
         iotConsensusThreadNames,
+        pipeConsensusThreadNames,
         ratisThreadNames,
         computeThreadNames,
         jvmThreadNames,

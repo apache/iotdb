@@ -85,7 +85,7 @@ public class ElasticSerializableTVListBackedSingleColumnRow implements Row {
   }
 
   @Override
-  public boolean isNull(int columnIndex) {
+  public boolean isNull(int columnIndex) throws IOException {
     return tvList.isNull(currentRowIndex);
   }
 

@@ -115,6 +115,9 @@ public class MeasurementPath extends PartialPath {
 
   @Override
   public TSDataType getSeriesType() {
+    if (measurementSchema == null) {
+      return null;
+    }
     return getMeasurementSchema().getType();
   }
 

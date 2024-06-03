@@ -91,6 +91,13 @@ public class PipeExtractorConstant {
   public static final String SOURCE_WATERMARK_INTERVAL_KEY = "source.watermark-interval-ms";
   public static final long EXTRACTOR_WATERMARK_INTERVAL_DEFAULT_VALUE = -1; // -1 means no watermark
 
+  ///////////////////// pipe consensus /////////////////////
+  public static final String EXTRACTOR_CONSENSUS_GROUP_ID_KEY = "extractor.consensus.group-id";
+  public static final String EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY =
+      "extractor.consensus.sender-dn-id";
+  public static final String EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY =
+      "extractor.consensus.receiver-dn-id";
+
   private PipeExtractorConstant() {
     throw new IllegalStateException("Utility class");
   }

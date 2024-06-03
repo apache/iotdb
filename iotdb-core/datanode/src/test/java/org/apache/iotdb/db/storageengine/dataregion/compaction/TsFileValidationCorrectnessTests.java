@@ -295,4 +295,32 @@ public class TsFileValidationCorrectnessTests {
     boolean success = TsFileValidator.getInstance().validateTsFile(tsFileResource);
     Assert.assertTrue(success);
   }
+
+  @Test
+  public void testDeletedFile() throws IOException {
+    String path = dir + File.separator + "test12.tsfile";
+    TsFileResource tsFileResource = new TsFileResource(new File(path));
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(tsFileResource)) {
+      writer.startChunkGroup("d1");
+      VectorMeasurementSchema vectorMeasurementSchema =
+          new VectorMeasurementSchema(
+              "d1", new String[] {"s1"}, new TSDataType[] {TSDataType.INT32});
+      AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(vectorMeasurementSchema);
+      chunkWriter.getTimeChunkWriter().write(1);
+      chunkWriter.getTimeChunkWriter().write(2);
+      chunkWriter.getTimeChunkWriter().write(3);
+      chunkWriter.getValueChunkWriterByIndex(0).getPageWriter().write(1, 1, false);
+      chunkWriter.getValueChunkWriterByIndex(0).getPageWriter().write(2, 1, false);
+      chunkWriter.getValueChunkWriterByIndex(0).getPageWriter().write(3, 1, false);
+      chunkWriter.sealCurrentPage();
+      chunkWriter.writeToFileWriter(writer.getFileWriter());
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    tsFileResource.updateStartTime(new PlainDeviceID("d1"), 1);
+    tsFileResource.updateEndTime(new PlainDeviceID("d1"), 3);
+    tsFileResource.serialize();
+    tsFileResource.remove();
+    Assert.assertTrue(TsFileValidator.getInstance().validateTsFile(tsFileResource));
+  }
 }

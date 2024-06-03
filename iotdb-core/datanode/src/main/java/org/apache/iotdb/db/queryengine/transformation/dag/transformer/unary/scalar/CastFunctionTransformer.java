@@ -21,11 +21,19 @@ package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.sca
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.UnaryTransformer;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.tsfile.read.common.block.column.BooleanColumnBuilder;
+import org.apache.tsfile.read.common.block.column.DoubleColumnBuilder;
+import org.apache.tsfile.read.common.block.column.FloatColumnBuilder;
+import org.apache.tsfile.read.common.block.column.IntColumnBuilder;
+import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 
@@ -34,198 +42,459 @@ import java.io.IOException;
 public class CastFunctionTransformer extends UnaryTransformer {
   private final TSDataType targetDataType;
 
-  public CastFunctionTransformer(LayerPointReader layerPointReader, TSDataType targetDataType) {
-    super(layerPointReader);
+  public CastFunctionTransformer(LayerReader layerReader, TSDataType targetDataType) {
+    super(layerReader);
     this.targetDataType = targetDataType;
   }
 
   @Override
-  public TSDataType getDataType() {
-    return targetDataType;
+  public TSDataType[] getDataTypes() {
+    return new TSDataType[] {targetDataType};
   }
 
   @Override
-  protected void transformAndCache() throws QueryProcessException, IOException {
-    switch (layerPointReaderDataType) {
+  protected Column[] transform(Column[] columns) throws QueryProcessException, IOException {
+    switch (layerReaderDataType) {
       case INT32:
-        cast(layerPointReader.currentInt());
-        return;
+        return castInts(columns);
       case INT64:
-        cast(layerPointReader.currentLong());
-        return;
+        return castLongs(columns);
       case FLOAT:
-        cast(layerPointReader.currentFloat());
-        return;
+        return castFloats(columns);
       case DOUBLE:
-        cast(layerPointReader.currentDouble());
-        return;
+        return castDoubles(columns);
       case BOOLEAN:
-        cast(layerPointReader.currentBoolean());
-        return;
+        return castBooleans(columns);
       case TEXT:
-        cast(layerPointReader.currentBinary());
-        return;
+        return castBinaries(columns);
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported source dataType: %s", layerPointReaderDataType));
+            String.format("Unsupported source dataType: %s", layerReaderDataType));
     }
   }
 
-  private void cast(int value) {
+  private Column[] castInts(Column[] columns) {
+    if (targetDataType == TSDataType.INT32) {
+      return columns;
+    }
+
+    int count = columns[0].getPositionCount();
+    int[] values = columns[0].getInts();
+    boolean[] isNulls = columns[0].isNull();
+    ColumnBuilder builder;
     switch (targetDataType) {
-      case INT32:
-        cachedInt = value;
-        return;
       case INT64:
-        cachedLong = value;
-        return;
+        builder = new LongColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeLong(values[i]);
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case FLOAT:
-        cachedFloat = value;
-        return;
+        builder = new FloatColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeFloat(values[i]);
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case DOUBLE:
-        cachedDouble = value;
-        return;
+        builder = new DoubleColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeDouble(values[i]);
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case BOOLEAN:
-        cachedBoolean = (value != 0);
-        return;
+        builder = new BooleanColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeBoolean(values[i] != 0);
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case TEXT:
-        cachedBinary = BytesUtils.valueOf(String.valueOf(value));
-        return;
+        builder = new BinaryColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeBinary(BytesUtils.valueOf(String.valueOf(values[i])));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerPointReaderDataType));
+            String.format("Unsupported target dataType: %s", layerReaderDataType));
     }
+
+    Column valueColumn = builder.build();
+    Column timeColumn = columns[1];
+    return new Column[] {valueColumn, timeColumn};
   }
 
-  private void cast(long value) {
+  private Column[] castLongs(Column[] columns) {
+    if (targetDataType == TSDataType.INT64) {
+      return columns;
+    }
+
+    int count = columns[0].getPositionCount();
+    long[] values = columns[0].getLongs();
+    boolean[] isNulls = columns[0].isNull();
+    ColumnBuilder builder;
     switch (targetDataType) {
       case INT32:
-        cachedInt = CastFunctionHelper.castLongToInt(value);
-        return;
-      case INT64:
-        cachedLong = value;
-        return;
+        builder = new IntColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeInt(CastFunctionHelper.castLongToInt(values[i]));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case FLOAT:
-        cachedFloat = value;
-        return;
+        builder = new FloatColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeFloat(values[i]);
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case DOUBLE:
-        cachedDouble = value;
-        return;
+        builder = new DoubleColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeDouble(values[i]);
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case BOOLEAN:
-        cachedBoolean = (value != 0L);
-        return;
+        builder = new BooleanColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeBoolean(values[i] != 0L);
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case TEXT:
-        cachedBinary = BytesUtils.valueOf(String.valueOf(value));
-        return;
+        builder = new BinaryColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeBinary(BytesUtils.valueOf(String.valueOf(values[i])));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerPointReaderDataType));
+            String.format("Unsupported target dataType: %s", layerReaderDataType));
     }
+
+    Column valueColumn = builder.build();
+    Column timeColumn = columns[1];
+    return new Column[] {valueColumn, timeColumn};
   }
 
-  private void cast(float value) {
+  private Column[] castFloats(Column[] columns) {
+    if (targetDataType == TSDataType.FLOAT) {
+      return columns;
+    }
+
+    int count = columns[0].getPositionCount();
+    float[] values = columns[0].getFloats();
+    boolean[] isNulls = columns[0].isNull();
+    ColumnBuilder builder;
     switch (targetDataType) {
       case INT32:
-        cachedInt = CastFunctionHelper.castFloatToInt(value);
-        return;
+        builder = new IntColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeInt(CastFunctionHelper.castFloatToInt(values[i]));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case INT64:
-        cachedLong = CastFunctionHelper.castFloatToLong(value);
-        return;
-      case FLOAT:
-        cachedFloat = value;
-        return;
+        builder = new LongColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeLong(CastFunctionHelper.castFloatToLong(values[i]));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case DOUBLE:
-        cachedDouble = value;
-        return;
+        builder = new DoubleColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeDouble(values[i]);
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case BOOLEAN:
-        cachedBoolean = (value != 0f);
-        return;
+        builder = new BooleanColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeBoolean(values[i] != 0f);
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case TEXT:
-        cachedBinary = BytesUtils.valueOf(String.valueOf(value));
-        return;
+        builder = new BinaryColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeBinary(BytesUtils.valueOf(String.valueOf(values[i])));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerPointReaderDataType));
+            String.format("Unsupported target dataType: %s", layerReaderDataType));
     }
+
+    Column valueColumn = builder.build();
+    Column timeColumn = columns[1];
+    return new Column[] {valueColumn, timeColumn};
   }
 
-  private void cast(double value) {
+  private Column[] castDoubles(Column[] columns) {
+    if (targetDataType == TSDataType.DOUBLE) {
+      return columns;
+    }
+
+    int count = columns[0].getPositionCount();
+    double[] values = columns[0].getDoubles();
+    boolean[] isNulls = columns[0].isNull();
+    ColumnBuilder builder;
     switch (targetDataType) {
       case INT32:
-        cachedInt = CastFunctionHelper.castDoubleToInt(value);
-        return;
+        builder = new IntColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeInt(CastFunctionHelper.castDoubleToInt(values[i]));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case INT64:
-        cachedLong = CastFunctionHelper.castDoubleToLong(value);
-        return;
+        builder = new LongColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeLong(CastFunctionHelper.castDoubleToLong(values[i]));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case FLOAT:
-        cachedFloat = CastFunctionHelper.castDoubleToFloat(value);
-        return;
-      case DOUBLE:
-        cachedDouble = value;
-        return;
+        builder = new FloatColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeFloat(CastFunctionHelper.castDoubleToFloat(values[i]));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case BOOLEAN:
-        cachedBoolean = (value != 0.0);
-        return;
+        builder = new BooleanColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeBoolean(values[i] != 0.0);
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case TEXT:
-        cachedBinary = BytesUtils.valueOf(String.valueOf(value));
-        return;
+        builder = new BinaryColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeBinary(BytesUtils.valueOf(String.valueOf(values[i])));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerPointReaderDataType));
+            String.format("Unsupported target dataType: %s", layerReaderDataType));
     }
+
+    Column valueColumn = builder.build();
+    Column timeColumn = columns[1];
+    return new Column[] {valueColumn, timeColumn};
   }
 
-  private void cast(boolean value) {
+  private Column[] castBooleans(Column[] columns) {
+    if (targetDataType == TSDataType.BOOLEAN) {
+      return columns;
+    }
+
+    int count = columns[0].getPositionCount();
+    boolean[] values = columns[0].getBooleans();
+    boolean[] isNulls = columns[0].isNull();
+    ColumnBuilder builder;
     switch (targetDataType) {
       case INT32:
-        cachedInt = value ? 1 : 0;
-        return;
+        builder = new IntColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeInt(values[i] ? 1 : 0);
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case INT64:
-        cachedLong = value ? 1L : 0;
-        return;
+        builder = new LongColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeLong(values[i] ? 1L : 0);
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case FLOAT:
-        cachedFloat = value ? 1.0f : 0;
-        return;
+        builder = new FloatColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeFloat(values[i] ? 1.0f : 0);
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case DOUBLE:
-        cachedDouble = value ? 1.0 : 0;
-        return;
-      case BOOLEAN:
-        cachedBoolean = value;
-        return;
+        builder = new DoubleColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeDouble(values[i] ? 1.0 : 0);
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case TEXT:
-        cachedBinary = BytesUtils.valueOf(String.valueOf(value));
-        return;
+        builder = new BinaryColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            builder.writeBinary(BytesUtils.valueOf(String.valueOf(values[i])));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerPointReaderDataType));
+            String.format("Unsupported target dataType: %s", layerReaderDataType));
     }
+
+    Column valueColumn = builder.build();
+    Column timeColumn = columns[1];
+    return new Column[] {valueColumn, timeColumn};
   }
 
-  private void cast(Binary value) {
-    String stringValue = value.getStringValue(TSFileConfig.STRING_CHARSET);
-    // could throw exception when parsing string value
+  private Column[] castBinaries(Column[] columns) {
+    if (targetDataType == TSDataType.TEXT) {
+      return columns;
+    }
+
+    int count = columns[0].getPositionCount();
+    Binary[] values = columns[0].getBinaries();
+    boolean[] isNulls = columns[0].isNull();
+    ColumnBuilder builder;
     switch (targetDataType) {
       case INT32:
-        cachedInt = Integer.parseInt(stringValue);
-        return;
+        builder = new IntColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            String str = values[i].getStringValue(TSFileConfig.STRING_CHARSET);
+            builder.writeInt(Integer.parseInt(str));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case INT64:
-        cachedLong = Long.parseLong(stringValue);
-        return;
+        builder = new LongColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            String str = values[i].getStringValue(TSFileConfig.STRING_CHARSET);
+            builder.writeLong(Long.parseLong(str));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case FLOAT:
-        cachedFloat = CastFunctionHelper.castTextToFloat(stringValue);
-        return;
+        builder = new FloatColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            String str = values[i].getStringValue(TSFileConfig.STRING_CHARSET);
+            builder.writeFloat(CastFunctionHelper.castTextToFloat(str));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case DOUBLE:
-        cachedDouble = CastFunctionHelper.castTextToDouble(stringValue);
-        return;
+        builder = new DoubleColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            String str = values[i].getStringValue(TSFileConfig.STRING_CHARSET);
+            builder.writeDouble(CastFunctionHelper.castTextToDouble(str));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       case BOOLEAN:
-        cachedBoolean = CastFunctionHelper.castTextToBoolean(stringValue);
-        return;
-      case TEXT:
-        cachedBinary = BytesUtils.valueOf(String.valueOf(value));
-        return;
+        builder = new BooleanColumnBuilder(null, count);
+        for (int i = 0; i < count; i++) {
+          if (!isNulls[i]) {
+            String str = values[i].getStringValue(TSFileConfig.STRING_CHARSET);
+            builder.writeBoolean(CastFunctionHelper.castTextToBoolean(str));
+          } else {
+            builder.appendNull();
+          }
+        }
+        break;
       default:
         throw new UnsupportedOperationException(
-            String.format("Unsupported target dataType: %s", layerPointReaderDataType));
+            String.format("Unsupported target dataType: %s", layerReaderDataType));
     }
+
+    Column valueColumn = builder.build();
+    Column timeColumn = columns[1];
+    return new Column[] {valueColumn, timeColumn};
   }
 }

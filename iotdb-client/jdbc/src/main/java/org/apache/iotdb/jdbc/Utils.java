@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
+import java.nio.charset.Charset;
 import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.Properties;
@@ -104,19 +105,18 @@ public class Utils {
     if (info.containsKey(Config.TIME_ZONE)) {
       params.setTimeZone(info.getProperty(Config.TIME_ZONE));
     }
-
+    if (info.containsKey(Config.CHARSET)) {
+      params.setCharset(info.getProperty(Config.CHARSET));
+    }
     if (info.containsKey(Config.USE_SSL)) {
       params.setUseSSL(Boolean.parseBoolean(info.getProperty(Config.USE_SSL)));
     }
-
     if (info.containsKey(Config.TRUST_STORE)) {
       params.setTrustStore(info.getProperty(Config.TRUST_STORE));
     }
-
     if (info.containsKey(Config.TRUST_STORE_PWD)) {
       params.setTrustStorePwd(info.getProperty(Config.TRUST_STORE_PWD));
     }
-
     return params;
   }
 
@@ -161,6 +161,14 @@ public class Utils {
             // Check the validity of the time zone string.
             ZoneId.of(value);
           } catch (DateTimeException e) {
+            return false;
+          }
+          info.put(key, value);
+          break;
+        case Config.CHARSET:
+          try {
+            Charset.forName(value);
+          } catch (Exception e) {
             return false;
           }
           info.put(key, value);

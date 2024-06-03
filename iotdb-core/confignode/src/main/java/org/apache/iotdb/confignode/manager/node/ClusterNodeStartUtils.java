@@ -25,8 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -56,11 +55,6 @@ public class ClusterNodeStartUtils {
 
   public static TSStatus confirmNodeRegistration(
       NodeType nodeType, String clusterName, Object nodeLocation, ConfigManager configManager) {
-
-    final String CONF_FILE_NAME =
-        NodeType.ConfigNode.equals(nodeType)
-            ? ConfigNodeConstant.CONF_FILE_NAME
-            : IoTDBConstant.DATA_NODE_CONF_FILE_NAME;
     TSStatus status = new TSStatus();
 
     /* Reject start if the cluster name is error */
@@ -77,8 +71,8 @@ public class ClusterNodeStartUtils {
               nodeType.getNodeType(),
               clusterName,
               CLUSTER_NAME,
-              CONF_FILE_NAME,
-              CONF_FILE_NAME));
+              CommonConfig.SYSTEM_CONFIG_NAME,
+              CommonConfig.SYSTEM_CONFIG_NAME));
       return status;
     }
 
@@ -116,7 +110,7 @@ public class ClusterNodeStartUtils {
               nodeType.getNodeType(),
               conflictEndPoints,
               nodeType.getNodeType(),
-              CONF_FILE_NAME));
+              CommonConfig.SYSTEM_CONFIG_NAME));
       return status;
     } else {
       /* Accept registration if all TEndPoints aren't conflict */
@@ -130,11 +124,6 @@ public class ClusterNodeStartUtils {
       int nodeId,
       Object nodeLocation,
       ConfigManager configManager) {
-
-    final String CONF_FILE_NAME =
-        NodeType.ConfigNode.equals(nodeType)
-            ? ConfigNodeConstant.CONF_FILE_NAME
-            : IoTDBConstant.DATA_NODE_CONF_FILE_NAME;
     TSStatus status = new TSStatus();
 
     /* Reject restart if the cluster name is error */
@@ -151,8 +140,8 @@ public class ClusterNodeStartUtils {
               nodeType.getNodeType(),
               clusterName,
               CLUSTER_NAME,
-              CONF_FILE_NAME,
-              CONF_FILE_NAME));
+              CommonConfig.SYSTEM_CONFIG_NAME,
+              CommonConfig.SYSTEM_CONFIG_NAME));
       return status;
     }
 

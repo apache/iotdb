@@ -37,6 +37,7 @@ public class TimeseriesSchemaInfo {
   private final String encoding;
   private final String compression;
   private final String tags;
+  private final String alias;
 
   // TODO: Currently we can't get attributes from fetchSchema in query
   // private final String attributes;
@@ -48,21 +49,52 @@ public class TimeseriesSchemaInfo {
     this.dataType = schemaInfo.getSchema().getType().toString();
     this.encoding = schemaInfo.getSchema().getEncodingType().toString();
     this.compression = schemaInfo.getSchema().getCompressor().toString();
+    this.alias = schemaInfo.getAlias();
     this.tags = mapToString(schemaInfo.getTagMap());
     Pair<String, String> deadbandInfo =
         MetaUtils.parseDeadbandInfo(schemaInfo.getSchema().getProps());
-    this.deadband = deadbandInfo.left == null ? "" : deadbandInfo.left;
-    this.deadbandParameters = deadbandInfo.right == null ? "" : deadbandInfo.right;
+    this.deadband = deadbandInfo.left;
+    this.deadbandParameters = deadbandInfo.right;
+  }
+
+  public String getDataType() {
+    return dataType;
+  }
+
+  public String getEncoding() {
+    return encoding;
+  }
+
+  public String getCompression() {
+    return compression;
+  }
+
+  public String getAlias() {
+    return alias;
+  }
+
+  public String getTags() {
+    return tags;
+  }
+
+  public String getDeadbandParameters() {
+    return deadbandParameters;
+  }
+
+  public String getDeadband() {
+    return deadband;
   }
 
   public TimeseriesSchemaInfo(
       String dataType,
+      String alias,
       String encoding,
       String compression,
       String tags,
       String deadband,
       String deadbandParameters) {
     this.dataType = dataType;
+    this.alias = alias;
     this.encoding = encoding;
     this.compression = compression;
     this.tags = tags;
@@ -72,6 +104,7 @@ public class TimeseriesSchemaInfo {
 
   public void serializeAttributes(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(dataType, byteBuffer);
+    ReadWriteIOUtils.write(alias, byteBuffer);
     ReadWriteIOUtils.write(encoding, byteBuffer);
     ReadWriteIOUtils.write(compression, byteBuffer);
     ReadWriteIOUtils.write(tags, byteBuffer);
@@ -81,6 +114,7 @@ public class TimeseriesSchemaInfo {
 
   public void serializeAttributes(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(dataType, stream);
+    ReadWriteIOUtils.write(alias, stream);
     ReadWriteIOUtils.write(encoding, stream);
     ReadWriteIOUtils.write(compression, stream);
     ReadWriteIOUtils.write(tags, stream);
@@ -90,13 +124,14 @@ public class TimeseriesSchemaInfo {
 
   public static TimeseriesSchemaInfo deserialize(ByteBuffer buffer) {
     String dataType = ReadWriteIOUtils.readString(buffer);
+    String alias = ReadWriteIOUtils.readString(buffer);
     String encoding = ReadWriteIOUtils.readString(buffer);
     String compression = ReadWriteIOUtils.readString(buffer);
     String tags = ReadWriteIOUtils.readString(buffer);
     String deadband = ReadWriteIOUtils.readString(buffer);
     String deadbandParameters = ReadWriteIOUtils.readString(buffer);
     return new TimeseriesSchemaInfo(
-        dataType, encoding, compression, tags, deadband, deadbandParameters);
+        dataType, alias, encoding, compression, tags, deadband, deadbandParameters);
   }
 
   @Override
@@ -108,16 +143,17 @@ public class TimeseriesSchemaInfo {
       return false;
     }
     TimeseriesSchemaInfo that = (TimeseriesSchemaInfo) obj;
-    return dataType.equals(that.dataType)
+    return Objects.equals(dataType, that.dataType)
+        && Objects.equals(alias, that.alias)
         && encoding.equals(that.encoding)
-        && compression.equals(that.compression)
-        && tags.equals(that.tags)
-        && deadband.equals(that.deadband)
-        && deadbandParameters.equals(that.deadbandParameters);
+        && Objects.equals(compression, that.compression)
+        && Objects.equals(tags, that.tags)
+        && Objects.equals(deadband, that.deadband)
+        && Objects.equals(deadbandParameters, that.deadbandParameters);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dataType, encoding, compression, tags, deadband, deadbandParameters);
+    return Objects.hash(dataType, alias, encoding, compression, tags, deadband, deadbandParameters);
   }
 }

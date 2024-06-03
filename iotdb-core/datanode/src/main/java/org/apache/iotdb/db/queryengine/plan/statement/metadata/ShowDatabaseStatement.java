@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
@@ -76,7 +77,8 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
   }
 
   public void buildTSBlock(
-      Map<String, TDatabaseInfo> storageGroupInfoMap, SettableFuture<ConfigTaskResult> future) {
+      Map<String, TDatabaseInfo> storageGroupInfoMap, SettableFuture<ConfigTaskResult> future)
+      throws IllegalPathException {
 
     List<TSDataType> outputDataTypes =
         isDetailed

@@ -103,7 +103,6 @@ public class ImportSchema extends AbstractSchemaTool {
 
     Option opFile =
         Option.builder(FILE_ARGS)
-            .required()
             .longOpt(FILE_NAME)
             .hasArg()
             .argName(FILE_ARGS_NAME)
@@ -115,7 +114,6 @@ public class ImportSchema extends AbstractSchemaTool {
 
     Option opFailedFile =
         Option.builder(FAILED_FILE_ARGS)
-            .required()
             .longOpt(FAILED_FILE_NAME)
             .hasArg()
             .argName(FAILED_FILE_ARGS_NAME)

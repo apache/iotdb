@@ -20,35 +20,45 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.io.IOException;
 
 public abstract class BinaryTransformer extends Transformer {
 
-  protected final LayerPointReader leftPointReader;
-  protected final LayerPointReader rightPointReader;
+  protected final LayerReader leftReader;
+  protected final LayerReader rightReader;
 
-  protected final TSDataType leftPointReaderDataType;
-  protected final TSDataType rightPointReaderDataType;
+  protected final TSDataType leftReaderDataType;
+  protected final TSDataType rightReaderDataType;
 
-  protected final boolean isLeftPointReaderConstant;
-  protected final boolean isRightPointReaderConstant;
+  protected final boolean isLeftReaderConstant;
+  protected final boolean isRightReaderConstant;
+
+  protected Column[] leftColumns;
+  protected Column[] rightColumns;
+
+  protected int leftConsumed;
+  protected int rightConsumed;
 
   protected final boolean isCurrentConstant;
 
-  protected BinaryTransformer(LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
-    this.leftPointReader = leftPointReader;
-    this.rightPointReader = rightPointReader;
-    leftPointReaderDataType = leftPointReader.getDataType();
-    rightPointReaderDataType = rightPointReader.getDataType();
-    isLeftPointReaderConstant = leftPointReader.isConstantPointReader();
-    isRightPointReaderConstant = rightPointReader.isConstantPointReader();
-    isCurrentConstant = isLeftPointReaderConstant && isRightPointReaderConstant;
+  protected BinaryTransformer(LayerReader leftReader, LayerReader rightReader) {
+    this.leftReader = leftReader;
+    this.rightReader = rightReader;
+    leftReaderDataType = leftReader.getDataTypes()[0];
+    rightReaderDataType = rightReader.getDataTypes()[0];
+    isLeftReaderConstant = leftReader.isConstantPointReader();
+    isRightReaderConstant = rightReader.isConstantPointReader();
+    isCurrentConstant = isLeftReaderConstant && isRightReaderConstant;
     checkType();
   }
 
@@ -61,157 +71,144 @@ public abstract class BinaryTransformer extends Transformer {
 
   @Override
   public YieldableState yieldValue() throws Exception {
-    final YieldableState leftYieldableState = leftPointReader.yield();
-    final YieldableState rightYieldableState = rightPointReader.yield();
-
-    if (YieldableState.NOT_YIELDABLE_NO_MORE_DATA.equals(leftYieldableState)
-        || YieldableState.NOT_YIELDABLE_NO_MORE_DATA.equals(rightYieldableState)) {
-      return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+    // Generate data
+    if (leftColumns == null) {
+      YieldableState state = leftReader.yield();
+      if (state != YieldableState.YIELDABLE) {
+        return state;
+      }
+      leftColumns = leftReader.current();
+    }
+    if (rightColumns == null) {
+      YieldableState state = rightReader.yield();
+      if (state != YieldableState.YIELDABLE) {
+        return state;
+      }
+      rightColumns = rightReader.current();
     }
 
-    if (YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA.equals(leftYieldableState)
-        || YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA.equals(rightYieldableState)) {
-      return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+    // Constant folding, or more precisely, constant caching
+    if (isCurrentConstant && cachedColumns != null) {
+      return YieldableState.YIELDABLE;
     }
 
-    final YieldableState timeYieldState = yieldTime();
-    if (!YieldableState.YIELDABLE.equals(timeYieldState)) {
-      return timeYieldState;
-    }
+    // Merge and transform
+    int leftCount = leftColumns[0].getPositionCount();
+    int rightCount = rightColumns[0].getPositionCount();
+    int leftRemains = leftCount - leftConsumed;
+    int rightRemains = rightCount - rightConsumed;
+    int expectedEntries = Math.min(leftRemains, rightRemains);
+    cachedColumns = mergeAndTransformColumns(expectedEntries);
 
-    if (leftPointReader.isCurrentNull() || rightPointReader.isCurrentNull()) {
-      currentNull = true;
-    } else {
-      transformAndCache();
-    }
-
-    leftPointReader.readyForNext();
-    rightPointReader.readyForNext();
     return YieldableState.YIELDABLE;
   }
 
-  private YieldableState yieldTime() throws Exception {
-    if (isCurrentConstant) {
-      return YieldableState.YIELDABLE;
-    }
-    if (isLeftPointReaderConstant) {
-      cachedTime = rightPointReader.currentTime();
-      return YieldableState.YIELDABLE;
-    }
-    if (isRightPointReaderConstant) {
-      cachedTime = leftPointReader.currentTime();
-      return YieldableState.YIELDABLE;
+  protected Column[] mergeAndTransformColumns(int count) throws QueryProcessException, IOException {
+    TSDataType outputType = getDataTypes()[0];
+    ColumnBuilder timeBuilder = new TimeColumnBuilder(null, count);
+    ColumnBuilder valueBuilder = TypeUtils.initColumnBuilder(outputType, count);
+
+    if (isLeftReaderConstant || isRightReaderConstant) {
+      return handleConstantColumns(valueBuilder);
     }
 
-    long leftTime = leftPointReader.currentTime();
-    long rightTime = rightPointReader.currentTime();
+    return handleNonConstantColumns(timeBuilder, valueBuilder);
+  }
 
-    while (leftTime != rightTime) {
-      if (leftTime < rightTime) {
-        leftPointReader.readyForNext();
-        final YieldableState leftYieldState = leftPointReader.yield();
-        if (!YieldableState.YIELDABLE.equals(leftYieldState)) {
-          return leftYieldState;
+  private Column[] handleNonConstantColumns(ColumnBuilder timeBuilder, ColumnBuilder valueBuilder)
+      throws QueryProcessException, IOException {
+    Column leftTimes = leftColumns[1], leftValues = leftColumns[0];
+    Column rightTimes = rightColumns[1], rightValues = rightColumns[0];
+
+    int leftEnd = leftTimes.getPositionCount();
+    int rightEnd = rightTimes.getPositionCount();
+
+    // Combine two columns by merge sort
+    while (leftConsumed < leftEnd && rightConsumed < rightEnd) {
+      long leftTime = leftTimes.getLong(leftConsumed);
+      long rightTime = rightTimes.getLong(rightConsumed);
+
+      if (leftTime != rightTime) {
+        if (leftTime < rightTime) {
+          leftConsumed++;
+        } else {
+          rightConsumed++;
         }
-        leftTime = leftPointReader.currentTime();
       } else {
-        rightPointReader.readyForNext();
-        final YieldableState rightYieldState = rightPointReader.yield();
-        if (!YieldableState.YIELDABLE.equals(rightYieldState)) {
-          return rightYieldState;
+        timeBuilder.writeLong(leftTime);
+        if (leftValues.isNull(leftConsumed) || rightValues.isNull(rightConsumed)) {
+          valueBuilder.appendNull();
+        } else {
+          transformAndCache(leftValues, leftConsumed, rightValues, rightConsumed, valueBuilder);
         }
-        rightTime = rightPointReader.currentTime();
+
+        leftConsumed++;
+        rightConsumed++;
       }
     }
 
-    // leftTime == rightTime
-    cachedTime = leftTime;
-    return YieldableState.YIELDABLE;
+    // Clean up
+    if (leftConsumed == leftEnd) {
+      leftColumns = null;
+      leftConsumed = 0;
+      leftReader.consumedAll();
+    }
+    if (rightConsumed == rightEnd) {
+      rightColumns = null;
+      rightConsumed = 0;
+      rightReader.consumedAll();
+    }
+
+    Column times = timeBuilder.build();
+    Column values = valueBuilder.build();
+    return new Column[] {values, times};
   }
 
-  @Override
-  protected boolean cacheValue() throws QueryProcessException, IOException {
-    if (!leftPointReader.next() || !rightPointReader.next()) {
-      return false;
-    }
-
-    if (!cacheTime()) {
-      return false;
-    }
-
-    if (leftPointReader.isCurrentNull() || rightPointReader.isCurrentNull()) {
-      currentNull = true;
-    } else {
-      transformAndCache();
-    }
-
-    leftPointReader.readyForNext();
-    rightPointReader.readyForNext();
-    return true;
-  }
-
-  protected abstract void transformAndCache() throws QueryProcessException, IOException;
-
-  /**
-   * finds the smallest, unconsumed timestamp that exists in both {@code leftPointReader} and {@code
-   * rightPointReader} and then caches the timestamp in {@code cachedTime}.
-   *
-   * @return true if there has a timestamp that meets the requirements
-   */
-  private boolean cacheTime() throws IOException, QueryProcessException {
-    if (isCurrentConstant) {
-      return true;
-    }
-    if (isLeftPointReaderConstant) {
-      cachedTime = rightPointReader.currentTime();
-      return true;
-    }
-    if (isRightPointReaderConstant) {
-      cachedTime = leftPointReader.currentTime();
-      return true;
-    }
-
-    long leftTime = leftPointReader.currentTime();
-    long rightTime = rightPointReader.currentTime();
-
-    while (leftTime != rightTime) {
-      if (leftTime < rightTime) {
-        leftPointReader.readyForNext();
-        if (!leftPointReader.next()) {
-          return false;
+  private Column[] handleConstantColumns(ColumnBuilder valueBuilder)
+      throws QueryProcessException, IOException {
+    if (isLeftReaderConstant && isRightReaderConstant) {
+      transformAndCache(leftColumns[0], 0, rightColumns[0], 0, valueBuilder);
+      Column constants = valueBuilder.build();
+      return new Column[] {constants};
+    } else if (isLeftReaderConstant) {
+      for (int i = 0; i < rightColumns[0].getPositionCount(); i++) {
+        if (rightColumns[0].isNull(i)) {
+          valueBuilder.appendNull();
+        } else {
+          transformAndCache(leftColumns[0], 0, rightColumns[0], i, valueBuilder);
         }
-        leftTime = leftPointReader.currentTime();
-      } else {
-        rightPointReader.readyForNext();
-        if (!rightPointReader.next()) {
-          return false;
-        }
-        rightTime = rightPointReader.currentTime();
       }
+      Column times = rightColumns[1];
+      Column values = valueBuilder.build();
+
+      // Clean up
+      rightColumns = null;
+      rightReader.consumedAll();
+
+      return new Column[] {values, times};
+    } else if (isRightReaderConstant) {
+      for (int i = 0; i < leftColumns[0].getPositionCount(); i++) {
+        if (leftColumns[0].isNull(i)) {
+          valueBuilder.appendNull();
+        } else {
+          transformAndCache(leftColumns[0], i, rightColumns[0], 0, valueBuilder);
+        }
+      }
+      Column times = leftColumns[1];
+      Column values = valueBuilder.build();
+
+      // Clean up
+      leftColumns = null;
+      leftReader.consumedAll();
+
+      return new Column[] {values, times};
     }
 
-    // leftTime == rightTime
-    cachedTime = leftTime;
-    return true;
+    // Unreachable
+    return null;
   }
 
-  protected static double castCurrentValueToDoubleOperand(
-      LayerPointReader layerPointReader, TSDataType layerPointReaderDataType)
-      throws IOException, QueryProcessException {
-    switch (layerPointReaderDataType) {
-      case INT32:
-        return layerPointReader.currentInt();
-      case INT64:
-        return layerPointReader.currentLong();
-      case FLOAT:
-        return layerPointReader.currentFloat();
-      case DOUBLE:
-        return layerPointReader.currentDouble();
-      case BOOLEAN:
-        return layerPointReader.currentBoolean() ? 1.0d : 0.0d;
-      default:
-        throw new QueryProcessException(
-            "Unsupported data type: " + layerPointReader.getDataType().toString());
-    }
-  }
+  protected abstract void transformAndCache(
+      Column leftValues, int leftIndex, Column rightValues, int rightIndex, ColumnBuilder builder)
+      throws QueryProcessException, IOException;
 }

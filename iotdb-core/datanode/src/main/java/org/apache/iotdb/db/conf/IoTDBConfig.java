@@ -243,14 +243,6 @@ public class IoTDBConfig {
   private volatile long deleteWalFilesPeriodInMs = 20 * 1000L;
 
   // endregion
-
-  /**
-   * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan is
-   * larger than this parameter, then the MetaData operation plan will be rejected by SchemaRegion.
-   * Unit: byte
-   */
-  private int mlogBufferSize = 1024 * 1024;
-
   /**
    * The cycle when metadata log is periodically forced to be written to disk(in milliseconds) If
    * set this parameter to 0 it means call channel.force(true) after every each operation
@@ -540,9 +532,6 @@ public class IoTDBConfig {
    */
   private float expiredDataRatio = 0.3f;
 
-  /** The interval of compaction task submission from queue in CompactionTaskMananger */
-  private long compactionSubmissionIntervalInMs = 60_000L;
-
   /**
    * The number of sub compaction threads to be set up to perform compaction. Currently only works
    * for nonAligned data in cross space compaction and unseq inner space compaction.
@@ -664,8 +653,6 @@ public class IoTDBConfig {
 
   /** register time series as which type when receiving a floating number string "6.7" */
   private TSDataType floatingStringInferType = TSDataType.DOUBLE;
-
-  private int inferStringMaxLength = 512;
 
   /**
    * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT
@@ -1115,6 +1102,9 @@ public class IoTDBConfig {
   private double maxMemoryRatioForQueue = 0.6;
   private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
 
+  // PipeConsensus Config
+  private int pipeConsensusPipelineSize = 5;
+
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
 
@@ -1132,6 +1122,8 @@ public class IoTDBConfig {
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
   private String[] pipeReceiverFileDirs = new String[0];
+
+  private String[] pipeConsensusReceiverFileDirs = new String[0];
 
   /** Resource control */
   private boolean quotaEnable = false;
@@ -1172,6 +1164,14 @@ public class IoTDBConfig {
   public void setRegionMigrationSpeedLimitBytesPerSecond(
       long regionMigrationSpeedLimitBytesPerSecond) {
     this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
+  }
+
+  public int getPipeConsensusPipelineSize() {
+    return pipeConsensusPipelineSize;
+  }
+
+  public void setPipeConsensusPipelineSize(int pipeConsensusPipelineSize) {
+    this.pipeConsensusPipelineSize = pipeConsensusPipelineSize;
   }
 
   public void setMaxSizePerBatch(int maxSizePerBatch) {
@@ -1291,6 +1291,9 @@ public class IoTDBConfig {
     pipeTemporaryLibDir = addDataHomeDir(pipeTemporaryLibDir);
     for (int i = 0; i < pipeReceiverFileDirs.length; i++) {
       pipeReceiverFileDirs[i] = addDataHomeDir(pipeReceiverFileDirs[i]);
+    }
+    for (int i = 0; i < pipeConsensusReceiverFileDirs.length; i++) {
+      pipeConsensusReceiverFileDirs[i] = addDataHomeDir(pipeConsensusReceiverFileDirs[i]);
     }
     mqttDir = addDataHomeDir(mqttDir);
     extPipeDir = addDataHomeDir(extPipeDir);
@@ -2304,10 +2307,6 @@ public class IoTDBConfig {
     return floatingStringInferType;
   }
 
-  public int getInferStringMaxLength() {
-    return inferStringMaxLength;
-  }
-
   public void setFloatingStringInferType(TSDataType floatingNumberStringInferType) {
     if (floatingNumberStringInferType != TSDataType.DOUBLE
         && floatingNumberStringInferType != TSDataType.FLOAT
@@ -2711,14 +2710,6 @@ public class IoTDBConfig {
     ZeroCopyRpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
   }
 
-  public int getMlogBufferSize() {
-    return mlogBufferSize;
-  }
-
-  public void setMlogBufferSize(int mlogBufferSize) {
-    this.mlogBufferSize = mlogBufferSize;
-  }
-
   public long getSyncMlogPeriodInMs() {
     return syncMlogPeriodInMs;
   }
@@ -2953,14 +2944,6 @@ public class IoTDBConfig {
 
   public void setMinCrossCompactionUnseqFileLevel(int minCrossCompactionUnseqFileLevel) {
     this.minCrossCompactionUnseqFileLevel = minCrossCompactionUnseqFileLevel;
-  }
-
-  public long getCompactionSubmissionIntervalInMs() {
-    return compactionSubmissionIntervalInMs;
-  }
-
-  public void setCompactionSubmissionIntervalInMs(long interval) {
-    compactionSubmissionIntervalInMs = interval;
   }
 
   public int getSubCompactionTaskNum() {
@@ -3886,6 +3869,25 @@ public class IoTDBConfig {
     return (Objects.isNull(this.pipeReceiverFileDirs) || this.pipeReceiverFileDirs.length == 0)
         ? new String[] {systemDir + File.separator + "pipe" + File.separator + "receiver"}
         : this.pipeReceiverFileDirs;
+  }
+
+  public void setPipeConsensusReceiverFileDirs(String[] pipeConsensusReceiverFileDirs) {
+    this.pipeConsensusReceiverFileDirs = pipeConsensusReceiverFileDirs;
+  }
+
+  public String[] getPipeConsensusReceiverFileDirs() {
+    return (Objects.isNull(this.pipeConsensusReceiverFileDirs)
+            || this.pipeConsensusReceiverFileDirs.length == 0)
+        ? new String[] {
+          systemDir
+              + File.separator
+              + "pipe"
+              + File.separator
+              + "consensus"
+              + File.separator
+              + "receiver"
+        }
+        : this.pipeConsensusReceiverFileDirs;
   }
 
   public boolean isQuotaEnable() {
