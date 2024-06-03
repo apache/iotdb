@@ -280,7 +280,7 @@ public class CommonConfig {
   private final Set<String> enabledKillPoints =
       KillPoint.parseKillPoints(System.getProperty(IoTDBConstant.INTEGRATION_TEST_KILL_POINTS));
 
-  private volatile boolean retryForUnknownErrors = true;
+  private volatile boolean retryForUnknownErrors = false;
 
   private volatile long remoteWriteMaxRetryDurationInMs = 60000;
 
