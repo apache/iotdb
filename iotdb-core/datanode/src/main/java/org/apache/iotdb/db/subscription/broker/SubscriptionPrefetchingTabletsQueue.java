@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -64,7 +65,7 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
   }
 
   @Override
-  public SubscriptionEvent poll(final String consumerId) {
+  public SubscriptionEvent pollInternal(final String consumerId) {
     if (prefetchingQueue.isEmpty()) {
       prefetchOnce();
     }
@@ -126,6 +127,17 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
             "Subscription: SubscriptionPrefetchingTabletsQueue {} only support prefetch EnrichedEvent. Ignore {}.",
             this,
             event);
+        continue;
+      }
+
+      if (event instanceof PipeTerminateEvent) {
+        LOGGER.info(
+            "Subscription: SubscriptionPrefetchingTabletsQueue {} commit PipeTerminateEvent {}",
+            this,
+            event);
+        // commit directly
+        ((PipeTerminateEvent) event)
+            .decreaseReferenceCount(SubscriptionPrefetchingTsFileQueue.class.getName(), true);
         continue;
       }
 

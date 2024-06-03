@@ -24,12 +24,17 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
+import org.apache.iotdb.db.subscription.event.SubscriptionTsFileEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,6 +51,8 @@ public abstract class SubscriptionPrefetchingQueue {
   protected final Map<SubscriptionCommitContext, SubscriptionEvent> uncommittedEvents;
   private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
 
+  private volatile boolean isCompleted = false;
+
   public SubscriptionPrefetchingQueue(
       final String brokerId,
       final String topicName,
@@ -57,7 +64,15 @@ public abstract class SubscriptionPrefetchingQueue {
     this.uncommittedEvents = new ConcurrentHashMap<>();
   }
 
-  public abstract SubscriptionEvent poll(final String consumerId);
+  public SubscriptionEvent poll(final String consumerId) {
+    if (isCompleted()) {
+      return generateSubscriptionPollTerminationResponse();
+    }
+
+    return pollInternal(consumerId);
+  }
+
+  public abstract SubscriptionEvent pollInternal(final String consumerId);
 
   public abstract void executePrefetch();
 
@@ -149,5 +164,24 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public long getCurrentCommitId() {
     return subscriptionCommitIdGenerator.get();
+  }
+
+  /////////////////////////////// termination ///////////////////////////////
+
+  public boolean isCompleted() {
+    return isCompleted;
+  }
+
+  public void markCompleted() {
+    isCompleted = true;
+  }
+
+  private SubscriptionTsFileEvent generateSubscriptionPollTerminationResponse() {
+    return new SubscriptionTsFileEvent(
+        Collections.emptyList(),
+        new SubscriptionPollResponse(
+            SubscriptionPollResponseType.TERMINATION.getType(),
+            new TerminationPayload(),
+            generateInvalidSubscriptionCommitContext()));
   }
 }

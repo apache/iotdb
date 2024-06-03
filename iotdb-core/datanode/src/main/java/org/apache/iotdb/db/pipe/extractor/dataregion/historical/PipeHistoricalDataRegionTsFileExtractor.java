@@ -140,7 +140,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                   SOURCE_END_TIME_KEY,
                   EXTRACTOR_END_TIME_KEY));
         }
-        return;
       } catch (final Exception e) {
         // compatible with the current validation framework
         throw new PipeParameterNotValidException(e.getMessage());
@@ -185,23 +184,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 EXTRACTOR_HISTORY_END_TIME_KEY,
                 SOURCE_HISTORY_END_TIME_KEY));
       }
-
-      shouldTransferModFile =
-          parameters.getBooleanOrDefault(
-              Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
-              EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE
-                  || // Should extract deletion
-                  DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters)
-                      .getRight());
-
-      shouldTerminatePipeOnAllHistoricalEventsConsumed =
-          parameters
-              .getStringOrDefault(
-                  Arrays.asList(
-                      PipeExtractorConstant.EXTRACTOR_MODE_KEY,
-                      PipeExtractorConstant.SOURCE_MODE_KEY),
-                  PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE)
-              .equalsIgnoreCase(PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE);
     } catch (final Exception e) {
       // Compatible with the current validation framework
       throw new PipeParameterNotValidException(e.getMessage());
@@ -295,15 +277,34 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             .collect(Collectors.toSet())
             .contains("time");
 
+    shouldTransferModFile =
+        parameters.getBooleanOrDefault(
+            Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
+            EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE
+                || // Should extract deletion
+                DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters)
+                    .getRight());
+
+    shouldTerminatePipeOnAllHistoricalEventsConsumed =
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(
+                    PipeExtractorConstant.EXTRACTOR_MODE_KEY,
+                    PipeExtractorConstant.SOURCE_MODE_KEY),
+                PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE)
+            .equalsIgnoreCase(PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE);
+
     LOGGER.info(
-        "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy time range {}",
+        "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy time range {}, should transfer mod file {}, should terminate pipe on all historical events consumed {}",
         pipeName,
         dataRegionId,
         DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
         historicalDataExtractionStartTime,
         DateTimeUtils.convertLongToDate(historicalDataExtractionEndTime),
         historicalDataExtractionEndTime,
-        sloppyTimeRange);
+        sloppyTimeRange,
+        shouldTransferModFile,
+        shouldTerminatePipeOnAllHistoricalEventsConsumed);
   }
 
   private void flushDataRegionAllTsFiles() {

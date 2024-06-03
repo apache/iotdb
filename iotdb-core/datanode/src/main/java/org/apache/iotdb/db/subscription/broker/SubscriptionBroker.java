@@ -164,9 +164,12 @@ public class SubscriptionBroker {
     }
     // clean up uncommitted events
     prefetchingQueue.cleanup();
-    topicNameToPrefetchingQueue.remove(topicName);
-    SubscriptionPrefetchingQueueMetrics.getInstance()
-        .deregister(prefetchingQueue.getPrefetchingQueueId());
+    prefetchingQueue.markCompleted();
+
+    // TODO
+    //    topicNameToPrefetchingQueue.remove(topicName);
+    //    SubscriptionPrefetchingQueueMetrics.getInstance()
+    //        .deregister(prefetchingQueue.getPrefetchingQueueId());
   }
 
   public void executePrefetch(final String topicName) {

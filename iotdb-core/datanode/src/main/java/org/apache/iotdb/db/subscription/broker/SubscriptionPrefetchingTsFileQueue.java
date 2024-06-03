@@ -22,6 +22,7 @@ package org.apache.iotdb.db.subscription.broker;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionTsFileEvent;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -64,7 +65,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   }
 
   @Override
-  public SubscriptionTsFileEvent poll(final String consumerId) {
+  public SubscriptionTsFileEvent pollInternal(final String consumerId) {
     if (hasUnPollableOnTheFlySubscriptionTsFileEvent(consumerId)) {
       return null;
     }
@@ -78,6 +79,25 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     Event event;
     while (Objects.nonNull(
         event = UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll()))) {
+      if (!(event instanceof EnrichedEvent)) {
+        LOGGER.warn(
+            "Subscription: SubscriptionPrefetchingTsFileQueue {} only support poll EnrichedEvent. Ignore {}.",
+            this,
+            event);
+        continue;
+      }
+
+      if (event instanceof PipeTerminateEvent) {
+        LOGGER.info(
+            "Subscription: SubscriptionPrefetchingTsFileQueue {} commit PipeTerminateEvent {}",
+            this,
+            event);
+        // commit directly
+        ((PipeTerminateEvent) event)
+            .decreaseReferenceCount(SubscriptionPrefetchingTsFileQueue.class.getName(), true);
+        continue;
+      }
+
       if (event instanceof TabletInsertionEvent) {
         final String errorMessage =
             String.format(

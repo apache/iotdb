@@ -336,18 +336,23 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             case ERROR:
               final ErrorPayload payload = (ErrorPayload) pollResponse.getPayload();
               final String errorMessage = payload.getErrorMessage();
-              final boolean critical = payload.isCritical();
-              LOGGER.warn(
-                  "Error occurred when SubscriptionConsumer {} polling topics {}: {}, critical: {}",
-                  this,
-                  topicNames,
-                  errorMessage,
-                  critical);
-              if (critical) {
+              if (payload.isCritical()) {
                 throw new SubscriptionRuntimeCriticalException(errorMessage);
               } else {
                 throw new SubscriptionRuntimeNonCriticalException(errorMessage);
               }
+            case TERMINATION:
+              final SubscriptionCommitContext commitContext = pollResponse.getCommitContext();
+              final String topicNameToUnsubscribe = commitContext.getTopicName();
+              LOGGER.info(
+                  "Termination occurred when SubscriptionConsumer {} polling topics {}, unsubscribe topic {} on DN {} automatically",
+                  this,
+                  topicNames,
+                  topicNameToUnsubscribe,
+                  commitContext.getDataNodeId());
+              unsubscribe(topicNameToUnsubscribe);
+              // TODO: notify user by ex?
+              break;
             default:
               LOGGER.warn("unexpected response type: {}", responseType);
               break;
