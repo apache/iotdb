@@ -102,6 +102,8 @@ statement
     | loadConfigurationStatement
 
     // auth Statement
+    | grantStatement
+    | revokeStatement
 
     // View, Trigger, pipe, CQ, Quota are not supported yet
     ;
@@ -337,7 +339,62 @@ localOrClusterMode
     : (ON (LOCAL | CLUSTER))
     ;
 
+// ------------------------------------------- Auth Statement ----------------------------------------------------------
 
+grantStatement
+    : GRANT grant_privilege_object TO role_type role_name=identifier (grantOpt)?
+    ;
+revokeStatement
+    : REVOKE revoke_privilege_object FROM role_type  role_name=identifier
+    ;
+
+grant_privilege_object
+    : SYSTEM_PRIVILEGE
+    | object_privilege ON object_type object_name
+    ;
+
+SYSTEM_PRIVILEGE
+    : MANAGE_DATABASE
+    | MANAGE_USER
+    | MANAGE_ROLE
+    | USE_TRIGGER
+    | USE_UDF
+    | USE_PIPE
+    | EXTEND_TEMPLATE
+    | MAINTAIN
+    ;
+
+object_privilege
+    : READ_DATA
+    | READ_SCHEMA
+    | WRITE_DATA
+    | WRITE_SCHEMA
+    ;
+
+object_type
+    : TABLE
+    | DATABASE
+    ;
+
+role_type
+    : USER
+    | ROLE
+    ;
+
+grantOpt
+    : WITH GRANT OPTION
+    ;
+
+object_name
+    : IDENTIFIER
+    ;
+
+revoke_privilege_object 
+    : SYSTEM_PRIVILEGE
+    | object_privilege ON object_type object_name
+    | GRANT OPTION FOR object_privilege ON object_type object_name
+    | GRANT OPTION FOR SYSTEM_PRIVILEGE
+    ;
 
 
 // ------------------------------------------- Query Statement ---------------------------------------------------------
@@ -1096,6 +1153,20 @@ PERCENT: '%';
 CONCAT: '||';
 QUESTION_MARK: '?';
 SEMICOLON: ';';
+
+// auth 
+MANAGE_DATABASE: 'MANAGE_DATABASE';
+MANAGE_USER: 'MANAGE_USER';
+MANAGE_ROLE: 'MANAGE_ROLE';
+USE_TRIGGER: 'USE_TRIGGER';
+USE_UDF: 'USE_UDF';
+USE_PIPE: 'USE_PIPE';
+EXTEND_TEMPLATE: 'EXTEND_TEMPLATE';
+MAINTAIN: 'MAINTAIN';
+READ_DATA: 'READ_DATA';
+READ_SCHEMA: 'READ_SCHEMA';
+WRITE_DATA: 'WRITE_DATA';
+WRITE_SCHEMA: 'WRITE_SCHEMA';
 
 STRING
     : '\'' ( ~'\'' | '\'\'' )* '\''
