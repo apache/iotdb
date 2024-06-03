@@ -46,6 +46,8 @@ public class ImportSchemaTestIT extends AbstractScript {
 
   private static String libPath;
 
+  private static String homePath;
+
   @BeforeClass
   public static void setUp() {
     EnvFactory.getEnv().initClusterEnvironment();
@@ -53,6 +55,8 @@ public class ImportSchemaTestIT extends AbstractScript {
     port = EnvFactory.getEnv().getPort();
     toolsPath = EnvFactory.getEnv().getToolsPath();
     libPath = EnvFactory.getEnv().getLibPath();
+    homePath =
+        libPath.substring(0, libPath.lastIndexOf(File.separator + "lib" + File.separator + "*"));
   }
 
   @AfterClass
@@ -88,12 +92,12 @@ public class ImportSchemaTestIT extends AbstractScript {
             "root",
             "-pw",
             "root",
-            "-f",
+            "-s",
             "./",
             "&",
             "exit",
             "%^errorlevel%");
-    builder.environment().put("CLASSPATH", libPath);
+    builder.environment().put("IOTDB_HOME", homePath);
     testOutput(builder, output, 0);
   }
 
@@ -114,9 +118,9 @@ public class ImportSchemaTestIT extends AbstractScript {
             "root",
             "-pw",
             "root",
-            "-f",
+            "-s",
             "./");
-    builder.environment().put("CLASSPATH", libPath);
+    builder.environment().put("IOTDB_HOME", homePath);
     testOutput(builder, output, 0);
   }
 }

@@ -184,6 +184,8 @@ public class PipeConnectorConstant {
   public static final String SINK_TOPIC_KEY = "sink.topic";
   public static final String SINK_CONSUMER_GROUP_KEY = "sink.consumer-group";
 
+  public static final String CONNECTOR_CONSENSUS_GROUP_ID_KEY = "connector.consensus.group-id";
+
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
   }

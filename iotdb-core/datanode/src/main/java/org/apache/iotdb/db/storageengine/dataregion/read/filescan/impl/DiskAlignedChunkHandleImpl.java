@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl;
 
 import org.apache.iotdb.db.storageengine.dataregion.utils.SharedTimeDataBuffer;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
@@ -37,12 +38,14 @@ public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
   private int pageIndex = 0;
 
   public DiskAlignedChunkHandleImpl(
+      IDeviceID deviceID,
+      String measurement,
       String filePath,
       boolean isTsFileClosed,
       long offset,
       Statistics<? extends Serializable> chunkStatistic,
       SharedTimeDataBuffer sharedTimeDataBuffer) {
-    super(filePath, isTsFileClosed, offset, chunkStatistic);
+    super(deviceID, measurement, filePath, isTsFileClosed, offset, chunkStatistic);
     this.sharedTimeDataBuffer = sharedTimeDataBuffer;
   }
 
@@ -66,13 +69,13 @@ public class DiskAlignedChunkHandleImpl extends DiskChunkHandleImpl {
       throw new UnsupportedOperationException("Time data size not match");
     }
 
-    long[] validTimeList = new long[(int) currentPageHeader.getNumOfValues()];
-    for (int i = 0; i < size; i++) {
-      if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+    long[] validTimeList = new long[(int) this.currentPageHeader.getNumOfValues()];
+    int index = 0;
+    for (int i = 0; i < timeData.length; i++) {
+      if ((bitmap[i / 8] & 0xFF & MASK >>> i % 8) == 0) {
         continue;
       }
-      long timestamp = timeData[i];
-      validTimeList[i] = timestamp;
+      validTimeList[index++] = timeData[i];
     }
 
     pageIndex++;

@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -34,24 +36,35 @@ public class RegularTransformer extends UnaryTransformer {
 
   private final Pattern pattern;
 
-  public RegularTransformer(LayerPointReader layerPointReader, Pattern pattern) {
-    super(layerPointReader);
+  public RegularTransformer(LayerReader layerReader, Pattern pattern) {
+    super(layerReader);
     this.pattern = pattern;
 
-    if (layerPointReaderDataType != TSDataType.TEXT) {
-      throw new UnSupportedDataTypeException(
-          "Unsupported data type: " + layerPointReader.getDataType().toString());
+    if (layerReaderDataType != TSDataType.TEXT) {
+      throw new UnSupportedDataTypeException("Unsupported data type: " + layerReaderDataType);
     }
   }
 
   @Override
-  public TSDataType getDataType() {
-    return TSDataType.BOOLEAN;
+  public TSDataType[] getDataTypes() {
+    return new TSDataType[] {TSDataType.BOOLEAN};
   }
 
   @Override
-  protected void transformAndCache() throws QueryProcessException, IOException {
-    Binary binary = layerPointReader.currentBinary();
-    cachedBoolean = pattern.matcher(binary.getStringValue(TSFileConfig.STRING_CHARSET)).find();
+  protected void transform(Column[] columns, ColumnBuilder builder)
+      throws QueryProcessException, IOException {
+    int count = columns[0].getPositionCount();
+    Binary[] binaries = columns[0].getBinaries();
+    boolean[] isNulls = columns[0].isNull();
+
+    for (int i = 0; i < count; i++) {
+      if (!isNulls[i]) {
+        boolean res =
+            pattern.matcher(binaries[i].getStringValue(TSFileConfig.STRING_CHARSET)).find();
+        builder.writeBoolean(res);
+      } else {
+        builder.appendNull();
+      }
+    }
   }
 }

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigFileAutoUpdateTool;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -87,9 +88,9 @@ public class IoTDBDescriptor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDescriptor.class);
 
-  private final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
+  private static final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
 
-  private final IoTDBConfig conf = new IoTDBConfig();
+  private static final IoTDBConfig conf = new IoTDBConfig();
 
   private static final long MAX_THROTTLE_THRESHOLD = 600 * 1024 * 1024 * 1024L;
 
@@ -98,6 +99,19 @@ public class IoTDBDescriptor {
   private static final double MAX_DIR_USE_PROPORTION = 0.8;
 
   private static final double MIN_DIR_USE_PROPORTION = 0.5;
+
+  static {
+    ConfigFileAutoUpdateTool updateTool = new ConfigFileAutoUpdateTool();
+    URL systemConfigUrl = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
+    URL configNodeUrl = getPropsUrl(CommonConfig.OLD_CONFIG_NODE_CONFIG_NAME);
+    URL dataNodeUrl = getPropsUrl(CommonConfig.OLD_DATA_NODE_CONFIG_NAME);
+    URL commonConfigUrl = getPropsUrl(CommonConfig.OLD_COMMON_CONFIG_NAME);
+    try {
+      updateTool.checkAndMayUpdate(systemConfigUrl, configNodeUrl, dataNodeUrl, commonConfigUrl);
+    } catch (Exception e) {
+      LOGGER.error("Failed to update config file", e);
+    }
+  }
 
   protected IoTDBDescriptor() {
     loadProps();
@@ -136,7 +150,7 @@ public class IoTDBDescriptor {
    *
    * @return url object if location exit, otherwise null.
    */
-  public URL getPropsUrl(String configFileName) {
+  public static URL getPropsUrl(String configFileName) {
     String urlString = commonDescriptor.getConfDir();
     if (urlString == null) {
       // If urlString wasn't provided, try to find a default config in the root of the classpath.
@@ -174,28 +188,9 @@ public class IoTDBDescriptor {
   /** load a property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
     Properties commonProperties = new Properties();
-    if (url != null) {
-      try (InputStream inputStream = url.openStream()) {
-        LOGGER.info("Start to read config file {}", url);
-        commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-      } catch (FileNotFoundException e) {
-        LOGGER.error("Fail to find config file {}, reject DataNode startup.", url, e);
-        System.exit(-1);
-      } catch (IOException e) {
-        LOGGER.error("Cannot load config file, reject DataNode startup.", e);
-        System.exit(-1);
-      } catch (Exception e) {
-        LOGGER.error("Incorrect format in config file, reject DataNode startup.", e);
-        System.exit(-1);
-      }
-    } else {
-      LOGGER.warn(
-          "Couldn't load the configuration {} from any of the known sources.",
-          CommonConfig.CONFIG_NAME);
-    }
-    url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
+    // if new properties file exist, skip old properties files
+    URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url != null) {
       try (InputStream inputStream = url.openStream()) {
         LOGGER.info("Start to read config file {}", url);
@@ -216,7 +211,7 @@ public class IoTDBDescriptor {
         // update all data seriesPath
         conf.updatePath();
         commonDescriptor.getConfig().updatePath(System.getProperty(IoTDBConstant.IOTDB_HOME, null));
-        MetricConfigDescriptor.getInstance().loadProps(commonProperties);
+        MetricConfigDescriptor.getInstance().loadProps(commonProperties, false);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
             .updateRpcInstance(
@@ -225,7 +220,7 @@ public class IoTDBDescriptor {
     } else {
       LOGGER.warn(
           "Couldn't load the configuration {} from any of the known sources.",
-          IoTDBConfig.CONFIG_NAME);
+          CommonConfig.SYSTEM_CONFIG_NAME);
     }
   }
 
@@ -368,13 +363,6 @@ public class IoTDBDescriptor {
 
     conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()));
 
-    int mlogBufferSize =
-        Integer.parseInt(
-            properties.getProperty("mlog_buffer_size", Integer.toString(conf.getMlogBufferSize())));
-    if (mlogBufferSize > 0) {
-      conf.setMlogBufferSize(mlogBufferSize);
-    }
-
     long forceMlogPeriodInMs =
         Long.parseLong(
             properties.getProperty(
@@ -434,12 +422,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "compaction_schedule_interval_in_ms",
                 Long.toString(conf.getCompactionScheduleIntervalInMs()))));
-
-    conf.setCompactionSubmissionIntervalInMs(
-        Long.parseLong(
-            properties.getProperty(
-                "compaction_submission_interval_in_ms",
-                Long.toString(conf.getCompactionSubmissionIntervalInMs()))));
 
     conf.setEnableCrossSpaceCompaction(
         Boolean.parseBoolean(
@@ -1074,10 +1056,12 @@ public class IoTDBDescriptor {
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
     loadIoTConsensusProps(properties);
+    loadPipeConsensusProps(properties);
   }
 
   private void reloadConsensusProps(Properties properties) {
     loadIoTConsensusProps(properties);
+    loadPipeConsensusProps(properties);
     DataRegionConsensusImpl.reloadConsensusConfig();
   }
 
@@ -1116,6 +1100,17 @@ public class IoTDBDescriptor {
                     "region_migration_speed_limit_bytes_per_second",
                     String.valueOf(conf.getRegionMigrationSpeedLimitBytesPerSecond()))
                 .trim()));
+  }
+
+  private void loadPipeConsensusProps(Properties properties) {
+    conf.setPipeConsensusPipelineSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "fast_iot_consensus_pipeline_size",
+                Integer.toString(conf.getPipeConsensusPipelineSize()))));
+    if (conf.getPipeConsensusPipelineSize() <= 0) {
+      conf.setPipeConsensusPipelineSize(5);
+    }
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1835,7 +1830,7 @@ public class IoTDBDescriptor {
   }
 
   public void loadHotModifiedProps() throws QueryProcessException {
-    URL url = getPropsUrl(CommonConfig.CONFIG_NAME);
+    URL url = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (url == null) {
       LOGGER.warn("Couldn't load the configuration from any of the known sources.");
       return;
@@ -1845,29 +1840,14 @@ public class IoTDBDescriptor {
     try (InputStream inputStream = url.openStream()) {
       LOGGER.info("Start to reload config file {}", url);
       commonProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-    } catch (Exception e) {
-      LOGGER.warn("Fail to reload config file {}", url, e);
-      throw new QueryProcessException(
-          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
-    }
-
-    url = getPropsUrl(IoTDBConfig.CONFIG_NAME);
-    if (url == null) {
-      LOGGER.warn("Couldn't load the configuration from any of the known sources.");
-      return;
-    }
-    try (InputStream inputStream = url.openStream()) {
-      LOGGER.info("Start to reload config file {}", url);
-      Properties properties = new Properties();
-      properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-      commonProperties.putAll(properties);
       loadHotModifiedProps(commonProperties);
     } catch (Exception e) {
       LOGGER.warn("Fail to reload config file {}", url, e);
       throw new QueryProcessException(
           String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
-    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(commonProperties);
+    ReloadLevel reloadLevel =
+        MetricConfigDescriptor.getInstance().loadHotProps(commonProperties, false);
     LOGGER.info("Reload metric service in level {}", reloadLevel);
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
       IoTDBInternalReporter internalReporter;
@@ -2213,6 +2193,17 @@ public class IoTDBDescriptor {
                 properties
                     .getProperty(
                         "pipe_receiver_file_dirs", String.join(",", conf.getPipeReceiverFileDirs()))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+
+    conf.setPipeConsensusReceiverFileDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "pipe_consensus_receiver_file_dirs",
+                        String.join(",", conf.getPipeConsensusReceiverFileDirs()))
                     .trim()
                     .split(","))
             .filter(dir -> !dir.isEmpty())

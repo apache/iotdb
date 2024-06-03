@@ -32,9 +32,11 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeType;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -63,6 +65,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.thrift.TException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -81,6 +84,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
@@ -604,5 +608,48 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     return pipeMeta == null || pipeMeta.getStaticMeta().getCreationTime() != creationTime
         ? Collections.emptySet()
         : pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().keySet();
+  }
+
+  ///////////////////////// Pipe Consensus /////////////////////////
+
+  public ProgressIndex getPipeTaskProgressIndex(String pipeName, int consensusGroupId) {
+    if (!tryReadLockWithTimeOut(10)) {
+      throw new PipeException(
+          String.format(
+              "Failed to get pipe task progress index with pipe name: %s, consensus group id %s.",
+              pipeName, consensusGroupId));
+    }
+
+    try {
+      if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
+        throw new PipeException("Pipe meta not found: " + pipeName);
+      }
+
+      return pipeMetaKeeper
+          .getPipeMeta(pipeName)
+          .getRuntimeMeta()
+          .getConsensusGroupId2TaskMetaMap()
+          .get(consensusGroupId)
+          .getProgressIndex();
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public Map<ConsensusPipeName, PipeStatus> getAllConsensusPipe() {
+    if (!tryReadLockWithTimeOut(10)) {
+      throw new PipeException("Failed to get all consensus pipe.");
+    }
+
+    try {
+      return StreamSupport.stream(pipeMetaKeeper.getPipeMetaList().spliterator(), false)
+          .filter(pipeMeta -> PipeType.CONSENSUS.equals(pipeMeta.getStaticMeta().getPipeType()))
+          .collect(
+              ImmutableMap.toImmutableMap(
+                  pipeMeta -> new ConsensusPipeName(pipeMeta.getStaticMeta().getPipeName()),
+                  pipeMeta -> pipeMeta.getRuntimeMeta().getStatus().get()));
+    } finally {
+      releaseReadLock();
+    }
   }
 }

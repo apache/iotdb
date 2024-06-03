@@ -19,29 +19,32 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary;
 
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
+
+import org.apache.tsfile.block.column.Column;
+
+import static org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils.castValueToDouble;
 
 public class CompareLessThanTransformer extends CompareBinaryTransformer {
 
-  public CompareLessThanTransformer(
-      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
-    super(leftPointReader, rightPointReader);
+  public CompareLessThanTransformer(LayerReader leftReader, LayerReader rightReader) {
+    super(leftReader, rightReader);
   }
 
   @Override
   protected Evaluator constructNumberEvaluator() {
-    return () ->
+    return (Column leftValues, int leftIndex, Column rightValues, int rightIndex) ->
         Double.compare(
-                castCurrentValueToDoubleOperand(leftPointReader, leftPointReaderDataType),
-                castCurrentValueToDoubleOperand(rightPointReader, rightPointReaderDataType))
+                castValueToDouble(leftValues, leftReaderDataType, leftIndex),
+                castValueToDouble(rightValues, rightReaderDataType, rightIndex))
             < 0;
   }
 
   @Override
   protected Evaluator constructTextEvaluator() {
-    return () ->
-        TransformUtils.compare(leftPointReader.currentBinary(), rightPointReader.currentBinary())
+    return (Column leftValues, int leftIndex, Column rightValues, int rightIndex) ->
+        TransformUtils.compare(leftValues.getBinary(leftIndex), rightValues.getBinary(rightIndex))
             < 0;
   }
 }

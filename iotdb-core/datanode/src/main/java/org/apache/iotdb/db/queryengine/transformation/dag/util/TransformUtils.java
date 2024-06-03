@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.transformation.dag.util;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.util.ValueRecorder;
 import org.apache.iotdb.db.utils.CommonUtils;
 
@@ -36,7 +35,6 @@ import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
-import java.io.IOException;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -88,71 +86,69 @@ public class TransformUtils {
   }
 
   public static boolean splitWindowForStateWindow(
-      TSDataType dataType,
-      ValueRecorder valueRecorder,
-      double delta,
-      ElasticSerializableTVList tvList)
-      throws IOException {
+      TSDataType dataType, ValueRecorder valueRecorder, double delta, Column values, int index) {
     boolean res;
     switch (dataType) {
       case INT32:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordInt(tvList.getInt(tvList.size() - 2));
+          valueRecorder.recordInt(values.getInt(index - 1));
           valueRecorder.setRecorded(true);
         }
-        res = Math.abs(tvList.getInt(tvList.size() - 1) - valueRecorder.getInt()) > delta;
+        res = Math.abs(values.getInt(index) - valueRecorder.getInt()) > delta;
         if (res) {
-          valueRecorder.recordInt(tvList.getInt(tvList.size() - 1));
+          valueRecorder.recordInt(values.getInt(index));
         }
         break;
       case INT64:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordLong(tvList.getLong(tvList.size() - 2));
+          valueRecorder.recordLong(values.getLong(index - 1));
           valueRecorder.setRecorded(true);
         }
-        res = Math.abs(tvList.getLong(tvList.size() - 1) - valueRecorder.getLong()) > delta;
+        res = Math.abs(values.getLong(index) - valueRecorder.getLong()) > delta;
         if (res) {
-          valueRecorder.recordLong(tvList.getLong(tvList.size() - 1));
+          valueRecorder.recordLong(values.getLong(index));
         }
         break;
       case FLOAT:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordFloat(tvList.getFloat(tvList.size() - 2));
+          valueRecorder.recordFloat(values.getFloat(index - 1));
           valueRecorder.setRecorded(true);
         }
-        res = Math.abs(tvList.getFloat(tvList.size() - 1) - valueRecorder.getFloat()) > delta;
+        res = Math.abs(values.getFloat(index) - valueRecorder.getFloat()) > delta;
         if (res) {
-          valueRecorder.recordFloat(tvList.getFloat(tvList.size() - 1));
+          valueRecorder.recordFloat(values.getFloat(index));
         }
         break;
       case DOUBLE:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordDouble(tvList.getDouble(tvList.size() - 2));
+          valueRecorder.recordDouble(values.getDouble(index - 1));
           valueRecorder.setRecorded(true);
         }
-        res = Math.abs(tvList.getDouble(tvList.size() - 1) - valueRecorder.getDouble()) > delta;
+        res = Math.abs(values.getDouble(index) - valueRecorder.getDouble()) > delta;
         if (res) {
-          valueRecorder.recordDouble(tvList.getDouble(tvList.size() - 1));
+          valueRecorder.recordDouble(values.getDouble(index));
         }
         break;
       case BOOLEAN:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordBoolean(tvList.getBoolean(tvList.size() - 2));
+          valueRecorder.recordBoolean(values.getBoolean(index - 1));
           valueRecorder.setRecorded(true);
         }
-        res = tvList.getBoolean(tvList.size() - 1) != valueRecorder.getBoolean();
+        res = values.getBoolean(index) != valueRecorder.getBoolean();
         if (res) {
-          valueRecorder.recordBoolean(tvList.getBoolean(tvList.size() - 1));
+          valueRecorder.recordBoolean(values.getBoolean(index));
         }
         break;
       case TEXT:
         if (!valueRecorder.hasRecorded()) {
-          valueRecorder.recordString(tvList.getString(tvList.size() - 2));
+          Binary binary = values.getBinary(index - 1);
+          valueRecorder.recordString(binary.toString());
           valueRecorder.setRecorded(true);
         }
-        res = !tvList.getString(tvList.size() - 1).equals(valueRecorder.getString());
+        String str = values.getBinary(index).toString();
+        res = !str.equals(valueRecorder.getString());
         if (res) {
-          valueRecorder.recordString(tvList.getString(tvList.size() - 1));
+          valueRecorder.recordString(str);
         }
         break;
       default:

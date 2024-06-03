@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -234,15 +233,8 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
    */
   @Test
   public void testAutoCreateDataType() throws SQLException {
-    int textLen = IoTDBDescriptor.getInstance().getConfig().getInferStringMaxLength() + 1;
-    StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < textLen; i++) {
-      sb.append("a");
-    }
     String SQL =
-        "INSERT INTO root.sg0.d1(time,s1,s2,s3,s4,s5,s6,s7) values(1,true,1,now(),X'cafe',\"string\",\"2024-01-01\", \""
-            + sb
-            + "\")";
+        "INSERT INTO root.sg0.d1(time,s1,s2,s3,s4,s5,s6) values(1,true,1,now(),X'cafe',\"string\",\"2024-01-01\")";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(SQL);
@@ -267,13 +259,9 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
             break;
           case "root.sg0.d1.s5":
             assertEquals(
-                TSDataType.STRING.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
+                TSDataType.TEXT.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
             break;
           case "root.sg0.d1.s6":
-            assertEquals(
-                TSDataType.STRING.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
-            break;
-          case "root.sg0.d1.s7":
             assertEquals(
                 TSDataType.TEXT.toString(), resultSet.getString(ColumnHeaderConstant.DATATYPE));
             break;
