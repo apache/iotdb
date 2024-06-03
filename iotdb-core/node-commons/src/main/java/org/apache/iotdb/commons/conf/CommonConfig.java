@@ -282,7 +282,7 @@ public class CommonConfig {
 
   private volatile boolean retryForUnknownErrors = true;
 
-  private volatile int remoteWriteMaxRetryCount = 10;
+  private volatile long remoteWriteMaxRetryDurationInMs = 60000;
 
   CommonConfig() {
     // Empty constructor
@@ -1223,11 +1223,11 @@ public class CommonConfig {
     this.retryForUnknownErrors = retryForUnknownErrors;
   }
 
-  public int getRemoteWriteMaxRetryCount() {
-    return remoteWriteMaxRetryCount;
+  public long getRemoteWriteMaxRetryDurationInMs() {
+    return remoteWriteMaxRetryDurationInMs;
   }
 
-  public void setRemoteWriteMaxRetryCount(int remoteWriteMaxRetryCount) {
-    this.remoteWriteMaxRetryCount = remoteWriteMaxRetryCount;
+  public void setRemoteWriteMaxRetryDurationInMs(long remoteWriteMaxRetryDurationInMs) {
+    this.remoteWriteMaxRetryDurationInMs = remoteWriteMaxRetryDurationInMs;
   }
 }

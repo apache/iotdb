@@ -227,22 +227,29 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     // wait until remote dispatch done
     try {
       asyncPlanNodeSender.waitUntilCompleted();
-      final int maxRetryTimes = COMMON_CONFIG.getRemoteWriteMaxRetryCount();
-      if (maxRetryTimes > 0 && asyncPlanNodeSender.needRetry()) {
+      final long maxRetryDurationInNs =
+          COMMON_CONFIG.getRemoteWriteMaxRetryDurationInMs() > 0
+              ? COMMON_CONFIG.getRemoteWriteMaxRetryDurationInMs() * 1_000_000L
+              : 0;
+      if (maxRetryDurationInNs > 0 && asyncPlanNodeSender.needRetry()) {
         // retry failed remote FIs
-        int retry = 0;
-        long waitMillis = getRetrySleepTime(retry);
+        int retryCount = 0;
+        long waitMillis = getRetrySleepTime(retryCount);
+        long retryStartTime = System.nanoTime();
 
         while (asyncPlanNodeSender.needRetry()) {
-          retry++;
+          retryCount++;
           asyncPlanNodeSender.retry();
-          if (!(asyncPlanNodeSender.needRetry() && retry < maxRetryTimes)) {
+          // if !(still need retry and current time + next sleep time < maxRetryDurationInNs)
+          if (!(asyncPlanNodeSender.needRetry()
+              && (System.nanoTime() - retryStartTime + waitMillis * 1_000_000L)
+                  < maxRetryDurationInNs)) {
             break;
           }
           // still need to retry, sleep some time before make another retry.
           Thread.sleep(waitMillis);
           PERFORMANCE_OVERVIEW_METRICS.recordRemoteRetrySleepCost(waitMillis * 1_000_000L);
-          waitMillis = getRetrySleepTime(retry);
+          waitMillis = getRetrySleepTime(retryCount);
         }
       }
 

@@ -617,11 +617,11 @@ public class CommonDescriptor {
   }
 
   public void loadRetryProperties(Properties properties) {
-    config.setRemoteWriteMaxRetryCount(
-        Integer.parseInt(
+    config.setRemoteWriteMaxRetryDurationInMs(
+        Long.parseLong(
             properties.getProperty(
-                "write_request_remote_dispatch_max_retry_count",
-                String.valueOf(config.getRemoteWriteMaxRetryCount()))));
+                "write_request_remote_dispatch_max_retry_duration_in_ms",
+                String.valueOf(config.getRemoteWriteMaxRetryDurationInMs()))));
 
     config.setRetryForUnknownErrors(
         Boolean.parseBoolean(
