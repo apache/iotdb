@@ -85,6 +85,11 @@ public class TableDeviceFetchNode extends SchemaQueryScanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.TABLE_DEVICE_FETCH;
+  }
+
+  @Override
   public void open() throws Exception {}
 
   @Override

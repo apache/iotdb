@@ -224,10 +224,10 @@ public enum PlanNodeType {
   TIMESERIES_REGION_SCAN((short) 94),
   REGION_MERGE((short) 95),
 
-  CREATE_TABLE_DEVICE((short) 902),
-  TABLE_DEVICE_SCAN((short) 903),
-  TABLE_DEVICE_FETCH((short) 904),
-  DELETE_TABLE_DEVICE((short) 905),
+  CREATE_TABLE_DEVICE((short) 900),
+  TABLE_DEVICE_SCAN((short) 901),
+  TABLE_DEVICE_FETCH((short) 902),
+  DELETE_TABLE_DEVICE((short) 903),
 
   TABLE_SCAN_NODE((short) 1000),
   TABLE_FILTER_NODE((short) 1001),
@@ -481,6 +481,7 @@ public enum PlanNodeType {
         return TimeseriesRegionScanNode.deserialize(buffer);
       case 95:
         return RegionMergeNode.deserialize(buffer);
+
       case 900:
         return CreateTableDeviceNode.deserialize(buffer);
       case 901:
@@ -489,6 +490,7 @@ public enum PlanNodeType {
         return TableDeviceFetchNode.deserialize(buffer);
       case 903:
         return DeleteTableDeviceNode.deserialize(buffer);
+
       case 1000:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode
             .deserialize(buffer);

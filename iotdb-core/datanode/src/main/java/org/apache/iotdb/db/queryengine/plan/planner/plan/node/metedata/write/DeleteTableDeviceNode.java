@@ -46,6 +46,11 @@ public class DeleteTableDeviceNode extends PlanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.DELETE_TABLE_DEVICE;
+  }
+
+  @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitDeleteTableDevice(this, context);
   }

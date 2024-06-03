@@ -105,6 +105,11 @@ public class TableDeviceScanNode extends SchemaQueryScanNode {
   }
 
   @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.TABLE_DEVICE_SCAN;
+  }
+
+  @Override
   public void open() throws Exception {}
 
   @Override
