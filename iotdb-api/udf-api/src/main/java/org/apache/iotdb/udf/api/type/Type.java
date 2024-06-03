@@ -39,23 +39,17 @@ public enum Type {
   /* TEXT */
   TEXT((byte) 5),
 
-  /* VECTOR */
-  VECTOR((byte) 6),
-
-  /* UNKNOWN */
-  UNKNOWN((byte) 7),
-
   /* TIMESTAMP */
-  TIMESTAMP((byte) 8),
+  TIMESTAMP((byte) 6),
 
   /* DATE */
-  DATE((byte) 9),
+  DATE((byte) 7),
 
   /* BLOB */
-  BLOB((byte) 10),
+  BLOB((byte) 8),
 
   /* STRING */
-  STRING((byte) 11);
+  STRING((byte) 9);
   private final byte dataType;
 
   Type(byte type) {
