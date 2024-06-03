@@ -69,16 +69,12 @@ public class UDFDataTypeTransformer {
       case 5:
         return Type.TEXT;
       case 6:
-        return Type.VECTOR;
-      case 7:
-        return Type.UNKNOWN;
-      case 8:
         return Type.TIMESTAMP;
-      case 9:
+      case 7:
         return Type.DATE;
-      case 10:
+      case 8:
         return Type.BLOB;
-      case 11:
+      case 9:
         return Type.STRING;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
