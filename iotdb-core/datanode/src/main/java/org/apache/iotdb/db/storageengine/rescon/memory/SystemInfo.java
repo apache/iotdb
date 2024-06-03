@@ -53,13 +53,16 @@ public class SystemInfo {
 
   private long memorySizeForMemtable;
   private long memorySizeForCompaction;
+  private long totalDirectBufferMemorySizeLimit;
   private Map<DataRegionInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
   private long flushingMemTablesCost = 0L;
+  private final AtomicLong directBufferMemoryCost = new AtomicLong(0);
   private final AtomicLong compactionMemoryCost = new AtomicLong(0L);
   private final AtomicLong seqInnerSpaceCompactionMemoryCost = new AtomicLong(0L);
   private final AtomicLong unseqInnerSpaceCompactionMemoryCost = new AtomicLong(0L);
   private final AtomicLong crossSpaceCompactionMemoryCost = new AtomicLong(0L);
+  private final AtomicLong settleCompactionMemoryCost = new AtomicLong(0L);
 
   private final AtomicInteger compactionFileNumCost = new AtomicInteger(0);
 
@@ -192,6 +195,30 @@ public class SystemInfo {
     this.flushingMemTablesCost -= flushingMemTableCost;
   }
 
+  public boolean addDirectBufferMemoryCost(long size) {
+    while (true) {
+      long memCost = directBufferMemoryCost.get();
+      if (memCost + size > totalDirectBufferMemorySizeLimit) {
+        return false;
+      }
+      if (directBufferMemoryCost.compareAndSet(memCost, memCost + size)) {
+        return true;
+      }
+    }
+  }
+
+  public void decreaseDirectBufferMemoryCost(long size) {
+    directBufferMemoryCost.addAndGet(-size);
+  }
+
+  public long getTotalDirectBufferMemorySizeLimit() {
+    return totalDirectBufferMemorySizeLimit;
+  }
+
+  public long getDirectBufferMemoryCost() {
+    return directBufferMemoryCost.get();
+  }
+
   public boolean addCompactionFileNum(int fileNum, long timeOutInSecond)
       throws InterruptedException, CompactionFileCountExceededException {
     if (fileNum > totalFileLimitForCompactionTask) {
@@ -279,6 +306,9 @@ public class SystemInfo {
       case CROSS:
         crossSpaceCompactionMemoryCost.addAndGet(memoryCost);
         break;
+      case SETTLE:
+        settleCompactionMemoryCost.addAndGet(memoryCost);
+        break;
       default:
     }
     return true;
@@ -321,6 +351,9 @@ public class SystemInfo {
       case CROSS:
         crossSpaceCompactionMemoryCost.addAndGet(memoryCost);
         break;
+      case SETTLE:
+        settleCompactionMemoryCost.addAndGet(memoryCost);
+        break;
       default:
     }
   }
@@ -338,6 +371,9 @@ public class SystemInfo {
       case CROSS:
         crossSpaceCompactionMemoryCost.addAndGet(-compactionMemoryCost);
         break;
+      case SETTLE:
+        settleCompactionMemoryCost.addAndGet(-compactionMemoryCost);
+        break;
       default:
         break;
     }
@@ -352,6 +388,14 @@ public class SystemInfo {
   }
 
   public void allocateWriteMemory() {
+    // when we can't get the OffHeapMemory variable from environment, it will be 0
+    // and the limit should not be effective
+    totalDirectBufferMemorySizeLimit =
+        config.getMaxOffHeapMemoryBytes() == 0
+            ? Long.MAX_VALUE
+            : (long)
+                (config.getMaxOffHeapMemoryBytes()
+                    * config.getMaxDirectBufferOffHeapMemorySizeProportion());
     memorySizeForMemtable =
         (long)
             (config.getAllocateMemoryForStorageEngine() * config.getWriteProportionForMemtable());
@@ -391,6 +435,10 @@ public class SystemInfo {
 
   public AtomicLong getCrossSpaceCompactionMemoryCost() {
     return crossSpaceCompactionMemoryCost;
+  }
+
+  public AtomicLong getSettleCompactionMemoryCost() {
+    return settleCompactionMemoryCost;
   }
 
   @TestOnly

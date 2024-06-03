@@ -28,6 +28,7 @@ import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,7 +60,9 @@ public class DataMigrationExample {
   private static final int CONCURRENCY = 5;
 
   public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException, ExecutionException,
+      throws IoTDBConnectionException,
+          StatementExecutionException,
+          ExecutionException,
           InterruptedException {
 
     // the thread used for dataMigration must be smaller than session pool size
@@ -128,7 +131,7 @@ public class DataMigrationExample {
         DataIterator dataIter = dataSet.iterator();
         List<String> columnNameList = dataIter.getColumnNameList();
         List<String> columnTypeList = dataIter.getColumnTypeList();
-        List<MeasurementSchema> schemaList = new ArrayList<>();
+        List<IMeasurementSchema> schemaList = new ArrayList<>();
         for (int j = 1; j < columnNameList.size(); j++) {
           PartialPath currentPath = new PartialPath(columnNameList.get(j));
           schemaList.add(
@@ -153,6 +156,7 @@ public class DataMigrationExample {
                 tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getInt(j + 2));
                 break;
               case INT64:
+              case TIMESTAMP:
                 tablet.addValue(schemaList.get(j).getMeasurementId(), row, dataIter.getLong(j + 2));
                 break;
               case FLOAT:
@@ -164,8 +168,14 @@ public class DataMigrationExample {
                     schemaList.get(j).getMeasurementId(), row, dataIter.getDouble(j + 2));
                 break;
               case TEXT:
+              case STRING:
                 tablet.addValue(
                     schemaList.get(j).getMeasurementId(), row, dataIter.getString(j + 2));
+                break;
+              case DATE:
+              case BLOB:
+                tablet.addValue(
+                    schemaList.get(j).getMeasurementId(), row, dataIter.getObject(j + 2));
                 break;
               default:
                 LOGGER.info("Migration of this type of data is not supported");

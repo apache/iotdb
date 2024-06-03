@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
@@ -65,9 +65,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
-import org.apache.iotdb.db.relational.sql.tree.Expression;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -282,7 +282,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(tableScanOperator);
 
     for (int i = 0, size = node.getDeviceEntries().size(); i < size; i++) {
-      AlignedPath alignedPath =
+      AlignedFullPath alignedPath =
           constructAlignedPath(
               node.getDeviceEntries().get(i), measurementColumnNames, measurementSchemas);
       ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);

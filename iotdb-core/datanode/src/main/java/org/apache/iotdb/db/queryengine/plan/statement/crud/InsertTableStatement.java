@@ -29,15 +29,15 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Insert;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NullLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Row;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Values;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.relational.sql.tree.Expression;
-import org.apache.iotdb.db.relational.sql.tree.Identifier;
-import org.apache.iotdb.db.relational.sql.tree.Insert;
-import org.apache.iotdb.db.relational.sql.tree.LongLiteral;
-import org.apache.iotdb.db.relational.sql.tree.NullLiteral;
-import org.apache.iotdb.db.relational.sql.tree.Row;
-import org.apache.iotdb.db.relational.sql.tree.Values;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
@@ -165,7 +165,8 @@ public class InsertTableStatement extends Statement implements ITableDeviceSchem
           measurements[measurementIndex] = measurement;
           valueList[measurementIndex] = measurementColumnMap.get(measurement);
           schemas[measurementIndex] =
-              ((MeasurementColumnSchema) table.getColumnList().get(i)).getMeasurementSchema();
+              (MeasurementSchema)
+                  ((MeasurementColumnSchema) table.getColumnList().get(i)).getMeasurementSchema();
           dataTypes[measurementIndex] = schemas[measurementIndex].getType();
           measurementIndex++;
         }
@@ -193,7 +194,7 @@ public class InsertTableStatement extends Statement implements ITableDeviceSchem
       for (int i = 0; i < measurements.length; i++) {
         insertStatement.selfCheckDataTypes(i);
       }
-      insertStatement.updateAfterSchemaValidation();
+      insertStatement.updateAfterSchemaValidation(null);
     } catch (Exception e) {
       throw new SemanticException(e);
     }

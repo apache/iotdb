@@ -52,6 +52,7 @@ public class MemoryPool {
     private final String fragmentInstanceId;
     private final String planNodeId;
     private final long bytesToReserve;
+
     /**
      * MemoryReservationFuture is created when SinkHandle or SourceHandle tries to reserve memory
      * from pool. This field is max Bytes that SinkHandle or SourceHandle can reserve.
@@ -115,6 +116,7 @@ public class MemoryPool {
   private final long maxBytesPerFragmentInstance;
 
   private final AtomicLong remainingBytes;
+
   /** queryId -> fragmentInstanceId -> planNodeId -> bytesReserved. */
   private final Map<String, Map<String, Map<String, Long>>> queryMemoryReservations =
       new ConcurrentHashMap<>();
@@ -228,7 +230,8 @@ public class MemoryPool {
     Validate.notNull(planNodeId, "planNodeId can not be null.");
     Validate.isTrue(
         bytesToReserve > 0L && bytesToReserve <= maxBytesPerFragmentInstance,
-        "bytesToReserve should be in (0,maxBytesPerFI]. maxBytesPerFI: %d",
+        "bytesToReserve should be in (0,maxBytesPerFI]. maxBytesPerFI: %d, bytesToReserve: %d",
+        maxBytesPerFragmentInstance,
         bytesToReserve);
     if (bytesToReserve > maxBytesCanReserve) {
       LOGGER.warn(
@@ -268,7 +271,8 @@ public class MemoryPool {
     Validate.notNull(planNodeId, "planNodeId can not be null.");
     Validate.isTrue(
         bytesToReserve > 0L && bytesToReserve <= maxBytesPerFragmentInstance,
-        "bytesToReserve should be in (0,maxBytesPerFI]. maxBytesPerFI: %d",
+        "bytesToReserve should be in (0,maxBytesPerFI]. maxBytesPerFI: %d, bytesToReserve: %d",
+        maxBytesPerFragmentInstance,
         bytesToReserve);
 
     if (tryReserve(queryId, fragmentInstanceId, planNodeId, bytesToReserve, maxBytesCanReserve)) {

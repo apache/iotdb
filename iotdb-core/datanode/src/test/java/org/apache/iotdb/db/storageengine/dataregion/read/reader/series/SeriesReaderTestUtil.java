@@ -31,12 +31,13 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 
@@ -85,7 +86,7 @@ public class SeriesReaderTestUtil {
   private static TSEncoding encoding = TSEncoding.PLAIN;
 
   public static void setUp(
-      List<MeasurementSchema> measurementSchemas,
+      List<IMeasurementSchema> measurementSchemas,
       List<String> deviceIds,
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
@@ -109,7 +110,7 @@ public class SeriesReaderTestUtil {
   private static void prepareFiles(
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
-      List<MeasurementSchema> measurementSchemas,
+      List<IMeasurementSchema> measurementSchemas,
       List<String> deviceIds,
       String sgName)
       throws IOException, WriteProcessException {
@@ -155,7 +156,7 @@ public class SeriesReaderTestUtil {
       long timeOffset,
       long ptNum,
       long valueOffset,
-      List<MeasurementSchema> measurementSchemas,
+      List<IMeasurementSchema> measurementSchemas,
       List<String> deviceIds)
       throws IOException, WriteProcessException {
     File file = tsFileResource.getTsFile();
@@ -163,8 +164,8 @@ public class SeriesReaderTestUtil {
       Assert.assertTrue(file.getParentFile().mkdirs());
     }
     TsFileWriter fileWriter = new TsFileWriter(file);
-    Map<String, MeasurementSchema> template = new HashMap<>();
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
+    Map<String, IMeasurementSchema> template = new HashMap<>();
+    for (IMeasurementSchema measurementSchema : measurementSchemas) {
       template.put(measurementSchema.getMeasurementId(), measurementSchema);
     }
     fileWriter.registerSchemaTemplate("template0", template, false);
@@ -174,7 +175,7 @@ public class SeriesReaderTestUtil {
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (String deviceId : deviceIds) {
         TSRecord record = new TSRecord(i, deviceId);
-        for (MeasurementSchema measurementSchema : measurementSchemas) {
+        for (IMeasurementSchema measurementSchema : measurementSchemas) {
           record.addTuple(
               DataPoint.getDataPoint(
                   measurementSchema.getType(),
@@ -182,8 +183,8 @@ public class SeriesReaderTestUtil {
                   String.valueOf(i + valueOffset)));
         }
         fileWriter.write(record);
-        tsFileResource.updateStartTime(new PlainDeviceID(deviceId), i);
-        tsFileResource.updateEndTime(new PlainDeviceID(deviceId), i);
+        tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId), i);
+        tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId), i);
       }
       if ((i + 1) % flushInterval == 0) {
         fileWriter.flushAllChunkGroups();
@@ -193,7 +194,7 @@ public class SeriesReaderTestUtil {
   }
 
   private static void prepareSeries(
-      List<MeasurementSchema> measurementSchemas, List<String> deviceIds, String sgName) {
+      List<IMeasurementSchema> measurementSchemas, List<String> deviceIds, String sgName) {
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas.add(
           new MeasurementSchema(

@@ -18,23 +18,23 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
-import org.apache.iotdb.db.relational.sql.tree.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.relational.sql.tree.AstVisitor;
-import org.apache.iotdb.db.relational.sql.tree.BetweenPredicate;
-import org.apache.iotdb.db.relational.sql.tree.Cast;
-import org.apache.iotdb.db.relational.sql.tree.CoalesceExpression;
-import org.apache.iotdb.db.relational.sql.tree.ComparisonExpression;
-import org.apache.iotdb.db.relational.sql.tree.Expression;
-import org.apache.iotdb.db.relational.sql.tree.FunctionCall;
-import org.apache.iotdb.db.relational.sql.tree.InPredicate;
-import org.apache.iotdb.db.relational.sql.tree.IsNullPredicate;
-import org.apache.iotdb.db.relational.sql.tree.LogicalExpression;
-import org.apache.iotdb.db.relational.sql.tree.NotExpression;
-import org.apache.iotdb.db.relational.sql.tree.NullIfExpression;
-import org.apache.iotdb.db.relational.sql.tree.Row;
-import org.apache.iotdb.db.relational.sql.tree.SearchedCaseExpression;
-import org.apache.iotdb.db.relational.sql.tree.SimpleCaseExpression;
-import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.BetweenPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Cast;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CoalesceExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.InPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.IsNullPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NotExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NullIfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Row;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SearchedCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SimpleCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SymbolReference;
 
 public abstract class IrVisitor<R, C> extends AstVisitor<R, C> {
   public R process(Expression node) {

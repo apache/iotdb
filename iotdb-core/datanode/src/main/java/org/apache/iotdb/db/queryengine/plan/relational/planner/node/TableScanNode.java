@@ -23,8 +23,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
-import org.apache.iotdb.db.relational.sql.tree.Expression;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -64,6 +64,8 @@ public class TableScanNode extends SourceNode {
 
   // push down offset for result set. The default value is 0
   private long pushDownOffset;
+
+  private boolean pushLimitToEachDevice = false;
 
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
@@ -308,6 +310,10 @@ public class TableScanNode extends SourceNode {
 
   public long getPushDownOffset() {
     return this.pushDownOffset;
+  }
+
+  public boolean isPushLimitToEachDevice() {
+    return pushLimitToEachDevice;
   }
 
   public TRegionReplicaSet getRegionReplicaSet() {

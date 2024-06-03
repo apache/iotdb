@@ -33,7 +33,7 @@ import java.util.TreeMap;
  * The QueryDataSource contains all the seq and unseq TsFileResources for one timeseries in one
  * read.
  */
-public class QueryDataSource {
+public class QueryDataSource implements IQueryDataSource {
 
   /**
    * TsFileResources used by read job.
@@ -64,9 +64,6 @@ public class QueryDataSource {
   /* The traversal order of unseqResources (different for each device) */
   private int[] unSeqFileOrderIndex;
 
-  /** data older than currentTime - dataTTL should be ignored. */
-  private long dataTTL = Long.MAX_VALUE;
-
   private static final Comparator<Long> descendingComparator = (o1, o2) -> Long.compare(o2, o1);
 
   public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
@@ -90,12 +87,11 @@ public class QueryDataSource {
     return unseqResources;
   }
 
-  public long getDataTTL() {
-    return dataTTL;
-  }
-
-  public void setDataTTL(long dataTTL) {
-    this.dataTTL = dataTTL;
+  @Override
+  public IQueryDataSource clone() {
+    QueryDataSource queryDataSource = new QueryDataSource(getSeqResources(), getUnseqResources());
+    queryDataSource.setSingleDevice(isSingleDevice());
+    return queryDataSource;
   }
 
   public boolean hasNextSeqResource(int curIndex, boolean ascending, IDeviceID deviceID) {

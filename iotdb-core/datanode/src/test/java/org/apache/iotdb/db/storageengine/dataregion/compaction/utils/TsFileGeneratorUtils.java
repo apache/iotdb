@@ -19,14 +19,18 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
@@ -50,6 +54,7 @@ import java.util.List;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 import static org.apache.tsfile.common.constant.TsFileConstant.TIME_COLUMN_ID;
+import static org.apache.tsfile.utils.TsFileGeneratorUtils.getDataType;
 
 public class TsFileGeneratorUtils {
   public static final String testStorageGroup = "root.testsg";
@@ -117,21 +122,23 @@ public class TsFileGeneratorUtils {
     return timeseriesPath;
   }
 
-  public static List<PartialPath> createTimeseries(
+  public static List<IFullPath> createTimeseries(
       int deviceNum, int measurementNum, boolean isAligned) throws IllegalPathException {
-    List<PartialPath> timeseriesPath = new ArrayList<>();
+    List<IFullPath> timeseriesPath = new ArrayList<>();
     for (int d = 0; d < deviceNum; d++) {
       for (int i = 0; i < measurementNum; i++) {
         TSDataType dataType = getDataType(i);
         if (!isAligned) {
           timeseriesPath.add(
-              new MeasurementPath(
-                  testStorageGroup + PATH_SEPARATOR + "d" + d + PATH_SEPARATOR + "s" + i,
-                  dataType));
+              new NonAlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      testStorageGroup + PATH_SEPARATOR + "d" + d),
+                  new MeasurementSchema("s" + i, dataType)));
         } else {
           timeseriesPath.add(
-              new AlignedPath(
-                  testStorageGroup + PATH_SEPARATOR + "d" + d,
+              new AlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      testStorageGroup + PATH_SEPARATOR + "d" + d),
                   Collections.singletonList("s" + i),
                   Collections.singletonList(new MeasurementSchema("s" + i, dataType))));
         }
@@ -178,6 +185,8 @@ public class TsFileGeneratorUtils {
   public static void writeNonAlignedPoint(PageWriter pageWriter, long timestamp, boolean isSeq) {
     switch (pageWriter.getStatistics().getType()) {
       case TEXT:
+      case STRING:
+      case BLOB:
         pageWriter.write(
             timestamp, new Binary(isSeq ? "seqText" : "unSeqText", TSFileConfig.STRING_CHARSET));
         break;
@@ -188,9 +197,11 @@ public class TsFileGeneratorUtils {
         pageWriter.write(timestamp, isSeq);
         break;
       case INT64:
+      case TIMESTAMP:
         pageWriter.write(timestamp, isSeq ? timestamp : 100000L + timestamp);
         break;
       case INT32:
+      case DATE:
         pageWriter.write(timestamp, isSeq ? (int) timestamp : (int) (100000 + timestamp));
         break;
       case FLOAT:
@@ -230,6 +241,8 @@ public class TsFileGeneratorUtils {
       ValuePageWriter valuePageWriter, long timestamp, boolean isSeq) {
     switch (valuePageWriter.getStatistics().getType()) {
       case TEXT:
+      case STRING:
+      case BLOB:
         valuePageWriter.write(
             timestamp,
             new Binary(isSeq ? "seqText" : "unSeqText", TSFileConfig.STRING_CHARSET),
@@ -242,9 +255,11 @@ public class TsFileGeneratorUtils {
         valuePageWriter.write(timestamp, isSeq, false);
         break;
       case INT64:
+      case TIMESTAMP:
         valuePageWriter.write(timestamp, isSeq ? timestamp : 100000L + timestamp, false);
         break;
       case INT32:
+      case DATE:
         valuePageWriter.write(
             timestamp, isSeq ? (int) timestamp : (int) (100000 + timestamp), false);
         break;
@@ -329,25 +344,6 @@ public class TsFileGeneratorUtils {
       }
     }
     return compressionTypes;
-  }
-
-  public static TSDataType getDataType(int num) {
-    switch (num % 6) {
-      case 0:
-        return TSDataType.BOOLEAN;
-      case 1:
-        return TSDataType.INT32;
-      case 2:
-        return TSDataType.INT64;
-      case 3:
-        return TSDataType.FLOAT;
-      case 4:
-        return TSDataType.DOUBLE;
-      case 5:
-        return TSDataType.TEXT;
-      default:
-        throw new IllegalArgumentException("Invalid input: " + num % 6);
-    }
   }
 
   public static List<TSDataType> createDataType(int num) {

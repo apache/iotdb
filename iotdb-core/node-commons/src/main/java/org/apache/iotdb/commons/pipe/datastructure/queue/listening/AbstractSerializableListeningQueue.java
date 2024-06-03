@@ -58,14 +58,14 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
 
   protected final AtomicBoolean isClosed = new AtomicBoolean(true);
 
-  protected AbstractSerializableListeningQueue(QueueSerializerType serializerType) {
+  protected AbstractSerializableListeningQueue(final QueueSerializerType serializerType) {
     this.serializerType = serializerType;
     serializers.put(QueueSerializerType.PLAIN, PlainQueueSerializer::new);
   }
 
   /////////////////////////////// Function ///////////////////////////////
 
-  protected synchronized boolean tryListen(E element) {
+  protected synchronized boolean tryListen(final E element) {
     if (isClosed.get()) {
       return false;
     }
@@ -74,7 +74,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
   }
 
   // Caller should ensure that the "newFirstIndex" is less than every iterators.
-  public synchronized long removeBefore(long newFirstIndex) {
+  public synchronized long removeBefore(final long newFirstIndex) {
     try (final ConcurrentIterableLinkedQueue<E>.DynamicIterator iterator =
         queue.iterateFromEarliest()) {
       while (iterator.getNextIndex() < newFirstIndex) {
@@ -88,23 +88,24 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     return queue.tryRemoveBefore(newFirstIndex);
   }
 
-  public synchronized boolean isGivenNextIndexValid(long nextIndex) {
+  public synchronized boolean isGivenNextIndexValid(final long nextIndex) {
     // The "tailIndex" is permitted to listen to the next incoming element
     return queue.isNextIndexValid(nextIndex);
   }
 
-  public synchronized ConcurrentIterableLinkedQueue<E>.DynamicIterator newIterator(long nextIndex) {
+  public synchronized ConcurrentIterableLinkedQueue<E>.DynamicIterator newIterator(
+      final long nextIndex) {
     return queue.iterateFrom(nextIndex);
   }
 
   public synchronized void returnIterator(
-      ConcurrentIterableLinkedQueue<E>.DynamicIterator iterator) {
+      final ConcurrentIterableLinkedQueue<E>.DynamicIterator iterator) {
     iterator.close();
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////
 
-  public synchronized boolean serializeToFile(File snapshotName) throws IOException {
+  public synchronized boolean serializeToFile(final File snapshotName) throws IOException {
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
@@ -128,7 +129,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     }
   }
 
-  public synchronized void deserializeFromFile(File snapshotName) throws IOException {
+  public synchronized void deserializeFromFile(final File snapshotName) throws IOException {
     final File snapshotFile = new File(String.valueOf(snapshotName));
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
@@ -155,7 +156,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
 
   /////////////////////////////// Element Ser / De Method ////////////////////////////////
 
-  protected abstract ByteBuffer serializeToByteBuffer(E element);
+  protected abstract ByteBuffer serializeToByteBuffer(final E element);
 
   /**
    * Deserialize a single element from byteBuffer.
@@ -163,7 +164,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
    * @param byteBuffer the byteBuffer corresponding to an element
    * @return The deserialized element or {@code null} if a failure is encountered.
    */
-  protected abstract E deserializeFromByteBuffer(ByteBuffer byteBuffer);
+  protected abstract E deserializeFromByteBuffer(final ByteBuffer byteBuffer);
 
   /////////////////////////////// Open & Close ///////////////////////////////
 
@@ -172,7 +173,7 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
   }
 
   @Override
-  public synchronized void close() throws IOException {
+  public synchronized void close() {
     isClosed.set(true);
 
     try (final ConcurrentIterableLinkedQueue<E>.DynamicIterator iterator =
@@ -188,9 +189,19 @@ public abstract class AbstractSerializableListeningQueue<E> implements Closeable
     queue.clear();
   }
 
-  protected abstract void releaseResource(E element);
+  protected abstract void releaseResource(final E element);
 
   public synchronized boolean isOpened() {
     return !isClosed.get();
+  }
+
+  /////////////////////////////// APIs provided for metric framework ///////////////////////////////
+
+  public long getSize() {
+    return queue.size();
+  }
+
+  public long getTailIndex() {
+    return queue.getTailIndex();
   }
 }

@@ -63,16 +63,19 @@ public class CheckpointManager implements AutoCloseable {
   // region these variables should be protected by infoLock
   // memTable id -> memTable info
   private final Map<Long, MemTableInfo> memTableId2Info = new ConcurrentHashMap<>();
+
   // cache the biggest byte buffer to serialize checkpoint
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   private volatile ByteBuffer cachedByteBuffer;
+
   // max memTable id
   private long maxMemTableId = 0;
   // current checkpoint file version id, only updated by fsyncAndDeleteThread
   private long currentCheckPointFileVersion = 0;
   // current checkpoint file log writer, only updated by fsyncAndDeleteThread
   private ILogWriter currentLogWriter;
+
   // endregion
 
   public CheckpointManager(String identifier, String logDirectory) throws FileNotFoundException {
@@ -255,6 +258,7 @@ public class CheckpointManager implements AutoCloseable {
     currentLogWriter = new CheckpointWriter(nextLogFile);
     return true;
   }
+
   // endregion
 
   // region methods for pipe
@@ -314,6 +318,7 @@ public class CheckpointManager implements AutoCloseable {
       infoLock.unlock();
     }
   }
+
   // endregion
 
   /** Get MemTableInfo of oldest unpinned MemTable, whose first version id is smallest. */

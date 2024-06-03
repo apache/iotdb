@@ -490,6 +490,7 @@ public class SessionPool implements ISessionPool {
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
     this.sqlDialect = builder.sqlDialect;
+    this.queryTimeoutInMs = builder.queryTimeoutInMs;
 
     if (enableAutoFetch) {
       initThreadPool();
@@ -545,6 +546,7 @@ public class SessionPool implements ISessionPool {
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
               .sqlDialect(sqlDialect)
+              .timeOut(queryTimeoutInMs)
               .build();
     } else {
       // Construct redirect-able Session
@@ -566,6 +568,7 @@ public class SessionPool implements ISessionPool {
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
               .sqlDialect(sqlDialect)
+              .timeOut(queryTimeoutInMs)
               .build();
     }
     session.setEnableQueryRedirection(enableQueryRedirection);
@@ -2026,7 +2029,9 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  /** @deprecated Use {@link #createDatabase(String)} instead. */
+  /**
+   * @deprecated Use {@link #createDatabase(String)} instead.
+   */
   @Deprecated
   @Override
   public void setStorageGroup(String storageGroupId)
@@ -2052,7 +2057,9 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  /** @deprecated Use {@link #deleteDatabase(String)} instead. */
+  /**
+   * @deprecated Use {@link #deleteDatabase(String)} instead.
+   */
   @Deprecated
   @Override
   public void deleteStorageGroup(String storageGroup)
@@ -2078,7 +2085,9 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  /** @deprecated Use {@link #deleteDatabases(List)} instead. */
+  /**
+   * @deprecated Use {@link #deleteDatabases(List)} instead.
+   */
   @Deprecated
   @Override
   public void deleteStorageGroups(List<String> storageGroup)
@@ -3530,6 +3539,7 @@ public class SessionPool implements ISessionPool {
     private long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
 
     private String sqlDialect = SessionConfig.SQL_DIALECT;
+    private long queryTimeoutInMs = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
@@ -3643,6 +3653,11 @@ public class SessionPool implements ISessionPool {
 
     public Builder sqlDialect(String sqlDialect) {
       this.sqlDialect = sqlDialect;
+      return this;
+    }
+
+    public Builder queryTimeoutInMs(long queryTimeoutInMs) {
+      this.queryTimeoutInMs = queryTimeoutInMs;
       return this;
     }
 

@@ -95,7 +95,6 @@ public class ClusterSchemaInfoTest {
     for (String path : storageGroupPathList) {
       TDatabaseSchema tDatabaseSchema = new TDatabaseSchema();
       tDatabaseSchema.setName(path);
-      tDatabaseSchema.setTTL(i);
       tDatabaseSchema.setDataReplicationFactor(i);
       tDatabaseSchema.setSchemaReplicationFactor(i);
       tDatabaseSchema.setTimePartitionInterval(i);

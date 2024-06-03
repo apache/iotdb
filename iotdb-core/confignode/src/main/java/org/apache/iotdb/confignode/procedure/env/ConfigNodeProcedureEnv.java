@@ -44,7 +44,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDat
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
-import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
@@ -367,6 +366,16 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
+   * Create a new ConfigNodeHeartbeatCache
+   *
+   * @param nodeId the index of the new ConfigNode
+   */
+  public void createConfigNodeHeartbeatCache(int nodeId) {
+    getLoadManager().getLoadCache().createNodeHeartbeatCache(NodeType.ConfigNode, nodeId);
+    // TODO: invoke a force heartbeat to update new ConfigNode's status immediately
+  }
+
+  /**
    * Mark the given datanode as removing status to avoid read or write request routing to this node.
    *
    * @param dataNodeLocation the datanode to be marked as removing status
@@ -483,7 +492,6 @@ public class ConfigNodeProcedureEnv {
 
   private AsyncClientHandler<TCreateDataRegionReq, TSStatus> getCreateDataRegionClientHandler(
       CreateRegionGroupsPlan createRegionGroupsPlan) {
-    Map<String, Long> ttlMap = getTTLMap(createRegionGroupsPlan);
     AsyncClientHandler<TCreateDataRegionReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.CREATE_DATA_REGION);
 
@@ -492,11 +500,10 @@ public class ConfigNodeProcedureEnv {
         createRegionGroupsPlan.getRegionGroupMap().entrySet()) {
       String storageGroup = sgRegionsEntry.getKey();
       List<TRegionReplicaSet> regionReplicaSets = sgRegionsEntry.getValue();
-      long ttl = ttlMap.get(storageGroup);
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
           clientHandler.putRequest(
-              requestId, genCreateDataRegionReq(storageGroup, regionReplicaSet, ttl));
+              requestId, genCreateDataRegionReq(storageGroup, regionReplicaSet));
           clientHandler.putDataNodeLocation(requestId, dataNodeLocation);
           requestId += 1;
         }
@@ -504,20 +511,6 @@ public class ConfigNodeProcedureEnv {
     }
 
     return clientHandler;
-  }
-
-  private Map<String, Long> getTTLMap(CreateRegionGroupsPlan createRegionGroupsPlan) {
-    Map<String, Long> ttlMap = new HashMap<>();
-    for (String storageGroup : createRegionGroupsPlan.getRegionGroupMap().keySet()) {
-      try {
-        ttlMap.put(
-            storageGroup, getClusterSchemaManager().getDatabaseSchemaByName(storageGroup).getTTL());
-      } catch (DatabaseNotExistsException e) {
-        // Notice: This line will never reach since we've checked before
-        LOG.error("StorageGroup doesn't exist", e);
-      }
-    }
-    return ttlMap;
   }
 
   private TCreateSchemaRegionReq genCreateSchemaRegionReq(
@@ -529,16 +522,11 @@ public class ConfigNodeProcedureEnv {
   }
 
   private TCreateDataRegionReq genCreateDataRegionReq(
-      String storageGroup, TRegionReplicaSet regionReplicaSet, long TTL) {
+      String storageGroup, TRegionReplicaSet regionReplicaSet) {
     TCreateDataRegionReq req = new TCreateDataRegionReq();
     req.setStorageGroup(storageGroup);
     req.setRegionReplicaSet(regionReplicaSet);
-    req.setTtl(TTL);
     return req;
-  }
-
-  public long getTTL(String storageGroup) throws DatabaseNotExistsException {
-    return getClusterSchemaManager().getDatabaseSchemaByName(storageGroup).getTTL();
   }
 
   public void persistRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {
@@ -554,13 +542,33 @@ public class ConfigNodeProcedureEnv {
    * Force activating RegionGroup by setting status to Running, therefore the ConfigNode-leader can
    * select leader for it and use it to allocate new Partitions
    *
-   * @param activateRegionGroupMap Map<RegionGroupId, Map<DataNodeId, activate heartbeat sample>>
+   * @param activateRegionGroupMap Map<Database, Map<RegionGroupId, Map<DataNodeId, activate
+   *     heartbeat sample>>>
    */
   public void activateRegionGroup(
-      Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> activateRegionGroupMap) {
-    getLoadManager().forceUpdateRegionGroupCache(activateRegionGroupMap);
+      Map<String, Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>>>
+          activateRegionGroupMap) {
+    // Create RegionGroup heartbeat Caches
+    activateRegionGroupMap.forEach(
+        (database, regionGroupSampleMap) ->
+            regionGroupSampleMap.forEach(
+                (regionGroupId, regionSampleMap) ->
+                    getLoadManager()
+                        .getLoadCache()
+                        .createRegionGroupHeartbeatCache(
+                            database, regionGroupId, regionSampleMap.keySet())));
+    // Force update first heartbeat samples
+    getLoadManager()
+        .forceUpdateRegionGroupCache(
+            activateRegionGroupMap.values().stream()
+                .flatMap(innerMap -> innerMap.entrySet().stream())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> b)));
     // Wait for leader and priority redistribution
-    getLoadManager().waitForRegionGroupReady(new ArrayList<>(activateRegionGroupMap.keySet()));
+    getLoadManager()
+        .waitForRegionGroupReady(
+            activateRegionGroupMap.values().stream()
+                .flatMap(innterMap -> innterMap.keySet().stream())
+                .collect(Collectors.toList()));
   }
 
   public List<TRegionReplicaSet> getAllReplicaSets(String storageGroup) {

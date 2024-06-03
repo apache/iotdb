@@ -40,6 +40,8 @@ IoTDB (Internet of Things Database) is a data management system for time series 
 
 [Click for More Information](https://www.timecho.com/archives/shi-xu-shu-ju-ku-iotdb-gong-neng-xiang-jie-yu-xing-ye-ying-yong)
 
+IoTDB depends on [TsFile](https://github.com/apache/tsfile) which is a columnar storage file format designed for time series data. The branch `iotdb` of TsFile project is used to deploy SNAPSHOT version for IoTDB project.
+
 # Main Features
 
 The main features of IoTDB are as follows:
@@ -496,7 +498,7 @@ The server can be stopped with "ctrl-C" or the following script:
 
 # The use of CSV Import and Export Tool
 
-see [The use of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/Master/Maintenance-Tools/CSV-Tool.html)
+see [The use of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/latest/Tools-System/Import-Export-Tool.html)
 
 # Frequent Questions for Compiling
 see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)

@@ -24,12 +24,13 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Accountable;
 
 /**
  * Base interface of {@link ISinkChannel} and {@link ISinkHandle}. This interface defines the
  * functions we need to transfer data to ISourceHandle.
  */
-public interface ISink {
+public interface ISink extends Accountable {
 
   /** Get the local fragment instance ID that this ISink belongs to. */
   TFragmentInstanceId getLocalFragmentInstanceId();

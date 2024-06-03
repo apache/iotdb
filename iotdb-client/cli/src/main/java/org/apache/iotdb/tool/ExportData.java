@@ -278,7 +278,7 @@ public class ExportData extends AbstractDataTool {
             .desc(
                 "Output time Format in csv file. "
                     + "You can choose 1) timestamp, number, long 2) ISO8601, default 3) "
-                    + "user-defined pattern like yyyy-MM-dd\\ HH:mm:ss, default ISO8601.\n OutPut timestamp in sql file, No matter what time format is set(optional)")
+                    + "user-defined pattern like yyyy-MM-dd HH:mm:ss, default ISO8601.\n OutPut timestamp in sql file, No matter what time format is set(optional)")
             .build();
     options.addOption(opTimeFormat);
 
@@ -455,7 +455,8 @@ public class ExportData extends AbstractDataTool {
                   field -> {
                     String fieldStringValue = field.getStringValue();
                     if (!"null".equals(field.getStringValue())) {
-                      if (field.getDataType() == TSDataType.TEXT
+                      if ((field.getDataType() == TSDataType.TEXT
+                              || field.getDataType() == TSDataType.STRING)
                           && !fieldStringValue.startsWith("root.")) {
                         fieldStringValue = "\"" + fieldStringValue + "\"";
                       }
@@ -491,7 +492,7 @@ public class ExportData extends AbstractDataTool {
         seriesList.remove("Device");
       } else {
         Path path = new Path(seriesList.get(1), true);
-        deviceName = path.getDevice();
+        deviceName = path.getDeviceString();
         seriesList.remove("Time");
         for (int i = 0; i < seriesList.size(); i++) {
           String series = seriesList.get(i);

@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -47,6 +49,8 @@ import org.apache.tsfile.read.reader.IPageReader;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.read.reader.page.AlignedPageReader;
 import org.apache.tsfile.read.reader.series.PaginationController;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
@@ -64,12 +68,12 @@ import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_MERGE_READER_ALIGNED;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.BUILD_TSBLOCK_FROM_MERGE_READER_NONALIGNED;
 
-public class SeriesScanUtil {
+public class SeriesScanUtil implements Accountable {
 
   protected final QueryContext context;
 
   // The path of the target series which will be scanned.
-  protected final PartialPath seriesPath;
+  protected final IFullPath seriesPath;
 
   private final IDeviceID deviceID;
   protected boolean isAligned = false;
@@ -111,13 +115,20 @@ public class SeriesScanUtil {
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SeriesScanUtil.class)
+          + RamUsageEstimator.shallowSizeOfInstance(IDeviceID.class)
+          + RamUsageEstimator.shallowSizeOfInstance(TimeOrderUtils.class)
+          + RamUsageEstimator.shallowSizeOfInstance(PaginationController.class)
+          + RamUsageEstimator.shallowSizeOfInstance(SeriesScanOptions.class);
+
   public SeriesScanUtil(
-      PartialPath seriesPath,
+      IFullPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context) {
     this.seriesPath = seriesPath;
-    this.deviceID = seriesPath.getIDeviceID();
+    this.deviceID = seriesPath.getDeviceId();
     this.dataType = seriesPath.getSeriesType();
 
     this.scanOptions = scanOptions;
@@ -164,7 +175,7 @@ public class SeriesScanUtil {
     this.dataSource = dataSource;
 
     // updated filter concerning TTL
-    scanOptions.setTTL(dataSource.getDataTTL());
+    scanOptions.setTTL(DataNodeTTLCache.getInstance().getTTL(seriesPath.getDeviceId()));
 
     // init file index
     orderUtils.setCurSeqFileIndex(dataSource);
@@ -904,9 +915,11 @@ public class SeriesScanUtil {
         builder.getColumnBuilder(0).writeBoolean(timeValuePair.getValue().getBoolean());
         break;
       case INT32:
+      case DATE:
         builder.getColumnBuilder(0).writeInt(timeValuePair.getValue().getInt());
         break;
       case INT64:
+      case TIMESTAMP:
         builder.getColumnBuilder(0).writeLong(timeValuePair.getValue().getLong());
         break;
       case FLOAT:
@@ -916,6 +929,8 @@ public class SeriesScanUtil {
         builder.getColumnBuilder(0).writeDouble(timeValuePair.getValue().getDouble());
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         builder.getColumnBuilder(0).writeBinary(timeValuePair.getValue().getBinary());
         break;
       case VECTOR:
@@ -1147,7 +1162,7 @@ public class SeriesScanUtil {
       throws IOException {
     return FileLoaderUtils.loadTimeSeriesMetadata(
         resource,
-        seriesPath,
+        (NonAlignedFullPath) seriesPath,
         context,
         scanOptions.getGlobalTimeFilter(),
         scanOptions.getAllSensors(),
@@ -1525,5 +1540,10 @@ public class SeriesScanUtil {
     public void setCurSeqFileIndex(QueryDataSource dataSource) {
       curSeqFileIndex = 0;
     }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + deviceID.ramBytesUsed() + seriesPath.ramBytesUsed();
   }
 }

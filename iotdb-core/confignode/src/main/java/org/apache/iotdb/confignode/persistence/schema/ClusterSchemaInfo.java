@@ -43,7 +43,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
@@ -283,7 +282,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  /** @return The number of matched Databases by the specified Database pattern */
+  /**
+   * @return The number of matched Databases by the specified Database pattern
+   */
   public CountDatabaseResp countMatchedDatabases(CountDatabasePlan plan) {
     CountDatabaseResp result = new CountDatabaseResp();
     databaseReadWriteLock.readLock().lock();
@@ -302,7 +303,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** @return All DatabaseSchemas that matches to the specified Database pattern */
+  /**
+   * @return All DatabaseSchemas that matches to the specified Database pattern
+   */
   public DatabaseSchemaResp getMatchedDatabaseSchemas(GetDatabasePlan plan) {
     DatabaseSchemaResp result = new DatabaseSchemaResp();
     databaseReadWriteLock.readLock().lock();
@@ -325,30 +328,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
               .setMessage(ERROR_NAME + ": " + e.getMessage()));
     } finally {
       databaseReadWriteLock.readLock().unlock();
-    }
-    return result;
-  }
-
-  public TSStatus setTTL(SetTTLPlan plan) {
-    TSStatus result = new TSStatus();
-    databaseReadWriteLock.writeLock().lock();
-    try {
-      PartialPath patternPath = new PartialPath(plan.getDatabasePathPattern());
-      List<PartialPath> matchedPaths = mTree.getBelongedDatabases(patternPath);
-      if (!matchedPaths.isEmpty()) {
-        for (PartialPath path : matchedPaths) {
-          mTree.getDatabaseNodeByDatabasePath(path).setDataTTL(plan.getTTL());
-        }
-        result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      } else {
-        result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
-        result.setMessage("Database does not exist");
-      }
-    } catch (MetadataException e) {
-      LOGGER.error(ERROR_NAME, e);
-      result.setCode(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode()).setMessage(ERROR_NAME);
-    } finally {
-      databaseReadWriteLock.writeLock().unlock();
     }
     return result;
   }

@@ -42,8 +42,8 @@ public class UDTFStrCompare implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(2)
-        .validateInputSeriesDataType(0, Type.TEXT)
-        .validateInputSeriesDataType(1, Type.TEXT);
+        .validateInputSeriesDataType(0, Type.TEXT, Type.STRING)
+        .validateInputSeriesDataType(1, Type.TEXT, Type.STRING);
   }
 
   @Override

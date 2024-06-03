@@ -46,19 +46,19 @@ public class PipeEventCommitMetrics implements IMetricSet {
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
-  public void bindTo(AbstractMetricService metricService) {
+  public void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
-    ImmutableSet<String> committerKeys = ImmutableSet.copyOf(eventCommitterMap.keySet());
+    final ImmutableSet<String> committerKeys = ImmutableSet.copyOf(eventCommitterMap.keySet());
     for (String committerKey : committerKeys) {
       createMetrics(committerKey);
     }
   }
 
-  private void createMetrics(String committerKey) {
+  private void createMetrics(final String committerKey) {
     createAutoGauge(committerKey);
   }
 
-  private void createAutoGauge(String committerKey) {
+  private void createAutoGauge(final String committerKey) {
     PipeEventCommitter eventCommitter = eventCommitterMap.get(committerKey);
     metricService.createAutoGauge(
         Metric.PIPE_EVENT_COMMIT_QUEUE_SIZE.toString(),
@@ -68,12 +68,12 @@ public class PipeEventCommitMetrics implements IMetricSet {
         Tag.NAME.toString(),
         String.valueOf(eventCommitter.getPipeName()),
         Tag.REGION.toString(),
-        String.valueOf(eventCommitter.getDataRegionId()));
+        String.valueOf(eventCommitter.getRegionId()));
   }
 
   @Override
-  public void unbindFrom(AbstractMetricService metricService) {
-    ImmutableSet<String> committerKeys = ImmutableSet.copyOf(eventCommitterMap.keySet());
+  public void unbindFrom(final AbstractMetricService metricService) {
+    final ImmutableSet<String> committerKeys = ImmutableSet.copyOf(eventCommitterMap.keySet());
     for (String committerKey : committerKeys) {
       deregister(committerKey);
     }
@@ -82,24 +82,24 @@ public class PipeEventCommitMetrics implements IMetricSet {
     }
   }
 
-  private void removeMetrics(String committerKey) {
+  private void removeMetrics(final String committerKey) {
     removeAutoGauge(committerKey);
   }
 
-  private void removeAutoGauge(String committerKey) {
-    PipeEventCommitter eventCommitter = eventCommitterMap.get(committerKey);
+  private void removeAutoGauge(final String committerKey) {
+    final PipeEventCommitter eventCommitter = eventCommitterMap.get(committerKey);
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_EVENT_COMMIT_QUEUE_SIZE.toString(),
         Tag.NAME.toString(),
         String.valueOf(eventCommitter.getPipeName()),
         Tag.REGION.toString(),
-        String.valueOf(eventCommitter.getDataRegionId()));
+        String.valueOf(eventCommitter.getRegionId()));
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(PipeEventCommitter eventCommitter, String committerKey) {
+  public void register(final PipeEventCommitter eventCommitter, final String committerKey) {
     if (Objects.isNull(eventCommitter)) {
       return;
     }
@@ -110,14 +110,14 @@ public class PipeEventCommitMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(String committerKey) {
+  public void deregister(final String committerKey) {
     if (!eventCommitterMap.containsKey(committerKey)) {
       LOGGER.warn(
           "Failed to deregister pipe event commit metrics, PipeEventCommitter({}) does not exist",
           committerKey);
       return;
     }
-    if (Objects.nonNull(committerKey)) {
+    if (Objects.nonNull(metricService) && Objects.nonNull(committerKey)) {
       removeMetrics(committerKey);
     }
     eventCommitterMap.remove(committerKey);
@@ -130,7 +130,7 @@ public class PipeEventCommitMetrics implements IMetricSet {
     private static final PipeEventCommitMetrics INSTANCE = new PipeEventCommitMetrics();
 
     private PipeEventCommitMetricsHolder() {
-      // empty constructor
+      // Empty constructor
     }
   }
 
@@ -139,6 +139,6 @@ public class PipeEventCommitMetrics implements IMetricSet {
   }
 
   private PipeEventCommitMetrics() {
-    // empty constructor
+    // Empty constructor
   }
 }

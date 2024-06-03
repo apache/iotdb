@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -34,9 +35,10 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PlainDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
@@ -143,13 +145,13 @@ public class TsFileResource {
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a read
    * process.
    */
-  private Map<PartialPath, List<IChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
+  private Map<IFullPath, List<IChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
 
   /** Mem chunk data. Only be set in a temporal TsFileResource in a read process. */
-  private Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
+  private Map<IFullPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
 
   /** used for unsealed file to get TimeseriesMetadata */
-  private Map<PartialPath, ITimeSeriesMetadata> pathToTimeSeriesMetadataMap = new HashMap<>();
+  private Map<IFullPath, ITimeSeriesMetadata> pathToTimeSeriesMetadataMap = new HashMap<>();
 
   /**
    * If it is not null, it indicates that the current tsfile resource is a snapshot of the
@@ -198,8 +200,8 @@ public class TsFileResource {
 
   /** unsealed TsFile, for read */
   public TsFileResource(
-      Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap,
-      Map<PartialPath, List<IChunkMetadata>> pathToChunkMetadataListMap,
+      Map<IFullPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap,
+      Map<IFullPath, List<IChunkMetadata>> pathToChunkMetadataListMap,
       TsFileResource originTsFileResource)
       throws IOException {
     this.file = originTsFileResource.file;
@@ -311,11 +313,11 @@ public class TsFileResource {
     return getCompactionModFile().exists();
   }
 
-  public List<IChunkMetadata> getChunkMetadataList(PartialPath seriesPath) {
+  public List<IChunkMetadata> getChunkMetadataList(IFullPath seriesPath) {
     return new ArrayList<>(pathToChunkMetadataListMap.get(seriesPath));
   }
 
-  public List<ReadOnlyMemChunk> getReadOnlyMemChunk(PartialPath seriesPath) {
+  public List<ReadOnlyMemChunk> getReadOnlyMemChunk(IFullPath seriesPath) {
     return pathToReadOnlyMemChunkMap.get(seriesPath);
   }
 
@@ -388,12 +390,12 @@ public class TsFileResource {
   }
 
   public long getStartTime(IDeviceID deviceId) {
-    return timeIndex.getStartTime(deviceId);
+    return deviceId == null ? getFileStartTime() : timeIndex.getStartTime(deviceId);
   }
 
   /** open file's end time is Long.MIN_VALUE */
   public long getEndTime(IDeviceID deviceId) {
-    return timeIndex.getEndTime(deviceId);
+    return deviceId == null ? getFileEndTime() : timeIndex.getEndTime(deviceId);
   }
 
   public long getOrderTime(IDeviceID deviceId, boolean ascending) {
@@ -413,7 +415,7 @@ public class TsFileResource {
     return timeIndex.getDevices(file.getPath(), this);
   }
 
-  public DeviceTimeIndex buildDeviceTimeIndex() throws IOException {
+  public ArrayDeviceTimeIndex buildDeviceTimeIndex() throws IOException {
     readLock();
     try {
       if (!resourceFileExists()) {
@@ -424,10 +426,10 @@ public class TsFileResource {
               .getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
         ReadWriteIOUtils.readByte(inputStream);
         ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
-        if (!(timeIndexFromResourceFile instanceof DeviceTimeIndex)) {
+        if (!(timeIndexFromResourceFile instanceof ArrayDeviceTimeIndex)) {
           throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
         }
-        return (DeviceTimeIndex) timeIndexFromResourceFile;
+        return (ArrayDeviceTimeIndex) timeIndexFromResourceFile;
       } catch (Exception e) {
         throw new IOException(
             "Can't read file " + file.getPath() + RESOURCE_SUFFIX + " from disk", e);
@@ -558,6 +560,8 @@ public class TsFileResource {
     }
     try {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX));
+      fsFactory.deleteIfExists(
+          fsFactory.getFile(file.getPath() + ModificationFile.COMPACTION_FILE_SUFFIX));
     } catch (IOException e) {
       LOGGER.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
       return false;
@@ -645,6 +649,11 @@ public class TsFileResource {
     if (status == getStatus()) {
       return true;
     }
+    return transformStatus(status);
+  }
+
+  /** Return false if the status is not changed */
+  public boolean transformStatus(TsFileResourceStatus status) {
     switch (status) {
       case NORMAL:
         return compareAndSetStatus(TsFileResourceStatus.UNCLOSED, TsFileResourceStatus.NORMAL)
@@ -697,80 +706,11 @@ public class TsFileResource {
     return timeIndex.checkDeviceIdExist(deviceId);
   }
 
-  /** @return true if the device is contained in the TsFile and it lives beyond TTL */
-  public boolean isSatisfied(
-      IDeviceID deviceId, Filter globalTimeFilter, boolean isSeq, long ttl, boolean debug) {
-    if (deviceId == null) {
-      return isSatisfied(globalTimeFilter, isSeq, ttl, debug);
-    }
-
-    long[] startAndEndTime = timeIndex.getStartAndEndTime(deviceId);
-
-    // doesn't contain this device
-    if (startAndEndTime == null) {
-      if (debug) {
-        DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of no device!", deviceId, file);
-      }
-      return false;
-    }
-
-    long startTime = startAndEndTime[0];
-    long endTime = isClosed() || !isSeq ? startAndEndTime[1] : Long.MAX_VALUE;
-
-    if (!isAlive(endTime, ttl)) {
-      if (debug) {
-        DEBUG_LOGGER.info("file {} is not satisfied because of ttl!", file);
-      }
-      return false;
-    }
-
-    if (globalTimeFilter != null) {
-      boolean res = globalTimeFilter.satisfyStartEndTime(startTime, endTime);
-      if (debug && !res) {
-        DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of time filter!", deviceId, fsFactory);
-      }
-      return res;
-    }
-    return true;
-  }
-
-  /** @return true if the TsFile lives beyond TTL */
-  private boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
-    long startTime = getFileStartTime();
-    long endTime = isClosed() || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
-    if (startTime > endTime) {
-      // startTime > endTime indicates that there is something wrong with this TsFile. Return false
-      // directly, or it may lead to infinite loop in GroupByMonthFilter#getTimePointPosition.
-      LOGGER.warn(
-          "startTime[{}] of TsFileResource[{}] is greater than its endTime[{}]",
-          startTime,
-          this,
-          endTime);
-      return false;
-    }
-
-    if (!isAlive(endTime, ttl)) {
-      if (debug) {
-        DEBUG_LOGGER.info("file {} is not satisfied because of ttl!", file);
-      }
-      return false;
-    }
-
-    if (timeFilter != null) {
-      boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
-      if (debug && !res) {
-        DEBUG_LOGGER.info("Path: file {} is not satisfied because of time filter!", fsFactory);
-      }
-      return res;
-    }
-    return true;
-  }
-
-  /** @return true if the device is contained in the TsFile */
+  /**
+   * @return true if the device is contained in the TsFile
+   */
   public boolean isSatisfied(IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
-    if (definitelyNotContains(deviceId)) {
+    if (deviceId != null && definitelyNotContains(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
@@ -795,16 +735,31 @@ public class TsFileResource {
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
         DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of time filter!", deviceId, fsFactory);
+            "Path: {} file {} is not satisfied because of time filter!",
+            deviceId != null ? deviceId : "",
+            fsFactory);
       }
       return res;
     }
     return true;
   }
 
-  /** @return whether the given time falls in ttl */
+  /**
+   * @return whether the given time falls in ttl
+   */
   private boolean isAlive(long time, long dataTTL) {
     return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
+  }
+
+  /**
+   * Check whether the given device may still alive or not. Return false if the device does not
+   * exist or out of dated.
+   */
+  public boolean isDeviceAlive(IDeviceID device, long ttl) {
+    if (definitelyNotContains(device)) {
+      return false;
+    }
+    return !isClosed() || timeIndex.isDeviceAlive(device, ttl);
   }
 
   public void setProcessor(TsFileProcessor processor) {
@@ -816,11 +771,8 @@ public class TsFileResource {
    *
    * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
    */
-  public ITimeSeriesMetadata getTimeSeriesMetadata(PartialPath seriesPath) {
-    if (pathToTimeSeriesMetadataMap.containsKey(seriesPath)) {
-      return pathToTimeSeriesMetadataMap.get(seriesPath);
-    }
-    return null;
+  public ITimeSeriesMetadata getTimeSeriesMetadata(IFullPath seriesPath) {
+    return pathToTimeSeriesMetadataMap.get(seriesPath);
   }
 
   public DataRegion.SettleTsFileCallBack getSettleTsFileCallBack() {
@@ -856,7 +808,9 @@ public class TsFileResource {
     }
   }
 
-  /** @return resource map size */
+  /**
+   * @return resource map size
+   */
   public long calculateRamSize() {
     if (ramSize == 0) {
       ramSize = INSTANCE_SIZE + timeIndex.calculateRamSize();
@@ -1049,11 +1003,14 @@ public class TsFileResource {
   @TestOnly
   public void setTimeIndexType(byte type) {
     switch (type) {
-      case ITimeIndex.DEVICE_TIME_INDEX_TYPE:
-        this.timeIndex = new DeviceTimeIndex();
+      case ITimeIndex.ARRAY_DEVICE_TIME_INDEX_TYPE:
+        this.timeIndex = new ArrayDeviceTimeIndex();
         break;
       case ITimeIndex.FILE_TIME_INDEX_TYPE:
         this.timeIndex = new FileTimeIndex();
+        break;
+      case ITimeIndex.PLAIN_DEVICE_TIME_INDEX_TYPE:
+        this.timeIndex = new PlainDeviceTimeIndex();
         break;
       default:
         throw new UnsupportedOperationException();
@@ -1086,7 +1043,7 @@ public class TsFileResource {
   }
 
   private void generatePathToTimeSeriesMetadataMap() throws IOException {
-    for (PartialPath path : pathToChunkMetadataListMap.keySet()) {
+    for (IFullPath path : pathToChunkMetadataListMap.keySet()) {
       pathToTimeSeriesMetadataMap.put(
           path,
           ResourceByPathUtils.getResourceInstance(path)
@@ -1110,7 +1067,9 @@ public class TsFileResource {
     }
   }
 
-  /** @return is this tsfile resource in a TsFileResourceList */
+  /**
+   * @return is this tsfile resource in a TsFileResourceList
+   */
   public boolean isFileInList() {
     return prev != null || next != null;
   }

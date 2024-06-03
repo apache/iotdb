@@ -208,7 +208,7 @@ public class TwoStageAggregateSender implements AutoCloseable {
   private IoTDBSyncClient constructIoTDBSyncClient(TEndPoint endPoint) throws TTransportException {
     return new IoTDBSyncClient(
         new ThriftClientProperty.Builder()
-            .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
+            .setConnectionTimeoutMs(PIPE_CONFIG.getPipeConnectorHandshakeTimeoutMs())
             .setRpcThriftCompressionEnabled(
                 PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
             .build(),

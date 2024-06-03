@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FillNode;
@@ -34,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
@@ -132,6 +132,26 @@ public class TestPlanBuilder {
     return this;
   }
 
+  public TestPlanBuilder aggregationScan(
+      String id,
+      PartialPath path,
+      List<AggregationDescriptor> aggregationDescriptors,
+      GroupByTimeParameter groupByTimeParameter,
+      boolean outputEndTime,
+      Expression pushDownPredicate) {
+    SeriesAggregationScanNode aggregationScanNode =
+        new SeriesAggregationScanNode(
+            new PlanNodeId(id),
+            (MeasurementPath) path,
+            aggregationDescriptors,
+            Ordering.ASC,
+            groupByTimeParameter);
+    aggregationScanNode.setOutputEndTime(outputEndTime);
+    aggregationScanNode.setPushDownPredicate(pushDownPredicate);
+    this.root = aggregationScanNode;
+    return this;
+  }
+
   public TestPlanBuilder alignedAggregationScan(
       String id,
       PartialPath path,
@@ -150,15 +170,35 @@ public class TestPlanBuilder {
     return this;
   }
 
+  public TestPlanBuilder alignedAggregationScan(
+      String id,
+      PartialPath path,
+      List<AggregationDescriptor> aggregationDescriptors,
+      GroupByTimeParameter groupByTimeParameter,
+      boolean outputEndTime,
+      Expression pushDownPredicate) {
+    AlignedSeriesAggregationScanNode aggregationScanNode =
+        new AlignedSeriesAggregationScanNode(
+            new PlanNodeId(id),
+            (AlignedPath) path,
+            aggregationDescriptors,
+            Ordering.ASC,
+            groupByTimeParameter);
+    aggregationScanNode.setOutputEndTime(outputEndTime);
+    aggregationScanNode.setPushDownPredicate(pushDownPredicate);
+    this.root = aggregationScanNode;
+    return this;
+  }
+
   public TestPlanBuilder rawDataAggregation(
       String id,
       List<AggregationDescriptor> aggregationDescriptors,
       GroupByTimeParameter groupByTimeParameter,
       boolean outputEndTime) {
-    AggregationNode aggregationNode =
-        new AggregationNode(
+    RawDataAggregationNode aggregationNode =
+        new RawDataAggregationNode(
             new PlanNodeId(String.valueOf(id)),
-            Collections.singletonList(getRoot()),
+            getRoot(),
             aggregationDescriptors,
             groupByTimeParameter,
             Ordering.ASC);
@@ -325,7 +365,8 @@ public class TestPlanBuilder {
             expressions.toArray(new Expression[0]),
             predicate,
             isGroupByTime,
-            Ordering.ASC);
+            Ordering.ASC,
+            true);
     return this;
   }
 
@@ -343,7 +384,7 @@ public class TestPlanBuilder {
   public TestPlanBuilder into(String id, PartialPath sourcePath, PartialPath intoPath) {
     IntoPathDescriptor intoPathDescriptor = new IntoPathDescriptor();
     intoPathDescriptor.specifyTargetPath(sourcePath.toString(), "", intoPath);
-    intoPathDescriptor.specifyDeviceAlignment(intoPath.getDevice(), false);
+    intoPathDescriptor.specifyDeviceAlignment(intoPath.getIDeviceID().toString(), false);
     intoPathDescriptor.recordSourceColumnDataType(
         sourcePath.toString(), sourcePath.getSeriesType());
     this.root = new IntoNode(new PlanNodeId(id), getRoot(), intoPathDescriptor);

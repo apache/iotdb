@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOpt
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
 import org.apache.tsfile.block.column.Column;
@@ -37,6 +38,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
@@ -44,6 +46,7 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
@@ -56,6 +59,9 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 public class TableScanOperator extends AbstractDataSourceOperator {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TableScanOperator.class);
 
   private final List<ColumnSchema> columnSchemas;
 
@@ -332,9 +338,9 @@ public class TableScanOperator extends AbstractDataSourceOperator {
   }
 
   @Override
-  public void initQueryDataSource(QueryDataSource dataSource) {
-    this.queryDataSource = dataSource;
-    this.seriesScanUtil.initQueryDataSource(dataSource);
+  public void initQueryDataSource(IQueryDataSource dataSource) {
+    this.queryDataSource = (QueryDataSource) dataSource;
+    this.seriesScanUtil.initQueryDataSource(queryDataSource);
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
     this.resultTsBlockBuilder.setMaxTsBlockLineNumber(this.maxTsBlockLineNum);
     this.measurementDataBuilder = new TsBlockBuilder(this.measurementColumnTSDataTypes);
@@ -353,7 +359,7 @@ public class TableScanOperator extends AbstractDataSourceOperator {
   }
 
   private AlignedSeriesScanUtil constructAlignedSeriesScanUtil(DeviceEntry deviceEntry) {
-    AlignedPath alignedPath =
+    AlignedFullPath alignedPath =
         constructAlignedPath(deviceEntry, measurementColumnNames, measurementSchemas);
 
     return new AlignedSeriesScanUtil(
@@ -365,7 +371,7 @@ public class TableScanOperator extends AbstractDataSourceOperator {
         measurementColumnTSDataTypes);
   }
 
-  public static AlignedPath constructAlignedPath(
+  public static AlignedFullPath constructAlignedPath(
       DeviceEntry deviceEntry,
       List<String> measurementColumnNames,
       List<IMeasurementSchema> measurementSchemas) {
@@ -374,10 +380,20 @@ public class TableScanOperator extends AbstractDataSourceOperator {
     for (int i = 1; i < devicePath.length; i++) {
       devicePath[i] = (String) deviceEntry.getDeviceID().segment(i - 1);
     }
-    AlignedPath alignedPath = new AlignedPath(new PartialPath(devicePath));
 
-    alignedPath.setMeasurementList(measurementColumnNames);
-    alignedPath.setSchemaList(measurementSchemas);
-    return alignedPath;
+    return new AlignedFullPath(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(devicePath),
+        measurementColumnNames,
+        measurementSchemas);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
+        + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes())
+        + RamUsageEstimator.sizeOfCollection(deviceEntries);
   }
 }

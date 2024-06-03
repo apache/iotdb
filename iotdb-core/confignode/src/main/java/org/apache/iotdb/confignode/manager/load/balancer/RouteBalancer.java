@@ -154,8 +154,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     Map<TConsensusGroupId, Integer> currentLeaderMap = getLoadManager().getRegionLeaderMap();
     Map<TConsensusGroupId, Integer> optimalLeaderMap =
         leaderBalancer.generateOptimalLeaderDistribution(
-            getPartitionManager().getAllRegionGroupIdMap(regionGroupType),
-            getPartitionManager().getAllReplicaSetsMap(regionGroupType),
+            getLoadManager().getLoadCache().getCurrentDatabaseRegionGroupMap(regionGroupType),
+            getLoadManager().getLoadCache().getCurrentRegionLocationMap(regionGroupType),
             currentLeaderMap,
             getLoadManager().getLoadCache().getCurrentDataNodeStatisticsMap(),
             getLoadManager().getLoadCache().getCurrentRegionStatisticsMap(regionGroupType));
@@ -300,7 +300,6 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
     long broadcastTime = System.currentTimeMillis();
     Map<TConsensusGroupId, TRegionReplicaSet> tmpPriorityMap = getRegionPriorityMap();
-    LOGGER.info("region map: {}", tmpPriorityMap);
     AsyncClientHandler<TRegionRouteReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(
             DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
@@ -331,7 +330,9 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     }
   }
 
-  /** @return Map<RegionGroupId, RegionPriority> */
+  /**
+   * @return Map<RegionGroupId, RegionPriority>
+   */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRegionPriorityMap() {
     priorityMapLock.readLock().lock();
     try {

@@ -18,6 +18,18 @@
 @REM
 
 @echo off
+
+IF "%~1"=="--help" (
+    echo The script will remove a ConfigNode.
+    echo Before removing a ConfigNode, ensure that there is at least one active ConfigNode in the cluster after the removal.
+    echo Usage:
+    echo Remove the ConfigNode with confignode_id
+    echo ./sbin/remove-confignode.bat [confignode_id]
+    echo Remove the ConfigNode with address:port
+    echo ./sbin/remove-confignode.bat [cn_internal_address:cn_internal_port]
+    EXIT /B 0
+)
+
 echo ```````````````````````````
 echo Starting to remove IoTDB ConfigNode
 echo ```````````````````````````
@@ -95,7 +107,7 @@ set JAVA_OPTS=-ea^
 
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
-if EXIST %CONFIGNODE_HOME%\lib (set CLASSPATH="%CONFIGNODE_HOME%\lib\*") else set CLASSPATH="%CONFIGNODE_HOME%\..\lib\*"
+if EXIST "%CONFIGNODE_HOME%\lib" (set CLASSPATH="%CONFIGNODE_HOME%\lib\*") else set CLASSPATH="%CONFIGNODE_HOME%\..\lib\*"
 set CLASSPATH=%CLASSPATH%;iotdb.ConfigNode
 goto okClasspath
 

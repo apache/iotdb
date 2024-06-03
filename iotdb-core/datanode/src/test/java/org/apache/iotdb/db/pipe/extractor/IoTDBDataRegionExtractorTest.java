@@ -32,8 +32,7 @@ import java.util.HashMap;
 public class IoTDBDataRegionExtractorTest {
   @Test
   public void testIoTDBDataRegionExtractor() {
-    final IoTDBDataRegionExtractor extractor = new IoTDBDataRegionExtractor();
-    try {
+    try (final IoTDBDataRegionExtractor extractor = new IoTDBDataRegionExtractor()) {
       extractor.validate(
           new PipeParameterValidator(
               new PipeParameters(
@@ -101,5 +100,20 @@ public class IoTDBDataRegionExtractorTest {
       return e;
     }
     return null;
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testIoTDBDataRegionExtractorWithDeletionAndPattern() throws Exception {
+    try (final IoTDBDataRegionExtractor extractor = new IoTDBDataRegionExtractor()) {
+      extractor.validate(
+          new PipeParameterValidator(
+              new PipeParameters(
+                  new HashMap<String, String>() {
+                    {
+                      put(PipeExtractorConstant.EXTRACTOR_PATTERN_KEY, "root.db");
+                      put(PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY, "data.delete");
+                    }
+                  })));
+    }
   }
 }

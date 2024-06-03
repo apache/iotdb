@@ -119,6 +119,7 @@ public class CreateLogicalViewNode extends WritePlanNode implements ICreateLogic
   public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
     return visitor.visitCreateLogicalView(this, schemaRegion);
   }
+
   // endregion
 
   // region Interfaces in WritePlanNode or PlanNode
@@ -226,7 +227,9 @@ public class CreateLogicalViewNode extends WritePlanNode implements ICreateLogic
       // build a map from TRegionReplicaSet to this entry.
       // Please note that getSchemaRegionReplicaSet needs a device path as parameter.
       TRegionReplicaSet regionReplicaSet =
-          analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(entry.getKey().getDevice());
+          analysis
+              .getSchemaPartitionInfo()
+              .getSchemaRegionReplicaSet(entry.getKey().getIDeviceID().toString());
 
       // create a map if the key(regionReplicaSet) is not exists,
       // then put this entry into this map(from regionReplicaSet to this entry)

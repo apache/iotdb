@@ -47,7 +47,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.Socket;
 import java.util.Objects;
 
 public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector {
@@ -69,7 +68,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
     }
 
     final int socketIndex = nextSocketIndex();
-    final Socket socket = sockets.get(socketIndex);
+    final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
@@ -106,7 +105,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
     }
 
     final int socketIndex = nextSocketIndex();
-    final Socket socket = sockets.get(socketIndex);
+    final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
       doTransferWrapper(socket, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
@@ -125,7 +124,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   @Override
   public void transfer(final Event event) throws Exception {
     final int socketIndex = nextSocketIndex();
-    final Socket socket = sockets.get(socketIndex);
+    final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
       if (event instanceof PipeSchemaRegionWritePlanEvent) {
@@ -147,7 +146,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   }
 
   private void doTransferWrapper(
-      final Socket socket,
+      final AirGapSocket socket,
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
     try {
@@ -164,7 +163,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   }
 
   private void doTransfer(
-      final Socket socket,
+      final AirGapSocket socket,
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
     final InsertNode insertNode =
@@ -175,7 +174,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
                 pipeInsertNodeTabletInsertionEvent.getByteBuffer())
             : PipeTransferTabletInsertNodeReq.toTPipeTransferBytes(insertNode);
 
-    if (!send(socket, bytes)) {
+    if (!send(pipeInsertNodeTabletInsertionEvent.getPipeName(), socket, bytes)) {
       final String errorMessage =
           String.format(
               "Transfer PipeInsertNodeTabletInsertionEvent %s error. Socket: %s",
@@ -189,7 +188,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   }
 
   private void doTransferWrapper(
-      final Socket socket, final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+      final AirGapSocket socket, final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, IOException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
@@ -205,9 +204,10 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   }
 
   private void doTransfer(
-      final Socket socket, final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+      final AirGapSocket socket, final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, IOException {
     if (!send(
+        pipeRawTabletInsertionEvent.getPipeName(),
         socket,
         PipeTransferTabletRawReq.toTPipeTransferBytes(
             pipeRawTabletInsertionEvent.convertToTablet(),
@@ -225,7 +225,7 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   }
 
   private void doTransferWrapper(
-      final Socket socket, final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
+      final AirGapSocket socket, final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
     try {
       // We increase the reference count for this event to determine if the event may be released.
@@ -241,18 +241,20 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   }
 
   private void doTransfer(
-      final Socket socket, final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
+      final AirGapSocket socket, final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
+    final String pipeName = pipeTsFileInsertionEvent.getPipeName();
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
     final String errorMessage = String.format("Seal file %s error. Socket %s.", tsFile, socket);
 
     // 1. Transfer file piece by piece, and mod if needed
     if (pipeTsFileInsertionEvent.isWithMod() && supportModsIfIsDataNodeReceiver) {
       final File modFile = pipeTsFileInsertionEvent.getModFile();
-      transferFilePieces(modFile, socket, true);
-      transferFilePieces(tsFile, socket, true);
+      transferFilePieces(pipeName, modFile, socket, true);
+      transferFilePieces(pipeName, tsFile, socket, true);
       // 2. Transfer file seal signal with mod, which means the file is transferred completely
       if (!send(
+          pipeName,
           socket,
           PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
               modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length()))) {
@@ -265,9 +267,10 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
         LOGGER.info("Successfully transferred file {}.", tsFile);
       }
     } else {
-      transferFilePieces(tsFile, socket, false);
+      transferFilePieces(pipeName, tsFile, socket, false);
       // 2. Transfer file seal signal without mod, which means the file is transferred completely
       if (!send(
+          pipeName,
           socket,
           PipeTransferTsFileSealReq.toTPipeTransferBytes(tsFile.getName(), tsFile.length()))) {
         receiverStatusHandler.handle(

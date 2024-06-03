@@ -98,7 +98,8 @@ public class ReadOnlyMemChunk {
 
   private void initChunkMetaFromTsBlock() throws QueryProcessException {
     Statistics statsByType = Statistics.getStatsByType(dataType);
-    IChunkMetadata metaData = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
+    IChunkMetadata metaData =
+        new ChunkMetadata(measurementUid, dataType, null, null, 0, statsByType);
     if (!isEmpty()) {
       switch (dataType) {
         case BOOLEAN:
@@ -107,6 +108,8 @@ public class ReadOnlyMemChunk {
           }
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBinary(i));
           }
@@ -117,11 +120,13 @@ public class ReadOnlyMemChunk {
           }
           break;
         case INT32:
+        case DATE:
           for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getInt(i));
           }
           break;
         case INT64:
+        case TIMESTAMP:
           for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getLong(i));
           }

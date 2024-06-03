@@ -69,13 +69,13 @@ import org.apache.thrift.TException;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -209,8 +209,6 @@ public class LoadTsfileAnalyzer {
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
           new TsFileSequenceReaderTimeseriesMetadataIterator(reader, true, 1);
 
-      long writePointCount = 0;
-
       // construct tsfile resource
       final TsFileResource tsFileResource = new TsFileResource(tsFile);
       if (!tsFileResource.resourceFileExists()) {
@@ -221,27 +219,34 @@ public class LoadTsfileAnalyzer {
         tsFileResource.deserialize();
       }
 
-      // auto create or verify schema
-      if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
-          || loadTsFileStatement.isVerifySchema()) {
-        // check if the tsfile is empty
-        if (!timeseriesMetadataIterator.hasNext()) {
-          LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
-          return;
-        }
+      // check if the tsfile is empty
+      if (!timeseriesMetadataIterator.hasNext()) {
+        LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
+        return;
+      }
 
-        while (timeseriesMetadataIterator.hasNext()) {
-          Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
-              timeseriesMetadataIterator.next();
+      long writePointCount = 0;
 
+      final boolean isAutoCreateSchemaOrVerifySchemaEnabled =
+          IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
+              || loadTsFileStatement.isVerifySchema();
+      while (timeseriesMetadataIterator.hasNext()) {
+        final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
+            timeseriesMetadataIterator.next();
+
+        if (isAutoCreateSchemaOrVerifySchemaEnabled) {
           schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, device2TimeseriesMetadata);
-
-          if (!tsFileResource.resourceFileExists()) {
-            TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
-          }
-          writePointCount += getWritePointCount(device2TimeseriesMetadata);
         }
 
+        if (!tsFileResource.resourceFileExists()) {
+          TsFileResourceUtils.updateTsFileResource(device2TimeseriesMetadata, tsFileResource);
+        }
+
+        // TODO: how to get the correct write point count when
+        //  !isAutoCreateSchemaOrVerifySchemaEnabled
+        writePointCount += getWritePointCount(device2TimeseriesMetadata);
+      }
+      if (isAutoCreateSchemaOrVerifySchemaEnabled) {
         schemaAutoCreatorAndVerifier.flushAndClearDeviceIsAlignedCacheIfNecessary();
       }
 
@@ -545,12 +550,12 @@ public class LoadTsfileAnalyzer {
       for (final Map.Entry<IDeviceID, Set<MeasurementSchema>> entry :
           schemaCache.getDevice2TimeSeries().entrySet()) {
         final IDeviceID device = entry.getKey();
-        final List<MeasurementSchema> tsfileTimeseriesSchemas = new ArrayList<>(entry.getValue());
+        final List<IMeasurementSchema> tsfileTimeseriesSchemas = new ArrayList<>(entry.getValue());
         final DeviceSchemaInfo iotdbDeviceSchemaInfo =
             schemaTree.searchDeviceSchemaInfo(
                 new PartialPath(device),
                 tsfileTimeseriesSchemas.stream()
-                    .map(MeasurementSchema::getMeasurementId)
+                    .map(IMeasurementSchema::getMeasurementId)
                     .collect(Collectors.toList()));
 
         if (iotdbDeviceSchemaInfo == null) {
@@ -574,11 +579,11 @@ public class LoadTsfileAnalyzer {
         }
 
         // check timeseries schema
-        final List<MeasurementSchema> iotdbTimeseriesSchemas =
+        final List<IMeasurementSchema> iotdbTimeseriesSchemas =
             iotdbDeviceSchemaInfo.getMeasurementSchemaList();
         for (int i = 0, n = iotdbTimeseriesSchemas.size(); i < n; i++) {
-          final MeasurementSchema tsFileSchema = tsfileTimeseriesSchemas.get(i);
-          final MeasurementSchema iotdbSchema = iotdbTimeseriesSchemas.get(i);
+          final IMeasurementSchema tsFileSchema = tsfileTimeseriesSchemas.get(i);
+          final IMeasurementSchema iotdbSchema = iotdbTimeseriesSchemas.get(i);
           if (iotdbSchema == null) {
             throw new VerifyMetadataException(
                 String.format(
@@ -679,7 +684,7 @@ public class LoadTsfileAnalyzer {
     public void addTimeSeries(IDeviceID device, MeasurementSchema measurementSchema) {
       long memoryUsageSizeInBytes = 0;
       if (!currentBatchDevice2TimeSeriesSchemas.containsKey(device)) {
-        memoryUsageSizeInBytes += estimateStringSize(((PlainDeviceID) device).toStringID());
+        memoryUsageSizeInBytes += device.ramBytesUsed();
       }
       if (currentBatchDevice2TimeSeriesSchemas
           .computeIfAbsent(device, k -> new HashSet<>())
@@ -697,7 +702,7 @@ public class LoadTsfileAnalyzer {
     public void addIsAlignedCache(IDeviceID device, boolean isAligned, boolean addIfAbsent) {
       long memoryUsageSizeInBytes = 0;
       if (!tsFileDevice2IsAligned.containsKey(device)) {
-        memoryUsageSizeInBytes += estimateStringSize(((PlainDeviceID) device).toStringID());
+        memoryUsageSizeInBytes += device.ramBytesUsed();
       }
       if (addIfAbsent
           ? (tsFileDevice2IsAligned.putIfAbsent(device, isAligned) == null)
@@ -759,8 +764,7 @@ public class LoadTsfileAnalyzer {
       while (iterator.hasNext()) {
         Map.Entry<IDeviceID, Boolean> entry = iterator.next();
         if (!timeSeriesCacheKeySet.contains(entry.getKey())) {
-          releaseMemoryInBytes +=
-              estimateStringSize(((PlainDeviceID) entry.getKey()).toStringID()) + Byte.BYTES;
+          releaseMemoryInBytes += entry.getKey().ramBytesUsed() + Byte.BYTES;
           iterator.remove();
         }
       }
@@ -786,20 +790,6 @@ public class LoadTsfileAnalyzer {
       currentBatchDevice2TimeSeriesSchemas = null;
       tsFileDevice2IsAligned = null;
       alreadySetDatabases = null;
-    }
-
-    /**
-     * String basic total, 32B
-     *
-     * <ul>
-     *   <li>Object header, 8B
-     *   <li>char[] reference + header + length, 8 + 4 + 8= 20B
-     *   <li>hash code, 4B
-     * </ul>
-     */
-    private static int estimateStringSize(String string) {
-      // each char takes 2B in Java
-      return string == null ? 0 : 32 + 2 * string.length();
     }
   }
 }

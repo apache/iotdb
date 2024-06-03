@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -27,8 +28,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -61,10 +64,14 @@ public interface IMemTable extends WALEntryValue {
       long insertTime,
       Object[] objectValue);
 
-  /** @return the number of points */
+  /**
+   * @return the number of points
+   */
   long size();
 
-  /** @return memory usage */
+  /**
+   * @return memory usage
+   */
   long memSize();
 
   /** only used when mem control enabled */
@@ -113,8 +120,25 @@ public interface IMemTable extends WALEntryValue {
 
   ReadOnlyMemChunk query(
       QueryContext context,
-      PartialPath fullPath,
+      IFullPath fullPath,
       long ttlLowerBound,
+      List<Pair<Modification, IMemTable>> modsToMemtabled)
+      throws IOException, QueryProcessException, MetadataException;
+
+  void queryForSeriesRegionScan(
+      IFullPath fullPath,
+      long ttlLowerBound,
+      Map<String, List<IChunkMetadata>> chunkMetadataMap,
+      Map<String, List<IChunkHandle>> memChunkHandleMap,
+      List<Pair<Modification, IMemTable>> modsToMemtabled)
+      throws IOException, QueryProcessException, MetadataException;
+
+  void queryForDeviceRegionScan(
+      IDeviceID deviceID,
+      boolean isAligned,
+      long ttlLowerBound,
+      Map<String, List<IChunkMetadata>> chunkMetadataMap,
+      Map<String, List<IChunkHandle>> memChunkHandleMap,
       List<Pair<Modification, IMemTable>> modsToMemtabled)
       throws IOException, QueryProcessException, MetadataException;
 

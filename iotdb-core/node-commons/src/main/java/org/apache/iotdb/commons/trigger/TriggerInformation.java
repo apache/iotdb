@@ -54,10 +54,12 @@ public class TriggerInformation {
 
   /** indicate this Trigger is Stateful or Stateless */
   private boolean isStateful;
+
   /** only used for Stateful Trigger */
   private TDataNodeLocation dataNodeLocation;
 
   private FailureStrategy failureStrategy;
+
   /** MD5 of the Jar File */
   private String jarFileMD5;
 

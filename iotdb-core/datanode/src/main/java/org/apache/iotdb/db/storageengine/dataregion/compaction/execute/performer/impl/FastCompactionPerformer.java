@@ -21,8 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionTaskSummaryException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
@@ -31,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
@@ -39,6 +42,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -46,6 +50,7 @@ import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,9 +85,11 @@ public class FastCompactionPerformer
 
   private List<TsFileResource> targetFiles;
 
-  private Map<TsFileResource, List<Modification>> modificationCache = new ConcurrentHashMap<>();
+  // tsFile name -> modifications
+  private Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+      modificationCache = new ConcurrentHashMap<>();
 
-  private boolean isCrossCompaction;
+  private final boolean isCrossCompaction;
 
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
@@ -112,6 +119,11 @@ public class FastCompactionPerformer
             isCrossCompaction
                 ? new FastCrossCompactionWriter(targetFiles, seqFiles, readerCacheMap)
                 : new FastInnerCompactionWriter(targetFiles.get(0))) {
+      List<Schema> schemas =
+          CompactionTableSchemaCollector.collectSchema(seqFiles, unseqFiles, readerCacheMap);
+      compactionWriter.setSchemaForAllTargetFile(schemas);
+      readModification(seqFiles);
+      readModification(unseqFiles);
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted();
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
@@ -122,8 +134,20 @@ public class FastCompactionPerformer
         // actually exist but the judgment return device being existed.
         sortedSourceFiles.addAll(seqFiles);
         sortedSourceFiles.addAll(unseqFiles);
-        sortedSourceFiles.removeIf(x -> x.definitelyNotContains(device));
+        sortedSourceFiles.removeIf(
+            x ->
+                x.definitelyNotContains(device)
+                    || !x.isDeviceAlive(
+                        device,
+                        DataNodeTTLCache.getInstance()
+                            // TODO: remove deviceId conversion
+                            .getTTL(device)));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
+
+        if (sortedSourceFiles.isEmpty()) {
+          // device is out of dated in all source files
+          continue;
+        }
 
         boolean isAligned = deviceInfo.right;
         compactionWriter.startChunkGroup(device, isAligned);
@@ -141,6 +165,7 @@ public class FastCompactionPerformer
         subTaskSummary.setTemporalFileSize(compactionWriter.getWriterSize());
         sortedSourceFiles.clear();
       }
+      compactionWriter.removeUnusedTableSchema();
       compactionWriter.endFile();
       CompactionUtils.updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
     } finally {
@@ -293,16 +318,23 @@ public class FastCompactionPerformer
     return seqFiles;
   }
 
-  public Map<TsFileResource, TsFileSequenceReader> getReaderCacheMap() {
-    return readerCacheMap;
-  }
-
-  public Map<TsFileResource, List<Modification>> getModificationCache() {
-    return modificationCache;
-  }
-
   @Override
   public void setSourceFiles(List<TsFileResource> unseqFiles) {
     this.seqFiles = unseqFiles;
+  }
+
+  private void readModification(List<TsFileResource> resources) {
+    for (TsFileResource resource : resources) {
+      if (resource.getModFile() == null || !resource.getModFile().exists()) {
+        continue;
+      }
+      // read mods
+      PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> modifications =
+          PatternTreeMapFactory.getModsPatternTreeMap();
+      for (Modification modification : resource.getModFile().getModificationsIter()) {
+        modifications.append(modification.getPath(), modification);
+      }
+      modificationCache.put(resource.getTsFile().getName(), modifications);
+    }
   }
 }

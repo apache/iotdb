@@ -48,10 +48,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.schema.cache.Tab
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.table.CreateTableDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.table.FetchTableDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.table.ShowTableDevicesStatement;
-import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.rpc.TSStatusCode;
 

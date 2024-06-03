@@ -22,7 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -79,7 +79,7 @@ public class TsFileResourceCandidate {
           hasDetailedDeviceInfo = false;
           return;
         }
-        DeviceTimeIndex timeIndex = resource.buildDeviceTimeIndex();
+        ArrayDeviceTimeIndex timeIndex = resource.buildDeviceTimeIndex();
         for (IDeviceID deviceId : timeIndex.getDevices()) {
           deviceInfoMap.put(
               deviceId,

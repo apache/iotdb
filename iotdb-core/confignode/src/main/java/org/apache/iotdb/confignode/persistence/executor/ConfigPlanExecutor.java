@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.MNodeType;
+import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -124,6 +125,7 @@ import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.TTLInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
@@ -186,6 +188,8 @@ public class ConfigPlanExecutor {
 
   private final QuotaInfo quotaInfo;
 
+  private final TTLInfo ttlInfo;
+
   public ConfigPlanExecutor(
       ClusterInfo clusterInfo,
       NodeInfo nodeInfo,
@@ -198,7 +202,8 @@ public class ConfigPlanExecutor {
       CQInfo cqInfo,
       PipeInfo pipeInfo,
       SubscriptionInfo subscriptionInfo,
-      QuotaInfo quotaInfo) {
+      QuotaInfo quotaInfo,
+      TTLInfo ttlInfo) {
 
     this.snapshotProcessorList = new ArrayList<>();
 
@@ -237,6 +242,9 @@ public class ConfigPlanExecutor {
 
     this.quotaInfo = quotaInfo;
     this.snapshotProcessorList.add(quotaInfo);
+
+    this.ttlInfo = ttlInfo;
+    this.snapshotProcessorList.add(ttlInfo);
 
     this.snapshotProcessorList.add(PipeConfigNodeAgent.runtime().listener());
   }
@@ -308,6 +316,8 @@ public class ConfigPlanExecutor {
         return pipeInfo.getPipePluginInfo().getPipePluginJar((GetPipePluginJarPlan) req);
       case ShowPipeV2:
         return pipeInfo.getPipeTaskInfo().showPipes();
+      case ShowTTL:
+        return ttlInfo.showAllTTL();
       case ShowTopic:
         return subscriptionInfo.showTopics();
       case ShowSubscription:
@@ -351,7 +361,11 @@ public class ConfigPlanExecutor {
       case PreDeleteDatabase:
         return partitionInfo.preDeleteDatabase((PreDeleteDatabasePlan) physicalPlan);
       case SetTTL:
-        return clusterSchemaInfo.setTTL((SetTTLPlan) physicalPlan);
+        if (((SetTTLPlan) physicalPlan).getTTL() == TTLCache.NULL_TTL) {
+          return ttlInfo.unsetTTL((SetTTLPlan) physicalPlan);
+        } else {
+          return ttlInfo.setTTL((SetTTLPlan) physicalPlan);
+        }
       case SetSchemaReplicationFactor:
         return clusterSchemaInfo.setSchemaReplicationFactor(
             (SetSchemaReplicationFactorPlan) physicalPlan);
@@ -528,9 +542,11 @@ public class ConfigPlanExecutor {
         // Will not be actually executed.
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       case PipeUnsetTemplate:
-        // PipeUnsetTemplate plan will not be written here, and exists only after pipe sender
-        // collects UnsetTemplatePlan and before receiver calls ConfigManager.
-        throw new UnsupportedOperationException("PipeUnsetTemplate is not supported.");
+      case PipeSetTTL:
+        // PipeUnsetTemplate/PipeSetTTL plan will not be written here, and exists only after pipe
+        // sender collects UnsetTemplatePlan/SetTTLPlan and before receiver calls ConfigManager.
+        throw new UnsupportedOperationException(
+            String.format("Plan type %s is not supported.", physicalPlan.getType()));
       case TestOnly:
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       default:
@@ -601,8 +617,7 @@ public class ConfigPlanExecutor {
     }
 
     AtomicBoolean result = new AtomicBoolean(true);
-    snapshotProcessorList
-        .parallelStream()
+    snapshotProcessorList.parallelStream()
         .forEach(
             x -> {
               try {

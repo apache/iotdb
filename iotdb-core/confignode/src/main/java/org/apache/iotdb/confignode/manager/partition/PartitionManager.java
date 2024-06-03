@@ -137,6 +137,7 @@ public class PartitionManager {
   /** Region cleaner. */
   // Monitor for leadership change
   private final Object scheduleMonitor = new Object();
+
   // Try to delete Regions in every 10s
   private static final int REGION_MAINTAINER_WORK_INTERVAL = 10;
   private final ScheduledExecutorService regionMaintainer;
@@ -1303,9 +1304,8 @@ public class PartitionManager {
                             createDataRegionHandler.putRequest(
                                 dataRegionCreateTask.getRegionId().getId(),
                                 new TCreateDataRegionReq(
-                                        dataRegionCreateTask.getRegionReplicaSet(),
-                                        dataRegionCreateTask.getStorageGroup())
-                                    .setTtl(dataRegionCreateTask.getTTL()));
+                                    dataRegionCreateTask.getRegionReplicaSet(),
+                                    dataRegionCreateTask.getStorageGroup()));
                             createDataRegionHandler.putDataNodeLocation(
                                 dataRegionCreateTask.getRegionId().getId(),
                                 dataRegionCreateTask.getTargetDataNode());

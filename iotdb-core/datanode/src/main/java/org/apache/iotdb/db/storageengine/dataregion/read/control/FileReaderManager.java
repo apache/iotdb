@@ -58,6 +58,7 @@ public class FileReaderManager {
    * corresponding reader.
    */
   private Map<String, TsFileSequenceReader> closedFileReaderMap;
+
   /**
    * the key of unclosedFileReaderMap is the file path and the value of unclosedFileReaderMap is the
    * corresponding reader.
@@ -69,6 +70,7 @@ public class FileReaderManager {
    * file's reference count.
    */
   private Map<String, AtomicInteger> closedReferenceMap;
+
   /**
    * the key of unclosedFileReaderMap is the file path and the value of unclosedFileReaderMap is the
    * file's reference count.
@@ -128,7 +130,9 @@ public class FileReaderManager {
         tsFileReader = new UnClosedTsFileReader(filePath);
       } else {
         tsFileReader = new TsFileSequenceReader(filePath);
-        if (tsFileReader.readVersionNumber() != TSFileConfig.VERSION_NUMBER) {
+        byte versionNumber = tsFileReader.readVersionNumber();
+        if (versionNumber != TSFileConfig.VERSION_NUMBER
+            && versionNumber != TSFileConfig.VERSION_NUMBER_V3) {
           tsFileReader.close();
           throw new IOException("The version of this TsFile is not correct.");
         }

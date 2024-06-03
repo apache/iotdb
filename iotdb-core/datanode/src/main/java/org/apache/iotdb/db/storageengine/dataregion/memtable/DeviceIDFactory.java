@@ -21,10 +21,9 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 
 import java.util.function.Function;
 
@@ -52,8 +51,9 @@ public class DeviceIDFactory {
   }
 
   private DeviceIDFactory() {
-    getDeviceIDFunction = PlainDeviceID::new;
+    getDeviceIDFunction = IDeviceID.Factory.DEFAULT_FACTORY::create;
   }
+
   // endregion
 
   /**
@@ -66,19 +66,9 @@ public class DeviceIDFactory {
     return getDeviceIDFunction.apply(devicePath.getFullPath());
   }
 
-  /**
-   * get device id by full path
-   *
-   * @param devicePath device path of the timeseries
-   * @return device id of the timeseries
-   */
-  public IDeviceID getDeviceID(String devicePath) {
-    return getDeviceIDFunction.apply(DataNodeDevicePathCache.getInstance().getDeviceId(devicePath));
-  }
-
   /** reset id method */
   @TestOnly
   public void reset() {
-    getDeviceIDFunction = PlainDeviceID::new;
+    getDeviceIDFunction = StringArrayDeviceID::new;
   }
 }

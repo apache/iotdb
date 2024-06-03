@@ -91,6 +91,9 @@ public enum ProcedureType {
   /** Auth privilege */
   AUTH_OPERATE_PROCEDURE((short) 1300),
 
+  /** TTL */
+  SET_TTL_PROCEDURE((short) 1400),
+
   /** Pipe Enriched */
   PIPE_ENRICHED_DELETE_DATABASE_PROCEDURE((short) 1401),
   PIPE_ENRICHED_DELETE_TIMESERIES_PROCEDURE((short) 1402),
@@ -102,6 +105,7 @@ public enum ProcedureType {
   PIPE_ENRICHED_CREATE_TRIGGER_PROCEDURE((short) 1408),
   PIPE_ENRICHED_DROP_TRIGGER_PROCEDURE((short) 1409),
   PIPE_ENRICHED_AUTH_OPERATE_PROCEDURE((short) 1410),
+  PIPE_ENRICHED_SET_TTL_PROCEDURE((short) 1411),
 
   /** Subscription */
   CREATE_TOPIC_PROCEDURE((short) 1500),

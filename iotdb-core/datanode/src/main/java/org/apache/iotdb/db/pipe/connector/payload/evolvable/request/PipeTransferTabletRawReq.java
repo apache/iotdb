@@ -75,7 +75,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
         request.addToTypes(measurementSchema.getType().ordinal());
       }
 
-      request.setPrefixPath(tablet.deviceId);
+      request.setPrefixPath(tablet.getDeviceId());
       request.setIsAligned(isAligned);
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));

@@ -86,6 +86,7 @@ public interface ISchemaRegion {
   ISchemaRegionStatistics getSchemaRegionStatistics();
 
   ISchemaRegionMetric getSchemaRegionMetric();
+
   // endregion
 
   // region Interfaces for schema region Info query and operation
@@ -99,6 +100,7 @@ public interface ISchemaRegion {
   boolean createSnapshot(File snapshotDir);
 
   void loadSnapshot(File latestSnapshotRootDir);
+
   // endregion
 
   // region Interfaces for Timeseries operation
@@ -175,6 +177,7 @@ public interface ISchemaRegion {
    * @throws MetadataException
    */
   void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException;
+
   // endregion
 
   // region Interfaces for Logical View
@@ -275,6 +278,7 @@ public interface ISchemaRegion {
    */
   void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException;
+
   // endregion
 
   // region Interfaces for Template operations

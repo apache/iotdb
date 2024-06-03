@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -27,6 +28,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
@@ -40,17 +43,22 @@ import java.util.List;
  */
 public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScanOperator {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SeriesAggregationScanOperator.class)
+          + RamUsageEstimator.shallowSizeOfInstance(ITimeRangeIterator.class);
+
   @SuppressWarnings("squid:S107")
   public SeriesAggregationScanOperator(
       PlanNodeId sourceId,
-      PartialPath seriesPath,
+      IFullPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       OperatorContext context,
       List<Aggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       GroupByTimeParameter groupByTimeParameter,
-      long maxReturnSize) {
+      long maxReturnSize,
+      boolean canUseStatistics) {
     super(
         sourceId,
         context,
@@ -61,12 +69,13 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
         scanOrder.isAscending(),
         false,
         groupByTimeParameter,
-        maxReturnSize);
+        maxReturnSize,
+        canUseStatistics);
   }
 
   public SeriesAggregationScanOperator(
       PlanNodeId sourceId,
-      PartialPath seriesPath,
+      IFullPath seriesPath,
       Ordering scanOrder,
       boolean outputEndTime,
       SeriesScanOptions scanOptions,
@@ -74,7 +83,8 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
       List<Aggregator> aggregators,
       ITimeRangeIterator timeRangeIterator,
       GroupByTimeParameter groupByTimeParameter,
-      long maxReturnSize) {
+      long maxReturnSize,
+      boolean canUseStatistics) {
     super(
         sourceId,
         context,
@@ -85,6 +95,16 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
         scanOrder.isAscending(),
         outputEndTime,
         groupByTimeParameter,
-        maxReturnSize);
+        maxReturnSize,
+        canUseStatistics);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(seriesScanUtil)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
+        + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes());
   }
 }

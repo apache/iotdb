@@ -260,5 +260,6 @@ keyWords
     | WRITE
     | AUDIT
     | OPTION
+    | INF
     | CURRENT_TIMESTAMP
     ;

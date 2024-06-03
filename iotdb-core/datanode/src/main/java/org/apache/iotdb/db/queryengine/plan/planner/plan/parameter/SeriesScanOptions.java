@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter;
 
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -56,12 +57,14 @@ public class SeriesScanOptions {
     this.allSensors = allSensors;
   }
 
-  public static SeriesScanOptions getDefaultSeriesScanOptions(PartialPath seriesPath) {
+  public static SeriesScanOptions getDefaultSeriesScanOptions(IFullPath seriesPath) {
     Builder builder = new Builder();
-    if (seriesPath instanceof AlignedPath) {
-      builder.withAllSensors(new HashSet<>(((AlignedPath) seriesPath).getMeasurementList()));
+    if (seriesPath instanceof AlignedFullPath) {
+      builder.withAllSensors(new HashSet<>(((AlignedFullPath) seriesPath).getMeasurementList()));
     } else {
-      builder.withAllSensors(new HashSet<>(Collections.singletonList(seriesPath.getMeasurement())));
+      builder.withAllSensors(
+          new HashSet<>(
+              Collections.singletonList(((NonAlignedFullPath) seriesPath).getMeasurement())));
     }
     return builder.build();
   }
@@ -86,7 +89,9 @@ public class SeriesScanOptions {
     this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, dataTTL);
   }
 
-  /** @return an updated filter concerning TTL */
+  /**
+   * @return an updated filter concerning TTL
+   */
   public static Filter updateFilterUsingTTL(Filter filter, long dataTTL) {
     if (dataTTL != Long.MAX_VALUE) {
       if (filter != null) {

@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.db.relational.sql.tree.Expression;
-import org.apache.iotdb.db.relational.sql.tree.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Node;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.relational.sql.util.AstUtil.preOrder;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil.preOrder;
 
 /** Extract expressions that are references to a given scope. */
 final class ScopeReferenceExtractor {

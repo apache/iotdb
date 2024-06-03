@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
+import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -45,6 +46,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.DateTimeUtils;
+import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 import org.apache.iotdb.external.api.IPropertiesLoader;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -418,6 +420,9 @@ public class IoTDBDescriptor {
                 "max_waiting_time_when_insert_blocked",
                 Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
 
+    String offHeapMemoryStr = System.getProperty("OFF_HEAP_MEMORY");
+    conf.setMaxOffHeapMemoryBytes(MemUtils.strToBytesCnt(offHeapMemoryStr));
+
     conf.setIoTaskQueueSizeForFlushing(
         Integer.parseInt(
             properties.getProperty(
@@ -704,6 +709,20 @@ public class IoTDBDescriptor {
                 "inner_compaction_task_selection_mods_file_threshold",
                 Long.toString(conf.getInnerCompactionTaskSelectionModsFileThreshold()))));
 
+    conf.setTtlCheckInterval(
+        Long.parseLong(
+            properties.getProperty(
+                "ttl_check_interval", Long.toString(conf.getTTlCheckInterval()))));
+
+    conf.setMaxExpiredTime(
+        Long.parseLong(
+            properties.getProperty("max_expired_time", Long.toString(conf.getMaxExpiredTime()))));
+
+    conf.setExpiredDataRatio(
+        Float.parseFloat(
+            properties.getProperty(
+                "expired_data_ratio", Float.toString(conf.getExpiredDataRatio()))));
+
     conf.setEnablePartialInsert(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -914,6 +933,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_clean_up_task_execution_delay_time_seconds",
                 String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
+    conf.setLoadWriteThroughputBytesPerSecond(
+        Double.parseDouble(
+            properties.getProperty(
+                "load_write_throughput_bytes_per_second",
+                String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
@@ -1052,6 +1076,11 @@ public class IoTDBDescriptor {
     loadIoTConsensusProps(properties);
   }
 
+  private void reloadConsensusProps(Properties properties) {
+    loadIoTConsensusProps(properties);
+    DataRegionConsensusImpl.reloadConsensusConfig();
+  }
+
   private void loadIoTConsensusProps(Properties properties) {
     conf.setMaxLogEntriesNumPerBatch(
         Integer.parseInt(
@@ -1132,6 +1161,10 @@ public class IoTDBDescriptor {
   }
 
   private void loadCompactionHotModifiedProps(Properties properties) throws InterruptedException {
+    boolean compactionTaskConfigHotModified = loadCompactionTaskHotModifiedProps(properties);
+    if (compactionTaskConfigHotModified) {
+      CompactionTaskManager.getInstance().incrCompactionConfigVersion();
+    }
     // hot load compaction schedule task manager configurations
     int compactionScheduleThreadNum =
         Integer.parseInt(
@@ -1150,35 +1183,118 @@ public class IoTDBDescriptor {
     if (restartCompactionTaskManager) {
       CompactionTaskManager.getInstance().restart();
     }
+
     // hot load compaction rate limit configurations
-
-    // update merge_write_throughput_mb_per_sec
-    conf.setCompactionWriteThroughputMbPerSec(
-        Integer.parseInt(
-            properties.getProperty(
-                "merge_write_throughput_mb_per_sec",
-                Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
-
-    // update compaction_read_operation_per_sec
-    conf.setCompactionReadOperationPerSec(
-        Integer.parseInt(
-            properties.getProperty(
-                "compaction_read_operation_per_sec",
-                Integer.toString(conf.getCompactionReadOperationPerSec()))));
-
-    // update compaction_read_throughput_mb_per_sec
-    conf.setCompactionReadThroughputMbPerSec(
-        Integer.parseInt(
-            properties.getProperty(
-                "compaction_read_throughput_mb_per_sec",
-                Integer.toString(conf.getCompactionReadThroughputMbPerSec()))));
-
     CompactionTaskManager.getInstance()
         .setCompactionReadOperationRate(conf.getCompactionReadOperationPerSec());
     CompactionTaskManager.getInstance()
         .setCompactionReadThroughputRate(conf.getCompactionReadThroughputMbPerSec());
     CompactionTaskManager.getInstance()
         .setWriteMergeRate(conf.getCompactionWriteThroughputMbPerSec());
+  }
+
+  private boolean loadCompactionTaskHotModifiedProps(Properties properties) {
+    boolean configModified = false;
+    // update merge_write_throughput_mb_per_sec
+    int compactionWriteThroughput = conf.getCompactionWriteThroughputMbPerSec();
+    conf.setCompactionWriteThroughputMbPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_write_throughput_mb_per_sec",
+                Integer.toString(conf.getCompactionWriteThroughputMbPerSec()))));
+    configModified |= compactionWriteThroughput != conf.getCompactionWriteThroughputMbPerSec();
+
+    // update compaction_read_operation_per_sec
+    int compactionReadOperation = conf.getCompactionReadOperationPerSec();
+    conf.setCompactionReadOperationPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_read_operation_per_sec",
+                Integer.toString(conf.getCompactionReadOperationPerSec()))));
+    configModified |= compactionReadOperation != conf.getCompactionReadOperationPerSec();
+
+    // update compaction_read_throughput_mb_per_sec
+    int compactionReadThroughput = conf.getCompactionReadThroughputMbPerSec();
+    conf.setCompactionReadThroughputMbPerSec(
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_read_throughput_mb_per_sec",
+                Integer.toString(conf.getCompactionReadThroughputMbPerSec()))));
+    configModified |= compactionReadThroughput != conf.getCompactionReadThroughputMbPerSec();
+
+    // update max_inner_compaction_candidate_file_num
+    int maxInnerCompactionCandidateFileNum = conf.getFileLimitPerInnerTask();
+    conf.setFileLimitPerInnerTask(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_inner_compaction_candidate_file_num",
+                Integer.toString(conf.getFileLimitPerInnerTask()))));
+    configModified |= maxInnerCompactionCandidateFileNum != conf.getFileLimitPerInnerTask();
+
+    // update target_compaction_file_size
+    long targetCompactionFilesize = conf.getTargetCompactionFileSize();
+    conf.setTargetCompactionFileSize(
+        Long.parseLong(
+            properties.getProperty(
+                "target_compaction_file_size", Long.toString(conf.getTargetCompactionFileSize()))));
+    configModified |= targetCompactionFilesize != conf.getTargetCompactionFileSize();
+
+    // update max_cross_compaction_candidate_file_num
+    int maxCrossCompactionCandidateFileNum = conf.getFileLimitPerCrossTask();
+    conf.setFileLimitPerCrossTask(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_cross_compaction_candidate_file_num",
+                Integer.toString(conf.getFileLimitPerCrossTask()))));
+    configModified |= maxCrossCompactionCandidateFileNum != conf.getFileLimitPerCrossTask();
+
+    // update max_cross_compaction_candidate_file_size
+    long maxCrossCompactionCandidateFileSize = conf.getMaxCrossCompactionCandidateFileSize();
+    conf.setMaxCrossCompactionCandidateFileSize(
+        Long.parseLong(
+            properties.getProperty(
+                "max_cross_compaction_candidate_file_size",
+                Long.toString(conf.getMaxCrossCompactionCandidateFileSize()))));
+    configModified |=
+        maxCrossCompactionCandidateFileSize != conf.getMaxCrossCompactionCandidateFileSize();
+
+    // update min_cross_compaction_unseq_file_level
+    int minCrossCompactionCandidateFileNum = conf.getMinCrossCompactionUnseqFileLevel();
+    conf.setMinCrossCompactionUnseqFileLevel(
+        Integer.parseInt(
+            properties.getProperty(
+                "min_cross_compaction_unseq_file_level",
+                Integer.toString(conf.getMinCrossCompactionUnseqFileLevel()))));
+    configModified |=
+        minCrossCompactionCandidateFileNum != conf.getMinCrossCompactionUnseqFileLevel();
+
+    // update inner_compaction_task_selection_disk_redundancy
+    double innerCompactionTaskSelectionDiskRedundancy =
+        conf.getInnerCompactionTaskSelectionDiskRedundancy();
+    conf.setInnerCompactionTaskSelectionDiskRedundancy(
+        Double.parseDouble(
+            properties.getProperty(
+                "inner_compaction_task_selection_disk_redundancy",
+                Double.toString(conf.getInnerCompactionTaskSelectionDiskRedundancy()))));
+    configModified |=
+        (Math.abs(
+                innerCompactionTaskSelectionDiskRedundancy
+                    - conf.getInnerCompactionTaskSelectionDiskRedundancy())
+            > 0.001);
+
+    // update inner_compaction_task_selection_mods_file_threshold
+    long innerCompactionTaskSelectionModsFileThreshold =
+        conf.getInnerCompactionTaskSelectionModsFileThreshold();
+    conf.setInnerCompactionTaskSelectionModsFileThreshold(
+        Long.parseLong(
+            properties.getProperty(
+                "inner_compaction_task_selection_mods_file_threshold",
+                Long.toString(conf.getInnerCompactionTaskSelectionModsFileThreshold()))));
+    configModified |=
+        innerCompactionTaskSelectionModsFileThreshold
+            != conf.getInnerCompactionTaskSelectionModsFileThreshold();
+
+    return configModified;
   }
 
   private boolean loadCompactionThreadCountHotModifiedProps(Properties properties) {
@@ -1249,18 +1365,6 @@ public class IoTDBDescriptor {
     conf.setEnableCrossSpaceCompaction(newConfigEnableCrossSpaceCompaction);
     conf.setEnableSeqSpaceCompaction(newConfigEnableSeqSpaceCompaction);
     conf.setEnableUnseqSpaceCompaction(newConfigEnableUnseqSpaceCompaction);
-
-    conf.setInnerCompactionTaskSelectionDiskRedundancy(
-        Double.parseDouble(
-            properties.getProperty(
-                "inner_compaction_task_selection_disk_redundancy",
-                Double.toString(conf.getInnerCompactionTaskSelectionDiskRedundancy()))));
-
-    conf.setInnerCompactionTaskSelectionModsFileThreshold(
-        Long.parseLong(
-            properties.getProperty(
-                "inner_compaction_task_selection_mods_file_threshold",
-                Long.toString(conf.getInnerCompactionTaskSelectionModsFileThreshold()))));
   }
 
   private void loadWALHotModifiedProps(Properties properties) {
@@ -1700,6 +1804,22 @@ public class IoTDBDescriptor {
                   "load_clean_up_task_execution_delay_time_seconds",
                   String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
 
+      conf.setLoadWriteThroughputBytesPerSecond(
+          Double.parseDouble(
+              properties.getProperty(
+                  "load_write_throughput_bytes_per_second",
+                  String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
+
+      // update pipe config
+      commonDescriptor
+          .getConfig()
+          .setPipeAllSinksRateLimitBytesPerSecond(
+              Double.parseDouble(
+                  properties.getProperty(
+                      "pipe_all_sinks_rate_limit_bytes_per_second",
+                      String.valueOf(
+                          commonDescriptor.getConfig().getPipeAllSinksRateLimitBytesPerSecond()))));
+
       // update merge_threshold_of_explain_analyze
       conf.setMergeThresholdOfExplainAnalyze(
           Integer.parseInt(
@@ -1707,6 +1827,8 @@ public class IoTDBDescriptor {
                   "merge_threshold_of_explain_analyze",
                   String.valueOf(conf.getMergeThresholdOfExplainAnalyze()))));
 
+      // update Consensus config
+      reloadConsensusProps(properties);
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
@@ -2211,8 +2333,10 @@ public class IoTDBDescriptor {
       case BOOLEAN:
         return conf.getDefaultBooleanEncoding();
       case INT32:
+      case DATE:
         return conf.getDefaultInt32Encoding();
       case INT64:
+      case TIMESTAMP:
         return conf.getDefaultInt64Encoding();
       case FLOAT:
         return conf.getDefaultFloatEncoding();

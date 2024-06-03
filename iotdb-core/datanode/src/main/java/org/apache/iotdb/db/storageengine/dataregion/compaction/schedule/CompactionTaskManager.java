@@ -32,9 +32,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
@@ -53,6 +50,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool tPro queue and run all compaction tasks. */
 @SuppressWarnings("squid:S6548")
@@ -100,6 +98,7 @@ public class CompactionTaskManager implements IService {
               : config.getCompactionReadThroughputMbPerSec() * 1024.0 * 1024.0);
 
   private volatile boolean init = false;
+  private AtomicLong compactionConfigVersion = new AtomicLong(0);
 
   public static CompactionTaskManager getInstance() {
     return INSTANCE;
@@ -107,6 +106,14 @@ public class CompactionTaskManager implements IService {
 
   public boolean isStopAllCompactionWorker() {
     return stopAllCompactionWorker;
+  }
+
+  public long getCurrentCompactionConfigVersion() {
+    return compactionConfigVersion.get();
+  }
+
+  public void incrCompactionConfigVersion() {
+    this.compactionConfigVersion.incrementAndGet();
   }
 
   @Override
@@ -249,7 +256,8 @@ public class CompactionTaskManager implements IService {
     if (init
         && !candidateCompactionTaskQueue.contains(compactionTask)
         && !isTaskRunning(compactionTask)
-        && compactionTask.setSourceFilesToCompactionCandidate()) {
+        && compactionTask.setSourceFilesToCompactionCandidate()
+        && compactionTask.getCompactionConfigVersion() >= getCurrentCompactionConfigVersion()) {
       candidateCompactionTaskQueue.put(compactionTask);
       return true;
     }
@@ -275,8 +283,8 @@ public class CompactionTaskManager implements IService {
     return compactionReadOperationRateLimiter;
   }
 
-  public void setWriteMergeRate(final double throughoutMbPerSec) {
-    setRate(mergeWriteRateLimiter, throughoutMbPerSec * 1024.0 * 1024.0);
+  public void setWriteMergeRate(final double throughputMbPerSec) {
+    setRate(mergeWriteRateLimiter, throughputMbPerSec * 1024.0 * 1024.0);
   }
 
   public void setCompactionReadOperationRate(final double readOperationPerSec) {
@@ -288,7 +296,7 @@ public class CompactionTaskManager implements IService {
   }
 
   private void setRate(RateLimiter rateLimiter, double rate) {
-    // if throughout = 0, disable rate limiting
+    // if throughput = 0, disable rate limiting
     if (rate <= 0) {
       rate = Double.MAX_VALUE;
     }
@@ -384,25 +392,10 @@ public class CompactionTaskManager implements IService {
     List<AbstractCompactionTask> waitingTaskList =
         this.candidateCompactionTaskQueue.getAllElementAsList();
     for (AbstractCompactionTask task : waitingTaskList) {
-      if (task instanceof InnerSpaceCompactionTask) {
-        statistic
-            .computeIfAbsent(
-                task.isInnerSeqTask()
-                    ? CompactionTaskType.INNER_SEQ
-                    : CompactionTaskType.INNER_UNSEQ,
-                x -> new EnumMap<>(CompactionTaskStatus.class))
-            .compute(CompactionTaskStatus.WAITING, (k, v) -> v == null ? 1 : v + 1);
-      } else if (task instanceof CrossSpaceCompactionTask) {
-        statistic
-            .computeIfAbsent(
-                CompactionTaskType.CROSS, x -> new EnumMap<>(CompactionTaskStatus.class))
-            .compute(CompactionTaskStatus.WAITING, (k, v) -> v == null ? 1 : v + 1);
-      } else if (task instanceof InsertionCrossSpaceCompactionTask) {
-        statistic
-            .computeIfAbsent(
-                CompactionTaskType.INSERTION, x -> new EnumMap<>(CompactionTaskStatus.class))
-            .compute(CompactionTaskStatus.WAITING, (k, v) -> v == null ? 1 : v + 1);
-      }
+      statistic
+          .computeIfAbsent(
+              task.getCompactionTaskType(), x -> new EnumMap<>(CompactionTaskStatus.class))
+          .compute(CompactionTaskStatus.WAITING, (k, v) -> v == null ? 1 : v + 1);
     }
   }
 
@@ -410,25 +403,10 @@ public class CompactionTaskManager implements IService {
       Map<CompactionTaskType, Map<CompactionTaskStatus, Integer>> statistic) {
     List<AbstractCompactionTask> runningTaskList = this.getRunningCompactionTaskList();
     for (AbstractCompactionTask task : runningTaskList) {
-      if (task instanceof InnerSpaceCompactionTask) {
-        statistic
-            .computeIfAbsent(
-                task.isInnerSeqTask()
-                    ? CompactionTaskType.INNER_SEQ
-                    : CompactionTaskType.INNER_UNSEQ,
-                x -> new EnumMap<>(CompactionTaskStatus.class))
-            .compute(CompactionTaskStatus.RUNNING, (k, v) -> v == null ? 1 : v + 1);
-      } else if (task instanceof CrossSpaceCompactionTask) {
-        statistic
-            .computeIfAbsent(
-                CompactionTaskType.CROSS, x -> new EnumMap<>(CompactionTaskStatus.class))
-            .compute(CompactionTaskStatus.RUNNING, (k, v) -> v == null ? 1 : v + 1);
-      } else if (task instanceof InsertionCrossSpaceCompactionTask) {
-        statistic
-            .computeIfAbsent(
-                CompactionTaskType.INSERTION, x -> new EnumMap<>(CompactionTaskStatus.class))
-            .compute(CompactionTaskStatus.RUNNING, (k, v) -> v == null ? 1 : v + 1);
-      }
+      statistic
+          .computeIfAbsent(
+              task.getCompactionTaskType(), x -> new EnumMap<>(CompactionTaskStatus.class))
+          .compute(CompactionTaskStatus.RUNNING, (k, v) -> v == null ? 1 : v + 1);
     }
   }
 

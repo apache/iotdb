@@ -136,7 +136,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     return schemaRegion.getSchemaRegionStatistics().getSeriesNumber(true);
   }
 
-  private String mapToString(Map<String, String> map) {
+  public static String mapToString(Map<String, String> map) {
     if (map == null || map.isEmpty()) {
       return null;
     }

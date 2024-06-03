@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.driver;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
-import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
+import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +32,7 @@ import java.util.List;
 public class DataDriverContext extends DriverContext {
 
   // it will be set to null, after being merged into Parent FIContext
-  private List<PartialPath> paths;
+  private List<IFullPath> paths;
   // it will be set to null, after QueryDataSource being inited
   private List<DataSourceOperator> sourceOperators;
 
@@ -48,7 +48,7 @@ public class DataDriverContext extends DriverContext {
     this.sourceOperators = new ArrayList<>();
   }
 
-  public void addPath(PartialPath path) {
+  public void addPath(IFullPath path) {
     this.paths.add(path);
   }
 
@@ -56,7 +56,7 @@ public class DataDriverContext extends DriverContext {
     this.sourceOperators.add(sourceOperator);
   }
 
-  public List<PartialPath> getPaths() {
+  public List<IFullPath> getPaths() {
     return paths;
   }
 
@@ -69,7 +69,7 @@ public class DataDriverContext extends DriverContext {
     return getFragmentInstanceContext().getDataRegion();
   }
 
-  public QueryDataSource getSharedQueryDataSource() throws QueryProcessException {
+  public IQueryDataSource getSharedQueryDataSource() throws QueryProcessException {
     return getFragmentInstanceContext().getSharedQueryDataSource();
   }
 

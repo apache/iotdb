@@ -29,7 +29,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
@@ -80,7 +79,7 @@ public class SingleSeriesCompactionExecutor {
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
       CompactionTsFileWriter fileWriter,
       TsFileResource targetResource) {
-    this.device = new PlainDeviceID(series.getDevice());
+    this.device = series.getIDeviceID();
     this.series = series;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
@@ -98,7 +97,7 @@ public class SingleSeriesCompactionExecutor {
       CompactionTsFileWriter fileWriter,
       TsFileResource targetResource,
       CompactionTaskSummary summary) {
-    this.device = new PlainDeviceID(series.getDevice());
+    this.device = series.getIDeviceID();
     this.series = series;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
@@ -309,6 +308,8 @@ public class SingleSeriesCompactionExecutor {
   private void writeTimeAndValueToChunkWriter(TimeValuePair timeValuePair) {
     switch (chunkWriter.getDataType()) {
       case TEXT:
+      case BLOB:
+      case STRING:
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
         break;
       case FLOAT:
@@ -321,9 +322,11 @@ public class SingleSeriesCompactionExecutor {
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
         break;
       case INT64:
+      case TIMESTAMP:
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
         break;
       case INT32:
+      case DATE:
         chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
         break;
       default:

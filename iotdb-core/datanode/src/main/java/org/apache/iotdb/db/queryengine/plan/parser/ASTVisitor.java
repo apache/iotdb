@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimedQuota;
 import org.apache.iotdb.common.rpc.thrift.ThrottleType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -114,6 +115,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.literal.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.Literal;
@@ -211,6 +213,7 @@ import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.iotdb.trigger.api.enums.TriggerType;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.io.BaseEncoding;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -620,8 +623,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               new PartialPath(SqlConstant.getSingleRootArray()), orderByHeat);
     }
     if (ctx.timeseriesWhereClause() != null) {
+      if (ctx.timeConditionClause() != null) {
+        throw new SemanticException(
+            "TIMESERIES condition and TIME condition cannot be used at the same time.");
+      }
       SchemaFilter schemaFilter = parseTimeseriesWhereClause(ctx.timeseriesWhereClause());
       showTimeSeriesStatement.setSchemaFilter(schemaFilter);
+    }
+    if (ctx.timeConditionClause() != null) {
+      showTimeSeriesStatement.setTimeCondition(
+          parseWhereClause(ctx.timeConditionClause().whereClause()));
     }
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {
@@ -706,9 +717,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           new ShowDevicesStatement(new PartialPath(SqlConstant.getSingleRootArray()));
     }
     if (ctx.devicesWhereClause() != null) {
+      if (ctx.timeConditionClause() != null) {
+        throw new SemanticException(
+            "DEVICE condition and TIME condition cannot be used at the same time.");
+      }
       showDevicesStatement.setSchemaFilter(parseDevicesWhereClause(ctx.devicesWhereClause()));
     }
-
+    if (ctx.timeConditionClause() != null) {
+      showDevicesStatement.setTimeCondition(
+          parseWhereClause(ctx.timeConditionClause().whereClause()));
+    }
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {
         showDevicesStatement.setLimit(parseLimitClause(ctx.rowPaginationClause().limitClause()));
@@ -756,26 +774,44 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       path = new PartialPath(SqlConstant.getSingleRootArray());
     }
-    return new CountDevicesStatement(path);
+    CountDevicesStatement statement = new CountDevicesStatement(path);
+    if (ctx.timeConditionClause() != null) {
+      WhereCondition timeCondition = parseWhereClause(ctx.timeConditionClause().whereClause());
+      statement.setTimeCondition(timeCondition);
+    }
+    return statement;
   }
 
   // Count TimeSeries ========================================================================
   @Override
   public Statement visitCountTimeseries(CountTimeseriesContext ctx) {
-    Statement statement;
+    Statement statement = null;
     PartialPath path;
     if (ctx.prefixPath() != null) {
       path = parsePrefixPath(ctx.prefixPath());
     } else {
       path = new PartialPath(SqlConstant.getSingleRootArray());
     }
+    if (ctx.timeConditionClause() != null) {
+      statement = new CountTimeSeriesStatement(path);
+      WhereCondition timeCondition = parseWhereClause(ctx.timeConditionClause().whereClause());
+      ((CountTimeSeriesStatement) statement).setTimeCondition(timeCondition);
+    }
     if (ctx.INTEGER_LITERAL() != null) {
+      if (ctx.timeConditionClause() != null) {
+        throw new SemanticException(
+            "TIME condition and GROUP BY LEVEL cannot be used at the same time.");
+      }
       int level = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
       statement = new CountLevelTimeSeriesStatement(path, level);
-    } else {
+    } else if (statement == null) {
       statement = new CountTimeSeriesStatement(path);
     }
     if (ctx.timeseriesWhereClause() != null) {
+      if (ctx.timeConditionClause() != null) {
+        throw new SemanticException(
+            "TIMESERIES condition and TIME condition cannot be used at the same time.");
+      }
       SchemaFilter schemaFilter = parseTimeseriesWhereClause(ctx.timeseriesWhereClause());
       if (statement instanceof CountTimeSeriesStatement) {
         ((CountTimeSeriesStatement) statement).setSchemaFilter(schemaFilter);
@@ -1734,7 +1770,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (constantContext.realLiteral() != null) {
       return new DoubleLiteral(text);
     } else if (constantContext.dateExpression() != null) {
-      return new LongLiteral(parseDateExpression(constantContext.dateExpression()));
+      return new LongLiteral(
+          parseDateExpression(
+              constantContext.dateExpression(),
+              CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
     } else {
       throw new SemanticException("Unsupported constant value in FILL: " + text);
     }
@@ -1852,13 +1891,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (timeIndex == -1 && rows.size() != 1) {
       throw new SemanticException("need timestamps when insert multi rows");
     }
-    List<String[]> valuesList = new ArrayList<>();
+    List<Object[]> valuesList = new ArrayList<>();
     long[] timeArray = new long[rows.size()];
     for (int i = 0, size = rows.size(); i < size; i++) {
       IoTDBSqlParser.RowContext row = rows.get(i);
       // parse timestamp
       long timestamp;
-      List<String> valueList = new ArrayList<>();
+      List<Object> valueList = new ArrayList<>();
       // using now() instead
       if (timeIndex == -1) {
         timestamp = CommonDateTimeUtils.currentTime();
@@ -1872,7 +1911,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       List<ConstantContext> values = row.constant();
       for (int j = 0, columnCount = values.size(); j < columnCount; j++) {
         if (j != timeIndex) {
-          if (values.get(j).STRING_LITERAL() != null) {
+          if (values.get(j).dateExpression() != null) {
+            valueList.add(
+                parseDateExpression(
+                    values.get(j).dateExpression(), CommonDateTimeUtils.currentTime()));
+          } else if (values.get(j).STRING_LITERAL() != null) {
             valueList.add(parseStringLiteralInInsertValue(values.get(j).getText()));
           } else {
             valueList.add(values.get(j).getText());
@@ -1880,7 +1923,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         }
       }
 
-      valuesList.add(valueList.toArray(new String[0]));
+      valuesList.add(valueList.toArray(new Object[0]));
     }
     insertStatement.setTimes(timeArray);
     insertStatement.setValuesList(valuesList);
@@ -2091,7 +2134,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   // Literals ========================================================================
 
-  public long parseDateFormat(String timestampStr) {
+  public long parseDateTimeFormat(String timestampStr) {
     if (timestampStr == null || "".equals(timestampStr.trim())) {
       throw new SemanticException("input timestamp cannot be empty");
     }
@@ -2110,7 +2153,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  public long parseDateFormat(String timestampStr, long currentTime) {
+  public long parseDateTimeFormat(String timestampStr, long currentTime) {
     if (timestampStr == null || "".equals(timestampStr.trim())) {
       throw new SemanticException("input timestamp cannot be empty");
     }
@@ -2498,8 +2541,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitSetTTL(IoTDBSqlParser.SetTTLContext ctx) {
     SetTTLStatement setTTLStatement = new SetTTLStatement();
     PartialPath path = parsePrefixPath(ctx.prefixPath());
-    long ttl = Long.parseLong(ctx.INTEGER_LITERAL().getText());
-    setTTLStatement.setDatabasePath(path);
+
+    String ttlStr =
+        ctx.INTEGER_LITERAL() != null ? ctx.INTEGER_LITERAL().getText() : ctx.INF().getText();
+    long ttl =
+        ttlStr.equalsIgnoreCase(IoTDBConstant.TTL_INFINITE)
+            ? Long.MAX_VALUE
+            : Long.parseLong(ttlStr);
+    setTTLStatement.setPath(path);
     setTTLStatement.setTTL(ttl);
     return setTTLStatement;
   }
@@ -2508,18 +2557,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitUnsetTTL(IoTDBSqlParser.UnsetTTLContext ctx) {
     UnSetTTLStatement unSetTTLStatement = new UnSetTTLStatement();
     PartialPath partialPath = parsePrefixPath(ctx.prefixPath());
-    unSetTTLStatement.setDatabasePath(partialPath);
+    unSetTTLStatement.setPath(partialPath);
     return unSetTTLStatement;
-  }
-
-  @Override
-  public Statement visitShowTTL(IoTDBSqlParser.ShowTTLContext ctx) {
-    ShowTTLStatement showTTLStatement = new ShowTTLStatement();
-    for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
-      PartialPath partialPath = parsePrefixPath(prefixPathContext);
-      showTTLStatement.addPathPatterns(partialPath);
-    }
-    return showTTLStatement;
   }
 
   @Override
@@ -3025,7 +3064,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (constantContext.STRING_LITERAL() != null) {
       return parseStringLiteral(text);
     } else if (constantContext.dateExpression() != null) {
-      return String.valueOf(parseDateExpression(constantContext.dateExpression()));
+      return String.valueOf(
+          parseDateExpression(
+              constantContext.dateExpression(),
+              CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
     } else {
       throw new IllegalArgumentException("Unsupported constant value: " + text);
     }
@@ -3041,9 +3083,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return new ConstantOperand(TSDataType.INT64, text);
     } else if (constantContext.realLiteral() != null) {
       return parseRealLiteral(text);
+    } else if (constantContext.BINARY_LITERAL() != null) {
+      BinaryLiteral binaryLiteral = new BinaryLiteral(text);
+      return new ConstantOperand(
+          TSDataType.BLOB, BaseEncoding.base16().encode(binaryLiteral.getValues()));
     } else if (constantContext.dateExpression() != null) {
       return new ConstantOperand(
-          TSDataType.INT64, String.valueOf(parseDateExpression(constantContext.dateExpression())));
+          TSDataType.INT64,
+          String.valueOf(
+              parseDateExpression(
+                  constantContext.dateExpression(),
+                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision())));
     } else {
       throw new SemanticException("Unsupported constant operand: " + text);
     }
@@ -3064,14 +3114,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
    *
    * <p>eg. now() + 1d - 2h
    */
-  private Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx) {
+  public Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx, String precision) {
     long time;
-    time = parseDateFormat(ctx.getChild(0).getText());
+    time = parseDateTimeFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
-        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+        time +=
+            DateTimeUtils.convertDurationStrToLong(
+                time, ctx.getChild(i + 1).getText(), precision, false);
       } else {
-        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+        time -=
+            DateTimeUtils.convertDurationStrToLong(
+                time, ctx.getChild(i + 1).getText(), precision, false);
       }
     }
     return time;
@@ -3079,7 +3133,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx, long currentTime) {
     long time;
-    time = parseDateFormat(ctx.getChild(0).getText(), currentTime);
+    time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
         time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
@@ -3104,7 +3158,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.dateExpression() != null) {
       return parseDateExpression(ctx.dateExpression(), currentTime);
     } else {
-      return parseDateFormat(ctx.datetimeLiteral().getText(), currentTime);
+      return parseDateTimeFormat(ctx.datetimeLiteral().getText(), currentTime);
     }
   }
 

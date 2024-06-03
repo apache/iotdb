@@ -28,7 +28,7 @@ import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -63,7 +63,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   public PartialPath() {}
 
   public PartialPath(IDeviceID device) throws IllegalPathException {
-    this(((PlainDeviceID) device).toStringID());
+    this(device.toString());
   }
 
   /**
@@ -86,7 +86,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   public PartialPath(IDeviceID device, String measurement) throws IllegalPathException {
-    this(((PlainDeviceID) device).toStringID(), measurement);
+    this(device.toString(), measurement);
   }
 
   public PartialPath(String device, String measurement) throws IllegalPathException {
@@ -95,7 +95,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     this.fullPath = getFullPath();
   }
 
-  /** @param partialNodes nodes of a time series path */
+  /**
+   * @param partialNodes nodes of a time series path
+   */
   public PartialPath(String[] partialNodes) {
     nodes = partialNodes;
   }
@@ -320,6 +322,17 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    */
   public boolean matchFullPath(PartialPath rPath) {
     return matchPath(rPath.getNodes(), 0, 0, false, false);
+  }
+
+  public boolean matchFullPath(IDeviceID deviceID, String measurement) {
+    // TODO change this way
+    PartialPath devicePath;
+    try {
+      devicePath = new PartialPath(deviceID.toString());
+    } catch (IllegalPathException e) {
+      throw new RuntimeException(e);
+    }
+    return matchPath(devicePath.concatNode(measurement).getNodes(), 0, 0, false, false);
   }
 
   /**
@@ -623,24 +636,26 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     boolean[] matchIndex = new boolean[thisLength];
     matchIndex[0] = true; // "root" must match "root"
 
-    // dp[i][j] means if nodes[0:i] matches prefixFullPath[0:j]
+    // dp[i][j] means if prefixFullPath[0:i] matches nodes[0:j]
     // for example: "root.**.d1.**" intersect "root.sg1.d1(.**)"
-    // dp[i][j] = (nodes[i]=="**"&&dp[i][j-1]) || (nodes[i] matches prefixFullPath[j]&&dp[i-1][j-1])
+    // dp[i][j] = (nodes[j]=="**"&&dp[i][j-1]) || (nodes[j] matches prefixFullPath[i]&&dp[i-1][j-1])
     // 1 0 0 0 |→| 1 0 0 0 |→| 1 0 0 0
     // 0 0 0 0 |↓| 0 1 0 0 |→| 0 1 0 0
     // 0 0 0 0 |↓| 0 0 0 0 |↓| 0 1 1 0
     // Since the derivation of the next row depends only on the previous row, the calculation can
     // be performed using a one-dimensional array named "matchIndex"
     for (int i = 1; i < prefixFullPath.length; i++) {
-      for (int j = thisLength - 1; j >= 1; j--) {
+      boolean[] newMatchIndex = new boolean[thisLength];
+      for (int j = 1; j < nodes.length; j++) {
         if (nodes[j].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-          matchIndex[j] = matchIndex[j] || matchIndex[j - 1];
+          newMatchIndex[j] = matchIndex[j] || matchIndex[j - 1];
         } else if (PathPatternUtil.isNodeMatch(nodes[j], prefixFullPath[i])) {
-          matchIndex[j] = matchIndex[j - 1];
+          newMatchIndex[j] = matchIndex[j - 1];
         } else {
-          matchIndex[j] = false;
+          newMatchIndex[j] = false;
         }
       }
+      matchIndex = newMatchIndex;
     }
     // Scan in reverse order to construct the result set.
     // The structure of the result set is prefixFullPath+remaining nodes. 【E.g.root.sg1.d1 + **】
@@ -731,19 +746,38 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   @Override
-  public String getDevice() {
+  public IDeviceID getIDeviceID() {
     if (device != null) {
       return device;
     } else {
       if (nodes.length == 1) {
-        return "";
+        device = Factory.DEFAULT_FACTORY.create("");
+        return device;
       }
       StringBuilder s = new StringBuilder(nodes[0]);
       for (int i = 1; i < nodes.length - 1; i++) {
         s.append(TsFileConstant.PATH_SEPARATOR);
         s.append(nodes[i]);
       }
-      device = s.toString();
+      device = Factory.DEFAULT_FACTORY.create(s.toString());
+    }
+    return device;
+  }
+
+  /** This PartialPath represents for full device path */
+  public IDeviceID getIDeviceIDAsFullDevice() {
+    if (device != null) {
+      return device;
+    } else {
+      if (nodes.length == 1) {
+        return Factory.DEFAULT_FACTORY.create("");
+      }
+      StringBuilder s = new StringBuilder(nodes[0]);
+      for (int i = 1; i < nodes.length; i++) {
+        s.append(TsFileConstant.PATH_SEPARATOR);
+        s.append(nodes[i]);
+      }
+      device = Factory.DEFAULT_FACTORY.create(s.toString());
     }
     return device;
   }
@@ -822,7 +856,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   @TestOnly
   public Path toTSFilePath() {
-    return new Path(getDevice(), getMeasurement(), true);
+    return new Path(getIDeviceID(), getMeasurement(), true);
   }
 
   public static List<String> toStringList(List<PartialPath> pathList) {
@@ -914,13 +948,26 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     }
     partialPath.nodes = nodes;
     partialPath.setMeasurement(path.getMeasurement());
-    partialPath.device = path.getDevice();
+    partialPath.device = path.getIDeviceID();
     partialPath.fullPath = path.getFullPath();
     return partialPath;
   }
 
   public PartialPath transformToPartialPath() {
     return this;
+  }
+
+  /** Return true if the path ends with ** and no other nodes contain *. Otherwise, return false. */
+  public boolean isPrefixPath() {
+    if (nodes.length <= 0) {
+      return false;
+    }
+    for (int i = 0; i < nodes.length - 1; i++) {
+      if (nodes[i].equals(ONE_LEVEL_PATH_WILDCARD) || nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        return false;
+      }
+    }
+    return nodes[nodes.length - 1].equals(MULTI_LEVEL_PATH_WILDCARD);
   }
 
   /**

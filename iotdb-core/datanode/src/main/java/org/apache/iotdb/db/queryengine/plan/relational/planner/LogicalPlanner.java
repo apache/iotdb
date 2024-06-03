@@ -20,6 +20,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -32,9 +33,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Pru
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RelationalPlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SimplifyExpressions;
-import org.apache.iotdb.db.relational.sql.tree.Query;
-import org.apache.iotdb.db.relational.sql.tree.Statement;
-import org.apache.iotdb.db.relational.sql.tree.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Query;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Table;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -50,7 +51,6 @@ import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
-import static org.apache.tsfile.read.common.type.IntType.INT32;
 
 public class LogicalPlanner {
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanner.class);
@@ -59,16 +59,19 @@ public class LogicalPlanner {
   private final SymbolAllocator symbolAllocator = new SymbolAllocator();
   private final List<RelationalPlanOptimizer> relationalPlanOptimizers;
   private final Metadata metadata;
+  private final IPartitionFetcher partitionFetcher;
   private final WarningCollector warningCollector;
 
   public LogicalPlanner(
       MPPQueryContext context,
       Metadata metadata,
       SessionInfo sessionInfo,
+      IPartitionFetcher partitionFetcher,
       WarningCollector warningCollector) {
     this.context = context;
     this.metadata = metadata;
     this.sessionInfo = requireNonNull(sessionInfo, "session is null");
+    this.partitionFetcher = requireNonNull(partitionFetcher, "partitionFetcher is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
 
     this.relationalPlanOptimizers =
@@ -83,7 +86,9 @@ public class LogicalPlanner {
     PlanNode planNode = planStatement(analysis, analysis.getStatement());
 
     relationalPlanOptimizers.forEach(
-        optimizer -> optimizer.optimize(planNode, analysis, metadata, sessionInfo, context));
+        optimizer ->
+            optimizer.optimize(
+                planNode, analysis, metadata, partitionFetcher, sessionInfo, context));
 
     return new LogicalQueryPlan(context, planNode);
   }

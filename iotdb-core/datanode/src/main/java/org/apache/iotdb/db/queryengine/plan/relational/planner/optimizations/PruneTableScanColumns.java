@@ -16,6 +16,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -24,8 +25,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
-import org.apache.iotdb.db.relational.sql.tree.DefaultTraversalVisitor;
-import org.apache.iotdb.db.relational.sql.tree.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DefaultTraversalVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
 
@@ -39,6 +40,7 @@ public class PruneTableScanColumns implements RelationalPlanOptimizer {
       PlanNode planNode,
       Analysis analysis,
       Metadata metadata,
+      IPartitionFetcher partitionFetcher,
       SessionInfo sessionInfo,
       MPPQueryContext context) {
     return planNode.accept(new Rewriter(), new RewriterContext());

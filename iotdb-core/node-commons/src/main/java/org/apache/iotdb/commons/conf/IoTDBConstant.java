@@ -170,10 +170,6 @@ public class IoTDBConstant {
   public static final String QUERY_ID = "queryId";
   public static final String STATEMENT = "statement";
 
-  public static final String COLUMN_ROLE = "role";
-  public static final String COLUMN_USER = "user";
-  public static final String COLUMN_PRIVILEGE = "privilege";
-
   public static final String COLUMN_DATABASE = "database";
   public static final String COLUMN_TTL = "ttl";
 
@@ -349,6 +345,8 @@ public class IoTDBConstant {
   public static final String TIER_SEPARATOR = ";";
 
   public static final String OBJECT_STORAGE_DIR = "object_storage";
+
+  public static final String TTL_INFINITE = "INF";
 
   public static final String INTEGRATION_TEST_KILL_POINTS = "integrationTestKillPoints";
 }

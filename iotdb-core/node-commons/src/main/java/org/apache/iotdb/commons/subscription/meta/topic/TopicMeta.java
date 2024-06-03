@@ -50,7 +50,8 @@ public class TopicMeta {
     this.subscribedConsumerGroupIds = new HashSet<>();
   }
 
-  public TopicMeta(String topicName, long creationTime, Map<String, String> topicAttributes) {
+  public TopicMeta(
+      final String topicName, final long creationTime, final Map<String, String> topicAttributes) {
     this.topicName = topicName;
     this.creationTime = creationTime;
     this.config = new TopicConfig(topicAttributes);
@@ -80,12 +81,14 @@ public class TopicMeta {
     return config;
   }
 
-  /** @return true if the consumer group did not already subscribe this topic */
-  public boolean addSubscribedConsumerGroup(String consumerGroupId) {
+  /**
+   * @return true if the consumer group did not already subscribe this topic
+   */
+  public boolean addSubscribedConsumerGroup(final String consumerGroupId) {
     return subscribedConsumerGroupIds.add(consumerGroupId);
   }
 
-  public void removeSubscribedConsumerGroup(String consumerGroupId) {
+  public void removeSubscribedConsumerGroup(final String consumerGroupId) {
     subscribedConsumerGroupIds.remove(consumerGroupId);
   }
 
@@ -93,7 +96,7 @@ public class TopicMeta {
     return subscribedConsumerGroupIds;
   }
 
-  public boolean isSubscribedByConsumerGroup(String consumerGroupId) {
+  public boolean isSubscribedByConsumerGroup(final String consumerGroupId) {
     return subscribedConsumerGroupIds.contains(consumerGroupId);
   }
 
@@ -104,29 +107,29 @@ public class TopicMeta {
   ////////////////////////////////////// de/ser ////////////////////////////////
 
   public ByteBuffer serialize() throws IOException {
-    PublicBAOS byteArrayOutputStream = new PublicBAOS();
-    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
     serialize(outputStream);
     return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
   }
 
-  public void serialize(OutputStream outputStream) throws IOException {
+  public void serialize(final OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(topicName, outputStream);
     ReadWriteIOUtils.write(creationTime, outputStream);
 
     ReadWriteIOUtils.write(config.getAttribute().size(), outputStream);
-    for (Map.Entry<String, String> entry : config.getAttribute().entrySet()) {
+    for (final Map.Entry<String, String> entry : config.getAttribute().entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
 
     ReadWriteIOUtils.write(subscribedConsumerGroupIds.size(), outputStream);
-    for (String subscribedConsumerGroupID : subscribedConsumerGroupIds) {
+    for (final String subscribedConsumerGroupID : subscribedConsumerGroupIds) {
       ReadWriteIOUtils.write(subscribedConsumerGroupID, outputStream);
     }
   }
 
-  public static TopicMeta deserialize(InputStream inputStream) throws IOException {
+  public static TopicMeta deserialize(final InputStream inputStream) throws IOException {
     final TopicMeta topicMeta = new TopicMeta();
 
     topicMeta.topicName = ReadWriteIOUtils.readString(inputStream);
@@ -147,7 +150,7 @@ public class TopicMeta {
     return topicMeta;
   }
 
-  public static TopicMeta deserialize(ByteBuffer byteBuffer) {
+  public static TopicMeta deserialize(final ByteBuffer byteBuffer) {
     final TopicMeta topicMeta = new TopicMeta();
 
     topicMeta.topicName = ReadWriteIOUtils.readString(byteBuffer);
@@ -171,15 +174,17 @@ public class TopicMeta {
   /////////////////////////////// utilities ///////////////////////////////
 
   public Map<String, String> generateExtractorAttributes() {
-    Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> extractorAttributes = new HashMap<>();
     // disable meta sync
     extractorAttributes.put("source", "iotdb-source");
     extractorAttributes.put("inclusion", "data.insert");
     extractorAttributes.put("inclusion.exclusion", "data.delete");
     // path
-    extractorAttributes.putAll(config.getAttributesWithSourcePathOrPattern());
+    extractorAttributes.putAll(config.getAttributesWithPathOrPattern());
     // time
     extractorAttributes.putAll(config.getAttributesWithTimeRange(creationTime));
+    // realtime mode
+    extractorAttributes.putAll(config.getAttributesWithRealtimeMode());
     return extractorAttributes;
   }
 
@@ -187,8 +192,8 @@ public class TopicMeta {
     return config.getAttributesWithProcessorPrefix();
   }
 
-  public Map<String, String> generateConnectorAttributes(String consumerGroupId) {
-    Map<String, String> connectorAttributes = new HashMap<>();
+  public Map<String, String> generateConnectorAttributes(final String consumerGroupId) {
+    final Map<String, String> connectorAttributes = new HashMap<>();
     connectorAttributes.put("sink", "subscription-sink");
     connectorAttributes.put(PipeConnectorConstant.SINK_TOPIC_KEY, topicName);
     connectorAttributes.put(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY, consumerGroupId);
@@ -198,14 +203,14 @@ public class TopicMeta {
   ////////////////////////////////////// Object ////////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    TopicMeta that = (TopicMeta) obj;
+    final TopicMeta that = (TopicMeta) obj;
     return creationTime == that.creationTime
         && Objects.equals(topicName, that.topicName)
         && Objects.equals(config, that.config)

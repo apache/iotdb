@@ -440,10 +440,12 @@ public class PredicatePushDownTest {
   }
 
   private void checkPushDown(String sql, PlanNode rawPlan, PlanNode optPlan) {
-    OptimizationTestUtil.checkPushDown(new PredicatePushDown(), sql, rawPlan, optPlan);
+    OptimizationTestUtil.checkPushDown(
+        Collections.emptyList(), new PredicatePushDown(), sql, rawPlan, optPlan);
   }
 
   private void checkCannotPushDown(String sql, PlanNode rawPlan) {
-    OptimizationTestUtil.checkCannotPushDown(new PredicatePushDown(), sql, rawPlan);
+    OptimizationTestUtil.checkCannotPushDown(
+        Collections.emptyList(), new PredicatePushDown(), sql, rawPlan);
   }
 }

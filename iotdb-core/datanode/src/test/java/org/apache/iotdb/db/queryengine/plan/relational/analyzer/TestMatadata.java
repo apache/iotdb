@@ -28,11 +28,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFound
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
-import org.apache.iotdb.db.relational.sql.tree.Expression;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
@@ -283,7 +283,9 @@ public class TestMatadata implements Metadata {
       List<Expression> expressionList,
       List<String> attributeColumns) {
     return Arrays.asList(
-        new DeviceEntry(new StringArrayDeviceID("t1", "t2", "t3"), Arrays.asList("a1", "a2")));
+        new DeviceEntry(
+            new StringArrayDeviceID("root.testdb", "table1", "t1", "t2", "t3"),
+            Arrays.asList("a1", "a2")));
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

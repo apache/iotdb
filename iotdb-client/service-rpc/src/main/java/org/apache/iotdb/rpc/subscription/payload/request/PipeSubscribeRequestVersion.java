@@ -25,7 +25,7 @@ public enum PipeSubscribeRequestVersion {
 
   private final byte version;
 
-  PipeSubscribeRequestVersion(byte type) {
+  PipeSubscribeRequestVersion(final byte type) {
     this.version = type;
   }
 

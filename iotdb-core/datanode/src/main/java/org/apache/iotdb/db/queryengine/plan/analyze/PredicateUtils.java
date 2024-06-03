@@ -47,6 +47,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -281,7 +282,7 @@ public class PredicateUtils {
   }
 
   public static Filter convertPredicateToTimeFilter(
-      org.apache.iotdb.db.relational.sql.tree.Expression predicate) {
+      org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression predicate) {
     if (predicate == null) {
       return null;
     }
@@ -295,18 +296,19 @@ public class PredicateUtils {
       Expression predicate,
       List<String> allMeasurements,
       boolean isBuildPlanUseTemplate,
-      TypeProvider typeProvider) {
+      TypeProvider typeProvider,
+      ZoneId zoneId) {
     if (predicate == null) {
       return null;
     }
     return predicate.accept(
         new ConvertPredicateToFilterVisitor(),
         new ConvertPredicateToFilterVisitor.Context(
-            allMeasurements, isBuildPlanUseTemplate, typeProvider));
+            allMeasurements, isBuildPlanUseTemplate, typeProvider, zoneId));
   }
 
   public static Filter convertPredicateToFilter(
-      org.apache.iotdb.db.relational.sql.tree.Expression predicate,
+      org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression predicate,
       List<String> allMeasurements,
       Map<Symbol, ColumnSchema> schemaMap) {
     if (predicate == null) {
@@ -427,7 +429,7 @@ public class PredicateUtils {
   }
 
   public static boolean predicateCanPushIntoScan(
-      org.apache.iotdb.db.relational.sql.tree.Expression predicate) {
+      org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression predicate) {
     return new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
             .PredicatePushIntoScanChecker()
         .process(predicate, null);

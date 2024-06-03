@@ -1221,6 +1221,7 @@ public class MTreeBelowSGMemoryImpl {
       }
     };
   }
+
   // endregion
 
   // region interfaces for logical view
@@ -1331,6 +1332,7 @@ public class MTreeBelowSGMemoryImpl {
     }
     return result;
   }
+
   // endregion
 
   // region table device management

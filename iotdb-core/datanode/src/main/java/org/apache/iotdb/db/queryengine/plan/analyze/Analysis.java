@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySource;
@@ -292,12 +293,34 @@ public class Analysis implements IAnalysis {
   private Template deviceTemplate;
   // when deviceTemplate is not empty and all expressions in this query are templated measurements,
   // i.e. no aggregation and arithmetic expression
-  private boolean onlyQueryTemplateMeasurements = true;
+  private boolean noWhereAndAggregation = true;
   // if it is wildcard query in templated align by device query
   private boolean templateWildCardQuery;
   // all queried measurementList and schemaList in deviceTemplate.
   private List<String> measurementList;
   private List<IMeasurementSchema> measurementSchemaList;
+
+  // Used for regionScan
+  private Map<PartialPath, Boolean> devicePathToAlignedStatus;
+  private Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemas;
+
+  public void setDevicePathToAlignedStatus(Map<PartialPath, Boolean> devicePathToAlignedStatus) {
+    this.devicePathToAlignedStatus = devicePathToAlignedStatus;
+  }
+
+  public Map<PartialPath, Boolean> getDevicePathToAlignedStatus() {
+    return devicePathToAlignedStatus;
+  }
+
+  public void setDeviceToTimeseriesSchemas(
+      Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemas) {
+    this.deviceToTimeseriesSchemas = deviceToTimeseriesSchemas;
+  }
+
+  public Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>>
+      getDeviceToTimeseriesSchemas() {
+    return deviceToTimeseriesSchemas;
+  }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Used in optimizer
@@ -310,12 +333,21 @@ public class Analysis implements IAnalysis {
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
-    return dataPartition.getDataRegionReplicaSetWithTimeFilter(seriesPath.getDevice(), timefilter);
+    return dataPartition.getDataRegionReplicaSetWithTimeFilter(
+        seriesPath.getIDeviceID().toString(), timefilter);
+  }
+
+  public List<TRegionReplicaSet> getPartitionInfoByDevice(
+      PartialPath devicePath, Filter timefilter) {
+    return dataPartition.getDataRegionReplicaSetWithTimeFilter(
+        devicePath.getFullPath(), timefilter);
   }
 
   public TRegionReplicaSet getPartitionInfo(
       PartialPath seriesPath, TTimePartitionSlot tTimePartitionSlot) {
-    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), tTimePartitionSlot).get(0);
+    return dataPartition
+        .getDataRegionReplicaSet(seriesPath.getIDeviceID().toString(), tTimePartitionSlot)
+        .get(0);
   }
 
   /**
@@ -324,7 +356,7 @@ public class Analysis implements IAnalysis {
    */
   public List<List<TTimePartitionSlot>> getTimePartitionRange(
       PartialPath seriesPath, Filter timefilter) {
-    return dataPartition.getTimePartitionRange(seriesPath.getDevice(), timefilter);
+    return dataPartition.getTimePartitionRange(seriesPath.getIDeviceID().toString(), timefilter);
   }
 
   public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {
@@ -408,8 +440,8 @@ public class Analysis implements IAnalysis {
       return null;
     }
 
-    if (isAllDevicesInOneTemplate()
-        && (isOnlyQueryTemplateMeasurements() || expression instanceof TimeSeriesOperand)) {
+    if (allDevicesInOneTemplate()
+        && (noWhereAndAggregation() || expression instanceof TimeSeriesOperand)) {
       TimeSeriesOperand seriesOperand = (TimeSeriesOperand) expression;
       return deviceTemplate.getSchemaMap().get(seriesOperand.getPath().getMeasurement()).getType();
     }
@@ -892,7 +924,7 @@ public class Analysis implements IAnalysis {
   // All Queries Devices Set In One Template
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public boolean isAllDevicesInOneTemplate() {
+  public boolean allDevicesInOneTemplate() {
     return this.deviceTemplate != null;
   }
 
@@ -904,12 +936,12 @@ public class Analysis implements IAnalysis {
     this.deviceTemplate = template;
   }
 
-  public boolean isOnlyQueryTemplateMeasurements() {
-    return onlyQueryTemplateMeasurements;
+  public boolean noWhereAndAggregation() {
+    return noWhereAndAggregation;
   }
 
-  public void setOnlyQueryTemplateMeasurements(boolean onlyQueryTemplateMeasurements) {
-    this.onlyQueryTemplateMeasurements = onlyQueryTemplateMeasurements;
+  public void setNoWhereAndAggregation(boolean value) {
+    this.noWhereAndAggregation = value;
   }
 
   public List<String> getMeasurementList() {

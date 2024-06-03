@@ -61,6 +61,7 @@ public class IoTDBStatement implements Statement {
   private List<String> batchSQLList;
   private static final String NOT_SUPPORT_EXECUTE = "Not support execute";
   private static final String NOT_SUPPORT_EXECUTE_UPDATE = "Not support executeUpdate";
+
   /** Keep state so we can fail certain calls made after close(). */
   private boolean isClosed = false;
 
@@ -283,7 +284,8 @@ public class IoTDBStatement implements Statement {
                 execReq.timeout,
                 execResp.operationType,
                 execResp.getSgColumns(),
-                aliasColumn);
+                aliasColumn,
+                zoneId);
       } else {
         this.resultSet =
             new IoTDBJDBCResultSet(
@@ -299,7 +301,8 @@ public class IoTDBStatement implements Statement {
                 execResp.queryResult,
                 execResp.tracingInfo,
                 execReq.timeout,
-                execResp.moreData);
+                execResp.moreData,
+                zoneId);
       }
       return true;
     }
@@ -432,7 +435,8 @@ public class IoTDBStatement implements Statement {
               execReq.timeout,
               execResp.operationType,
               execResp.sgColumns,
-              aliasColumn);
+              aliasColumn,
+              zoneId);
     } else {
       this.resultSet =
           new IoTDBJDBCResultSet(
@@ -452,7 +456,8 @@ public class IoTDBStatement implements Statement {
               execResp.columns,
               execResp.sgColumns,
               aliasColumn,
-              execResp.moreData);
+              execResp.moreData,
+              zoneId);
     }
     return resultSet;
   }
@@ -576,8 +581,8 @@ public class IoTDBStatement implements Statement {
   @Override
   public void setMaxRows(int num) throws SQLException {
     checkConnection("setMaxRows");
-    if (num <= 0) {
-      throw new SQLException(String.format("maxRows %d must be > 0!", num));
+    if (num < 0) {
+      throw new SQLException(String.format("maxRows %d must be >= 0!", num));
     }
     this.maxRows = num;
   }

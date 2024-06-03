@@ -32,7 +32,9 @@ public interface ITimeRangeIterator {
   /** return the first time range by sorting order. */
   TimeRange getFirstTimeRange();
 
-  /** @return whether current iterator has next time range. */
+  /**
+   * @return whether current iterator has next time range.
+   */
   boolean hasNextTimeRange();
 
   /**

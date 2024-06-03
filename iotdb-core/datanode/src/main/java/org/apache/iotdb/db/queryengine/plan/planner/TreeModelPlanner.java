@@ -159,9 +159,16 @@ public class TreeModelPlanner implements IPlanner {
   public void setRedirectInfo(
       IAnalysis iAnalysis, TEndPoint localEndPoint, TSStatus tsstatus, TSStatusCode statusCode) {
     Analysis analysis = (Analysis) iAnalysis;
-    if (analysis.getStatement() instanceof InsertBaseStatement
+
+    // Get the inner statement of PipeEnrichedStatement
+    Statement statementToRedirect =
+        analysis.getStatement() instanceof PipeEnrichedStatement
+            ? ((PipeEnrichedStatement) analysis.getStatement()).getInnerStatement()
+            : analysis.getStatement();
+
+    if (statementToRedirect instanceof InsertBaseStatement
         && !analysis.isFinishQueryAfterAnalyze()) {
-      InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
+      InsertBaseStatement insertStatement = (InsertBaseStatement) statementToRedirect;
       List<TEndPoint> redirectNodeList = analysis.getRedirectNodeList();
       if (insertStatement instanceof InsertRowsStatement
           || insertStatement instanceof InsertMultiTabletsStatement) {

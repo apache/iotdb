@@ -39,7 +39,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -92,12 +92,13 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     Set<PartialPath> explicitDevicePatternList = new HashSet<>();
     int explicitDevicePatternCount = 0;
     for (PartialPath pattern : pathPatternList) {
-      if (!pattern.hasWildcard()) {
-        explicitPathList.add(pattern);
-      } else if (pattern.hasExplicitDevice()
+      if (withTemplate
+          && pattern.hasExplicitDevice()
           && templateManager.checkTemplateSetInfo(pattern) != null) {
         explicitDevicePatternList.add(pattern.getDevicePath());
         explicitDevicePatternCount++;
+      } else if (!pattern.hasWildcard()) {
+        explicitPathList.add(pattern);
       }
     }
 
@@ -358,7 +359,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
+    List<IMeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
     for (int i = 0; i < measurements.length; i++) {
       if (schemaList.get(i) == null) {
         indexOfMissingMeasurements.add(i);
@@ -384,7 +385,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
+    List<IMeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
     for (int i = 0, size = schemaList.size(); i < size; i++) {
       if (schemaList.get(i) == null) {
         indexOfMissingMeasurements.add(indexOfTargetMeasurements.get(i));

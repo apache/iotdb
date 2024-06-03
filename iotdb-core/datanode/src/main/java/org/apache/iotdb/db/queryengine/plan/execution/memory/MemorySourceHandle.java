@@ -28,6 +28,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -40,6 +41,9 @@ public class MemorySourceHandle implements ISourceHandle {
   private boolean hasNext;
 
   private static final TsBlockSerde serde = new TsBlockSerde();
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(MemorySourceHandle.class);
 
   public MemorySourceHandle(TsBlock result) {
     Validate.notNull(result, "the TsBlock should not be null when constructing MemorySourceHandle");
@@ -115,5 +119,10 @@ public class MemorySourceHandle implements ISourceHandle {
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
     // do nothing
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE;
   }
 }

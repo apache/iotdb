@@ -25,23 +25,19 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -295,13 +291,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                         FileCannotTransitToCompactingException.class,
                         innerSpaceCompactionTask::transitSourceFilesToMerging);
 
-                    FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
-                        Mockito.mock(FixedPriorityBlockingQueue.class);
-                    Mockito.when(mockQueue.take())
-                        .thenReturn(innerSpaceCompactionTask)
-                        .thenThrow(new InterruptedException());
-                    CompactionWorker worker = new CompactionWorker(0, mockQueue);
-                    worker.run();
+                    innerSpaceCompactionTask.resetCompactionCandidateStatusForAllSourceFiles();
+                    innerSpaceCompactionTask.handleTaskCleanup();
 
                     for (int i = 0; i < task.size(); i++) {
                       TsFileResource resource = task.get(i);
@@ -600,13 +591,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                         FileCannotTransitToCompactingException.class,
                         innerSpaceCompactionTask::transitSourceFilesToMerging);
 
-                    FixedPriorityBlockingQueue<AbstractCompactionTask> mockQueue =
-                        Mockito.mock(FixedPriorityBlockingQueue.class);
-                    Mockito.when(mockQueue.take())
-                        .thenReturn(innerSpaceCompactionTask)
-                        .thenThrow(new InterruptedException());
-                    CompactionWorker worker = new CompactionWorker(0, mockQueue);
-                    worker.run();
+                    innerSpaceCompactionTask.resetCompactionCandidateStatusForAllSourceFiles();
+                    innerSpaceCompactionTask.handleTaskCleanup();
 
                     for (int i = 0; i < task.size(); i++) {
                       TsFileResource resource = task.get(i);
@@ -684,7 +670,7 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     List<TsFileResource> resources = tsFileManager.getOrCreateSequenceListByTimePartition(0);
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(resources);
-    Assert.assertEquals(1, innerSpaceCompactionTasks.size());
+    Assert.assertEquals(3, innerSpaceCompactionTasks.size());
     mockModiFicationFile.remove();
   }
 

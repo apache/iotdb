@@ -58,6 +58,7 @@ public class ThriftConnection {
   protected IClientRPCService.Iface client;
   protected long sessionId;
   protected long statementId;
+  private ZoneId zoneId;
 
   public ThriftConnection(
       TEndPoint endPoint,
@@ -100,6 +101,7 @@ public class ThriftConnection {
       if (!transport.isOpen()) {
         transport.open();
       }
+      this.zoneId = zoneId;
     } catch (TTransportException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -172,7 +174,8 @@ public class ThriftConnection {
         execResp.isIgnoreTimeStamp(),
         timeout,
         execResp.moreData,
-        fetchSize);
+        fetchSize,
+        zoneId);
   }
 
   public void close() {

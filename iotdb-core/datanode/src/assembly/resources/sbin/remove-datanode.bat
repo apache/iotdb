@@ -18,6 +18,18 @@
 @REM
 
 @echo off
+
+IF "%~1"=="--help" (
+    echo The script will remove a DataNode.
+    echo Before removing a DataNode, ensure that the cluster has at least the number of data/schema replicas DataNodes.
+    echo Usage:
+    echo Remove the DataNode with datanode_id
+    echo ./sbin/remove-datanode.bat [datanode_id]
+    echo Remove the DataNode with address:port
+    echo ./sbin/remove-datanode.bat [dn_rpc_address:dn_rpc_port]
+    EXIT /B 0
+)
+
 echo ````````````````````````
 echo Starting to remove a DataNode
 echo ````````````````````````
@@ -77,7 +89,7 @@ set JAVA_OPTS=-ea^
 
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
-if EXIST %IOTDB_HOME%\lib (set CLASSPATH="%IOTDB_HOME%\lib\*") else set CLASSPATH="%IOTDB_HOME%\..\lib\*"
+if EXIST "%IOTDB_HOME%\lib" (set CLASSPATH="%IOTDB_HOME%\lib\*") else set CLASSPATH="%IOTDB_HOME%\..\lib\*"
 
 @REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
 set CLASSPATH=%CLASSPATH%;"%IOTDB_HOME%\lib\*"

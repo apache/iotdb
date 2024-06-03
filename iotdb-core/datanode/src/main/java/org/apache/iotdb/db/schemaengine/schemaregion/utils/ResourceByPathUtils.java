@@ -18,20 +18,18 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.utils;
 
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedWritableMemChunkGroup;
-import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -68,10 +66,10 @@ import static org.apache.iotdb.commons.path.AlignedPath.VECTOR_PLACEHOLDER;
  */
 public abstract class ResourceByPathUtils {
 
-  public static ResourceByPathUtils getResourceInstance(PartialPath path) {
-    if (path instanceof AlignedPath) {
+  public static ResourceByPathUtils getResourceInstance(IFullPath path) {
+    if (path instanceof AlignedFullPath) {
       return new AlignedResourceByPathUtils(path);
-    } else if (path instanceof MeasurementPath) {
+    } else if (path instanceof NonAlignedFullPath) {
       return new MeasurementResourceByPathUtils(path);
     }
     throw new UnsupportedOperationException("Should call exact sub class!");
@@ -89,29 +87,18 @@ public abstract class ResourceByPathUtils {
       throws QueryProcessException, IOException;
 
   public abstract List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context);
-
-  /** get modifications from a memtable. */
-  protected List<Modification> getModificationsForMemtable(
-      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable) {
-    List<Modification> modifications = new ArrayList<>();
-    boolean foundMemtable = false;
-    for (Pair<Modification, IMemTable> entry : modsToMemtable) {
-      if (foundMemtable || entry.right.equals(memTable)) {
-        modifications.add(entry.left);
-        foundMemtable = true;
-      }
-    }
-    return modifications;
-  }
+      RestorableTsFileIOWriter writer,
+      TsFileResource tsFileResource,
+      QueryContext context,
+      long timeLowerBound);
 }
 
 class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
-  AlignedPath partialPath;
+  AlignedFullPath alignedFullPath;
 
-  public AlignedResourceByPathUtils(PartialPath partialPath) {
-    this.partialPath = (AlignedPath) partialPath;
+  public AlignedResourceByPathUtils(IFullPath fullPath) {
+    this.alignedFullPath = (AlignedFullPath) fullPath;
   }
 
   /**
@@ -131,7 +118,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
     // init each value time series meta
     List<TimeseriesMetadata> valueTimeSeriesMetadataList = new ArrayList<>();
-    for (IMeasurementSchema valueChunkMetadata : (partialPath.getSchemaList())) {
+    for (IMeasurementSchema valueChunkMetadata : (alignedFullPath.getSchemaList())) {
       TimeseriesMetadata valueMetadata = new TimeseriesMetadata();
       valueMetadata.setDataSizeOfChunkMetaDataList(-1);
       valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementId());
@@ -140,7 +127,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       valueTimeSeriesMetadataList.add(valueMetadata);
     }
 
-    boolean[] exist = new boolean[partialPath.getSchemaList().size()];
+    boolean[] exist = new boolean[alignedFullPath.getSchemaList().size()];
     boolean modified = false;
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetadata;
@@ -196,7 +183,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       long timeLowerBound)
       throws QueryProcessException, IOException {
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
-    IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(partialPath);
+    IDeviceID deviceID = alignedFullPath.getDeviceId();
 
     // check If memtable contains this path
     if (!memTableMap.containsKey(deviceID)) {
@@ -205,7 +192,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     AlignedWritableMemChunk alignedMemChunk =
         ((AlignedWritableMemChunkGroup) memTableMap.get(deviceID)).getAlignedMemChunk();
     boolean containsMeasurement = false;
-    for (String measurement : partialPath.getMeasurementList()) {
+    for (String measurement : alignedFullPath.getMeasurementList()) {
       if (alignedMemChunk.containsMeasurement(measurement)) {
         containsMeasurement = true;
         break;
@@ -215,23 +202,30 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       return null;
     }
     // get sorted tv list is synchronized so different query can get right sorted list reference
-    TVList alignedTvListCopy = alignedMemChunk.getSortedTvListForQuery(partialPath.getSchemaList());
+    TVList alignedTvListCopy =
+        alignedMemChunk.getSortedTvListForQuery(alignedFullPath.getSchemaList());
     List<List<TimeRange>> deletionList = null;
     if (modsToMemtable != null) {
-      deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
+      deletionList =
+          ModificationUtils.constructDeletionList(
+              alignedFullPath.getDeviceId(),
+              alignedFullPath.getMeasurementList(),
+              memTable,
+              modsToMemtable,
+              timeLowerBound);
     }
     return new AlignedReadOnlyMemChunk(
         context, getMeasurementSchema(), alignedTvListCopy, deletionList);
   }
 
   public VectorMeasurementSchema getMeasurementSchema() {
-    List<String> measurementList = partialPath.getMeasurementList();
+    List<String> measurementList = alignedFullPath.getMeasurementList();
     TSDataType[] types = new TSDataType[measurementList.size()];
     TSEncoding[] encodings = new TSEncoding[measurementList.size()];
 
     for (int i = 0; i < measurementList.size(); i++) {
-      types[i] = partialPath.getSchemaList().get(i).getType();
-      encodings[i] = partialPath.getSchemaList().get(i).getEncodingType();
+      types[i] = alignedFullPath.getSchemaList().get(i).getType();
+      encodings[i] = alignedFullPath.getSchemaList().get(i).getEncodingType();
     }
     String[] array = new String[measurementList.size()];
     for (int i = 0; i < array.length; i++) {
@@ -242,52 +236,35 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
         array,
         types,
         encodings,
-        partialPath.getSchemaList().get(0).getCompressor());
-  }
-
-  private List<List<TimeRange>> constructDeletionList(
-      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound) {
-    List<List<TimeRange>> deletionList = new ArrayList<>();
-    for (String measurement : partialPath.getMeasurementList()) {
-      List<TimeRange> columnDeletionList = new ArrayList<>();
-      columnDeletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
-      for (Modification modification : getModificationsForMemtable(memTable, modsToMemtable)) {
-        if (modification instanceof Deletion) {
-          Deletion deletion = (Deletion) modification;
-          PartialPath fullPath = partialPath.concatNode(measurement);
-          if (deletion.getPath().matchFullPath(fullPath)
-              && deletion.getEndTime() > timeLowerBound) {
-            long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
-            columnDeletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
-          }
-        }
-      }
-      deletionList.add(TimeRange.sortAndMerge(columnDeletionList));
-    }
-    return deletionList;
+        alignedFullPath.getSchemaList().get(0).getCompressor());
   }
 
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
+      RestorableTsFileIOWriter writer,
+      TsFileResource tsFileResource,
+      QueryContext context,
+      long timeLowerBound) {
     List<List<Modification>> modifications =
-        context.getPathModifications(tsFileResource, partialPath);
+        context.getPathModifications(
+            tsFileResource, alignedFullPath.getDeviceId(), alignedFullPath.getMeasurementList());
 
     List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
     List<ChunkMetadata> timeChunkMetadataList =
-        writer.getVisibleMetadataList(partialPath.getIDeviceID(), "", partialPath.getSeriesType());
+        writer.getVisibleMetadataList(
+            alignedFullPath.getDeviceId(), AlignedFullPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR);
     List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
-    for (int i = 0; i < partialPath.getMeasurementList().size(); i++) {
+    for (int i = 0; i < alignedFullPath.getMeasurementList().size(); i++) {
       valueChunkMetadataList.add(
           writer.getVisibleMetadataList(
-              partialPath.getIDeviceID(),
-              partialPath.getMeasurementList().get(i),
-              partialPath.getSchemaList().get(i).getType()));
+              alignedFullPath.getDeviceId(),
+              alignedFullPath.getMeasurementList().get(i),
+              alignedFullPath.getSchemaList().get(i).getType()));
     }
 
     for (int i = 0; i < timeChunkMetadataList.size(); i++) {
       // only need time column
-      if (partialPath.getMeasurementList().isEmpty()) {
+      if (alignedFullPath.getMeasurementList().isEmpty()) {
         chunkMetadataList.add(
             new AlignedChunkMetadata(timeChunkMetadataList.get(i), Collections.emptyList()));
       } else {
@@ -307,17 +284,17 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
 
     ModificationUtils.modifyAlignedChunkMetaData(chunkMetadataList, modifications);
-    chunkMetadataList.removeIf(context::chunkNotSatisfy);
+    chunkMetadataList.removeIf(x -> x.getEndTime() < timeLowerBound);
     return new ArrayList<>(chunkMetadataList);
   }
 }
 
 class MeasurementResourceByPathUtils extends ResourceByPathUtils {
 
-  MeasurementPath partialPath;
+  NonAlignedFullPath fullPath;
 
-  protected MeasurementResourceByPathUtils(PartialPath partialPath) {
-    this.partialPath = (MeasurementPath) partialPath;
+  protected MeasurementResourceByPathUtils(IFullPath fullPath) {
+    this.fullPath = (NonAlignedFullPath) fullPath;
   }
 
   /**
@@ -328,8 +305,8 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
   public ITimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList) {
     TimeseriesMetadata timeSeriesMetadata = new TimeseriesMetadata();
-    timeSeriesMetadata.setMeasurementId(partialPath.getMeasurementSchema().getMeasurementId());
-    timeSeriesMetadata.setTsDataType(partialPath.getMeasurementSchema().getType());
+    timeSeriesMetadata.setMeasurementId(fullPath.getMeasurementSchema().getMeasurementId());
+    timeSeriesMetadata.setTsDataType(fullPath.getMeasurementSchema().getType());
     timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
 
     Statistics<? extends Serializable> seriesStatistics =
@@ -359,80 +336,55 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
       long timeLowerBound)
       throws QueryProcessException, IOException {
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
-    IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(partialPath.getDevicePath());
+    IDeviceID deviceID = fullPath.getDeviceId();
     // check If Memtable Contains this path
     if (!memTableMap.containsKey(deviceID)
-        || !memTableMap.get(deviceID).contains(partialPath.getMeasurement())) {
+        || !memTableMap.get(deviceID).contains(fullPath.getMeasurement())) {
       return null;
     }
     IWritableMemChunk memChunk =
-        memTableMap.get(deviceID).getMemChunkMap().get(partialPath.getMeasurement());
+        memTableMap.get(deviceID).getMemChunkMap().get(fullPath.getMeasurement());
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
     List<TimeRange> deletionList = null;
     if (modsToMemtable != null) {
-      deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
+      deletionList =
+          ModificationUtils.constructDeletionList(
+              fullPath.getDeviceId(),
+              fullPath.getMeasurement(),
+              memTable,
+              modsToMemtable,
+              timeLowerBound);
     }
     return new ReadOnlyMemChunk(
         context,
-        partialPath.getMeasurement(),
-        partialPath.getMeasurementSchema().getType(),
-        partialPath.getMeasurementSchema().getEncodingType(),
+        fullPath.getMeasurement(),
+        fullPath.getMeasurementSchema().getType(),
+        fullPath.getMeasurementSchema().getEncodingType(),
         chunkCopy,
-        partialPath.getMeasurementSchema().getProps(),
+        fullPath.getMeasurementSchema().getProps(),
         deletionList);
-  }
-  /**
-   * construct a deletion list from a memtable.
-   *
-   * @param memTable memtable
-   * @param timeLowerBound time watermark
-   */
-  private List<TimeRange> constructDeletionList(
-      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound) {
-    List<TimeRange> deletionList = new ArrayList<>();
-    deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
-    for (Modification modification : getModificationsForMemtable(memTable, modsToMemtable)) {
-      if (modification instanceof Deletion) {
-        Deletion deletion = (Deletion) modification;
-        if (deletion.getPath().matchFullPath(partialPath)
-            && deletion.getEndTime() > timeLowerBound) {
-          long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
-          deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
-        }
-      }
-    }
-    return TimeRange.sortAndMerge(deletionList);
-  }
-  /** get modifications from a memtable. */
-  @Override
-  protected List<Modification> getModificationsForMemtable(
-      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable) {
-    List<Modification> modifications = new ArrayList<>();
-    boolean foundMemtable = false;
-    for (Pair<Modification, IMemTable> entry : modsToMemtable) {
-      if (foundMemtable || entry.right.equals(memTable)) {
-        modifications.add(entry.left);
-        foundMemtable = true;
-      }
-    }
-    return modifications;
   }
 
   @Override
   public List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
-    List<Modification> modifications = context.getPathModifications(tsFileResource, partialPath);
+      RestorableTsFileIOWriter writer,
+      TsFileResource tsFileResource,
+      QueryContext context,
+      long timeLowerBound) {
+    List<Modification> modifications =
+        context.getPathModifications(
+            tsFileResource, fullPath.getDeviceId(), fullPath.getMeasurement());
 
     List<IChunkMetadata> chunkMetadataList =
         new ArrayList<>(
             writer.getVisibleMetadataList(
-                partialPath.getIDeviceID(),
-                partialPath.getMeasurement(),
-                partialPath.getSeriesType()));
+                fullPath.getDeviceId(),
+                fullPath.getMeasurement(),
+                fullPath.getMeasurementSchema().getType()));
 
     ModificationUtils.modifyChunkMetaData(chunkMetadataList, modifications);
-    chunkMetadataList.removeIf(context::chunkNotSatisfy);
+    chunkMetadataList.removeIf(x -> x.getEndTime() < timeLowerBound);
     return chunkMetadataList;
   }
 }

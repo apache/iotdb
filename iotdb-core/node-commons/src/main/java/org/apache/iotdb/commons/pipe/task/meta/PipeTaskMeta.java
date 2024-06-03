@@ -172,7 +172,7 @@ public class PipeTaskMeta {
 
   @Override
   public String toString() {
-    return "PipeTask{"
+    return "PipeTaskMeta{"
         + "progressIndex='"
         + progressIndex.get()
         + "', leaderNodeId="

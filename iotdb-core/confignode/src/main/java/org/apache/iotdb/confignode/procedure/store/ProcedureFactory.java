@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProce
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.SetTTLProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
@@ -228,6 +229,12 @@ public class ProcedureFactory implements IProcedureFactory {
       case PIPE_ENRICHED_AUTH_OPERATE_PROCEDURE:
         procedure = new AuthOperationProcedure(true);
         break;
+      case PIPE_ENRICHED_SET_TTL_PROCEDURE:
+        procedure = new SetTTLProcedure(true);
+        break;
+      case SET_TTL_PROCEDURE:
+        procedure = new SetTTLProcedure(false);
+        break;
       case CREATE_TOPIC_PROCEDURE:
         procedure = new CreateTopicProcedure();
         break;
@@ -366,6 +373,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.ALTER_LOGICAL_VIEW_PROCEDURE;
     } else if (procedure instanceof AuthOperationProcedure) {
       return ProcedureType.AUTH_OPERATE_PROCEDURE;
+    } else if (procedure instanceof SetTTLProcedure) {
+      return ProcedureType.SET_TTL_PROCEDURE;
     } else if (procedure instanceof CreateManyDatabasesProcedure) {
       return ProcedureType.CREATE_MANY_DATABASES_PROCEDURE;
     } else if (procedure instanceof NeverFinishProcedure) {

@@ -35,8 +35,9 @@ import java.util.Set;
 
 public interface ITimeIndex {
 
-  byte DEVICE_TIME_INDEX_TYPE = 1;
+  byte PLAIN_DEVICE_TIME_INDEX_TYPE = 1;
   byte FILE_TIME_INDEX_TYPE = 2;
+  byte ARRAY_DEVICE_TIME_INDEX_TYPE = 3;
 
   /**
    * serialize to outputStream
@@ -71,7 +72,9 @@ public interface ITimeIndex {
    */
   Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource);
 
-  /** @return whether end time is empty (Long.MIN_VALUE) */
+  /**
+   * @return whether end time is empty (Long.MIN_VALUE)
+   */
   boolean endTimeEmpty();
 
   /**
@@ -80,7 +83,9 @@ public interface ITimeIndex {
    */
   boolean stillLives(long ttlLowerBound);
 
-  /** @return Calculate file index ram size */
+  /**
+   * @return Calculate file index ram size
+   */
   long calculateRamSize();
 
   /**
@@ -194,6 +199,8 @@ public interface ITimeIndex {
    */
   boolean definitelyNotContains(IDeviceID device);
 
+  boolean isDeviceAlive(IDeviceID device, long ttl);
+
   /**
    * @return null if the deviceId doesn't exist, otherwise index 0 is startTime, index 1 is endTime
    */
@@ -205,7 +212,8 @@ public interface ITimeIndex {
   /**
    * Get TimeIndex Type
    *
-   * @return V012FileTimeIndex = 0, deviceTimeIndex = 1, fileTimeIndex = 2
+   * @return V012FileTimeIndex = 0, plainDeviceTimeIndex = 1, fileTimeIndex = 2,
+   *     arrayDeviceTimeIndex = 3
    */
   byte getTimeIndexType();
 

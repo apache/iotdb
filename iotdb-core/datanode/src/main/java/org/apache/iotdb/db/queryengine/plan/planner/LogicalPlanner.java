@@ -21,12 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.optimization.AggregationPushDown;
 import org.apache.iotdb.db.queryengine.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.optimization.PredicatePushDown;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLANNER;
@@ -35,7 +36,8 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGI
 public class LogicalPlanner {
 
   private final MPPQueryContext context;
-  private final List<PlanOptimizer> optimizers = Collections.singletonList(new PredicatePushDown());
+  private final List<PlanOptimizer> optimizers =
+      Arrays.asList(new PredicatePushDown(), new AggregationPushDown());
 
   public LogicalPlanner(MPPQueryContext context) {
     this.context = context;

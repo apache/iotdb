@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
@@ -30,13 +31,15 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 
+import org.apache.commons.lang3.Validate;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressionsWithMemoryCheck;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperandsWithMemoryCheck;
 import static org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
 
 public class ConcatDeviceAndBindSchemaForPredicateVisitor
@@ -53,7 +56,8 @@ public class ConcatDeviceAndBindSchemaForPredicateVisitor
     }
     List<List<Expression>> childExpressionsList = new ArrayList<>();
     cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
-    return reconstructFunctionExpressions(predicate, childExpressionsList);
+    return reconstructFunctionExpressionsWithMemoryCheck(
+        predicate, childExpressionsList, context.getQueryContext());
   }
 
   @Override
@@ -77,7 +81,8 @@ public class ConcatDeviceAndBindSchemaForPredicateVisitor
     }
 
     List<Expression> reconstructTimeSeriesOperands =
-        reconstructTimeSeriesOperands(predicate, nonViewPathList);
+        reconstructTimeSeriesOperandsWithMemoryCheck(
+            predicate, nonViewPathList, context.getQueryContext());
     for (MeasurementPath measurementPath : viewPathList) {
       Expression replacedExpression = transformViewPath(measurementPath, context.getSchemaTree());
       if (!(replacedExpression instanceof TimeSeriesOperand)) {
@@ -102,15 +107,23 @@ public class ConcatDeviceAndBindSchemaForPredicateVisitor
     return Collections.singletonList(constantOperand);
   }
 
-  public static class Context {
+  public static class Context implements QueryContextProvider {
     private final PartialPath devicePath;
     private final ISchemaTree schemaTree;
     private final boolean isWhere;
 
-    public Context(PartialPath devicePath, ISchemaTree schemaTree, boolean isWhere) {
+    private final MPPQueryContext queryContext;
+
+    public Context(
+        final PartialPath devicePath,
+        final ISchemaTree schemaTree,
+        final boolean isWhere,
+        final MPPQueryContext queryContext) {
       this.devicePath = devicePath;
       this.schemaTree = schemaTree;
       this.isWhere = isWhere;
+      Validate.notNull(queryContext, "QueryContext is null");
+      this.queryContext = queryContext;
     }
 
     public PartialPath getDevicePath() {
@@ -123,6 +136,11 @@ public class ConcatDeviceAndBindSchemaForPredicateVisitor
 
     public boolean isWhere() {
       return isWhere;
+    }
+
+    @Override
+    public MPPQueryContext getQueryContext() {
+      return queryContext;
     }
   }
 }

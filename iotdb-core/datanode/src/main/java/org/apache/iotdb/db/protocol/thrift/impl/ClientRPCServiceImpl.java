@@ -31,8 +31,9 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -83,6 +84,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Insert;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -104,8 +107,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSc
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
-import org.apache.iotdb.db.relational.sql.parser.SqlParser;
-import org.apache.iotdb.db.relational.sql.tree.Insert;
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -178,6 +179,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -327,7 +329,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 schemaFetcher,
                 req.getTimeout());
       } else {
-        org.apache.iotdb.db.relational.sql.tree.Statement s =
+        org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement s =
             relationSqlParser.createStatement(statement);
 
         if (s == null) {
@@ -744,26 +746,29 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     IMeasurementSchema measurementSchema = new MeasurementSchema(measurement, dataType);
     AbstractSeriesAggregationScanOperator operator;
-    PartialPath path;
+    IFullPath path;
     if (isAligned) {
       path =
-          new AlignedPath(
-              device,
+          new AlignedFullPath(
+              Factory.DEFAULT_FACTORY.create(device),
               Collections.singletonList(measurement),
               Collections.singletonList(measurementSchema));
       operator =
           new AlignedSeriesAggregationScanOperator(
               planNodeId,
-              (AlignedPath) path,
+              (AlignedFullPath) path,
               Ordering.ASC,
               scanOptionsBuilder.build(),
               driverContext.getOperatorContexts().get(0),
               Collections.singletonList(aggregator),
               initTimeRangeIterator(groupByTimeParameter, true, true),
               groupByTimeParameter,
-              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+              !TSDataType.BLOB.equals(dataType)
+                  || (!TAggregationType.LAST_VALUE.equals(aggregationType)
+                      && !TAggregationType.FIRST_VALUE.equals(aggregationType)));
     } else {
-      path = new MeasurementPath(device, measurement, measurementSchema);
+      path = new NonAlignedFullPath(Factory.DEFAULT_FACTORY.create(device), measurementSchema);
       operator =
           new SeriesAggregationScanOperator(
               planNodeId,
@@ -774,7 +779,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               Collections.singletonList(aggregator),
               initTimeRangeIterator(groupByTimeParameter, true, true),
               groupByTimeParameter,
-              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+              !TSDataType.BLOB.equals(dataType)
+                  || (!TAggregationType.LAST_VALUE.equals(aggregationType)
+                      && !TAggregationType.FIRST_VALUE.equals(aggregationType)));
     }
 
     try {

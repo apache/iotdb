@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -51,6 +52,7 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterR
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.TTLManager;
 import org.apache.iotdb.confignode.manager.TriggerManager;
 import org.apache.iotdb.confignode.manager.UDFManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
@@ -105,7 +107,7 @@ public class NodeManager {
   public static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatIntervalInMs();
 
   private final IManager configManager;
-  private final NodeInfo nodeInfo;
+  protected final NodeInfo nodeInfo;
 
   private final ReentrantLock removeConfigNodeLock;
 
@@ -240,7 +242,7 @@ public class NodeManager {
       runtimeConfiguration.setAllPipeInformation(
           getPipeManager().getPipePluginCoordinator().getPipePluginTable().getAllPipePluginMeta());
       runtimeConfiguration.setAllTTLInformation(
-          DataNodeRegisterResp.convertAllTTLInformation(getClusterSchemaManager().getAllTTLInfo()));
+          DataNodeRegisterResp.convertAllTTLInformation(getTTLManager().getAllTTL()));
       runtimeConfiguration.setTableInfo(
           getClusterSchemaManager().getAllTableInfoForDataNodeActivation());
       return runtimeConfiguration;
@@ -273,7 +275,11 @@ public class NodeManager {
       return resp;
     }
 
+    // Create a new DataNodeHeartbeatCache and force update NodeStatus
     int dataNodeId = nodeInfo.generateNextNodeId();
+    getLoadManager().getLoadCache().createNodeHeartbeatCache(NodeType.DataNode, dataNodeId);
+    // TODO: invoke a force heartbeat to update new DataNode's status immediately
+
     RegisterDataNodePlan registerDataNodePlan =
         new RegisterDataNodePlan(req.getDataNodeConfiguration());
     // Register new DataNode
@@ -299,8 +305,6 @@ public class NodeManager {
 
     // Adjust the maximum RegionGroup number of each Database
     getClusterSchemaManager().adjustMaxRegionGroupNum();
-
-    // TODO: Add a force heartbeat to update LoadCache immediately
 
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
     resp.setDataNodeId(
@@ -560,6 +564,10 @@ public class NodeManager {
 
     dataNodeInfoList.sort(Comparator.comparingInt(TDataNodeInfo::getDataNodeId));
     return dataNodeInfoList;
+  }
+
+  public int getDataNodeCpuCoreCount() {
+    return nodeInfo.getDataNodeTotalCpuCoreCount();
   }
 
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {
@@ -872,5 +880,9 @@ public class NodeManager {
 
   private UDFManager getUDFManager() {
     return configManager.getUDFManager();
+  }
+
+  private TTLManager getTTLManager() {
+    return configManager.getTTLManager();
   }
 }

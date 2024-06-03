@@ -89,6 +89,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -126,6 +127,7 @@ public class Session implements ISession {
   protected boolean useSSL;
   protected String trustStore;
   protected String trustStorePwd;
+
   /**
    * Timeout of query can be set by users. A negative number means using the default configuration
    * of server. And value 0 will disable the function of query timeout.
@@ -437,6 +439,7 @@ public class Session implements ISession {
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
     this.sqlDialect = builder.sqlDialect;
+    this.queryTimeoutInMs = builder.timeOut;
   }
 
   @Override
@@ -889,7 +892,7 @@ public class Session implements ISession {
   private SessionDataSet executeStatementMayRedirect(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      return defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
+      return getQuerySessionConnection().executeQueryStatement(sql, timeoutInMs);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
@@ -904,6 +907,25 @@ public class Session implements ISession {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
       }
     }
+  }
+
+  private SessionConnection getQuerySessionConnection() {
+    Optional<TEndPoint> endPoint =
+        availableNodes == null ? Optional.empty() : availableNodes.getQueryEndPoint();
+    if (!endPoint.isPresent() || endPointToSessionConnection == null) {
+      return defaultSessionConnection;
+    }
+    SessionConnection connection =
+        endPointToSessionConnection.computeIfAbsent(
+            endPoint.get(),
+            k -> {
+              try {
+                return constructSessionConnection(this, endPoint.get(), zoneId);
+              } catch (IoTDBConnectionException ex) {
+                return null;
+              }
+            });
+    return connection == null ? defaultSessionConnection : connection;
   }
 
   /**
@@ -2578,15 +2600,15 @@ public class Session implements ISession {
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
     try {
-      getSessionConnection(tablet.deviceId).insertTablet(request);
+      getSessionConnection(tablet.getDeviceId()).insertTablet(request);
     } catch (RedirectException e) {
-      handleRedirection(tablet.deviceId, e.getEndPoint());
+      handleRedirection(tablet.getDeviceId(), e.getEndPoint());
     } catch (IoTDBConnectionException e) {
       if (enableRedirection
           && !deviceIdToEndpoint.isEmpty()
-          && deviceIdToEndpoint.get(tablet.deviceId) != null) {
-        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(tablet.deviceId));
-        deviceIdToEndpoint.remove(tablet.deviceId);
+          && deviceIdToEndpoint.get(tablet.getDeviceId()) != null) {
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(tablet.getDeviceId()));
+        deviceIdToEndpoint.remove(tablet.getDeviceId());
 
         // reconnect with default connection
         try {
@@ -2626,15 +2648,15 @@ public class Session implements ISession {
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, true);
     try {
-      getSessionConnection(tablet.deviceId).insertTablet(request);
+      getSessionConnection(tablet.getDeviceId()).insertTablet(request);
     } catch (RedirectException e) {
-      handleRedirection(tablet.deviceId, e.getEndPoint());
+      handleRedirection(tablet.getDeviceId(), e.getEndPoint());
     } catch (IoTDBConnectionException e) {
       if (enableRedirection
           && !deviceIdToEndpoint.isEmpty()
-          && deviceIdToEndpoint.get(tablet.deviceId) != null) {
-        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(tablet.deviceId));
-        deviceIdToEndpoint.remove(tablet.deviceId);
+          && deviceIdToEndpoint.get(tablet.getDeviceId()) != null) {
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(tablet.getDeviceId()));
+        deviceIdToEndpoint.remove(tablet.getDeviceId());
 
         // reconnect with default connection
         try {
@@ -2659,7 +2681,7 @@ public class Session implements ISession {
       request.addToTypes(measurementSchema.getType().ordinal());
     }
 
-    request.setPrefixPath(tablet.deviceId);
+    request.setPrefixPath(tablet.getDeviceId());
     request.setIsAligned(isAligned);
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
     request.setValues(SessionUtils.getValueBuffer(tablet));
@@ -2770,7 +2792,7 @@ public class Session implements ISession {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
     }
-    request.addToPrefixPaths(tablet.deviceId);
+    request.addToPrefixPaths(tablet.getDeviceId());
     List<String> measurements = new ArrayList<>();
     List<Integer> dataTypes = new ArrayList<>();
     request.setIsAligned(isAligned);
@@ -2833,7 +2855,7 @@ public class Session implements ISession {
         }
       }
     }
-    List<MeasurementSchema> schemaList = new ArrayList<>(measuremenMap.size());
+    List<IMeasurementSchema> schemaList = new ArrayList<>(measuremenMap.size());
     // use measurementType to build schemaList
     for (Entry<String, Pair<TSDataType, Boolean>> entry : measuremenMap.entrySet()) {
       schemaList.add(new MeasurementSchema(entry.getKey(), entry.getValue().getLeft()));
@@ -2918,11 +2940,11 @@ public class Session implements ISession {
       rowMap.merge(device, 1, Integer::sum);
     }
     // device -> schema
-    Map<String, List<MeasurementSchema>> schemaMap = new HashMap<>(deviceSize + 1, 1);
+    Map<String, List<IMeasurementSchema>> schemaMap = new HashMap<>(deviceSize + 1, 1);
     // use measurementTypeMap to build schemaMap
     for (Map.Entry<String, Map<String, Pair<TSDataType, Boolean>>> entry :
         deviceMeasuremenMap.entrySet()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>(entry.getValue().size() + 1);
+      List<IMeasurementSchema> schemaList = new ArrayList<>(entry.getValue().size() + 1);
       for (Map.Entry<String, Pair<TSDataType, Boolean>> schemaEntry : entry.getValue().entrySet()) {
         schemaList.add(
             new MeasurementSchema(schemaEntry.getKey(), schemaEntry.getValue().getLeft()));
@@ -3264,6 +3286,7 @@ public class Session implements ISession {
         }
         return sortedValues;
       case INT32:
+      case DATE:
         int[] intValues = (int[]) valueList;
         int[] sortedIntValues = new int[intValues.length];
         for (int i = 0; i < index.length; i++) {
@@ -3271,6 +3294,7 @@ public class Session implements ISession {
         }
         return sortedIntValues;
       case INT64:
+      case TIMESTAMP:
         long[] longValues = (long[]) valueList;
         long[] sortedLongValues = new long[longValues.length];
         for (int i = 0; i < index.length; i++) {
@@ -3292,6 +3316,8 @@ public class Session implements ISession {
         }
         return sortedDoubleValues;
       case TEXT:
+      case BLOB:
+      case STRING:
         Binary[] binaryValues = (Binary[]) valueList;
         Binary[] sortedBinaryValues = new Binary[binaryValues.length];
         for (int i = 0; i < index.length; i++) {
@@ -3542,7 +3568,9 @@ public class Session implements ISession {
     defaultSessionConnection.pruneSchemaTemplate(req);
   }
 
-  /** @return Amount of measurements in the template */
+  /**
+   * @return Amount of measurements in the template
+   */
   @Override
   public int countMeasurementsInTemplate(String name)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3553,7 +3581,9 @@ public class Session implements ISession {
     return resp.getCount();
   }
 
-  /** @return If the node specified by the path is a measurement. */
+  /**
+   * @return If the node specified by the path is a measurement.
+   */
   @Override
   public boolean isMeasurementInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3565,7 +3595,9 @@ public class Session implements ISession {
     return resp.result;
   }
 
-  /** @return if there is a node correspond to the path in the template. */
+  /**
+   * @return if there is a node correspond to the path in the template.
+   */
   @Override
   public boolean isPathExistInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3577,7 +3609,9 @@ public class Session implements ISession {
     return resp.result;
   }
 
-  /** @return All paths of measurements in the template. */
+  /**
+   * @return All paths of measurements in the template.
+   */
   @Override
   public List<String> showMeasurementsInTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3589,7 +3623,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All paths of measurements under the pattern in the template. */
+  /**
+   * @return All paths of measurements under the pattern in the template.
+   */
   @Override
   public List<String> showMeasurementsInTemplate(String templateName, String pattern)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3601,7 +3637,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All template names. */
+  /**
+   * @return All template names.
+   */
   @Override
   public List<String> showAllTemplates()
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3612,7 +3650,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All paths have been set to designated template. */
+  /**
+   * @return All paths have been set to designated template.
+   */
   @Override
   public List<String> showPathsTemplateSetOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3623,7 +3663,9 @@ public class Session implements ISession {
     return resp.getMeasurements();
   }
 
-  /** @return All paths are using designated template. */
+  /**
+   * @return All paths are using designated template.
+   */
   @Override
   public List<String> showPathsTemplateUsingOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {

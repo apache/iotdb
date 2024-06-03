@@ -152,6 +152,11 @@ public class FillOperatorTest {
                 public long calculateRetainedSizeAfterCallingNext() {
                   return 0;
                 }
+
+                @Override
+                public long ramBytesUsed() {
+                  return 0;
+                }
               });
 
       int count = 0;
@@ -330,6 +335,11 @@ public class FillOperatorTest {
                 public long calculateRetainedSizeAfterCallingNext() {
                   return 0;
                 }
+
+                @Override
+                public long ramBytesUsed() {
+                  return 0;
+                }
               });
 
       int count = 0;
@@ -500,6 +510,11 @@ public class FillOperatorTest {
 
                 @Override
                 public long calculateRetainedSizeAfterCallingNext() {
+                  return 0;
+                }
+
+                @Override
+                public long ramBytesUsed() {
                   return 0;
                 }
               });

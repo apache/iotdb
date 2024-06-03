@@ -58,6 +58,7 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
@@ -481,8 +482,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus createDataRegion(TCreateDataRegionReq req) {
-    return regionManager.createDataRegion(
-        req.getRegionReplicaSet(), req.getStorageGroup(), req.getTtl());
+    return regionManager.createDataRegion(req.getRegionReplicaSet(), req.getStorageGroup());
   }
 
   @Override
@@ -2032,7 +2032,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                         location.getDataNodeId(),
                         getConsensusEndPoint(location, regionId)))
             .collect(Collectors.toList());
-    TSStatus status = createNewRegion(regionId, req.getStorageGroup(), req.getTtl());
+    TSStatus status = createNewRegion(regionId, req.getStorageGroup());
     if (!isSucceed(status)) {
       return status;
     }
@@ -2104,8 +2104,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return RegionMigrateService.getInstance().getRegionMaintainResult(taskId);
   }
 
-  private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup, long ttl) {
-    return regionManager.createNewRegion(regionId, storageGroup, ttl);
+  private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup) {
+    return regionManager.createNewRegion(regionId, storageGroup);
   }
 
   @Override
@@ -2283,9 +2283,23 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     try {
       if (regionId instanceof DataRegionId) {
-        DataRegionConsensusImpl.getInstance().createLocalPeer(regionId, peers);
+        // RatisConsensus requires an empty peer list during region transition
+        final List<Peer> createPeers =
+            ConsensusFactory.RATIS_CONSENSUS.equals(
+                    IoTDBDescriptor.getInstance().getConfig().getDataRegionConsensusProtocolClass())
+                ? Collections.emptyList()
+                : peers;
+        DataRegionConsensusImpl.getInstance().createLocalPeer(regionId, createPeers);
       } else {
-        SchemaRegionConsensusImpl.getInstance().createLocalPeer(regionId, peers);
+        // RatisConsensus requires an empty peer list during region transition
+        final List<Peer> createPeers =
+            ConsensusFactory.RATIS_CONSENSUS.equals(
+                    IoTDBDescriptor.getInstance()
+                        .getConfig()
+                        .getSchemaRegionConsensusProtocolClass())
+                ? Collections.emptyList()
+                : peers;
+        SchemaRegionConsensusImpl.getInstance().createLocalPeer(regionId, createPeers);
       }
     } catch (ConsensusException e) {
       if (!(e instanceof ConsensusGroupAlreadyExistException)) {

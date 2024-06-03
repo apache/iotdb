@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
@@ -31,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -60,8 +63,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected double selectedSeqFileSize = 0;
   protected double selectedUnseqFileSize = 0;
 
-  protected boolean needRecoverTaskInfoFromLogFile;
-
   @SuppressWarnings("squid:S107")
   public CrossSpaceCompactionTask(
       long timePartition,
@@ -83,14 +84,12 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     this.performer = performer;
     this.hashCode = this.toString().hashCode();
     this.memoryCost = memoryCost;
-    this.crossTask = true;
-    this.innerSeqTask = false;
     createSummary();
   }
 
   public CrossSpaceCompactionTask(
       String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile) {
-    super(databaseName, dataRegionId, 0L, tsFileManager, 0L, CompactionTaskPriorityType.NORMAL);
+    super(databaseName, dataRegionId, 0L, tsFileManager, 0L);
     this.logFile = logFile;
     this.needRecoverTaskInfoFromLogFile = true;
   }
@@ -127,48 +126,51 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   public boolean doCompaction() {
     recoverMemoryStatus = true;
     boolean isSuccess = true;
+    if (!tsFileManager.isAllowCompaction()) {
+      return true;
+    }
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction()) {
+      return true;
+    }
+    if (compactionConfigVersion
+        < CompactionTaskManager.getInstance().getCurrentCompactionConfigVersion()) {
+      return true;
+    }
+
+    if (selectedSequenceFiles.isEmpty() || selectedUnsequenceFiles.isEmpty()) {
+      LOGGER.info(
+          "{}-{} [Compaction] Cross space compaction file list is empty, end it",
+          storageGroupName,
+          dataRegionId);
+      return true;
+    }
+
+    for (TsFileResource resource : selectedSequenceFiles) {
+      selectedSeqFileSize += resource.getTsFileSize();
+    }
+    for (TsFileResource resource : selectedUnsequenceFiles) {
+      selectedUnseqFileSize += resource.getTsFileSize();
+    }
+    LOGGER.info(
+        "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files "
+            + "and {} unsequence files. "
+            + "Sequence files : {}, unsequence files : {} . "
+            + "Sequence files size is {} MB, "
+            + "unsequence file size is {} MB, "
+            + "total size is {} MB",
+        storageGroupName,
+        dataRegionId,
+        selectedSequenceFiles.size(),
+        selectedUnsequenceFiles.size(),
+        selectedSequenceFiles,
+        selectedUnsequenceFiles,
+        selectedSeqFileSize / 1024 / 1024,
+        selectedUnseqFileSize / 1024 / 1024,
+        (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024);
     try {
-      if (!tsFileManager.isAllowCompaction()) {
-        return true;
-      }
       long startTime = System.currentTimeMillis();
       targetTsfileResourceList =
           TsFileNameGenerator.getCrossCompactionTargetFileResources(selectedSequenceFiles);
-
-      if (targetTsfileResourceList.isEmpty()
-          || selectedSequenceFiles.isEmpty()
-          || selectedUnsequenceFiles.isEmpty()) {
-        LOGGER.info(
-            "{}-{} [Compaction] Cross space compaction file list is empty, end it",
-            storageGroupName,
-            dataRegionId);
-        return true;
-      }
-
-      for (TsFileResource resource : selectedSequenceFiles) {
-        selectedSeqFileSize += resource.getTsFileSize();
-      }
-
-      for (TsFileResource resource : selectedUnsequenceFiles) {
-        selectedUnseqFileSize += resource.getTsFileSize();
-      }
-
-      LOGGER.info(
-          "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files "
-              + "and {} unsequence files. "
-              + "Sequence files : {}, unsequence files : {} . "
-              + "Sequence files size is {} MB, "
-              + "unsequence file size is {} MB, "
-              + "total size is {} MB",
-          storageGroupName,
-          dataRegionId,
-          selectedSequenceFiles.size(),
-          selectedUnsequenceFiles.size(),
-          selectedSequenceFiles,
-          selectedUnsequenceFiles,
-          selectedSeqFileSize / 1024 / 1024,
-          selectedUnseqFileSize / 1024 / 1024,
-          (selectedSeqFileSize + selectedUnseqFileSize) / 1024 / 1024);
 
       logFile =
           new File(
@@ -192,7 +194,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         CompactionUtils.updateProgressIndex(
             targetTsfileResourceList, selectedSequenceFiles, selectedUnsequenceFiles);
         CompactionUtils.moveTargetFile(
-            targetTsfileResourceList, false, storageGroupName + "-" + dataRegionId);
+            targetTsfileResourceList,
+            CompactionTaskType.CROSS,
+            storageGroupName + "-" + dataRegionId);
         CompactionUtils.combineModsInCrossCompaction(
             selectedSequenceFiles, selectedUnsequenceFiles, targetTsfileResourceList);
 
@@ -218,24 +222,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         lockWrite(selectedSequenceFiles);
         lockWrite(selectedUnsequenceFiles);
 
-        for (TsFileResource sequenceResource : selectedSequenceFiles) {
-          if (sequenceResource.getModFile().exists()) {
-            FileMetrics.getInstance().decreaseModFileNum(1);
-            FileMetrics.getInstance().decreaseModFileSize(sequenceResource.getModFile().getSize());
-          }
-        }
-
-        for (TsFileResource unsequenceResource : selectedUnsequenceFiles) {
-          if (unsequenceResource.getModFile().exists()) {
-            FileMetrics.getInstance().decreaseModFileNum(1);
-            FileMetrics.getInstance()
-                .decreaseModFileSize(unsequenceResource.getModFile().getSize());
-          }
-        }
-
         CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
             selectedSequenceFiles, selectedUnsequenceFiles);
-        CompactionUtils.deleteCompactionModsFile(selectedSequenceFiles, selectedUnsequenceFiles);
 
         for (TsFileResource targetResource : targetTsfileResourceList) {
           if (!targetResource.isDeleted()) {
@@ -268,12 +256,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
                 "%.2f",
                 (selectedSeqFileSize + selectedUnseqFileSize) / 1024.0d / 1024.0d / costTime),
             summary);
-      } finally {
-        Files.deleteIfExists(logFile.toPath());
-        for (TsFileResource resource : targetTsfileResourceList) {
-          // may failed to set status if the status of current resource is DELETED
-          resource.setStatus(TsFileResourceStatus.NORMAL);
-        }
       }
     } catch (Exception e) {
       isSuccess = false;
@@ -281,6 +263,17 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       recover();
     } finally {
       releaseAllLocks();
+      try {
+        if (logFile != null) {
+          Files.deleteIfExists(logFile.toPath());
+        }
+      } catch (IOException e) {
+        handleException(LOGGER, e);
+      }
+      for (TsFileResource resource : targetTsfileResourceList) {
+        // may failed to set status if the status of current resource is DELETED
+        resource.setStatus(TsFileResourceStatus.NORMAL);
+      }
     }
     return isSuccess;
   }
@@ -326,7 +319,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     for (TsFileResource target : targetTsfileResourceList) {
       if (target.isDeleted() || emptyTargetTsFileResourceList.contains(target)) {
         // it means the target file is empty after compaction
-        if (target.remove()) {
+        if (!target.remove()) {
           throw new CompactionRecoverException(
               String.format("failed to delete empty target file %s", target));
         }
@@ -349,8 +342,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       FileMetrics.getInstance().deleteTsFile(true, selectedSequenceFiles);
       FileMetrics.getInstance().deleteTsFile(true, selectedUnsequenceFiles);
     }
-    deleteCompactionModsFile(selectedSequenceFiles);
-    deleteCompactionModsFile(selectedUnsequenceFiles);
   }
 
   @Override
@@ -438,5 +429,20 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     } else {
       this.summary = new CompactionTaskSummary();
     }
+  }
+
+  @Override
+  public CompactionTaskType getCompactionTaskType() {
+    return CompactionTaskType.CROSS;
+  }
+
+  @Override
+  public long getCompactionConfigVersion() {
+    return this.compactionConfigVersion;
+  }
+
+  @Override
+  public void setCompactionConfigVersion(long compactionConfigVersion) {
+    this.compactionConfigVersion = Math.min(this.compactionConfigVersion, compactionConfigVersion);
   }
 }

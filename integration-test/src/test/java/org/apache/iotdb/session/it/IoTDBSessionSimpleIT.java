@@ -43,6 +43,7 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -89,7 +90,7 @@ public class IoTDBSessionSimpleIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertPartialTabletTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
@@ -135,7 +136,7 @@ public class IoTDBSessionSimpleIT {
       session.createTimeseries(
           "root.sg.d2.s2", TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY);
 
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
@@ -213,7 +214,7 @@ public class IoTDBSessionSimpleIT {
       expected.add(IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType().name());
       expected.add(IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType().name());
       expected.add(IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType().name());
-      expected.add(TSDataType.TEXT.name());
+      expected.add(TSDataType.STRING.name());
 
       Set<String> actual = new HashSet<>();
       SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.**");
@@ -422,7 +423,7 @@ public class IoTDBSessionSimpleIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertTabletWithAlignedTimeseriesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
@@ -466,7 +467,7 @@ public class IoTDBSessionSimpleIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertTabletWithNullValuesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
@@ -522,7 +523,7 @@ public class IoTDBSessionSimpleIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertTabletWithStringValuesTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
@@ -569,7 +570,7 @@ public class IoTDBSessionSimpleIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertTabletWithNegativeTimestampTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
@@ -617,7 +618,7 @@ public class IoTDBSessionSimpleIT {
   @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertTabletWithWrongTimestampPrecisionTest() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
       schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
@@ -649,6 +650,34 @@ public class IoTDBSessionSimpleIT {
       }
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertTabletWithDuplicatedMeasurementsTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
+      schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
+      schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
+
+      Tablet tablet = new Tablet("root.sg1.d1", schemaList);
+      for (long time = 0L; time < 10L; time++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, time);
+
+        tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (double) time);
+        tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, (double) time);
+      }
+
+      if (tablet.rowSize != 0) {
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s0"));
     }
   }
 
@@ -980,6 +1009,112 @@ public class IoTDBSessionSimpleIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertOneDeviceRecordsWithDuplicatedMeasurementsTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      List<Long> times = new ArrayList<>();
+      List<List<String>> measurements = new ArrayList<>();
+      List<List<TSDataType>> datatypes = new ArrayList<>();
+      List<List<Object>> values = new ArrayList<>();
+
+      addLine(
+          times,
+          measurements,
+          datatypes,
+          values,
+          3L,
+          "s1",
+          "s2",
+          TSDataType.INT32,
+          TSDataType.INT32,
+          1,
+          2);
+      addLine(
+          times,
+          measurements,
+          datatypes,
+          values,
+          2L,
+          "s2",
+          "s2",
+          TSDataType.INT32,
+          TSDataType.INT32,
+          3,
+          4);
+      addLine(
+          times,
+          measurements,
+          datatypes,
+          values,
+          1L,
+          "s4",
+          "s5",
+          TSDataType.FLOAT,
+          TSDataType.BOOLEAN,
+          5.0f,
+          Boolean.TRUE);
+      session.insertRecordsOfOneDevice("root.sg.d1", times, measurements, datatypes, values);
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s2"));
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void insertRecordsWithDuplicatedMeasurementsTest() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      List<Long> times = new ArrayList<>();
+      List<List<String>> measurements = new ArrayList<>();
+      List<List<TSDataType>> datatypes = new ArrayList<>();
+      List<List<Object>> values = new ArrayList<>();
+      List<String> devices = new ArrayList<>();
+
+      devices.add("root.sg.d1");
+      addLine(
+          times,
+          measurements,
+          datatypes,
+          values,
+          3L,
+          "s1",
+          "s2",
+          TSDataType.INT32,
+          TSDataType.INT32,
+          1,
+          2);
+      devices.add("root.sg.d2");
+      addLine(
+          times,
+          measurements,
+          datatypes,
+          values,
+          2L,
+          "s2",
+          "s2",
+          TSDataType.INT32,
+          TSDataType.INT32,
+          3,
+          4);
+      devices.add("root.sg.d3");
+      addLine(
+          times,
+          measurements,
+          datatypes,
+          values,
+          1L,
+          "s4",
+          "s5",
+          TSDataType.FLOAT,
+          TSDataType.BOOLEAN,
+          5.0f,
+          Boolean.TRUE);
+      session.insertRecords(devices, times, measurements, datatypes, values);
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s2"));
     }
   }
 
@@ -1499,7 +1634,7 @@ public class IoTDBSessionSimpleIT {
         session.createTimeseries(
             "root.sg.d.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
       }
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
       schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
@@ -1575,7 +1710,7 @@ public class IoTDBSessionSimpleIT {
             dataBinary);
       }
       // insert data using insertTablet
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
       schemaList.add(new MeasurementSchema("s1", TSDataType.TEXT));
       Tablet tablet = new Tablet("root.sg1.d1", schemaList, 100);
       for (int i = 0; i < bytesData.size(); i++) {

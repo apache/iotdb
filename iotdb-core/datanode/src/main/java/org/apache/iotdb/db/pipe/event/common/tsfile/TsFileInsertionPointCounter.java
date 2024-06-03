@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.event.common.tsfile;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.slf4j.Logger;
@@ -52,7 +51,8 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
 
   private long count = 0;
 
-  public TsFileInsertionPointCounter(File tsFile, PipePattern pattern) throws IOException {
+  public TsFileInsertionPointCounter(final File tsFile, final PipePattern pattern)
+      throws IOException {
     this.pattern = pattern;
 
     try {
@@ -69,7 +69,7 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
 
       // No longer need this. Help GC.
       tsFileSequenceReader.clearCachedDeviceMetadata();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       close();
       throw e;
     }
@@ -80,15 +80,15 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
         tsFileSequenceReader.getDeviceMeasurementsMap();
     final Map<IDeviceID, Set<String>> filteredDeviceMeasurementsMap = new HashMap<>();
 
-    for (Map.Entry<IDeviceID, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
-      final String deviceId = ((PlainDeviceID) entry.getKey()).toStringID();
+    for (final Map.Entry<IDeviceID, List<String>> entry :
+        originalDeviceMeasurementsMap.entrySet()) {
+      final IDeviceID deviceId = entry.getKey();
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
       // in this case, all data can be matched without checking the measurements
       if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
         if (!entry.getValue().isEmpty()) {
-          filteredDeviceMeasurementsMap.put(
-              new PlainDeviceID(deviceId), new HashSet<>(entry.getValue()));
+          filteredDeviceMeasurementsMap.put(deviceId, new HashSet<>(entry.getValue()));
         }
       }
 
@@ -107,7 +107,7 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
         }
 
         if (!filteredMeasurements.isEmpty()) {
-          filteredDeviceMeasurementsMap.put(new PlainDeviceID(deviceId), filteredMeasurements);
+          filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
         }
       }
 
@@ -162,7 +162,7 @@ public class TsFileInsertionPointCounter implements AutoCloseable {
       if (tsFileSequenceReader != null) {
         tsFileSequenceReader.close();
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.warn("Failed to close TsFileSequenceReader", e);
     }
   }

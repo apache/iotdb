@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -85,7 +86,10 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionByFlushChunk()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+      throws IOException,
+          StorageEngineException,
+          InterruptedException,
+          MetadataException,
           PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
@@ -120,7 +124,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(16, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -131,7 +137,10 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionWithNullColumnByFlushChunk()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+      throws IOException,
+          StorageEngineException,
+          InterruptedException,
+          MetadataException,
           PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
@@ -166,7 +175,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(14, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -177,7 +188,10 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionWithAllDeletedColumnByFlushChunk()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+      throws IOException,
+          StorageEngineException,
+          InterruptedException,
+          MetadataException,
           PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
@@ -217,7 +231,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(14, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -228,7 +244,10 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionWithNotExistColumnByFlushChunk()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+      throws IOException,
+          StorageEngineException,
+          InterruptedException,
+          MetadataException,
           PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
@@ -268,7 +287,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(14, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -279,7 +300,10 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionWithNullColumn()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+      throws IOException,
+          StorageEngineException,
+          InterruptedException,
+          MetadataException,
           PageException {
     TsFileResource seqResource1 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource1)) {
@@ -323,7 +347,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
         CompactionCheckerUtils.readFiles(seqResources),
@@ -332,7 +358,10 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionWithPartialDeletedColumnByFlushChunk()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+      throws IOException,
+          StorageEngineException,
+          InterruptedException,
+          MetadataException,
           PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
@@ -371,7 +400,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(15, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -422,7 +453,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(0, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(8, summary.getDeserializeChunkCount());
     Assert.assertEquals(15, summary.getDirectlyFlushPageCount());
@@ -434,7 +467,10 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionWithPartialDeletedPageByWritePoint()
-      throws IOException, MetadataException, StorageEngineException, InterruptedException,
+      throws IOException,
+          MetadataException,
+          StorageEngineException,
+          InterruptedException,
           PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
@@ -476,7 +512,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertTrue(summary.getDeserializePageCount() > 0);
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
@@ -486,7 +524,10 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionByFlushPage()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+      throws IOException,
+          StorageEngineException,
+          InterruptedException,
+          MetadataException,
           PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
@@ -521,7 +562,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(16, summary.getDeserializeChunkCount());
     Assert.assertEquals(16, summary.getDirectlyFlushPageCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -532,7 +575,10 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testSimpleCompactionByWritePoint()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+      throws IOException,
+          StorageEngineException,
+          InterruptedException,
+          MetadataException,
           PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
@@ -567,7 +613,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(16, summary.getDeserializeChunkCount());
     Assert.assertEquals(16, summary.getDeserializePageCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -578,7 +626,10 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testCompactionWithDifferentCompressionTypeOrEncoding()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+      throws IOException,
+          StorageEngineException,
+          InterruptedException,
+          MetadataException,
           PageException {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
@@ -624,7 +675,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     Assert.assertEquals(16, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDirectlyFlushPageCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
@@ -635,7 +688,10 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testFlushChunkMetadataToTempFile()
-      throws IOException, StorageEngineException, InterruptedException, MetadataException,
+      throws IOException,
+          StorageEngineException,
+          InterruptedException,
+          MetadataException,
           PageException {
     List<String> devices = new ArrayList<>();
     for (int i = 0; i < 1000; i++) {
@@ -698,7 +754,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.perform();
     CompactionUtils.moveTargetFile(
-        Collections.singletonList(targetResource), true, COMPACTION_TEST_SG);
+        Collections.singletonList(targetResource),
+        CompactionTaskType.INNER_SEQ,
+        COMPACTION_TEST_SG);
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
         CompactionCheckerUtils.readFiles(seqResources),

@@ -25,12 +25,13 @@ import org.apache.iotdb.commons.utils.PathUtils;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Arrays;
 
 public class PrefixPipePattern extends PipePattern {
 
-  public PrefixPipePattern(String pattern) {
+  public PrefixPipePattern(final String pattern) {
     super(pattern);
   }
 
@@ -47,25 +48,25 @@ public class PrefixPipePattern extends PipePattern {
 
     try {
       PathUtils.isLegalPath(pattern);
-    } catch (IllegalPathException e) {
+    } catch (final IllegalPathException e) {
       try {
         if ("root".equals(pattern) || "root.".equals(pattern)) {
           return true;
         }
 
         // Split the pattern to nodes.
-        String[] pathNodes = StringUtils.splitPreserveAllTokens(pattern, "\\.");
+        final String[] pathNodes = StringUtils.splitPreserveAllTokens(pattern, "\\.");
 
         // Check whether the pattern without last node is legal.
         PathUtils.splitPathToDetachedNodes(
             String.join(".", Arrays.copyOfRange(pathNodes, 0, pathNodes.length - 1)));
-        String lastNode = pathNodes[pathNodes.length - 1];
+        final String lastNode = pathNodes[pathNodes.length - 1];
 
         // Check whether the last node is legal.
         if (!"".equals(lastNode)) {
           Double.parseDouble(lastNode);
         }
-      } catch (Exception ignored) {
+      } catch (final Exception ignored) {
         return false;
       }
     }
@@ -73,45 +74,48 @@ public class PrefixPipePattern extends PipePattern {
   }
 
   @Override
-  public boolean coversDb(String db) {
+  public boolean coversDb(final String db) {
     return pattern.length() <= db.length() && db.startsWith(pattern);
   }
 
   @Override
-  public boolean coversDevice(String device) {
+  public boolean coversDevice(final IDeviceID device) {
+    final String deviceStr = device.toString();
     // for example, pattern is root.a.b and device is root.a.b.c
     // in this case, the extractor can be matched without checking the measurements
-    return pattern.length() <= device.length() && device.startsWith(pattern);
+    return pattern.length() <= deviceStr.length() && deviceStr.startsWith(pattern);
   }
 
   @Override
-  public boolean mayOverlapWithDevice(String device) {
+  public boolean mayOverlapWithDevice(final IDeviceID device) {
+    final String deviceStr = device.toString();
     return (
         // for example, pattern is root.a.b and device is root.a.b.c
         // in this case, the extractor can be matched without checking the measurements
-        pattern.length() <= device.length() && device.startsWith(pattern))
+        pattern.length() <= deviceStr.length() && deviceStr.startsWith(pattern))
         // for example, pattern is root.a.b.c and device is root.a.b
         // in this case, the extractor can be selected as candidate, but the measurements should
         // be checked further
-        || (pattern.length() > device.length() && pattern.startsWith(device));
+        || (pattern.length() > deviceStr.length() && pattern.startsWith(deviceStr));
   }
 
   @Override
-  public boolean matchesMeasurement(String device, String measurement) {
+  public boolean matchesMeasurement(final IDeviceID device, String measurement) {
+    final String deviceStr = device.toString();
     // We assume that the device is already matched.
-    if (pattern.length() <= device.length()) {
+    if (pattern.length() <= deviceStr.length()) {
       return true;
     }
 
     // For example, pattern is "root.a.b.c", device is "root.a.b",
     // then measurements "c" and "cc" can be matched,
     // measurements "d" or "dc" can't be matched.
-    String dotAndMeasurement = TsFileConstant.PATH_SEPARATOR + measurement;
+    final String dotAndMeasurement = TsFileConstant.PATH_SEPARATOR + measurement;
     return
     // low cost check comes first
-    pattern.length() <= device.length() + dotAndMeasurement.length()
+    pattern.length() <= deviceStr.length() + dotAndMeasurement.length()
         // high cost check comes later
-        && dotAndMeasurement.startsWith(pattern.substring(device.length()));
+        && dotAndMeasurement.startsWith(pattern.substring(deviceStr.length()));
   }
 
   @Override

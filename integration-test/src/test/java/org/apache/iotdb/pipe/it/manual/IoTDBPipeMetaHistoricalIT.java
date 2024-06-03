@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -73,8 +74,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
         .setDataReplicationFactor(2);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getConfigNodeConfig().setConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment(3, 3);
@@ -96,6 +97,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
           senderEnv,
           Arrays.asList(
               "create database root.ln",
+              "create database root.db",
               "set ttl to root.ln 3600000",
               "create user `thulab` 'passwd'",
               "create role `admin`",
@@ -103,7 +105,9 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
               "grant read on root.** to role `admin`",
               "create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
               "set schema template t1 to root.ln.wf01",
+              "set schema template t1 to root.db.wf01",
               "create timeseries using schema template on root.ln.wf01.wt01",
+              "create timeseries using schema template on root.db.wf01.wt01",
               "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
               // Insert large timestamp to avoid deletion by ttl
               "insert into root.ln.wf01.wt01(time, temperature, status) values (1800000000000, 23, true)"))) {
@@ -115,8 +119,8 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
       final Map<String, String> connectorAttributes = new HashMap<>();
 
       extractorAttributes.put("extractor.inclusion", "data, schema");
-      extractorAttributes.put(
-          "extractor.inclusion.exclusion", "schema.timeseries.ordinary, schema.ttl");
+      extractorAttributes.put("extractor.inclusion.exclusion", "schema.timeseries.ordinary");
+      extractorAttributes.put("extractor.path", "root.ln.**");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -136,8 +140,12 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       TestUtils.assertDataAlwaysOnEnv(
-          receiverEnv, "list user", "user,", Collections.singleton("root,"));
-      TestUtils.assertDataAlwaysOnEnv(receiverEnv, "list role", "role,", Collections.emptySet());
+          receiverEnv,
+          "list user",
+          ColumnHeaderConstant.USER + ",",
+          Collections.singleton("root,"));
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv, "list role", ColumnHeaderConstant.ROLE + ",", Collections.emptySet());
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -145,7 +153,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
           "Database,TTL,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           // Receiver's SchemaReplicationFactor/DataReplicationFactor shall be 3/2 regardless of the
           // sender
-          Collections.singleton("root.ln,null,3,2,604800000,"));
+          Collections.singleton("root.ln,3600000,3,2,604800000,"));
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from root.**",
@@ -216,11 +224,21 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "list user of role `admin`", "user,", Collections.singleton("thulab,"));
+          receiverEnv,
+          "list user of role `admin`",
+          ColumnHeaderConstant.USER + ",",
+          Collections.singleton("thulab,"));
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "list privileges of role `admin`",
-          "ROLE,PATH,PRIVILEGES,GRANT OPTION,",
+          ColumnHeaderConstant.ROLE
+              + ","
+              + ColumnHeaderConstant.PATH
+              + ","
+              + ColumnHeaderConstant.PRIVILEGES
+              + ","
+              + ColumnHeaderConstant.GRANT_OPTION
+              + ",",
           new HashSet<>(
               Arrays.asList("admin,root.**,READ_DATA,false,", "admin,root.**,READ_SCHEMA,false,")));
 
@@ -237,7 +255,10 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
       }
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "list role", "role,", new HashSet<>(Arrays.asList("admin,", "test,")));
+          receiverEnv,
+          "list role",
+          ColumnHeaderConstant.ROLE + ",",
+          new HashSet<>(Arrays.asList("admin,", "test,")));
     }
   }
 }
