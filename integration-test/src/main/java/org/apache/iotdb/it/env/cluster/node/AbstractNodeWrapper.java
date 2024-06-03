@@ -301,8 +301,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       outputNodeConfig.updateProperties(immutableNodeProperties);
 
       // Persistent
-      outputCommonConfig.persistent(getTargetCommonConfigPath());
-      outputNodeConfig.persistent(getTargetNodeConfigPath());
+      outputCommonConfig.persistent(getSystemConfigPath());
+      outputNodeConfig.persistent(getSystemConfigPath());
     } catch (IOException ex) {
       throw new AssertionError("Change the config of node failed. " + ex);
     }
@@ -662,9 +662,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   protected abstract void renameFile();
 
-  protected abstract String getTargetNodeConfigPath();
-
-  protected abstract String getTargetCommonConfigPath();
+  protected abstract String getSystemConfigPath();
 
   /** Return the node config file path specified through system variable */
   protected abstract String getDefaultNodeConfigPath();

@@ -94,6 +94,7 @@ public enum Metric {
   CACHE("cache"),
   CACHE_HIT_RATE("cache_hit"),
   QUANTITY("quantity"),
+  LEADER_QUANTITY("leader_quantity"),
   SCHEMA_REGION("schema_region"),
   SCHEMA_ENGINE("schema_engine"),
   // query engine related

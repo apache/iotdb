@@ -85,7 +85,7 @@ public class TypeInferenceUtilsTest {
     };
     TSDataType[] inferredTypes = {
       TSDataType.INT32,
-      TSDataType.STRING,
+      TSDataType.TEXT,
       TSDataType.DOUBLE,
       TSDataType.BOOLEAN,
       TSDataType.FLOAT,

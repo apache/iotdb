@@ -288,7 +288,7 @@ class RatisConsensus implements IConsensus {
     }
 
     // serialize request into Message
-    Message message = new RequestMessage(request);
+    RequestMessage message = new RequestMessage(request);
 
     // 1. first try the local server
     RaftClientRequest clientRequest;

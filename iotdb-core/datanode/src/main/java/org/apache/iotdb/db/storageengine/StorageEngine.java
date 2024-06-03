@@ -29,12 +29,14 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -82,6 +84,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -764,23 +767,25 @@ public class StorageEngine implements IService {
   }
 
   /** Update ttl cache in dataNode. */
-  public TSStatus setTTL(TSetTTLReq req) {
-    String path = req.getPathPattern().get(0);
+  public TSStatus setTTL(TSetTTLReq req) throws IllegalPathException {
+    String[] path = PathUtils.splitPathToDetachedNodes(req.getPathPattern().get(0));
     long ttl = req.getTTL();
     boolean isDataBase = req.isDataBase;
     if (ttl == TTLCache.NULL_TTL) {
       DataNodeTTLCache.getInstance().unsetTTL(path);
       if (isDataBase) {
-        DataNodeTTLCache.getInstance()
-            .unsetTTL(
-                path + IoTDBConstant.PATH_SEPARATOR + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+        // unset ttl to path.**
+        String[] pathWithWildcard = Arrays.copyOf(path, path.length + 1);
+        pathWithWildcard[pathWithWildcard.length - 1] = IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+        DataNodeTTLCache.getInstance().unsetTTL(pathWithWildcard);
       }
     } else {
       DataNodeTTLCache.getInstance().setTTL(path, ttl);
       if (isDataBase) {
-        DataNodeTTLCache.getInstance()
-            .setTTL(
-                path + IoTDBConstant.PATH_SEPARATOR + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD, ttl);
+        // set ttl to path.**
+        String[] pathWithWildcard = Arrays.copyOf(path, path.length + 1);
+        pathWithWildcard[pathWithWildcard.length - 1] = IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+        DataNodeTTLCache.getInstance().setTTL(pathWithWildcard, ttl);
       }
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
