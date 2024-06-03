@@ -103,7 +103,6 @@ public class ImportSchema extends AbstractSchemaTool {
 
     Option opFile =
         Option.builder(FILE_ARGS)
-            .required()
             .longOpt(FILE_NAME)
             .hasArg()
             .argName(FILE_ARGS_NAME)
@@ -115,7 +114,6 @@ public class ImportSchema extends AbstractSchemaTool {
 
     Option opFailedFile =
         Option.builder(FAILED_FILE_ARGS)
-            .required()
             .longOpt(FAILED_FILE_NAME)
             .hasArg()
             .argName(FAILED_FILE_ARGS_NAME)
@@ -124,12 +122,12 @@ public class ImportSchema extends AbstractSchemaTool {
             .build();
     options.addOption(opFailedFile);
 
-    Option opAligned =
-        Option.builder(ALIGNED_ARGS)
-            .longOpt(ALIGNED_ARGS)
-            .desc("Whether import schema as aligned timeseries(optional)")
-            .build();
-    options.addOption(opAligned);
+    //    Option opAligned =
+    //        Option.builder(ALIGNED_ARGS)
+    //            .longOpt(ALIGNED_ARGS)
+    //            .desc("Whether import schema as aligned timeseries(optional)")
+    //            .build();
+    //    options.addOption(opAligned);
 
     Option opBatchPointSize =
         Option.builder(BATCH_POINT_SIZE_ARGS)
@@ -341,35 +339,35 @@ public class ImportSchema extends AbstractSchemaTool {
               hasStarted.set(true);
             } else if (pointSize.get() >= batchPointSize) {
               try {
-                writeAndEmptyDataSet(
-                    paths,
-                    dataTypes,
-                    encodings,
-                    compressors,
-                    null,
-                    null,
-                    null,
-                    measurementAlias,
-                    3);
-                writeAndEmptyDataSet(
-                    pathsWithAlias,
-                    dataTypesWithAlias,
-                    encodingsWithAlias,
-                    compressorsWithAlias,
-                    null,
-                    null,
-                    null,
-                    null,
-                    3);
-                paths.clear();
-                dataTypes.clear();
-                encodings.clear();
-                compressors.clear();
-                measurementAlias.clear();
-                pointSize.set(0);
+                if (CollectionUtils.isNotEmpty(paths)) {
+                  writeAndEmptyDataSet(
+                      paths, dataTypes, encodings, compressors, null, null, null, null, 3);
+                }
               } catch (Exception e) {
-                failedRecords.add((List<Object>) (List<?>) paths);
+                paths.forEach(t -> failedRecords.add(Collections.singletonList(t)));
               }
+              try {
+                if (CollectionUtils.isNotEmpty(pathsWithAlias)) {
+                  writeAndEmptyDataSet(
+                      pathsWithAlias,
+                      dataTypesWithAlias,
+                      encodingsWithAlias,
+                      compressorsWithAlias,
+                      null,
+                      null,
+                      null,
+                      measurementAlias,
+                      3);
+                }
+              } catch (Exception e) {
+                paths.forEach(t -> failedRecords.add(Collections.singletonList(t)));
+              }
+              paths.clear();
+              dataTypes.clear();
+              encodings.clear();
+              compressors.clear();
+              measurementAlias.clear();
+              pointSize.set(0);
             }
           } else {
             paths.clear();
