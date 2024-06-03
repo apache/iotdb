@@ -44,8 +44,16 @@ abstract class AbstractSubscriptionDualIT {
     receiverEnv.getConfig().getCommonConfig().setPipeAirGapReceiverEnabled(true);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600_000);
+    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600_000);
+
+    // shorten heartbeat interval to avoid timeout of query mode test
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(30);
+    senderEnv.getConfig().getCommonConfig().setPipeMetaSyncerInitialSyncDelayMinutes(1);
+    senderEnv.getConfig().getCommonConfig().setPipeMetaSyncerSyncIntervalMinutes(1);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();

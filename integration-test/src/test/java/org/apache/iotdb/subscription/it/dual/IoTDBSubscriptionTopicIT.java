@@ -20,12 +20,15 @@
 package org.apache.iotdb.subscription.it.dual;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
@@ -33,6 +36,10 @@ import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
+import org.apache.tsfile.read.TsFileReader;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.expression.QueryExpression;
+import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
 import org.awaitility.Awaitility;
 import org.junit.Assert;
@@ -45,6 +52,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -392,9 +400,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
 
     // Create topic on sender
-    final String topic1 = "`topic1`";
-    final String topic2 = "`'topic2'`";
-    final String topic3 = "`\"topic3\"`";
+    final String topic1 = "`topic4`";
+    final String topic2 = "`'topic5'`";
+    final String topic3 = "`\"topic6\"`";
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
@@ -507,7 +515,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       final Properties properties = new Properties();
       properties.put(TopicConstant.START_TIME_KEY, "2024-01-32");
       properties.put(TopicConstant.END_TIME_KEY, "now");
-      session.createTopic("topic1", properties);
+      session.createTopic("topic7", properties);
       fail();
     } catch (final Exception ignored) {
     }
@@ -519,7 +527,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       final Properties properties = new Properties();
       properties.put(TopicConstant.START_TIME_KEY, "2001.01.01T08:00:00");
       properties.put(TopicConstant.END_TIME_KEY, "2000.01.01T08:00:00");
-      session.createTopic("topic2", properties);
+      session.createTopic("topic8", properties);
       fail();
     } catch (final Exception ignored) {
     }
@@ -532,7 +540,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final Properties config = new Properties();
     config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
     config.put(TopicConstant.PATH_KEY, "root.db.*.s");
-    testTopicInvalidRuntimeConfigTemplate("topic3", config);
+    testTopicInvalidRuntimeConfigTemplate("topic9", config);
   }
 
   @Test
@@ -543,7 +551,112 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     config.put("processor", "tumbling-time-sampling-processor");
     config.put("processor.tumbling-time.interval-seconds", "1");
     config.put("processor.down-sampling.split-file", "true");
-    testTopicInvalidRuntimeConfigTemplate("topic4", config);
+    testTopicInvalidRuntimeConfigTemplate("topic10", config);
+  }
+
+  @Test
+  public void testTopicWithQueryMode() throws Exception {
+    // Insert some historical data
+    try (final ISession session = senderEnv.getSessionConnection()) {
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+      }
+      session.executeNonQueryStatement("flush");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Create topic
+    final String topicName = "topic11";
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_QUERY_VALUE);
+      session.createTopic(topicName, config);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Subscription
+    final AtomicInteger rowCount = new AtomicInteger();
+    final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final Thread thread =
+        new Thread(
+            () -> {
+              try (final SubscriptionPullConsumer consumer =
+                  new SubscriptionPullConsumer.Builder()
+                      .host(host)
+                      .port(port)
+                      .consumerId("c1")
+                      .consumerGroupId("cg1")
+                      .autoCommit(false)
+                      .buildPullConsumer()) {
+                consumer.open();
+                consumer.subscribe(topicName);
+                while (!isClosed.get()) {
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
+                  final List<SubscriptionMessage> messages =
+                      consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
+                  for (final SubscriptionMessage message : messages) {
+                    try (final TsFileReader tsFileReader =
+                        message.getTsFileHandler().openReader()) {
+                      final Path path = new Path("root.db.d1", "s1", true);
+                      final QueryDataSet dataSet =
+                          tsFileReader.query(
+                              QueryExpression.create(Collections.singletonList(path), null));
+                      while (dataSet.hasNext()) {
+                        dataSet.next();
+                        rowCount.addAndGet(1);
+                      }
+                    }
+                  }
+                  consumer.commitSync(messages);
+                }
+                consumer.unsubscribe(topicName);
+              } catch (final Exception e) {
+                e.printStackTrace();
+                // Avoid failure
+              } finally {
+                LOGGER.info("consumer exiting...");
+              }
+            });
+    thread.start();
+
+    // Check row count
+    try {
+      // Keep retrying if there are execution failures
+      Awaitility.await()
+          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+          .pollInterval(
+              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                Assert.assertEquals(100, rowCount.get());
+                // empty subscription
+                try (final SyncConfigNodeIServiceClient client =
+                    (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+                  final TShowSubscriptionResp showSubscriptionResp =
+                      client.showSubscription(new TShowSubscriptionReq());
+                  Assert.assertEquals(
+                      RpcUtils.SUCCESS_STATUS.getCode(), showSubscriptionResp.status.getCode());
+                  Assert.assertNotNull(showSubscriptionResp.subscriptionInfoList);
+                  Assert.assertEquals(0, showSubscriptionResp.subscriptionInfoList.size());
+                }
+              });
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      isClosed.set(true);
+      thread.join();
+    }
   }
 
   private void testTopicInvalidRuntimeConfigTemplate(

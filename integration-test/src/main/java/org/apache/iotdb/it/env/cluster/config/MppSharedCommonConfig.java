@@ -445,4 +445,29 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setCnConnectionTimeoutMs(connectionTimeoutMs);
     return this;
   }
+
+  @Override
+  public CommonConfig setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
+      int pipeHeartbeatIntervalSecondsForCollectingPipeMeta) {
+    dnConfig.setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
+        pipeHeartbeatIntervalSecondsForCollectingPipeMeta);
+    cnConfig.setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
+        pipeHeartbeatIntervalSecondsForCollectingPipeMeta);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMetaSyncerInitialSyncDelayMinutes(
+      long pipeMetaSyncerInitialSyncDelayMinutes) {
+    dnConfig.setPipeMetaSyncerInitialSyncDelayMinutes(pipeMetaSyncerInitialSyncDelayMinutes);
+    cnConfig.setPipeMetaSyncerInitialSyncDelayMinutes(pipeMetaSyncerInitialSyncDelayMinutes);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes) {
+    dnConfig.setPipeMetaSyncerSyncIntervalMinutes(pipeMetaSyncerSyncIntervalMinutes);
+    cnConfig.setPipeMetaSyncerSyncIntervalMinutes(pipeMetaSyncerSyncIntervalMinutes);
+    return this;
+  }
 }
