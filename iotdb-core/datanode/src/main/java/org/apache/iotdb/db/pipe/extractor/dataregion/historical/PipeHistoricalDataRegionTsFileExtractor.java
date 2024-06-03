@@ -99,7 +99,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private long historicalDataExtractionEndTime = Long.MAX_VALUE; // Event time
   private long historicalDataExtractionTimeLowerBound; // Arrival time
 
-  private boolean sloppyTimeRange; // true to disable time range filter after extraction
+  private boolean sloppyRange; // true to disable time range filter after extraction
 
   private boolean shouldExtractInsertion;
   private boolean shouldTransferModFile; // Whether to transfer mods
@@ -282,7 +282,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       }
     }
 
-    sloppyTimeRange =
+    sloppyRange =
         Arrays.stream(
                 parameters
                     .getStringOrDefault(
@@ -296,14 +296,14 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             .contains("time");
 
     LOGGER.info(
-        "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy time range {}",
+        "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), loose range {}",
         pipeName,
         dataRegionId,
         DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
         historicalDataExtractionStartTime,
         DateTimeUtils.convertLongToDate(historicalDataExtractionEndTime),
         historicalDataExtractionEndTime,
-        sloppyTimeRange);
+        sloppyRange);
   }
 
   private void flushDataRegionAllTsFiles() {
@@ -514,11 +514,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             pipePattern,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
-    if (isDbNameCoveredByPattern) {
+    if (sloppyRange || isDbNameCoveredByPattern) {
       event.skipParsingPattern();
     }
 
-    if (sloppyTimeRange || isTsFileResourceCoveredByTimeRange(resource)) {
+    if (sloppyRange || isTsFileResourceCoveredByTimeRange(resource)) {
       event.skipParsingTime();
     }
 
