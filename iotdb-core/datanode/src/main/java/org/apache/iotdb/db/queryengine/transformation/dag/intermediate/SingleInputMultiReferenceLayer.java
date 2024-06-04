@@ -428,7 +428,7 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
         }
         boolean findWindow = false;
         // Find target window or no more data to exit
-        while (!findWindow) {
+        while (!findWindow && cachedConsumed < cachedTimes.getPositionCount()) {
           while (cachedConsumed < cachedTimes.getPositionCount()) {
             long nextTime = cachedTimes.getLong(cachedConsumed);
 
@@ -598,7 +598,7 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
         }
         boolean findWindow = false;
         // Find target window or no more data to exit
-        while (!findWindow) {
+        while (!findWindow && cachedConsumed < cachedTimes.getPositionCount()) {
           while (cachedConsumed < cachedTimes.getPositionCount()) {
             long nextTime = cachedTimes.getLong(cachedConsumed);
 
