@@ -143,10 +143,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeRemainingTimeCommitRateSmoothingFactor();
   }
 
-  public int getPipeConnectorRPCCompressionZSTDCompressorLevel() {
-    return COMMON_CONFIG.getPipeConnectorRPCCompressionZSTDCompressorLevel();
-  }
-
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
   public boolean isSeperatedPipeHeartbeatEnabled() {

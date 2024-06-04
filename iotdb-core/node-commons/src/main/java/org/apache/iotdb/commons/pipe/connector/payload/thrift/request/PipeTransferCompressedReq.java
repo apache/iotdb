@@ -87,7 +87,8 @@ public class PipeTransferCompressedReq extends TPipeTransferReq {
     final int compressorsSize = ReadWriteIOUtils.readByte(compressedBuffer);
     for (int i = 0; i < compressorsSize; ++i) {
       compressors.add(
-          PipeCompressorFactory.getCompressor(ReadWriteIOUtils.readByte(compressedBuffer)));
+          PipeCompressorFactory.deserializeCompressorFromIndex(
+              ReadWriteIOUtils.readByte(compressedBuffer)));
     }
 
     byte[] body = new byte[compressedBuffer.remaining()];

@@ -19,19 +19,24 @@
 
 package org.apache.iotdb.commons.pipe.connector.compressor;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_GZIP;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_LZ4;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_LZMA2;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_SNAPPY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_ZSTD;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_ZSTD_LEVEL_DEFAULT_VALUE;
 
 public class PipeCompressorFactory {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeCompressorFactory.class);
 
   private static Map<String, PipeCompressor> COMPRESSOR_NAME_TO_INSTANCE = new HashMap<>();
 
@@ -41,18 +46,37 @@ public class PipeCompressorFactory {
     COMPRESSOR_NAME_TO_INSTANCE.put(CONNECTOR_COMPRESSOR_LZ4, new PipeLZ4Compressor());
     COMPRESSOR_NAME_TO_INSTANCE.put(
         CONNECTOR_COMPRESSOR_ZSTD,
-        new PipeZSTDCompressor(
-            PipeConfig.getInstance().getPipeConnectorRPCCompressionZSTDCompressorLevel()));
+        new PipeZSTDCompressor(CONNECTOR_COMPRESSOR_ZSTD_LEVEL_DEFAULT_VALUE));
     COMPRESSOR_NAME_TO_INSTANCE.put(CONNECTOR_COMPRESSOR_LZMA2, new PipeLZMA2Compressor());
-    COMPRESSOR_NAME_TO_INSTANCE = Collections.unmodifiableMap(COMPRESSOR_NAME_TO_INSTANCE);
   }
 
-  public static PipeCompressor getCompressor(String name) {
-    final PipeCompressor compressor = COMPRESSOR_NAME_TO_INSTANCE.get(name);
-    if (compressor == null) {
-      throw new UnsupportedOperationException("PipeCompressor not found for name: " + name);
+  public static PipeCompressor getCompressor(PipeCompressorConfig config) {
+    if (config == null) {
+      return null;
     }
-    return compressor;
+
+    if (Objects.equals(config.getName(), CONNECTOR_COMPRESSOR_ZSTD)) {
+      // For ZSTD compressor, we need to consider the compression level
+      String compressorKey = CONNECTOR_COMPRESSOR_ZSTD + "_" + config.getZstdCompressionLevel();
+      if (COMPRESSOR_NAME_TO_INSTANCE.containsKey(compressorKey)) {
+        return COMPRESSOR_NAME_TO_INSTANCE.get(compressorKey);
+      }
+
+      LOGGER.info("Create new ZSTD compressor with level: {}", config.getZstdCompressionLevel());
+      final PipeZSTDCompressor newZstdCompressor =
+          new PipeZSTDCompressor(config.getZstdCompressionLevel());
+      COMPRESSOR_NAME_TO_INSTANCE.put(compressorKey, newZstdCompressor);
+      return newZstdCompressor;
+    } else {
+      // For other compressors, we can directly get the instance by name
+      final PipeCompressor compressor = COMPRESSOR_NAME_TO_INSTANCE.get(config.getName());
+      if (compressor != null) {
+        return compressor;
+      }
+
+      throw new UnsupportedOperationException(
+          "PipeCompressor not found for name: " + config.getName());
+    }
   }
 
   private static Map<Byte, PipeCompressor> COMPRESSOR_INDEX_TO_INSTANCE = new HashMap<>();
@@ -76,7 +100,7 @@ public class PipeCompressorFactory {
     COMPRESSOR_INDEX_TO_INSTANCE = Collections.unmodifiableMap(COMPRESSOR_INDEX_TO_INSTANCE);
   }
 
-  public static PipeCompressor getCompressor(byte index) {
+  public static PipeCompressor deserializeCompressorFromIndex(byte index) {
     final PipeCompressor compressor = COMPRESSOR_INDEX_TO_INSTANCE.get(index);
     if (compressor == null) {
       throw new UnsupportedOperationException("PipeCompressor not found for index: " + index);
