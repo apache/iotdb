@@ -1500,7 +1500,7 @@ void Session::testInsertRecord(const string &deviceId, int64_t time, const vecto
 void Session::testInsertTablet(const Tablet &tablet) {
     TSInsertTabletReq request;
     request.__set_sessionId(sessionId);
-    request.prefixPath = tablet.getDeviceId();
+    request.prefixPath = tablet.deviceId;
     for (pair<string, TSDataType::TSDataType> schema: tablet.schemas) {
         request.measurements.push_back(schema.first);
         request.types.push_back(schema.second);
