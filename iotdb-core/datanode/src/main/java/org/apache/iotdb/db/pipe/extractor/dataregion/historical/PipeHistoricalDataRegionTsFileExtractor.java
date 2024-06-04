@@ -127,25 +127,25 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       throw new PipeParameterNotValidException(e.getMessage());
     }
 
-      final Set<String> sloppyOptionSet =
-              Arrays.stream(
-                              parameters
-                                      .getStringOrDefault(
-                                              Arrays.asList(
-                                                      EXTRACTOR_HISTORY_LOOSE_RANGE_KEY, SOURCE_HISTORY_LOOSE_RANGE_KEY),
-                                              EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE)
-                                      .split(","))
-                      .map(String::trim)
-                      .map(String::toLowerCase)
-                      .collect(Collectors.toSet());
-      // Avoid empty string
-      sloppyOptionSet.remove("");
-      sloppyTimeRange = sloppyOptionSet.remove("time");
-      sloppyPattern = sloppyOptionSet.remove("path");
-      if (!sloppyOptionSet.isEmpty()) {
-          throw new PipeParameterNotValidException(
-                  String.format("%s is not allowed in 'history.loose-range'", sloppyOptionSet));
-      }
+    final Set<String> sloppyOptionSet =
+        Arrays.stream(
+                parameters
+                    .getStringOrDefault(
+                        Arrays.asList(
+                            EXTRACTOR_HISTORY_LOOSE_RANGE_KEY, SOURCE_HISTORY_LOOSE_RANGE_KEY),
+                        EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE)
+                    .split(","))
+            .map(String::trim)
+            .map(String::toLowerCase)
+            .collect(Collectors.toSet());
+    // Avoid empty string
+    sloppyOptionSet.remove("");
+    sloppyTimeRange = sloppyOptionSet.remove("time");
+    sloppyPattern = sloppyOptionSet.remove("path");
+    if (!sloppyOptionSet.isEmpty()) {
+      throw new PipeParameterNotValidException(
+          String.format("%s is not allowed in 'history.loose-range'", sloppyOptionSet));
+    }
 
     if (parameters.hasAnyAttributes(
         SOURCE_START_TIME_KEY,
@@ -300,7 +300,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       }
     }
 
-
     shouldTransferModFile =
         parameters.getBooleanOrDefault(
             Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
@@ -317,19 +316,19 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE)
             .equalsIgnoreCase(PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE);
 
-      if (LOGGER.isInfoEnabled()) {
-    LOGGER.info(
-        "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy pattern {}, sloppy time range {}, should transfer mod file {}, should terminate pipe on all historical events consumed {}",
-        pipeName,
-        dataRegionId,
-        DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
-        historicalDataExtractionStartTime,
-        DateTimeUtils.convertLongToDate(historicalDataExtractionEndTime),
-        historicalDataExtractionEndTime,
-            sloppyPattern,
-        sloppyTimeRange,
-        shouldTransferModFile,
-        shouldTerminatePipeOnAllHistoricalEventsConsumed);
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info(
+          "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy pattern {}, sloppy time range {}, should transfer mod file {}, should terminate pipe on all historical events consumed {}",
+          pipeName,
+          dataRegionId,
+          DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
+          historicalDataExtractionStartTime,
+          DateTimeUtils.convertLongToDate(historicalDataExtractionEndTime),
+          historicalDataExtractionEndTime,
+          sloppyPattern,
+          sloppyTimeRange,
+          shouldTransferModFile,
+          shouldTerminatePipeOnAllHistoricalEventsConsumed);
     }
   }
 
