@@ -108,14 +108,33 @@ public interface BaseEnv {
         SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TREE_SQL_DIALECT);
   }
 
+  default Connection getConnection(String sqlDialect) throws SQLException {
+    return getConnection(SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
+  }
+
   default Connection getConnection(Constant.Version version) throws SQLException {
     return getConnection(
         version, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TREE_SQL_DIALECT);
   }
 
+  default Connection getConnection(Constant.Version version, String sqlDialect)
+      throws SQLException {
+    return getConnection(
+        version, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
+  }
+
+  default Connection getConnection(Constant.Version version, String username, String password)
+      throws SQLException {
+    return getConnection(version, username, password, TREE_SQL_DIALECT);
+  }
+
   Connection getConnection(
       Constant.Version version, String username, String password, String sqlDialect)
       throws SQLException;
+
+  default Connection getConnection(String username, String password) throws SQLException {
+    return getConnection(username, password, TREE_SQL_DIALECT);
+  }
 
   Connection getConnection(String username, String password, String sqlDialect) throws SQLException;
 
