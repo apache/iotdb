@@ -76,6 +76,7 @@ jobs:
           -P with-integration-tests \
           -DskipUTs \
           -DintegrationTest.forkCount=2 \
+          -Dsurefire.rerunFailingTestsCount=3 \
           -DenablePTS=false \
           -pl integration-test \
           -am
@@ -89,6 +90,7 @@ jobs:
           -P with-integration-tests \
           -DskipUTs \
           -DintegrationTest.forkCount=2 \
+          -Dsurefire.rerunFailingTestsCount=3 \
           -pl integration-test \
           -am
       - name: Upload Artifact

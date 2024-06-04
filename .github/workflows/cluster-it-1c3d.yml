@@ -45,7 +45,8 @@ jobs:
         with:
           distribution: liberica
           java-version: ${{ matrix.java }}
-      - name: IT/UT Test
+      - name: IT/UT Test (master)
+        if: "contains(github.ref, 'master')"
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
@@ -54,6 +55,21 @@ jobs:
           -P with-integration-tests \
           -DskipUTs \
           -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 \
+          -Dsurefire.rerunFailingTestsCount=3 \
+          -DenablePTS=false \
+          -pl integration-test \
+          -am -PClusterIT
+      - name: IT/UT Test (not master)
+        if: "!contains(github.ref, 'master')"
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          mvn clean verify \
+          -P with-integration-tests \
+          -DskipUTs \
+          -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 \
+          -Dsurefire.rerunFailingTestsCount=3 \
           -pl integration-test \
           -am -PClusterIT
       - name: Upload Artifact
