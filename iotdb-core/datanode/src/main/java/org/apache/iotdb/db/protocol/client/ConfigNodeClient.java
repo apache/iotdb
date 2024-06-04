@@ -176,13 +176,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private TTransport transport;
 
-  private TEndPoint configLeader;
+  private List<TEndPoint> configNodeEndPoints;
 
-  private List<TEndPoint> configNodes;
+  private Cursor cursor;
 
-  private TEndPoint configNode;
-
-  private int cursor = 0;
+  private boolean needRediscoverLeader = false;
 
   private boolean isFirstInitiated;
 
@@ -197,11 +195,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       ThriftClientProperty property,
       ClientManager<ConfigRegionId, ConfigNodeClient> clientManager)
       throws TException {
-    this.configNodes = configNodes;
+    this.configNodeEndPoints = configNodes;
     this.property = property;
     this.clientManager = clientManager;
     // Set the first configNode as configLeader for a tentative connection
-    this.configLeader = this.configNodes.get(0);
+    this.cursor = new Cursor(0);
     this.isFirstInitiated = true;
 
     connectAndSync();
@@ -216,7 +214,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       if (!transport.isOpen()) {
         transport.open();
       }
-      configNode = endpoint;
     } catch (TTransportException e) {
       throw new TException(e);
     }
@@ -235,13 +232,13 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   private void tryToConnect() throws TException {
-    if (configLeader != null) {
+    if (!needRediscoverLeader) {
       try {
-        connect(configLeader);
+        connect(currentConnection());
         return;
       } catch (TException ignore) {
-        logger.warn("The current node may have been down {},try next node", configLeader);
-        configLeader = null;
+        logger.warn("The current node may have been down {},try next node", currentConnection());
+        needRediscoverLeader = true;
       }
     } else {
       try {
@@ -257,9 +254,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       transport.close();
     }
 
-    for (int tryHostNum = 0; tryHostNum < configNodes.size(); tryHostNum++) {
-      cursor = (cursor + 1) % configNodes.size();
-      TEndPoint tryEndpoint = configNodes.get(cursor);
+    for (int tryHostNum = 0; tryHostNum < configNodeEndPoints.size(); tryHostNum++) {
+      cursor.set((cursor.get() + 1) % configNodeEndPoints.size());
+      TEndPoint tryEndpoint = configNodeEndPoints.get(cursor.get());
 
       try {
         connect(tryEndpoint);
@@ -272,13 +269,25 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
+  private TEndPoint currentConnection() {
+    return configNodeEndPoints.get(cursor.get());
+  }
+
+  public void manuallySelectConfigNode(TEndPoint endPoint) {
+    if (!configNodeEndPoints.contains(endPoint)) {
+      logger.warn("You cannot do this !");
+      return;
+    }
+    cursor.setAndLock(configNodeEndPoints.indexOf(endPoint));
+  }
+
   public TTransport getTransport() {
     return transport;
   }
 
   public void syncLatestConfigNodeList() {
-    configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
-    cursor = 0;
+    configNodeEndPoints = ConfigNodeInfo.getInstance().getLatestConfigNodes();
+    cursor.set(0);
   }
 
   @Override
@@ -305,16 +314,19 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     try {
       if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         if (status.isSetRedirectNode()) {
-          configLeader =
-              new TEndPoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
+          if (!configNodeEndPoints.contains(status.getRedirectNode())) {
+            configNodeEndPoints.add(status.getRedirectNode());
+          }
+          cursor.set(configNodeEndPoints.indexOf(status.getRedirectNode()));
+          needRediscoverLeader = false;
         } else {
-          configLeader = null;
+          needRediscoverLeader = true;
         }
         if (!isFirstInitiated) {
           logger.info(
               "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not "
                   + "leader or not ready yet, will try again later",
-              configNode,
+              currentConnection(),
               config.getAddressAndPort());
         }
         return true;
@@ -346,11 +358,11 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         final String message =
             String.format(
                 MSG_RECONNECTION_DATANODE_FAIL,
-                configNode,
+                currentConnection(),
                 config.getAddressAndPort(),
                 Thread.currentThread().getStackTrace()[2].getMethodName());
         logger.warn(message, e);
-        configLeader = null;
+        needRediscoverLeader = true;
       }
       connectAndSync();
     }
@@ -389,16 +401,16 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         for (TConfigNodeLocation configNodeLocation : resp.getConfigNodeList()) {
           newConfigNodes.add(configNodeLocation.getInternalEndPoint());
         }
-        configNodes = newConfigNodes;
+        configNodeEndPoints = newConfigNodes;
       } catch (TException e) {
         String message =
             String.format(
                 MSG_RECONNECTION_DATANODE_FAIL,
-                configNode,
+                currentConnection(),
                 config.getAddressAndPort(),
                 Thread.currentThread().getStackTrace()[1].getMethodName());
         logger.warn(message, e);
-        configLeader = null;
+        needRediscoverLeader = false;
       }
       connectAndSync();
     }
@@ -1131,6 +1143,36 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       return Optional.ofNullable(pooledObject.getObject().getTransport())
           .map(TTransport::isOpen)
           .orElse(false);
+    }
+  }
+
+  private class Cursor {
+    private int value;
+    private boolean locked = false;
+
+    public Cursor(int value) {
+      this.value = value;
+    }
+
+    public int get() {
+      return value;
+    }
+
+    public void set(int value) {
+      if (!locked) {
+        this.value = value;
+      } else {
+        logger.warn("ConfigNodeClient cursor will keep {} and won't change to {}, because it has been locked.", configNodeEndPoints.get(this.value), configNodeEndPoints.get(value));
+      }
+    }
+
+    public void setAndLock(int value) {
+      set(value);
+      locked = true;
+    }
+
+    public void unlock() {
+      locked = false;
     }
   }
 }
