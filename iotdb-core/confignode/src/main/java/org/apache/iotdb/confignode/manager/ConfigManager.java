@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -211,11 +212,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -1505,25 +1504,31 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus setConfiguration(TSetConfigurationReq req) {
+    TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId() == req.getNodeId()) {
       URL url = ConfigNodeDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
       if (url == null || !new File(url.getFile()).exists()) {
-        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        return tsStatus;
       }
       File file = new File(url.getFile());
-      try (FileWriter fileWriter = new FileWriter(file, true)) {
-        Properties properties = new Properties();
-        properties.putAll(req.getConfigs());
-        properties.store(fileWriter, null);
-      } catch (IOException e) {
+      Properties properties = new Properties();
+      properties.putAll(req.getConfigs());
+      List<String> ignoredConfigItems =
+          ConfigurationFileUtils.filterImmutableConfigItems(properties);
+      if (!ignoredConfigItems.isEmpty()) {
+        tsStatus.setMessage("ignored config items" + ignoredConfigItems);
+      }
+      try {
+        ConfigurationFileUtils.updateConfigurationFile(file, properties);
+      } catch (Exception e) {
         return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      return tsStatus;
     }
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+    tsStatus = confirmLeader();
+    return tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? RpcUtils.squashResponseStatusList(nodeManager.setConfiguration(req))
-        : status;
+        : tsStatus;
   }
 
   @Override
@@ -1557,10 +1562,7 @@ public class ConfigManager implements IManager {
           new TShowConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), "");
       try {
         URL propsUrl = ConfigNodeDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
-        if (propsUrl != null && new File(propsUrl.getFile()).exists()) {
-          byte[] bytes = Files.readAllBytes(new File(propsUrl.getFile()).toPath());
-          resp.setContent(new String(bytes));
-        }
+        resp.setContent(ConfigurationFileUtils.readConfigFileContent(propsUrl));
       } catch (Exception e) {
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
       }

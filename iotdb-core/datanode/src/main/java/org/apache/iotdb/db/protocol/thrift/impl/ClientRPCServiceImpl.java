@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -194,11 +195,8 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -2320,7 +2318,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setStatus(getNotLoggedInStatus());
         return resp;
       }
-      resp.setContent(getConfigurationFileContent(CommonConfig.SYSTEM_CONFIG_NAME + ".properties"));
+      resp.setContent(
+          ConfigurationFileUtils.readConfigFileContent(
+              IoTDBDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME + ".template")));
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       return resp;
     } catch (Exception e) {
@@ -2349,7 +2349,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       if (IoTDBDescriptor.getInstance().getConfig().getDataNodeId() == nodeId) {
-        resp.setContent(getConfigurationFileContent(CommonConfig.SYSTEM_CONFIG_NAME));
+        resp.setContent(
+            ConfigurationFileUtils.readConfigFileContent(
+                IoTDBDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME)));
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
         return resp;
       }
@@ -2368,19 +2370,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     } finally {
       SESSION_MANAGER.updateIdleTime();
     }
-  }
-
-  private String getConfigurationFileContent(String configurationFileName) throws IOException {
-    String content = "";
-    URL configurationFileUrl = IoTDBDescriptor.getPropsUrl(configurationFileName);
-    if (configurationFileUrl == null) {
-      return content;
-    }
-    File file = new File(configurationFileUrl.getFile());
-    if (!file.exists()) {
-      return content;
-    }
-    return new String(Files.readAllBytes(file.toPath()));
   }
 
   private TSQueryTemplateResp executeTemplateQueryStatement(

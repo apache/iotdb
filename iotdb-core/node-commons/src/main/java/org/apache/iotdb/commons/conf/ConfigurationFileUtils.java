@@ -23,19 +23,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.URL;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
-public class ConfigFileAutoUpdateTool {
+public class ConfigurationFileUtils {
 
-  private final String lockFileSuffix = ".lock";
-  private final long maxTimeMillsToAcquireLock = TimeUnit.SECONDS.toMillis(20);
-  private final long waitTimeMillsPerCheck = TimeUnit.MILLISECONDS.toMillis(100);
-  private Logger logger = LoggerFactory.getLogger(ConfigFileAutoUpdateTool.class);
-  private String license =
+  private static final String lockFileSuffix = ".lock";
+  private static final long maxTimeMillsToAcquireLock = TimeUnit.SECONDS.toMillis(20);
+  private static final long waitTimeMillsPerCheck = TimeUnit.MILLISECONDS.toMillis(100);
+  private static Logger logger = LoggerFactory.getLogger(ConfigurationFileUtils.class);
+  private static String license =
       "#\n"
           + "# Licensed to the Apache Software Foundation (ASF) under one\n"
           + "# or more contributor license agreements.  See the NOTICE file\n"
@@ -54,7 +58,8 @@ public class ConfigFileAutoUpdateTool {
           + "# specific language governing permissions and limitations\n"
           + "# under the License.";
 
-  public void checkAndMayUpdate(URL systemUrl, URL configNodeUrl, URL dataNodeUrl, URL commonUrl)
+  public static void checkAndMayUpdate(
+      URL systemUrl, URL configNodeUrl, URL dataNodeUrl, URL commonUrl)
       throws IOException, InterruptedException {
     if (systemUrl == null || configNodeUrl == null || dataNodeUrl == null || commonUrl == null) {
       return;
@@ -94,7 +99,39 @@ public class ConfigFileAutoUpdateTool {
     }
   }
 
-  private String readConfigLines(File file) throws IOException {
+  public static String readConfigFileContent(URL url) throws IOException {
+    if (url == null) {
+      return "";
+    }
+    File f = new File(url.getFile());
+    if (!f.exists()) {
+      return "";
+    }
+    return readConfigLines(f);
+  }
+
+  public static List<String> filterImmutableConfigItems(Properties properties) {
+    List<String> ignoredConfigItems = new ArrayList<>();
+    return ignoredConfigItems;
+  }
+
+  public static void updateConfigurationFile(File file, Properties newConfigItems)
+      throws IOException, InterruptedException {
+    File lockFile = new File(file.getPath() + lockFileSuffix);
+    acquireTargetFileLock(lockFile);
+    try {
+      String contentOfSourceFile = readConfigLines(file);
+      try (FileWriter writer = new FileWriter(file, true)) {
+        writer.write(contentOfSourceFile);
+        newConfigItems.store(writer, null);
+      }
+      Files.move(lockFile.toPath(), file.toPath());
+    } finally {
+      releaseFileLock(lockFile);
+    }
+  }
+
+  private static String readConfigLines(File file) throws IOException {
     if (!file.exists()) {
       return "";
     }
@@ -103,7 +140,7 @@ public class ConfigFileAutoUpdateTool {
     return content.replace(license, "");
   }
 
-  private void acquireTargetFileLock(File file) throws IOException, InterruptedException {
+  private static void acquireTargetFileLock(File file) throws IOException, InterruptedException {
     long totalWaitTime = 0;
     while (totalWaitTime < maxTimeMillsToAcquireLock) {
       if (file.createNewFile()) {
@@ -120,7 +157,7 @@ public class ConfigFileAutoUpdateTool {
         file.getName());
   }
 
-  private void releaseFileLock(File file) throws IOException {
+  private static void releaseFileLock(File file) throws IOException {
     Files.deleteIfExists(file.toPath());
   }
 }

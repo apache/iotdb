@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.ConfigFileAutoUpdateTool;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -55,13 +55,13 @@ public class ConfigNodeDescriptor {
   private final ConfigNodeConfig conf = new ConfigNodeConfig();
 
   static {
-    ConfigFileAutoUpdateTool updateTool = new ConfigFileAutoUpdateTool();
     URL systemConfigUrl = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     URL configNodeUrl = getPropsUrl(CommonConfig.OLD_CONFIG_NODE_CONFIG_NAME);
     URL dataNodeUrl = getPropsUrl(CommonConfig.OLD_DATA_NODE_CONFIG_NAME);
     URL commonConfigUrl = getPropsUrl(CommonConfig.OLD_COMMON_CONFIG_NAME);
     try {
-      updateTool.checkAndMayUpdate(systemConfigUrl, configNodeUrl, dataNodeUrl, commonConfigUrl);
+      ConfigurationFileUtils.checkAndMayUpdate(
+          systemConfigUrl, configNodeUrl, dataNodeUrl, commonConfigUrl);
     } catch (Exception e) {
       LOGGER.error("Failed to update config file", e);
     }

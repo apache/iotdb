@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -82,7 +83,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -608,9 +608,14 @@ public class StorageEngine implements IService {
     Map<String, String> newConfigItems = req.getConfigs();
     Properties properties = new Properties();
     properties.putAll(newConfigItems);
+    TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    List<String> ignoredConfigItems = ConfigurationFileUtils.filterImmutableConfigItems(properties);
+    if (!ignoredConfigItems.isEmpty()) {
+      tsStatus.setMessage("ignored config items: " + ignoredConfigItems);
+    }
 
     if (newConfigItems.isEmpty()) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      return tsStatus;
     }
     URL configFileUrl = IoTDBDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (configFileUrl == null || !(new File(configFileUrl.getFile()).exists())) {
@@ -621,14 +626,13 @@ public class StorageEngine implements IService {
       } catch (Exception e) {
         return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      return tsStatus;
     }
 
     // 1. append new configuration properties to configuration file
-    File configFile = new File(configFileUrl.getFile());
-    try (FileWriter writer = new FileWriter(configFile, true)) {
-      properties.store(writer, null);
-    } catch (IOException e) {
+    try {
+      ConfigurationFileUtils.updateConfigurationFile(new File(configFileUrl.getFile()), properties);
+    } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
 
@@ -638,7 +642,7 @@ public class StorageEngine implements IService {
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    return tsStatus;
   }
 
   /**
