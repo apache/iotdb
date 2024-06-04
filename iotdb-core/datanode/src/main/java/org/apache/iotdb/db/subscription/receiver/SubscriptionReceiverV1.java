@@ -412,6 +412,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           messagePayload.getTopicNames().stream()
               .map(ASTVisitor::parseIdentifier)
               .collect(Collectors.toSet());
+      // filter unsubscribed topics
       topicNames.removeIf((topicName) -> !subscribedTopicNames.contains(topicName));
     }
 

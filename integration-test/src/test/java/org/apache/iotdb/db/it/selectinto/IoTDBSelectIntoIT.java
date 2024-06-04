@@ -91,7 +91,7 @@ public class IoTDBSelectIntoIT {
     SELECT_INTO_SQL_LIST.add("CREATE DATABASE root.sg_type");
     for (int deviceId = 0; deviceId < 6; deviceId++) {
       for (TSDataType dataType : TSDataType.values()) {
-        if (!dataType.equals(TSDataType.VECTOR)) {
+        if (!dataType.equals(TSDataType.VECTOR) && !dataType.equals(TSDataType.UNKNOWN)) {
           SELECT_INTO_SQL_LIST.add(
               String.format(
                   "CREATE TIMESERIES root.sg_type.d_%d.s_%s %s",

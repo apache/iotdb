@@ -39,12 +39,7 @@ public enum Type {
   /* TEXT */
   TEXT((byte) 5),
 
-  /* VECTOR */
-  VECTOR((byte) 6),
-
-  /* UNKNOWN */
-  UNKNOWN((byte) 7),
-
+  /* TsDataType.Vector and TsDataType.UNKNOWN are inner types of TsFile-module, which should not be supported in UDF APIs. To be consistent with TsDataType, the next value starts with 8 */
   /* TIMESTAMP */
   TIMESTAMP((byte) 8),
 
