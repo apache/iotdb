@@ -431,7 +431,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return createTLoadResp(
           new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
     }
-
     TSStatus resultStatus =
         StorageEngine.getInstance()
             .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, req.uuid);
@@ -1798,7 +1797,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
-    return storageEngine.setTTL(req);
+    try {
+      return storageEngine.setTTL(req);
+    } catch (IllegalPathException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
   }
 
   @Override

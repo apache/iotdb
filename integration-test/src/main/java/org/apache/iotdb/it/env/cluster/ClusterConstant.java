@@ -118,6 +118,7 @@ public class ClusterConstant {
   public static final String CONFIG_NODE_PROPERTIES_FILE = "iotdb-confignode.properties";
   public static final String DATA_NODE_PROPERTIES_FILE = "iotdb-datanode.properties";
   public static final String COMMON_PROPERTIES_FILE = "iotdb-common.properties";
+  public static final String IOTDB_SYSTEM_PROPERTIES_FILE = "iotdb-system.properties";
 
   public static final String SYSTEM_PROPERTIES_FILE = "system.properties";
   public static final String CONFIG_NODE_SYSTEM_PROPERTIES_FILE = "confignode-system.properties";
@@ -209,6 +210,9 @@ public class ClusterConstant {
   public static final String SIMPLE_CONSENSUS_STR = "Simple";
   public static final String RATIS_CONSENSUS_STR = "Ratis";
   public static final String IOT_CONSENSUS_STR = "IoT";
+  public static final String PIPE_CONSENSUS_STR = "Pipe";
+  public static final String STREAM_CONSENSUS_STR = "Stream";
+  public static final String BATCH_CONSENSUS_STR = "Batch";
 
   public static final String JAVA_CMD =
       System.getProperty("java.home")

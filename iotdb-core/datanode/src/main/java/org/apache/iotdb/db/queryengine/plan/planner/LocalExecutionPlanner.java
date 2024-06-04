@@ -35,13 +35,16 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.utils.SetThreadName;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Used to plan a fragment instance. One fragment instance could be split into multiple pipelines so
@@ -110,6 +113,9 @@ public class LocalExecutionPlanner {
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
 
     instanceContext.setSourcePaths(collectSourcePaths(context));
+    instanceContext.setDevicePathsToAligned(collectDevicePathsToAligned(context));
+    instanceContext.setQueryDataSourceType(
+        getQueryDataSourceType((DataDriverContext) context.getDriverContext()));
 
     context.getTimePartitions().ifPresent(instanceContext::setTimePartitions);
 
@@ -194,6 +200,17 @@ public class LocalExecutionPlanner {
           }
         });
     return estimatedMemorySize;
+  }
+
+  private QueryDataSourceType getQueryDataSourceType(DataDriverContext dataDriverContext) {
+    return dataDriverContext.getQueryDataSourceType().orElse(QueryDataSourceType.SERIES_SCAN);
+  }
+
+  private Map<IDeviceID, Boolean> collectDevicePathsToAligned(LocalExecutionPlanContext context) {
+    DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
+    Map<IDeviceID, Boolean> deviceToAlignedMap = dataDriverContext.getDeviceIDToAligned();
+    dataDriverContext.clearDeviceIDToAligned();
+    return deviceToAlignedMap;
   }
 
   private List<IFullPath> collectSourcePaths(LocalExecutionPlanContext context) {

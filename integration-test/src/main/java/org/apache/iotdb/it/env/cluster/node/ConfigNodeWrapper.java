@@ -33,17 +33,16 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_CONNECTION_TIME
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_CONSENSUS_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_METRIC_IOTDB_REPORTER_HOST;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_SYSTEM_DIR;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.COMMON_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_INIT_HEAP_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_MAX_DIRECT_MEMORY_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_MAX_HEAP_SIZE;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_SYSTEM_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_FACTOR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_CONFIG_NODE_COMMON_PROPERTIES;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_CONFIG_NODE_PROPERTIES;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOTDB_SYSTEM_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REPLICATION_FACTOR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.TARGET;
@@ -90,13 +89,8 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
-  protected String getTargetNodeConfigPath() {
-    return workDirFilePath("conf", CONFIG_NODE_PROPERTIES_FILE);
-  }
-
-  @Override
-  protected String getTargetCommonConfigPath() {
-    return workDirFilePath("conf", COMMON_PROPERTIES_FILE);
+  protected String getSystemConfigPath() {
+    return workDirFilePath("conf", IOTDB_SYSTEM_PROPERTIES_FILE);
   }
 
   @Override

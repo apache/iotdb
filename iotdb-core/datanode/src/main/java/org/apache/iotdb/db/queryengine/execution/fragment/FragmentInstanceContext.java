@@ -358,6 +358,10 @@ public class FragmentInstanceContext extends QueryContext {
     this.sourcePaths = sourcePaths;
   }
 
+  public void setDevicePathsToAligned(Map<IDeviceID, Boolean> devicePathsToAligned) {
+    this.devicePathsToAligned = devicePathsToAligned;
+  }
+
   public void initQueryDataSource(List<IFullPath> sourcePaths) throws QueryProcessException {
     long startTime = System.nanoTime();
     if (sourcePaths == null) {
@@ -400,6 +404,9 @@ public class FragmentInstanceContext extends QueryContext {
   public void initRegionScanQueryDataSource(Map<IDeviceID, Boolean> devicePathToAligned)
       throws QueryProcessException {
     long startTime = System.nanoTime();
+    if (devicePathsToAligned == null) {
+      return;
+    }
     dataRegion.readLock();
     try {
       this.sharedQueryDataSource =
@@ -422,6 +429,9 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void initRegionScanQueryDataSource(List<IFullPath> pathList) throws QueryProcessException {
     long startTime = System.nanoTime();
+    if (pathList == null) {
+      return;
+    }
     dataRegion.readLock();
     try {
       this.sharedQueryDataSource =

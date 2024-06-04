@@ -473,6 +473,7 @@ public class IoTConsensus implements IConsensus {
         .init(config.getReplication().getRegionMigrationSpeedLimitBytesPerSecond());
   }
 
+  @Override
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
       throws ConsensusException {
     IoTConsensusServerImpl impl =

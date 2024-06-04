@@ -40,6 +40,7 @@ import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileDeviceIterator;
@@ -85,11 +86,13 @@ public class RepairDataFileScanUtil {
       while (deviceIterator.hasNext()) {
         Pair<IDeviceID, Boolean> deviceIsAlignedPair = deviceIterator.next();
         IDeviceID device = deviceIsAlignedPair.getLeft();
+        MetadataIndexNode metadataIndexNode =
+            deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
         boolean isAligned = deviceIsAlignedPair.getRight();
         if (isAligned) {
-          checkAlignedDeviceSeries(reader, device);
+          checkAlignedDeviceSeries(reader, device, metadataIndexNode);
         } else {
-          checkNonAlignedDeviceSeries(reader, device);
+          checkNonAlignedDeviceSeries(reader, device, metadataIndexNode);
         }
       }
     } catch (CompactionLastTimeCheckFailedException lastTimeCheckFailedException) {
@@ -108,10 +111,11 @@ public class RepairDataFileScanUtil {
     }
   }
 
-  private void checkAlignedDeviceSeries(TsFileSequenceReader reader, IDeviceID device)
+  private void checkAlignedDeviceSeries(
+      TsFileSequenceReader reader, IDeviceID device, MetadataIndexNode metadataIndexNode)
       throws IOException {
-    String deviceStr = device.toString();
-    List<AlignedChunkMetadata> chunkMetadataList = reader.getAlignedChunkMetadata(device);
+    List<AlignedChunkMetadata> chunkMetadataList =
+        reader.getAlignedChunkMetadataByMetadataIndexNode(device, metadataIndexNode);
     for (AlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
       IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
       Chunk timeChunk = reader.readMemChunk((ChunkMetadata) timeChunkMetadata);
@@ -135,33 +139,36 @@ public class RepairDataFileScanUtil {
             Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
         while (decoder.hasNext(uncompressedPageData)) {
           long currentTime = decoder.readLong(uncompressedPageData);
-          checkPreviousTimeAndUpdate(deviceStr, currentTime);
+          checkPreviousTimeAndUpdate(device, currentTime);
         }
       }
     }
     previousTime = Long.MIN_VALUE;
   }
 
-  private void checkNonAlignedDeviceSeries(TsFileSequenceReader reader, IDeviceID device)
+  private void checkNonAlignedDeviceSeries(
+      TsFileSequenceReader reader, IDeviceID device, MetadataIndexNode metadataIndexNode)
       throws IOException {
     Iterator<Map<String, List<ChunkMetadata>>> measurementChunkMetadataListMapIterator =
-        reader.getMeasurementChunkMetadataListMapIterator(device);
+        reader.getMeasurementChunkMetadataListMapIterator(metadataIndexNode);
     while (measurementChunkMetadataListMapIterator.hasNext()) {
       Map<String, List<ChunkMetadata>> measurementChunkMetadataListMap =
           measurementChunkMetadataListMapIterator.next();
       for (Map.Entry<String, List<ChunkMetadata>> measurementChunkMetadataListEntry :
           measurementChunkMetadataListMap.entrySet()) {
-        String path =
-            device + TsFileConstant.PATH_SEPARATOR + measurementChunkMetadataListEntry.getKey();
         List<ChunkMetadata> chunkMetadataList = measurementChunkMetadataListEntry.getValue();
-        checkSingleNonAlignedSeries(reader, path, chunkMetadataList);
+        checkSingleNonAlignedSeries(
+            reader, device, measurementChunkMetadataListEntry.getKey(), chunkMetadataList);
         previousTime = Long.MIN_VALUE;
       }
     }
   }
 
   private void checkSingleNonAlignedSeries(
-      TsFileSequenceReader reader, String path, List<ChunkMetadata> chunkMetadataList)
+      TsFileSequenceReader reader,
+      IDeviceID deviceID,
+      String measurementId,
+      List<ChunkMetadata> chunkMetadataList)
       throws IOException {
     for (ChunkMetadata chunkMetadata : chunkMetadataList) {
       if (chunkMetadata == null || chunkMetadata.getStatistics().getCount() == 0) {
@@ -190,7 +197,7 @@ public class RepairDataFileScanUtil {
                 TSDataType.INT64);
         while (timeDecoder.hasNext(timeBuffer)) {
           long currentTime = timeDecoder.readLong(timeBuffer);
-          checkPreviousTimeAndUpdate(path, currentTime);
+          checkPreviousTimeAndUpdate(deviceID, measurementId, currentTime);
         }
       }
     }
@@ -214,9 +221,17 @@ public class RepairDataFileScanUtil {
     return ByteBuffer.wrap(uncompressedData);
   }
 
-  private void checkPreviousTimeAndUpdate(String path, long time) {
+  private void checkPreviousTimeAndUpdate(IDeviceID deviceID, String measurementId, long time) {
     if (previousTime >= time) {
-      throw new CompactionLastTimeCheckFailedException(path, time, previousTime);
+      throw new CompactionLastTimeCheckFailedException(
+          deviceID.toString() + TsFileConstant.PATH_SEPARATOR + measurementId, time, previousTime);
+    }
+    previousTime = time;
+  }
+
+  private void checkPreviousTimeAndUpdate(IDeviceID deviceID, long time) {
+    if (previousTime >= time) {
+      throw new CompactionLastTimeCheckFailedException(deviceID.toString(), time, previousTime);
     }
     previousTime = time;
   }
