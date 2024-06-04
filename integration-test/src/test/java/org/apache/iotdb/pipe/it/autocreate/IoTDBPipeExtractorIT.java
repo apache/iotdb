@@ -960,8 +960,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select count(*) from root.** group by level=0",
           "count(root.*.*.*),",
-          Collections.singleton("4,"),
-          10);
+          Collections.singleton("4,"));
     }
   }
 
