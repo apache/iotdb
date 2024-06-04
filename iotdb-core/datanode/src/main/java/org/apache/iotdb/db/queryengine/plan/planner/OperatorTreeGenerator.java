@@ -274,6 +274,8 @@ import org.apache.tsfile.read.filter.operator.TimeFilterOperators.TimeGtEq;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TimeDuration;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -3603,9 +3605,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     for (Map.Entry<PartialPath, List<TimeseriesSchemaInfo>> entry :
         entryMap.getValue().entrySet()) {
       PartialPath path = entry.getKey();
-      context.addPath(IFullPath.convertToIFullPath(path));
       if (path instanceof MeasurementPath) {
         timeseriesSchemaInfoMap.put(path.getMeasurement(), entry.getValue().get(0));
+        context.addPath(
+            new NonAlignedFullPath(
+                path.getIDeviceID(),
+                new MeasurementSchema(
+                    path.getMeasurement(),
+                    TSDataType.valueOf(entry.getValue().get(0).getDataType()))));
       } else if (path instanceof AlignedPath) {
         AlignedPath alignedPath = (AlignedPath) path;
         List<String> measurementList = alignedPath.getMeasurementList();
@@ -3613,9 +3620,16 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           throw new IllegalArgumentException(
               "The size of measurementList and timeseriesSchemaInfoList should be equal in aligned path.");
         }
-        for (int i = 0; i < measurementList.size(); i++) {
+        int size = measurementList.size();
+        List<IMeasurementSchema> schemaList = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
           timeseriesSchemaInfoMap.put(measurementList.get(i), entry.getValue().get(i));
+          schemaList.add(
+              new MeasurementSchema(
+                  measurementList.get(i),
+                  TSDataType.valueOf(entry.getValue().get(i).getDataType())));
         }
+        context.addPath(new AlignedFullPath(path.getIDeviceID(), measurementList, schemaList));
       }
     }
     return timeseriesSchemaInfoMap;
