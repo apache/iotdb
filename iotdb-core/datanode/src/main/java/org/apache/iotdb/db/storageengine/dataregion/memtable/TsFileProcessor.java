@@ -94,6 +94,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -1625,6 +1626,7 @@ public class TsFileProcessor {
   }
 
   private void processAlignedChunkMetaDataFromFlushedMemTable(
+      IDeviceID deviceID,
       AlignedChunkMetadata alignedChunkMetadata,
       Map<String, List<IChunkMetadata>> measurementToChunkMetaMap,
       Map<String, List<IChunkHandle>> measurementToChunkHandleMap,
@@ -1632,13 +1634,16 @@ public class TsFileProcessor {
     SharedTimeDataBuffer sharedTimeDataBuffer =
         new SharedTimeDataBuffer(alignedChunkMetadata.getTimeChunkMetadata());
     for (IChunkMetadata valueChunkMetaData : alignedChunkMetadata.getValueChunkMetadataList()) {
+      String measurement = valueChunkMetaData.getMeasurementUid();
       measurementToChunkMetaMap
-          .computeIfAbsent(valueChunkMetaData.getMeasurementUid(), k -> new ArrayList<>())
+          .computeIfAbsent(measurement, k -> new ArrayList<>())
           .add(valueChunkMetaData);
       measurementToChunkHandleMap
-          .computeIfAbsent(valueChunkMetaData.getMeasurementUid(), k -> new ArrayList<>())
+          .computeIfAbsent(measurement, k -> new ArrayList<>())
           .add(
               new DiskAlignedChunkHandleImpl(
+                  deviceID,
+                  measurement,
                   filePath,
                   false,
                   valueChunkMetaData.getOffsetOfChunkHeader(),
@@ -1648,17 +1653,21 @@ public class TsFileProcessor {
   }
 
   private void processChunkMetaDataFromFlushedMemTable(
+      IDeviceID deviceID,
       ChunkMetadata chunkMetadata,
       Map<String, List<IChunkMetadata>> measurementToChunkMetaMap,
       Map<String, List<IChunkHandle>> measurementToChunkHandleMap,
       String filePath) {
+    String measurement = chunkMetadata.getMeasurementUid();
     measurementToChunkMetaMap
-        .computeIfAbsent(chunkMetadata.getMeasurementUid(), k -> new ArrayList<>())
+        .computeIfAbsent(measurement, k -> new ArrayList<>())
         .add(chunkMetadata);
     measurementToChunkHandleMap
-        .computeIfAbsent(chunkMetadata.getMeasurementUid(), k -> new ArrayList<>())
+        .computeIfAbsent(measurement, k -> new ArrayList<>())
         .add(
             new DiskChunkHandleImpl(
+                deviceID,
+                measurement,
                 filePath,
                 false,
                 chunkMetadata.getOffsetOfChunkHeader(),
@@ -1666,18 +1675,21 @@ public class TsFileProcessor {
   }
 
   private void buildChunkHandleForFlushedMemTable(
+      IDeviceID deviceID,
       List<IChunkMetadata> chunkMetadataList,
       Map<String, List<IChunkMetadata>> measurementToChunkMetaList,
       Map<String, List<IChunkHandle>> measurementToChunkHandleList) {
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       if (chunkMetadata instanceof AlignedChunkMetadata) {
         processAlignedChunkMetaDataFromFlushedMemTable(
+            deviceID,
             (AlignedChunkMetadata) chunkMetadata,
             measurementToChunkMetaList,
             measurementToChunkHandleList,
             this.tsFileResource.getTsFilePath());
       } else {
         processChunkMetaDataFromFlushedMemTable(
+            deviceID,
             (ChunkMetadata) chunkMetadata,
             measurementToChunkMetaList,
             measurementToChunkHandleList,
@@ -1727,11 +1739,16 @@ public class TsFileProcessor {
   }
 
   private List<IChunkMetadata> getAlignedVisibleMetadataListFromWriterByDeviceID(
-      QueryContext queryContext, IDeviceID deviceID) throws QueryProcessException {
+      QueryContext queryContext, IDeviceID deviceID)
+      throws QueryProcessException, IllegalPathException {
     List<AlignedChunkMetadata> alignedChunkMetadataForOneDevice = new ArrayList<>();
     List<List<Modification>> modifications = new ArrayList<>();
     List<List<ChunkMetadata>> chunkMetaDataListForDevice =
         writer.getVisibleMetadataList(deviceID, null);
+
+    if (chunkMetaDataListForDevice.isEmpty()) {
+      return Collections.emptyList();
+    }
 
     int timeChunkMetadataListIndex =
         searchTimeChunkMetaDataIndexAndSetModifications(
@@ -1781,6 +1798,7 @@ public class TsFileProcessor {
         for (IFullPath seriesPath : pathList) {
           Map<String, List<IChunkMetadata>> measurementToChunkMetaList = new HashMap<>();
           Map<String, List<IChunkHandle>> measurementToChunkHandleList = new HashMap<>();
+
           // TODO Tien change the way
           long timeLowerBound = getQueryTimeLowerBound(seriesPath.getDeviceId());
           for (IMemTable flushingMemTable : flushingMemTables) {
@@ -1793,29 +1811,33 @@ public class TsFileProcessor {
                 measurementToChunkMetaList,
                 measurementToChunkHandleList,
                 modsToMemtable);
-            if (workMemTable != null) {
-              workMemTable.queryForSeriesRegionScan(
-                  seriesPath,
-                  timeLowerBound,
-                  measurementToChunkMetaList,
-                  measurementToChunkHandleList,
-                  null);
-            }
-
-            // Some memTable have been flushed already, so we need to get the chunk metadata from
-            // writer and build chunk handle for disk scanning
-            buildChunkHandleForFlushedMemTable(
-                ResourceByPathUtils.getResourceInstance(seriesPath)
-                    .getVisibleMetadataListFromWriter(
-                        writer, tsFileResource, queryContext, timeLowerBound),
+          }
+          if (workMemTable != null) {
+            workMemTable.queryForSeriesRegionScan(
+                seriesPath,
+                timeLowerBound,
                 measurementToChunkMetaList,
-                measurementToChunkHandleList);
+                measurementToChunkHandleList,
+                null);
+          }
+          IDeviceID deviceID = seriesPath.getDeviceId();
+          // Some memTable have been flushed already, so we need to get the chunk metadata from
+          // writer and build chunk handle for disk scanning
+          buildChunkHandleForFlushedMemTable(
+              deviceID,
+              ResourceByPathUtils.getResourceInstance(seriesPath)
+                  .getVisibleMetadataListFromWriter(
+                      writer, tsFileResource, queryContext, timeLowerBound),
+              measurementToChunkMetaList,
+              measurementToChunkHandleList);
 
-            IDeviceID devicePath = seriesPath.getDeviceId();
-            if (!measurementToChunkHandleList.isEmpty() || !measurementToChunkMetaList.isEmpty()) {
-              deviceToMemChunkHandleMap.put(devicePath, measurementToChunkHandleList);
-              deviceToChunkMetadataListMap.put(devicePath, measurementToChunkMetaList);
-            }
+          if (!measurementToChunkHandleList.isEmpty() || !measurementToChunkMetaList.isEmpty()) {
+            deviceToMemChunkHandleMap
+                .computeIfAbsent(deviceID, k -> new HashMap<>())
+                .putAll(measurementToChunkHandleList);
+            deviceToChunkMetadataListMap
+                .computeIfAbsent(deviceID, k -> new HashMap<>())
+                .putAll(measurementToChunkMetaList);
           }
         }
       } catch (QueryProcessException | MetadataException | IOException e) {
@@ -1864,9 +1886,9 @@ public class TsFileProcessor {
       flushQueryLock.readLock().lock();
       try {
         for (Map.Entry<IDeviceID, Boolean> entry : devicePathToAligned.entrySet()) {
-          IDeviceID devicePath = entry.getKey();
+          IDeviceID deviceID = entry.getKey();
           boolean isAligned = entry.getValue();
-          long timeLowerBound = getQueryTimeLowerBound(devicePath);
+          long timeLowerBound = getQueryTimeLowerBound(deviceID);
           Map<String, List<IChunkMetadata>> measurementToChunkMetadataList = new HashMap<>();
           Map<String, List<IChunkHandle>> measurementToMemChunkHandleList = new HashMap<>();
           for (IMemTable flushingMemTable : flushingMemTables) {
@@ -1874,7 +1896,7 @@ public class TsFileProcessor {
               continue;
             }
             flushingMemTable.queryForDeviceRegionScan(
-                devicePath,
+                deviceID,
                 isAligned,
                 timeLowerBound,
                 measurementToChunkMetadataList,
@@ -1883,7 +1905,7 @@ public class TsFileProcessor {
           }
           if (workMemTable != null) {
             workMemTable.queryForDeviceRegionScan(
-                devicePath,
+                deviceID,
                 isAligned,
                 timeLowerBound,
                 measurementToChunkMetadataList,
@@ -1892,16 +1914,17 @@ public class TsFileProcessor {
           }
 
           buildChunkHandleForFlushedMemTable(
+              deviceID,
               isAligned
-                  ? getAlignedVisibleMetadataListFromWriterByDeviceID(queryContext, devicePath)
-                  : getVisibleMetadataListFromWriterByDeviceID(queryContext, devicePath),
+                  ? getAlignedVisibleMetadataListFromWriterByDeviceID(queryContext, deviceID)
+                  : getVisibleMetadataListFromWriterByDeviceID(queryContext, deviceID),
               measurementToChunkMetadataList,
               measurementToMemChunkHandleList);
 
           if (!measurementToMemChunkHandleList.isEmpty()
               || !measurementToChunkMetadataList.isEmpty()) {
-            deviceToMemChunkHandleMap.put(devicePath, measurementToMemChunkHandleList);
-            deviceToChunkMetadataListMap.put(devicePath, measurementToChunkMetadataList);
+            deviceToMemChunkHandleMap.put(deviceID, measurementToMemChunkHandleList);
+            deviceToChunkMetadataListMap.put(deviceID, measurementToChunkMetadataList);
           }
         }
       } catch (QueryProcessException | MetadataException | IOException e) {

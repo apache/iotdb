@@ -132,7 +132,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
         IDeviceID device = deviceIsAlignedPair.getLeft();
         MultiTsFileDeviceIterator.MultiTsFileNonAlignedMeasurementMetadataListIterator
             measurementIterator =
-                multiTsFileDeviceIterator.iterateNotAlignedSeriesAndChunkMetadataList(device);
+                multiTsFileDeviceIterator
+                    .iterateNotAlignedSeriesAndChunkMetadataListOfCurrentDevice();
         while (measurementIterator.hasNextSeries()) {
           String series = measurementIterator.nextSeries();
           LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =

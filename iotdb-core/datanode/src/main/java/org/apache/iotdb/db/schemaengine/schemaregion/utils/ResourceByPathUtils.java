@@ -272,7 +272,8 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
         // if all the sub sensors doesn't exist, it will be false
         boolean exits = false;
         for (List<ChunkMetadata> chunkMetadata : valueChunkMetadataList) {
-          boolean currentExist = i < chunkMetadata.size();
+          boolean currentExist =
+              i < chunkMetadata.size() && chunkMetadata.get(i).getNumOfPoints() > 0;
           exits = (exits || currentExist);
           valueChunkMetadata.add(currentExist ? chunkMetadata.get(i) : null);
         }

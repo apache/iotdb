@@ -34,14 +34,6 @@ public class UDFDataTypeTransformer {
     return type == null ? null : TSDataType.getTsDataType(type.getType());
   }
 
-  public static List<TSDataType> transformToTsDataTypeList(List<Type> typeList) {
-    return typeList == null
-        ? null
-        : typeList.stream()
-            .map(UDFDataTypeTransformer::transformToTsDataType)
-            .collect(Collectors.toList());
-  }
-
   public static Type transformToUDFDataType(TSDataType tsDataType) {
     return tsDataType == null ? null : getUDFDataType(tsDataType.getType());
   }
@@ -68,10 +60,6 @@ public class UDFDataTypeTransformer {
         return Type.DOUBLE;
       case 5:
         return Type.TEXT;
-      case 6:
-        return Type.VECTOR;
-      case 7:
-        return Type.UNKNOWN;
       case 8:
         return Type.TIMESTAMP;
       case 9:

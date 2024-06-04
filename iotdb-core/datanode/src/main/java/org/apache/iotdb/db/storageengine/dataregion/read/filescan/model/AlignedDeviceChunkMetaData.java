@@ -18,27 +18,65 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.model;
 
+import org.apache.iotdb.db.storageengine.dataregion.utils.SharedTimeDataBuffer;
+
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.List;
 
 public class AlignedDeviceChunkMetaData extends AbstractDeviceChunkMetaData {
 
-  List<AlignedChunkMetadata> alignedChunkMetadataList;
+  private int alignedChunkMetadataIndex;
+  private int valueChunkMetadataIndex;
+  private int curValueSize;
+  private final List<AlignedChunkMetadata> alignedChunkMetadataList;
 
   public AlignedDeviceChunkMetaData(
       IDeviceID devicePath, List<AlignedChunkMetadata> alignedChunkMetadataList) {
     super(devicePath);
     this.alignedChunkMetadataList = alignedChunkMetadataList;
-  }
-
-  public List<AlignedChunkMetadata> getAlignedChunkMetadataList() {
-    return alignedChunkMetadataList;
+    this.alignedChunkMetadataIndex = 0;
+    this.curValueSize = alignedChunkMetadataList.get(0).getValueChunkMetadataList().size();
+    this.valueChunkMetadataIndex = -1;
   }
 
   @Override
-  public boolean isAligned() {
-    return true;
+  public boolean hasNextValueChunkMetadata() {
+    return alignedChunkMetadataIndex < alignedChunkMetadataList.size() - 1
+        || valueChunkMetadataIndex < curValueSize - 1;
+  }
+
+  @Override
+  public IChunkMetadata nextValueChunkMetadata() {
+    if (valueChunkMetadataIndex < curValueSize - 1) {
+      valueChunkMetadataIndex++;
+    } else {
+      alignedChunkMetadataIndex++;
+      valueChunkMetadataIndex = 0;
+      curValueSize =
+          alignedChunkMetadataList
+              .get(alignedChunkMetadataIndex)
+              .getValueChunkMetadataList()
+              .size();
+    }
+    return alignedChunkMetadataList
+        .get(alignedChunkMetadataIndex)
+        .getValueChunkMetadataList()
+        .get(valueChunkMetadataIndex);
+  }
+
+  @Override
+  public AbstractChunkOffset getChunkOffset() {
+    AlignedChunkMetadata alignedChunkMetadata =
+        alignedChunkMetadataList.get(alignedChunkMetadataIndex);
+    IChunkMetadata valueChunkMetaData =
+        alignedChunkMetadata.getValueChunkMetadataList().get(valueChunkMetadataIndex);
+    return new AlignedChunkOffset(
+        valueChunkMetaData.getOffsetOfChunkHeader(),
+        getDevicePath(),
+        valueChunkMetaData.getMeasurementUid(),
+        new SharedTimeDataBuffer(alignedChunkMetadata.getTimeChunkMetadata()));
   }
 }

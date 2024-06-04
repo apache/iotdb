@@ -78,9 +78,8 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
   }
 
   @Override
-  public boolean[] isDeviceTimeDeleted(IDeviceID deviceID, long[] timeArray)
+  public boolean isDeviceTimeDeleted(IDeviceID deviceID, long timestamp)
       throws IllegalPathException {
-    boolean[] result = new boolean[2];
     List<Modification> modifications = queryContext.getPathModifications(tsFileResource, deviceID);
     List<TimeRange> timeRangeList =
         modifications.stream()
@@ -88,31 +87,16 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
             .map(Deletion.class::cast)
             .map(Deletion::getTimeRange)
             .collect(Collectors.toList());
-
-    int[] deleteCursor = {0};
-    for (int i = 0; i < timeArray.length; i++) {
-      result[i] = ModificationUtils.isPointDeleted(timeArray[i], timeRangeList, deleteCursor);
-    }
-    return result;
-  }
-
-  private boolean[] calculateBooleanArray(List<TimeRange> timeRangeList, long[] timeArray) {
-    boolean[] result = new boolean[timeArray.length];
-    int[] deleteCursor = {0};
-    for (int i = 0; i < timeArray.length; i++) {
-      result[i] = ModificationUtils.isPointDeleted(timeArray[i], timeRangeList, deleteCursor);
-    }
-    return result;
+    return ModificationUtils.isPointDeletedWithoutOrderedRange(timestamp, timeRangeList);
   }
 
   @Override
-  public boolean[] isTimeSeriesTimeDeleted(
-      IDeviceID deviceID, String timeSeriesName, long[] timeArray) throws IllegalPathException {
+  public boolean isTimeSeriesTimeDeleted(IDeviceID deviceID, String timeSeriesName, long timestamp)
+      throws IllegalPathException {
 
-    if (deviceToModifications.containsKey(deviceID)
-        && deviceToModifications.get(deviceID).containsKey(timeSeriesName)) {
-      return calculateBooleanArray(
-          deviceToModifications.get(deviceID).get(timeSeriesName), timeArray);
+    Map<String, List<TimeRange>> modificationTimeRange = deviceToModifications.get(deviceID);
+    if (modificationTimeRange != null && modificationTimeRange.containsKey(timeSeriesName)) {
+      return ModificationUtils.isPointDeleted(timestamp, modificationTimeRange.get(timeSeriesName));
     }
 
     List<Modification> modifications =
@@ -123,10 +107,11 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
             .map(Deletion.class::cast)
             .map(Deletion::getTimeRange)
             .collect(Collectors.toList());
+    TimeRange.sortAndMerge(timeRangeList);
     deviceToModifications
         .computeIfAbsent(deviceID, k -> new HashMap<>())
         .put(timeSeriesName, timeRangeList);
-    return calculateBooleanArray(timeRangeList, timeArray);
+    return ModificationUtils.isPointDeleted(timestamp, timeRangeList);
   }
 
   @Override
@@ -154,7 +139,7 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
                     .collect(Collectors.toList())));
       } else {
         // device is aligned
-        List<IChunkMetadata> timeChunkMetaData = metadataForDevice.get("").getLeft();
+        List<IChunkMetadata> timeChunkMetaDataList = metadataForDevice.get("").getLeft();
         List<List<IChunkMetadata>> valueMetaDataList = new ArrayList<>();
         for (Map.Entry<String, Pair<List<IChunkMetadata>, Pair<Long, Long>>> pair :
             metadataForDevice.entrySet()) {
@@ -166,9 +151,11 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
         }
 
         List<AlignedChunkMetadata> alignedDeviceChunkMetaData = new ArrayList<>();
-        for (int i = 0; i < timeChunkMetaData.size(); i++) {
-          alignedDeviceChunkMetaData.add(
-              new AlignedChunkMetadata(timeChunkMetaData.get(i), valueMetaDataList.get(i)));
+        for (IChunkMetadata timeChunkMetaData : timeChunkMetaDataList) {
+          for (List<IChunkMetadata> chunkMetadataList : valueMetaDataList) {
+            alignedDeviceChunkMetaData.add(
+                new AlignedChunkMetadata(timeChunkMetaData, chunkMetadataList));
+          }
         }
         deviceChunkMetaDataList.add(
             new AlignedDeviceChunkMetaData(deviceIDWithIsAligned.left, alignedDeviceChunkMetaData));
@@ -180,10 +167,11 @@ public class ClosedFileScanHandleImpl implements IFileScanHandle {
   @Override
   public Iterator<IChunkHandle> getChunkHandles(
       List<AbstractChunkOffset> chunkInfoList,
-      List<Statistics<? extends Serializable>> statisticsList) {
+      List<Statistics<? extends Serializable>> statisticsList,
+      List<Integer> orderedIndexList) {
     String filePath = tsFileResource.getTsFilePath();
     List<IChunkHandle> chunkHandleList = new ArrayList<>();
-    for (int i = 0; i < chunkInfoList.size(); i++) {
+    for (int i : orderedIndexList) {
       AbstractChunkOffset chunkOffset = chunkInfoList.get(i);
       chunkHandleList.add(chunkOffset.generateChunkHandle(filePath, statisticsList.get(i)));
     }

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -38,7 +39,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATER_NO_REGEX;
 
 public class TTLManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TTLManager.class);
@@ -55,7 +55,8 @@ public class TTLManager {
   }
 
   /** Set ttl when creating database. */
-  public TSStatus setTTL(DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe) {
+  public TSStatus setTTL(DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe)
+      throws IllegalPathException {
     long ttl = databaseSchemaPlan.getSchema().getTTL();
     if (ttl <= 0) {
       TSStatus errorStatus = new TSStatus(TSStatusCode.TTL_CONFIG_ERROR.getStatusCode());
@@ -68,7 +69,7 @@ public class TTLManager {
     ttl = ttl <= 0 ? Long.MAX_VALUE : ttl;
     SetTTLPlan setTTLPlan =
         new SetTTLPlan(
-            databaseSchemaPlan.getSchema().getName().split(PATH_SEPARATER_NO_REGEX), ttl);
+            PathUtils.splitPathToDetachedNodes(databaseSchemaPlan.getSchema().getName()), ttl);
     setTTLPlan.setDataBase(true);
     return configManager.getProcedureManager().setTTL(setTTLPlan, isGeneratedByPipe);
   }

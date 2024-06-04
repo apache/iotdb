@@ -164,6 +164,18 @@ public class ModificationUtils {
     return false;
   }
 
+  // Check whether the timestamp is deleted in deletionList,
+  // if timeRangeList is not ordered, use this method, otherwise use isPointDeleted instead.
+  public static boolean isPointDeletedWithoutOrderedRange(
+      long timestamp, List<TimeRange> timeRangeList) {
+    for (TimeRange range : timeRangeList) {
+      if (range.contains(timestamp)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public static boolean isPointDeleted(long timestamp, List<TimeRange> deletionList) {
     int[] deleteCursor = {0};
     return isPointDeleted(timestamp, deletionList, deleteCursor);

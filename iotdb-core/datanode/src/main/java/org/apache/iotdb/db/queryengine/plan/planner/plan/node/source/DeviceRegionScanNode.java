@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -102,7 +103,7 @@ public class DeviceRegionScanNode extends RegionScanNode {
     int size = ReadWriteIOUtils.readInt(buffer);
     Map<PartialPath, Boolean> devicePathsToAligned = new HashMap<>();
     for (int i = 0; i < size; i++) {
-      PartialPath path = PartialPath.deserialize(buffer);
+      PartialPath path = (PartialPath) PathDeserializeUtil.deserialize(buffer);
       boolean aligned = ReadWriteIOUtils.readBool(buffer);
       devicePathsToAligned.put(path, aligned);
     }
@@ -156,6 +157,11 @@ public class DeviceRegionScanNode extends RegionScanNode {
   @Override
   public void clearPath() {
     this.devicePathsToAligned = new HashMap<>();
+  }
+
+  @Override
+  public long getSize() {
+    return devicePathsToAligned.size();
   }
 
   @Override

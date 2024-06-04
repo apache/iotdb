@@ -29,6 +29,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -52,6 +53,7 @@ public abstract class EnrichedEvent implements Event {
   protected String committerKey;
   public static final long NO_COMMIT_ID = -1;
   protected long commitId = NO_COMMIT_ID;
+  protected int rebootTimes = 0;
 
   protected final PipePattern pipePattern;
 
@@ -313,6 +315,14 @@ public abstract class EnrichedEvent implements Event {
     this.commitId = commitId;
   }
 
+  public void setRebootTimes(int rebootTimes) {
+    this.rebootTimes = rebootTimes;
+  }
+
+  public int getRebootTimes() {
+    return rebootTimes;
+  }
+
   public String getCommitterKey() {
     return committerKey;
   }
@@ -329,6 +339,23 @@ public abstract class EnrichedEvent implements Event {
 
   public boolean isReleased() {
     return isReleased.get();
+  }
+
+  /**
+   * Used for pipeConsensus. In PipeConsensus, we only need commiterKey, commitId and rebootTimes to
+   * uniquely identify an event
+   */
+  public boolean equalsInPipeConsensus(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    EnrichedEvent otherEvent = (EnrichedEvent) o;
+    return Objects.equals(committerKey, otherEvent.committerKey)
+        && commitId == otherEvent.commitId
+        && rebootTimes == otherEvent.rebootTimes;
   }
 
   @Override

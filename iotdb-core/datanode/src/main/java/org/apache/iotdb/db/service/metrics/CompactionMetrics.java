@@ -926,7 +926,7 @@ public class CompactionMetrics implements IMetricSet {
             Metric.COMPACTION_TASK_SELECTION_COST.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            "insertion");
+            "settle");
     seqInnerSpaceCompactionTaskSelectedFileNum =
         metricService.getOrCreateHistogram(
             Metric.COMPACTION_TASK_SELECTED_FILE.toString(),

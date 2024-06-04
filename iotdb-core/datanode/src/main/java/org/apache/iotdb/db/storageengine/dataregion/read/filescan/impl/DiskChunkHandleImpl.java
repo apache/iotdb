@@ -28,6 +28,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -42,6 +43,8 @@ import java.nio.ByteBuffer;
 /** It will receive a list of offset and execute sequential scan of TsFile for chunkData. */
 public class DiskChunkHandleImpl implements IChunkHandle {
   private final boolean tsFileClosed;
+  private final IDeviceID deviceID;
+  private final String measurement;
   private final String filePath;
   protected ChunkHeader currentChunkHeader;
   protected PageHeader currentPageHeader;
@@ -57,10 +60,14 @@ public class DiskChunkHandleImpl implements IChunkHandle {
   protected final Statistics<? extends Serializable> chunkStatistic;
 
   public DiskChunkHandleImpl(
+      IDeviceID deviceID,
+      String measurement,
       String filePath,
       boolean isTsFileClosed,
       long offset,
       Statistics<? extends Serializable> chunkStatistics) {
+    this.deviceID = deviceID;
+    this.measurement = measurement;
     this.chunkStatistic = chunkStatistics;
     this.offset = offset;
     this.filePath = filePath;
@@ -77,30 +84,32 @@ public class DiskChunkHandleImpl implements IChunkHandle {
   }
 
   // Check if there is more pages to be scanned in Chunk.
-  // If so, deserialize the page header
+  // If currentChunkDataBuffer is equals to null, it means nextPage() is not called and needed
   @Override
   public boolean hasNextPage() throws IOException {
+    return currentChunkDataBuffer == null || currentChunkDataBuffer.hasRemaining();
+  }
+
+  @Override
+  public void nextPage() throws IOException {
     // read chunk from disk if needed
     if (currentChunkDataBuffer == null) {
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, tsFileClosed);
       init(reader);
     }
-
-    if (!currentChunkDataBuffer.hasRemaining()) {
-      return false;
+    if (currentChunkDataBuffer.hasRemaining()) {
+      // If there is only one page, page statistics is not stored in the chunk header, which is the
+      // same as chunkStatistics
+      if ((byte) (this.currentChunkHeader.getChunkType() & 0x3F)
+          == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+        currentPageHeader =
+            PageHeader.deserializeFrom(this.currentChunkDataBuffer, this.chunkStatistic);
+      } else {
+        currentPageHeader =
+            PageHeader.deserializeFrom(
+                this.currentChunkDataBuffer, this.currentChunkHeader.getDataType());
+      }
     }
-    // If there is only one page, page statistics is not stored in the chunk header, which is the
-    // same as chunkStatistics
-    if ((byte) (this.currentChunkHeader.getChunkType() & 0x3F)
-        == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-      currentPageHeader =
-          PageHeader.deserializeFrom(this.currentChunkDataBuffer, this.chunkStatistic);
-    } else {
-      currentPageHeader =
-          PageHeader.deserializeFrom(
-              this.currentChunkDataBuffer, this.currentChunkHeader.getDataType());
-    }
-    return true;
   }
 
   @Override
@@ -124,6 +133,16 @@ public class DiskChunkHandleImpl implements IChunkHandle {
     timeBuffer.limit(timeBufferLength);
 
     return convertToTimeArray(timeBuffer);
+  }
+
+  @Override
+  public IDeviceID getDeviceID() {
+    return deviceID;
+  }
+
+  @Override
+  public String getMeasurement() {
+    return measurement;
   }
 
   private long[] convertToTimeArray(ByteBuffer timeBuffer) throws IOException {

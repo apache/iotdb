@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -47,6 +48,7 @@ import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
@@ -194,7 +196,7 @@ public class DataNode implements DataNodeMBean {
       isFirstStart = prepareDataNode();
 
       if (isFirstStart) {
-        // Set target ConfigNodeList from iotdb-datanode.properties file
+        // Set target ConfigNodeList from iotdb-system.properties file
         ConfigNodeInfo.getInstance()
             .updateConfigNodeList(Collections.singletonList(config.getSeedConfigNode()));
       } else {
@@ -309,7 +311,7 @@ public class DataNode implements DataNodeMBean {
           DEFAULT_RETRY);
       throw new StartupException(
           "Cannot pull system configurations from ConfigNode-leader. "
-              + "Please check whether the dn_seed_config_node in iotdb-datanode.properties is correct or alive.");
+              + "Please check whether the dn_seed_config_node in iotdb-system.properties is correct or alive.");
     }
 
     /* Load system configurations */
@@ -364,7 +366,8 @@ public class DataNode implements DataNodeMBean {
    * <p>6. All TTL information
    */
   private void storeRuntimeConfigurations(
-      List<TConfigNodeLocation> configNodeLocations, TRuntimeConfiguration runtimeConfiguration) {
+      List<TConfigNodeLocation> configNodeLocations, TRuntimeConfiguration runtimeConfiguration)
+      throws StartupException {
     /* Store ConfigNodeList */
     List<TEndPoint> configNodeList = new ArrayList<>();
     for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
@@ -435,7 +438,7 @@ public class DataNode implements DataNodeMBean {
       logger.error("Cannot register into cluster after {} retries.", DEFAULT_RETRY);
       throw new StartupException(
           "Cannot register into the cluster. "
-              + "Please check whether the dn_seed_config_node in iotdb-datanode.properties is correct or alive.");
+              + "Please check whether the dn_seed_config_node in iotdb-system.properties is correct or alive.");
     }
 
     if (dataNodeRegisterResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -524,7 +527,7 @@ public class DataNode implements DataNodeMBean {
           DEFAULT_RETRY);
       throw new StartupException(
           "Cannot send restart DataNode request to ConfigNode-leader. "
-              + "Please check whether the dn_seed_config_node in iotdb-datanode.properties is correct or alive.");
+              + "Please check whether the dn_seed_config_node in iotdb-system.properties is correct or alive.");
     }
 
     if (dataNodeRestartResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -969,17 +972,22 @@ public class DataNode implements DataNodeMBean {
     resourcesInformationHolder.setPipePluginMetaList(list);
   }
 
-  private void initTTLInformation(byte[] allTTLInformation) {
+  private void initTTLInformation(byte[] allTTLInformation) throws StartupException {
     if (allTTLInformation == null) {
       return;
     }
     ByteBuffer buffer = ByteBuffer.wrap(allTTLInformation);
     int mapSize = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < mapSize; i++) {
-      DataNodeTTLCache.getInstance()
-          .setTTL(
-              Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)),
-              ReadWriteIOUtils.readLong(buffer));
+      try {
+        DataNodeTTLCache.getInstance()
+            .setTTL(
+                PathUtils.splitPathToDetachedNodes(
+                    Objects.requireNonNull(ReadWriteIOUtils.readString(buffer))),
+                ReadWriteIOUtils.readLong(buffer));
+      } catch (IllegalPathException e) {
+        throw new StartupException(e);
+      }
     }
   }
 

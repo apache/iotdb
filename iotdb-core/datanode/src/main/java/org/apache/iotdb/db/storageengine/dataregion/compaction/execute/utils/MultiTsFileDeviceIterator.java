@@ -38,6 +38,7 @@ import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -333,13 +334,12 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * return MultiTsFileNonAlignedMeasurementMetadataListIterator, who iterates the measurements of
    * not aligned device
    *
-   * @param device the device to be iterated
    * @return measurement iterator of not aligned device
    * @throws IOException if io errors occurred
    */
   public MultiTsFileNonAlignedMeasurementMetadataListIterator
-      iterateNotAlignedSeriesAndChunkMetadataList(IDeviceID device) throws IOException {
-    return new MultiTsFileNonAlignedMeasurementMetadataListIterator(readerMap, device);
+      iterateNotAlignedSeriesAndChunkMetadataListOfCurrentDevice() throws IOException {
+    return new MultiTsFileNonAlignedMeasurementMetadataListIterator();
   }
 
   /**
@@ -371,9 +371,12 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       if (!currentDevice.equals(iterator.current())) {
         continue;
       }
+      MetadataIndexNode firstMeasurementNodeOfCurrentDevice =
+          iterator.getFirstMeasurementNodeOfCurrentDevice();
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
       List<AlignedChunkMetadata> alignedChunkMetadataList =
-          reader.getAlignedChunkMetadata(currentDevice.left);
+          reader.getAlignedChunkMetadataByMetadataIndexNode(
+              currentDevice.left, firstMeasurementNodeOfCurrentDevice);
       applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
       readerAndChunkMetadataList.add(new Pair<>(reader, alignedChunkMetadataList));
     }
@@ -467,8 +470,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   NonAligned measurement iterator.
    */
   public class MultiTsFileNonAlignedMeasurementMetadataListIterator {
-    private final Map<TsFileResource, TsFileSequenceReader> readerMap;
-    private final IDeviceID device;
     private final LinkedList<String> seriesInThisIteration = new LinkedList<>();
     // tsfile sequence reader -> series -> list<ChunkMetadata>
     private final Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
@@ -481,14 +482,31 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
         chunkMetadataMetadataListOfCurrentCompactingSeries;
 
-    private MultiTsFileNonAlignedMeasurementMetadataListIterator(
-        Map<TsFileResource, TsFileSequenceReader> readerMap, IDeviceID device) throws IOException {
-      this.readerMap = readerMap;
-      this.device = device;
+    private MultiTsFileNonAlignedMeasurementMetadataListIterator() throws IOException {
+      IDeviceID device = currentDevice.getLeft();
       for (TsFileResource resource : tsFileResourcesSortedByAsc) {
+        TsFileDeviceIterator deviceIterator = deviceIteratorMap.get(resource);
         TsFileSequenceReader reader = readerMap.get(resource);
-        chunkMetadataIteratorMap.put(
-            resource, reader.getMeasurementChunkMetadataListMapIterator(device));
+        if (deviceIterator == null || !device.equals(deviceIterator.current().getLeft())) {
+          chunkMetadataIteratorMap.put(
+              resource,
+              new Iterator<Map<String, List<ChunkMetadata>>>() {
+                @Override
+                public boolean hasNext() {
+                  return false;
+                }
+
+                @Override
+                public Map<String, List<ChunkMetadata>> next() {
+                  return Collections.emptyMap();
+                }
+              });
+        } else {
+          chunkMetadataIteratorMap.put(
+              resource,
+              reader.getMeasurementChunkMetadataListMapIterator(
+                  deviceIterator.getFirstMeasurementNodeOfCurrentDevice()));
+        }
         chunkMetadataCacheMap.put(reader, new TreeMap<>());
       }
     }
@@ -612,7 +630,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
           readerAndChunkMetadataForThisSeries = new LinkedList<>();
-      PartialPath path = CompactionPathUtils.getPath(device, currentCompactingSeries);
+      PartialPath path =
+          CompactionPathUtils.getPath(currentDevice.getLeft(), currentCompactingSeries);
 
       for (TsFileResource resource : tsFileResourcesSortedByAsc) {
         TsFileSequenceReader reader = readerMap.get(resource);

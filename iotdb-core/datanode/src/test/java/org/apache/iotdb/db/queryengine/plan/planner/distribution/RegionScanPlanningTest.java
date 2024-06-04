@@ -29,12 +29,11 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RegionMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.Test;
 
 import java.util.HashSet;
@@ -50,12 +49,12 @@ public class RegionScanPlanningTest {
 
   static {
     try {
-      devicePaths.add(new PartialPath(new PlainDeviceID("root.sg.d1")));
-      devicePaths.add(new PartialPath(new PlainDeviceID("root.sg.d22")));
-      devicePaths.add(new PartialPath(new PlainDeviceID("root.sg.d333")));
-      devicePaths.add(new PartialPath(new PlainDeviceID("root.sg.d4444")));
-      devicePaths.add(new PartialPath(new PlainDeviceID("root.sg.d55555")));
-      devicePaths.add(new PartialPath(new PlainDeviceID("root.sg.d666666")));
+      devicePaths.add(new PartialPath("root.sg.d1"));
+      devicePaths.add(new PartialPath("root.sg.d22"));
+      devicePaths.add(new PartialPath("root.sg.d333"));
+      devicePaths.add(new PartialPath("root.sg.d4444"));
+      devicePaths.add(new PartialPath("root.sg.d55555"));
+      devicePaths.add(new PartialPath("root.sg.d666666"));
 
       path.add(new MeasurementPath("root.sg.d1.s1"));
       path.add(new MeasurementPath("root.sg.d1.s2"));
@@ -91,7 +90,7 @@ public class RegionScanPlanningTest {
     PlanNode f1Root = plan.getInstances().get(0).getFragment().getPlanNodeTree();
     assertTrue(f1Root instanceof IdentitySinkNode);
     f1Root = f1Root.getChildren().get(0);
-    assertTrue(f1Root instanceof RegionMergeNode);
+    assertTrue(f1Root instanceof ActiveRegionScanMergeNode);
     assertEquals(4, f1Root.getChildren().size());
     assertTrue(f1Root.getChildren().get(0) instanceof DeviceRegionScanNode);
     Set<PartialPath> targetPaths =
@@ -125,7 +124,7 @@ public class RegionScanPlanningTest {
     PlanNode f1Root = plan.getInstances().get(0).getFragment().getPlanNodeTree();
     assertTrue(f1Root instanceof IdentitySinkNode);
     f1Root = f1Root.getChildren().get(0);
-    assertTrue(f1Root instanceof RegionMergeNode);
+    assertTrue(f1Root instanceof ActiveRegionScanMergeNode);
     assertEquals(4, f1Root.getChildren().size());
     assertTrue(f1Root.getChildren().get(0) instanceof TimeseriesRegionScanNode);
     Set<PartialPath> targetDevicePaths =

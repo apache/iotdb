@@ -317,6 +317,48 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
   }
 
   @Test
+  public void settleWithOnlyAllDirtyFilesByTTL2()
+      throws MetadataException, IOException, WriteProcessException {
+    createFiles(6, 5, 10, 100, 0, 0, 0, 0, isAligned, true);
+    createFiles(5, 2, 3, 50, 0, 10000, 50, 50, isAligned, false);
+
+    generateTTL(5, 10);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
+        readSourceFiles(createTimeseries(6, 6, isAligned), Collections.emptyList());
+
+    List<TsFileResource> selectedFiles = new ArrayList<>(seqResources);
+
+    SettleCompactionTask task =
+        new SettleCompactionTask(
+            0, tsFileManager, Collections.emptyList(), selectedFiles, true, getPerformer(), 0);
+    Assert.assertTrue(task.start());
+
+    selectedFiles.clear();
+    selectedFiles.addAll(unseqResources);
+    task =
+        new SettleCompactionTask(
+            0, tsFileManager, Collections.emptyList(), selectedFiles, false, getPerformer(), 0);
+    Assert.assertTrue(task.start());
+
+    for (TsFileResource tsFileResource : seqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      Assert.assertEquals(TsFileResourceStatus.DELETED, tsFileResource.getStatus());
+    }
+
+    Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(0, tsFileManager.getTsFileList(false).size());
+
+    DataNodeTTLCache.getInstance().clearAllTTL();
+    validateTargetDatas(sourceDatas, Collections.emptyList());
+  }
+
+  @Test
   public void settleWithOnlyPartialDirtyFilesByTTL()
       throws IOException, MetadataException, WriteProcessException {
     createFiles(6, 5, 10, 100, 0, 0, 0, 0, isAligned, true);
@@ -433,7 +475,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     return timeseriesPath;
   }
 
-  protected void generateTTL(int deviceNum, long ttl) {
+  protected void generateTTL(int deviceNum, long ttl) throws IllegalPathException {
     for (int dIndex = 0; dIndex < deviceNum; dIndex++) {
       DataNodeTTLCache.getInstance()
           .setTTL(

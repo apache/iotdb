@@ -82,7 +82,6 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeac
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeSetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeUnsetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
@@ -504,9 +503,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case PipeDeactivateTemplate:
           plan = new PipeDeactivateTemplatePlan();
-          break;
-        case PipeSetTTL:
-          plan = new PipeSetTTLPlan();
           break;
         case GetRegionId:
           plan = new GetRegionIdPlan();

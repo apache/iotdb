@@ -31,6 +31,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Accumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
@@ -51,6 +52,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.process.ActiveRegionScanMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ColumnInjectOperator;
@@ -133,6 +135,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScan
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.ShuffleHelperOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.ActiveDeviceRegionScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.ActiveTimeSeriesRegionScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesAggregationScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
@@ -182,6 +186,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
@@ -218,10 +223,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
@@ -245,6 +252,7 @@ import org.apache.iotdb.db.queryengine.statistics.StatisticsManager;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.utils.columngenerator.ColumnGenerator;
 import org.apache.iotdb.db.utils.columngenerator.ColumnGeneratorType;
 import org.apache.iotdb.db.utils.columngenerator.SlidingTimeColumnGenerator;
@@ -257,6 +265,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -265,6 +274,8 @@ import org.apache.tsfile.read.filter.operator.TimeFilterOperators.TimeGtEq;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TimeDuration;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -2636,7 +2647,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     } else if (!LastQueryUtil.satisfyFilter(
         updateFilterUsingTTL(
             context.getGlobalTimeFilter(),
-            DataNodeTTLCache.getInstance().getTTL(seriesPath.getIDeviceID())),
+            DataNodeTTLCache.getInstance().getTTL(seriesPath.getDevicePath().getNodes())),
         timeValuePair)) { // cached last value is not satisfied
 
       if (!isFilterGtOrGe(context.getGlobalTimeFilter())) {
@@ -2851,7 +2862,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       } else if (!LastQueryUtil.satisfyFilter(
           updateFilterUsingTTL(
               context.getGlobalTimeFilter(),
-              DataNodeTTLCache.getInstance().getTTL(alignedPath.getIDeviceID())),
+              DataNodeTTLCache.getInstance().getTTL(devicePath.getNodes())),
           timeValuePair)) { // cached last value is not satisfied
 
         if (!isFilterGtOrGe(context.getGlobalTimeFilter())) {
@@ -3485,5 +3496,142 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 ExplainAnalyzeOperator.class.getSimpleName());
     return new ExplainAnalyzeOperator(
         operatorContext, operator, node.getQueryId(), node.isVerbose(), node.getTimeout());
+  }
+
+  private List<TSDataType> generateRepeatTsDataType(int size, TSDataType type) {
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      dataTypes.add(type);
+    }
+    return dataTypes;
+  }
+
+  @Override
+  public Operator visitRegionMerge(
+      ActiveRegionScanMergeNode node, LocalExecutionPlanContext context) {
+    List<Operator> operatorList =
+        node.getChildren().stream()
+            .map(child -> child.accept(this, context))
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                ActiveRegionScanMergeOperator.class.getName());
+
+    List<TSDataType> dataTypes;
+    if (node.isOutputCount()) {
+      dataTypes = new ArrayList<>(Collections.singleton(TSDataType.INT64));
+    } else {
+      dataTypes =
+          generateRepeatTsDataType(
+              node.getChildren().get(0).getOutputColumnNames().size(), TSDataType.TEXT);
+    }
+    return new ActiveRegionScanMergeOperator(
+        operatorContext,
+        operatorList,
+        dataTypes,
+        node.isOutputCount(),
+        node.isNeedMerge(),
+        node.getEstimatedSize());
+  }
+
+  @Override
+  public Operator visitDeviceRegionScan(
+      DeviceRegionScanNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                ActiveDeviceRegionScanOperator.class.getSimpleName());
+    Filter filter = context.getGlobalTimeFilter();
+    Map<IDeviceID, Boolean> deviceIDToAligned = new HashMap<>();
+    for (Map.Entry<PartialPath, Boolean> entry : node.getDevicePathsToAligned().entrySet()) {
+      deviceIDToAligned.put(
+          IDeviceID.Factory.DEFAULT_FACTORY.create(entry.getKey().getFullPath()), entry.getValue());
+    }
+    ActiveDeviceRegionScanOperator regionScanOperator =
+        new ActiveDeviceRegionScanOperator(
+            operatorContext, node.getPlanNodeId(), deviceIDToAligned, filter);
+
+    DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
+    dataDriverContext.addSourceOperator(regionScanOperator);
+    dataDriverContext.setDeviceIDToAligned(deviceIDToAligned);
+    dataDriverContext.setQueryDataSourceType(QueryDataSourceType.DEVICE_REGION_SCAN);
+
+    return regionScanOperator;
+  }
+
+  @Override
+  public Operator visitTimeSeriesRegionScan(
+      TimeseriesRegionScanNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                ActiveTimeSeriesRegionScanOperator.class.getSimpleName());
+    Filter filter = context.getGlobalTimeFilter();
+    DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
+
+    Map<IDeviceID, Map<String, TimeseriesSchemaInfo>> timeseriesToSchemaInfo = new HashMap<>();
+    for (Map.Entry<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> entryMap :
+        node.getDeviceToTimeseriesSchemaInfo().entrySet()) {
+      Map<String, TimeseriesSchemaInfo> timeseriesSchemaInfoMap =
+          getTimeseriesSchemaInfoMap(entryMap, dataDriverContext);
+      timeseriesToSchemaInfo.put(
+          entryMap.getValue().keySet().iterator().next().getIDeviceID(), timeseriesSchemaInfoMap);
+    }
+    ActiveTimeSeriesRegionScanOperator regionScanOperator =
+        new ActiveTimeSeriesRegionScanOperator(
+            operatorContext, node.getPlanNodeId(), timeseriesToSchemaInfo, filter);
+
+    dataDriverContext.addSourceOperator(regionScanOperator);
+    dataDriverContext.setQueryDataSourceType(QueryDataSourceType.TIME_SERIES_REGION_SCAN);
+
+    return regionScanOperator;
+  }
+
+  private static Map<String, TimeseriesSchemaInfo> getTimeseriesSchemaInfoMap(
+      Map.Entry<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> entryMap,
+      DataDriverContext context) {
+    Map<String, TimeseriesSchemaInfo> timeseriesSchemaInfoMap = new HashMap<>();
+    for (Map.Entry<PartialPath, List<TimeseriesSchemaInfo>> entry :
+        entryMap.getValue().entrySet()) {
+      PartialPath path = entry.getKey();
+      if (path instanceof MeasurementPath) {
+        timeseriesSchemaInfoMap.put(path.getMeasurement(), entry.getValue().get(0));
+        context.addPath(
+            new NonAlignedFullPath(
+                path.getIDeviceID(),
+                new MeasurementSchema(
+                    path.getMeasurement(),
+                    TSDataType.valueOf(entry.getValue().get(0).getDataType()))));
+      } else if (path instanceof AlignedPath) {
+        AlignedPath alignedPath = (AlignedPath) path;
+        List<String> measurementList = alignedPath.getMeasurementList();
+        if (measurementList.size() != entry.getValue().size()) {
+          throw new IllegalArgumentException(
+              "The size of measurementList and timeseriesSchemaInfoList should be equal in aligned path.");
+        }
+        int size = measurementList.size();
+        List<IMeasurementSchema> schemaList = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+          timeseriesSchemaInfoMap.put(measurementList.get(i), entry.getValue().get(i));
+          schemaList.add(
+              new MeasurementSchema(
+                  measurementList.get(i),
+                  TSDataType.valueOf(entry.getValue().get(i).getDataType())));
+        }
+        context.addPath(new AlignedFullPath(path.getIDeviceID(), measurementList, schemaList));
+      }
+    }
+    return timeseriesSchemaInfoMap;
   }
 }
