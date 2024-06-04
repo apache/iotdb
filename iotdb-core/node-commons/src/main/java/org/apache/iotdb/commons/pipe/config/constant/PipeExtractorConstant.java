@@ -64,6 +64,7 @@ public class PipeExtractorConstant {
   public static final String SOURCE_HISTORY_END_TIME_KEY = "source.history.end-time";
   public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_KEY = "extractor.history.loose-range";
   public static final String SOURCE_HISTORY_LOOSE_RANGE_KEY = "source.history.loose-range";
+  public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE = "";
   public static final String EXTRACTOR_MODS_ENABLE_KEY = "extractor.mods.enable";
   public static final String SOURCE_MODS_ENABLE_KEY = "source.mods.enable";
   public static final boolean EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE = false;

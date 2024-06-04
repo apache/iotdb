@@ -66,6 +66,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
@@ -212,11 +213,13 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                       .getStringOrDefault(
                           Arrays.asList(
                               EXTRACTOR_HISTORY_LOOSE_RANGE_KEY, SOURCE_HISTORY_LOOSE_RANGE_KEY),
-                          "")
+                          EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE)
                       .split(","))
               .map(String::trim)
               .map(String::toLowerCase)
               .collect(Collectors.toSet());
+      // Avoid empty string
+      sloppyOptionSet.remove("");
       sloppyTimeRange = sloppyOptionSet.remove("time");
       sloppyPattern = sloppyOptionSet.remove("path");
       if (!sloppyOptionSet.isEmpty()) {
