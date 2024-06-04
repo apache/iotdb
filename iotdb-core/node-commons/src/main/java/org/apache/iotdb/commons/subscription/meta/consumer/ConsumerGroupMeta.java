@@ -74,6 +74,31 @@ public class ConsumerGroupMeta {
     return creationTime;
   }
 
+  public static /* @NonNull */ Set<String> getTopicsUnsubByGroup(
+      final ConsumerGroupMeta currentMeta, final ConsumerGroupMeta updatedMeta) {
+    if (!Objects.equals(currentMeta.consumerGroupId, updatedMeta.consumerGroupId)) {
+      return Collections.emptySet();
+    }
+    if (!Objects.equals(currentMeta.creationTime, updatedMeta.creationTime)) {
+      return Collections.emptySet();
+    }
+    if (!Objects.equals(
+        currentMeta.consumerIdToConsumerMeta, updatedMeta.consumerIdToConsumerMeta)) {
+      return Collections.emptySet();
+    }
+    final Set<String> unsubscribedTopicNames = new HashSet<>();
+    currentMeta
+        .topicNameToSubscribedConsumerIdSet
+        .keySet()
+        .forEach(
+            (topicName) -> {
+              if (!updatedMeta.topicNameToSubscribedConsumerIdSet.containsKey(topicName)) {
+                unsubscribedTopicNames.add(topicName);
+              }
+            });
+    return unsubscribedTopicNames;
+  }
+
   /////////////////////////////// consumer ///////////////////////////////
 
   public void addConsumer(ConsumerMeta consumerMeta) {

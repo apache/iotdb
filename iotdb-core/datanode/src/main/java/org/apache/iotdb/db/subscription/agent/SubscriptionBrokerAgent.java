@@ -151,6 +151,15 @@ public class SubscriptionBrokerAgent {
     broker.unbindPrefetchingQueue(subtask.getTopicName());
   }
 
+  public void removePrefetchingQueue(final String consumerGroupId, final String topicName) {
+    final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupId);
+      return;
+    }
+    broker.removePrefetchingQueue(topicName);
+  }
+
   public void executePrefetch(final SubscriptionConnectorSubtask subtask) {
     final String consumerGroupId = subtask.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);

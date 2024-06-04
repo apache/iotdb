@@ -162,14 +162,33 @@ public class SubscriptionBroker {
       LOGGER.warn("Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
       return;
     }
+
     // clean up uncommitted events
     prefetchingQueue.cleanup();
     prefetchingQueue.markCompleted();
 
-    // TODO
-    //    topicNameToPrefetchingQueue.remove(topicName);
-    //    SubscriptionPrefetchingQueueMetrics.getInstance()
-    //        .deregister(prefetchingQueue.getPrefetchingQueueId());
+    // we remove this prefetching queue and deregister metrics when consumers dropping related
+    // subscription...
+  }
+
+  public void removePrefetchingQueue(final String topicName) {
+    final SubscriptionPrefetchingQueue prefetchingQueue =
+        topicNameToPrefetchingQueue.get(topicName);
+    if (Objects.isNull(prefetchingQueue)) {
+      LOGGER.warn("Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
+      return;
+    }
+
+    if (!prefetchingQueue.isCompleted()) {
+      LOGGER.warn(
+          "Subscription: prefetching queue bound to topic [{}] is not completed when removing",
+          topicName);
+      return;
+    }
+
+    topicNameToPrefetchingQueue.remove(topicName);
+    SubscriptionPrefetchingQueueMetrics.getInstance()
+        .deregister(prefetchingQueue.getPrefetchingQueueId());
   }
 
   public void executePrefetch(final String topicName) {

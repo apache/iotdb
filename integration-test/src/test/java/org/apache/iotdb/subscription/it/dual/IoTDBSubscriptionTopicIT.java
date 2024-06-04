@@ -628,7 +628,6 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
             });
     thread.start();
 
-    // Check row count
     try {
       // Keep retrying if there are execution failures
       Awaitility.await()
@@ -638,8 +637,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
           .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
+                // Check row count
                 Assert.assertEquals(100, rowCount.get());
-                // empty subscription
+                // Check empty subscription
                 try (final SyncConfigNodeIServiceClient client =
                     (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
                   final TShowSubscriptionResp showSubscriptionResp =
