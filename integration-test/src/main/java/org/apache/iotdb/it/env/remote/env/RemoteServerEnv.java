@@ -118,13 +118,15 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public Connection getConnection(String username, String password) throws SQLException {
+  public Connection getConnection(String username, String password, String sqlDialect)
+      throws SQLException {
     Connection connection;
     try {
       Class.forName(Config.JDBC_DRIVER_NAME);
       connection =
           DriverManager.getConnection(
-              Config.IOTDB_URL_PREFIX + ip_addr + ":" + port, this.user, this.password);
+              Config.IOTDB_URL_PREFIX + ip_addr + ":" + port,
+              BaseEnv.constructProperties(this.user, this.password, sqlDialect));
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       throw new AssertionError();
@@ -141,11 +143,12 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public Connection getConnectionWithSpecifiedDataNode(
       DataNodeWrapper dataNode, String username, String password) throws SQLException {
-    return getConnection(username, password);
+    return getConnection(username, password, TREE_SQL_DIALECT);
   }
 
   @Override
-  public Connection getConnection(Constant.Version version, String username, String password)
+  public Connection getConnection(
+      Constant.Version version, String username, String password, String sqlDialect)
       throws SQLException {
     Connection connection;
     try {
@@ -160,8 +163,7 @@ public class RemoteServerEnv implements BaseEnv {
                   + VERSION
                   + "="
                   + version.toString(),
-              this.user,
-              this.password);
+              BaseEnv.constructProperties(this.user, this.password, sqlDialect));
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       throw new AssertionError();
@@ -194,51 +196,69 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public ISessionPool getSessionPool(int maxSize) {
-    return new SessionPool(
-        SessionConfig.DEFAULT_HOST,
-        SessionConfig.DEFAULT_PORT,
-        SessionConfig.DEFAULT_USER,
-        SessionConfig.DEFAULT_PASSWORD,
-        maxSize,
-        SessionConfig.DEFAULT_FETCH_SIZE,
-        60_000,
-        false,
-        null,
-        SessionConfig.DEFAULT_REDIRECTION_MODE,
-        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS,
-        SessionConfig.DEFAULT_VERSION,
-        SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
+  public ISessionPool getSessionPool(int maxSize, String sqlDialect) {
+    return new SessionPool.Builder()
+        .host(SessionConfig.DEFAULT_HOST)
+        .port(SessionConfig.DEFAULT_PORT)
+        .user(SessionConfig.DEFAULT_USER)
+        .password(SessionConfig.DEFAULT_PASSWORD)
+        .maxSize(maxSize)
+        .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
+        .waitToGetSessionTimeoutInMs(60_000)
+        .enableCompression(false)
+        .zoneId(null)
+        .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
+        .connectionTimeoutInMs(SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS)
+        .version(SessionConfig.DEFAULT_VERSION)
+        .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
+        .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
+        .sqlDialect(sqlDialect)
+        .build();
   }
 
   @Override
-  public ISession getSessionConnection() throws IoTDBConnectionException {
-    Session session = new Session(ip_addr, Integer.parseInt(port));
-    session.open();
-    return session;
-  }
-
-  public ISession getSessionConnection(String userName, String password)
-      throws IoTDBConnectionException {
-    Session session = new Session(ip_addr, Integer.parseInt(port), userName, password);
-    session.open();
-    return session;
-  }
-
-  @Override
-  public ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
+  public ISession getSessionConnection(String sqlDialect) throws IoTDBConnectionException {
     Session session =
-        new Session(
-            Collections.singletonList(ip_addr + ":" + port),
-            SessionConfig.DEFAULT_USER,
-            SessionConfig.DEFAULT_PASSWORD,
-            SessionConfig.DEFAULT_FETCH_SIZE,
-            null,
-            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-            SessionConfig.DEFAULT_REDIRECTION_MODE,
-            SessionConfig.DEFAULT_VERSION);
+        new Session.Builder()
+            .host(ip_addr)
+            .port(Integer.parseInt(port))
+            .sqlDialect(sqlDialect)
+            .build();
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISession getSessionConnection(String userName, String password, String sqlDialect)
+      throws IoTDBConnectionException {
+    Session session =
+        new Session.Builder()
+            .host(ip_addr)
+            .port(Integer.parseInt(port))
+            .username(userName)
+            .password(password)
+            .sqlDialect(sqlDialect)
+            .build();
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISession getSessionConnection(List<String> nodeUrls, String sqlDialect)
+      throws IoTDBConnectionException {
+    Session session =
+        new Session.Builder()
+            .nodeUrls(Collections.singletonList(ip_addr + ":" + port))
+            .username(SessionConfig.DEFAULT_USER)
+            .password(SessionConfig.DEFAULT_PASSWORD)
+            .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
+            .zoneId(null)
+            .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
+            .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
+            .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
+            .version(SessionConfig.DEFAULT_VERSION)
+            .sqlDialect(sqlDialect)
+            .build();
     session.open();
     return session;
   }
