@@ -22,10 +22,12 @@ package org.apache.iotdb.confignode.service.thrift;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -164,7 +166,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
-import org.apache.iotdb.confignode.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
@@ -888,11 +889,21 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return configManager.showDatabase(req);
   }
 
+  /** Call by ConfigNode leader */
   @Override
-  public TTestConnectionResp submitTestConnectionTask() throws TException {
-    return configManager.submitTestConnectionTask();
+  public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations)
+      throws TException {
+    return new TTestConnectionResp(
+        configManager.getClusterManager().doConnectionTest(nodeLocations));
   }
 
+  /** Call by client connected DataNode */
+  @Override
+  public TTestConnectionResp submitTestConnectionTaskToLeader() throws TException {
+    return configManager.getClusterManager().submitTestConnectionTaskToEveryNode();
+  }
+
+  /** Call by every other nodes */
   @Override
   public TSStatus testConnection() throws TException {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

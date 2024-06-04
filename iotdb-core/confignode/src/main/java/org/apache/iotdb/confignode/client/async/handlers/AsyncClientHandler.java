@@ -286,6 +286,7 @@ public class AsyncClientHandler<Q, R> {
       case UPDATE_TEMPLATE:
       case KILL_QUERY_INSTANCE:
       case RESET_PEER_LIST:
+      case TEST_CONNECTION:
       default:
         return new AsyncTSStatusRPCHandler(
             requestType,

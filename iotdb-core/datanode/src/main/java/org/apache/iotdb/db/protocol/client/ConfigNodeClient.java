@@ -239,7 +239,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       try {
         connect(configLeader);
         return;
-      } catch (TException e) {
+      } catch (TException ignore) {
         logger.warn("The current node may have been down {},try next node", configLeader);
         configLeader = null;
       }
@@ -247,7 +247,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       try {
         // Wait to start the next try
         Thread.sleep(RETRY_INTERVAL_MS);
-      } catch (InterruptedException e) {
+      } catch (InterruptedException ignore) {
         Thread.currentThread().interrupt();
         logger.warn("Unexpected interruption when waiting to try to connect to ConfigNode");
       }
@@ -264,7 +264,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       try {
         connect(tryEndpoint);
         return;
-      } catch (TException e) {
+      } catch (TException ignore) {
         logger.warn("The current node may have been down {},try next node", tryEndpoint);
       }
     }
