@@ -103,6 +103,7 @@ public class ImportSchema extends AbstractSchemaTool {
 
     Option opFile =
         Option.builder(FILE_ARGS)
+            .required()
             .longOpt(FILE_NAME)
             .hasArg()
             .argName(FILE_ARGS_NAME)
@@ -121,13 +122,6 @@ public class ImportSchema extends AbstractSchemaTool {
                 "Specifying a directory to save failed file, default YOUR_CSV_FILE_PATH (optional)")
             .build();
     options.addOption(opFailedFile);
-
-    //    Option opAligned =
-    //        Option.builder(ALIGNED_ARGS)
-    //            .longOpt(ALIGNED_ARGS)
-    //            .desc("Whether import schema as aligned timeseries(optional)")
-    //            .build();
-    //    options.addOption(opAligned);
 
     Option opBatchPointSize =
         Option.builder(BATCH_POINT_SIZE_ARGS)

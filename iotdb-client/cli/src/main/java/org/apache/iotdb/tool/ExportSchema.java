@@ -201,6 +201,7 @@ public class ExportSchema extends AbstractSchemaTool {
 
     Option opTargetFile =
         Option.builder(TARGET_DIR_ARGS)
+            .required()
             .longOpt(TARGET_DIR_ARGS_NAME)
             .hasArg()
             .argName(TARGET_DIR_NAME)
