@@ -218,11 +218,13 @@ public class MPPQueryContext {
     }
   }
 
+  // used for tree model
   public void generateGlobalTimeFilter(Analysis analysis) {
     this.globalTimeFilter =
         PredicateUtils.convertPredicateToTimeFilter(analysis.getGlobalTimePredicate());
   }
 
+  // used for table model
   public void setGlobalTimeFilter(Filter globalTimeFilter) {
     this.globalTimeFilter = globalTimeFilter;
   }

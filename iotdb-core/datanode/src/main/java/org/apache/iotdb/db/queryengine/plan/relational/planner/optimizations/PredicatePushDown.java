@@ -82,7 +82,7 @@ public class PredicatePushDown implements RelationalPlanOptimizer {
 
     @Override
     public PlanNode visitFilter(FilterNode node, RewriterContext context) {
-      // TODO consider expression and function in FilterNode, especially diff function
+      // TODO (by beyyes) consider expression and function in FilterNode, especially diff function
       if (node.getPredicate() != null) {
         context.pushDownPredicate = node.getPredicate();
         node.getChild().accept(this, context);
