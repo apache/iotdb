@@ -34,7 +34,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.Test;
 
 import java.util.HashSet;
@@ -50,12 +49,12 @@ public class RegionScanPlanningTest {
 
   static {
     try {
-      devicePaths.add(new PartialPath(new PlainDeviceID("root.sg.d1")));
-      devicePaths.add(new PartialPath(new PlainDeviceID("root.sg.d22")));
-      devicePaths.add(new PartialPath(new PlainDeviceID("root.sg.d333")));
-      devicePaths.add(new PartialPath(new PlainDeviceID("root.sg.d4444")));
-      devicePaths.add(new PartialPath(new PlainDeviceID("root.sg.d55555")));
-      devicePaths.add(new PartialPath(new PlainDeviceID("root.sg.d666666")));
+      devicePaths.add(new PartialPath("root.sg.d1"));
+      devicePaths.add(new PartialPath("root.sg.d22"));
+      devicePaths.add(new PartialPath("root.sg.d333"));
+      devicePaths.add(new PartialPath("root.sg.d4444"));
+      devicePaths.add(new PartialPath("root.sg.d55555"));
+      devicePaths.add(new PartialPath("root.sg.d666666"));
 
       path.add(new MeasurementPath("root.sg.d1.s1"));
       path.add(new MeasurementPath("root.sg.d1.s2"));

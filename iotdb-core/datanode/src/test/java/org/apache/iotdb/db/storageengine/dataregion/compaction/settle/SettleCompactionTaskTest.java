@@ -327,7 +327,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, isAligned), Collections.emptyList());
 
     List<TsFileResource> selectedFiles = new ArrayList<>(seqResources);

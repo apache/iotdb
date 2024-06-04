@@ -34,7 +34,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.DeviceRegio
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -76,8 +75,7 @@ public class RegionScanLogicalPlannerTest {
         Collections.singletonList(
             new TimeseriesSchemaInfo(
                 "BOOLEAN", null, "PLAIN", "LZ4", "{\"key1\":\"value2\"}", null, null)));
-    deviceToTimeseriesSchemaInfoMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d1")), timeseriesSchemaInfoMap);
+    deviceToTimeseriesSchemaInfoMap.put(new PartialPath("root.sg.d1"), timeseriesSchemaInfoMap);
 
     Map<PartialPath, List<TimeseriesSchemaInfo>> timeseriesSchemaInfoMap2 = new HashMap<>();
     timeseriesSchemaInfoMap2.put(
@@ -95,8 +93,7 @@ public class RegionScanLogicalPlannerTest {
         Collections.singletonList(
             new TimeseriesSchemaInfo(
                 "TEXT", null, "PLAIN", "LZ4", "{\"key2\":\"value1\"}", null, null)));
-    deviceToTimeseriesSchemaInfoMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2")), timeseriesSchemaInfoMap2);
+    deviceToTimeseriesSchemaInfoMap.put(new PartialPath("root.sg.d2"), timeseriesSchemaInfoMap2);
 
     List<String> schemas = new ArrayList<>();
     schemas.add("s1");
@@ -112,8 +109,7 @@ public class RegionScanLogicalPlannerTest {
     timeseriesSchemaInfoMap3.put(
         new AlignedPath("root.sg.d2.a", schemas, Collections.emptyList()),
         timeseriesSchemaInfoList);
-    deviceToTimeseriesSchemaInfoMap.put(
-        new PartialPath(new PlainDeviceID("root.sg.d2.a")), timeseriesSchemaInfoMap3);
+    deviceToTimeseriesSchemaInfoMap.put(new PartialPath("root.sg.d2.a"), timeseriesSchemaInfoMap3);
 
     return deviceToTimeseriesSchemaInfoMap;
   }
@@ -127,9 +123,9 @@ public class RegionScanLogicalPlannerTest {
     queryId.genPlanNodeId();
 
     Map<PartialPath, Boolean> devicePathsToAligned = new HashMap<>();
-    devicePathsToAligned.put(new PartialPath(new PlainDeviceID("root.sg.d1")), false);
-    devicePathsToAligned.put(new PartialPath(new PlainDeviceID("root.sg.d2")), false);
-    devicePathsToAligned.put(new PartialPath(new PlainDeviceID("root.sg.d2.a")), true);
+    devicePathsToAligned.put(new PartialPath("root.sg.d1"), false);
+    devicePathsToAligned.put(new PartialPath("root.sg.d2"), false);
+    devicePathsToAligned.put(new PartialPath("root.sg.d2.a"), true);
 
     DeviceRegionScanNode regionScanNode =
         new DeviceRegionScanNode(queryId.genPlanNodeId(), devicePathsToAligned, false, null);
@@ -147,9 +143,9 @@ public class RegionScanLogicalPlannerTest {
     queryId.genPlanNodeId();
 
     Map<PartialPath, Boolean> devicePathsToAligned = new HashMap<>();
-    devicePathsToAligned.put(new PartialPath(new PlainDeviceID("root.sg.d1")), false);
-    devicePathsToAligned.put(new PartialPath(new PlainDeviceID("root.sg.d2")), false);
-    devicePathsToAligned.put(new PartialPath(new PlainDeviceID("root.sg.d2.a")), true);
+    devicePathsToAligned.put(new PartialPath("root.sg.d1"), false);
+    devicePathsToAligned.put(new PartialPath("root.sg.d2"), false);
+    devicePathsToAligned.put(new PartialPath("root.sg.d2.a"), true);
 
     DeviceRegionScanNode regionScanNode =
         new DeviceRegionScanNode(queryId.genPlanNodeId(), devicePathsToAligned, false, null);
@@ -172,9 +168,9 @@ public class RegionScanLogicalPlannerTest {
     queryId.genPlanNodeId();
 
     Map<PartialPath, Boolean> devicePathsToAligned = new HashMap<>();
-    devicePathsToAligned.put(new PartialPath(new PlainDeviceID("root.sg.d1")), false);
-    devicePathsToAligned.put(new PartialPath(new PlainDeviceID("root.sg.d2")), false);
-    devicePathsToAligned.put(new PartialPath(new PlainDeviceID("root.sg.d2.a")), true);
+    devicePathsToAligned.put(new PartialPath("root.sg.d1"), false);
+    devicePathsToAligned.put(new PartialPath("root.sg.d2"), false);
+    devicePathsToAligned.put(new PartialPath("root.sg.d2.a"), true);
 
     DeviceRegionScanNode regionScanNode =
         new DeviceRegionScanNode(queryId.genPlanNodeId(), devicePathsToAligned, true, null);

@@ -317,8 +317,8 @@ public class TsFileValidationCorrectnessTests {
       writer.endChunkGroup();
       writer.endFile();
     }
-    tsFileResource.updateStartTime(new PlainDeviceID("d1"), 1);
-    tsFileResource.updateEndTime(new PlainDeviceID("d1"), 3);
+    tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 1);
+    tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create("d1"), 3);
     tsFileResource.serialize();
     tsFileResource.remove();
     Assert.assertTrue(TsFileValidator.getInstance().validateTsFile(tsFileResource));
