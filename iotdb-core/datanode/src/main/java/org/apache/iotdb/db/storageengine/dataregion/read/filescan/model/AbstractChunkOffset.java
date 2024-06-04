@@ -28,19 +28,25 @@ import java.io.Serializable;
 
 public abstract class AbstractChunkOffset {
 
-  private final IDeviceID devicePath;
+  private final IDeviceID deviceID;
+  private final String measurement;
   private final long offSet;
 
-  protected AbstractChunkOffset(long offSet, IDeviceID devicePath) {
+  protected AbstractChunkOffset(long offSet, IDeviceID deviceID, String measurement) {
     this.offSet = offSet;
-    this.devicePath = devicePath;
+    this.deviceID = deviceID;
+    this.measurement = measurement;
   }
 
   public abstract IChunkHandle generateChunkHandle(
       String filePath, Statistics<? extends Serializable> statistics);
 
-  public IDeviceID getDevicePath() {
-    return devicePath;
+  public IDeviceID getDeviceID() {
+    return deviceID;
+  }
+
+  public String getMeasurement() {
+    return measurement;
   }
 
   public long getOffSet() {

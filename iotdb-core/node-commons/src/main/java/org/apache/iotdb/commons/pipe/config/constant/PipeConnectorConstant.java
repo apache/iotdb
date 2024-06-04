@@ -55,7 +55,7 @@ public class PipeConnectorConstant {
 
   public static final String CONNECTOR_REALTIME_FIRST_KEY = "connector.realtime-first";
   public static final String SINK_REALTIME_FIRST_KEY = "sink.realtime-first";
-  public static final boolean CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE = false;
+  public static final boolean CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE = true;
 
   public static final String CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY = "connector.batch.enable";
   public static final String SINK_IOTDB_BATCH_MODE_ENABLE_KEY = "sink.batch.enable";
@@ -183,6 +183,8 @@ public class PipeConnectorConstant {
 
   public static final String SINK_TOPIC_KEY = "sink.topic";
   public static final String SINK_CONSUMER_GROUP_KEY = "sink.consumer-group";
+
+  public static final String CONNECTOR_CONSENSUS_GROUP_ID_KEY = "connector.consensus.group-id";
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");

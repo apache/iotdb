@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.read.filescan.model;
 
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 public abstract class AbstractDeviceChunkMetaData {
@@ -32,5 +33,10 @@ public abstract class AbstractDeviceChunkMetaData {
     return devicePath;
   }
 
-  public abstract boolean isAligned();
+  public abstract boolean hasNextValueChunkMetadata();
+
+  public abstract IChunkMetadata nextValueChunkMetadata();
+
+  /** Get the chunk offset which is corresponding to current valueChunkMetadata */
+  public abstract AbstractChunkOffset getChunkOffset();
 }

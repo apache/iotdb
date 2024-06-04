@@ -301,8 +301,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       outputNodeConfig.updateProperties(immutableNodeProperties);
 
       // Persistent
-      outputCommonConfig.persistent(getTargetCommonConfigPath());
-      outputNodeConfig.persistent(getTargetNodeConfigPath());
+      outputCommonConfig.persistent(getSystemConfigPath());
+      outputNodeConfig.persistent(getSystemConfigPath());
     } catch (IOException ex) {
       throw new AssertionError("Change the config of node failed. " + ex);
     }
@@ -453,6 +453,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               "-Djava.rmi.server.hostname=" + getIp(),
               "-Xms" + jvmConfig.getInitHeapSize() + "m",
               "-Xmx" + jvmConfig.getMaxHeapSize() + "m",
+              "-Duser.timezone=" + jvmConfig.getTimezone(),
               "-XX:MaxDirectMemorySize=" + jvmConfig.getMaxDirectMemorySize() + "m",
               "-Djdk.nio.maxCachedBufferSize=262144",
               "-D" + IoTDBConstant.INTEGRATION_TEST_KILL_POINTS + "=" + killPoints.toString(),
@@ -661,9 +662,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   protected abstract void renameFile();
 
-  protected abstract String getTargetNodeConfigPath();
-
-  protected abstract String getTargetCommonConfigPath();
+  protected abstract String getSystemConfigPath();
 
   /** Return the node config file path specified through system variable */
   protected abstract String getDefaultNodeConfigPath();

@@ -2541,8 +2541,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitSetTTL(IoTDBSqlParser.SetTTLContext ctx) {
     SetTTLStatement setTTLStatement = new SetTTLStatement();
     PartialPath path = parsePrefixPath(ctx.prefixPath());
-    long ttl = Long.parseLong(ctx.INTEGER_LITERAL().getText());
-    setTTLStatement.setDatabasePath(path);
+
+    String ttlStr =
+        ctx.INTEGER_LITERAL() != null ? ctx.INTEGER_LITERAL().getText() : ctx.INF().getText();
+    long ttl =
+        ttlStr.equalsIgnoreCase(IoTDBConstant.TTL_INFINITE)
+            ? Long.MAX_VALUE
+            : Long.parseLong(ttlStr);
+    setTTLStatement.setPath(path);
     setTTLStatement.setTTL(ttl);
     return setTTLStatement;
   }
@@ -2551,18 +2557,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitUnsetTTL(IoTDBSqlParser.UnsetTTLContext ctx) {
     UnSetTTLStatement unSetTTLStatement = new UnSetTTLStatement();
     PartialPath partialPath = parsePrefixPath(ctx.prefixPath());
-    unSetTTLStatement.setDatabasePath(partialPath);
+    unSetTTLStatement.setPath(partialPath);
     return unSetTTLStatement;
-  }
-
-  @Override
-  public Statement visitShowTTL(IoTDBSqlParser.ShowTTLContext ctx) {
-    ShowTTLStatement showTTLStatement = new ShowTTLStatement();
-    for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
-      PartialPath partialPath = parsePrefixPath(prefixPathContext);
-      showTTLStatement.addPathPatterns(partialPath);
-    }
-    return showTTLStatement;
   }
 
   @Override
@@ -3558,6 +3554,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       String dataTypeString = ctx.dataType.getText().toUpperCase();
       try {
         dataType = TSDataType.valueOf(dataTypeString);
+        if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
+          throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
+        }
       } catch (Exception e) {
         throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
       }

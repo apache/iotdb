@@ -45,7 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.distribution.DistributionPla
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
@@ -73,7 +73,7 @@ public class EvaluationDAGBuilderTest {
       Assert.assertNotNull(operator);
       TransformOperator transformOperator =
           (TransformOperator) ((IdentitySinkOperator) operator).getChildren().get(0);
-      LayerPointReader[] transformers = transformOperator.getTransformers();
+      LayerReader[] transformers = transformOperator.getTransformers();
       Assert.assertEquals(6, transformers.length);
       Assert.assertTrue(transformers[0] instanceof UDFQueryRowWindowTransformer);
     } catch (Exception e) {
@@ -127,7 +127,6 @@ public class EvaluationDAGBuilderTest {
     FragmentInstanceContext instanceContext =
         createFragmentInstanceContext(instanceId, stateMachine);
     IDataRegionForQuery dataRegionForQuery = Mockito.mock(DataRegion.class);
-    Mockito.when(dataRegionForQuery.getDataTTL()).thenReturn(1000L);
     instanceContext.setDataRegion(dataRegionForQuery);
     return instanceContext;
   }

@@ -47,7 +47,7 @@ public class MetricConfigTest {
     properties.setProperty("cn_metric_iotdb_reporter_location", "metric");
     properties.setProperty("cn_metric_iotdb_reporter_push_period", "5");
 
-    MetricConfigDescriptor.getInstance().loadProps(properties);
+    MetricConfigDescriptor.getInstance().loadProps(properties, true);
 
     MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
@@ -84,7 +84,7 @@ public class MetricConfigTest {
     properties.setProperty("dn_metric_iotdb_reporter_push_period", "5");
     properties.setProperty("dn_metric_internal_reporter_type", "IOTDB");
 
-    MetricConfigDescriptor.getInstance().loadProps(properties);
+    MetricConfigDescriptor.getInstance().loadProps(properties, false);
 
     MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 

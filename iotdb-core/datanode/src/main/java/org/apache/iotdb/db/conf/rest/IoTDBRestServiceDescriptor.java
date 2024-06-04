@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf.rest;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 
@@ -40,11 +41,9 @@ public class IoTDBRestServiceDescriptor {
   private final IoTDBRestServiceConfig conf = new IoTDBRestServiceConfig();
 
   protected IoTDBRestServiceDescriptor() {
-    Properties properties = loadProps(IoTDBRestServiceConfig.CONFIG_NAME);
-    if (properties != null) {
-      if (!properties.containsKey("enable_rest_service")) {
-        properties = loadProps(IoTDBRestServiceConfig.OLD_CONFIG_NAME);
-      }
+    URL systemConfig = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
+    if (systemConfig != null) {
+      Properties properties = loadProps(CommonConfig.SYSTEM_CONFIG_NAME);
       if (properties != null) {
         loadProps(properties);
       }

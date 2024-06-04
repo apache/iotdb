@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -149,6 +150,9 @@ public class PipeEventCollector implements EventCollector {
       // Assign a commit id for this event in order to report progress in order.
       PipeEventCommitManager.getInstance()
           .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
+
+      // Assign a rebootTime for pipeConsensus
+      ((EnrichedEvent) event).setRebootTimes(PipeAgent.runtime().getRebootTimes());
     }
 
     if (event instanceof PipeHeartbeatEvent) {

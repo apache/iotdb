@@ -20,71 +20,63 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.TypeUtils;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 
 import java.io.IOException;
 
 public abstract class UnaryTransformer extends Transformer {
 
-  protected final LayerPointReader layerPointReader;
-  protected final TSDataType layerPointReaderDataType;
-  protected final boolean isLayerPointReaderConstant;
+  protected final LayerReader layerReader;
+  protected final TSDataType layerReaderDataType;
+  protected final boolean isLayerReaderConstant;
 
-  protected UnaryTransformer(LayerPointReader layerPointReader) {
-    this.layerPointReader = layerPointReader;
-    layerPointReaderDataType = layerPointReader.getDataType();
-    isLayerPointReaderConstant = layerPointReader.isConstantPointReader();
+  protected UnaryTransformer(LayerReader layerReader) {
+    this.layerReader = layerReader;
+    layerReaderDataType = layerReader.getDataTypes()[0];
+    isLayerReaderConstant = layerReader.isConstantPointReader();
   }
 
   @Override
   public final boolean isConstantPointReader() {
-    return isLayerPointReaderConstant;
+    return isLayerReaderConstant;
   }
 
   @Override
   public YieldableState yieldValue() throws Exception {
-    final YieldableState yieldableState = layerPointReader.yield();
-    if (!YieldableState.YIELDABLE.equals(yieldableState)) {
-      return yieldableState;
+    final YieldableState state = layerReader.yield();
+    if (!YieldableState.YIELDABLE.equals(state)) {
+      return state;
     }
 
-    if (!isLayerPointReaderConstant) {
-      cachedTime = layerPointReader.currentTime();
-    }
+    Column[] columns = layerReader.current();
+    cachedColumns = transform(columns);
+    layerReader.consumedAll();
 
-    if (layerPointReader.isCurrentNull()) {
-      currentNull = true;
-    } else {
-      transformAndCache();
-    }
-
-    layerPointReader.readyForNext();
     return YieldableState.YIELDABLE;
   }
 
-  @Override
-  protected final boolean cacheValue() throws QueryProcessException, IOException {
-    if (!layerPointReader.next()) {
-      return false;
-    }
+  protected Column[] transform(Column[] columns) throws QueryProcessException, IOException {
+    // Prepare ColumnBuilder with given type
+    int count = columns[0].getPositionCount();
+    TSDataType dataType = getDataTypes()[0];
+    ColumnBuilder builder = TypeUtils.initColumnBuilder(dataType, count);
 
-    if (!isLayerPointReaderConstant) {
-      cachedTime = layerPointReader.currentTime();
-    }
+    // Transform data
+    transform(columns, builder);
 
-    if (layerPointReader.isCurrentNull()) {
-      currentNull = true;
-    } else {
-      transformAndCache();
-    }
-
-    layerPointReader.readyForNext();
-    return true;
+    // Build cache
+    Column valueColumn = builder.build();
+    Column timeColumn = columns[1];
+    return new Column[] {valueColumn, timeColumn};
   }
 
-  protected abstract void transformAndCache() throws QueryProcessException, IOException;
+  protected void transform(Column[] columns, ColumnBuilder builder)
+      throws QueryProcessException, IOException {}
 }

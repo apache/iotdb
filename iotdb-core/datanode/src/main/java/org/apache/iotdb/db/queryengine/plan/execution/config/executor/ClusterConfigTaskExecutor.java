@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
@@ -62,7 +63,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeactivateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteDatabasesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
@@ -96,6 +96,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicResp;
@@ -243,9 +244,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
@@ -355,7 +356,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
       showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
-    } catch (IOException | ClientManagerException | TException e) {
+    } catch (IOException | ClientManagerException | TException | IllegalPathException e) {
       future.setException(e);
     }
     return future;
@@ -915,8 +916,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    List<String> databasePathPattern = Arrays.asList(setTTLStatement.getDatabasePath().getNodes());
-    TSetTTLReq setTTLReq = new TSetTTLReq(databasePathPattern, setTTLStatement.getTTL());
+    List<String> pathPattern = Arrays.asList(setTTLStatement.getPath().getNodes());
+    TSetTTLReq setTTLReq = new TSetTTLReq(pathPattern, setTTLStatement.getTTL(), false);
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
@@ -926,7 +927,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         LOGGER.warn(
             "Failed to execute {} {} in config node, status is {}.",
             taskName,
-            setTTLStatement.getDatabasePath(),
+            setTTLStatement.getPath(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {
@@ -1246,31 +1247,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    List<PartialPath> databasePaths = showTTLStatement.getPaths();
-    Map<String, Long> databaseToTTL = new HashMap<>();
+    Map<String, Long> databaseToTTL = new TreeMap<>();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      ByteBuffer scope = showTTLStatement.getAuthorityScope().serialize();
-      if (showTTLStatement.isAll()) {
-        List<String> allStorageGroupPathPattern = Arrays.asList("root", "**");
-        TGetDatabaseReq req = new TGetDatabaseReq(allStorageGroupPathPattern, scope);
-        TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(req);
-        for (Map.Entry<String, TDatabaseSchema> entry : resp.getDatabaseSchemaMap().entrySet()) {
-          databaseToTTL.put(entry.getKey(), entry.getValue().getTTL());
-        }
-      } else {
-        for (PartialPath databasePath : databasePaths) {
-          List<String> databasePathPattern = Arrays.asList(databasePath.getNodes());
-          TGetDatabaseReq req = new TGetDatabaseReq(databasePathPattern, scope);
-          TDatabaseSchemaResp resp = client.getMatchedDatabaseSchemas(req);
-          for (Map.Entry<String, TDatabaseSchema> entry : resp.getDatabaseSchemaMap().entrySet()) {
-            if (!databaseToTTL.containsKey(entry.getKey())) {
-              databaseToTTL.put(entry.getKey(), entry.getValue().getTTL());
-            }
-          }
-        }
-      }
-    } catch (IOException | ClientManagerException | TException e) {
+      TShowTTLResp resp = client.showAllTTL();
+      databaseToTTL.putAll(resp.getPathTTLMap());
+    } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
     // build TSBlock

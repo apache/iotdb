@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -90,6 +91,7 @@ public class SchemaQueryScanOperatorTest {
           .thenReturn(META_SCAN_OPERATOR_TEST_SG + ".device0");
       Mockito.when(deviceSchemaInfo.isAligned()).thenReturn(false);
       Mockito.when(deviceSchemaInfo.getTemplateId()).thenReturn(-1);
+      Mockito.when(deviceSchemaInfo.getPartialPath()).thenReturn(partialPath);
       operatorContext.setDriverContext(
           new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       ISchemaSource<IDeviceSchemaInfo> deviceSchemaSource =
@@ -109,7 +111,7 @@ public class SchemaQueryScanOperatorTest {
       //
       while (devicesSchemaScanOperator.hasNext()) {
         TsBlock tsBlock = devicesSchemaScanOperator.next();
-        assertEquals(4, tsBlock.getValueColumnCount());
+        assertEquals(5, tsBlock.getValueColumnCount());
         assertTrue(tsBlock.getColumn(0) instanceof BinaryColumn);
         assertEquals(1, tsBlock.getPositionCount());
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
@@ -130,6 +132,10 @@ public class SchemaQueryScanOperatorTest {
                 break;
               case 3:
                 assertNull(tsBlock.getColumn(j).getBinary(i));
+                break;
+              case 4:
+                assertEquals(
+                    tsBlock.getColumn(j).getBinary(i).toString(), IoTDBConstant.TTL_INFINITE);
                 break;
               default:
                 break;

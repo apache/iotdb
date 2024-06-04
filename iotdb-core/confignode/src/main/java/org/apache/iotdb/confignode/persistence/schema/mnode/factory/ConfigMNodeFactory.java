@@ -60,15 +60,7 @@ public class ConfigMNodeFactory implements IMNodeFactory<IConfigMNode> {
   }
 
   @Override
-  public IDatabaseMNode<IConfigMNode> createDatabaseMNode(
-      IConfigMNode parent, String name, long dataTTL) {
-    IDatabaseMNode<IConfigMNode> res = new ConfigDatabaseMNode(parent, name);
-    res.setDataTTL(dataTTL);
-    return res;
-  }
-
-  @Override
-  public IConfigMNode createDatabaseDeviceMNode(IConfigMNode parent, String name, long dataTTL) {
+  public IConfigMNode createDatabaseDeviceMNode(IConfigMNode parent, String name) {
     throw new UnsupportedOperationException();
   }
 

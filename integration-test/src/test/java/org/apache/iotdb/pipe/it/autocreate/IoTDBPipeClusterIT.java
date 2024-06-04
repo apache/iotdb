@@ -917,7 +917,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           Arrays.asList(
               // Test the correctness of insertRowsNode transmission
               "insert into root.db.d1(time, s1) values (-122, 3)",
-              "insert into root.db.d1(time, s1) values (-123, 3), (now(), 3)"))) {
+              "insert into root.db.d1(time, s1) values (-123, 3), (now(), 3)",
+              "flush"))) {
         return;
       }
 

@@ -60,6 +60,8 @@ public abstract class RegionScanNode extends SourceNode {
 
   public abstract void clearPath();
 
+  public abstract long getSize();
+
   @Override
   public void open() throws Exception {}
 

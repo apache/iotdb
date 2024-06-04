@@ -38,6 +38,7 @@ import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
 
 /**
@@ -263,5 +264,35 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
       fail();
     }
     Assert.assertEquals(0, cnt);
+  }
+
+  @Test
+  public void testIllegalInput() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create timeseries root.sg2.d.s1 with datatype=INT64");
+      assertThrows(
+          "Unsupported datatype: UNKNOWN",
+          SQLException.class,
+          () -> statement.execute("create timeseries root.sg2.d.s1 with datatype=UNKNOWN"));
+      assertThrows(
+          "Unsupported datatype: VECTOR",
+          SQLException.class,
+          () -> statement.execute("create timeseries root.sg2.d.s1 with datatype=VECTOR"));
+      assertThrows(
+          "Unsupported datatype: YES",
+          SQLException.class,
+          () -> statement.execute("create timeseries root.sg2.d.s1 with datatype=YES"));
+      assertThrows(
+          "Unsupported datatype: UNKNOWN",
+          SQLException.class,
+          () -> statement.execute("create device template t1 (s1 UNKNOWN, s2 boolean)"));
+      assertThrows(
+          "Unsupported datatype: VECTOR",
+          SQLException.class,
+          () -> statement.execute("create device template t1 (s1 VECTOR, s2 boolean)"));
+    } catch (SQLException ignored) {
+      fail();
+    }
   }
 }

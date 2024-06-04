@@ -19,6 +19,7 @@
 #
 
 conf_path=${IOTDB_HOME}/conf
+target_files="iotdb-system.properties"
 
 function process_single(){
 	local key_value="$1"
@@ -47,18 +48,6 @@ function replace_configs(){
     fi
   done
 }
-
-case "$1" in
-  confignode)
-    target_files="iotdb-common.properties iotdb-confignode.properties"
-    ;;
-  datanode)
-    target_files="iotdb-common.properties iotdb-datanode.properties"
-    ;;
-  all)
-    target_files="iotdb-common.properties iotdb-confignode.properties iotdb-datanode.properties"
-    ;;
-esac
 
 replace_configs
 

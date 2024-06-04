@@ -19,195 +19,70 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.util;
 
-import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.IUDFInputDataSet;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowRecordList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
 
-import org.apache.tsfile.enums.TSDataType;
-
-import java.io.IOException;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 public class LayerCacheUtils {
 
   private LayerCacheUtils() {}
 
-  public static YieldableState yieldPoints(
-      TSDataType dataType,
-      LayerPointReader source,
-      ElasticSerializableTVList target,
-      int pointNumber)
-      throws Exception {
-    int count = 0;
-    while (count < pointNumber) {
-      final YieldableState yieldableState = yieldPoint(dataType, source, target);
-      if (yieldableState != YieldableState.YIELDABLE) {
-        return yieldableState;
-      }
-      ++count;
-    }
-    return YieldableState.YIELDABLE;
-  }
-
-  public static YieldableState yieldPoint(
-      TSDataType dataType, LayerPointReader source, ElasticSerializableTVList target)
+  public static YieldableState yieldPoints(LayerReader source, ElasticSerializableTVList target)
       throws Exception {
     final YieldableState yieldableState = source.yield();
     if (yieldableState != YieldableState.YIELDABLE) {
       return yieldableState;
     }
 
-    if (source.isCurrentNull()) {
-      target.putNull(source.currentTime());
-    } else {
-      switch (dataType) {
-        case INT32:
-        case DATE:
-          target.putInt(source.currentTime(), source.currentInt());
-          break;
-        case INT64:
-        case TIMESTAMP:
-          target.putLong(source.currentTime(), source.currentLong());
-          break;
-        case FLOAT:
-          target.putFloat(source.currentTime(), source.currentFloat());
-          break;
-        case DOUBLE:
-          target.putDouble(source.currentTime(), source.currentDouble());
-          break;
-        case BOOLEAN:
-          target.putBoolean(source.currentTime(), source.currentBoolean());
-          break;
-        case TEXT:
-        case BLOB:
-        case STRING:
-          target.putBinary(
-              source.currentTime(),
-              UDFBinaryTransformer.transformToUDFBinary(source.currentBinary()));
-          break;
-        default:
-          throw new UnsupportedOperationException(dataType.name());
-      }
-    }
-
-    source.readyForNext();
+    // Source would generate two columns:
+    // First column is the value column;
+    // Second column is always the time column.
+    Column[] columns = source.current();
+    target.putColumn((TimeColumn) columns[1], columns[0]);
+    source.consumedAll();
 
     return YieldableState.YIELDABLE;
   }
 
-  /**
-   * try to generate rows from source.
-   *
-   * @return number of actually collected, which may be less than or equals to rowsNumber.
-   */
-  public static YieldableState yieldRows(
-      IUDFInputDataSet source, ElasticSerializableRowRecordList target, int rowsNumber)
-      throws Exception {
-    int count = 0;
-    while (count < rowsNumber) {
-      final YieldableState yieldableState = yieldRow(source, target);
+  public static YieldableState yieldPoints(
+      LayerReader source, ElasticSerializableTVList target, int count) throws Exception {
+    while (count > 0) {
+      final YieldableState yieldableState = source.yield();
       if (yieldableState != YieldableState.YIELDABLE) {
         return yieldableState;
       }
-      ++count;
+
+      Column[] columns = source.current();
+      target.putColumn((TimeColumn) columns[1], columns[0]);
+      source.consumedAll();
+
+      int size = columns[0].getPositionCount();
+      count -= size;
     }
+
     return YieldableState.YIELDABLE;
   }
 
-  public static YieldableState yieldRow(
-      IUDFInputDataSet source, ElasticSerializableRowRecordList target) throws Exception {
-    final YieldableState yieldableState = source.canYieldNextRowInObjects();
-
-    if (yieldableState == YieldableState.YIELDABLE) {
-      target.put(source.nextRowInObjects());
-    }
-    return yieldableState;
-  }
-
-  /**
-   * cachePoints in ElasticSerializableTVList.
-   *
-   * @return number of actually collected, which may be less than or equals to pointNumber.
-   */
-  public static int cachePoints(
-      TSDataType dataType,
-      LayerPointReader source,
-      ElasticSerializableTVList target,
-      int pointNumber)
-      throws QueryProcessException, IOException {
-    int count = 0;
-    while (count < pointNumber && cachePoint(dataType, source, target)) {
-      ++count;
-    }
-    return count;
-  }
-
-  public static boolean cachePoint(
-      TSDataType dataType, LayerPointReader source, ElasticSerializableTVList target)
-      throws IOException, QueryProcessException {
-    if (!source.next()) {
-      return false;
-    }
-
-    if (source.isCurrentNull()) {
-      target.putNull(source.currentTime());
-    } else {
-      switch (dataType) {
-        case INT32:
-          target.putInt(source.currentTime(), source.currentInt());
-          break;
-        case INT64:
-          target.putLong(source.currentTime(), source.currentLong());
-          break;
-        case FLOAT:
-          target.putFloat(source.currentTime(), source.currentFloat());
-          break;
-        case DOUBLE:
-          target.putDouble(source.currentTime(), source.currentDouble());
-          break;
-        case BOOLEAN:
-          target.putBoolean(source.currentTime(), source.currentBoolean());
-          break;
-        case TEXT:
-          target.putBinary(
-              source.currentTime(),
-              UDFBinaryTransformer.transformToUDFBinary(source.currentBinary()));
-          break;
-        default:
-          throw new UnsupportedOperationException(dataType.name());
+  public static YieldableState yieldRows(
+      IUDFInputDataSet source, ElasticSerializableRowList target, int count) throws Exception {
+    while (count > 0) {
+      final YieldableState yieldableState = source.yield();
+      if (yieldableState != YieldableState.YIELDABLE) {
+        return yieldableState;
       }
+
+      Column[] columns = source.currentBlock();
+      target.put(columns);
+
+      int size = columns[0].getPositionCount();
+      count -= size;
     }
 
-    source.readyForNext();
-
-    return true;
-  }
-
-  /**
-   * cache rows in ElasticSerializableRowRecordList.
-   *
-   * @return number of actually collected, which may be less than or equals to rowsNumber.
-   */
-  public static int cacheRows(
-      IUDFInputDataSet source, ElasticSerializableRowRecordList target, int rowsNumber)
-      throws QueryProcessException, IOException {
-    int count = 0;
-    while (count < rowsNumber && cacheRow(source, target)) {
-      ++count;
-    }
-    return count;
-  }
-
-  public static boolean cacheRow(IUDFInputDataSet source, ElasticSerializableRowRecordList target)
-      throws IOException, QueryProcessException {
-    if (source.hasNextRowInObjects()) {
-      target.put(source.nextRowInObjects());
-      return true;
-    } else {
-      return false;
-    }
+    return YieldableState.YIELDABLE;
   }
 }
