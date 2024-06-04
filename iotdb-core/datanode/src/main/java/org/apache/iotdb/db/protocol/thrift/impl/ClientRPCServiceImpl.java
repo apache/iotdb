@@ -23,7 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
+import org.apache.iotdb.common.rpc.thrift.TShowConfigurationTemplateResp;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -45,6 +49,9 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
@@ -187,8 +194,11 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -2301,6 +2311,78 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
+  @Override
+  public TShowConfigurationTemplateResp showConfigurationTemplate() throws TException {
+    TShowConfigurationTemplateResp resp = new TShowConfigurationTemplateResp();
+    try {
+      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        resp.setStatus(getNotLoggedInStatus());
+        return resp;
+      }
+      resp.setContent(getConfigurationFileContent(CommonConfig.SYSTEM_CONFIG_NAME + ".properties"));
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      return resp;
+    } catch (Exception e) {
+      resp.setStatus(
+          onNpeOrUnexpectedException(
+              e, OperationType.EXECUTE_QUERY_STATEMENT, TSStatusCode.EXECUTE_STATEMENT_ERROR));
+      return resp;
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
+  }
+
+  @Override
+  public TShowConfigurationResp showConfiguration(int nodeId) throws TException {
+    TShowConfigurationResp resp = new TShowConfigurationResp();
+    resp.setContent("");
+    try {
+      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+      if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        resp.setStatus(getNotLoggedInStatus());
+        return resp;
+      }
+      if (!clientSession.getUsername().equals(AuthorityChecker.SUPER_USER)) {
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
+        return resp;
+      }
+
+      if (IoTDBDescriptor.getInstance().getConfig().getDataNodeId() == nodeId) {
+        resp.setContent(getConfigurationFileContent(CommonConfig.SYSTEM_CONFIG_NAME));
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+        return resp;
+      }
+
+      try (ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        return client.showConfiguration(nodeId);
+      } catch (ClientManagerException e) {
+        throw new TException(e);
+      }
+    } catch (Exception e) {
+      resp.setStatus(
+          onNpeOrUnexpectedException(
+              e, OperationType.EXECUTE_QUERY_STATEMENT, TSStatusCode.EXECUTE_STATEMENT_ERROR));
+      return resp;
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
+  }
+
+  private String getConfigurationFileContent(String configurationFileName) throws IOException {
+    String content = "";
+    URL configurationFileUrl = IoTDBDescriptor.getPropsUrl(configurationFileName);
+    if (configurationFileUrl == null) {
+      return content;
+    }
+    File file = new File(configurationFileUrl.getFile());
+    if (!file.exists()) {
+      return content;
+    }
+    return new String(Files.readAllBytes(file.toPath()));
+  }
+
   private TSQueryTemplateResp executeTemplateQueryStatement(
       Statement statement, TSQueryTemplateReq req, TSQueryTemplateResp resp) {
     long startTime = System.nanoTime();
@@ -2674,7 +2756,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     return resp;
   }
 
-  private TSStatus getNotLoggedInStatus() {
+  protected TSStatus getNotLoggedInStatus() {
     return RpcUtils.getStatus(
         TSStatusCode.NOT_LOGIN,
         "Log in failed. Either you are not authorized or the session has timed out.");

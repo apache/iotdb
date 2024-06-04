@@ -31,6 +31,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -209,8 +210,12 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -220,6 +225,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -1499,6 +1505,21 @@ public class ConfigManager implements IManager {
 
   @Override
   public TSStatus setConfiguration(TSetConfigurationReq req) {
+    if (ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId() == req.getNodeId()) {
+      URL url = ConfigNodeDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
+      if (url == null || !new File(url.getFile()).exists()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
+      File file = new File(url.getFile());
+      try (FileWriter fileWriter = new FileWriter(file, true)) {
+        Properties properties = new Properties();
+        properties.putAll(req.getConfigs());
+        properties.store(fileWriter, null);
+      } catch (IOException e) {
+        return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      }
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    }
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? RpcUtils.squashResponseStatusList(nodeManager.setConfiguration(req))
@@ -1527,6 +1548,28 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? RpcUtils.squashResponseStatusList(nodeManager.loadConfiguration())
         : status;
+  }
+
+  @Override
+  public TShowConfigurationResp showConfiguration(int nodeId) {
+    if (ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId() == nodeId) {
+      TShowConfigurationResp resp =
+          new TShowConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), "");
+      try {
+        URL propsUrl = ConfigNodeDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
+        if (propsUrl != null && new File(propsUrl.getFile()).exists()) {
+          byte[] bytes = Files.readAllBytes(new File(propsUrl.getFile()).toPath());
+          resp.setContent(new String(bytes));
+        }
+      } catch (Exception e) {
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
+      }
+      return resp;
+    }
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? nodeManager.showConfiguration(nodeId)
+        : new TShowConfigurationResp(status, "");
   }
 
   @Override

@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -491,6 +492,9 @@ public interface IManager {
 
   /** Load configuration on all DataNodes. */
   TSStatus loadConfiguration();
+
+  /** Show content of configuration file on specified node */
+  TShowConfigurationResp showConfiguration(int nodeId);
 
   /** Set system status on all DataNodes. */
   TSStatus setSystemStatus(String status);

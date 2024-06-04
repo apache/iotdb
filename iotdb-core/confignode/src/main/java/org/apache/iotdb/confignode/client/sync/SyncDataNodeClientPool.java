@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -64,7 +65,7 @@ public class SyncDataNodeClientPool {
                 new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
   }
 
-  public TSStatus sendSyncRequestToDataNodeWithRetry(
+  public Object sendSyncRequestToDataNodeWithRetry(
       TEndPoint endPoint, Object req, DataNodeRequestType requestType) {
     Throwable lastException = new TException();
     for (int retry = 0; retry < DEFAULT_RETRY_NUM; retry++) {
@@ -83,7 +84,7 @@ public class SyncDataNodeClientPool {
         .setMessage("All retry failed due to: " + lastException.getMessage());
   }
 
-  public TSStatus sendSyncRequestToDataNodeWithGivenRetry(
+  public Object sendSyncRequestToDataNodeWithGivenRetry(
       TEndPoint endPoint, Object req, DataNodeRequestType requestType, int retryNum) {
     Throwable lastException = new TException();
     for (int retry = 0; retry < retryNum; retry++) {
@@ -102,7 +103,7 @@ public class SyncDataNodeClientPool {
         .setMessage("All retry failed due to: " + lastException.getMessage());
   }
 
-  private TSStatus executeSyncRequest(
+  private Object executeSyncRequest(
       DataNodeRequestType requestType, SyncDataNodeInternalServiceClient client, Object req)
       throws TException {
     switch (requestType) {
@@ -138,6 +139,8 @@ public class SyncDataNodeClientPool {
         return client.deleteOldRegionPeer((TMaintainPeerReq) req);
       case RESET_PEER_LIST:
         return client.resetPeerList((TResetPeerListReq) req);
+      case SHOW_CONFIGURATION:
+        return client.showConfiguration();
       default:
         return RpcUtils.getStatus(
             TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
@@ -185,6 +188,19 @@ public class SyncDataNodeClientPool {
       status.setMessage(e.getMessage());
     }
     return new TRegionLeaderChangeResp(status, -1L);
+  }
+
+  public TShowConfigurationResp showConfiguration(TEndPoint dataNode) {
+    TSStatus status;
+    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(dataNode)) {
+      return client.showConfiguration();
+    } catch (ClientManagerException e) {
+      LOGGER.error("Can't connect to Data node: {}", dataNode, e);
+      status = RpcUtils.getStatus(TSStatusCode.CAN_NOT_CONNECT_DATANODE, e.getMessage());
+    } catch (TException e) {
+      status = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return new TShowConfigurationResp(status, "");
   }
 
   // TODO: Is the ClientPool must be a singleton?

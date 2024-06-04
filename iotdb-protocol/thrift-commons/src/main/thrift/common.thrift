@@ -216,3 +216,14 @@ enum TAggregationType {
   MIN_BY,
   UDAF
 }
+
+struct TShowConfigurationTemplateResp {
+  1: required TSStatus status
+  2: required string content
+}
+
+struct TShowConfigurationResp {
+  1: required TSStatus status
+  2: required string content
+}
+
