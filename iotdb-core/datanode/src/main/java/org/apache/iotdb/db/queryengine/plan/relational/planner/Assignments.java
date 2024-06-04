@@ -95,6 +95,14 @@ public class Assignments {
         .collect(toAssignments());
   }
 
+  public boolean contains(Symbol symbol) {
+    return assignments.containsKey(symbol);
+  }
+
+  public Expression get(Symbol symbol) {
+    return assignments.get(symbol);
+  }
+
   private Collector<Entry<Symbol, Expression>, Builder, Assignments> toAssignments() {
     return Collector.of(
         Assignments::builder,
@@ -116,10 +124,6 @@ public class Assignments {
 
   public Set<Entry<Symbol, Expression>> entrySet() {
     return assignments.entrySet();
-  }
-
-  public Expression get(Symbol symbol) {
-    return assignments.get(symbol);
   }
 
   public int size() {

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DefaultTraversalVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
@@ -80,8 +81,16 @@ public class PruneUnUsedColumns implements RelationalPlanOptimizer {
 
     @Override
     public PlanNode visitProject(ProjectNode node, RewriterContext context) {
-      // TODO add project existence judgement
-      context.allUsedSymbolSet.addAll(node.getOutputSymbols());
+      Set<Symbol> usedSymbolSet = new HashSet<>();
+      for (Symbol symbol : context.allUsedSymbolSet) {
+        if (node.getAssignments().contains(symbol)) {
+          Expression expression = node.getAssignments().get(symbol);
+          ImmutableList.Builder<Symbol> symbolBuilder = ImmutableList.builder();
+          new SymbolBuilderVisitor().process(expression, symbolBuilder);
+          usedSymbolSet.addAll(symbolBuilder.build());
+        }
+      }
+      context.allUsedSymbolSet.addAll(usedSymbolSet);
       node.getChild().accept(this, context);
       return node;
     }
@@ -89,9 +98,8 @@ public class PruneUnUsedColumns implements RelationalPlanOptimizer {
     @Override
     public PlanNode visitFilter(FilterNode node, RewriterContext context) {
       ImmutableList.Builder<Symbol> symbolBuilder = ImmutableList.builder();
-      new SymbolBuilderVisitor().process(node.getPredicate(), ImmutableList.builder());
-      List<Symbol> ret = symbolBuilder.build();
-      context.allUsedSymbolSet.addAll(ret);
+      new SymbolBuilderVisitor().process(node.getPredicate(), symbolBuilder);
+      context.allUsedSymbolSet.addAll(symbolBuilder.build());
       node.getChild().accept(this, context);
       return node;
     }

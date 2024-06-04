@@ -108,7 +108,7 @@ public class IndexScan implements RelationalPlanOptimizer {
                   attributeColumns);
       node.setDeviceEntries(deviceEntries);
 
-      String treeDatabase = "root." + dbName;
+      String treeModelDatabase = "root." + dbName;
       Set<String> deviceSet = new HashSet<>();
       for (DeviceEntry deviceEntry : deviceEntries) {
         StringArrayDeviceID arrayDeviceID = (StringArrayDeviceID) deviceEntry.getDeviceID();
@@ -119,7 +119,7 @@ public class IndexScan implements RelationalPlanOptimizer {
       DataPartition dataPartition =
           fetchDataPartitionByDevices(
               deviceSet,
-              treeDatabase,
+              treeModelDatabase,
               context.getQueryContext().getGlobalTimeFilter(),
               context.getPartitionFetcher());
       context.getAnalysis().setDataPartition(dataPartition);
