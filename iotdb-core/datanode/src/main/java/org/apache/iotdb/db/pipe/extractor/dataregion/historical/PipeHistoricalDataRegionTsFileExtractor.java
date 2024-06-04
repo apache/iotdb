@@ -45,6 +45,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
@@ -99,6 +101,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private long historicalDataExtractionEndTime = Long.MAX_VALUE; // Event time
   private long historicalDataExtractionTimeLowerBound; // Arrival time
 
+  private boolean sloppyPattern;
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
 
   private boolean shouldExtractInsertion;
@@ -202,6 +205,25 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                       PipeExtractorConstant.SOURCE_MODE_KEY),
                   PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE)
               .equalsIgnoreCase(PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE);
+
+      final Set<String> sloppyOptionSet =
+          Arrays.stream(
+                  parameters
+                      .getStringOrDefault(
+                          Arrays.asList(
+                              EXTRACTOR_HISTORY_LOOSE_RANGE_KEY, SOURCE_HISTORY_LOOSE_RANGE_KEY),
+                          "")
+                      .split(","))
+              .map(String::trim)
+              .map(String::toLowerCase)
+              .collect(Collectors.toSet());
+      sloppyTimeRange = sloppyOptionSet.remove("time");
+      sloppyPattern = sloppyOptionSet.remove("path");
+      if (!sloppyOptionSet.isEmpty()) {
+        throw new PipeParameterNotValidException(
+            String.format("%s is not allowed in 'history.loose-range'", sloppyOptionSet));
+      }
+
     } catch (final Exception e) {
       // Compatible with the current validation framework
       throw new PipeParameterNotValidException(e.getMessage());
@@ -282,28 +304,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       }
     }
 
-    sloppyTimeRange =
-        Arrays.stream(
-                parameters
-                    .getStringOrDefault(
-                        Arrays.asList(
-                            EXTRACTOR_HISTORY_LOOSE_RANGE_KEY, SOURCE_HISTORY_LOOSE_RANGE_KEY),
-                        "")
-                    .split(","))
-            .map(String::trim)
-            .map(String::toLowerCase)
-            .collect(Collectors.toSet())
-            .contains("time");
-
-    LOGGER.info(
-        "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy time range {}",
-        pipeName,
-        dataRegionId,
-        DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
-        historicalDataExtractionStartTime,
-        DateTimeUtils.convertLongToDate(historicalDataExtractionEndTime),
-        historicalDataExtractionEndTime,
-        sloppyTimeRange);
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info(
+          "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy time range {}",
+          pipeName,
+          dataRegionId,
+          DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
+          historicalDataExtractionStartTime,
+          DateTimeUtils.convertLongToDate(historicalDataExtractionEndTime),
+          historicalDataExtractionEndTime,
+          sloppyTimeRange);
+    }
   }
 
   private void flushDataRegionAllTsFiles() {
@@ -382,6 +393,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                         // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
                         !resource.isClosed()
                             || mayTsFileContainUnprocessedData(resource)
+                                && mayTsFileResourceOverlappedWithPattern(resource)
                                 && isTsFileResourceOverlappedWithTimeRange(resource)
                                 && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
@@ -395,6 +407,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                         // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
                         !resource.isClosed()
                             || mayTsFileContainUnprocessedData(resource)
+                                && mayTsFileResourceOverlappedWithPattern(resource)
                                 && isTsFileResourceOverlappedWithTimeRange(resource)
                                 && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .collect(Collectors.toList());
@@ -458,6 +471,13 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     return !startIndex.isAfter(resource.getMaxProgressIndexAfterClose());
   }
 
+  private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
+    // TODO: use IDeviceID
+    return resource.getDevices().stream()
+        .anyMatch(
+            deviceID -> pipePattern.mayOverlapWithDevice(((PlainDeviceID) deviceID).toStringID()));
+  }
+
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {
     return !(resource.getFileEndTime() < historicalDataExtractionStartTime
         || historicalDataExtractionEndTime < resource.getFileStartTime());
@@ -514,7 +534,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             pipePattern,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
-    if (isDbNameCoveredByPattern) {
+    if (sloppyPattern || isDbNameCoveredByPattern) {
       event.skipParsingPattern();
     }
 
