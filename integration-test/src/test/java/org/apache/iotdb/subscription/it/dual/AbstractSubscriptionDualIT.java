@@ -47,7 +47,7 @@ abstract class AbstractSubscriptionDualIT {
     senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600_000);
     receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600_000);
 
-    // shorten heartbeat interval to avoid timeout of query mode test
+    // shorten heartbeat and sync interval to avoid timeout of query mode test
     senderEnv
         .getConfig()
         .getCommonConfig()
