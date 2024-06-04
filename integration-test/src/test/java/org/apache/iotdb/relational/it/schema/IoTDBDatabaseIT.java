@@ -40,6 +40,7 @@ import java.sql.Statement;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.showDBColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -112,6 +113,43 @@ public class IoTDBDatabaseIT {
         // TODO error msg should be changed to 500: Database test1 doesn't exists
         assertEquals("508: Path [root.test] does not exist", e.getMessage());
       }
+
+      // create with strange name
+      try {
+        statement.execute("create database 1test");
+        fail("create database 1test shouldn't succeed because test1 doesn't exist");
+      } catch (SQLException e) {
+        assertTrue(
+            e.getMessage(),
+            e.getMessage()
+                .endsWith(
+                    "identifiers must not start with a digit; surround the identifier with double quotes"));
+      }
+
+      statement.execute("create database \"1test\"");
+      statement.execute("use \"1test\"");
+
+      try {
+        statement.execute("create database 1");
+        fail("create database 1test shouldn't succeed because test1 doesn't exist");
+      } catch (SQLException e) {
+        // TODO add error msg assert
+      }
+
+      // TODO fix it, should succeed
+      statement.execute("create database \"1\"");
+      statement.execute("use \"1\"");
+
+      try {
+        statement.execute("create database a.b");
+        fail("create database 1test shouldn't succeed because test1 doesn't exist");
+      } catch (SQLException e) {
+        // TODO add error msg assert
+      }
+
+      // TODO fix it, should succeed
+      statement.execute("create database \"a.b\"");
+      statement.execute("use \"a.b\"");
 
     } catch (SQLException e) {
       e.printStackTrace();
