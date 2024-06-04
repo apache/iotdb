@@ -111,7 +111,6 @@ public class PerformanceOverviewMetrics implements IMetricSet {
       Metric.PERFORMANCE_OVERVIEW_SCHEDULE_DETAIL.toString();
   private static final String LOCAL_SCHEDULE = "local_scheduler";
   private static final String REMOTE_SCHEDULE = "remote_scheduler";
-
   private static final String REMOTE_RETRY_SLEEP = "remote_retry";
 
   static {
@@ -140,7 +139,6 @@ public class PerformanceOverviewMetrics implements IMetricSet {
 
   private Timer localScheduleTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer remoteScheduleTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-
   private Timer remoteRetrySleepTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   /** Record the time cost of local schedule. */
