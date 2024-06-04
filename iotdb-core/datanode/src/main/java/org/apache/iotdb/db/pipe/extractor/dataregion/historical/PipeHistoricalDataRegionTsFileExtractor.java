@@ -306,13 +306,14 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
-          "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy time range {}",
+          "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy pattern {}, sloppy time range {}",
           pipeName,
           dataRegionId,
           DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
           historicalDataExtractionStartTime,
           DateTimeUtils.convertLongToDate(historicalDataExtractionEndTime),
           historicalDataExtractionEndTime,
+          sloppyPattern,
           sloppyTimeRange);
     }
   }
