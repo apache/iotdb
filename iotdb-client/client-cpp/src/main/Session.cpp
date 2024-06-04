@@ -1348,7 +1348,7 @@ void Session::buildInsertTabletReq(TSInsertTabletReq &request, int64_t sessionId
     }
 
     request.__set_sessionId(sessionId);
-    request.prefixPath = tablet.getDeviceId();
+    request.prefixPath = tablet.deviceId;
 
     request.measurements.reserve(tablet.schemas.size());
     request.types.reserve(tablet.schemas.size());
