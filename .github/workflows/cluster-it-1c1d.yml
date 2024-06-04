@@ -66,7 +66,21 @@ jobs:
 #        if: ${{ runner.os == 'macOS' }}
 #        shell: bash
 #        run: sudo sysctl -w kern.ipc.somaxconn=65535
-      - name: IT/UT Test
+      - name: IT/UT Test (master)
+        if: "contains(github.ref, 'master')"
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          mvn clean verify \
+          -P with-integration-tests \
+          -DskipUTs \
+          -DintegrationTest.forkCount=2 \
+          -DenablePTS=false \
+          -pl integration-test \
+          -am
+      - name: IT/UT Test (not master)
+        if: "!contains(github.ref, 'master')"
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml

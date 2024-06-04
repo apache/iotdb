@@ -186,6 +186,7 @@
         <zeppelin.version>0.11.1</zeppelin.version>
         <zstd-jni.version>1.5.5-5</zstd-jni.version>
         <tsfile.version>1.0.1-e1207ba-SNAPSHOT</tsfile.version>
+        <enablePTS>true</enablePTS>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -1734,6 +1735,11 @@
                     <version>3.1.2</version>
                     <configuration>
                         <argLine>${argLine} -Xmx1024m</argLine>
+                        <properties>
+                            <predictiveSelection>
+                                <enabled>${enablePTS}</enabled>
+                            </predictiveSelection>
+                        </properties>
                     </configuration>
                 </plugin>
                 <!--
@@ -2897,6 +2903,11 @@
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <configuration>
                             <argLine>${argLine} @{failsafe.jacoco.args} -Xmx1024m</argLine>
+                            <properties>
+                                <predictiveSelection>
+                                    <enabled>${enablePTS}</enabled>
+                                </predictiveSelection>
+                            </properties>
                         </configuration>
                         <executions>
                             <execution>

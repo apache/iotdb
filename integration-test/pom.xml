@@ -67,6 +67,9 @@
         <strongConsistencyClusterMode.dataRegionReplicaNumber>3</strongConsistencyClusterMode.dataRegionReplicaNumber>
         <strongConsistencyClusterMode.schemaRegionConsensus>Ratis</strongConsistencyClusterMode.schemaRegionConsensus>
         <strongConsistencyClusterMode.schemaRegionReplicaNumber>3</strongConsistencyClusterMode.schemaRegionReplicaNumber>
+
+        <!-- Enable predictive test selection -->
+        <enablePTS>true</enablePTS>
     </properties>
     <dependencies>
         <dependency>
