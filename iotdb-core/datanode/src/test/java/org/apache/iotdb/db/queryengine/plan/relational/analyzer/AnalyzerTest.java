@@ -79,6 +79,26 @@ public class AnalyzerTest {
 
   private static final NopAccessControl nopAccessControl = new NopAccessControl();
 
+  QueryId queryId = new QueryId("tmp_query");
+  SessionInfo sessionInfo =
+      new SessionInfo(
+          1L,
+          "iotdb-user",
+          ZoneId.systemDefault(),
+          IoTDBConstant.ClientVersion.V_1_0,
+          "db",
+          IClientSession.SqlDialect.TABLE);
+  Metadata metadata = new TestMatadata();
+  String sql;
+  Analysis actualAnalysis;
+  MPPQueryContext context;
+  LogicalPlanner logicalPlanner;
+  LogicalQueryPlan logicalQueryPlan;
+  PlanNode rootNode;
+  TableDistributionPlanner distributionPlanner;
+  DistributedQueryPlan distributedQueryPlan;
+  TableScanNode tableScanNode;
+
   @Test
   public void testMockQuery() throws OperatorNotFoundException {
     String sql =
@@ -145,26 +165,6 @@ public class AnalyzerTest {
     System.out.println(actualAnalysis.getTypes());
   }
 
-  QueryId queryId = new QueryId("tmp_query");
-  SessionInfo sessionInfo =
-      new SessionInfo(
-          1L,
-          "iotdb-user",
-          ZoneId.systemDefault(),
-          IoTDBConstant.ClientVersion.V_1_0,
-          "db",
-          IClientSession.SqlDialect.TABLE);
-  Metadata metadata = new TestMatadata();
-  String sql;
-  Analysis actualAnalysis;
-  MPPQueryContext context;
-  LogicalPlanner logicalPlanner;
-  LogicalQueryPlan logicalQueryPlan;
-  PlanNode rootNode;
-  TableDistributionPlanner distributionPlanner;
-  DistributedQueryPlan distributedQueryPlan;
-  TableScanNode tableScanNode;
-
   @Test
   public void singleTableNoFilterTest() throws IoTDBException {
     // wildcard
@@ -198,13 +198,12 @@ public class AnalyzerTest {
   }
 
   @Test
-  public void singleTableWithTimeFilterTest() throws IoTDBException {
+  public void singleTableWithFilterTest() throws IoTDBException {
     // global time filter
     sql = "SELECT * FROM table1 where time > 1";
     actualAnalysis = analyzeSQL(sql, metadata);
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
-
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     logicalPlanner =
         new LogicalPlanner(
@@ -213,7 +212,7 @@ public class AnalyzerTest {
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
     assertTrue(((OutputNode) rootNode).getChild() instanceof TableScanNode);
-    TableScanNode tableScanNode = (TableScanNode) ((OutputNode) rootNode).getChild();
+    tableScanNode = (TableScanNode) ((OutputNode) rootNode).getChild();
     assertEquals("table1", tableScanNode.getQualifiedTableName());
     assertEquals(
         Arrays.asList("time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"),
@@ -222,10 +221,26 @@ public class AnalyzerTest {
     assertEquals(1, tableScanNode.getDeviceEntries().size());
     assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
     assertEquals(ASC, tableScanNode.getScanOrder());
-
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(4, distributedQueryPlan.getInstances().size());
+
+    // value filter, will be pushed down
+    sql = "SELECT tag1, attr1, s2 FROM table1 where s1 > 1";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    assertNotNull(actualAnalysis);
+    assertEquals(1, actualAnalysis.getTables().size());
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalPlanner =
+        new LogicalPlanner(
+            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(((OutputNode) rootNode).getChild() instanceof TableScanNode);
+    tableScanNode = (TableScanNode) ((OutputNode) rootNode).getChild();
+    assertEquals(
+        Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
   }
 
   @Test

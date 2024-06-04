@@ -308,16 +308,20 @@ public class TableScanNode extends SourceNode {
     return deviceEntries;
   }
 
-  public Expression getPushDownPredicate() {
-    return this.pushDownPredicate;
-  }
-
   public long getPushDownLimit() {
     return this.pushDownLimit;
   }
 
   public long getPushDownOffset() {
     return this.pushDownOffset;
+  }
+
+  public Expression getPushDownPredicate() {
+    return this.pushDownPredicate;
+  }
+
+  public void setPushDownPredicate(@Nullable Expression pushDownPredicate) {
+    this.pushDownPredicate = pushDownPredicate;
   }
 
   public boolean isPushLimitToEachDevice() {

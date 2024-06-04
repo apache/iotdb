@@ -260,6 +260,7 @@ public class QueryPlanner {
     if (!hasValueFilter) {
       return planBuilder;
     }
+    analysis.setHasValueFilter(true);
     // TODO if predicate equals TrueConstant, no need filter
 
     return planBuilder.withNewRoot(

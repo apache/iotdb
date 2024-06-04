@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.IndexScan;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PredicatePushDown;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PruneUnUsedColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RelationalPlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RemoveRedundantIdentityProjections;
@@ -79,7 +80,8 @@ public class LogicalPlanner {
             new SimplifyExpressions(),
             new RemoveRedundantIdentityProjections(),
             new PruneUnUsedColumns(),
-            new IndexScan());
+            new IndexScan(),
+            new PredicatePushDown());
   }
 
   public LogicalQueryPlan plan(Analysis analysis) throws IoTDBException {
