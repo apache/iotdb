@@ -286,6 +286,28 @@ public class IoTDBActiveRegionScanIT {
   }
 
   @Test
+  public void showActiveDeviceEmptyTest() {
+    String sql = "show devices root.empty where time < 50";
+    String[] retArray = new String[] {};
+    basicShowActiveDeviceTest(sql, SHOW_DEVICES_COLUMN_NAMES, retArray);
+
+    sql = "count devices root.empty where time < 50";
+    long value = 0;
+    basicCountActiveDeviceTest(sql, COUNT_DEVICES_COLUMN_NAMES, value);
+  }
+
+  @Test
+  public void showActiveTimeseriesEmptyTest() {
+    String sql = "show timeseries root.empty where time < 50";
+    String[] retArray = new String[] {};
+    basicShowActiveDeviceTest(sql, SHOW_TIMESERIES_COLUMN_NAMES, retArray);
+
+    sql = "count timeseries root.empty where time < 50";
+    long value = 0;
+    basicCountActiveDeviceTest(sql, COUNT_TIMESERIES_COLUMN_NAMES, value);
+  }
+
+  @Test
   public void showActiveTimeseriesTest() {
     String sql = "show timeseries where time = 4";
     String[] retArray =
