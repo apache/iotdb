@@ -394,7 +394,7 @@ public class TsFileResource {
       LOGGER.error(
           "meet error when getStartTime of {} in file {}", deviceId, file.getAbsolutePath());
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.error("TimeIndex = {}", timeIndex.toString());
+        LOGGER.debug("TimeIndex = {}", timeIndex.toString());
       }
       throw e;
     }
@@ -407,7 +407,7 @@ public class TsFileResource {
     } catch (Exception e) {
       LOGGER.error("meet error when getEndTime of {} in file {}", deviceId, file.getAbsolutePath());
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.error("TimeIndex = {}", timeIndex.toString());
+        LOGGER.debug("TimeIndex = {}", timeIndex.toString());
       }
       throw e;
     }
