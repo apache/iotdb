@@ -137,13 +137,20 @@ public class ConfigurationFileUtils {
             continue;
           }
           int equalsIndex = currentLine.indexOf('=');
-          // replace old config by '#'
+          // replace old config
           if (equalsIndex != -1) {
             String key = currentLine.substring(0, equalsIndex).trim();
-            if (newConfigItems.containsKey(key)) {
-              writer.write("# ");
+            String value = currentLine.substring(equalsIndex + 1).trim();
+            if (!newConfigItems.containsKey(key)) {
+              writer.write(currentLine + System.lineSeparator());
+              continue;
             }
-            writer.write(currentLine + System.lineSeparator());
+            if (newConfigItems.getProperty(key).equals(value)) {
+              writer.write(currentLine + System.lineSeparator());
+              newConfigItems.remove(key);
+            } else {
+              writer.write("#" + currentLine + System.lineSeparator());
+            }
           }
         }
         // add new config items
