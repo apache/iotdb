@@ -291,6 +291,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public void close() {
+    cursor.unlock();
     clientManager.returnClient(configRegionId, this);
   }
 
