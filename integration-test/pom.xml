@@ -67,7 +67,6 @@
         <strongConsistencyClusterMode.dataRegionReplicaNumber>3</strongConsistencyClusterMode.dataRegionReplicaNumber>
         <strongConsistencyClusterMode.schemaRegionConsensus>Ratis</strongConsistencyClusterMode.schemaRegionConsensus>
         <strongConsistencyClusterMode.schemaRegionReplicaNumber>3</strongConsistencyClusterMode.schemaRegionReplicaNumber>
-
         <!-- Enable predictive test selection -->
         <enablePTS>true</enablePTS>
     </properties>
@@ -191,8 +190,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
-            <version>5.10.2</version>
             <artifactId>junit-jupiter-api</artifactId>
             <scope>test</scope>
         </dependency>
