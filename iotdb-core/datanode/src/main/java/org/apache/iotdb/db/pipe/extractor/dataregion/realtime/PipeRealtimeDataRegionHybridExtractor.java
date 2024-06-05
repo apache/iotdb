@@ -40,14 +40,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
-
-  private final AtomicInteger connectorInputPendingQueueTsFileSize = new AtomicInteger(0);
 
   @Override
   protected void doExtract(final PipeRealtimeEvent event) {
@@ -238,17 +235,13 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean isRealtimeTsFileEventCountExceededLimit() {
-    return pendingQueue.getTsFileInsertionEventCount() + connectorInputPendingQueueTsFileSize.get()
+    return pendingQueue.getTsFileInsertionEventCount()
         >= PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
   }
 
   private boolean mayTsFileLinkedCountReachDangerousThreshold() {
     return PipeResourceManager.tsfile().getLinkedTsfileCount()
         >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
-  }
-
-  public void informConnectorInputPendingQueueTsFileSize(final int queueSize) {
-    connectorInputPendingQueueTsFileSize.set(queueSize);
   }
 
   @Override
