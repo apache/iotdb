@@ -1505,8 +1505,8 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus setConfiguration(TSetConfigurationReq req) {
     TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    if (req.getNodeId() < 0
-        || ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId() == req.getNodeId()) {
+    int currentNodeId = CONF.getConfigNodeId();
+    if (req.getNodeId() < 0 || currentNodeId == req.getNodeId()) {
       URL url = ConfigNodeDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
       if (url == null || !new File(url.getFile()).exists()) {
         return tsStatus;
@@ -1524,7 +1524,9 @@ public class ConfigManager implements IManager {
       } catch (Exception e) {
         return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
-      return tsStatus;
+      if (CONF.getConfigNodeId() == req.getNodeId()) {
+        return tsStatus;
+      }
     }
     tsStatus = confirmLeader();
     return tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()

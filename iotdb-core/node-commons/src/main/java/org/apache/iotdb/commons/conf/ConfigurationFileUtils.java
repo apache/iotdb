@@ -120,11 +120,6 @@ public class ConfigurationFileUtils {
 
   public static void updateConfigurationFile(File file, Properties newConfigItems)
       throws IOException, InterruptedException {
-    try {
-      throw new RuntimeException("");
-    } catch (Exception e) {
-      logger.error("update configuration file", e);
-    }
     File lockFile = new File(file.getPath() + lockFileSuffix);
     acquireTargetFileLock(lockFile);
     try {
@@ -142,12 +137,13 @@ public class ConfigurationFileUtils {
             continue;
           }
           int equalsIndex = currentLine.indexOf('=');
-          // replace old config
+          // replace old config by '#'
           if (equalsIndex != -1) {
             String key = currentLine.substring(0, equalsIndex).trim();
             if (newConfigItems.containsKey(key)) {
-              writer.write("# " + currentLine + System.lineSeparator());
+              writer.write("# ");
             }
+            writer.write(currentLine + System.lineSeparator());
           }
         }
         // add new config items
