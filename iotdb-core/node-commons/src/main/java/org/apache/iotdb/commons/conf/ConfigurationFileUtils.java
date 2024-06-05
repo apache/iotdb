@@ -146,14 +146,14 @@ public class ConfigurationFileUtils {
           if (equalsIndex != -1) {
             String key = currentLine.substring(0, equalsIndex).trim();
             if (newConfigItems.containsKey(key)) {
-              writer.write(key + "=" + newConfigItems.remove(key) + System.lineSeparator());
-            } else {
-              writer.write(currentLine + System.lineSeparator());
+              writer.write("# " + currentLine + System.lineSeparator());
             }
           }
         }
         // add new config items
-        newConfigItems.store(writer, null);
+        if (!newConfigItems.isEmpty()) {
+          newConfigItems.store(writer, null);
+        }
       }
       Files.move(lockFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
     } finally {
