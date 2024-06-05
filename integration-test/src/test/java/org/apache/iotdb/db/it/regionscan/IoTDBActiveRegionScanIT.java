@@ -461,7 +461,6 @@ public class IoTDBActiveRegionScanIT {
 
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        Map<String, Integer> map = new HashMap<>();
         assertEquals(1, resultSetMetaData.getColumnCount());
         assertEquals(columnName, resultSetMetaData.getColumnName(1));
         int cnt = 0;
