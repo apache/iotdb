@@ -322,6 +322,34 @@ public class LimitOffsetPushDownTest {
     checkGroupByTimePushDown(sql, 154, 354, 0, 0);
   }
 
+  @Test
+  public void testGroupByTimePushDown12() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([4, 899), 200ms) order by time desc limit 3";
+    checkGroupByTimePushDown(sql, 404, 899, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown13() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([4, 899), 200ms) order by time desc limit 5";
+    checkGroupByTimePushDown(sql, 4, 899, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown14() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([4, 899), 200ms) order by time desc offset 2 limit 5";
+    checkGroupByTimePushDown(sql, 4, 899, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown15() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([4, 899), 200ms) order by time desc limit 6";
+    checkGroupByTimePushDown(sql, 4, 899, 0, 0);
+  }
+
   private void checkGroupByTimePushDown(
       String sql, long startTime, long endTime, long rowLimit, long rowOffset) {
     QueryStatement queryStatement =
