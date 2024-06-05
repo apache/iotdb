@@ -158,6 +158,9 @@ public class Analysis implements IAnalysis {
 
   private boolean finishQueryAfterAnalyze;
 
+  // indicate is there a value filter
+  private boolean hasValueFilter = false;
+
   public Expression getGlobalTableModelTimePredicate() {
     return this.globalTableModelTimePredicate;
   }
@@ -565,6 +568,14 @@ public class Analysis implements IAnalysis {
 
   public boolean isAliased(Relation relation) {
     return aliasedRelations.contains(NodeRef.of(relation));
+  }
+
+  public boolean hasValueFilter() {
+    return hasValueFilter;
+  }
+
+  public void setHasValueFilter(boolean hasValueFilter) {
+    this.hasValueFilter = hasValueFilter;
   }
 
   @Override

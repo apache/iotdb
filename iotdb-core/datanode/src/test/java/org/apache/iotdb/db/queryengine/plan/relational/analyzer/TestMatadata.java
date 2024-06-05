@@ -16,8 +16,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
@@ -33,7 +31,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.BinaryType;
@@ -44,6 +41,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.getFunctionType;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -65,6 +63,7 @@ public class TestMatadata implements Metadata {
   private static final String ATTR2 = "attr2";
   private static final String S1 = "s1";
   private static final String S2 = "s2";
+  private static final String S3 = "s3";
   private static final ColumnMetadata TIME_CM = new ColumnMetadata(TIME, INT64);
   private static final ColumnMetadata TAG1_CM = new ColumnMetadata(TAG1, BinaryType.TEXT);
   private static final ColumnMetadata TAG2_CM = new ColumnMetadata(TAG2, BinaryType.TEXT);
@@ -73,6 +72,7 @@ public class TestMatadata implements Metadata {
   private static final ColumnMetadata ATTR2_CM = new ColumnMetadata(ATTR2, BinaryType.TEXT);
   private static final ColumnMetadata S1_CM = new ColumnMetadata(S1, INT64);
   private static final ColumnMetadata S2_CM = new ColumnMetadata(S2, INT64);
+  private static final ColumnMetadata S3_CM = new ColumnMetadata(S3, DOUBLE);
 
   public static final String DB2 = "db2";
   public static final String TABLE2 = "table2";
@@ -101,6 +101,9 @@ public class TestMatadata implements Metadata {
                 .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
                 .build(),
             ColumnSchema.builder(S2_CM)
+                .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+                .build(),
+            ColumnSchema.builder(S3_CM)
                 .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
                 .build());
 
@@ -150,114 +153,7 @@ public class TestMatadata implements Metadata {
 
   @Override
   public Type getFunctionReturnType(String functionName, List<? extends Type> argumentTypes) {
-
-    // builtin scalar function
-    if (BuiltinScalarFunction.DIFF.getFunctionName().equalsIgnoreCase(functionName)
-        || BuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!isOneNumericType(argumentTypes)) {
-        throw new SemanticException(
-            "Scalar function"
-                + functionName.toLowerCase(Locale.ENGLISH)
-                + " only supports numeric data types [INT32, INT64, FLOAT, DOUBLE]");
-      }
-      return DOUBLE;
-    } else if (BuiltinScalarFunction.REPLACE.getFunctionName().equalsIgnoreCase(functionName)
-        || BuiltinScalarFunction.SUBSTRING.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!isOneTextType(argumentTypes)) {
-        throw new SemanticException(
-            "Scalar function"
-                + functionName.toLowerCase(Locale.ENGLISH)
-                + " only supports text data type.");
-      }
-      return TEXT;
-    }
-
-    // builtin aggregation function
-    // check argument type
-    switch (functionName.toLowerCase()) {
-      case SqlConstant.AVG:
-      case SqlConstant.SUM:
-      case SqlConstant.EXTREME:
-      case SqlConstant.MIN_VALUE:
-      case SqlConstant.MAX_VALUE:
-      case SqlConstant.STDDEV:
-      case SqlConstant.STDDEV_POP:
-      case SqlConstant.STDDEV_SAMP:
-      case SqlConstant.VARIANCE:
-      case SqlConstant.VAR_POP:
-      case SqlConstant.VAR_SAMP:
-        if (!isOneNumericType(argumentTypes)) {
-          throw new SemanticException(
-              String.format(
-                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
-                  functionName));
-        }
-        break;
-      case SqlConstant.MIN_TIME:
-      case SqlConstant.MAX_TIME:
-      case SqlConstant.FIRST_VALUE:
-      case SqlConstant.LAST_VALUE:
-      case SqlConstant.TIME_DURATION:
-      case SqlConstant.MODE:
-        if (argumentTypes.size() != 1) {
-          throw new SemanticException(
-              String.format(
-                  "Aggregate functions [%s] should only have one argument", functionName));
-        }
-        break;
-      case SqlConstant.MAX_BY:
-      case SqlConstant.MIN_BY:
-        if (argumentTypes.size() != 2) {
-          throw new SemanticException(
-              String.format(
-                  "Aggregate functions [%s] should only have two arguments", functionName));
-        } else if (!argumentTypes.get(1).isOrderable()) {
-          throw new SemanticException(
-              String.format(
-                  "Second argument of Aggregate functions [%s] should be orderable", functionName));
-        }
-
-        break;
-      case SqlConstant.COUNT:
-        break;
-      default:
-        // ignore
-    }
-
-    // get return type
-    switch (functionName.toLowerCase()) {
-      case SqlConstant.MIN_TIME:
-      case SqlConstant.MAX_TIME:
-      case SqlConstant.COUNT:
-      case SqlConstant.TIME_DURATION:
-        return INT64;
-      case SqlConstant.MIN_VALUE:
-      case SqlConstant.LAST_VALUE:
-      case SqlConstant.FIRST_VALUE:
-      case SqlConstant.MAX_VALUE:
-      case SqlConstant.EXTREME:
-      case SqlConstant.MODE:
-      case SqlConstant.MAX_BY:
-      case SqlConstant.MIN_BY:
-        return argumentTypes.get(0);
-      case SqlConstant.AVG:
-      case SqlConstant.SUM:
-      case SqlConstant.STDDEV:
-      case SqlConstant.STDDEV_POP:
-      case SqlConstant.STDDEV_SAMP:
-      case SqlConstant.VARIANCE:
-      case SqlConstant.VAR_POP:
-      case SqlConstant.VAR_SAMP:
-        return DOUBLE;
-      default:
-        // ignore
-    }
-
-    // TODO scalar UDF function
-
-    // TODO UDAF
-
-    throw new SemanticException("Unknown function: " + functionName);
+    return getFunctionType(functionName, argumentTypes);
   }
 
   @Override

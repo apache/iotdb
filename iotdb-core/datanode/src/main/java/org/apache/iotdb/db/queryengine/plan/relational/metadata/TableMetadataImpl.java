@@ -125,6 +125,10 @@ public class TableMetadataImpl implements Metadata {
 
   @Override
   public Type getFunctionReturnType(String functionName, List<? extends Type> argumentTypes) {
+    return getFunctionType(functionName, argumentTypes);
+  }
+
+  public static Type getFunctionType(String functionName, List<? extends Type> argumentTypes) {
 
     // builtin scalar function
     if (BuiltinScalarFunction.DIFF.getFunctionName().equalsIgnoreCase(functionName)) {

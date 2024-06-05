@@ -40,6 +40,7 @@ public class RemoveRedundantIdentityProjections implements RelationalPlanOptimiz
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
+
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
       PlanNode newNode = node.clone();

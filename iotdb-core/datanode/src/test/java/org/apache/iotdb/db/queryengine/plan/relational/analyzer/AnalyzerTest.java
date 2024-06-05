@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.RelationalDistributionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
@@ -66,6 +68,26 @@ import static org.mockito.ArgumentMatchers.eq;
 public class AnalyzerTest {
 
   private static final NopAccessControl nopAccessControl = new NopAccessControl();
+
+  QueryId queryId = new QueryId("tmp_query");
+  SessionInfo sessionInfo =
+      new SessionInfo(
+          1L,
+          "iotdb-user",
+          ZoneId.systemDefault(),
+          IoTDBConstant.ClientVersion.V_1_0,
+          "db",
+          IClientSession.SqlDialect.TABLE);
+  Metadata metadata = new TestMatadata();
+  String sql;
+  Analysis actualAnalysis;
+  MPPQueryContext context;
+  LogicalPlanner logicalPlanner;
+  LogicalQueryPlan logicalQueryPlan;
+  PlanNode rootNode;
+  RelationalDistributionPlanner distributionPlanner;
+  DistributedQueryPlan distributedQueryPlan;
+  TableScanNode tableScanNode;
 
   @Test
   public void testMockQuery() throws OperatorNotFoundException {

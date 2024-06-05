@@ -61,21 +61,20 @@ public class IndexScan implements RelationalPlanOptimizer {
 
   static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private MPPQueryContext mppQueryContext;
-
   @Override
   public PlanNode optimize(
       PlanNode planNode,
       Analysis analysis,
       Metadata metadata,
       SessionInfo sessionInfo,
-      MPPQueryContext context) {
+      MPPQueryContext queryContext) {
 
     return planNode.accept(
-        new Rewriter(), new RewriterContext(null, metadata, sessionInfo, analysis));
+        new Rewriter(), new RewriterContext(null, metadata, sessionInfo, analysis, queryContext));
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
+
     @Override
     public PlanNode visitPlan(PlanNode node, RewriterContext context) {
       for (PlanNode child : node.getChildren()) {
@@ -101,21 +100,17 @@ public class IndexScan implements RelationalPlanOptimizer {
 
       List<Expression> conjExpressions = getConjunctionExpressions(context.getPredicate(), node);
 
+      String dbName = context.getSessionInfo().getDatabaseName().get();
       List<DeviceEntry> deviceEntries =
           context
               .getMetadata()
               .indexScan(
-                  new QualifiedObjectName(
-                      context.getSessionInfo().getDatabaseName().get(),
-                      node.getQualifiedTableName()),
+                  new QualifiedObjectName(dbName, node.getQualifiedTableName()),
                   conjExpressions,
                   attributeColumns);
       node.setDeviceEntries(deviceEntries);
 
-      // TODO getDataPartition, Change globalTimeFilter to Filter
-      String database = "root." + context.getSessionInfo().getDatabaseName().get();
-      IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
-      Filter globalTimeFilter = null;
+      String treeModelDatabase = "root." + dbName;
       Set<String> deviceSet = new HashSet<>();
       for (DeviceEntry deviceEntry : deviceEntries) {
         StringArrayDeviceID arrayDeviceID = (StringArrayDeviceID) deviceEntry.getDeviceID();
@@ -124,7 +119,11 @@ public class IndexScan implements RelationalPlanOptimizer {
       }
 
       DataPartition dataPartition =
-          fetchDataPartitionByDevices(deviceSet, database, globalTimeFilter, partitionFetcher);
+          fetchDataPartitionByDevices(
+              deviceSet,
+              treeModelDatabase,
+              context.getQueryContext().getGlobalTimeFilter(),
+              ClusterPartitionFetcher.getInstance());
       context.getAnalysis().setDataPartition(dataPartition);
 
       if (dataPartition.getDataPartitionMap().size() > 1) {
@@ -235,14 +234,20 @@ public class IndexScan implements RelationalPlanOptimizer {
     private Expression predicate;
     private Metadata metadata;
     private final SessionInfo sessionInfo;
-    private Analysis analysis;
+    private final Analysis analysis;
+    private final MPPQueryContext queryContext;
 
     RewriterContext(
-        Expression predicate, Metadata metadata, SessionInfo sessionInfo, Analysis analysis) {
+        Expression predicate,
+        Metadata metadata,
+        SessionInfo sessionInfo,
+        Analysis analysis,
+        MPPQueryContext queryContext) {
       this.predicate = predicate;
       this.metadata = metadata;
       this.sessionInfo = sessionInfo;
       this.analysis = analysis;
+      this.queryContext = queryContext;
     }
 
     public Expression getPredicate() {
@@ -267,6 +272,10 @@ public class IndexScan implements RelationalPlanOptimizer {
 
     public Analysis getAnalysis() {
       return this.analysis;
+    }
+
+    public MPPQueryContext getQueryContext() {
+      return queryContext;
     }
   }
 }
