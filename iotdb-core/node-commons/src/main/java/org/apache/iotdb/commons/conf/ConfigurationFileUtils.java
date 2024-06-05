@@ -114,21 +114,21 @@ public class ConfigurationFileUtils {
   }
 
   public static List<String> filterImmutableConfigItems(
-      File systemPropertiesFile, Properties properties) {
+      File systemPropertiesFile, Properties newConfigItems) {
     List<String> ignoredConfigItems = new ArrayList<>();
     if (!systemPropertiesFile.exists()) {
       return ignoredConfigItems;
     }
     Properties systemProperties = new Properties();
     try (FileReader reader = new FileReader(systemPropertiesFile)) {
-      properties.load(reader);
+      systemProperties.load(reader);
     } catch (Exception e) {
       logger.error("Failed to load system properties from {}", systemPropertiesFile, e);
       return ignoredConfigItems;
     }
     for (String ignoredKey : systemProperties.stringPropertyNames()) {
-      if (properties.containsKey(ignoredKey)) {
-        properties.remove(ignoredKey);
+      if (newConfigItems.containsKey(ignoredKey)) {
+        newConfigItems.remove(ignoredKey);
         ignoredConfigItems.add(ignoredKey);
       }
     }
