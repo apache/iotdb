@@ -89,11 +89,11 @@ public class ConfigurationFileUtils {
       }
       try (RandomAccessFile raf = new RandomAccessFile(lockFile, "rw")) {
         raf.write(license.getBytes());
-        String configNodeContent = readConfigLines(configNodeFile);
+        String configNodeContent = readConfigLinesWithoutLicense(configNodeFile);
         raf.write(configNodeContent.getBytes());
-        String dataNodeContent = readConfigLines(dataNodeFile);
+        String dataNodeContent = readConfigLinesWithoutLicense(dataNodeFile);
         raf.write(dataNodeContent.getBytes());
-        String commonContent = readConfigLines(commonFile);
+        String commonContent = readConfigLinesWithoutLicense(commonFile);
         raf.write(commonContent.getBytes());
       }
       Files.move(lockFile.toPath(), systemFile.toPath());
@@ -165,12 +165,13 @@ public class ConfigurationFileUtils {
     }
   }
 
-  private static Properties loadProperties(File file) throws IOException {
-    Properties properties = new Properties();
-    try (FileReader reader = new FileReader(file)) {
-      properties.load(reader);
+  private static String readConfigLinesWithoutLicense(File file) throws IOException {
+    if (!file.exists()) {
+      return "";
     }
-    return properties;
+    byte[] bytes = Files.readAllBytes(file.toPath());
+    String content = new String(bytes);
+    return content.replace(license, "");
   }
 
   private static String readConfigLines(File file) throws IOException {
@@ -178,8 +179,7 @@ public class ConfigurationFileUtils {
       return "";
     }
     byte[] bytes = Files.readAllBytes(file.toPath());
-    String content = new String(bytes);
-    return content.replace(license, "");
+    return new String(bytes);
   }
 
   private static void acquireTargetFileLock(File file) throws IOException, InterruptedException {
