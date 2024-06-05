@@ -64,10 +64,10 @@ public class PipeDataTypeTransformerTest {
     typeList.add(Type.DOUBLE);
     typeList.add(Type.BOOLEAN);
     typeList.add(Type.TEXT);
-    typeList.add(Type.INT64);
-    typeList.add(Type.INT32);
-    typeList.add(Type.TEXT);
-    typeList.add(Type.TEXT);
+    typeList.add(Type.TIMESTAMP);
+    typeList.add(Type.DATE);
+    typeList.add(Type.BLOB);
+    typeList.add(Type.STRING);
     typeList.add(null);
   }
 

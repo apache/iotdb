@@ -228,9 +228,9 @@ public class NonAlignedChunkData implements ChunkData {
     for (int j = 0; j < pageNumber; j++) {
       needDecode = ReadWriteIOUtils.readBool(stream);
       if (needDecode) {
-        int length = ReadWriteIOUtils.readInt(stream);
+        final int length = ReadWriteIOUtils.readInt(stream);
         for (int i = 0; i < length; i++) {
-          long time = ReadWriteIOUtils.readLong(stream);
+          final long time = ReadWriteIOUtils.readLong(stream);
           switch (chunkHeader.getDataType()) {
             case INT32:
             case DATE:
