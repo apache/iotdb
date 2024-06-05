@@ -1234,15 +1234,15 @@ public class ConfigNodeConfig {
 
   public TConfigNodeLocation generateLocalConfigNodeLocation(int configNodeId) {
     return new TConfigNodeLocation(
-            configNodeId,
-            new TEndPoint(getInternalAddress(), getInternalPort()),
-            new TEndPoint(getInternalAddress(), getConsensusPort()));
+        configNodeId,
+        new TEndPoint(getInternalAddress(), getInternalPort()),
+        new TEndPoint(getInternalAddress(), getConsensusPort()));
   }
 
   public TConfigNodeLocation generateLocalConfigNodeLocation() {
     return new TConfigNodeLocation(
-            getConfigNodeId(),
-            new TEndPoint(getInternalAddress(), getInternalPort()),
-            new TEndPoint(getInternalAddress(), getConsensusPort()));
+        getConfigNodeId(),
+        new TEndPoint(getInternalAddress(), getInternalPort()),
+        new TEndPoint(getInternalAddress(), getConsensusPort()));
   }
 }

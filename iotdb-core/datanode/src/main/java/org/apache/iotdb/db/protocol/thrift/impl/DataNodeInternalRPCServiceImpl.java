@@ -1445,6 +1445,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } catch (ClientManagerException e) {
       throw new RuntimeException(e);
     }
+    throw new UnsupportedOperationException();
     // TODO: 其它service
   }
 

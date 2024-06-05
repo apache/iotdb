@@ -1162,7 +1162,10 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       if (!locked) {
         this.value = value;
       } else {
-        logger.warn("ConfigNodeClient cursor will keep {} and won't change to {}, because it has been locked.", configNodeEndPoints.get(this.value), configNodeEndPoints.get(value));
+        logger.warn(
+            "ConfigNodeClient cursor will keep {} and won't change to {}, because it has been locked.",
+            configNodeEndPoints.get(this.value),
+            configNodeEndPoints.get(value));
       }
     }
 

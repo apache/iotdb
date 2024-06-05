@@ -2596,6 +2596,16 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
+  public TSStatus testConnection() throws TException {
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  @Override
+  public TSStatus SubmitTestConnectionTask() throws TException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public TSStatus insertStringRecord(final TSInsertStringRecordReq req) {
     final long t1 = System.nanoTime();
     OperationQuota quota = null;
