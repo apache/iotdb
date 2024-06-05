@@ -32,8 +32,11 @@ import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.AsyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.client.async.AsyncConfigNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncConfigNodeClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -144,15 +147,16 @@ public class ClusterManager {
   private void submitTestConnectionTaskToAllConfigNode() {}
 
   public List<TTestConnectionResult> doConnectionTest(TNodeLocations nodeLocations) {
-    List<TTestConnectionResult> result =
-        nodeLocations.getConfigNodeLocations().stream()
-            .map(this::testConfigNodeConnection)
-            .flatMap(Collection::stream)
-            .collect(Collectors.toList());
+//    List<TTestConnectionResult> result =
+//        nodeLocations.getConfigNodeLocations().stream()
+//            .map(this::testConfigNodeConnection)
+//            .flatMap(Collection::stream)
+//            .collect(Collectors.toList());
+    List<TTestConnectionResult> configNodeResult = testAllConfigNodeConnection(nodeLocations.getConfigNodeLocations());
     List<TTestConnectionResult> dataNodeResult =
         testAllDataNodeConnection(nodeLocations.getDataNodeLocations());
-    result.addAll(dataNodeResult);
-    return result;
+    configNodeResult.addAll(dataNodeResult);
+    return configNodeResult;
   }
 
   private List<TTestConnectionResult> testConfigNodeConnection(
@@ -187,6 +191,43 @@ public class ClusterManager {
       result.setReason(e.getMessage());
     }
     results.add(result);
+    return results;
+  }
+
+  private List<TTestConnectionResult> testAllConfigNodeConnection(
+          List<TConfigNodeLocation> configNodeLocations) {
+    final TSender sender =
+            new TSender()
+                    .setConfigNodeLocation(
+                            ConfigNodeDescriptor.getInstance().getConf().generateLocalConfigNodeLocation());
+    Map<Integer, TConfigNodeLocation> configNodeLocationMap =
+            configNodeLocations.stream()
+                    .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
+    AsyncConfigNodeClientHandler<Object, TSStatus> clientHandler =
+            new AsyncConfigNodeClientHandler<>(ConfigNodeRequestType.TEST_CONNECTION, new Object(), configNodeLocationMap);
+    AsyncConfigNodeClientPool.getInstance().sendAsyncRequestToConfigNodeWithRetry(clientHandler);
+    Map<Integer, TConfigNodeLocation> anotherConfigNodeLocationMap =
+            configNodeLocations.stream()
+                    .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
+    List<TTestConnectionResult> results = new ArrayList<>();
+    clientHandler
+            .getResponseMap()
+            .forEach(
+                    (configNodeId, status) -> {
+                      TEndPoint endPoint = anotherConfigNodeLocationMap.get(configNodeId).getInternalEndPoint();
+                      TServiceProvider serviceProvider =
+                              new TServiceProvider(endPoint, TServiceType.ConfigNodeInternalService);
+                      TTestConnectionResult result = new TTestConnectionResult();
+                      result.setSender(sender);
+                      result.setServiceProvider(serviceProvider);
+                      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                        result.setSuccess(true);
+                      } else {
+                        result.setSuccess(false);
+                        result.setReason(status.getMessage());
+                      }
+                      results.add(result);
+                    });
     return results;
   }
 

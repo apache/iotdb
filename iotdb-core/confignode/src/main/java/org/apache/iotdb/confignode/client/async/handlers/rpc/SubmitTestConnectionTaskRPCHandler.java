@@ -22,18 +22,17 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class TestConnectionRPCHandler extends AbstractAsyncRPCHandler<TTestConnectionResp> {
+public class SubmitTestConnectionTaskRPCHandler extends AbstractAsyncRPCHandler<TTestConnectionResp> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TestConnectionRPCHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubmitTestConnectionTaskRPCHandler.class);
 
-  protected TestConnectionRPCHandler(
+  protected SubmitTestConnectionTaskRPCHandler(
       DataNodeRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,

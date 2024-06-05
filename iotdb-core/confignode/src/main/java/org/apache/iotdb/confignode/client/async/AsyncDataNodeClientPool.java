@@ -41,7 +41,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackLis
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.TestConnectionRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.TransferLeaderRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
@@ -375,7 +375,7 @@ public class AsyncDataNodeClientPool {
           client.resetPeerList((TResetPeerListReq) req, defaultHandler);
           break;
         case SUBMIT_TEST_CONNECTION_TASK:
-          client.submitTestConnectionTask((TNodeLocations) req, (TestConnectionRPCHandler) handler);
+          client.submitTestConnectionTask((TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler);
         case TEST_CONNECTION:
           client.testConnection(defaultHandler);
         default:
