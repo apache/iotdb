@@ -296,11 +296,6 @@
             <artifactId>junit-vintage-engine</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <scope>test</scope>
-        </dependency>
         <!-- This dependency is needed at runtime, so please not set test scope -->
         <dependency>
             <groupId>org.apache.iotdb</groupId>
