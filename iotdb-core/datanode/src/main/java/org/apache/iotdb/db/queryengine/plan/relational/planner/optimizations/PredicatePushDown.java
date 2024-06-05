@@ -78,7 +78,6 @@ public class PredicatePushDown implements RelationalPlanOptimizer {
 
     @Override
     public PlanNode visitFilter(FilterNode node, RewriterContext context) {
-      // TODO (by beyyes) consider expression and function in FilterNode, especially diff function
       if (node.getPredicate() != null) {
         // when exist diff function, predicate can not be pushed down
         if (containsDiffFunction(node.getPredicate())) {
