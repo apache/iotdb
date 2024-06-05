@@ -20,7 +20,7 @@
 package org.apache.iotdb.rpc;
 
 import org.junit.Assert;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
