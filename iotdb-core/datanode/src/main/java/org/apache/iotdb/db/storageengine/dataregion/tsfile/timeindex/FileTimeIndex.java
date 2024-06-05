@@ -250,6 +250,6 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public String toString() {
-    return " StartTimes = " + startTime + " EndTimes = " + endTime;
+    return " StartTime = " + startTime + " EndTime = " + endTime;
   }
 }

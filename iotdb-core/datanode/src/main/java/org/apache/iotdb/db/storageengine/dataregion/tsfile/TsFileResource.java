@@ -392,9 +392,9 @@ public class TsFileResource {
       return deviceId == null ? getFileStartTime() : timeIndex.getStartTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
-          "meet error when getStartTime of {} in file {}", deviceId, file.getAbsolutePath());
+          "meet error when getStartTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("TimeIndex = {}", timeIndex.toString());
+        LOGGER.debug("TimeIndex = {}", timeIndex);
       }
       throw e;
     }
@@ -405,9 +405,10 @@ public class TsFileResource {
     try {
       return deviceId == null ? getFileEndTime() : timeIndex.getEndTime(deviceId);
     } catch (Exception e) {
-      LOGGER.error("meet error when getEndTime of {} in file {}", deviceId, file.getAbsolutePath());
+      LOGGER.error(
+          "meet error when getEndTime of {} in file {}", deviceId, file.getAbsolutePath(), e);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("TimeIndex = {}", timeIndex.toString());
+        LOGGER.debug("TimeIndex = {}", timeIndex);
       }
       throw e;
     }
