@@ -548,7 +548,7 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitProject(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitLimit(
@@ -567,7 +567,7 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitOutput(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitSort(

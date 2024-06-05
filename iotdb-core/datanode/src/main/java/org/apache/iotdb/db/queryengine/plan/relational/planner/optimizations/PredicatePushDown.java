@@ -24,7 +24,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChil
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
 
@@ -73,11 +72,6 @@ public class PredicatePushDown implements RelationalPlanOptimizer {
       }
       node.setChildren(rewrittenChildren);
       return node;
-    }
-
-    @Override
-    public PlanNode visitOutput(OutputNode node, RewriterContext context) {
-      return visitSingleChildProcess(node, context);
     }
 
     @Override

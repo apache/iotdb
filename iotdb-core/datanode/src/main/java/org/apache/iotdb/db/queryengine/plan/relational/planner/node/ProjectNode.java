@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ProjectNode extends SingleChildProcessNode {
-  private final Assignments assignments;
+  private Assignments assignments;
 
   public ProjectNode(PlanNodeId id, PlanNode child, Assignments assignments) {
     super(id, child);
@@ -57,6 +57,10 @@ public class ProjectNode extends SingleChildProcessNode {
 
   public Assignments getAssignments() {
     return assignments;
+  }
+
+  public void setAssignments(Assignments assignments) {
+    this.assignments = assignments;
   }
 
   @Override
