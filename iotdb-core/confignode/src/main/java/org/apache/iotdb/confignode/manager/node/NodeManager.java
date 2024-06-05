@@ -763,7 +763,7 @@ public class NodeManager {
               SyncConfigNodeClientPool.getInstance()
                   .sendSyncRequestToConfigNodeWithRetry(
                       configNode.getInternalEndPoint(),
-                      req,
+                      new TSetConfigurationReq(req.getConfigs(), configNode.getConfigNodeId()),
                       ConfigNodeRequestType.SET_CONFIGURATION);
       responseList.add(status);
     }

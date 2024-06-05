@@ -1027,7 +1027,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> setConfiguration(TSetConfigurationReq req) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TSStatus tsStatus = new TSStatus();
+    TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     boolean onLocal = IoTDBDescriptor.getInstance().getConfig().getDataNodeId() == req.getNodeId();
     if (onLocal) {
       tsStatus = StorageEngine.getInstance().setConfiguration(req);

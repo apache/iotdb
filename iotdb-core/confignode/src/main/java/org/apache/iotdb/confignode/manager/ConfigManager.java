@@ -1505,7 +1505,8 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus setConfiguration(TSetConfigurationReq req) {
     TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    if (ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId() == req.getNodeId()) {
+    if (req.getNodeId() < 0
+        || ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId() == req.getNodeId()) {
       URL url = ConfigNodeDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
       if (url == null || !new File(url.getFile()).exists()) {
         return tsStatus;

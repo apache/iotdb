@@ -22,14 +22,18 @@ package org.apache.iotdb.commons.conf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
@@ -117,18 +121,55 @@ public class ConfigurationFileUtils {
 
   public static void updateConfigurationFile(File file, Properties newConfigItems)
       throws IOException, InterruptedException {
+    try {
+      throw new RuntimeException("");
+    } catch (Exception e) {
+      logger.error("update configuration file", e);
+    }
     File lockFile = new File(file.getPath() + lockFileSuffix);
     acquireTargetFileLock(lockFile);
     try {
-      String contentOfSourceFile = readConfigLines(file);
-      try (FileWriter writer = new FileWriter(file, true)) {
-        writer.write(contentOfSourceFile);
-        newConfigItems.store(writer, null);
+      List<String> lines = new ArrayList<>();
+      try (BufferedReader reader = new BufferedReader(new FileReader(lockFile))) {
+        String line = null;
+        while ((line = reader.readLine()) != null) {
+          lines.add(line);
+        }
       }
-      Files.move(lockFile.toPath(), file.toPath());
+      try (FileWriter writer = new FileWriter(lockFile)) {
+        for (String currentLine : lines) {
+          if (currentLine.trim().isEmpty() || currentLine.trim().startsWith("#")) {
+            writer.write(currentLine + System.lineSeparator());
+            continue;
+          }
+          int equalsIndex = currentLine.indexOf('=');
+          // replace old config
+          if (equalsIndex != -1) {
+            String key = currentLine.substring(0, equalsIndex).trim();
+            if (newConfigItems.containsKey(key)) {
+              writer.write(key + "=" + newConfigItems.remove(key) + System.lineSeparator());
+            } else {
+              writer.write(currentLine + System.lineSeparator());
+            }
+          }
+        }
+        // add new config items
+        for (Map.Entry<Object, Object> entry : newConfigItems.entrySet()) {
+          writer.write(entry.getKey() + "=" + entry.getValue());
+        }
+      }
+      Files.move(lockFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
     } finally {
       releaseFileLock(lockFile);
     }
+  }
+
+  private static Properties loadProperties(File file) throws IOException {
+    Properties properties = new Properties();
+    try (FileReader reader = new FileReader(file)) {
+      properties.load(reader);
+    }
+    return properties;
   }
 
   private static String readConfigLines(File file) throws IOException {
