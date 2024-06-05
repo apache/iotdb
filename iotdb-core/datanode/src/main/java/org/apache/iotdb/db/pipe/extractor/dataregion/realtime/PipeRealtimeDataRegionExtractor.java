@@ -296,9 +296,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected abstract void doExtract(final PipeRealtimeEvent event);
 
   protected void extractHeartbeat(final PipeRealtimeEvent event) {
-    // Bind extractor so that the heartbeat event can later inform the extractor of queue size
-    ((PipeHeartbeatEvent) event.getEvent()).bindExtractor(this);
-
     // Record the pending queue size before trying to put heartbeatEvent into queue
     ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue);
 
