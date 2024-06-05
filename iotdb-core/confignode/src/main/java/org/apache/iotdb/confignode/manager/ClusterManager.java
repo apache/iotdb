@@ -29,7 +29,12 @@ import org.apache.iotdb.common.rpc.thrift.TServiceProvider;
 import org.apache.iotdb.common.rpc.thrift.TServiceType;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
+import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
@@ -133,25 +138,30 @@ public class ClusterManager {
 
   private List<TTestConnectionResult> testConfigNodeConnection(
       TConfigNodeLocation configNodeLocation) {
-    final TSender sender = new TSender().setConfigNodeLocation(ConfigNodeDescriptor.getInstance().getConf().generateLocalConfigNodeLocation());
-    final TTestConnectionResult result = new TTestConnectionResult();
-    result.setServiceProvider(new TServiceProvider(configNodeLocation.getInternalEndPoint(), TServiceType.ConfigNodeInternalService));
-    result.setSender(sender);
-    List<TTestConnectionResult> results = new ArrayList<>();
-    try (ConfigNodeClient client = ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus status = client.testConnection();
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        result.setSuccess(true);
-      } else {
-        result.setSuccess(false);
-        result.setReason("unknown");
-      }
-    } catch (Exception e) {
-      LOGGER.error("Test connection fail", e);
-      result.setSuccess(false);
-      result.setReason(e.getMessage());
-    }
-    results.add(result);
+    final CommonConfig conf = CommonDescriptor.getInstance().getConfig();
+    SyncConfigNodeIServiceClient client = new SyncConfigNodeIServiceClient.Factory(new ClientManager<>(), new ThriftClientProperty.Builder()
+            .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+            .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
+            .build());
+//    final TSender sender = new TSender().setConfigNodeLocation(ConfigNodeDescriptor.getInstance().getConf().generateLocalConfigNodeLocation());
+//    final TTestConnectionResult result = new TTestConnectionResult();
+//    result.setServiceProvider(new TServiceProvider(configNodeLocation.getInternalEndPoint(), TServiceType.ConfigNodeInternalService));
+//    result.setSender(sender);
+//    List<TTestConnectionResult> results = new ArrayList<>();
+//    try (ConfigNodeClient client = ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+//      TSStatus status = client.testConnection();
+//      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+//        result.setSuccess(true);
+//      } else {
+//        result.setSuccess(false);
+//        result.setReason("unknown");
+//      }
+//    } catch (Exception e) {
+//      LOGGER.error("Test connection fail", e);
+//      result.setSuccess(false);
+//      result.setReason(e.getMessage());
+//    }
+//    results.add(result);
     return results;
   }
 

@@ -94,6 +94,11 @@ public class ColumnHeaderConstant {
   // column names for show clusterId statement
   public static final String CLUSTER_ID = "ClusterId";
 
+  // column names for verify connection statement
+  public static final String SERVICE_PROVIDER = "ServiceProvider";
+  public static final String SENDER = "Sender";
+  public static final String CONNECTION = "Connection";
+
   // column names for show functions statement
   public static final String FUNCTION_NAME = "FunctionName";
   public static final String FUNCTION_TYPE = "FunctionType";
@@ -366,6 +371,12 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showClusterIdColumnHeaders =
       ImmutableList.of(new ColumnHeader(CLUSTER_ID, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> testConnectionColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(SERVICE_PROVIDER, TSDataType.TEXT),
+          new ColumnHeader(SENDER, TSDataType.TEXT),
+          new ColumnHeader(CONNECTION, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showVariablesColumnHeaders =
       ImmutableList.of(
