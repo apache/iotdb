@@ -19,6 +19,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTranslateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -250,12 +251,16 @@ public class QueryPlanner {
     if (resultPair.left != null) {
       globalTimePredicate =
           ExpressionTranslateVisitor.translateToSymbolReference(resultPair.left, planBuilder);
+
+      queryContext.setGlobalTimeFilter(
+          globalTimePredicate.accept(new ConvertPredicateToTimeFilterVisitor(), null));
     }
     analysis.setGlobalTableModelTimePredicate(globalTimePredicate);
     boolean hasValueFilter = resultPair.right;
     if (!hasValueFilter) {
       return planBuilder;
     }
+    analysis.setHasValueFilter(true);
     // TODO if predicate equals TrueConstant, no need filter
 
     return planBuilder.withNewRoot(

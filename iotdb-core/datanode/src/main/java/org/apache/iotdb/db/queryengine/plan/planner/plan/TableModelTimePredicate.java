@@ -23,10 +23,10 @@ import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
 
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.Objects;
 
 public class TableModelTimePredicate implements TimePredicate {
@@ -39,7 +39,8 @@ public class TableModelTimePredicate implements TimePredicate {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    throw new UnsupportedEncodingException();
+    ReadWriteIOUtils.write((byte) 1, stream);
+    Expression.serialize(timePredicate, stream);
   }
 
   @Override
