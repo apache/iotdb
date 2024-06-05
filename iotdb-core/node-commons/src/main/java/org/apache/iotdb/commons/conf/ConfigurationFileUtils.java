@@ -120,6 +120,7 @@ public class ConfigurationFileUtils {
 
   public static void updateConfigurationFile(File file, Properties newConfigItems)
       throws IOException, InterruptedException {
+    logger.info("Updating configuration file {}", file.getAbsolutePath());
     File lockFile = new File(file.getPath() + lockFileSuffix);
     acquireTargetFileLock(lockFile);
     try {

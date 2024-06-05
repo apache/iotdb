@@ -22,6 +22,7 @@ package org.apache.iotdb.db.it;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -29,10 +30,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.io.File;
 import java.sql.Connection;
 import java.sql.Statement;
-import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
@@ -50,8 +49,10 @@ public class IoTDBSetConfigurationIT {
   @Test
   public void testSetConfiguration() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
-      Assert.assertTrue(statement.execute("set configuration \"enable_seq_space_compaction\"=\"true\""));
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"enable_seq_space_compaction\"=\"true\"");
+      statement.execute("set configuration \"enable_cross_space_compaction\"=\"true\" on 0");
+      statement.execute("set configuration \"enable_cross_space_compaction\"=\"true\" on 1");
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
