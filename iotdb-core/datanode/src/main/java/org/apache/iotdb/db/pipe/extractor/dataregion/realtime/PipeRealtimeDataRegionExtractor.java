@@ -304,7 +304,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     // Record the pending queue size before trying to put heartbeatEvent into queue
     ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue);
 
-    Event lastEvent = pendingQueue.peekLast();
+    final Event lastEvent = pendingQueue.peekLast();
     if (lastEvent instanceof PipeRealtimeEvent
         && ((PipeRealtimeEvent) lastEvent).getEvent() instanceof PipeHeartbeatEvent
         && (((PipeHeartbeatEvent) ((PipeRealtimeEvent) lastEvent).getEvent()).isShouldPrintMessage()
