@@ -73,13 +73,13 @@ public class PipeCompressorFactory {
     }
 
     // For other compressors, we can directly get the instance by name
-    final PipeCompressor compressor = COMPRESSOR_NAME_TO_INSTANCE.get(config.getName());
+    final PipeCompressor compressor = COMPRESSOR_NAME_TO_INSTANCE.get(compressorName);
     if (compressor != null) {
       return compressor;
     }
 
     throw new UnsupportedOperationException(
-        "PipeCompressor not found for name: " + config.getName());
+        "PipeCompressor not found for name: " + compressorName);
   }
 
   private static Map<Byte, PipeCompressor> COMPRESSOR_INDEX_TO_INSTANCE = new HashMap<>();
