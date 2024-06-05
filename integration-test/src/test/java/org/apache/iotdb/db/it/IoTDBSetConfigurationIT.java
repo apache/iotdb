@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -30,6 +33,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.Statement;
 
@@ -43,18 +48,42 @@ public class IoTDBSetConfigurationIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
   public void testSetConfiguration() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("set configuration \"enable_seq_space_compaction\"=\"true\"");
-      statement.execute("set configuration \"enable_cross_space_compaction\"=\"true\" on 0");
-      statement.execute("set configuration \"enable_cross_space_compaction\"=\"true\" on 1");
+      statement.execute("set configuration \"enable_seq_space_compaction\"=\"false\"");
+      statement.execute("set configuration \"enable_unseq_space_compaction\"=\"false\" on 0");
+      statement.execute("set configuration \"enable_cross_space_compaction\"=\"false\" on 1");
     } catch (Exception e) {
       Assert.fail(e.getMessage());
+    }
+    for (ConfigNodeWrapper configNodeWrapper : EnvFactory.getEnv().getConfigNodeWrapperList()) {
+      String systemPropertiesPath =
+          configNodeWrapper.getNodePath()
+              + File.separator
+              + "conf"
+              + File.separator
+              + CommonConfig.SYSTEM_CONFIG_NAME;
+      File f = new File(systemPropertiesPath);
+      String content = new String(Files.readAllBytes(f.toPath()));
+      Assert.assertTrue(content.contains("enable_seq_space_compaction=false"));
+      Assert.assertTrue(content.contains("enable_unseq_space_compaction=false"));
+    }
+    for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+      String systemPropertiesPath =
+          dataNodeWrapper.getNodePath()
+              + File.separator
+              + "conf"
+              + File.separator
+              + CommonConfig.SYSTEM_CONFIG_NAME;
+      File f = new File(systemPropertiesPath);
+      String content = new String(Files.readAllBytes(f.toPath()));
+      Assert.assertTrue(content.contains("enable_seq_space_compaction=false"));
+      Assert.assertTrue(content.contains("enable_cross_space_compaction=false"));
     }
   }
 }
