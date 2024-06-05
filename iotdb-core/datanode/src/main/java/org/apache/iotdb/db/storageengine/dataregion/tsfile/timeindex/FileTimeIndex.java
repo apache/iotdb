@@ -247,4 +247,9 @@ public class FileTimeIndex implements ITimeIndex {
   public byte getTimeIndexType() {
     return FILE_TIME_INDEX_TYPE;
   }
+
+  @Override
+  public String toString() {
+    return " StartTimes = " + startTime + " EndTimes = " + endTime;
+  }
 }

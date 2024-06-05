@@ -388,12 +388,29 @@ public class TsFileResource {
   }
 
   public long getStartTime(IDeviceID deviceId) {
-    return deviceId == null ? getFileStartTime() : timeIndex.getStartTime(deviceId);
+    try {
+      return deviceId == null ? getFileStartTime() : timeIndex.getStartTime(deviceId);
+    } catch (Exception e) {
+      LOGGER.error(
+          "meet error when getStartTime of {} in file {}", deviceId, file.getAbsolutePath());
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.error("TimeIndex = {}", timeIndex.toString());
+      }
+      throw e;
+    }
   }
 
   /** open file's end time is Long.MIN_VALUE */
   public long getEndTime(IDeviceID deviceId) {
-    return deviceId == null ? getFileEndTime() : timeIndex.getEndTime(deviceId);
+    try {
+      return deviceId == null ? getFileEndTime() : timeIndex.getEndTime(deviceId);
+    } catch (Exception e) {
+      LOGGER.error("meet error when getEndTime of {} in file {}", deviceId, file.getAbsolutePath());
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.error("TimeIndex = {}", timeIndex.toString());
+      }
+      throw e;
+    }
   }
 
   public long getOrderTime(IDeviceID deviceId, boolean ascending) {
