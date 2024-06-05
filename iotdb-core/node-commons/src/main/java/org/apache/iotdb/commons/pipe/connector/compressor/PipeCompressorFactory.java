@@ -78,8 +78,7 @@ public class PipeCompressorFactory {
       return compressor;
     }
 
-    throw new UnsupportedOperationException(
-        "PipeCompressor not found for name: " + compressorName);
+    throw new UnsupportedOperationException("PipeCompressor not found for name: " + compressorName);
   }
 
   private static Map<Byte, PipeCompressor> COMPRESSOR_INDEX_TO_INSTANCE = new HashMap<>();
