@@ -184,8 +184,8 @@ public class PipeConnectorConstant {
   public static final String SINK_COMPRESSOR_ZSTD_LEVEL_KEY = "sink.compressor.zstd.level";
   public static final int CONNECTOR_COMPRESSOR_ZSTD_LEVEL_DEFAULT_VALUE =
       Zstd.defaultCompressionLevel();
+  public static final int CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE = Zstd.minCompressionLevel();
   public static final int CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE = Zstd.maxCompressionLevel();
-  public static final int CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE = 1;
 
   public static final String CONNECTOR_RATE_LIMIT_KEY = "connector.rate-limit-bytes-per-second";
   public static final String SINK_RATE_LIMIT_KEY = "sink.rate-limit-bytes-per-second";

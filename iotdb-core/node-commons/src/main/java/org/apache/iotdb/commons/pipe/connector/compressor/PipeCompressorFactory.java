@@ -38,7 +38,7 @@ public class PipeCompressorFactory {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeCompressorFactory.class);
 
-  private static Map<String, PipeCompressor> COMPRESSOR_NAME_TO_INSTANCE = new HashMap<>();
+  private static final Map<String, PipeCompressor> COMPRESSOR_NAME_TO_INSTANCE = new HashMap<>();
 
   static {
     COMPRESSOR_NAME_TO_INSTANCE.put(CONNECTOR_COMPRESSOR_SNAPPY, new PipeSnappyCompressor());
@@ -52,7 +52,7 @@ public class PipeCompressorFactory {
 
   public static PipeCompressor getCompressor(PipeCompressorConfig config) {
     if (config == null) {
-      return null;
+      throw new IllegalArgumentException("PipeCompressorConfig is null");
     }
 
     if (Objects.equals(config.getName(), CONNECTOR_COMPRESSOR_ZSTD)) {
@@ -67,16 +67,16 @@ public class PipeCompressorFactory {
           new PipeZSTDCompressor(config.getZstdCompressionLevel());
       COMPRESSOR_NAME_TO_INSTANCE.put(compressorKey, newZstdCompressor);
       return newZstdCompressor;
-    } else {
-      // For other compressors, we can directly get the instance by name
-      final PipeCompressor compressor = COMPRESSOR_NAME_TO_INSTANCE.get(config.getName());
-      if (compressor != null) {
-        return compressor;
-      }
-
-      throw new UnsupportedOperationException(
-          "PipeCompressor not found for name: " + config.getName());
     }
+
+    // For other compressors, we can directly get the instance by name
+    final PipeCompressor compressor = COMPRESSOR_NAME_TO_INSTANCE.get(config.getName());
+    if (compressor != null) {
+      return compressor;
+    }
+
+    throw new UnsupportedOperationException(
+        "PipeCompressor not found for name: " + config.getName());
   }
 
   private static Map<Byte, PipeCompressor> COMPRESSOR_INDEX_TO_INSTANCE = new HashMap<>();
