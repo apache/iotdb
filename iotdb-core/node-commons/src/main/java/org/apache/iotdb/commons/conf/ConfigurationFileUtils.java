@@ -33,7 +33,6 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
@@ -130,7 +129,7 @@ public class ConfigurationFileUtils {
     acquireTargetFileLock(lockFile);
     try {
       List<String> lines = new ArrayList<>();
-      try (BufferedReader reader = new BufferedReader(new FileReader(lockFile))) {
+      try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
         String line = null;
         while ((line = reader.readLine()) != null) {
           lines.add(line);
@@ -154,9 +153,7 @@ public class ConfigurationFileUtils {
           }
         }
         // add new config items
-        for (Map.Entry<Object, Object> entry : newConfigItems.entrySet()) {
-          writer.write(entry.getKey() + "=" + entry.getValue());
-        }
+        newConfigItems.store(writer, null);
       }
       Files.move(lockFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
     } finally {
