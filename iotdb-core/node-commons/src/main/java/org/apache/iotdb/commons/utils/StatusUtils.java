@@ -40,11 +40,16 @@ public class StatusUtils {
 
   private static final Set<Integer> NEED_RETRY = new HashSet<>();
 
+  private static final Set<Integer> UNKNOWN_ERRORS = new HashSet<>();
+
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   static {
-    NEED_RETRY.add(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-    NEED_RETRY.add(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+    // UNKNOWN ERRORS
+    UNKNOWN_ERRORS.add(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    UNKNOWN_ERRORS.add(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+
+    // KNOWN ERRORS
     NEED_RETRY.add(TSStatusCode.DISPATCH_ERROR.getStatusCode());
     NEED_RETRY.add(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
     NEED_RETRY.add(TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode());
@@ -213,14 +218,23 @@ public class StatusUtils {
     int code = status.getCode();
     if (code == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       for (TSStatus subStatus : status.subStatus) {
+        // any sub codes for MULTIPLE_ERROR don't need to retry, we won't retry for the whole
+        // request
         if (subStatus == null
-            || (subStatus.getCode() != OK.code && !NEED_RETRY.contains(subStatus.getCode()))) {
+            || (subStatus.getCode() != OK.code
+                && !needRetryHelperForSingleStatus(subStatus.getCode()))) {
           return false;
         }
       }
       return true;
     } else {
-      return NEED_RETRY.contains(code);
+      return needRetryHelperForSingleStatus(code);
     }
+  }
+
+  // without MULTIPLE_ERROR(302)
+  private static boolean needRetryHelperForSingleStatus(int statusCode) {
+    return NEED_RETRY.contains(statusCode)
+        || (COMMON_CONFIG.isRetryForUnknownErrors() && UNKNOWN_ERRORS.contains(statusCode));
   }
 }

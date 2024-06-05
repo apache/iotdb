@@ -76,6 +76,11 @@
             <version>1.3.2-SNAPSHOT</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-consensus</artifactId>
+            <version>1.3.2-SNAPSHOT</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.tsfile</groupId>
             <artifactId>tsfile</artifactId>
             <version>${tsfile.version}</version>

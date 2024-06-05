@@ -276,35 +276,12 @@ public class ConfigNodeDescriptor {
       throw new IOException(e);
     }
 
-    conf.setCnRpcAdvancedCompressionEnable(
-        Boolean.parseBoolean(
-            properties
-                .getProperty(
-                    "cn_rpc_advanced_compression_enable",
-                    String.valueOf(conf.isCnRpcAdvancedCompressionEnable()))
-                .trim()));
-
     conf.setCnRpcMaxConcurrentClientNum(
         Integer.parseInt(
             properties
                 .getProperty(
                     "cn_rpc_max_concurrent_client_num",
                     String.valueOf(conf.getCnRpcMaxConcurrentClientNum()))
-                .trim()));
-
-    conf.setCnThriftDefaultBufferSize(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "cn_thrift_init_buffer_size",
-                    String.valueOf(conf.getCnThriftDefaultBufferSize()))
-                .trim()));
-
-    conf.setCnThriftMaxFrameSize(
-        Integer.parseInt(
-            properties
-                .getProperty(
-                    "cn_thrift_max_frame_size", String.valueOf(conf.getCnThriftMaxFrameSize()))
                 .trim()));
 
     conf.setMaxClientNumForEachNode(

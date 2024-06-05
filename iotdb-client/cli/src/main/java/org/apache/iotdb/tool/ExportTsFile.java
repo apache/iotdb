@@ -34,7 +34,6 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -73,6 +72,9 @@ public class ExportTsFile extends AbstractTsFileTool {
   private static final String QUERY_COMMAND_NAME = "queryCommand";
   private static final String DUMP_FILE_NAME_DEFAULT = "dump";
   private static final String TSFILEDB_CLI_PREFIX = "ExportTsFile";
+
+  private static Session session;
+
   private static String targetDirectory;
   private static String targetFile = DUMP_FILE_NAME_DEFAULT;
   private static String queryCommand;
@@ -87,7 +89,7 @@ public class ExportTsFile extends AbstractTsFileTool {
   }) // Suppress high Cognitive Complexity warning, ignore try-with-resources
   /* main function of export tsFile tool. */
   public static void main(String[] args) {
-    Options options = createOptions();
+    createOptions();
     HelpFormatter hf = new HelpFormatter();
     CommandLine commandLine = null;
     CommandLineParser parser = new DefaultParser();
@@ -217,8 +219,8 @@ public class ExportTsFile extends AbstractTsFileTool {
    *
    * @return object Options
    */
-  private static Options createOptions() {
-    Options options = createNewOptions();
+  private static void createOptions() {
+    createBaseOptions();
 
     Option opTargetFile =
         Option.builder(TARGET_DIR_ARGS)
@@ -268,7 +270,6 @@ public class ExportTsFile extends AbstractTsFileTool {
             .desc("Timeout for session query")
             .build();
     options.addOption(opTimeout);
-    return options;
   }
 
   /**

@@ -363,13 +363,6 @@ public class IoTDBDescriptor {
 
     conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()));
 
-    int mlogBufferSize =
-        Integer.parseInt(
-            properties.getProperty("mlog_buffer_size", Integer.toString(conf.getMlogBufferSize())));
-    if (mlogBufferSize > 0) {
-      conf.setMlogBufferSize(mlogBufferSize);
-    }
-
     long forceMlogPeriodInMs =
         Long.parseLong(
             properties.getProperty(
@@ -429,12 +422,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "compaction_schedule_interval_in_ms",
                 Long.toString(conf.getCompactionScheduleIntervalInMs()))));
-
-    conf.setCompactionSubmissionIntervalInMs(
-        Long.parseLong(
-            properties.getProperty(
-                "compaction_submission_interval_in_ms",
-                Long.toString(conf.getCompactionSubmissionIntervalInMs()))));
 
     conf.setEnableCrossSpaceCompaction(
         Boolean.parseBoolean(
@@ -1069,10 +1056,12 @@ public class IoTDBDescriptor {
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
     loadIoTConsensusProps(properties);
+    loadPipeConsensusProps(properties);
   }
 
   private void reloadConsensusProps(Properties properties) {
     loadIoTConsensusProps(properties);
+    loadPipeConsensusProps(properties);
     DataRegionConsensusImpl.reloadConsensusConfig();
   }
 
@@ -1111,6 +1100,17 @@ public class IoTDBDescriptor {
                     "region_migration_speed_limit_bytes_per_second",
                     String.valueOf(conf.getRegionMigrationSpeedLimitBytesPerSecond()))
                 .trim()));
+  }
+
+  private void loadPipeConsensusProps(Properties properties) {
+    conf.setPipeConsensusPipelineSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "fast_iot_consensus_pipeline_size",
+                Integer.toString(conf.getPipeConsensusPipelineSize()))));
+    if (conf.getPipeConsensusPipelineSize() <= 0) {
+      conf.setPipeConsensusPipelineSize(5);
+    }
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1824,6 +1824,9 @@ public class IoTDBDescriptor {
 
       // update Consensus config
       reloadConsensusProps(properties);
+
+      // update retry config
+      commonDescriptor.loadRetryProperties(properties);
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
@@ -2196,6 +2199,17 @@ public class IoTDBDescriptor {
                 properties
                     .getProperty(
                         "pipe_receiver_file_dirs", String.join(",", conf.getPipeReceiverFileDirs()))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+
+    conf.setPipeConsensusReceiverFileDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "pipe_consensus_receiver_file_dirs",
+                        String.join(",", conf.getPipeConsensusReceiverFileDirs()))
                     .trim()
                     .split(","))
             .filter(dir -> !dir.isEmpty())

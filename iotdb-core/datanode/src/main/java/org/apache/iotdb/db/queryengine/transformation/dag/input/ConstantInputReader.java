@@ -21,30 +21,34 @@ package org.apache.iotdb.db.queryengine.transformation.dag.input;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.utils.CommonUtils;
 
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.BooleanColumn;
+import org.apache.tsfile.read.common.block.column.DoubleColumn;
+import org.apache.tsfile.read.common.block.column.FloatColumn;
+import org.apache.tsfile.read.common.block.column.IntColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.Binary;
 
 import java.io.IOException;
+import java.util.Optional;
 
-/** LayerPointReader for constants. */
-public class ConstantInputReader implements LayerPointReader {
+public class ConstantInputReader implements LayerReader {
+  private final TSDataType dataType;
 
-  private final ConstantOperand expression;
-
-  protected int cachedInt;
-  protected long cachedLong;
-  protected float cachedFloat;
-  protected double cachedDouble;
-  protected boolean cachedBoolean;
-  protected Binary cachedBinary;
+  private final Column[] cachedColumns;
 
   public ConstantInputReader(ConstantOperand expression) throws QueryProcessException {
-    this.expression = Validate.notNull(expression);
+    if (expression == null) {
+      throw new QueryProcessException("The expression cannot be null");
+    }
 
     Object value = CommonUtils.parseValue(expression.getDataType(), expression.getValueString());
     if (value == null) {
@@ -52,24 +56,40 @@ public class ConstantInputReader implements LayerPointReader {
           "Invalid constant operand: " + expression.getExpressionString());
     }
 
-    switch (expression.getDataType()) {
+    // Use RLEColumn to mimic column filled with same values
+    dataType = expression.getDataType();
+    cachedColumns = new Column[1];
+    int count = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+    switch (dataType) {
       case INT32:
-        cachedInt = (int) value;
+        int[] intArray = {(int) value};
+        Column intColumn = new IntColumn(1, Optional.empty(), intArray);
+        cachedColumns[0] = new RunLengthEncodedColumn(intColumn, count);
         break;
       case INT64:
-        cachedLong = (long) value;
+        long[] longArray = {(long) value};
+        Column longColumn = new LongColumn(1, Optional.empty(), longArray);
+        cachedColumns[0] = new RunLengthEncodedColumn(longColumn, count);
         break;
       case FLOAT:
-        cachedFloat = (float) value;
+        float[] floatArray = {(float) value};
+        Column floatColumn = new FloatColumn(1, Optional.empty(), floatArray);
+        cachedColumns[0] = new RunLengthEncodedColumn(floatColumn, count);
         break;
       case DOUBLE:
-        cachedDouble = (double) value;
+        double[] doubleArray = {(double) value};
+        Column doubleColumn = new DoubleColumn(1, Optional.empty(), doubleArray);
+        cachedColumns[0] = new RunLengthEncodedColumn(doubleColumn, count);
         break;
       case TEXT:
-        cachedBinary = (Binary) value;
+        Binary[] binaryArray = {(Binary) value};
+        Column binaryColumn = new BinaryColumn(1, Optional.empty(), binaryArray);
+        cachedColumns[0] = new RunLengthEncodedColumn(binaryColumn, count);
         break;
       case BOOLEAN:
-        cachedBoolean = (boolean) value;
+        boolean[] booleanArray = {(boolean) value};
+        Column booleanColumn = new BooleanColumn(1, Optional.empty(), booleanArray);
+        cachedColumns[0] = new RunLengthEncodedColumn(booleanColumn, count);
         break;
       default:
         throw new QueryProcessException("Unsupported type: " + expression.getDataType());
@@ -82,62 +102,22 @@ public class ConstantInputReader implements LayerPointReader {
   }
 
   @Override
+  public void consumedAll() {
+    // Do nothing
+  }
+
+  @Override
+  public Column[] current() throws IOException {
+    return cachedColumns;
+  }
+
+  @Override
   public YieldableState yield() {
     return YieldableState.YIELDABLE;
   }
 
   @Override
-  public boolean next() {
-    return true;
-  }
-
-  @Override
-  public void readyForNext() {
-    // Do nothing
-  }
-
-  @Override
-  public TSDataType getDataType() {
-    return expression.getDataType();
-  }
-
-  @Override
-  public long currentTime() throws IOException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public int currentInt() throws IOException {
-    return cachedInt;
-  }
-
-  @Override
-  public long currentLong() throws IOException {
-    return cachedLong;
-  }
-
-  @Override
-  public float currentFloat() throws IOException {
-    return cachedFloat;
-  }
-
-  @Override
-  public double currentDouble() throws IOException {
-    return cachedDouble;
-  }
-
-  @Override
-  public boolean currentBoolean() throws IOException {
-    return cachedBoolean;
-  }
-
-  @Override
-  public Binary currentBinary() throws IOException {
-    return cachedBinary;
-  }
-
-  @Override
-  public boolean isCurrentNull() {
-    return false;
+  public TSDataType[] getDataTypes() {
+    return new TSDataType[] {dataType};
   }
 }

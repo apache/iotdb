@@ -3574,6 +3574,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       String dataTypeString = ctx.dataType.getText().toUpperCase();
       try {
         dataType = TSDataType.valueOf(dataTypeString);
+        if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
+          throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
+        }
       } catch (Exception e) {
         throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
       }
