@@ -78,10 +78,10 @@ public class LogicalPlanner {
     this.relationalPlanOptimizers =
         Arrays.asList(
             new SimplifyExpressions(),
-            new RemoveRedundantIdentityProjections(),
             new PruneUnUsedColumns(),
-            new IndexScan(),
-            new PredicatePushDown());
+            new PredicatePushDown(),
+            new RemoveRedundantIdentityProjections(),
+            new IndexScan());
   }
 
   public LogicalQueryPlan plan(Analysis analysis) throws IoTDBException {

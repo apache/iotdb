@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Node;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,6 +80,11 @@ public class PredicatePushDown implements RelationalPlanOptimizer {
     public PlanNode visitFilter(FilterNode node, RewriterContext context) {
       // TODO (by beyyes) consider expression and function in FilterNode, especially diff function
       if (node.getPredicate() != null) {
+        // when exist diff function, predicate can not be pushed down
+        if (containsDiffFunction(node.getPredicate())) {
+          return node;
+        }
+
         context.pushDownPredicate = node.getPredicate();
         node.getChild().accept(this, context);
 
@@ -94,6 +101,23 @@ public class PredicatePushDown implements RelationalPlanOptimizer {
       node.setPushDownPredicate(context.pushDownPredicate);
       return node;
     }
+  }
+
+  static boolean containsDiffFunction(Expression expression) {
+    if (expression instanceof FunctionCall
+        && "diff".equalsIgnoreCase(((FunctionCall) expression).getName().toString())) {
+      return true;
+    }
+
+    if (!expression.getChildren().isEmpty()) {
+      for (Node node : expression.getChildren()) {
+        if (containsDiffFunction((Expression) node)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   private static class RewriterContext {

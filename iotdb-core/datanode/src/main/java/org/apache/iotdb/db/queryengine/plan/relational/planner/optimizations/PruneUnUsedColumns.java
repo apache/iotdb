@@ -22,7 +22,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
@@ -83,16 +82,12 @@ public class PruneUnUsedColumns implements RelationalPlanOptimizer {
     @Override
     public PlanNode visitProject(ProjectNode node, RewriterContext context) {
       // There must exist OutputNode above ProjectNode
-      Map<Symbol, Expression> newProjectAssignments = new HashMap<>();
-      for (Symbol symbol : context.allUsedSymbolSet) {
-        if (node.getAssignments().contains(symbol)) {
-          newProjectAssignments.put(symbol, node.getAssignments().get(symbol));
-        }
-      }
-      node.setAssignments(new Assignments(newProjectAssignments));
-
+      node.getAssignments()
+          .getMap()
+          .entrySet()
+          .removeIf(entry -> !context.allUsedSymbolSet.contains(entry.getKey()));
       Set<Symbol> usedSymbolSet = new HashSet<>();
-      for (Map.Entry<Symbol, Expression> entry : newProjectAssignments.entrySet()) {
+      for (Map.Entry<Symbol, Expression> entry : node.getAssignments().getMap().entrySet()) {
         ImmutableList.Builder<Symbol> symbolBuilder = ImmutableList.builder();
         new SymbolBuilderVisitor().process(entry.getValue(), symbolBuilder);
         usedSymbolSet.addAll(symbolBuilder.build());

@@ -16,7 +16,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
 import java.util.Collection;
@@ -68,7 +67,7 @@ public class Assignments {
   }
 
   public Assignments(Map<Symbol, Expression> assignments) {
-    this.assignments = ImmutableMap.copyOf(requireNonNull(assignments, "assignments is null"));
+    this.assignments = requireNonNull(assignments, "assignments is null");
   }
 
   public List<Symbol> getOutputs() {
@@ -101,6 +100,10 @@ public class Assignments {
 
   public Expression get(Symbol symbol) {
     return assignments.get(symbol);
+  }
+
+  public void remove(Symbol symbol) {
+    this.assignments.remove(symbol);
   }
 
   private Collector<Entry<Symbol, Expression>, Builder, Assignments> toAssignments() {
