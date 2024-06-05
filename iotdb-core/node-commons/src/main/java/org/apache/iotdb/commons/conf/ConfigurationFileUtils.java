@@ -32,8 +32,11 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigurationFileUtils {
@@ -60,6 +63,35 @@ public class ConfigurationFileUtils {
           + "# KIND, either express or implied.  See the License for the\n"
           + "# specific language governing permissions and limitations\n"
           + "# under the License.";
+
+  // This is a temporary implementations
+  private static final Set<String> ignoreConfigKeys =
+      new HashSet<>(
+          Arrays.asList(
+              "cn_internal_address",
+              "cn_internal_port",
+              "cn_consensus_port",
+              "cn_seed_config_node",
+              "dn_internal_address",
+              "dn_internal_port",
+              "dn_mpp_data_exchange_port",
+              "dn_schema_region_consensus_port",
+              "dn_data_region_consensus_port",
+              "dn_seed_config_node",
+              "dn_session_timeout_threshold",
+              "config_node_consensus_protocol_class",
+              "schema_replication_factor",
+              "data_replication_factor",
+              "data_region_consensus_protocol_class",
+              "series_slot_num",
+              "series_partition_executor_class",
+              "time_partition_interval",
+              "schema_engine_mode",
+              "tag_attribute_flush_interval",
+              "tag_attribute_total_size",
+              "timestamp_precision",
+              "iotdb_server_encrypt_decrypt_provider",
+              "iotdb_server_encrypt_decrypt_provider_parameter"));
 
   public static void checkAndMayUpdate(
       URL systemUrl, URL configNodeUrl, URL dataNodeUrl, URL commonUrl)
@@ -113,20 +145,9 @@ public class ConfigurationFileUtils {
     return readConfigLines(f);
   }
 
-  public static List<String> filterImmutableConfigItems(
-      File systemPropertiesFile, Properties newConfigItems) {
+  public static List<String> filterImmutableConfigItems(Properties newConfigItems) {
     List<String> ignoredConfigItems = new ArrayList<>();
-    if (!systemPropertiesFile.exists()) {
-      return ignoredConfigItems;
-    }
-    Properties systemProperties = new Properties();
-    try (FileReader reader = new FileReader(systemPropertiesFile)) {
-      systemProperties.load(reader);
-    } catch (Exception e) {
-      logger.error("Failed to load system properties from {}", systemPropertiesFile, e);
-      return ignoredConfigItems;
-    }
-    for (String ignoredKey : systemProperties.stringPropertyNames()) {
+    for (String ignoredKey : ignoreConfigKeys) {
       if (newConfigItems.containsKey(ignoredKey)) {
         newConfigItems.remove(ignoredKey);
         ignoredConfigItems.add(ignoredKey);

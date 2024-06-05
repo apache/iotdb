@@ -45,7 +45,6 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataExecutionVisitor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.LoadReadOnlyException;
@@ -613,12 +612,10 @@ public class StorageEngine implements IService {
     Properties properties = new Properties();
     properties.putAll(newConfigItems);
     TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    File datanodeSystemProperties =
-        new File(CONFIG.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
-    List<String> ignoredConfigItems =
-        ConfigurationFileUtils.filterImmutableConfigItems(datanodeSystemProperties, properties);
+    List<String> ignoredConfigItems = ConfigurationFileUtils.filterImmutableConfigItems(properties);
     if (!ignoredConfigItems.isEmpty()) {
       tsStatus.setMessage("ignored config items: " + ignoredConfigItems);
+      tsStatus.setCode(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     }
 
     if (newConfigItems.isEmpty()) {

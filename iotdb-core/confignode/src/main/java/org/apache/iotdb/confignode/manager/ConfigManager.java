@@ -53,7 +53,6 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -1515,12 +1514,11 @@ public class ConfigManager implements IManager {
       File file = new File(url.getFile());
       Properties properties = new Properties();
       properties.putAll(req.getConfigs());
-      File systemPropertiesFile =
-          new File(CONF.getSystemDir() + File.separator + ConfigNodeConstant.SYSTEM_FILE_NAME);
       List<String> ignoredConfigItems =
-          ConfigurationFileUtils.filterImmutableConfigItems(systemPropertiesFile, properties);
+          ConfigurationFileUtils.filterImmutableConfigItems(properties);
       if (!ignoredConfigItems.isEmpty()) {
         tsStatus.setMessage("ignored config items" + ignoredConfigItems);
+        tsStatus.setCode(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       }
       try {
         ConfigurationFileUtils.updateConfigurationFile(file, properties);
