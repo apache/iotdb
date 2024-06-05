@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_GZIP;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_LZ4;
@@ -38,7 +38,8 @@ public class PipeCompressorFactory {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeCompressorFactory.class);
 
-  private static final Map<String, PipeCompressor> COMPRESSOR_NAME_TO_INSTANCE = new HashMap<>();
+  private static final Map<String, PipeCompressor> COMPRESSOR_NAME_TO_INSTANCE =
+      new ConcurrentHashMap<>();
 
   static {
     COMPRESSOR_NAME_TO_INSTANCE.put(CONNECTOR_COMPRESSOR_SNAPPY, new PipeSnappyCompressor());
@@ -54,19 +55,21 @@ public class PipeCompressorFactory {
     if (config == null) {
       throw new IllegalArgumentException("PipeCompressorConfig is null");
     }
+    if (config.getName() == null) {
+      throw new IllegalArgumentException("PipeCompressorConfig.getName() is null");
+    }
 
-    if (Objects.equals(config.getName(), CONNECTOR_COMPRESSOR_ZSTD)) {
-      // For ZSTD compressor, we need to consider the compression level
-      String compressorKey = CONNECTOR_COMPRESSOR_ZSTD + "_" + config.getZstdCompressionLevel();
-      if (COMPRESSOR_NAME_TO_INSTANCE.containsKey(compressorKey)) {
-        return COMPRESSOR_NAME_TO_INSTANCE.get(compressorKey);
-      }
+    final String compressorName = config.getName();
 
-      LOGGER.info("Create new ZSTD compressor with level: {}", config.getZstdCompressionLevel());
-      final PipeZSTDCompressor newZstdCompressor =
-          new PipeZSTDCompressor(config.getZstdCompressionLevel());
-      COMPRESSOR_NAME_TO_INSTANCE.put(compressorKey, newZstdCompressor);
-      return newZstdCompressor;
+    // For ZSTD compressor, we need to consider the compression level
+    if (compressorName.equals(CONNECTOR_COMPRESSOR_ZSTD)) {
+      final int zstdCompressionLevel = config.getZstdCompressionLevel();
+      return COMPRESSOR_NAME_TO_INSTANCE.computeIfAbsent(
+          CONNECTOR_COMPRESSOR_ZSTD + "_" + zstdCompressionLevel,
+          key -> {
+            LOGGER.info("Create new PipeZSTDCompressor with level: {}", zstdCompressionLevel);
+            return new PipeZSTDCompressor(zstdCompressionLevel);
+          });
     }
 
     // For other compressors, we can directly get the instance by name
@@ -100,7 +103,7 @@ public class PipeCompressorFactory {
     COMPRESSOR_INDEX_TO_INSTANCE = Collections.unmodifiableMap(COMPRESSOR_INDEX_TO_INSTANCE);
   }
 
-  public static PipeCompressor deserializeCompressorFromIndex(byte index) {
+  public static PipeCompressor getCompressor(byte index) {
     final PipeCompressor compressor = COMPRESSOR_INDEX_TO_INSTANCE.get(index);
     if (compressor == null) {
       throw new UnsupportedOperationException("PipeCompressor not found for index: " + index);
