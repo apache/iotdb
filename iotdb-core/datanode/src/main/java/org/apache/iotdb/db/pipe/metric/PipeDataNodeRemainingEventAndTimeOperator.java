@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
-import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.ExponentialMovingAverages;
