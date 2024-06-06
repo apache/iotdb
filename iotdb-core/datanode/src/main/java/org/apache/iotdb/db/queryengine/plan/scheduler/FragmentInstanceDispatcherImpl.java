@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
@@ -66,8 +68,11 @@ import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.DIS
 
 public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
-  private static final Logger logger =
+  private static final Logger LOGGER =
       LoggerFactory.getLogger(FragmentInstanceDispatcherImpl.class);
+
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;
   private final QueryType type;
@@ -126,7 +131,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       } catch (FragmentInstanceDispatchException e) {
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
       } catch (Throwable t) {
-        logger.warn(DISPATCH_FAILED, t);
+        LOGGER.warn(DISPATCH_FAILED, t);
         return immediateFuture(
             new FragInstanceDispatchResult(
                 RpcUtils.getStatus(
@@ -165,7 +170,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           }
         }
       } catch (Throwable t) {
-        logger.warn(DISPATCH_FAILED, t);
+        LOGGER.warn(DISPATCH_FAILED, t);
         failureStatusList.add(
             RpcUtils.getStatus(
                 TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage()));
@@ -210,7 +215,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         } catch (FragmentInstanceDispatchException e) {
           dataNodeFailureList.add(e.getFailureStatus());
         } catch (Throwable t) {
-          logger.warn(DISPATCH_FAILED, t);
+          LOGGER.warn(DISPATCH_FAILED, t);
           dataNodeFailureList.add(
               RpcUtils.getStatus(
                   TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage()));
@@ -222,28 +227,35 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     // wait until remote dispatch done
     try {
       asyncPlanNodeSender.waitUntilCompleted();
-
-      if (asyncPlanNodeSender.needRetry()) {
+      final long maxRetryDurationInNs =
+          COMMON_CONFIG.getRemoteWriteMaxRetryDurationInMs() > 0
+              ? COMMON_CONFIG.getRemoteWriteMaxRetryDurationInMs() * 1_000_000L
+              : 0;
+      if (maxRetryDurationInNs > 0 && asyncPlanNodeSender.needRetry()) {
         // retry failed remote FIs
-        int retry = 0;
-        final int maxRetryTimes = 10;
-        long waitMillis = getRetrySleepTime(retry);
+        int retryCount = 0;
+        long waitMillis = getRetrySleepTime(retryCount);
+        long retryStartTime = System.nanoTime();
 
         while (asyncPlanNodeSender.needRetry()) {
-          retry++;
+          retryCount++;
           asyncPlanNodeSender.retry();
-          if (!(asyncPlanNodeSender.needRetry() && retry < maxRetryTimes)) {
+          // if !(still need retry and current time + next sleep time < maxRetryDurationInNs)
+          if (!(asyncPlanNodeSender.needRetry()
+              && (System.nanoTime() - retryStartTime + waitMillis * 1_000_000L)
+                  < maxRetryDurationInNs)) {
             break;
           }
           // still need to retry, sleep some time before make another retry.
           Thread.sleep(waitMillis);
-          waitMillis = getRetrySleepTime(retry);
+          PERFORMANCE_OVERVIEW_METRICS.recordRemoteRetrySleepCost(waitMillis * 1_000_000L);
+          waitMillis = getRetrySleepTime(retryCount);
         }
       }
 
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.error("Interrupted when dispatching write async", e);
+      LOGGER.error("Interrupted when dispatching write async", e);
       return immediateFuture(
           new FragInstanceDispatchResult(
               RpcUtils.getStatus(
@@ -308,7 +320,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           TSendFragmentInstanceResp sendFragmentInstanceResp =
               client.sendFragmentInstance(sendFragmentInstanceReq);
           if (!sendFragmentInstanceResp.accepted) {
-            logger.warn(sendFragmentInstanceResp.message);
+            LOGGER.warn(sendFragmentInstanceResp.message);
             if (sendFragmentInstanceResp.isSetNeedRetry()
                 && sendFragmentInstanceResp.isNeedRetry()) {
               throw new RatisReadUnavailableException(sendFragmentInstanceResp.message);
@@ -330,7 +342,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           TSendSinglePlanNodeResp sendPlanNodeResp =
               client.sendBatchPlanNode(sendPlanNodeReq).getResponses().get(0);
           if (!sendPlanNodeResp.accepted) {
-            logger.warn(
+            LOGGER.warn(
                 "dispatch write failed. status: {}, code: {}, message: {}, node {}",
                 sendPlanNodeResp.status,
                 TSStatusCode.representOf(sendPlanNodeResp.status.code),
@@ -366,7 +378,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     try {
       dispatchRemoteHelper(instance, endPoint);
     } catch (ClientManagerException | TException | RatisReadUnavailableException e) {
-      logger.warn(
+      LOGGER.warn(
           "can't execute request on node {}, error msg is {}, and we try to reconnect this node.",
           endPoint,
           ExceptionUtils.getRootCause(e).toString());
@@ -374,7 +386,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       try {
         dispatchRemoteHelper(instance, endPoint);
       } catch (ClientManagerException | TException | RatisReadUnavailableException e1) {
-        logger.warn(
+        LOGGER.warn(
             "can't execute request on node  {} in second try, error msg is {}.",
             endPoint,
             ExceptionUtils.getRootCause(e1).toString());
@@ -398,7 +410,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             ConsensusGroupId.Factory.createFromTConsensusGroupId(
                 instance.getRegionReplicaSet().getRegionId());
       } catch (Throwable t) {
-        logger.warn("Deserialize ConsensusGroupId failed. ", t);
+        LOGGER.warn("Deserialize ConsensusGroupId failed. ", t);
         throw new FragmentInstanceDispatchException(
             RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR,
@@ -414,7 +426,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 ? readExecutor.execute(instance)
                 : readExecutor.execute(groupId, instance);
         if (!readResult.isAccepted()) {
-          logger.warn(readResult.getMessage());
+          LOGGER.warn(readResult.getMessage());
           throw new FragmentInstanceDispatchException(
               RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, readResult.getMessage()));
         }
@@ -426,7 +438,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         if (!writeResult.isAccepted()) {
           // DO NOT LOG READ_ONLY ERROR
           if (writeResult.getStatus().getCode() != TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()) {
-            logger.warn(
+            LOGGER.warn(
                 "write locally failed. TSStatus: {}, message: {}",
                 writeResult.getStatus(),
                 writeResult.getMessage());
