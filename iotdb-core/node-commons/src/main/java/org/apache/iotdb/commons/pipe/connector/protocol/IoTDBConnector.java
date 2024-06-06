@@ -163,8 +163,8 @@ public abstract class IoTDBConnector implements PipeConnector {
             CONNECTOR_COMPRESSOR_ZSTD_LEVEL_DEFAULT_VALUE);
     validator.validate(
         arg ->
-            zstdCompressionLevel >= CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE
-                && zstdCompressionLevel <= CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE,
+            (int) arg >= CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE
+                && (int) arg <= CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE,
         String.format(
             "Zstd compression level should be in the range [%d, %d], but got %d.",
             CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE,
