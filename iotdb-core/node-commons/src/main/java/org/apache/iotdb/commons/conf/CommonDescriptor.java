@@ -246,6 +246,8 @@ public class CommonDescriptor {
             properties.getProperty(
                 "cluster_device_limit_threshold",
                 String.valueOf(config.getDeviceLimitThreshold()))));
+
+    loadRetryProperties(properties);
   }
 
   private void loadPipeProps(Properties properties) {
@@ -612,6 +614,20 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_read_file_buffer_size",
                 String.valueOf(config.getSubscriptionReadFileBufferSize()))));
+  }
+
+  public void loadRetryProperties(Properties properties) {
+    config.setRemoteWriteMaxRetryDurationInMs(
+        Long.parseLong(
+            properties.getProperty(
+                "write_request_remote_dispatch_max_retry_duration_in_ms",
+                String.valueOf(config.getRemoteWriteMaxRetryDurationInMs()))));
+
+    config.setRetryForUnknownErrors(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_retry_for_unknown_error",
+                String.valueOf(config.isRetryForUnknownErrors()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
