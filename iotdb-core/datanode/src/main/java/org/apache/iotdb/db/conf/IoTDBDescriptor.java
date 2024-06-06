@@ -363,6 +363,15 @@ public class IoTDBDescriptor {
 
     conf.setConsensusDir(properties.getProperty("dn_consensus_dir", conf.getConsensusDir()));
 
+    conf.setLoadTsFileDirs(
+        Arrays.stream(
+                properties
+                    .getProperty("load_file_dirs", String.join(",", conf.getLoadTsFileDirs()))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+
     long forceMlogPeriodInMs =
         Long.parseLong(
             properties.getProperty(

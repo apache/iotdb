@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
@@ -38,6 +39,8 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
+import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -51,12 +54,15 @@ import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
@@ -73,17 +79,27 @@ public class LoadTsFileManager {
   private static final String MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED =
       "%s TsFileWriterManager has been closed.";
   private static final String MESSAGE_DELETE_FAIL = "failed to delete {}.";
+  private static final String[] LOAD_BASE_DIRS = CONFIG.getLoadTsFileDirs();
 
-  private final File loadDir;
+  private static FolderManager folderManager;
 
   private final Map<String, TsFileWriterManager> uuid2WriterManager = new ConcurrentHashMap<>();
 
   private final Map<String, CleanupTask> uuid2CleanupTask = new ConcurrentHashMap<>();
   private final PriorityBlockingQueue<CleanupTask> cleanupTaskQueue = new PriorityBlockingQueue<>();
 
-  public LoadTsFileManager() {
-    this.loadDir = SystemFileFactory.INSTANCE.getFile(CONFIG.getLoadTsFileDir());
+  static {
+    try {
+      folderManager =
+          new FolderManager(Arrays.asList(LOAD_BASE_DIRS), DirectoryStrategyType.SEQUENCE_STRATEGY);
+    } catch (final DiskSpaceInsufficientException e) {
+      LOGGER.error(
+          "Fail to create load tsfile folders allocation strategy because all disks of folders are full.",
+          e);
+    }
+  }
 
+  public LoadTsFileManager() {
     registerCleanupTaskExecutor();
     recover();
   }
@@ -130,14 +146,20 @@ public class LoadTsFileManager {
   }
 
   private void recover() {
-    if (!loadDir.exists()) {
+    if (!Arrays.stream(LOAD_BASE_DIRS).map(File::new).allMatch(File::exists)) {
       return;
     }
 
-    final File[] files = loadDir.listFiles();
-    if (files == null) {
-      return;
-    }
+    final File[] files =
+        Arrays.stream(LOAD_BASE_DIRS)
+            .map(File::new)
+            .flatMap(
+                dir -> {
+                  File[] tmpfiles = dir.listFiles();
+                  return tmpfiles != null ? Arrays.stream(tmpfiles) : Stream.empty();
+                })
+            .toArray(File[]::new);
+
     for (final File taskDir : files) {
       String uuid = taskDir.getName();
       TsFileWriterManager writerManager = new TsFileWriterManager(taskDir);
@@ -171,7 +193,13 @@ public class LoadTsFileManager {
       final TsFileWriterManager writerManager =
           uuid2WriterManager.computeIfAbsent(
               uuid,
-              o -> new TsFileWriterManager(SystemFileFactory.INSTANCE.getFile(loadDir, uuid)));
+              o -> {
+                try {
+                  return new TsFileWriterManager(new File(folderManager.getNextFolder(), uuid));
+                } catch (DiskSpaceInsufficientException e) {
+                  throw new RuntimeException(e);
+                }
+              });
       for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
         if (!tsFileData.isModification()) {
           ChunkData chunkData = (ChunkData) tsFileData;
@@ -229,17 +257,22 @@ public class LoadTsFileManager {
       writerManager.close();
     }
 
-    final Path loadDirPath = loadDir.toPath();
-    if (!Files.exists(loadDirPath)) {
-      return;
-    }
-    try {
-      Files.deleteIfExists(loadDirPath);
-      LOGGER.info("Load dir {} was deleted.", loadDirPath);
-    } catch (DirectoryNotEmptyException e) {
-      LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
-    } catch (IOException e) {
-      LOGGER.info(MESSAGE_DELETE_FAIL, loadDirPath);
+    for (Path loadDirPath :
+        Arrays.stream(LOAD_BASE_DIRS)
+            .map(File::new)
+            .map(File::toPath)
+            .collect(Collectors.toList())) {
+      if (!Files.exists(loadDirPath)) {
+        continue;
+      }
+      try {
+        Files.deleteIfExists(loadDirPath);
+        LOGGER.info("Load dir {} was deleted.", loadDirPath);
+      } catch (DirectoryNotEmptyException e) {
+        LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
+      } catch (IOException e) {
+        LOGGER.info(MESSAGE_DELETE_FAIL, loadDirPath);
+      }
     }
   }
 
