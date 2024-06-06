@@ -27,7 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
@@ -163,8 +162,7 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       }
 
       try {
-        // Poll all subscribed topics by passing an empty set
-        final List<SubscriptionMessage> messages = poll(Collections.emptySet(), autoPollTimeoutMs);
+        final List<SubscriptionMessage> messages = poll(subscribedTopicNames, autoPollTimeoutMs);
 
         if (ackStrategy.equals(AckStrategy.BEFORE_CONSUME)) {
           ack(messages);

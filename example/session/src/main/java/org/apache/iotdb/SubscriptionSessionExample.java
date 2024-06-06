@@ -25,7 +25,10 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.consumer.AckStrategy;
+import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 
@@ -47,6 +50,7 @@ public class SubscriptionSessionExample {
 
   private static final String TOPIC_1 = "topic1";
   private static final String TOPIC_2 = "`topic2`";
+  private static final String TOPIC_3 = "`\"topic3\"`";
 
   public static final long SLEEP_NS = 1_000_000_000L;
   public static final long POLL_TIMEOUT_MS = 10_000L;
@@ -104,6 +108,7 @@ public class SubscriptionSessionExample {
     session = null;
   }
 
+  /** single SubscriptionPullConsumer */
   private static void subscriptionExample1() throws Exception {
     // Create topics
     try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
@@ -151,6 +156,7 @@ public class SubscriptionSessionExample {
     consumer1.close();
   }
 
+  /** multi SubscriptionPullConsumer */
   private static void subscriptionExample2() throws Exception {
     try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
       subscriptionSession.open();
@@ -206,10 +212,58 @@ public class SubscriptionSessionExample {
     }
   }
 
+  /** multi SubscriptionPushConsumer */
+  private static void subscriptionExample3() throws Exception {
+    try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
+      subscriptionSession.open();
+      final Properties config = new Properties();
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+      config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_QUERY_VALUE);
+      subscriptionSession.createTopic(TOPIC_1, config);
+    }
+
+    final List<Thread> threads = new ArrayList<>();
+    for (int i = 0; i < 8; ++i) {
+      final int idx = i;
+      final Thread thread =
+          new Thread(
+              () -> {
+                // Subscription: builder-style ctor
+                try (final SubscriptionPushConsumer consumer =
+                    new SubscriptionPushConsumer.Builder()
+                        .consumerId("c" + idx)
+                        .consumerGroupId("cg2")
+                        .fileSaveDir(System.getProperty("java.io.tmpdir"))
+                        .ackStrategy(AckStrategy.AFTER_CONSUME)
+                        .consumeListener(
+                            message -> {
+                              // do something for SubscriptionTsFileHandler
+                              System.out.println(
+                                  message.getTsFileHandler().getFile().getAbsolutePath());
+                              return ConsumeResult.SUCCESS;
+                            })
+                        .buildPushConsumer()) {
+                  consumer.open();
+                  consumer.subscribe(TOPIC_1);
+                  while (!consumer.getSubscribedTopicNames().isEmpty()) {
+                    LockSupport.parkNanos(SLEEP_NS); // wait some time
+                  }
+                }
+              });
+      thread.start();
+      threads.add(thread);
+    }
+
+    for (final Thread thread : threads) {
+      thread.join();
+    }
+  }
+
   public static void main(final String[] args) throws Exception {
     prepareData();
-    dataQuery();
-    subscriptionExample1();
-    subscriptionExample2();
+    // dataQuery();
+    // subscriptionExample1();
+    // subscriptionExample2();
+    subscriptionExample3();
   }
 }

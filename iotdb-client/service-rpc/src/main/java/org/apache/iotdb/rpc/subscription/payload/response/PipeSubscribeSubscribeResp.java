@@ -22,9 +22,24 @@ package org.apache.iotdb.rpc.subscription.payload.response;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
+
+  private transient Set<String> topicNames = new HashSet<>(); // subscribed topic names
+
+  public Set<String> getTopicNames() {
+    return topicNames;
+  }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
@@ -42,10 +57,42 @@ public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
     return resp;
   }
 
+  /**
+   * Serialize the incoming parameters into `PipeSubscribeSubscribeResp`, called by the subscription
+   * server.
+   */
+  public static PipeSubscribeSubscribeResp toTPipeSubscribeResp(
+      final TSStatus status, final Set<String> topicNames) throws IOException {
+    final PipeSubscribeSubscribeResp resp = new PipeSubscribeSubscribeResp();
+
+    resp.status = status;
+    resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
+    resp.type = PipeSubscribeResponseType.ACK.getType();
+
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.writeObjectSet(topicNames, outputStream);
+      resp.body =
+          Collections.singletonList(
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+    }
+
+    return resp;
+  }
+
   /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
   public static PipeSubscribeSubscribeResp fromTPipeSubscribeResp(
       final TPipeSubscribeResp subscribeResp) {
     final PipeSubscribeSubscribeResp resp = new PipeSubscribeSubscribeResp();
+
+    if (Objects.nonNull(subscribeResp.body)) {
+      for (final ByteBuffer byteBuffer : subscribeResp.body) {
+        if (Objects.nonNull(byteBuffer) && byteBuffer.hasRemaining()) {
+          resp.topicNames = ReadWriteIOUtils.readObjectSet(byteBuffer);
+          break;
+        }
+      }
+    }
 
     resp.status = subscribeResp.status;
     resp.version = subscribeResp.version;
@@ -66,7 +113,8 @@ public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
       return false;
     }
     final PipeSubscribeSubscribeResp that = (PipeSubscribeSubscribeResp) obj;
-    return Objects.equals(this.status, that.status)
+    return Objects.equals(this.topicNames, that.topicNames)
+        && Objects.equals(this.status, that.status)
         && this.version == that.version
         && this.type == that.type
         && Objects.equals(this.body, that.body);
@@ -74,6 +122,6 @@ public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
 
   @Override
   public int hashCode() {
-    return Objects.hash(status, version, type, body);
+    return Objects.hash(topicNames, status, version, type, body);
   }
 }

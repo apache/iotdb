@@ -92,12 +92,20 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
 
+  protected volatile Set<String> subscribedTopicNames = new HashSet<>();
+
+  /////////////////////////////// getter ///////////////////////////////
+
   public String getConsumerId() {
     return consumerId;
   }
 
   public String getConsumerGroupId() {
     return consumerGroupId;
+  }
+
+  public Set<String> getSubscribedTopicNames() {
+    return subscribedTopicNames;
   }
 
   /////////////////////////////// ctor ///////////////////////////////
@@ -305,7 +313,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   /////////////////////////////// poll ///////////////////////////////
 
-  protected List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs)
+  protected List<SubscriptionMessage> poll(
+      /* @NotNull */ final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
     final List<SubscriptionMessage> messages = new ArrayList<>();
     final SubscriptionPollTimer timer =
@@ -313,6 +322,14 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     do {
       try {
+        // check topic names
+        topicNames.stream()
+            .filter(topicName -> !subscribedTopicNames.contains(topicName))
+            .forEach(
+                topicName ->
+                    LOGGER.warn(
+                        "SubscriptionConsumer {} does not subscribe to topic {}", this, topicName));
+
         // poll tablets or file
         for (final SubscriptionPollResponse pollResponse : pollInternal(topicNames)) {
           final short responseType = pollResponse.getResponseType();
@@ -345,11 +362,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
               final SubscriptionCommitContext commitContext = pollResponse.getCommitContext();
               final String topicNameToUnsubscribe = commitContext.getTopicName();
               LOGGER.info(
-                  "Termination occurred when SubscriptionConsumer {} polling topics {}, unsubscribe topic {} on DN {} automatically",
+                  "Termination occurred when SubscriptionConsumer {} polling topics {}, unsubscribe topic {} automatically",
                   this,
                   topicNames,
-                  topicNameToUnsubscribe,
-                  commitContext.getDataNodeId());
+                  topicNameToUnsubscribe);
               unsubscribe(topicNameToUnsubscribe);
               // TODO: notify user by ex?
               break;
@@ -780,7 +796,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
     for (final SubscriptionProvider provider : providers) {
       try {
-        provider.subscribe(topicNames);
+        subscribedTopicNames = provider.subscribe(topicNames);
         return;
       } catch (final Exception e) {
         LOGGER.warn(
@@ -810,7 +826,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
     for (final SubscriptionProvider provider : providers) {
       try {
-        provider.unsubscribe(topicNames);
+        subscribedTopicNames = provider.unsubscribe(topicNames);
         return;
       } catch (final Exception e) {
         LOGGER.warn(
