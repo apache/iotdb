@@ -146,13 +146,13 @@ public class LoadTsFileManager {
   }
 
   private void recover() {
-    if (!Arrays.stream(LOAD_BASE_DIRS).map(File::new).allMatch(File::exists)) {
+    final File[] baseDirs = Arrays.stream(LOAD_BASE_DIRS).map(File::new).toArray(File[]::new);
+    if (!Arrays.stream(baseDirs).allMatch(File::exists)) {
       return;
     }
 
     final File[] files =
-        Arrays.stream(LOAD_BASE_DIRS)
-            .map(File::new)
+        Arrays.stream(baseDirs)
             .flatMap(
                 dir -> {
                   File[] tmpfiles = dir.listFiles();
@@ -160,20 +160,24 @@ public class LoadTsFileManager {
                 })
             .toArray(File[]::new);
 
-    for (final File taskDir : files) {
-      String uuid = taskDir.getName();
-      TsFileWriterManager writerManager = new TsFileWriterManager(taskDir);
+    Arrays.stream(files)
+        .parallel()
+        .forEach(
+            taskDir -> {
+              String uuid = taskDir.getName();
+              TsFileWriterManager writerManager = new TsFileWriterManager(taskDir);
 
-      uuid2WriterManager.put(uuid, writerManager);
-      writerManager.close();
+              uuid2WriterManager.put(uuid, writerManager);
+              writerManager.close();
 
-      synchronized (uuid2CleanupTask) {
-        final CleanupTask cleanupTask =
-            new CleanupTask(uuid, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000);
-        uuid2CleanupTask.put(uuid, cleanupTask);
-        cleanupTaskQueue.add(cleanupTask);
-      }
-    }
+              synchronized (uuid2CleanupTask) {
+                final CleanupTask cleanupTask =
+                    new CleanupTask(
+                        uuid, CONFIG.getLoadCleanupTaskExecutionDelayTimeSeconds() * 1000);
+                uuid2CleanupTask.put(uuid, cleanupTask);
+                cleanupTaskQueue.add(cleanupTask);
+              }
+            });
   }
 
   public void writeToDataRegion(DataRegion dataRegion, LoadTsFilePieceNode pieceNode, String uuid)
