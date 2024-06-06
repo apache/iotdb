@@ -54,7 +54,6 @@ cat <<EOL > "$target_properties_file"
 # specific language governing permissions and limitations
 # under the License.
 #
-
 EOL
 
 grep -v '^\s*#' "$target_template_file" | grep -v '^\s*$' >> "$target_properties_file"

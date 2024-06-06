@@ -384,7 +384,7 @@
                         <artifactId>exec-maven-plugin</artifactId>
                         <version>3.1.0</version>
                         <executions>
-                            <!-- Unix execution -->
+                            <!-- Windows execution -->
                             <execution>
                                 <id>generate-properties-windows</id>
                                 <phase>compile</phase>
