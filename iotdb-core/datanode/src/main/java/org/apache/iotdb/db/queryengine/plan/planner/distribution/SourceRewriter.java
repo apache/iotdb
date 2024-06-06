@@ -774,6 +774,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                   RegionScanNode regionScanNode = (RegionScanNode) node.clone();
                   regionScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
                   regionScanNode.setRegionReplicaSet(dataRegion);
+                  regionScanNode.setOutputCount(node.isOutputCount());
                   regionScanNode.clearPath();
                   return regionScanNode;
                 })
