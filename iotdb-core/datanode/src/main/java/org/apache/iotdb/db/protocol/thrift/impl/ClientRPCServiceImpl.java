@@ -2318,9 +2318,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setStatus(getNotLoggedInStatus());
         return resp;
       }
-      resp.setContent(
-          ConfigurationFileUtils.readConfigFileContent(
-              IoTDBDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME + ".template")));
+      resp.setContent(ConfigurationFileUtils.readConfigurationTemplateFile());
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       return resp;
     } catch (Exception e) {

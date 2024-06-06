@@ -172,6 +172,15 @@
         </dependency>
     </dependencies>
     <build>
+        <resources>
+            <resource>
+                <directory>${project.basedir}/src/assembly/resources/conf</directory>
+                <includes>
+                    <include>iotdb-system.properties</include>
+                </includes>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
         <plugins>
             <!--
         Generate an OSGI compatible MANIFEST file.

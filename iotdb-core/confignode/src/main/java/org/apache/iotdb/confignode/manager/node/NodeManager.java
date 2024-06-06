@@ -758,13 +758,20 @@ public class NodeManager {
       if (nodeId >= 0 && nodeId != configNode.getConfigNodeId()) {
         continue;
       }
-      TSStatus status =
-          (TSStatus)
-              SyncConfigNodeClientPool.getInstance()
-                  .sendSyncRequestToConfigNodeWithRetry(
-                      configNode.getInternalEndPoint(),
-                      new TSetConfigurationReq(req.getConfigs(), configNode.getConfigNodeId()),
-                      ConfigNodeRequestType.SET_CONFIGURATION);
+      TSStatus status = null;
+      try {
+        status =
+            (TSStatus)
+                SyncConfigNodeClientPool.getInstance()
+                    .sendSyncRequestToConfigNodeWithRetry(
+                        configNode.getInternalEndPoint(),
+                        new TSetConfigurationReq(req.getConfigs(), configNode.getConfigNodeId()),
+                        ConfigNodeRequestType.SET_CONFIGURATION);
+      } catch (Exception e) {
+        status =
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), e.getMessage());
+      }
       responseList.add(status);
     }
     return responseList;

@@ -27,6 +27,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.net.URL;
 import java.nio.file.Files;
@@ -143,6 +145,25 @@ public class ConfigurationFileUtils {
       return "";
     }
     return readConfigLines(f);
+  }
+
+  public static String readConfigurationTemplateFile() throws IOException {
+    StringBuilder content = new StringBuilder();
+    try (InputStream inputStream =
+            ConfigurationFileUtils.class
+                .getClassLoader()
+                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_NAME);
+        InputStreamReader isr = new InputStreamReader(inputStream);
+        BufferedReader reader = new BufferedReader(isr)) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        content.append(line).append(System.lineSeparator());
+      }
+    } catch (IOException e) {
+      logger.warn("Failed to read configuration template", e);
+      throw e;
+    }
+    return content.toString();
   }
 
   public static List<String> filterImmutableConfigItems(Properties newConfigItems) {
