@@ -232,7 +232,7 @@ public class SubscriptionSessionExample {
                 try (final SubscriptionPushConsumer consumer =
                     new SubscriptionPushConsumer.Builder()
                         .consumerId("c" + idx)
-                        .consumerGroupId("cg2")
+                        .consumerGroupId("cg3")
                         .ackStrategy(AckStrategy.AFTER_CONSUME)
                         .consumeListener(
                             message -> {

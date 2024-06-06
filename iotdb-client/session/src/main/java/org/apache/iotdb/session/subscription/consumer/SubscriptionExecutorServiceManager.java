@@ -34,7 +34,7 @@ final class SubscriptionExecutorServiceManager {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionExecutorServiceManager.class);
 
-  private static final long AWAIT_TERMINATION_TIMEOUT_MS = 10_000L;
+  private static final long AWAIT_TERMINATION_TIMEOUT_MS = 15_000L;
 
   private static final String CONTROL_FLOW_EXECUTOR_NAME = "SubscriptionControlFlowExecutor";
   private static final String UPSTREAM_DATA_FLOW_EXECUTOR_NAME =

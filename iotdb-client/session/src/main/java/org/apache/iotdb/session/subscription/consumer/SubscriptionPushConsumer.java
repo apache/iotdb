@@ -161,6 +161,10 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
         return;
       }
 
+      if (subscribedTopicNames.isEmpty()) {
+        return;
+      }
+
       try {
         final List<SubscriptionMessage> messages = poll(subscribedTopicNames, autoPollTimeoutMs);
 

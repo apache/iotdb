@@ -330,16 +330,16 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final SubscriptionPollTimer timer =
         new SubscriptionPollTimer(System.currentTimeMillis(), timeoutMs);
 
+    // check topic names
+    topicNames.stream()
+        .filter(topicName -> !subscribedTopicNames.contains(topicName))
+        .forEach(
+            topicName ->
+                LOGGER.warn(
+                    "SubscriptionConsumer {} does not subscribe to topic {}", this, topicName));
+
     do {
       try {
-        // check topic names
-        topicNames.stream()
-            .filter(topicName -> !subscribedTopicNames.contains(topicName))
-            .forEach(
-                topicName ->
-                    LOGGER.warn(
-                        "SubscriptionConsumer {} does not subscribe to topic {}", this, topicName));
-
         // poll tablets or file
         for (final SubscriptionPollResponse pollResponse : pollInternal(topicNames)) {
           final short responseType = pollResponse.getResponseType();
@@ -607,6 +607,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     try {
       final SubscriptionProvider provider = providers.getNextAvailableProvider();
       if (Objects.isNull(provider) || !provider.isAvailable()) {
+        if (isClosed()) {
+          return Collections.emptyList();
+        }
         throw new SubscriptionConnectionException(
             String.format(
                 "Cluster has no available subscription providers when %s poll topic %s",
@@ -632,6 +635,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     try {
       final SubscriptionProvider provider = providers.getProvider(dataNodeId);
       if (Objects.isNull(provider) || !provider.isAvailable()) {
+        if (isClosed()) {
+          return Collections.emptyList();
+        }
         throw new SubscriptionConnectionException(
             String.format(
                 "something unexpected happened when %s poll file from subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
@@ -691,6 +697,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     try {
       final SubscriptionProvider provider = providers.getProvider(dataNodeId);
       if (Objects.isNull(provider) || !provider.isAvailable()) {
+        if (isClosed()) {
+          return;
+        }
         throw new SubscriptionConnectionException(
             String.format(
                 "something unexpected happened when %s commit (nack: %s) messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
