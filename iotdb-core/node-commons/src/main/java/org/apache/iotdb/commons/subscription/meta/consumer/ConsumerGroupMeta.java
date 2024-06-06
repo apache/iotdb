@@ -82,10 +82,9 @@ public class ConsumerGroupMeta {
     if (!Objects.equals(currentMeta.creationTime, updatedMeta.creationTime)) {
       return Collections.emptySet();
     }
-    if (!Objects.equals(
-        currentMeta.consumerIdToConsumerMeta, updatedMeta.consumerIdToConsumerMeta)) {
-      return Collections.emptySet();
-    }
+
+    // no need to check consumerIdToConsumerMeta here to avoid potential inconsistent meta
+
     final Set<String> unsubscribedTopicNames = new HashSet<>();
     currentMeta
         .topicNameToSubscribedConsumerIdSet

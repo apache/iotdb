@@ -114,7 +114,7 @@ public class SubscriptionConsumerAgent {
       return;
     }
 
-    // remove unbounded prefetching queue
+    // unbind and remove prefetching queue
     final Set<String> topicsUnsubByGroup =
         ConsumerGroupMeta.getTopicsUnsubByGroup(metaInAgent, metaFromCoordinator);
     for (final String topicName : topicsUnsubByGroup) {
