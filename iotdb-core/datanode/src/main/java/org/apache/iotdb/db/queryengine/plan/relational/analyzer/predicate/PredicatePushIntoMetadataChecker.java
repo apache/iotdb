@@ -40,11 +40,15 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
 
-public class PredicatePushIntoIndexScanChecker extends PredicateVisitor<Boolean, Void> {
+public class PredicatePushIntoMetadataChecker extends PredicateVisitor<Boolean, Void> {
 
   private final Set<String> idOrAttributeColumnNames;
 
-  public PredicatePushIntoIndexScanChecker(Set<String> idOrAttributeColumnNames) {
+  public static boolean check(Set<String> idOrAttributeColumnNames, Expression expression) {
+    return new PredicatePushIntoMetadataChecker(idOrAttributeColumnNames).process(expression);
+  }
+
+  public PredicatePushIntoMetadataChecker(Set<String> idOrAttributeColumnNames) {
     this.idOrAttributeColumnNames = idOrAttributeColumnNames;
   }
 

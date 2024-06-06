@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
+import org.apache.iotdb.db.relational.sql.tree.Expression;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 
@@ -76,6 +77,9 @@ public class MPPQueryContext {
   QueryPlanStatistics queryPlanStatistics = null;
 
   private boolean skipSchemaValidate = false;
+
+  // 0 : metadataExpressions, 1 : expressionsPushDownToOperator, 2 : expressionsCannotPushDown
+  public List<List<Expression>> splitPredicateExpression;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
