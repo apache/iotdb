@@ -631,7 +631,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   }
                   consumer.commitSync(messages);
                 }
-                // Already unsubscribe the topic implicitly
+                // Exiting the loop represents passing the awaitility test, at this point the result
+                // of 'show subscription' is empty, so there is no need to explicitly unsubscribe.
               } catch (final Exception e) {
                 e.printStackTrace();
                 // Avoid failure
