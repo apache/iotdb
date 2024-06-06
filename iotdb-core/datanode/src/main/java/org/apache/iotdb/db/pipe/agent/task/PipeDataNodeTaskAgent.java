@@ -620,7 +620,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   ///////////////////////// Pipe Consensus /////////////////////////
 
-  public ProgressIndex getPipeTaskProgressIndex(String pipeName, int consensusGroupId) {
+  public ProgressIndex getPipeTaskProgressIndex(final String pipeName, final int consensusGroupId) {
     if (!tryReadLockWithTimeOut(10)) {
       throw new PipeException(
           String.format(
