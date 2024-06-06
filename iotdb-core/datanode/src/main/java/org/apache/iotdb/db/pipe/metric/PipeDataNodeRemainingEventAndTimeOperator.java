@@ -41,8 +41,6 @@ class PipeDataNodeRemainingEventAndTimeOperator {
 
   private final ConcurrentMap<IoTDBDataRegionExtractor, IoTDBDataRegionExtractor>
       dataRegionExtractors = new ConcurrentHashMap<>();
-  private final ConcurrentMap<PipeProcessorSubtask, PipeProcessorSubtask> dataRegionProcessors =
-      new ConcurrentHashMap<>();
   private final ConcurrentMap<PipeConnectorSubtask, PipeConnectorSubtask> dataRegionConnectors =
       new ConcurrentHashMap<>();
   private final ConcurrentMap<IoTDBSchemaRegionExtractor, IoTDBSchemaRegionExtractor>
