@@ -39,7 +39,7 @@ import java.util.Set;
 public class TopicMeta {
 
   private String topicName;
-  private long creationTime;
+  private long creationTime; // raw timestamp based on system timestamp precision
   private TopicConfig config;
 
   private Set<String> subscribedConsumerGroupIds;

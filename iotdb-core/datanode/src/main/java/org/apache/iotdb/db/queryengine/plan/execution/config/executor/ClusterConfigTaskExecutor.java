@@ -49,6 +49,7 @@ import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -1917,7 +1918,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // Validate topic config
     final TopicMeta temporaryTopicMeta =
-        new TopicMeta(topicName, System.currentTimeMillis(), topicAttributes);
+        new TopicMeta(
+            topicName,
+            CommonDateTimeUtils.convertMilliTimeWithPrecision(
+                System.currentTimeMillis(),
+                CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
+            topicAttributes);
     try {
       PipeAgent.plugin().validateExtractor(temporaryTopicMeta.generateExtractorAttributes());
       PipeAgent.plugin().validateProcessor(temporaryTopicMeta.generateProcessorAttributes());
