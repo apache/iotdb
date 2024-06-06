@@ -27,6 +27,7 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1275,5 +1276,13 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   public List<String> getSgColumns() {
     return sgColumns;
+  }
+
+  public String getColumnTypeByIndex(int columnIndex) {
+    if (columnIndex == 1) {
+      // time column
+      return TSDataType.TIMESTAMP.name();
+    }
+    return columnTypeList.get(columnIndex - 2);
   }
 }
