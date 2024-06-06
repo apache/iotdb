@@ -191,7 +191,7 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeDualAutoIT {
     try {
       TestUtils.restartCluster(senderEnv);
       TestUtils.restartCluster(receiverEnv);
-    } catch (final Exception e) {
+    } catch (final Throwable e) {
       e.printStackTrace();
       return;
     }

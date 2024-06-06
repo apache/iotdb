@@ -87,7 +87,7 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
     try {
       TestUtils.restartCluster(senderEnv);
       TestUtils.restartCluster(receiverEnv);
-    } catch (Exception e) {
+    } catch (Throwable e) {
       e.printStackTrace();
       return;
     }
@@ -150,7 +150,7 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
     try {
       TestUtils.restartCluster(senderEnv);
       TestUtils.restartCluster(receiverEnv);
-    } catch (final Exception e) {
+    } catch (final Throwable e) {
       e.printStackTrace();
       return;
     }

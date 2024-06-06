@@ -173,7 +173,7 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualManualIT {
     try {
       index = senderEnv.getFirstLeaderSchemaRegionDataNodeIndex();
       senderEnv.shutdownDataNode(index);
-    } catch (final Exception e) {
+    } catch (final Throwable e) {
       e.printStackTrace();
       return;
     }

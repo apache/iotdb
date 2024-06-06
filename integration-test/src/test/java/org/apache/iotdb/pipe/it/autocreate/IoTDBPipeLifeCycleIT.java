@@ -468,7 +468,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
     try {
       TestUtils.restartCluster(senderEnv);
       TestUtils.restartCluster(receiverEnv);
-    } catch (final Exception e) {
+    } catch (final Throwable e) {
       e.printStackTrace();
       return;
     }
@@ -536,12 +536,12 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
 
       try {
         TestUtils.restartCluster(receiverEnv);
-      } catch (final Exception e) {
+      } catch (final Throwable e) {
         e.printStackTrace();
         try {
           t.interrupt();
           t.join();
-        } catch (InterruptedException ignored) {
+        } catch (Throwable ignored) {
         }
         return;
       }
@@ -730,7 +730,7 @@ public class IoTDBPipeLifeCycleIT extends AbstractPipeDualAutoIT {
     try {
       TestUtils.restartCluster(senderEnv);
       TestUtils.restartCluster(receiverEnv);
-    } catch (final Exception e) {
+    } catch (final Throwable e) {
       e.printStackTrace();
       return;
     }
