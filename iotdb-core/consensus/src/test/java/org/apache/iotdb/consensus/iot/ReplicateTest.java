@@ -100,26 +100,37 @@ public class ReplicateTest {
 
   private void initServer() throws IOException {
     Assume.assumeTrue(checkPortAvailable());
-    for (int i = 0; i < peers.size(); i++) {
-      int finalI = i;
-      servers.add(
-          (IoTConsensus)
-              ConsensusFactory.getConsensusImpl(
-                      ConsensusFactory.IOT_CONSENSUS,
-                      ConsensusConfig.newBuilder()
-                          .setThisNodeId(peers.get(i).getNodeId())
-                          .setThisNode(peers.get(i).getEndpoint())
-                          .setStorageDir(peersStorage.get(i).getAbsolutePath())
-                          .setConsensusGroupType(TConsensusGroupType.DataRegion)
-                          .build(),
-                      groupId -> stateMachines.get(finalI))
-                  .orElseThrow(
-                      () ->
-                          new IllegalArgumentException(
-                              String.format(
-                                  ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                                  ConsensusFactory.IOT_CONSENSUS))));
-      servers.get(i).start();
+    try {
+      for (int i = 0; i < peers.size(); i++) {
+        int finalI = i;
+        servers.add(
+            (IoTConsensus)
+                ConsensusFactory.getConsensusImpl(
+                        ConsensusFactory.IOT_CONSENSUS,
+                        ConsensusConfig.newBuilder()
+                            .setThisNodeId(peers.get(i).getNodeId())
+                            .setThisNode(peers.get(i).getEndpoint())
+                            .setStorageDir(peersStorage.get(i).getAbsolutePath())
+                            .setConsensusGroupType(TConsensusGroupType.DataRegion)
+                            .build(),
+                        groupId -> stateMachines.get(finalI))
+                    .orElseThrow(
+                        () ->
+                            new IllegalArgumentException(
+                                String.format(
+                                    ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                                    ConsensusFactory.IOT_CONSENSUS))));
+        servers.get(i).start();
+      }
+    } catch (IOException e) {
+      if (e.getCause() instanceof StartupException) {
+        // just succeed when can not bind socket
+        logger.info("Can not start IoTConsensus because", e);
+        Assume.assumeTrue(false);
+      } else {
+        logger.error("Failed because", e);
+        Assert.fail("Failed because " + e.getMessage());
+      }
     }
   }
 
