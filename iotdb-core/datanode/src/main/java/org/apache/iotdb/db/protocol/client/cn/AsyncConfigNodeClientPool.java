@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client.async;
+package org.apache.iotdb.db.protocol.client.cn;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -26,13 +26,6 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
-import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncConfigNodeClientHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.AbstractAsyncRPCHandler2;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler2;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskRPCHandler;
-
-import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskToConfigNodeRPCHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -142,15 +135,12 @@ public class AsyncConfigNodeClientPool {
             Object req = clientHandler.getRequest(requestId);
             AbstractAsyncRPCHandler2<?> handler =
                     clientHandler.createAsyncRPCHandler(requestId, targetConfigNode);
-            AsyncTSStatusRPCHandler2 defaultHandler = null;
-            if (handler instanceof AsyncTSStatusRPCHandler2) {
-                defaultHandler = (AsyncTSStatusRPCHandler2) handler;
-            }
+            AsyncTSStatusRPCHandler2 defaultHandler = (AsyncTSStatusRPCHandler2) handler;
 
             switch (clientHandler.getRequestType()) {
-                case SUBMIT_TEST_CONNECTION_TASK:
-                    client.submitTestConnectionTask((TNodeLocations) req, (SubmitTestConnectionTaskToConfigNodeRPCHandler) handler);
-                    break;
+//                case SUBMIT_TEST_CONNECTION_TASK:
+//                    client.submitTestConnectionTask((TNodeLocations) req, (SubmitTestConnectionTaskToConfigNodeRPCHandler) handler);
+//                    break;
                 case TEST_CONNECTION:
                     client.testConnection(defaultHandler);
                     break;

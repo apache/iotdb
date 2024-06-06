@@ -83,6 +83,7 @@ public class TestConnectionTask implements IConfigTask {
       if (result.isSuccess()) {
         connectionStatus = "up";
       } else {
+//        connectionStatus = addLineBreak("down" + " (" + result.getReason() + ")", 60);
         connectionStatus = "down" + " (" + result.getReason() + ")";
       }
       builder
@@ -121,5 +122,17 @@ public class TestConnectionTask implements IConfigTask {
       }
       return endPointToString(sender1).compareTo(endPointToString(sender2));
     });
+  }
+
+  private static String addLineBreak(String origin, int interval) {
+    if (origin.length() < interval) {
+      return origin;
+    }
+    StringBuilder builder = new StringBuilder(origin.substring(0, interval));
+    for (int i = interval; i < origin.length(); i += interval) {
+      builder.append("\n");
+      builder.append(origin, i, Math.min(origin.length(), i+interval));
+    }
+    return builder.toString();
   }
 }

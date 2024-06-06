@@ -34,13 +34,13 @@ public class SubmitTestConnectionTaskToConfigNodeRPCHandler extends AbstractAsyn
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubmitTestConnectionTaskToConfigNodeRPCHandler.class);
 
-  protected SubmitTestConnectionTaskToConfigNodeRPCHandler(
-      ConfigNodeRequestType requestType,
-      int requestId,
-      TConfigNodeLocation targetConfigNode,
-      Map<Integer, TConfigNodeLocation> configNodeLocationMap,
-      Map<Integer, TTestConnectionResp> responseMap,
-      CountDownLatch countDownLatch) {
+  public SubmitTestConnectionTaskToConfigNodeRPCHandler(
+          ConfigNodeRequestType requestType,
+          int requestId,
+          TConfigNodeLocation targetConfigNode,
+          Map<Integer, TConfigNodeLocation> configNodeLocationMap,
+          Map<Integer, TTestConnectionResp> responseMap,
+          CountDownLatch countDownLatch) {
     super(requestType, requestId, targetConfigNode, configNodeLocationMap, responseMap, countDownLatch);
   }
 

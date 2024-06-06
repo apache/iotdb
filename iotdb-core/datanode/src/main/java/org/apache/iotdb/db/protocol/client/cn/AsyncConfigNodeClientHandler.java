@@ -17,15 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client.async.handlers;
+package org.apache.iotdb.db.protocol.client.cn;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
-import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.AbstractAsyncRPCHandler2;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler2;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskToConfigNodeRPCHandler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -152,14 +147,6 @@ public class AsyncConfigNodeClientHandler<Q, R> {
             int requestId, TConfigNodeLocation targetConfigNode) {
         switch (requestType) {
             case SUBMIT_TEST_CONNECTION_TASK:
-                return new SubmitTestConnectionTaskToConfigNodeRPCHandler(
-                        requestType,
-                        requestId,
-                        targetConfigNode,
-                        configNodeLocationMap,
-                        (Map<Integer, TTestConnectionResp>) responseMap,
-                        countDownLatch
-                );
             case TEST_CONNECTION:
             default:
                 return new AsyncTSStatusRPCHandler2(

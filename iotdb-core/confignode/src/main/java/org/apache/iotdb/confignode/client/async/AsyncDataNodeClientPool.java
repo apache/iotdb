@@ -196,7 +196,11 @@ public class AsyncDataNodeClientPool {
       Object req = clientHandler.getRequest(requestId);
       AbstractAsyncRPCHandler<?> handler =
           clientHandler.createAsyncRPCHandler(requestId, targetDataNode);
-      AsyncTSStatusRPCHandler defaultHandler = (AsyncTSStatusRPCHandler) handler;
+
+      AsyncTSStatusRPCHandler defaultHandler = null;
+      if (handler instanceof AsyncTSStatusRPCHandler) {
+        defaultHandler = (AsyncTSStatusRPCHandler) handler;
+      }
 
       switch (clientHandler.getRequestType()) {
         case SET_TTL:
@@ -376,8 +380,10 @@ public class AsyncDataNodeClientPool {
           break;
         case SUBMIT_TEST_CONNECTION_TASK:
           client.submitTestConnectionTask((TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler);
+          break;
         case TEST_CONNECTION:
           client.testConnection(defaultHandler);
+          break;
         default:
           LOGGER.error(
               "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",

@@ -32,7 +32,7 @@ public class SubmitTestConnectionTaskRPCHandler extends AbstractAsyncRPCHandler<
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubmitTestConnectionTaskRPCHandler.class);
 
-  protected SubmitTestConnectionTaskRPCHandler(
+  public SubmitTestConnectionTaskRPCHandler(
       DataNodeRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
@@ -46,11 +46,15 @@ public class SubmitTestConnectionTaskRPCHandler extends AbstractAsyncRPCHandler<
   public void onComplete(TTestConnectionResp resp) {
     responseMap.put(requestId, resp);
     dataNodeLocationMap.remove(requestId);
+    countDownLatch.countDown();
   }
 
   // TODO: 什么情况下会error？
   @Override
   public void onError(Exception e) {
     LOGGER.error("gg", e);
+    responseMap.put(requestId, new TTestConnectionResp());
+    dataNodeLocationMap.remove(requestId);
+    countDownLatch.countDown();
   }
 }
