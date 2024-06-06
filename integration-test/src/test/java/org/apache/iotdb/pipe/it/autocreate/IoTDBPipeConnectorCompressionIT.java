@@ -22,6 +22,8 @@ package org.apache.iotdb.pipe.it.autocreate;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
@@ -36,10 +38,16 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2AutoCreateSchema.class})
@@ -177,6 +185,124 @@ public class IoTDBPipeConnectorCompressionIT extends AbstractPipeDualAutoIT {
           "select count(*) from root.**",
           "count(root.db.d1.s1),",
           Collections.singleton("8,"));
+    }
+  }
+
+  @Test
+  public void testZstdCompressorLevel() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.db.d1(time, s1) values (1, 1)",
+              "insert into root.db.d1(time, s2) values (1, 1)",
+              "insert into root.db.d1(time, s3) values (1, 1)",
+              "insert into root.db.d1(time, s4) values (1, 1)",
+              "insert into root.db.d1(time, s5) values (1, 1)",
+              "flush"))) {
+        return;
+      }
+
+      // Create 5 pipes with different zstd compression levels, p4 and p5 should fail.
+
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
+        statement.execute(
+            String.format(
+                "create pipe p1"
+                    + " with extractor ('extractor.pattern'='root.db.d1.s1')"
+                    + " with connector ("
+                    + "'connector.ip'='%s',"
+                    + "'connector.port'='%s',"
+                    + "'connector.compressor'='zstd, zstd',"
+                    + "'connector.compressor.zstd.level'='3')",
+                receiverIp, receiverPort));
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
+        statement.execute(
+            String.format(
+                "create pipe p2"
+                    + " with extractor ('extractor.pattern'='root.db.d1.s2')"
+                    + " with connector ("
+                    + "'connector.ip'='%s',"
+                    + "'connector.port'='%s',"
+                    + "'connector.compressor'='zstd, zstd',"
+                    + "'connector.compressor.zstd.level'='22')",
+                receiverIp, receiverPort));
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
+        statement.execute(
+            String.format(
+                "create pipe p3"
+                    + " with extractor ('extractor.pattern'='root.db.d1.s3')"
+                    + " with connector ("
+                    + "'connector.ip'='%s',"
+                    + "'connector.port'='%s',"
+                    + "'connector.compressor'='zstd, zstd',"
+                    + "'connector.compressor.zstd.level'='-131072')",
+                receiverIp, receiverPort));
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
+        statement.execute(
+            String.format(
+                "create pipe p4"
+                    + " with extractor ('extractor.pattern'='root.db.d1.s4')"
+                    + " with connector ("
+                    + "'connector.ip'='%s',"
+                    + "'connector.port'='%s',"
+                    + "'connector.compressor'='zstd, zstd',"
+                    + "'connector.compressor.zstd.level'='-131073')",
+                receiverIp, receiverPort));
+        fail();
+      } catch (SQLException e) {
+        // Make sure the error message in IoTDBConnector.java is returned
+        Assert.assertTrue(e.getMessage().contains("Zstd compression level should be in the range"));
+      }
+
+      try (final Connection connection = senderEnv.getConnection();
+          final Statement statement = connection.createStatement()) {
+        statement.execute(
+            String.format(
+                "create pipe p5"
+                    + " with extractor ('extractor.pattern'='root.db.d1.s5')"
+                    + " with connector ("
+                    + "'connector.ip'='%s',"
+                    + "'connector.port'='%s',"
+                    + "'connector.compressor'='zstd, zstd',"
+                    + "'connector.compressor.zstd.level'='23')",
+                receiverIp, receiverPort));
+        fail();
+      } catch (SQLException e) {
+        // Make sure the error message in IoTDBConnector.java is returned
+        Assert.assertTrue(e.getMessage().contains("Zstd compression level should be in the range"));
+      }
+
+      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      Assert.assertEquals(3, showPipeResult.size());
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("3,"));
     }
   }
 }
