@@ -462,11 +462,14 @@ public abstract class PipeTaskAgent {
   protected abstract Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromCoordinator)
       throws IllegalPathException;
 
-  protected void dropPipe(final String pipeName, final long creationTime) {
+  /**
+   * @return {@code true} if a pipe has indeed been dropped, otherwise {@code false}.
+   */
+  protected boolean dropPipe(final String pipeName, final long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
     if (!checkBeforeDropPipe(existedPipeMeta, pipeName, creationTime)) {
-      return;
+      return false;
     }
 
     // Mark pipe meta as dropped first. This will help us detect if the pipe meta has been dropped
@@ -483,7 +486,7 @@ public abstract class PipeTaskAgent {
               + "Skip dropping.",
           pipeName,
           creationTime);
-      return;
+      return false;
     }
 
     // Trigger drop() method for each pipe task by parallel stream
@@ -496,13 +499,18 @@ public abstract class PipeTaskAgent {
 
     // Remove pipe meta from pipe meta keeper
     pipeMetaKeeper.removePipeMeta(pipeName);
+
+    return true;
   }
 
-  protected void dropPipe(final String pipeName) {
+  /**
+   * @return {@code true} if a pipe has indeed been dropped, otherwise {@code false}.
+   */
+  protected boolean dropPipe(final String pipeName) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
     if (!checkBeforeDropPipe(existedPipeMeta, pipeName)) {
-      return;
+      return false;
     }
 
     // Mark pipe meta as dropped first. This will help us detect if the pipe meta has been dropped
@@ -516,7 +524,7 @@ public abstract class PipeTaskAgent {
     if (pipeTasks == null) {
       LOGGER.info(
           "Pipe {} has already been dropped or has not been created. Skip dropping.", pipeName);
-      return;
+      return false;
     }
 
     // Trigger drop() method for each pipe task by parallel stream
@@ -529,6 +537,8 @@ public abstract class PipeTaskAgent {
 
     // Remove pipe meta from pipe meta keeper
     pipeMetaKeeper.removePipeMeta(pipeName);
+
+    return true;
   }
 
   private void startPipe(final String pipeName, final long creationTime) {

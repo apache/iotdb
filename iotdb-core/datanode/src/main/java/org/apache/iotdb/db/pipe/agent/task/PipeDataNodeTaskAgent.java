@@ -238,16 +238,22 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected void dropPipe(final String pipeName, final long creationTime) {
-    super.dropPipe(pipeName, creationTime);
+  protected boolean dropPipe(final String pipeName, final long creationTime) {
+    if (!super.dropPipe(pipeName, creationTime)) {
+      return false;
+    }
 
     PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
         .deregister(pipeName + "_" + creationTime);
+
+    return true;
   }
 
   @Override
-  protected void dropPipe(final String pipeName) {
-    super.dropPipe(pipeName);
+  protected boolean dropPipe(final String pipeName) {
+    if (!super.dropPipe(pipeName)) {
+      return false;
+    }
 
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     if (Objects.nonNull(pipeMeta)) {
@@ -255,6 +261,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
           .deregister(pipeName + "_" + creationTime);
     }
+
+    return true;
   }
 
   public void stopAllPipesWithCriticalException() {
