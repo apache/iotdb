@@ -14,6 +14,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -119,6 +120,19 @@ public class PruneUnUsedColumns implements RelationalPlanOptimizer {
       }
       node.setOutputSymbols(newOutputSymbols);
       node.setAssignments(newAssignments);
+
+      int IDIdx = 0, attributeIdx = 0;
+      Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>(node.getAssignments().size());
+      for (Symbol symbol : node.getOutputSymbols()) {
+        ColumnSchema columnSchema = node.getAssignments().get(symbol);
+        if (TsTableColumnCategory.ID.equals(columnSchema.getColumnCategory())) {
+          idAndAttributeIndexMap.put(symbol, IDIdx++);
+        } else if (TsTableColumnCategory.ATTRIBUTE.equals(columnSchema.getColumnCategory())) {
+          idAndAttributeIndexMap.put(symbol, attributeIdx++);
+        }
+      }
+      node.setIdAndAttributeIndexMap(idAndAttributeIndexMap);
+
       return node;
     }
   }
