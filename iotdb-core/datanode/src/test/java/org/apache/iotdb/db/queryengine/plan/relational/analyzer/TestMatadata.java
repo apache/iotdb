@@ -179,7 +179,9 @@ public class TestMatadata implements Metadata {
       List<Expression> expressionList,
       List<String> attributeColumns) {
     return Arrays.asList(
-        new DeviceEntry(new StringArrayDeviceID("t1", "t2", "t3"), Arrays.asList("a1", "a2")));
+        new DeviceEntry(
+            new StringArrayDeviceID("root.testdb", "table1", "t1", "t2", "t3"),
+            Arrays.asList("a1", "a2")));
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

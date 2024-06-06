@@ -16,6 +16,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
@@ -39,6 +40,7 @@ public class PredicatePushDown implements RelationalPlanOptimizer {
       PlanNode planNode,
       Analysis analysis,
       Metadata metadata,
+      IPartitionFetcher partitionFetcher,
       SessionInfo sessionInfo,
       MPPQueryContext context) {
 
