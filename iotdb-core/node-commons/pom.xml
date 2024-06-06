@@ -386,7 +386,7 @@
                         <executions>
                             <!-- Unix execution -->
                             <execution>
-                                <id>generate-config-unix</id>
+                                <id>generate-properties-windows</id>
                                 <phase>compile</phase>
                                 <goals>
                                     <goal>exec</goal>
