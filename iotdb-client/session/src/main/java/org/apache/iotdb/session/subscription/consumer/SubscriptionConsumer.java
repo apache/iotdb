@@ -40,6 +40,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 import org.apache.iotdb.session.subscription.util.RandomStringGenerator;
 import org.apache.iotdb.session.subscription.util.SubscriptionPollTimer;
 import org.apache.iotdb.session.util.SessionUtils;
@@ -69,6 +70,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
+import java.util.stream.Collectors;
 
 abstract class SubscriptionConsumer implements AutoCloseable {
 
@@ -229,9 +231,13 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   public void subscribe(final Set<String> topicNames) throws SubscriptionException {
+    // parse topic names from external source
+    final Set<String> parsedTopicNames =
+        topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+
     providers.acquireReadLock();
     try {
-      subscribeWithRedirection(topicNames);
+      subscribeWithRedirection(parsedTopicNames);
     } finally {
       providers.releaseReadLock();
     }
@@ -246,9 +252,13 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   public void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
+    // parse topic names from external source
+    final Set<String> parsedTopicNames =
+        topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+
     providers.acquireReadLock();
     try {
-      unsubscribeWithRedirection(topicNames);
+      unsubscribeWithRedirection(parsedTopicNames);
     } finally {
       providers.releaseReadLock();
     }
@@ -918,12 +928,12 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
 
     public Builder consumerId(final String consumerId) {
-      this.consumerId = consumerId;
+      this.consumerId = IdentifierUtils.parseIdentifier(consumerId);
       return this;
     }
 
     public Builder consumerGroupId(final String consumerGroupId) {
-      this.consumerGroupId = consumerGroupId;
+      this.consumerGroupId = IdentifierUtils.parseIdentifier(consumerGroupId);
       return this;
     }
 

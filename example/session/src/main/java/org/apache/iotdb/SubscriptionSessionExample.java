@@ -49,7 +49,7 @@ public class SubscriptionSessionExample {
   private static final int PORT = 6667;
 
   private static final String TOPIC_1 = "topic1";
-  private static final String TOPIC_2 = "`topic2`";
+  private static final String TOPIC_2 = "`'topic2'`";
   private static final String TOPIC_3 = "`\"topic3\"`";
 
   public static final long SLEEP_NS = 1_000_000_000L;
@@ -219,7 +219,7 @@ public class SubscriptionSessionExample {
       final Properties config = new Properties();
       config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
       config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_QUERY_VALUE);
-      subscriptionSession.createTopic(TOPIC_1, config);
+      subscriptionSession.createTopic(TOPIC_3, config);
     }
 
     final List<Thread> threads = new ArrayList<>();
@@ -233,7 +233,6 @@ public class SubscriptionSessionExample {
                     new SubscriptionPushConsumer.Builder()
                         .consumerId("c" + idx)
                         .consumerGroupId("cg2")
-                        .fileSaveDir(System.getProperty("java.io.tmpdir"))
                         .ackStrategy(AckStrategy.AFTER_CONSUME)
                         .consumeListener(
                             message -> {
@@ -244,7 +243,7 @@ public class SubscriptionSessionExample {
                             })
                         .buildPushConsumer()) {
                   consumer.open();
-                  consumer.subscribe(TOPIC_1);
+                  consumer.subscribe(TOPIC_3);
                   while (!consumer.getSubscribedTopicNames().isEmpty()) {
                     LockSupport.parkNanos(SLEEP_NS); // wait some time
                   }
