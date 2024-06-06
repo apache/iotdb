@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -88,6 +89,9 @@ public class MPPQueryContext {
   private static final long MEMORY_BATCH_THRESHOLD = 1024L * 1024L;
 
   private final LocalExecutionPlanner LOCAL_EXECUTION_PLANNER = LocalExecutionPlanner.getInstance();
+
+  // 0 : metadataExpressions, 1 : expressionsPushDownToOperator, 2 : expressionsCannotPushDown
+  public List<List<Expression>> splitPredicateExpression;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;

@@ -295,7 +295,7 @@ public class PredicatePushDownTest {
   }
 
   @Test
-  public void testCannotPushDownAlignByTime() {
+  public void testCannotPushDownToOperatorAlignByTime() {
     checkCannotPushDown(
         "select s1, s2 from root.sg.d1 where time > 100 and (s1 > 10 or s2 > 10)",
         new TestPlanBuilder()
