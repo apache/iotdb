@@ -38,9 +38,9 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskL
   private int registeredTaskCount;
 
   public SubscriptionConnectorSubtaskLifeCycle(
-      PipeConnectorSubtaskExecutor executor, // SubscriptionSubtaskExecutor
-      PipeConnectorSubtask subtask, // SubscriptionConnectorSubtask
-      UnboundedBlockingPendingQueue<Event> pendingQueue) {
+      final PipeConnectorSubtaskExecutor executor, // SubscriptionSubtaskExecutor
+      final PipeConnectorSubtask subtask, // SubscriptionConnectorSubtask
+      final UnboundedBlockingPendingQueue<Event> pendingQueue) {
     super(executor, subtask, pendingQueue);
 
     runningTaskCount = 0;
@@ -54,6 +54,7 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskL
     }
 
     if (registeredTaskCount == 0) {
+      // bind prefetching queue
       SubscriptionAgent.broker().bindPrefetchingQueue((SubscriptionConnectorSubtask) subtask);
       executor.register(subtask);
       runningTaskCount = 0;
@@ -72,6 +73,8 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskL
     if (registeredTaskCount <= 0) {
       throw new IllegalStateException("registeredTaskCount <= 0");
     }
+
+    // no need to discard events of pipe
 
     try {
       if (registeredTaskCount > 1) {
@@ -92,44 +95,12 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskL
   }
 
   @Override
-  public synchronized void start() {
-    if (runningTaskCount < 0) {
-      throw new IllegalStateException("runningTaskCount < 0");
-    }
-
-    if (runningTaskCount == 0) {
-      executor.start(subtask.getTaskID());
-    }
-
-    runningTaskCount++;
-    LOGGER.info(
-        "Start subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
-        subtask,
-        runningTaskCount,
-        registeredTaskCount);
-  }
-
-  @Override
-  public synchronized void stop() {
-    if (runningTaskCount <= 0) {
-      throw new IllegalStateException("runningTaskCount <= 0");
-    }
-
-    if (runningTaskCount == 1) {
-      executor.stop(subtask.getTaskID());
-    }
-
-    runningTaskCount--;
-    LOGGER.info(
-        "Stop subtask {}. runningTaskCount: {}, registeredTaskCount: {}",
-        subtask,
-        runningTaskCount,
-        registeredTaskCount);
-  }
-
-  @Override
   public synchronized void close() {
-    executor.deregister(subtask.getTaskID());
-    SubscriptionAgent.broker().unbindPrefetchingQueue((SubscriptionConnectorSubtask) subtask);
+    super.close();
+
+    // unbind prefetching queue
+    final String consumerGroupId = ((SubscriptionConnectorSubtask) subtask).getConsumerGroupId();
+    final String topicName = ((SubscriptionConnectorSubtask) subtask).getTopicName();
+    SubscriptionAgent.broker().unbindPrefetchingQueue(consumerGroupId, topicName, false);
   }
 }

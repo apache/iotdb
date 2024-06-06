@@ -155,7 +155,7 @@ public class SubscriptionBroker {
     }
   }
 
-  public void unbindPrefetchingQueue(final String topicName) {
+  public void unbindPrefetchingQueue(final String topicName, final boolean doRemove) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
@@ -167,28 +167,11 @@ public class SubscriptionBroker {
     prefetchingQueue.cleanup();
     prefetchingQueue.markCompleted();
 
-    // we remove this prefetching queue and deregister metrics when consumers dropping related
-    // subscription...
-  }
-
-  public void removePrefetchingQueue(final String topicName) {
-    final SubscriptionPrefetchingQueue prefetchingQueue =
-        topicNameToPrefetchingQueue.get(topicName);
-    if (Objects.isNull(prefetchingQueue)) {
-      LOGGER.warn("Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
-      return;
+    if (doRemove) {
+      topicNameToPrefetchingQueue.remove(topicName);
+      SubscriptionPrefetchingQueueMetrics.getInstance()
+          .deregister(prefetchingQueue.getPrefetchingQueueId());
     }
-
-    if (!prefetchingQueue.isCompleted()) {
-      LOGGER.warn(
-          "Subscription: prefetching queue bound to topic [{}] is not completed when removing",
-          topicName);
-      return;
-    }
-
-    topicNameToPrefetchingQueue.remove(topicName);
-    SubscriptionPrefetchingQueueMetrics.getInstance()
-        .deregister(prefetchingQueue.getPrefetchingQueueId());
   }
 
   public void executePrefetch(final String topicName) {
