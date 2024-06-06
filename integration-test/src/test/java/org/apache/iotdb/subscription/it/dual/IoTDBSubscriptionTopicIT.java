@@ -631,7 +631,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   }
                   consumer.commitSync(messages);
                 }
-                consumer.unsubscribe(topicName);
+                // Already unsubscribe the topic implicitly
               } catch (final Exception e) {
                 e.printStackTrace();
                 // Avoid failure

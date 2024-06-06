@@ -87,7 +87,8 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   }
 
   @Override
-  protected void executeFromValidate(final ConfigNodeProcedureEnv env) throws SubscriptionException {
+  protected void executeFromValidate(final ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
     LOGGER.info("DropSubscriptionProcedure: executeFromValidate");
 
     subscriptionInfo.get().validateBeforeUnsubscribe(unsubscribeReq);
@@ -264,7 +265,8 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(final ConfigNodeProcedureEnv env) throws IOException {
+  protected void rollbackFromOperateOnDataNodes(final ConfigNodeProcedureEnv env)
+      throws IOException {
     LOGGER.info("DropSubscriptionProcedure: rollbackFromOperateOnDataNodes");
 
     // Push all pipe metas to datanode, may be time-consuming

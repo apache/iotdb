@@ -141,7 +141,8 @@ public class SubscriptionBrokerAgent {
     broker.bindPrefetchingQueue(subtask.getTopicName(), subtask.getInputPendingQueue());
   }
 
-  public void unbindPrefetchingQueue(final String consumerGroupId, final String topicName, final boolean doRemove) {
+  public void unbindPrefetchingQueue(
+      final String consumerGroupId, final String topicName, final boolean doRemove) {
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
       LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupId);
