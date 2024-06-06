@@ -108,6 +108,15 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
   }
 
+  @Override
+  void setUpConfig() {
+    super.setUpConfig();
+
+    // Enable air gap receiver
+    receiverEnv.getConfig().getCommonConfig().setPipeAirGapReceiverEnabled(true);
+  }
+
+  @Override
   @Before
   public void setUp() {
     super.setUp();

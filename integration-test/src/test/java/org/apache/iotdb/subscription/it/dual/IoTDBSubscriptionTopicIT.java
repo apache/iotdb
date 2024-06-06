@@ -506,7 +506,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       session.open();
       final Properties properties = new Properties();
       properties.put(TopicConstant.START_TIME_KEY, "2024-01-32");
-      properties.put(TopicConstant.END_TIME_KEY, "now");
+      properties.put(TopicConstant.END_TIME_KEY, TopicConstant.NOW_TIME_VALUE);
       session.createTopic("topic1", properties);
       fail();
     } catch (final Exception ignored) {
