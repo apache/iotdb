@@ -41,8 +41,8 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     install_requires=[
         "thrift>=0.14.1",
-        "pandas>=1.0.0",
-        "numpy>=1.0.0",
+        "pandas>=1.3.5",
+        "numpy>=1.21.4",
         "sqlalchemy<1.5,>=1.4",
         "sqlalchemy-utils>=0.37.8",
     ],
