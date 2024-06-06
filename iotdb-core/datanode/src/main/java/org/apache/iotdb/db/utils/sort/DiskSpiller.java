@@ -168,4 +168,8 @@ public class DiskSpiller {
   public int getFileSize() {
     return fileIndex;
   }
+
+  public void reset() {
+    fileIndex = 0;
+  }
 }

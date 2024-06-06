@@ -37,24 +37,29 @@ public class SeriesScanOptions {
 
   private Filter globalTimeFilter;
 
-  private Filter pushDownFilter;
+  private final Filter pushDownFilter;
 
   private final long pushDownLimit;
   private final long pushDownOffset;
 
   private final Set<String> allSensors;
 
+  private final boolean pushLimitToEachDevice;
+  private PaginationController paginationController;
+
   public SeriesScanOptions(
       Filter globalTimeFilter,
       Filter pushDownFilter,
       long pushDownLimit,
       long pushDownOffset,
-      Set<String> allSensors) {
+      Set<String> allSensors,
+      boolean pushLimitToEachDevice) {
     this.globalTimeFilter = globalTimeFilter;
     this.pushDownFilter = pushDownFilter;
     this.pushDownLimit = pushDownLimit;
     this.pushDownOffset = pushDownOffset;
     this.allSensors = allSensors;
+    this.pushLimitToEachDevice = pushLimitToEachDevice;
   }
 
   public static SeriesScanOptions getDefaultSeriesScanOptions(IFullPath seriesPath) {
@@ -82,7 +87,14 @@ public class SeriesScanOptions {
   }
 
   public PaginationController getPaginationController() {
-    return new PaginationController(pushDownLimit, pushDownOffset);
+    if (pushLimitToEachDevice) {
+      return new PaginationController(pushDownLimit, pushDownOffset);
+    } else {
+      if (paginationController == null) {
+        paginationController = new PaginationController(pushDownLimit, pushDownOffset);
+      }
+      return paginationController;
+    }
   }
 
   public void setTTL(long dataTTL) {
@@ -114,6 +126,8 @@ public class SeriesScanOptions {
 
     private Set<String> allSensors;
 
+    private boolean pushLimitToEachDevice = true;
+
     public Builder withGlobalTimeFilter(Filter globalTimeFilter) {
       this.globalTimeFilter = globalTimeFilter;
       return this;
@@ -134,13 +148,23 @@ public class SeriesScanOptions {
       return this;
     }
 
+    public Builder withPushLimitToEachDevice(boolean pushLimitToEachDevice) {
+      this.pushLimitToEachDevice = pushLimitToEachDevice;
+      return this;
+    }
+
     public void withAllSensors(Set<String> allSensors) {
       this.allSensors = allSensors;
     }
 
     public SeriesScanOptions build() {
       return new SeriesScanOptions(
-          globalTimeFilter, pushDownFilter, pushDownLimit, pushDownOffset, allSensors);
+          globalTimeFilter,
+          pushDownFilter,
+          pushDownLimit,
+          pushDownOffset,
+          allSensors,
+          pushLimitToEachDevice);
     }
   }
 }

@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.MergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.StreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TopKOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
@@ -63,6 +64,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
@@ -240,6 +242,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(context);
     scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
     scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
+    scanOptionsBuilder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
     scanOptionsBuilder.withAllSensors(new HashSet<>(measurementColumnNames));
 
     Expression pushDownPredicate = node.getPushDownPredicate();
@@ -710,5 +713,55 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 sortItemDataTypeList.add(getTSDataType(typeProvider.getTableModelType(sortItem)));
               }
             });
+  }
+
+  @Override
+  public Operator visitStreamSort(StreamSortNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                StreamSortNode.class.getSimpleName());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+    int sortItemsCount = node.getOrderingScheme().getOrderBy().size();
+
+    List<Integer> sortItemIndexList = new ArrayList<>(sortItemsCount);
+    List<TSDataType> sortItemDataTypeList = new ArrayList<>(sortItemsCount);
+    genSortInformation(
+        node.getOutputSymbols(),
+        node.getOrderingScheme(),
+        sortItemIndexList,
+        sortItemDataTypeList,
+        context.getTypeProvider());
+
+    String filePrefix =
+        IoTDBDescriptor.getInstance().getConfig().getSortTmpDir()
+            + File.separator
+            + operatorContext.getDriverContext().getFragmentInstanceContext().getId().getFullId()
+            + File.separator
+            + operatorContext.getDriverContext().getPipelineId()
+            + File.separator;
+
+    context.getDriverContext().setHaveTmpFile(true);
+    context.getDriverContext().getFragmentInstanceContext().setMayHaveTmpFile(true);
+
+    Operator child = node.getChild().accept(this, context);
+
+    return new StreamSortOperator(
+        operatorContext,
+        child,
+        dataTypes,
+        filePrefix,
+        getComparatorForTable(
+            node.getOrderingScheme().getOrderingList(), sortItemIndexList, sortItemDataTypeList),
+        getComparatorForTable(
+            node.getOrderingScheme()
+                .getOrderingList()
+                .subList(0, node.getStreamCompareKeyEndIndex() + 1),
+            sortItemIndexList.subList(0, node.getStreamCompareKeyEndIndex() + 1),
+            sortItemDataTypeList.subList(0, node.getStreamCompareKeyEndIndex() + 1)),
+        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber());
   }
 }
