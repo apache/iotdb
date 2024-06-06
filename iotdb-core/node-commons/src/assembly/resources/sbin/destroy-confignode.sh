@@ -33,7 +33,12 @@ fi
 nohup bash ${IOTDB_HOME}/sbin/stop-confignode.sh -f >/dev/null 2>&1 &
 rm -rf ${IOTDB_HOME}/data/confignode/ >/dev/null 2>&1 &
 
-IOTDB_CONFIGNODE_CONFIG=${IOTDB_HOME}/conf/iotdb-confignode.properties
+if [ -f "${IOTDB_HOME}/conf/iotdb-system.properties" ]; then
+  IOTDB_CONFIGNODE_CONFIG="${IOTDB_HOME}/conf/iotdb-system.properties"
+else
+  IOTDB_CONFIGNODE_CONFIG="${IOTDB_HOME}/conf/iotdb-confignode.properties"
+fi
+
 cn_system_dir=$(echo $(grep '^cn_system_dir=' ${IOTDB_CONFIGNODE_CONFIG} || echo "data/confignode/system") | sed 's/.*=//')
 cn_consensus_dir=$(echo $(grep '^cn_consensus_dir=' ${IOTDB_CONFIGNODE_CONFIG} || echo "data/confignode/consensus") | sed 's/.*=//')
 

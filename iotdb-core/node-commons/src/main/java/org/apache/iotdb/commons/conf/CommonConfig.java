@@ -36,7 +36,10 @@ import java.util.concurrent.TimeUnit;
 
 public class CommonConfig {
 
-  public static final String CONFIG_NAME = "iotdb-common.properties";
+  public static final String OLD_CONFIG_NODE_CONFIG_NAME = "iotdb-confignode.properties";
+  public static final String OLD_DATA_NODE_CONFIG_NAME = "iotdb-datanode.properties";
+  public static final String OLD_COMMON_CONFIG_NAME = "iotdb-common.properties";
+  public static final String SYSTEM_CONFIG_NAME = "iotdb-system.properties";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
 
   // Open ID Secret
@@ -238,7 +241,7 @@ public class CommonConfig {
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
   private long twoStageAggregateSenderEndPointsCacheInMs = 3 * 60 * 1000L; // 3 minutes
 
-  private float subscriptionCacheMemoryUsagePercentage = 0.1F;
+  private float subscriptionCacheMemoryUsagePercentage = 0.2F;
 
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
@@ -276,6 +279,10 @@ public class CommonConfig {
 
   private final Set<String> enabledKillPoints =
       KillPoint.parseKillPoints(System.getProperty(IoTDBConstant.INTEGRATION_TEST_KILL_POINTS));
+
+  private volatile boolean retryForUnknownErrors = false;
+
+  private volatile long remoteWriteMaxRetryDurationInMs = 60000;
 
   CommonConfig() {
     // Empty constructor
@@ -1206,5 +1213,21 @@ public class CommonConfig {
 
   public Set<String> getEnabledKillPoints() {
     return enabledKillPoints;
+  }
+
+  public boolean isRetryForUnknownErrors() {
+    return retryForUnknownErrors;
+  }
+
+  public void setRetryForUnknownErrors(boolean retryForUnknownErrors) {
+    this.retryForUnknownErrors = retryForUnknownErrors;
+  }
+
+  public long getRemoteWriteMaxRetryDurationInMs() {
+    return remoteWriteMaxRetryDurationInMs;
+  }
+
+  public void setRemoteWriteMaxRetryDurationInMs(long remoteWriteMaxRetryDurationInMs) {
+    this.remoteWriteMaxRetryDurationInMs = remoteWriteMaxRetryDurationInMs;
   }
 }

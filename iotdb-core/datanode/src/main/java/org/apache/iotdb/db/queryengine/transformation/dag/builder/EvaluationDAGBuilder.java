@@ -23,7 +23,7 @@ import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.IntermediateLayerVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssigner;
@@ -43,7 +43,7 @@ public class EvaluationDAGBuilder {
   private final Map<String, List<InputLocation>> inputLocations;
 
   private final Expression[] outputExpressions;
-  private final LayerPointReader[] outputPointReaders;
+  private final LayerReader[] outputReaders;
 
   private final Map<NodeRef<Expression>, TSDataType> expressionTypes;
 
@@ -72,7 +72,7 @@ public class EvaluationDAGBuilder {
     this.expressionTypes = expressionTypes;
     this.udtfContext = udtfContext;
 
-    outputPointReaders = new LayerPointReader[outputExpressions.length];
+    outputReaders = new LayerReader[outputExpressions.length];
 
     memoryAssigner = new LayerMemoryAssigner(memoryBudgetInMB);
 
@@ -105,12 +105,12 @@ public class EvaluationDAGBuilder {
             expressionTypes,
             memoryAssigner);
     for (int i = 0; i < outputExpressions.length; ++i) {
-      outputPointReaders[i] = visitor.process(outputExpressions[i], context).constructPointReader();
+      outputReaders[i] = visitor.process(outputExpressions[i], context).constructReader();
     }
     return this;
   }
 
-  public LayerPointReader[] getOutputPointReaders() {
-    return outputPointReaders;
+  public LayerReader[] getOutputReaders() {
+    return outputReaders;
   }
 }

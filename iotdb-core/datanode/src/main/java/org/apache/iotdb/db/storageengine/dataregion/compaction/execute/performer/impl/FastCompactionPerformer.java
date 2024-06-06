@@ -131,13 +131,18 @@ public class FastCompactionPerformer
         sortedSourceFiles.addAll(seqFiles);
         sortedSourceFiles.addAll(unseqFiles);
         sortedSourceFiles.removeIf(
-            x ->
-                x.definitelyNotContains(device)
+            x -> {
+              try {
+                return x.definitelyNotContains(device)
                     || !x.isDeviceAlive(
                         device,
                         DataNodeTTLCache.getInstance()
                             // TODO: remove deviceId conversion
-                            .getTTL(((PlainDeviceID) device).toStringID())));
+                            .getTTL(((PlainDeviceID) device).toStringID()));
+              } catch (IllegalPathException e) {
+                throw new RuntimeException(e);
+              }
+            });
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
 
         if (sortedSourceFiles.isEmpty()) {

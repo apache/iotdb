@@ -24,12 +24,12 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
-import org.apache.iotdb.session.subscription.AckStrategy;
-import org.apache.iotdb.session.subscription.AsyncCommitCallback;
-import org.apache.iotdb.session.subscription.ConsumeResult;
-import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
-import org.apache.iotdb.session.subscription.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.consumer.AckStrategy;
+import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
+import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
+import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionFileHandler;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
@@ -60,6 +60,7 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 
@@ -181,7 +182,7 @@ public class IoTDBSubscriptionBasicIT {
     }
 
     // Create topic
-    final String topicName = "topic2";
+    final String topicName = "topic1";
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
@@ -210,6 +211,7 @@ public class IoTDBSubscriptionBasicIT {
                       .consumerId("c1")
                       .consumerGroupId("cg1")
                       .autoCommit(false)
+                      .fileSaveDir(System.getProperty("java.io.tmpdir")) // hack for license check
                       .buildPullConsumer()) {
                 consumer.open();
                 consumer.subscribe(topicName);
@@ -296,11 +298,12 @@ public class IoTDBSubscriptionBasicIT {
     }
 
     // Create topic
+    final String topicName = "topic1";
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
-      session.createTopic("topic1");
+      session.createTopic(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -324,7 +327,7 @@ public class IoTDBSubscriptionBasicIT {
                       .autoCommit(false)
                       .buildPullConsumer()) {
                 consumer.open();
-                consumer.subscribe("topic1");
+                consumer.subscribe(topicName);
                 while (!isClosed.get()) {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages =
@@ -369,7 +372,7 @@ public class IoTDBSubscriptionBasicIT {
                         }
                       });
                 }
-                consumer.unsubscribe("topic1");
+                consumer.unsubscribe(topicName);
               } catch (final Exception e) {
                 e.printStackTrace();
                 // avoid fail
@@ -449,11 +452,12 @@ public class IoTDBSubscriptionBasicIT {
     }
 
     // Create topic
+    final String topicName = "topic1";
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
-      session.createTopic("topic1");
+      session.createTopic(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -479,7 +483,7 @@ public class IoTDBSubscriptionBasicIT {
             .buildPushConsumer()) {
 
       consumer.open();
-      consumer.subscribe("topic1");
+      consumer.subscribe(topicName);
 
       // The push consumer should automatically poll 10 rows of data by 1 onReceive()
       Awaitility.await()
@@ -536,11 +540,112 @@ public class IoTDBSubscriptionBasicIT {
                 Assert.assertTrue(onReceiveCount.get() > lastOnReceiveCount.get());
               });
 
-      consumer.unsubscribe("topic1");
-
+      consumer.unsubscribe(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testPollUnsubscribedTopics() throws Exception {
+    // Insert some historical data
+    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+      }
+      for (int i = 100; i < 200; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+      }
+      session.executeNonQueryStatement("flush");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Create topic
+    final String host = EnvFactory.getEnv().getIP();
+    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      {
+        final Properties properties = new Properties();
+        properties.put(TopicConstant.END_TIME_KEY, 99);
+        session.createTopic("topic1", properties);
+      }
+      {
+        final Properties properties = new Properties();
+        properties.put(TopicConstant.START_TIME_KEY, 100);
+        session.createTopic("topic2", properties);
+      }
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Subscription
+    final AtomicInteger rowCount = new AtomicInteger();
+    final AtomicLong timestampSum = new AtomicLong();
+    final AtomicBoolean isClosed = new AtomicBoolean(false);
+    final Thread thread =
+        new Thread(
+            () -> {
+              try (final SubscriptionPullConsumer consumer =
+                  new SubscriptionPullConsumer.Builder()
+                      .host(host)
+                      .port(port)
+                      .consumerId("c1")
+                      .consumerGroupId("cg1")
+                      .autoCommit(false)
+                      .buildPullConsumer()) {
+                consumer.open();
+                consumer.subscribe("topic2"); // only subscribe topic2
+                while (!isClosed.get()) {
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
+                  final List<SubscriptionMessage> messages =
+                      consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
+                  for (final SubscriptionMessage message : messages) {
+                    for (final SubscriptionSessionDataSet dataSet :
+                        message.getSessionDataSetsHandler()) {
+                      while (dataSet.hasNext()) {
+                        timestampSum.getAndAdd(dataSet.next().getTimestamp());
+                        rowCount.addAndGet(1);
+                      }
+                    }
+                  }
+                  consumer.commitSync(messages);
+                }
+                // automatically unsubscribe topics when closing
+              } catch (final Exception e) {
+                e.printStackTrace();
+                // Avoid failure
+              } finally {
+                LOGGER.info("consumer exiting...");
+              }
+            });
+    thread.start();
+
+    // Check row count
+    try {
+      // Keep retrying if there are execution failures
+      Awaitility.await()
+          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
+          .pollInterval(
+              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
+          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                Assert.assertEquals(100, rowCount.get());
+                Assert.assertEquals((100 + 199) * 100 / 2, timestampSum.get());
+              });
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      isClosed.set(true);
+      thread.join();
     }
   }
 }

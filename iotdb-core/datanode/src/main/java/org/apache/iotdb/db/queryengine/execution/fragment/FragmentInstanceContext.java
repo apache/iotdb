@@ -67,7 +67,7 @@ public class FragmentInstanceContext extends QueryContext {
 
   // it will only be used once, after sharedQueryDataSource being inited, it will be set to null
   private List<PartialPath> sourcePaths;
-  // Used for region scan, relating methods are to be added.
+  // Used for region scan.
   private Map<IDeviceID, Boolean> devicePathsToAligned;
 
   // Shared by all scan operators in this fragment instance to avoid memory problem
@@ -356,6 +356,10 @@ public class FragmentInstanceContext extends QueryContext {
     this.sourcePaths = sourcePaths;
   }
 
+  public void setDevicePathsToAligned(Map<IDeviceID, Boolean> devicePathsToAligned) {
+    this.devicePathsToAligned = devicePathsToAligned;
+  }
+
   public void initQueryDataSource(List<PartialPath> sourcePaths) throws QueryProcessException {
     long startTime = System.nanoTime();
     if (sourcePaths == null) {
@@ -398,6 +402,9 @@ public class FragmentInstanceContext extends QueryContext {
   public void initRegionScanQueryDataSource(Map<IDeviceID, Boolean> devicePathToAligned)
       throws QueryProcessException {
     long startTime = System.nanoTime();
+    if (devicePathsToAligned == null) {
+      return;
+    }
     dataRegion.readLock();
     try {
       this.sharedQueryDataSource =
@@ -421,6 +428,9 @@ public class FragmentInstanceContext extends QueryContext {
   public void initRegionScanQueryDataSource(List<PartialPath> pathList)
       throws QueryProcessException {
     long startTime = System.nanoTime();
+    if (pathList == null) {
+      return;
+    }
     dataRegion.readLock();
     try {
       this.sharedQueryDataSource =

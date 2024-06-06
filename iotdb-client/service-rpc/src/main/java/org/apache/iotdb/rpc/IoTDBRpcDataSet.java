@@ -523,6 +523,20 @@ public class IoTDBRpcDataSet {
     return getTimestamp(findColumn(columnName));
   }
 
+  public TSDataType getDataType(int columnIndex) throws StatementExecutionException {
+    return getDataType(findColumnNameByIndex(columnIndex));
+  }
+
+  public TSDataType getDataType(String columnName) throws StatementExecutionException {
+    if (columnName.equals(TIMESTAMP_STR)) {
+      return TSDataType.INT64;
+    }
+    final int index = columnOrdinalMap.get(columnName) - START_INDEX;
+    return index < 0 || index >= columnTypeDeduplicatedList.size()
+        ? null
+        : columnTypeDeduplicatedList.get(index);
+  }
+
   public int findColumn(String columnName) {
     return columnOrdinalMap.get(columnName);
   }

@@ -46,7 +46,11 @@ set "passwd_param=root"
 set "host_param=127.0.0.1"
 set "port_param=6667"
 
-set "properties_file=%IOTDB_HOME%\conf\iotdb-datanode.properties"
+if exist "%IOTDB_HOME%\conf\iotdb-system.properties" (
+  set "properties_file=%IOTDB_HOME%\conf\iotdb-system.properties"
+) else (
+  set "properties_file=%IOTDB_HOME%\conf\iotdb-datanode.properties"
+)
 set "key=dn_data_dirs"
 
 for /f "usebackq tokens=1,* delims==" %%a in ("%properties_file%") do (

@@ -2878,13 +2878,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       deviceSet.add(devicePath.getFullPath());
       if (isAligned) {
         List<String> measurementList = new ArrayList<>();
+        List<IMeasurementSchema> schemaList = new ArrayList<>();
         List<TimeseriesSchemaInfo> timeseriesSchemaInfoList = new ArrayList<>();
         for (IMeasurementSchemaInfo measurementSchemaInfo :
             deviceSchemaInfo.getMeasurementSchemaInfoList()) {
+          schemaList.add(measurementSchemaInfo.getSchema());
           measurementList.add(measurementSchemaInfo.getName());
           timeseriesSchemaInfoList.add(new TimeseriesSchemaInfo(measurementSchemaInfo));
         }
-        AlignedPath alignedPath = new AlignedPath(devicePath.getNodes(), measurementList);
+        AlignedPath alignedPath =
+            new AlignedPath(devicePath.getNodes(), measurementList, schemaList);
         deviceToTimeseriesSchemaInfo
             .computeIfAbsent(devicePath, k -> new HashMap<>())
             .put(alignedPath, timeseriesSchemaInfoList);
@@ -2925,6 +2928,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             analyzeTimeseriesRegionScan(
                 showTimeSeriesStatement.getTimeCondition(), patternTree, analysis, context);
         if (!hasSchema) {
+          analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTimeSeriesHeader());
           return analysis;
         }
       } catch (IllegalPathException e) {
@@ -3004,7 +3008,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     schemaTree.removeLogicalView();
   }
 
-  private boolean analyzeDeviceRegionScan(
+  private void analyzeDeviceRegionScan(
       WhereCondition timeCondition,
       PathPatternTree patternTree,
       Analysis analysis,
@@ -3016,7 +3020,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     ISchemaTree schemaTree = schemaFetcher.fetchSchemaInDeviceLevel(patternTree, context);
     if (schemaTree.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
-      return false;
+      return;
     }
 
     // fetch Data partition
@@ -3029,12 +3033,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     DataPartition dataPartition =
         fetchDataPartitionByDevices(
             devicePathsToAlignedStatus.keySet().stream()
-                .map(PartialPath::getDevice)
+                .map(PartialPath::getFullPath)
                 .collect(Collectors.toSet()),
             schemaTree,
             context);
     analysis.setDataPartitionInfo(dataPartition);
-    return true;
   }
 
   @Override
@@ -3048,12 +3051,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         showDevicesStatement.getPathPattern().concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
 
     if (showDevicesStatement.hasTimeCondition()) {
-      boolean hasSchema =
-          analyzeDeviceRegionScan(
-              showDevicesStatement.getTimeCondition(), patternTree, analysis, context);
-      if (!hasSchema) {
-        return analysis;
-      }
+      analyzeDeviceRegionScan(
+          showDevicesStatement.getTimeCondition(), patternTree, analysis, context);
     } else {
       SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
@@ -3114,12 +3113,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     patternTree.appendPathPattern(
         countDevicesStatement.getPathPattern().concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     if (countDevicesStatement.hasTimeCondition()) {
-      boolean hasSchema =
-          analyzeDeviceRegionScan(
-              countDevicesStatement.getTimeCondition(), patternTree, analysis, context);
-      if (!hasSchema) {
-        return analysis;
-      }
+      analyzeDeviceRegionScan(
+          countDevicesStatement.getTimeCondition(), patternTree, analysis, context);
     } else {
       SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
@@ -3144,6 +3139,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             analyzeTimeseriesRegionScan(
                 countTimeSeriesStatement.getTimeCondition(), patternTree, analysis, context);
         if (!hasSchema) {
+          analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountTimeSeriesHeader());
           return analysis;
         }
       } catch (IllegalPathException e) {

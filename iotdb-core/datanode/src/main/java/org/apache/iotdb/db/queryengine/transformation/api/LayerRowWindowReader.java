@@ -27,9 +27,6 @@ import org.apache.tsfile.enums.TSDataType;
 import java.io.IOException;
 
 public interface LayerRowWindowReader extends YieldableReader {
-
-  boolean next() throws IOException, QueryProcessException;
-
   void readyForNext() throws IOException, QueryProcessException;
 
   TSDataType[] getDataTypes();

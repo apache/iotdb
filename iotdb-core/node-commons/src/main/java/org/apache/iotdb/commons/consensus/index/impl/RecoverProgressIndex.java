@@ -51,6 +51,10 @@ public class RecoverProgressIndex extends ProgressIndex {
     dataNodeId2LocalIndex.put(dataNodeId, simpleProgressIndex);
   }
 
+  public Map<Integer, SimpleProgressIndex> getDataNodeId2LocalIndex() {
+    return dataNodeId2LocalIndex;
+  }
+
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     lock.readLock().lock();

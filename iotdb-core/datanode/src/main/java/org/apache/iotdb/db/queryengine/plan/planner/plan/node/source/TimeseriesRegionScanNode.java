@@ -36,6 +36,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -152,22 +154,6 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
         PlanNodeId.deserialize(buffer), deviceToTimeseriesSchemaInfo, outputCount, null);
   }
 
-  private static PartialPath deserializePartialPath(String[] deviceNodes, ByteBuffer buffer) {
-    byte pathType = buffer.get();
-    if (pathType == 0) {
-      String[] newNodes = Arrays.copyOf(deviceNodes, deviceNodes.length + 1);
-      newNodes[deviceNodes.length] = ReadWriteIOUtils.readString(buffer);
-      return new MeasurementPath(newNodes);
-    } else {
-      int size = ReadWriteIOUtils.readInt(buffer);
-      List<String> measurements = new ArrayList<>();
-      for (int i = 0; i < size; i++) {
-        measurements.add(ReadWriteIOUtils.readString(buffer));
-      }
-      return new AlignedPath(deviceNodes, measurements);
-    }
-  }
-
   @TestOnly
   public List<PartialPath> getMeasurementPath() {
     return deviceToTimeseriesSchemaInfo.values().stream()
@@ -232,6 +218,11 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
   @Override
   public void clearPath() {
     this.deviceToTimeseriesSchemaInfo = new HashMap<>();
+  }
+
+  @Override
+  public long getSize() {
+    return deviceToTimeseriesSchemaInfo.values().stream().mapToLong(Map::size).sum();
   }
 
   @Override
@@ -306,6 +297,27 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
     ReadWriteIOUtils.write(outputCount, stream);
   }
 
+  private static PartialPath deserializePartialPath(String[] deviceNodes, ByteBuffer buffer) {
+    byte pathType = buffer.get();
+    if (pathType == 0) {
+      String[] newNodes = Arrays.copyOf(deviceNodes, deviceNodes.length + 1);
+      newNodes[deviceNodes.length] = ReadWriteIOUtils.readString(buffer);
+      return new MeasurementPath(newNodes);
+    } else {
+      int size = ReadWriteIOUtils.readInt(buffer);
+      List<String> measurements = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      for (int i = 0; i < size; i++) {
+        measurements.add(ReadWriteIOUtils.readString(buffer));
+      }
+      size = ReadWriteIOUtils.readInt(buffer);
+      for (int i = 0; i < size; i++) {
+        schemaList.add(MeasurementSchema.deserializeFrom(buffer));
+      }
+      return new AlignedPath(deviceNodes, measurements, schemaList);
+    }
+  }
+
   private void serializeMeasurements(PartialPath path, DataOutputStream stream) throws IOException {
     if (path instanceof MeasurementPath) {
       PathType.Measurement.serialize(stream);
@@ -313,9 +325,16 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
     } else if (path instanceof AlignedPath) {
       PathType.Aligned.serialize(stream);
       AlignedPath alignedPath = (AlignedPath) path;
-      ReadWriteIOUtils.write(alignedPath.getMeasurementList().size(), stream);
-      for (String measurement : alignedPath.getMeasurementList()) {
-        ReadWriteIOUtils.write(measurement, stream);
+
+      List<String> measurements = alignedPath.getMeasurementList();
+      List<IMeasurementSchema> schemaList = alignedPath.getSchemaList();
+      ReadWriteIOUtils.write(measurements.size(), stream);
+      for (int i = 0; i < measurements.size(); i++) {
+        ReadWriteIOUtils.write(measurements.get(i), stream);
+      }
+      ReadWriteIOUtils.write(schemaList.size(), stream);
+      for (int i = 0; i < schemaList.size(); i++) {
+        schemaList.get(i).serializeTo(stream);
       }
     }
   }
@@ -327,9 +346,16 @@ public class TimeseriesRegionScanNode extends RegionScanNode {
     } else if (path instanceof AlignedPath) {
       PathType.Aligned.serialize(buffer);
       AlignedPath alignedPath = (AlignedPath) path;
-      ReadWriteIOUtils.write(alignedPath.getMeasurementList().size(), buffer);
-      for (String measurement : alignedPath.getMeasurementList()) {
-        ReadWriteIOUtils.write(measurement, buffer);
+
+      List<String> measurements = alignedPath.getMeasurementList();
+      List<IMeasurementSchema> schemaList = alignedPath.getSchemaList();
+      ReadWriteIOUtils.write(measurements.size(), buffer);
+      for (int i = 0; i < measurements.size(); i++) {
+        ReadWriteIOUtils.write(measurements.get(i), buffer);
+      }
+      ReadWriteIOUtils.write(schemaList.size(), buffer);
+      for (int i = 0; i < schemaList.size(); i++) {
+        schemaList.get(i).serializeTo(buffer);
       }
     }
   }

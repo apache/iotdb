@@ -19,29 +19,26 @@
 
 package org.apache.iotdb.commons.pipe.connector.compressor;
 
-import org.apache.tsfile.compress.ICompressor;
-import org.apache.tsfile.compress.IUnCompressor;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
+import com.github.luben.zstd.Zstd;
 
 import java.io.IOException;
 
 public class PipeZSTDCompressor extends PipeCompressor {
 
-  private static final ICompressor COMPRESSOR = ICompressor.getCompressor(CompressionType.ZSTD);
-  private static final IUnCompressor DECOMPRESSOR =
-      IUnCompressor.getUnCompressor(CompressionType.ZSTD);
+  private final int compressionLevel;
 
-  public PipeZSTDCompressor() {
+  public PipeZSTDCompressor(int compressionLevel) {
     super(PipeCompressionType.ZSTD);
+    this.compressionLevel = compressionLevel;
   }
 
   @Override
   public byte[] compress(byte[] data) throws IOException {
-    return COMPRESSOR.compress(data);
+    return Zstd.compress(data, compressionLevel);
   }
 
   @Override
-  public byte[] decompress(byte[] byteArray) throws IOException {
-    return DECOMPRESSOR.uncompress(byteArray);
+  public byte[] decompress(byte[] byteArray) {
+    return Zstd.decompress(byteArray, (int) Zstd.decompressedSize(byteArray, 0, byteArray.length));
   }
 }

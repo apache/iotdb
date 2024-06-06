@@ -53,6 +53,8 @@ public class PipeDataNodeTaskBuilder {
         PipeType.USER, PipeSubtaskExecutorManager.getInstance().getConnectorExecutor());
     CONNECTOR_EXECUTOR_MAP.put(
         PipeType.SUBSCRIPTION, PipeSubtaskExecutorManager.getInstance().getSubscriptionExecutor());
+    CONNECTOR_EXECUTOR_MAP.put(
+        PipeType.CONSENSUS, PipeSubtaskExecutorManager.getInstance().getConnectorExecutor());
   }
 
   protected final Map<String, String> systemParameters = new HashMap<>();

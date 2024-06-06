@@ -102,51 +102,43 @@ IF EXIST "%IOTDB_CONF%\datanode-env.bat" (
   echo "Can't find datanode-env.bat"
 )
 
+@REM SET CONFIG FILE
+IF EXIST "%IOTDB_CONF%\iotdb-system.properties" (
+  set CONFIG_FILE="%IOTDB_CONF%\iotdb-system.properties"
+) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-system.properties" (
+  set CONFIG_FILE="%IOTDB_HOME%\conf\iotdb-system.properties"
+) ELSE IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
+  set CONFIG_FILE="%IOTDB_CONF%\iotdb-datanode.properties"
+) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-datanode.properties" (
+  set CONFIG_FILE="%IOTDB_HOME%\conf\iotdb-datanode.properties"
+) ELSE (
+  set CONFIG_FILE=
+)
+
 @REM CHECK THE PORT USAGES
-IF EXIST "%IOTDB_CONF%\iotdb-datanode.properties" (
+IF DEFINED CONFIG_FILE (
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
-    "%IOTDB_CONF%\iotdb-datanode.properties"') do (
+    "%CONFIG_FILE%"') do (
       set dn_rpc_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_internal_port"
-    "%IOTDB_CONF%\iotdb-datanode.properties"') do (
+    "%CONFIG_FILE%"') do (
       set dn_internal_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_mpp_data_exchange_port"
-    "%IOTDB_CONF%\iotdb-datanode.properties"') do (
+    "%CONFIG_FILE%"') do (
       set dn_mpp_data_exchange_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_schema_region_consensus_port"
-    "%IOTDB_CONF%\iotdb-datanode.properties"') do (
+    "%CONFIG_FILE%"') do (
       set dn_schema_region_consensus_port=%%i
   )
   for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_data_region_consensus_port"
-    "%IOTDB_CONF%\iotdb-datanode.properties"') do (
-      set dn_data_region_consensus_port=%%i
-  )
-) ELSE IF EXIST "%IOTDB_HOME%\conf\iotdb-datanode.properties" (
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
-      "%IOTDB_HOME%\conf\iotdb-datanode.properties"') do (
-        set dn_rpc_port=%%i
-  )
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_internal_port"
-      "%IOTDB_HOME%\conf\iotdb-datanode.properties"') do (
-        set dn_internal_port=%%i
-  )
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_mpp_data_exchange_port"
-    "%IOTDB_HOME%\conf\iotdb-datanode.properties"') do (
-      set dn_mpp_data_exchange_port=%%i
-  )
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_schema_region_consensus_port"
-    "%IOTDB_HOME%\conf\iotdb-datanode.properties"') do (
-      set dn_schema_region_consensus_port=%%i
-  )
-  for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_data_region_consensus_port"
-    "%IOTDB_HOME%\conf\iotdb-datanode.properties"') do (
+    "%CONFIG_FILE%"') do (
       set dn_data_region_consensus_port=%%i
   )
 ) ELSE (
-  echo "Can't find iotdb-datanode.properties, check the default ports"
+  echo "Can't find iotdb-system.properties or iotdb-datanode.properties, check the default ports"
   set dn_rpc_port=6667
   set dn_internal_port=10730
   set dn_mpp_data_exchange_port=10740

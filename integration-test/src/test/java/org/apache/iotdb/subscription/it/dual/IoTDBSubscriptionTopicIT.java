@@ -28,8 +28,8 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
-import org.apache.iotdb.session.subscription.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
@@ -506,7 +506,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       session.open();
       final Properties properties = new Properties();
       properties.put(TopicConstant.START_TIME_KEY, "2024-01-32");
-      properties.put(TopicConstant.END_TIME_KEY, "now");
+      properties.put(TopicConstant.END_TIME_KEY, TopicConstant.NOW_TIME_VALUE);
       session.createTopic("topic1", properties);
       fail();
     } catch (final Exception ignored) {
@@ -578,6 +578,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                       .consumerId("c1")
                       .consumerGroupId("cg1")
                       .autoCommit(false)
+                      .fileSaveDir(System.getProperty("java.io.tmpdir")) // hack for license check
                       .buildPullConsumer()) {
                 consumer.open();
                 consumer.subscribe(topicName);
