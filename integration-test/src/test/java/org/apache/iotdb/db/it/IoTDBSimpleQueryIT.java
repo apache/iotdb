@@ -39,7 +39,6 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -1173,13 +1172,13 @@ public class IoTDBSimpleQueryIT {
         while (resultSet.next()) {
           long time = resultSet.getLong(1);
           Date date = resultSet.getDate(2);
-          Timestamp timestamp = resultSet.getTimestamp(3);
+          long timestamp = resultSet.getLong(3);
           byte[] blob = resultSet.getBytes(4);
           String text = resultSet.getString(5);
           assertEquals(2024 - 1900, date.getYear());
           assertEquals(5 - 1, date.getMonth());
           assertEquals(time % 31 + 1, date.getDate());
-          assertEquals(time, timestamp.getTime());
+          assertEquals(time, timestamp);
           assertArrayEquals(byteArray, blob);
           assertEquals(String.valueOf(time), text);
         }

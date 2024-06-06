@@ -548,6 +548,7 @@ public class IoTDBRpcDataSet {
       case INT32:
         return String.valueOf(curTsBlock.getColumn(index).getInt(tsBlockIndex));
       case INT64:
+      case TIMESTAMP:
         return String.valueOf(curTsBlock.getColumn(index).getLong(tsBlockIndex));
       case FLOAT:
         return String.valueOf(curTsBlock.getColumn(index).getFloat(tsBlockIndex));
@@ -562,9 +563,6 @@ public class IoTDBRpcDataSet {
       case BLOB:
         return BytesUtils.parseBlobByteArrayToString(
             curTsBlock.getColumn(index).getBinary(tsBlockIndex).getValues());
-      case TIMESTAMP:
-        return RpcUtils.formatDatetime(
-            timeFormat, "ms", curTsBlock.getColumn(index).getLong(tsBlockIndex), zoneId);
       case DATE:
         return DateUtils.formatDate(curTsBlock.getColumn(index).getInt(tsBlockIndex));
       default:
