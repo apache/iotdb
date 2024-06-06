@@ -20,20 +20,15 @@
 package org.apache.iotdb.confignode.client.async.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+
 import org.apache.thrift.async.AsyncMethodCallback;
 
-import java.util.concurrent.ConcurrentHashMap;
-
 public class TestConnectionHandler implements AsyncMethodCallback<TSStatus> {
-//    public TestConnectionHandler(ConcurrentHashMap)
+  //    public TestConnectionHandler(ConcurrentHashMap)
 
-    @Override
-    public void onComplete(TSStatus tsStatus) {
+  @Override
+  public void onComplete(TSStatus tsStatus) {}
 
-    }
-
-    @Override
-    public void onError(Exception e) {
-
-    }
+  @Override
+  public void onError(Exception e) {}
 }

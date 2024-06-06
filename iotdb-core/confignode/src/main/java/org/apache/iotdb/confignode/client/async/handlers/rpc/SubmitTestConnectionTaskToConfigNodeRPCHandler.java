@@ -24,24 +24,33 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class SubmitTestConnectionTaskToConfigNodeRPCHandler extends AbstractAsyncRPCHandler2<TTestConnectionResp> {
+public class SubmitTestConnectionTaskToConfigNodeRPCHandler
+    extends AbstractAsyncRPCHandler2<TTestConnectionResp> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SubmitTestConnectionTaskToConfigNodeRPCHandler.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SubmitTestConnectionTaskToConfigNodeRPCHandler.class);
 
   public SubmitTestConnectionTaskToConfigNodeRPCHandler(
-          ConfigNodeRequestType requestType,
-          int requestId,
-          TConfigNodeLocation targetConfigNode,
-          Map<Integer, TConfigNodeLocation> configNodeLocationMap,
-          Map<Integer, TTestConnectionResp> responseMap,
-          CountDownLatch countDownLatch) {
-    super(requestType, requestId, targetConfigNode, configNodeLocationMap, responseMap, countDownLatch);
+      ConfigNodeRequestType requestType,
+      int requestId,
+      TConfigNodeLocation targetConfigNode,
+      Map<Integer, TConfigNodeLocation> configNodeLocationMap,
+      Map<Integer, TTestConnectionResp> responseMap,
+      CountDownLatch countDownLatch) {
+    super(
+        requestType,
+        requestId,
+        targetConfigNode,
+        configNodeLocationMap,
+        responseMap,
+        countDownLatch);
   }
 
   @Override

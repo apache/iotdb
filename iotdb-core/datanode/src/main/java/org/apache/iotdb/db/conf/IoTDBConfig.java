@@ -3917,13 +3917,16 @@ public class IoTDBConfig {
   }
 
   public TDataNodeLocation generateLocalDataNodeLocation() {
-     TDataNodeLocation result = new TDataNodeLocation();
-     result.setDataNodeId(getDataNodeId());
-     result.setClientRpcEndPoint(new TEndPoint(getInternalAddress(), getRpcPort()));
-     result.setInternalEndPoint(new TEndPoint(getInternalAddress(), getInternalPort()));
-     result.setMPPDataExchangeEndPoint(new TEndPoint(getInternalAddress(), getMppDataExchangePort()));
-     result.setDataRegionConsensusEndPoint(new TEndPoint(getInternalAddress(), getDataRegionConsensusPort()));
-     result.setSchemaRegionConsensusEndPoint(new TEndPoint(getInternalAddress(), getSchemaRegionConsensusPort()));
-     return result;
+    TDataNodeLocation result = new TDataNodeLocation();
+    result.setDataNodeId(getDataNodeId());
+    result.setClientRpcEndPoint(new TEndPoint(getInternalAddress(), getRpcPort()));
+    result.setInternalEndPoint(new TEndPoint(getInternalAddress(), getInternalPort()));
+    result.setMPPDataExchangeEndPoint(
+        new TEndPoint(getInternalAddress(), getMppDataExchangePort()));
+    result.setDataRegionConsensusEndPoint(
+        new TEndPoint(getInternalAddress(), getDataRegionConsensusPort()));
+    result.setSchemaRegionConsensusEndPoint(
+        new TEndPoint(getInternalAddress(), getSchemaRegionConsensusPort()));
+    return result;
   }
 }

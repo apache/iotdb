@@ -34,56 +34,62 @@ import java.util.concurrent.CountDownLatch;
 /** General RPC handler for TSStatus response type. */
 public class AsyncTSStatusRPCHandler2 extends AbstractAsyncRPCHandler2<TSStatus> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AsyncTSStatusRPCHandler2.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncTSStatusRPCHandler2.class);
 
-    public AsyncTSStatusRPCHandler2(
-            ConfigNodeRequestType requestType,
-            int requestId,
-            TConfigNodeLocation targetConfigNode,
-            Map<Integer, TConfigNodeLocation> configNodeLocationMap,
-            Map<Integer, TSStatus> responseMap,
-            CountDownLatch countDownLatch) {
-        super(requestType, requestId, targetConfigNode, configNodeLocationMap, responseMap, countDownLatch);
+  public AsyncTSStatusRPCHandler2(
+      ConfigNodeRequestType requestType,
+      int requestId,
+      TConfigNodeLocation targetConfigNode,
+      Map<Integer, TConfigNodeLocation> configNodeLocationMap,
+      Map<Integer, TSStatus> responseMap,
+      CountDownLatch countDownLatch) {
+    super(
+        requestType,
+        requestId,
+        targetConfigNode,
+        configNodeLocationMap,
+        responseMap,
+        countDownLatch);
+  }
+
+  @Override
+  public void onComplete(TSStatus response) {
+    // Put response
+    responseMap.put(requestId, response);
+
+    if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Remove only if success
+      configNodeLocationMap.remove(requestId);
+      LOGGER.info("Successfully {} on ConfigNode: {}", requestType, formattedTargetLocation);
+    } else {
+      LOGGER.error(
+          "Failed to {} on ConfigNode: {}, response: {}",
+          requestType,
+          formattedTargetLocation,
+          response);
     }
 
-    @Override
-    public void onComplete(TSStatus response) {
-        // Put response
-        responseMap.put(requestId, response);
+    // Always CountDown
+    countDownLatch.countDown();
+  }
 
-        if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            // Remove only if success
-            configNodeLocationMap.remove(requestId);
-            LOGGER.info("Successfully {} on ConfigNode: {}", requestType, formattedTargetLocation);
-        } else {
-            LOGGER.error(
-                    "Failed to {} on ConfigNode: {}, response: {}",
-                    requestType,
-                    formattedTargetLocation,
-                    response);
-        }
+  @Override
+  public void onError(Exception e) {
+    String errorMsg =
+        "Failed to "
+            + requestType
+            + " on ConfigNode: "
+            + formattedTargetLocation
+            + ", exception: "
+            + e.getMessage();
+    LOGGER.error(errorMsg);
 
-        // Always CountDown
-        countDownLatch.countDown();
-    }
+    responseMap.put(
+        requestId,
+        new TSStatus(
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
 
-    @Override
-    public void onError(Exception e) {
-        String errorMsg =
-                "Failed to "
-                        + requestType
-                        + " on ConfigNode: "
-                        + formattedTargetLocation
-                        + ", exception: "
-                        + e.getMessage();
-        LOGGER.error(errorMsg);
-
-        responseMap.put(
-                requestId,
-                new TSStatus(
-                        RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), errorMsg)));
-
-        // Always CountDown
-        countDownLatch.countDown();
-    }
+    // Always CountDown
+    countDownLatch.countDown();
+  }
 }

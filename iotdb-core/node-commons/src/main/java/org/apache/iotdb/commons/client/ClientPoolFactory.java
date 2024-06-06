@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncDataNodeExternalServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
@@ -130,6 +131,31 @@ public class ClientPoolFactory {
                   .getConfig());
       ClientManagerMetrics.getInstance()
           .registerClientManager(this.getClass().getSimpleName(), clientPool);
+      return clientPool;
+    }
+  }
+
+  public static class AsyncDataNodeExternalServiceClientPoolFactory
+          implements IClientPoolFactory<TEndPoint, AsyncDataNodeExternalServiceClient> {
+
+    @Override
+    public KeyedObjectPool<TEndPoint, AsyncDataNodeExternalServiceClient> createClientPool(
+            ClientManager<TEndPoint, AsyncDataNodeExternalServiceClient> manager) {
+      GenericKeyedObjectPool<TEndPoint, AsyncDataNodeExternalServiceClient> clientPool =
+              new GenericKeyedObjectPool<>(
+                      new AsyncDataNodeExternalServiceClient.Factory(
+                              manager,
+                              new ThriftClientProperty.Builder()
+                                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                                      .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
+                                      .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                                      .build(),
+                              ThreadName.ASYNC_DATANODE_CLIENT_POOL.getName()),
+                      new ClientPoolProperty.Builder<AsyncDataNodeExternalServiceClient>()
+                              .build()
+                              .getConfig());
+      ClientManagerMetrics.getInstance()
+              .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
     }
   }

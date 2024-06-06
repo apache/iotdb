@@ -379,7 +379,8 @@ public class AsyncDataNodeClientPool {
           client.resetPeerList((TResetPeerListReq) req, defaultHandler);
           break;
         case SUBMIT_TEST_CONNECTION_TASK:
-          client.submitTestConnectionTask((TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler);
+          client.submitTestConnectionTask(
+              (TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler);
           break;
         case TEST_CONNECTION:
           client.testConnection(defaultHandler);

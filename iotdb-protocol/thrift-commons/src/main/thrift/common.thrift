@@ -188,6 +188,8 @@ struct TLicense {
 enum TServiceType {
   ConfigNodeInternalService,
   DataNodeInternalService,
+  DataNodeMPPService,
+  DataNodeExternalService,
 }
 
 struct TServiceProvider {

@@ -33,24 +33,20 @@ import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncConfigNodeClientPool;
-import org.apache.iotdb.confignode.client.async.AsyncConfigNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncConfigNodeClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
-import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -117,33 +113,46 @@ public class ClusterManager {
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList()));
     Map<Integer, TConfigNodeLocation> configNodeLocationMap =
-            configManager.getNodeManager().getRegisteredConfigNodes().stream()
-                    .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
+        configManager.getNodeManager().getRegisteredConfigNodes().stream()
+            .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
     AsyncConfigNodeClientHandler<TNodeLocations, TTestConnectionResp> configNodeClientHandler =
-            new AsyncConfigNodeClientHandler<>(ConfigNodeRequestType.SUBMIT_TEST_CONNECTION_TASK, nodeLocations, configNodeLocationMap);
+        new AsyncConfigNodeClientHandler<>(
+            ConfigNodeRequestType.SUBMIT_TEST_CONNECTION_TASK,
+            nodeLocations,
+            configNodeLocationMap);
     AsyncConfigNodeClientPool.getInstance().sendAsyncRequestToConfigNode(configNodeClientHandler);
-    configNodeClientHandler.getResponseMap().values().forEach(configNodeResp -> {
-      if (configNodeResp.isSetResultList()) {
-        merge(resp, configNodeResp);
-      } else {
-        // TODO: 展示错误
-        LOGGER.warn("Some problem");
-      }
-    });
+    configNodeClientHandler
+        .getResponseMap()
+        .values()
+        .forEach(
+            configNodeResp -> {
+              if (configNodeResp.isSetResultList()) {
+                merge(resp, configNodeResp);
+              } else {
+                // TODO: 展示错误
+                LOGGER.warn("Some problem");
+              }
+            });
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-            configManager.getNodeManager().getRegisteredDataNodes().stream().map(TDataNodeConfiguration::getLocation)
-                    .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
+        configManager.getNodeManager().getRegisteredDataNodes().stream()
+            .map(TDataNodeConfiguration::getLocation)
+            .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
     AsyncClientHandler<TNodeLocations, TTestConnectionResp> dataNodeClientHandler =
-            new AsyncClientHandler<>(DataNodeRequestType.SUBMIT_TEST_CONNECTION_TASK, nodeLocations, dataNodeLocationMap);
+        new AsyncClientHandler<>(
+            DataNodeRequestType.SUBMIT_TEST_CONNECTION_TASK, nodeLocations, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNode(dataNodeClientHandler);
-    dataNodeClientHandler.getResponseMap().values().forEach(dataNodeResp -> {
-      if (dataNodeResp.isSetResultList()) {
-        merge(resp, dataNodeResp);
-      } else {
-        // TODO: 展示错误
-        LOGGER.warn("Some problem");
-      }
-    });
+    dataNodeClientHandler
+        .getResponseMap()
+        .values()
+        .forEach(
+            dataNodeResp -> {
+              if (dataNodeResp.isSetResultList()) {
+                merge(resp, dataNodeResp);
+              } else {
+                // TODO: 展示错误
+                LOGGER.warn("Some problem");
+              }
+            });
     return resp;
   }
 
@@ -165,7 +174,8 @@ public class ClusterManager {
   private void submitTestConnectionTaskToAllConfigNode() {}
 
   public List<TTestConnectionResult> doConnectionTest(TNodeLocations nodeLocations) {
-    List<TTestConnectionResult> configNodeResult = testAllConfigNodeConnection(nodeLocations.getConfigNodeLocations());
+    List<TTestConnectionResult> configNodeResult =
+        testAllConfigNodeConnection(nodeLocations.getConfigNodeLocations());
     List<TTestConnectionResult> dataNodeResult =
         testAllDataNodeConnection(nodeLocations.getDataNodeLocations());
     configNodeResult.addAll(dataNodeResult);
@@ -208,39 +218,41 @@ public class ClusterManager {
   }
 
   private List<TTestConnectionResult> testAllConfigNodeConnection(
-          List<TConfigNodeLocation> configNodeLocations) {
+      List<TConfigNodeLocation> configNodeLocations) {
     final TSender sender =
-            new TSender()
-                    .setConfigNodeLocation(
-                            ConfigNodeDescriptor.getInstance().getConf().generateLocalConfigNodeLocation());
+        new TSender()
+            .setConfigNodeLocation(
+                ConfigNodeDescriptor.getInstance().getConf().generateLocalConfigNodeLocation());
     Map<Integer, TConfigNodeLocation> configNodeLocationMap =
-            configNodeLocations.stream()
-                    .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
+        configNodeLocations.stream()
+            .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
     AsyncConfigNodeClientHandler<Object, TSStatus> clientHandler =
-            new AsyncConfigNodeClientHandler<>(ConfigNodeRequestType.TEST_CONNECTION, new Object(), configNodeLocationMap);
+        new AsyncConfigNodeClientHandler<>(
+            ConfigNodeRequestType.TEST_CONNECTION, new Object(), configNodeLocationMap);
     AsyncConfigNodeClientPool.getInstance().sendAsyncRequestToConfigNodeWithRetry(clientHandler);
     Map<Integer, TConfigNodeLocation> anotherConfigNodeLocationMap =
-            configNodeLocations.stream()
-                    .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
+        configNodeLocations.stream()
+            .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
     List<TTestConnectionResult> results = new ArrayList<>();
     clientHandler
-            .getResponseMap()
-            .forEach(
-                    (configNodeId, status) -> {
-                      TEndPoint endPoint = anotherConfigNodeLocationMap.get(configNodeId).getInternalEndPoint();
-                      TServiceProvider serviceProvider =
-                              new TServiceProvider(endPoint, TServiceType.ConfigNodeInternalService);
-                      TTestConnectionResult result = new TTestConnectionResult();
-                      result.setSender(sender);
-                      result.setServiceProvider(serviceProvider);
-                      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                        result.setSuccess(true);
-                      } else {
-                        result.setSuccess(false);
-                        result.setReason(status.getMessage());
-                      }
-                      results.add(result);
-                    });
+        .getResponseMap()
+        .forEach(
+            (configNodeId, status) -> {
+              TEndPoint endPoint =
+                  anotherConfigNodeLocationMap.get(configNodeId).getInternalEndPoint();
+              TServiceProvider serviceProvider =
+                  new TServiceProvider(endPoint, TServiceType.ConfigNodeInternalService);
+              TTestConnectionResult result = new TTestConnectionResult();
+              result.setSender(sender);
+              result.setServiceProvider(serviceProvider);
+              if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                result.setSuccess(true);
+              } else {
+                result.setSuccess(false);
+                result.setReason(status.getMessage());
+              }
+              results.add(result);
+            });
     return results;
   }
 
@@ -254,11 +266,12 @@ public class ClusterManager {
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
     AsyncClientHandler<Object, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.TEST_CONNECTION, new Object(), dataNodeLocationMap);
+        new AsyncClientHandler<>(
+            DataNodeRequestType.TEST_CONNECTION, new Object(), dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     Map<Integer, TDataNodeLocation> anotherDataNodeLocationMap =
-            dataNodeLocations.stream()
-                    .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
+        dataNodeLocations.stream()
+            .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
     List<TTestConnectionResult> results = new ArrayList<>();
     clientHandler
         .getResponseMap()

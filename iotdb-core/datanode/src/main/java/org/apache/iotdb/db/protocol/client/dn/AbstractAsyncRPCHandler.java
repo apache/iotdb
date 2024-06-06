@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.protocol.client.dn;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+
 import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.util.Map;
