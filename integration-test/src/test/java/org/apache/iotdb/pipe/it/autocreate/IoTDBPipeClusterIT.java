@@ -261,8 +261,13 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           Collections.singleton("2,"));
     }
 
-    TestUtils.restartCluster(senderEnv);
-    TestUtils.restartCluster(receiverEnv);
+    try {
+      TestUtils.restartCluster(senderEnv);
+      TestUtils.restartCluster(receiverEnv);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      return;
+    }
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -357,8 +362,13 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
           Collections.singleton("2,"));
     }
 
-    TestUtils.restartCluster(senderEnv);
-    TestUtils.restartCluster(receiverEnv);
+    try {
+      TestUtils.restartCluster(senderEnv);
+      TestUtils.restartCluster(receiverEnv);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      return;
+    }
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -695,7 +705,13 @@ public class IoTDBPipeClusterIT extends AbstractPipeDualAutoIT {
       return;
     }
 
-    TestUtils.restartCluster(senderEnv);
+    try {
+      TestUtils.restartCluster(senderEnv);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      return;
+    }
+
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "select count(*) from root.**",

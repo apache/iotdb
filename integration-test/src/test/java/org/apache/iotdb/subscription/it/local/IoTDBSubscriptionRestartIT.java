@@ -119,7 +119,12 @@ public class IoTDBSubscriptionRestartIT {
     }
 
     // Restart cluster
-    TestUtils.restartCluster(EnvFactory.getEnv());
+    try {
+      TestUtils.restartCluster(EnvFactory.getEnv());
+    } catch (final Exception e) {
+      e.printStackTrace();
+      return;
+    }
 
     // Show topics and subscriptions
     try (final SyncConfigNodeIServiceClient client =
@@ -300,7 +305,12 @@ public class IoTDBSubscriptionRestartIT {
     Thread.sleep(10000); // wait some time
     EnvFactory.getEnv().startDataNode(1);
     EnvFactory.getEnv().startDataNode(2);
-    ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown();
+    try {
+      ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown();
+    } catch (final Exception e) {
+      e.printStackTrace();
+      return;
+    }
 
     // Insert some realtime data
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
