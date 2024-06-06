@@ -48,7 +48,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     this.eventCounter = eventCounter;
   }
 
-  public boolean waitedOffer(E event) {
+  public boolean waitedOffer(final E event) {
     try {
       final boolean offered =
           pendingQueue.offer(event, MAX_BLOCKING_TIME_MS, TimeUnit.MILLISECONDS);
@@ -63,7 +63,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     }
   }
 
-  public boolean directOffer(E event) {
+  public boolean directOffer(final E event) {
     final boolean offered = pendingQueue.offer(event);
     if (offered) {
       eventCounter.increaseEventCount(event);
@@ -71,7 +71,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     return offered;
   }
 
-  public boolean put(E event) {
+  public boolean put(final E event) {
     try {
       pendingQueue.put(event);
       eventCounter.increaseEventCount(event);
