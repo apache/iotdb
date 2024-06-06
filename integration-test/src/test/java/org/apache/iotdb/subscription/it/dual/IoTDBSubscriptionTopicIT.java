@@ -72,6 +72,19 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionTopicIT.class);
 
+  @Override
+  void setUpConfig() {
+    super.setUpConfig();
+
+    // Shorten heartbeat and sync interval to avoid timeout of query mode test
+    senderEnv
+        .getConfig()
+        .getCommonConfig()
+        .setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(30);
+    senderEnv.getConfig().getCommonConfig().setPipeMetaSyncerInitialSyncDelayMinutes(1);
+    senderEnv.getConfig().getCommonConfig().setPipeMetaSyncerSyncIntervalMinutes(1);
+  }
+
   @Test
   public void testTopicPathSubscription() throws Exception {
     // Insert some historical data on sender
@@ -514,7 +527,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       session.open();
       final Properties properties = new Properties();
       properties.put(TopicConstant.START_TIME_KEY, "2024-01-32");
-      properties.put(TopicConstant.END_TIME_KEY, "now");
+      properties.put(TopicConstant.END_TIME_KEY, TopicConstant.NOW_TIME_VALUE);
       session.createTopic("topic7", properties);
       fail();
     } catch (final Exception ignored) {

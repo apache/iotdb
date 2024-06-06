@@ -241,18 +241,22 @@ public class PipeTransferTsFileInsertionEventHandler
 
   @Override
   public void onError(final Exception exception) {
-    LOGGER.warn(
-        "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
-        tsFile,
-        event.getCommitterKey(),
-        event.getCommitId(),
-        exception);
+    try {
+      LOGGER.warn(
+          "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
+          tsFile,
+          event.getCommitterKey(),
+          event.getCommitId(),
+          exception);
+    } catch (final Exception e) {
+      LOGGER.warn("Failed to log error when failed to transfer file.", e);
+    }
 
     try {
       if (Objects.nonNull(clientManager)) {
         clientManager.adjustTimeoutIfNecessary(exception);
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn("Failed to adjust timeout when failed to transfer file.", e);
     }
 

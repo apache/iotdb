@@ -133,11 +133,13 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       if (realtimeDataExtractionStartTime > realtimeDataExtractionEndTime) {
         throw new PipeParameterNotValidException(
             String.format(
-                "%s or %s should be less than or equal to %s or %s.",
+                "%s (%s) [%s] should be less than or equal to %s (%s) [%s].",
                 SOURCE_START_TIME_KEY,
                 EXTRACTOR_START_TIME_KEY,
+                realtimeDataExtractionStartTime,
                 SOURCE_END_TIME_KEY,
-                EXTRACTOR_END_TIME_KEY));
+                EXTRACTOR_END_TIME_KEY,
+                realtimeDataExtractionEndTime));
       }
     } catch (final Exception e) {
       // compatible with the current validation framework
@@ -296,13 +298,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected abstract void doExtract(final PipeRealtimeEvent event);
 
   protected void extractHeartbeat(final PipeRealtimeEvent event) {
-    // Bind extractor so that the heartbeat event can later inform the extractor of queue size
-    ((PipeHeartbeatEvent) event.getEvent()).bindExtractor(this);
-
     // Record the pending queue size before trying to put heartbeatEvent into queue
     ((PipeHeartbeatEvent) event.getEvent()).recordExtractorQueueSize(pendingQueue);
 
-    Event lastEvent = pendingQueue.peekLast();
+    final Event lastEvent = pendingQueue.peekLast();
     if (lastEvent instanceof PipeRealtimeEvent
         && ((PipeRealtimeEvent) lastEvent).getEvent() instanceof PipeHeartbeatEvent
         && (((PipeHeartbeatEvent) ((PipeRealtimeEvent) lastEvent).getEvent()).isShouldPrintMessage()
