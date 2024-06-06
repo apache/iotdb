@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 public abstract class BlockingPendingQueue<E extends Event> {
 
@@ -41,7 +42,8 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   private final PipeEventCounter eventCounter;
 
-  protected BlockingPendingQueue(BlockingQueue<E> pendingQueue, PipeEventCounter eventCounter) {
+  protected BlockingPendingQueue(
+      final BlockingQueue<E> pendingQueue, final PipeEventCounter eventCounter) {
     this.pendingQueue = pendingQueue;
     this.eventCounter = eventCounter;
   }
@@ -54,7 +56,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
         eventCounter.increaseEventCount(event);
       }
       return offered;
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       LOGGER.info("pending queue offer is interrupted.", e);
       Thread.currentThread().interrupt();
       return false;
@@ -74,7 +76,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
       pendingQueue.put(event);
       eventCounter.increaseEventCount(event);
       return true;
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       LOGGER.info("pending queue put is interrupted.", e);
       Thread.currentThread().interrupt();
       return false;
@@ -92,7 +94,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     try {
       event = pendingQueue.poll(MAX_BLOCKING_TIME_MS, TimeUnit.MILLISECONDS);
       eventCounter.decreaseEventCount(event);
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       LOGGER.info("pending queue poll is interrupted.", e);
       Thread.currentThread().interrupt();
     }
@@ -104,8 +106,12 @@ public abstract class BlockingPendingQueue<E extends Event> {
     eventCounter.reset();
   }
 
-  public void forEach(Consumer<? super E> action) {
+  public void forEach(final Consumer<? super E> action) {
     pendingQueue.forEach(action);
+  }
+
+  public void removeIf(final Predicate<? super E> filter) {
+    pendingQueue.removeIf(filter);
   }
 
   public boolean isEmpty() {

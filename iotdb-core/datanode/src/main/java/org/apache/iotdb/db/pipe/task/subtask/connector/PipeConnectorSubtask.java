@@ -128,6 +128,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       decreaseReferenceCountAndReleaseLastEvent(true);
     } catch (final PipeException e) {
       if (!isClosed.get()) {
+        lastExceptionEvent = event;
         throw e;
       } else {
         LOGGER.info(
@@ -138,13 +139,14 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       }
     } catch (final Exception e) {
       if (!isClosed.get()) {
+        lastExceptionEvent = event;
         throw new PipeException(
             String.format(
                 "Exception in pipe transfer, subtask: %s, last event: %s, root cause: %s",
                 taskID,
-                lastEvent instanceof EnrichedEvent
-                    ? ((EnrichedEvent) lastEvent).coreReportMessage()
-                    : lastEvent,
+                event instanceof EnrichedEvent
+                    ? ((EnrichedEvent) event).coreReportMessage()
+                    : event,
                 ErrorHandlingUtils.getRootCause(e).getMessage()),
             e);
       } else {
@@ -211,6 +213,32 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
    * its queued events in the output pipe connector.
    */
   public void discardEventsOfPipe(final String pipeNameToDrop) {
+    // Try to remove the events as much as possible
+    inputPendingQueue.removeIf(
+        event -> {
+          if (event instanceof EnrichedEvent
+              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
+            ((EnrichedEvent) event)
+                .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
+            return true;
+          }
+          return false;
+        });
+    // If exceptions to dropped pipe still emerge, it must be caused by the last event, because now
+    // we can reckon that the input pending queue does not contain any of the pipe's events
+    if (lastEvent instanceof EnrichedEvent
+        && ((EnrichedEvent) lastEvent).getPipeName().equals(pipeNameToDrop)) {
+      lastEvent = null;
+      // Submit self to avoid that the lastEvent has been retried "max times" times and is stopped
+      // executing.
+      // 1. If the last event is still on execution, the "submitSelf" cause nothing.
+      // 2. If the last event is on success, then the callback method skip that retry.
+      // 3. If the last event is on failure, then if it should retry, it's skipped. If it should not
+      //    retry, it's retried here and other "report" will wait for the lock to stop all the pipes
+      //    with critical exceptions. Note that this "discardEventsOfPipe" is under the "drop pipe"
+      //    lock, the report will see no pipes with critical exceptions and will do nothing.
+      submitSelf();
+    }
     if (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector) {
       ((IoTDBDataRegionAsyncConnector) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop);
     }

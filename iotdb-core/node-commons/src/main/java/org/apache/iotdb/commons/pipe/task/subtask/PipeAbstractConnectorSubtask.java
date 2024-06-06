@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.DecoratingLock;
 import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
 import com.google.common.util.concurrent.Futures;
@@ -49,18 +50,19 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   // For controlling subtask submitting, making sure that
   // a subtask is submitted to only one thread at a time
   protected volatile boolean isSubmitted = false;
+  protected volatile Event lastExceptionEvent;
 
   protected PipeAbstractConnectorSubtask(
-      String taskID, long creationTime, PipeConnector outputPipeConnector) {
+      final String taskID, final long creationTime, final PipeConnector outputPipeConnector) {
     super(taskID, creationTime);
     this.outputPipeConnector = outputPipeConnector;
   }
 
   @Override
   public void bindExecutors(
-      ListeningExecutorService subtaskWorkerThreadPoolExecutor,
-      ExecutorService subtaskCallbackListeningExecutor,
-      PipeSubtaskScheduler subtaskScheduler) {
+      final ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      final ExecutorService subtaskCallbackListeningExecutor,
+      final PipeSubtaskScheduler subtaskScheduler) {
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
     this.subtaskCallbackListeningExecutor = subtaskCallbackListeningExecutor;
     this.subtaskScheduler = subtaskScheduler;
@@ -78,17 +80,19 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   }
 
   @Override
-  public synchronized void onSuccess(Boolean hasAtLeastOneEventProcessed) {
+  public synchronized void onSuccess(final Boolean hasAtLeastOneEventProcessed) {
     isSubmitted = false;
 
     super.onSuccess(hasAtLeastOneEventProcessed);
   }
 
   @Override
-  public synchronized void onFailure(Throwable throwable) {
+  public synchronized void onFailure(final Throwable throwable) {
     isSubmitted = false;
 
-    if (isClosed.get()) {
+    // If lastExceptionEvent != lastEvent, it indicates that the lastEvent's reference has been
+    // changed because the pipe of it has been dropped. In that case, we just discard the event.
+    if (isClosed.get() || lastEvent != lastExceptionEvent) {
       LOGGER.info("onFailure in pipe transfer, ignored because pipe is dropped.", throwable);
       clearReferenceCountAndReleaseLastEvent();
       return;
@@ -116,7 +120,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   /**
    * @return {@code true} if the {@link PipeSubtask} should be stopped, {@code false} otherwise
    */
-  private boolean onPipeConnectionException(Throwable throwable) {
+  private boolean onPipeConnectionException(final Throwable throwable) {
     LOGGER.warn(
         "PipeConnectionException occurred, {} retries to handshake with the target system.",
         outputPipeConnector.getClass().getName(),
@@ -130,7 +134,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
             "{} handshakes with the target system successfully.",
             outputPipeConnector.getClass().getName());
         break;
-      } catch (Exception e) {
+      } catch (final Exception e) {
         retry++;
         LOGGER.warn(
             "{} failed to handshake with the target system for {} times, "
