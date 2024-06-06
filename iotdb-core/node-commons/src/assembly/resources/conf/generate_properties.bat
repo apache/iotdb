@@ -34,6 +34,27 @@ mkdir "%target_template_file%\.."
 
 copy "%source_file%" "%target_template_file%"
 
+(
+    echo #
+    echo # Licensed to the Apache Software Foundation (ASF) under one
+    echo # or more contributor license agreements.  See the NOTICE file
+    echo # distributed with this work for additional information
+    echo # regarding copyright ownership.  The ASF licenses this file
+    echo # to you under the Apache License, Version 2.0 (the
+    echo # "License"); you may not use this file except in compliance
+    echo # with the License.  You may obtain a copy of the License at
+    echo #
+    echo #     http://www.apache.org/licenses/LICENSE-2.0
+    echo #
+    echo # Unless required by applicable law or agreed to in writing,
+    echo # software distributed under the License is distributed on an
+    echo # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    echo # KIND, either express or implied.  See the License for the
+    echo # specific language governing permissions and limitations
+    echo # under the License.
+    echo #
+) > "%target_properties_file%"
+
 for /f "tokens=* delims=" %%i in ('findstr /v "^[ ]*#" "%target_template_file%" ^| findstr /r /v "^$"') do (
     echo %%i >> "%target_properties_file%"
 )
