@@ -310,7 +310,9 @@ public class IoTDBConfig {
     {IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME}
   };
 
-  private String[] loadTsFileDirs = new String[0];
+  private String[] loadTsFileDirs = {
+    tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+  };
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
@@ -1275,9 +1277,6 @@ public class IoTDBConfig {
   private void formulateFolders() {
     systemDir = addDataHomeDir(systemDir);
     schemaDir = addDataHomeDir(schemaDir);
-    for (int i = 0; i < loadTsFileDirs.length; i++) {
-      loadTsFileDirs[i] = addDataHomeDir(loadTsFileDirs[i]);
-    }
     consensusDir = addDataHomeDir(consensusDir);
     dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
     ratisDataRegionSnapshotDir = addDataHomeDir(ratisDataRegionSnapshotDir);
@@ -1301,6 +1300,11 @@ public class IoTDBConfig {
     queryDir = addDataHomeDir(queryDir);
     sortTmpDir = addDataHomeDir(sortTmpDir);
     formulateDataDirs(tierDataDirs);
+
+    setLoadTsFileDirs(tierDataDirs);
+    for (int i = 0; i < loadTsFileDirs.length; i++) {
+      loadTsFileDirs[i] = addDataHomeDir(loadTsFileDirs[i]);
+    }
   }
 
   private void formulateDataDirs(String[][] tierDataDirs) {
@@ -1343,6 +1347,7 @@ public class IoTDBConfig {
       }
     }
     this.tierDataDirs = tierDataDirs;
+    setLoadTsFileDirs(tierDataDirs);
     reloadSystemMetrics();
   }
 
@@ -1464,9 +1469,7 @@ public class IoTDBConfig {
   }
 
   public String[] getLoadTsFileDirs() {
-    return (Objects.isNull(this.loadTsFileDirs) || this.loadTsFileDirs.length == 0)
-        ? new String[] {tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME}
-        : this.loadTsFileDirs;
+    return this.loadTsFileDirs;
   }
 
   public void setLoadTsFileDirs(String[][] tierDataDirs) {
