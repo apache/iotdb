@@ -22,10 +22,15 @@
 set current_dir=%~dp0
 set superior_dir=%current_dir%\..\
 
-IF EXIST "%superior%\conf\iotdb-system.properties" (
+IF EXIST "%superior_dir%\conf\iotdb-system.properties" (
   set config_file="%superior_dir%\conf\iotdb-system.properties"
 ) ELSE (
-  set config_file="%superior_dir%\conf\iotdb-confignode.properties"
+  IF EXIST "%superior_dir%\conf\iotdb-confignode.properties" (
+    set config_file="%superior_dir%\conf\iotdb-confignode.properties"
+  ) ELSE (
+    echo "No configuration file found. Exiting."
+    exit /b 1
+  )
 )
 
 for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^cn_internal_port"
@@ -33,11 +38,21 @@ for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^cn_internal_port"
   set cn_internal_port=%%i
 )
 
+if not defined cn_internal_port (
+  echo "cn_internal_port not found in the configuration file. Exiting."
+  exit /b 1
+)
+
 echo "check whether the cn_internal_port is used..., port is %cn_internal_port%"
 
 for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "cn_internal_address"
 "%config_file%"') do (
   set cn_internal_address=%%i
+)
+
+if not defined cn_internal_address (
+  echo "cn_internal_address not found in the configuration file. Exiting."
+  exit /b 1
 )
 
 for /f "tokens=5" %%a in ('netstat /ano ^| findstr %cn_internal_address%:%cn_internal_port% ^| findstr LISTENING ') do (

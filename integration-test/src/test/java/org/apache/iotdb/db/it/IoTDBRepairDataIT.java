@@ -60,7 +60,7 @@ public class IoTDBRepairDataIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test
