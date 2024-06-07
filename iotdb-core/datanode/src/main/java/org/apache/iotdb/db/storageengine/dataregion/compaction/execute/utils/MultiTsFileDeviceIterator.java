@@ -409,7 +409,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     if (tsFileResource.getStartTime(device) < timeLowerBoundForCurrentDevice) {
       ttlDeletion =
           new Deletion(
-              CompactionPathUtils.getPath(device).concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
+              CompactionPathUtils.getPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
               Long.MAX_VALUE,
               Long.MIN_VALUE,
               timeLowerBoundForCurrentDevice);
@@ -630,8 +630,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         if (resource.getStartTime(device) < timeLowerBoundForCurrentDevice) {
           ttlDeletion =
               new Deletion(
-                  CompactionPathUtils.getPath(device)
-                      .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
+                  CompactionPathUtils.getPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD),
                   Long.MAX_VALUE,
                   Long.MIN_VALUE,
                   timeLowerBoundForCurrentDevice);
