@@ -84,10 +84,17 @@ public class IoTDBUDFWindowQuery2IT {
   }
 
   @Test
-  public void testSessionTimeWindow() {
+  public void testSessionTimeWindow1() {
     long[] windowStart = new long[] {12, 18};
     long[] windowEnd = new long[] {14, 21};
     testSessionTimeWindowSS("3", windowStart, windowEnd, 12L, 24L);
+  }
+
+  @Test
+  public void testSessionTimeWindow2() {
+    long[] windowStart = new long[] {12, 18};
+    long[] windowEnd = new long[] {14, 24};
+    testSessionTimeWindowSS("3", windowStart, windowEnd, 12L, Long.MAX_VALUE);
   }
 
   @Test
