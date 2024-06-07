@@ -26,9 +26,7 @@
     <buildScan>
         <backgroundBuildScanUpload>#{isFalse(env['GITHUB_ACTIONS'])}</backgroundBuildScanUpload>
         <publishing>
-            <onlyIf>
-                <![CDATA[authenticated]]>
-            </onlyIf>
+            <onlyIf><![CDATA[authenticated]]></onlyIf>
         </publishing>
         <obfuscation>
             <ipAddresses>#{{'0.0.0.0'}}</ipAddresses>
