@@ -17,6 +17,7 @@
 @REM under the License.
 @REM
 @echo off
+setlocal enabledelayedexpansion
 
 set "source_file=src\assembly\resources\conf\iotdb-system.properties"
 set "target_template_file=target\conf\iotdb-system.properties.template"
@@ -34,27 +35,30 @@ mkdir "%target_template_file%\.."
 
 copy "%source_file%" "%target_template_file%"
 
-(
-    echo #
-    echo # Licensed to the Apache Software Foundation (ASF) under one
-    echo # or more contributor license agreements.  See the NOTICE file
-    echo # distributed with this work for additional information
-    echo # regarding copyright ownership.  The ASF licenses this file
-    echo # to you under the Apache License, Version 2.0 (the
-    echo # "License"); you may not use this file except in compliance
-    echo # with the License.  You may obtain a copy of the License at
-    echo #
-    echo #     http://www.apache.org/licenses/LICENSE-2.0
-    echo #
-    echo # Unless required by applicable law or agreed to in writing,
-    echo # software distributed under the License is distributed on an
-    echo # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    echo # KIND, either express or implied.  See the License for the
-    echo # specific language governing permissions and limitations
-    echo # under the License.
-    echo #
-) > "%target_properties_file%"
+echo # >> "%target_properties_file%"
+echo # Licensed to the Apache Software Foundation (ASF) under one >> "%target_properties_file%"
+echo # or more contributor license agreements.  See the NOTICE file >> "%target_properties_file%"
+echo # distributed with this work for additional information >> "%target_properties_file%"
+echo # regarding copyright ownership.  The ASF licenses this file >> "%target_properties_file%"
+echo # to you under the Apache License, Version 2.0 (the >> "%target_properties_file%"
+echo # "License"); you may not use this file except in compliance >> "%target_properties_file%"
+echo # with the License.  You may obtain a copy of the License at >> "%target_properties_file%"
+echo # >> "%target_properties_file%"
+echo #     http://www.apache.org/licenses/LICENSE-2.0 >> "%target_properties_file%"
+echo # >> "%target_properties_file%"
+echo # Unless required by applicable law or agreed to in writing, >> "%target_properties_file%"
+echo # software distributed under the License is distributed on an >> "%target_properties_file%"
+echo # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY >> "%target_properties_file%"
+echo # KIND, either express or implied.  See the License for the >> "%target_properties_file%"
+echo # specific language governing permissions and limitations >> "%target_properties_file%"
+echo # under the License. >> "%target_properties_file%"
+echo # >> "%target_properties_file%"
 
-for /f "tokens=* delims=" %%i in ('findstr /v "^[ ]*#" "%target_template_file%" ^| findstr /r /v "^$"') do (
-    echo %%i >> "%target_properties_file%"
+for /f "usebackq tokens=*" %%i in ("%target_template_file%") do (
+    set "line=%%i"
+    setlocal enabledelayedexpansion
+    if not "!line!"=="" if "!line:~0,1!" NEQ "#" (
+        echo !line!>>"%target_properties_file%"
+    )
+    endlocal
 )
