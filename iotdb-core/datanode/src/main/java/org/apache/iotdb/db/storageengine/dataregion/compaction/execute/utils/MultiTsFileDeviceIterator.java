@@ -425,11 +425,11 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
     List<List<Modification>> modificationForCurDevice = new ArrayList<>();
     for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
-      List<Modification> modificationList = new ArrayList<>();
-      modificationForCurDevice.add(modificationList);
       if (valueChunkMetadata == null) {
+         modificationForCurDevice.add(Collections.emptyList());
         continue;
       }
+      List<Modification> modificationList = new ArrayList<>();
       PartialPath path =
           CompactionPathUtils.getPath(
               currentDevice.getLeft(), valueChunkMetadata.getMeasurementUid());
@@ -441,6 +441,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       if (ttlDeletion != null) {
         modificationList.add(ttlDeletion);
       }
+      modificationForCurDevice.add(modificationList.isEmpty() ? Collections.emptyList() : modificationList);
     }
 
     ModificationUtils.modifyAlignedChunkMetaData(
