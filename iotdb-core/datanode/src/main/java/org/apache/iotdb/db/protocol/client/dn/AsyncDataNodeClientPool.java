@@ -49,7 +49,7 @@ public abstract class AsyncDataNodeClientPool<ClientType> {
    * @param timeoutInMs timeout in milliseconds
    */
   public void sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
-      AsyncClientHandler<?, ?> clientHandler, long timeoutInMs) {
+          AsyncDataNodeRequestContext<?, ?> clientHandler, long timeoutInMs) {
     sendAsyncRequest(clientHandler, MAX_RETRY_NUM, timeoutInMs);
   }
 
@@ -60,16 +60,16 @@ public abstract class AsyncDataNodeClientPool<ClientType> {
    *
    * @param clientHandler <RequestType, ResponseType> which will also contain the result
    */
-  public void sendAsyncRequestToDataNodeWithRetry(AsyncClientHandler<?, ?> clientHandler) {
+  public void sendAsyncRequestToDataNodeWithRetry(AsyncDataNodeRequestContext<?, ?> clientHandler) {
     sendAsyncRequest(clientHandler, MAX_RETRY_NUM, null);
   }
 
-  public void sendAsyncRequestToDataNode(AsyncClientHandler<?, ?> clientHandler) {
+  public void sendAsyncRequestToDataNode(AsyncDataNodeRequestContext<?, ?> clientHandler) {
     sendAsyncRequest(clientHandler, 1, null);
   }
 
   private void sendAsyncRequest(
-      AsyncClientHandler<?, ?> clientHandler, int retryNum, Long timeoutInMs) {
+          AsyncDataNodeRequestContext<?, ?> clientHandler, int retryNum, Long timeoutInMs) {
     if (clientHandler.getRequestIndices().isEmpty()) {
       return;
     }
@@ -117,7 +117,7 @@ public abstract class AsyncDataNodeClientPool<ClientType> {
   }
 
   abstract void sendAsyncRequestToDataNode(
-      AsyncClientHandler<?, ?> clientHandler,
+      AsyncDataNodeRequestContext<?, ?> clientHandler,
       int requestId,
       TDataNodeLocation targetDataNode,
       int retryCount);

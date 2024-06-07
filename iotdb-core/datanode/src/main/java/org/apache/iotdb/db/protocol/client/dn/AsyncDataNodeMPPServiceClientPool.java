@@ -42,7 +42,7 @@ public class AsyncDataNodeMPPServiceClientPool
 
   @Override
   void sendAsyncRequestToDataNode(
-      AsyncClientHandler<?, ?> clientHandler,
+      AsyncDataNodeRequestContext<?, ?> clientHandler,
       int requestId,
       TDataNodeLocation targetDataNode,
       int retryCount) {
