@@ -1032,7 +1032,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<String> ignoredConfigItems =
         ConfigurationFileUtils.filterImmutableConfigItems(req.getConfigs());
-    TSStatus warningTsStatus = nll;
+    TSStatus warningTsStatus = null;
     if (!ignoredConfigItems.isEmpty()) {
       warningTsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       warningTsStatus.setMessage("ignored config items: " + ignoredConfigItems);
