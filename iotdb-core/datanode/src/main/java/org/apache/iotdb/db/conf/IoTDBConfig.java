@@ -1428,6 +1428,7 @@ public class IoTDBConfig {
     // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
     setRatisDataRegionSnapshotDir(
         tierDataDirs[0][0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
+    setLoadTsFileDirs(tierDataDirs);
   }
 
   public String getRpcAddress() {
@@ -1468,8 +1469,12 @@ public class IoTDBConfig {
         : this.loadTsFileDirs;
   }
 
-  public void setLoadTsFileDirs(String[] loadTsFileDirs) {
-    this.loadTsFileDirs = loadTsFileDirs;
+  public void setLoadTsFileDirs(String[][] tierDataDirs) {
+    this.loadTsFileDirs = new String[tierDataDirs.length];
+    for (int i = 0; i < tierDataDirs.length; i++) {
+      this.loadTsFileDirs[i] =
+          tierDataDirs[i][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
+    }
   }
 
   public String getSchemaDir() {
