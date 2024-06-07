@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeExternalServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +42,7 @@ public class AsyncDataNodeExternalServiceClientPool extends AsyncDataNodeClientP
     }
 
     @Override
-    void sendAsyncRequestToDataNode(AsyncDataNodeRequestContext<?, ?> clientHandler, int requestId, TDataNodeLocation targetDataNode, int retryCount) {
+    void sendAsyncRequestToDataNode(AsyncClientHandler<?, ?> clientHandler, int requestId, TDataNodeLocation targetDataNode, int retryCount) {
         {
             try {
                 AsyncDataNodeExternalServiceClient client;

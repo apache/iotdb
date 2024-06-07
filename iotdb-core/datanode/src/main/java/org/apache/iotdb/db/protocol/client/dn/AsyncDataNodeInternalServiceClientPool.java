@@ -43,7 +43,7 @@ public class AsyncDataNodeInternalServiceClientPool
 
   @Override
   void sendAsyncRequestToDataNode(
-      AsyncDataNodeRequestContext<?, ?> clientHandler,
+      AsyncClientHandler<?, ?> clientHandler,
       int requestId,
       TDataNodeLocation targetDataNode,
       int retryCount) {
