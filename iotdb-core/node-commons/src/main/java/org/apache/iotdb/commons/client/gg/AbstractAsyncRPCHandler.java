@@ -17,69 +17,63 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client.async.handlers.rpc;
-
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
+package org.apache.iotdb.commons.client.gg;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public abstract class AbstractAsyncRPCHandler2<T> implements AsyncMethodCallback<T> {
+public abstract class AbstractAsyncRPCHandler<Response, RequestType, NodeLocation> implements AsyncMethodCallback<Response> {
 
   // Type of RPC request
-  protected final ConfigNodeRequestType requestType;
+  protected final RequestType requestType;
   // Index of request
   protected final int requestId;
-  // Target ConfigNode
-  protected final TConfigNodeLocation targetConfigNode;
+  // Target Node
+  protected final NodeLocation targetNode;
 
   /**
    * Map key: The indices of asynchronous RPC requests.
    *
-   * <p>Map value: The target ConfigNodes of corresponding indices
+   * <p>Map value: The target Nodes of corresponding indices
    *
-   * <p>All kinds of AsyncHandler will remove its targetConfigNode from the configNodeLocationMap
-   * only if its corresponding RPC request success
+   * <p>All kinds of AsyncHandler will remove its targetNode from the nodeLocationMap only
+   * if its corresponding RPC request success
    */
-  protected final Map<Integer, TConfigNodeLocation> configNodeLocationMap;
+  protected final Map<Integer, NodeLocation> nodeLocationMap;
 
   /**
-   * Map key: The indices(targetConfigNode's ID) of asynchronous RPC requests.
+   * Map key: The indices(targetNode's ID) of asynchronous RPC requests.
    *
    * <p>Map value: The response of corresponding indices
    *
    * <p>All kinds of AsyncHandler will add response to the responseMap after its corresponding RPC
    * request finished
    */
-  protected final Map<Integer, T> responseMap;
+  protected final Map<Integer, Response> responseMap;
 
   // All kinds of AsyncHandler will invoke countDown after its corresponding RPC request finished
   protected final CountDownLatch countDownLatch;
 
   protected final String formattedTargetLocation;
 
-  protected AbstractAsyncRPCHandler2(
-      ConfigNodeRequestType requestType,
+  protected AbstractAsyncRPCHandler(
+      RequestType requestType,
       int requestId,
-      TConfigNodeLocation targetConfigNode,
-      Map<Integer, TConfigNodeLocation> configNodeLocationMap,
-      Map<Integer, T> responseMap,
+      NodeLocation targetNode,
+      Map<Integer, NodeLocation> nodeLocationMap,
+      Map<Integer, Response> responseMap,
       CountDownLatch countDownLatch) {
     this.requestType = requestType;
     this.requestId = requestId;
-    this.targetConfigNode = targetConfigNode;
-    this.formattedTargetLocation =
-        "{id="
-            + targetConfigNode.getConfigNodeId()
-            + ", internalEndPoint="
-            + targetConfigNode.getInternalEndPoint()
-            + "}";
+    this.targetNode = targetNode;
+    this.formattedTargetLocation = generateFormattedTargetLocation(targetNode);
 
-    this.configNodeLocationMap = configNodeLocationMap;
+    this.nodeLocationMap = nodeLocationMap;
     this.responseMap = responseMap;
     this.countDownLatch = countDownLatch;
   }
+
+  abstract protected String generateFormattedTargetLocation(NodeLocation location);
 }

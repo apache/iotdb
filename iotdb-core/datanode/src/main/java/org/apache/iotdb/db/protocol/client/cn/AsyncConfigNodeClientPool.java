@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.async.AsyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 
 import org.slf4j.Logger;
@@ -36,14 +36,14 @@ public class AsyncConfigNodeClientPool {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AsyncConfigNodeClientPool.class);
 
-  private final IClientManager<TEndPoint, AsyncConfigNodeIServiceClient> clientManager;
+  private final IClientManager<TEndPoint, AsyncConfigNodeInternalServiceClient> clientManager;
 
   private static final int MAX_RETRY_NUM = 6;
 
   private AsyncConfigNodeClientPool() {
     clientManager =
-        new IClientManager.Factory<TEndPoint, AsyncConfigNodeIServiceClient>()
-            .createClientManager(new ClientPoolFactory.AsyncConfigNodeIServiceClientPoolFactory());
+        new IClientManager.Factory<TEndPoint, AsyncConfigNodeInternalServiceClient>()
+            .createClientManager(new ClientPoolFactory.AsyncConfigNodeInternalServiceClientPoolFactory());
   }
 
   /**
@@ -130,7 +130,7 @@ public class AsyncConfigNodeClientPool {
       int retryCount) {
 
     try {
-      AsyncConfigNodeIServiceClient client;
+      AsyncConfigNodeInternalServiceClient client;
       client = clientManager.borrowClient(targetConfigNode.getInternalEndPoint());
       Object req = clientHandler.getRequest(requestId);
       AbstractAsyncRPCHandler2<?> handler =
@@ -169,7 +169,7 @@ public class AsyncConfigNodeClientPool {
     clientManager.clear(endPoint);
   }
 
-  public AsyncConfigNodeIServiceClient getAsyncClient(TConfigNodeLocation targetConfigNode)
+  public AsyncConfigNodeInternalServiceClient getAsyncClient(TConfigNodeLocation targetConfigNode)
       throws ClientManagerException {
     return clientManager.borrowClient(targetConfigNode.getInternalEndPoint());
   }

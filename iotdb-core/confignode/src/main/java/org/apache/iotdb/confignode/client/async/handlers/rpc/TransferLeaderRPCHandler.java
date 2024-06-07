@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class TransferLeaderRPCHandler extends AbstractAsyncRPCHandler<TRegionLeaderChangeResp> {
+public class TransferLeaderRPCHandler extends DataNodeAbstractAsyncRPCHandler<TRegionLeaderChangeResp> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TransferLeaderRPCHandler.class);
 

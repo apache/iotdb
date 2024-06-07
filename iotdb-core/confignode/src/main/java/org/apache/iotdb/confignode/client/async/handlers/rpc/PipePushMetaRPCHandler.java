@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class PipePushMetaRPCHandler extends AbstractAsyncRPCHandler<TPushPipeMetaResp> {
+public class PipePushMetaRPCHandler extends DataNodeAbstractAsyncRPCHandler<TPushPipeMetaResp> {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePushMetaRPCHandler.class);
 
   public PipePushMetaRPCHandler(

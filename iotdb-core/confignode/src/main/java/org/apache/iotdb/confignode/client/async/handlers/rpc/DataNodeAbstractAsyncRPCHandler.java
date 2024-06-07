@@ -22,10 +22,10 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
+import org.apache.iotdb.commons.client.gg.AbstractAsyncRPCHandler;
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 
-import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
@@ -43,64 +43,25 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public abstract class AbstractAsyncRPCHandler<Response> implements AsyncMethodCallback<Response> {
+public abstract class DataNodeAbstractAsyncRPCHandler<Response> extends AbstractAsyncRPCHandler<Response, DataNodeRequestType, TDataNodeLocation> {
 
-  // Type of RPC request
-  protected final DataNodeRequestType requestType;
-  // Index of request
-  protected final int requestId;
-  // Target DataNode
-  protected final TDataNodeLocation targetDataNode;
 
-  /**
-   * Map key: The indices of asynchronous RPC requests.
-   *
-   * <p>Map value: The target DataNodes of corresponding indices
-   *
-   * <p>All kinds of AsyncHandler will remove its targetDataNode from the dataNodeLocationMap only
-   * if its corresponding RPC request success
-   */
-  protected final Map<Integer, TDataNodeLocation> dataNodeLocationMap;
-
-  /**
-   * Map key: The indices(targetDataNode's ID) of asynchronous RPC requests.
-   *
-   * <p>Map value: The response of corresponding indices
-   *
-   * <p>All kinds of AsyncHandler will add response to the responseMap after its corresponding RPC
-   * request finished
-   */
-  protected final Map<Integer, Response> responseMap;
-
-  // All kinds of AsyncHandler will invoke countDown after its corresponding RPC request finished
-  protected final CountDownLatch countDownLatch;
-
-  protected final String formattedTargetLocation;
-
-  protected AbstractAsyncRPCHandler(
-      DataNodeRequestType requestType,
-      int requestId,
-      TDataNodeLocation targetDataNode,
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      Map<Integer, Response> responseMap,
-      CountDownLatch countDownLatch) {
-    this.requestType = requestType;
-    this.requestId = requestId;
-    this.targetDataNode = targetDataNode;
-    this.formattedTargetLocation =
-        "{id="
-            + targetDataNode.getDataNodeId()
-            + ", internalEndPoint="
-            + targetDataNode.getInternalEndPoint()
-            + "}";
-
-    this.dataNodeLocationMap = dataNodeLocationMap;
-    this.responseMap = responseMap;
-    this.countDownLatch = countDownLatch;
+  protected DataNodeAbstractAsyncRPCHandler(DataNodeRequestType requestType, int requestId, TDataNodeLocation targetNode, Map<Integer, TDataNodeLocation> dataNodeLocationMap, Map<Integer, Response> integerResponseMap, CountDownLatch countDownLatch) {
+    super(requestType, requestId, targetNode, dataNodeLocationMap, integerResponseMap, countDownLatch);
   }
 
-  public static AbstractAsyncRPCHandler<?> buildHandler(AsyncRequestContext<?, ?, DataNodeRequestType, TDataNodeLocation> context,
-                                                        int requestId, TDataNodeLocation targetDataNode) {
+  @Override
+  protected String generateFormattedTargetLocation(TDataNodeLocation dataNodeLocation) {
+    return "{id="
+            + targetNode.getDataNodeId()
+            + ", internalEndPoint="
+            + targetNode.getInternalEndPoint()
+            + "}";
+
+  }
+
+  public static DataNodeAbstractAsyncRPCHandler<?> buildHandler(AsyncRequestContext<?, ?, DataNodeRequestType, TDataNodeLocation> context,
+                                                                int requestId, TDataNodeLocation targetDataNode) {
     DataNodeRequestType requestType = context.getRequestType();
     Map<Integer, TDataNodeLocation> dataNodeLocationMap = context.getNodeLocationMap();
     Map<Integer, ?> responseMap = context.getResponseMap();

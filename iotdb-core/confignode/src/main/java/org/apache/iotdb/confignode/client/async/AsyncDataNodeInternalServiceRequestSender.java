@@ -30,11 +30,10 @@ import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
-import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
 import org.apache.iotdb.commons.client.gg.AsyncRequestSender;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.AbstractAsyncRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAbstractAsyncRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExistenceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
@@ -96,7 +95,7 @@ public class AsyncDataNodeInternalServiceRequestSender extends AsyncRequestSende
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AsyncDataNodeInternalServiceRequestSender.class);
 
-  public AsyncDataNodeInternalServiceRequestSender() {
+  private AsyncDataNodeInternalServiceRequestSender() {
     super();
   }
 
@@ -121,7 +120,7 @@ public class AsyncDataNodeInternalServiceRequestSender extends AsyncRequestSende
       AsyncDataNodeInternalServiceClient client;
       client = clientManager.borrowClient(nodeLocationToEndPoint(targetNode));
       Object req = requestContext.getRequest(requestId);
-      AbstractAsyncRPCHandler<?> handler = AbstractAsyncRPCHandler.buildHandler(requestContext, requestId, targetNode);
+      DataNodeAbstractAsyncRPCHandler<?> handler = DataNodeAbstractAsyncRPCHandler.buildHandler(requestContext, requestId, targetNode);
 
       AsyncTSStatusRPCHandler defaultHandler = null;
       if (handler instanceof AsyncTSStatusRPCHandler) {
@@ -324,11 +323,6 @@ public class AsyncDataNodeInternalServiceRequestSender extends AsyncRequestSende
               e.getMessage(),
               retryCount);
     }
-  }
-
-  public AsyncDataNodeInternalServiceClient getAsyncClient(TDataNodeLocation targetDataNode)
-      throws ClientManagerException {
-    return clientManager.borrowClient(targetDataNode.getInternalEndPoint());
   }
 
   // TODO: Is the ClientPool must be a singleton?

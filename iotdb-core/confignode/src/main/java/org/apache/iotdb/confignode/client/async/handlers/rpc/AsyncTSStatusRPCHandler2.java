@@ -32,7 +32,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 /** General RPC handler for TSStatus response type. */
-public class AsyncTSStatusRPCHandler2 extends AbstractAsyncRPCHandler2<TSStatus> {
+public class AsyncTSStatusRPCHandler2 extends ConfigNodeAbstractAsyncRPCHandler<TSStatus> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AsyncTSStatusRPCHandler2.class);
 

@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class PipeHeartbeatRPCHandler extends AbstractAsyncRPCHandler<TPipeHeartbeatResp> {
+public class PipeHeartbeatRPCHandler extends DataNodeAbstractAsyncRPCHandler<TPipeHeartbeatResp> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeHeartbeatRPCHandler.class);
 

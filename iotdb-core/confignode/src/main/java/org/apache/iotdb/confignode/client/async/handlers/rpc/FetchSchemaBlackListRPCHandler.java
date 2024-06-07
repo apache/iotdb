@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public class FetchSchemaBlackListRPCHandler
-    extends AbstractAsyncRPCHandler<TFetchSchemaBlackListResp> {
+    extends DataNodeAbstractAsyncRPCHandler<TFetchSchemaBlackListResp> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(FetchSchemaBlackListRPCHandler.class);

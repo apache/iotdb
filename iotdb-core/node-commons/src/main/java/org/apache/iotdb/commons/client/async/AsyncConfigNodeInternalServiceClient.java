@@ -36,20 +36,20 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncClient
+public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.AsyncClient
     implements ThriftClient {
 
-  private static final Logger logger = LoggerFactory.getLogger(AsyncConfigNodeIServiceClient.class);
+  private static final Logger logger = LoggerFactory.getLogger(AsyncConfigNodeInternalServiceClient.class);
 
   private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
-  private final ClientManager<TEndPoint, AsyncConfigNodeIServiceClient> clientManager;
+  private final ClientManager<TEndPoint, AsyncConfigNodeInternalServiceClient> clientManager;
 
-  public AsyncConfigNodeIServiceClient(
+  public AsyncConfigNodeInternalServiceClient(
       ThriftClientProperty property,
       TEndPoint endpoint,
       TAsyncClientManager tClientManager,
-      ClientManager<TEndPoint, AsyncConfigNodeIServiceClient> clientManager)
+      ClientManager<TEndPoint, AsyncConfigNodeInternalServiceClient> clientManager)
       throws IOException {
     super(
         property.getProtocolFactory(),
@@ -126,10 +126,10 @@ public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncCl
   }
 
   public static class Factory
-      extends AsyncThriftClientFactory<TEndPoint, AsyncConfigNodeIServiceClient> {
+      extends AsyncThriftClientFactory<TEndPoint, AsyncConfigNodeInternalServiceClient> {
 
     public Factory(
-        ClientManager<TEndPoint, AsyncConfigNodeIServiceClient> clientManager,
+        ClientManager<TEndPoint, AsyncConfigNodeInternalServiceClient> clientManager,
         ThriftClientProperty thriftClientProperty,
         String threadName) {
       super(clientManager, thriftClientProperty, threadName);
@@ -137,15 +137,15 @@ public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncCl
 
     @Override
     public void destroyObject(
-        TEndPoint endPoint, PooledObject<AsyncConfigNodeIServiceClient> pooledObject) {
+        TEndPoint endPoint, PooledObject<AsyncConfigNodeInternalServiceClient> pooledObject) {
       pooledObject.getObject().close();
     }
 
     @Override
-    public PooledObject<AsyncConfigNodeIServiceClient> makeObject(TEndPoint endPoint)
+    public PooledObject<AsyncConfigNodeInternalServiceClient> makeObject(TEndPoint endPoint)
         throws Exception {
       return new DefaultPooledObject<>(
-          new AsyncConfigNodeIServiceClient(
+          new AsyncConfigNodeInternalServiceClient(
               thriftClientProperty,
               endPoint,
               tManagers[clientCnt.incrementAndGet() % tManagers.length],
@@ -154,7 +154,7 @@ public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncCl
 
     @Override
     public boolean validateObject(
-        TEndPoint endPoint, PooledObject<AsyncConfigNodeIServiceClient> pooledObject) {
+        TEndPoint endPoint, PooledObject<AsyncConfigNodeInternalServiceClient> pooledObject) {
       return pooledObject.getObject().isReady();
     }
   }

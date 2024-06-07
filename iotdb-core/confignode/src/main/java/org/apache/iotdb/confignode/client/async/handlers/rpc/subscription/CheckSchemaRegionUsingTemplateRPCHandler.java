@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc.subscription;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.AbstractAsyncRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAbstractAsyncRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -34,7 +34,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public class CheckSchemaRegionUsingTemplateRPCHandler
-    extends AbstractAsyncRPCHandler<TCheckSchemaRegionUsingTemplateResp> {
+    extends DataNodeAbstractAsyncRPCHandler<TCheckSchemaRegionUsingTemplateResp> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(CheckSchemaRegionUsingTemplateRPCHandler.class);
