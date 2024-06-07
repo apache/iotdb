@@ -407,8 +407,6 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
       private TimeColumn cachedTimes;
       private int cachedConsumed;
 
-      private long timeRecorder = -1;
-
       @Override
       public YieldableState yield() throws Exception {
         if (isFirstIteration) {
@@ -440,14 +438,10 @@ public class SingleInputMultiReferenceLayer extends IntermediateLayer {
               break;
             }
 
-            if (timeRecorder == -1) {
-              timeRecorder = curTime;
-            } else if (nextTime - timeRecorder > sessionTimeGap) {
+            if (nextTime - curTime > sessionTimeGap) {
               findWindow = true;
-              timeRecorder = nextTime;
               break;
             }
-
             nextIndexEnd++;
             cachedConsumed++;
             curTime = nextTime;
