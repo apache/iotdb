@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
@@ -45,8 +46,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.utils.sort.SortBufferManager.SORT_BUFFER_SIZE;
 
 public abstract class AbstractSortOperator implements ProcessOperator {
 
@@ -94,7 +93,10 @@ public abstract class AbstractSortOperator implements ProcessOperator {
     this.cachedBytes = 0;
     this.diskSpiller =
         new DiskSpiller(folderPath, folderPath + operatorContext.getOperatorId(), dataTypes);
-    this.sortBufferManager = new SortBufferManager();
+    this.sortBufferManager =
+        new SortBufferManager(
+            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+            IoTDBDescriptor.getInstance().getConfig().getSortBufferSize());
   }
 
   protected void buildResult() throws IoTDBException {
@@ -162,7 +164,7 @@ public abstract class AbstractSortOperator implements ProcessOperator {
 
   protected void cacheTsBlock(TsBlock tsBlock) throws IoTDBException {
     long bytesSize = tsBlock.getRetainedSizeInBytes();
-    if (bytesSize + cachedBytes < SORT_BUFFER_SIZE) {
+    if (bytesSize + cachedBytes < sortBufferManager.getSortBufferSize()) {
       cachedBytes += bytesSize;
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
         cachedData.add(new MergeSortKey(tsBlock, i));
@@ -312,7 +314,9 @@ public abstract class AbstractSortOperator implements ProcessOperator {
   }
 
   protected boolean hasMoreSortedData() {
-    return (!diskSpiller.hasSpilledData() && curRow != cachedData.size())
+    return (!diskSpiller.hasSpilledData()
+            && ((curRow == -1 && !cachedData.isEmpty())
+                || (curRow != -1 && curRow != cachedData.size())))
         || (diskSpiller.hasSpilledData() && hasMoreData());
   }
 
@@ -333,7 +337,7 @@ public abstract class AbstractSortOperator implements ProcessOperator {
   public long calculateMaxPeekMemory() {
     return inputOperator.calculateMaxPeekMemoryWithCounter()
         + inputOperator.calculateRetainedSizeAfterCallingNext()
-        + SORT_BUFFER_SIZE;
+        + sortBufferManager.getSortBufferSize();
   }
 
   @Override
@@ -343,16 +347,19 @@ public abstract class AbstractSortOperator implements ProcessOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return inputOperator.calculateRetainedSizeAfterCallingNext() + SORT_BUFFER_SIZE;
+    return inputOperator.calculateRetainedSizeAfterCallingNext()
+        + sortBufferManager.getSortBufferSize();
   }
 
   protected void resetSortRelatedResource() {
     curRow = -1;
-    cachedData.clear();
+    cachedData = new ArrayList<>();
     cachedBytes = 0;
     clear();
-    sortBufferManager = new SortBufferManager();
-    if (!mergeSortHeap.isEmpty()) {
+    sortBufferManager =
+        new SortBufferManager(
+            sortBufferManager.getMaxTsBlockSizeInBytes(), sortBufferManager.getSortBufferSize());
+    if (mergeSortHeap != null && !mergeSortHeap.isEmpty()) {
       throw new IllegalStateException("mergeSortHeap should be empty!");
     }
     mergeSortHeap = null;
