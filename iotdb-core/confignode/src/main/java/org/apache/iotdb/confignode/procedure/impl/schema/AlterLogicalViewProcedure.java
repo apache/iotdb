@@ -32,7 +32,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncRequestContext;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -120,8 +120,8 @@ public class AlterLogicalViewProcedure
   private void invalidateCache(ConfigNodeProcedureEnv env) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    AsyncClientHandler<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
+    AsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
+        new AsyncRequestContext<>(
             DataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
             new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
             dataNodeLocationMap);

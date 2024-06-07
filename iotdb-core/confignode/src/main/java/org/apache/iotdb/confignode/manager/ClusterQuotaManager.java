@@ -28,7 +28,7 @@ import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -87,8 +87,8 @@ public class ClusterQuotaManager {
       if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         Map<Integer, TDataNodeLocation> dataNodeLocationMap =
             configManager.getNodeManager().getRegisteredDataNodeLocations();
-        AsyncClientHandler<TSetSpaceQuotaReq, TSStatus> clientHandler =
-            new AsyncClientHandler<>(DataNodeRequestType.SET_SPACE_QUOTA, req, dataNodeLocationMap);
+        AsyncRequestContext<TSetSpaceQuotaReq, TSStatus> clientHandler =
+            new AsyncRequestContext<>(DataNodeRequestType.SET_SPACE_QUOTA, req, dataNodeLocationMap);
         AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
         return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
       }
@@ -192,8 +192,8 @@ public class ClusterQuotaManager {
       if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         Map<Integer, TDataNodeLocation> dataNodeLocationMap =
             configManager.getNodeManager().getRegisteredDataNodeLocations();
-        AsyncClientHandler<TSetThrottleQuotaReq, TSStatus> clientHandler =
-            new AsyncClientHandler<>(
+        AsyncRequestContext<TSetThrottleQuotaReq, TSStatus> clientHandler =
+            new AsyncRequestContext<>(
                 DataNodeRequestType.SET_THROTTLE_QUOTA, req, dataNodeLocationMap);
         AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
         return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());

@@ -33,7 +33,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
@@ -438,8 +438,8 @@ public class ClusterSchemaManager {
       }
     }
 
-    AsyncClientHandler<TSetTTLReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.SET_TTL);
+    AsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
+        new AsyncRequestContext<>(DataNodeRequestType.SET_TTL);
     dnlToSgMap
         .keySet()
         .forEach(
@@ -1099,8 +1099,8 @@ public class ClusterSchemaManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
 
-    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
+    AsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+        new AsyncRequestContext<>(
             DataNodeRequestType.UPDATE_TEMPLATE, updateTemplateReq, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();

@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncRequestContext;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -155,8 +155,8 @@ public class UnsetTemplateProcedure
     invalidateTemplateSetInfoReq.setType(
         TemplateInternalRPCUpdateType.INVALIDATE_TEMPLATE_SET_INFO.toByte());
     invalidateTemplateSetInfoReq.setTemplateInfo(getInvalidateTemplateSetInfo());
-    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
+    AsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+        new AsyncRequestContext<>(
             DataNodeRequestType.UPDATE_TEMPLATE, invalidateTemplateSetInfoReq, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
@@ -250,8 +250,8 @@ public class UnsetTemplateProcedure
     rollbackTemplateSetInfoReq.setType(
         TemplateInternalRPCUpdateType.ADD_TEMPLATE_SET_INFO.toByte());
     rollbackTemplateSetInfoReq.setTemplateInfo(getAddTemplateSetInfo());
-    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
+    AsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+        new AsyncRequestContext<>(
             DataNodeRequestType.UPDATE_TEMPLATE, rollbackTemplateSetInfoReq, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();

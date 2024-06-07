@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
@@ -210,8 +210,8 @@ public class SetTemplateProcedure
 
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
+    AsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+        new AsyncRequestContext<>(DataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
@@ -382,8 +382,8 @@ public class SetTemplateProcedure
 
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
+    AsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+        new AsyncRequestContext<>(DataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
@@ -486,8 +486,8 @@ public class SetTemplateProcedure
         TemplateInternalRPCUtil.generateInvalidateTemplateSetInfoBytes(
             template.getId(), templateSetPath));
 
-    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
+    AsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+        new AsyncRequestContext<>(
             DataNodeRequestType.UPDATE_TEMPLATE, invalidateTemplateSetInfoReq, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();

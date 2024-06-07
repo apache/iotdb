@@ -27,7 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
@@ -163,8 +163,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     // Transfer leader to the optimal distribution
     long currentTime = System.nanoTime();
     AtomicInteger requestId = new AtomicInteger(0);
-    AsyncClientHandler<TRegionLeaderChangeReq, TRegionLeaderChangeResp> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.CHANGE_REGION_LEADER);
+    AsyncRequestContext<TRegionLeaderChangeReq, TRegionLeaderChangeResp> clientHandler =
+        new AsyncRequestContext<>(DataNodeRequestType.CHANGE_REGION_LEADER);
     Map<TConsensusGroupId, ConsensusGroupHeartbeatSample> successTransferMap = new TreeMap<>();
     optimalLeaderMap.forEach(
         (regionGroupId, newLeaderId) -> {
@@ -300,8 +300,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
     long broadcastTime = System.currentTimeMillis();
     Map<TConsensusGroupId, TRegionReplicaSet> tmpPriorityMap = getRegionPriorityMap();
-    AsyncClientHandler<TRegionRouteReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
+    AsyncRequestContext<TRegionRouteReq, TSStatus> clientHandler =
+        new AsyncRequestContext<>(
             DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
             new TRegionRouteReq(broadcastTime, tmpPriorityMap),
             dataNodeLocationMap);

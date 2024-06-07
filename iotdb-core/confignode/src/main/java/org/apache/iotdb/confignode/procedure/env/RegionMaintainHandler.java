@@ -36,7 +36,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncRequestContext;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -370,8 +370,8 @@ public class RegionMaintainHandler {
       TConsensusGroupId regionId,
       List<TDataNodeLocation> correctDataNodeLocations,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
-    AsyncClientHandler<TResetPeerListReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
+    AsyncRequestContext<TResetPeerListReq, TSStatus> clientHandler =
+        new AsyncRequestContext<>(
             DataNodeRequestType.RESET_PEER_LIST,
             new TResetPeerListReq(regionId, correctDataNodeLocations),
             dataNodeLocationMap);

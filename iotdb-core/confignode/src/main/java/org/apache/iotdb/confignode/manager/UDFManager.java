@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
@@ -127,8 +127,8 @@ public class UDFManager {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TCreateFunctionInstanceReq req =
         new TCreateFunctionInstanceReq(udfInformation.serialize()).setJarFile(jarFile);
-    AsyncClientHandler<TCreateFunctionInstanceReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.CREATE_FUNCTION, req, dataNodeLocationMap);
+    AsyncRequestContext<TCreateFunctionInstanceReq, TSStatus> clientHandler =
+        new AsyncRequestContext<>(DataNodeRequestType.CREATE_FUNCTION, req, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
@@ -160,8 +160,8 @@ public class UDFManager {
 
     final TDropFunctionInstanceReq request = new TDropFunctionInstanceReq(functionName, false);
 
-    AsyncClientHandler<TDropFunctionInstanceReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.DROP_FUNCTION, request, dataNodeLocationMap);
+    AsyncRequestContext<TDropFunctionInstanceReq, TSStatus> clientHandler =
+        new AsyncRequestContext<>(DataNodeRequestType.DROP_FUNCTION, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
