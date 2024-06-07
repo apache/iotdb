@@ -51,7 +51,9 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
       OperatorContext operatorContext,
       PlanNodeId sourceId,
       Map<IDeviceID, Boolean> deviceToAlignedMap,
-      Filter timeFilter) {
+      Filter timeFilter,
+      boolean outputCount) {
+    this.outputCount = outputCount;
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
     this.deviceToAlignedMap = deviceToAlignedMap;
@@ -70,26 +72,36 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
 
   @Override
   protected void updateActiveData() {
-    TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
-    ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
-
     List<IDeviceID> activeDevices =
         ((RegionScanForActiveDeviceUtil) regionScanUtil).getActiveDevices();
-    for (IDeviceID deviceID : activeDevices) {
-      timeColumnBuilder.writeLong(-1);
-      columnBuilders[0].writeBinary(new Binary(deviceID.toString(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[1].writeBinary(
-          new Binary(
-              String.valueOf(deviceToAlignedMap.get(deviceID)), TSFileConfig.STRING_CHARSET));
-      columnBuilders[2].appendNull();
-      columnBuilders[3].appendNull();
-      resultTsBlockBuilder.declarePosition();
-      deviceToAlignedMap.remove(deviceID);
+
+    if (this.outputCount) {
+      count += activeDevices.size();
+      activeDevices.forEach(deviceToAlignedMap.keySet()::remove);
+    } else {
+      TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
+      ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
+      for (IDeviceID deviceID : activeDevices) {
+        timeColumnBuilder.writeLong(-1);
+        columnBuilders[0].writeBinary(new Binary(deviceID.toString(), TSFileConfig.STRING_CHARSET));
+        columnBuilders[1].writeBinary(
+            new Binary(
+                String.valueOf(deviceToAlignedMap.get(deviceID)), TSFileConfig.STRING_CHARSET));
+        columnBuilders[2].appendNull();
+        columnBuilders[3].appendNull();
+        resultTsBlockBuilder.declarePosition();
+        deviceToAlignedMap.remove(deviceID);
+      }
     }
   }
 
   @Override
   protected List<TSDataType> getResultDataTypes() {
+    if (outputCount) {
+      return ColumnHeaderConstant.countDevicesColumnHeaders.stream()
+          .map(ColumnHeader::getColumnType)
+          .collect(Collectors.toList());
+    }
     return ColumnHeaderConstant.showDevicesColumnHeaders.stream()
         .map(ColumnHeader::getColumnType)
         .collect(Collectors.toList());

@@ -31,6 +31,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,17 +44,21 @@ public abstract class AbstractDataTool {
 
   protected static final String HOST_ARGS = "h";
   protected static final String HOST_NAME = "host";
+  protected static final String HOST_DEFAULT_VALUE = "127.0.0.1";
 
   protected static final String HELP_ARGS = "help";
 
   protected static final String PORT_ARGS = "p";
   protected static final String PORT_NAME = "port";
+  protected static final String PORT_DEFAULT_VALUE = "6667";
 
   protected static final String PW_ARGS = "pw";
   protected static final String PW_NAME = "password";
+  protected static final String PW_DEFAULT_VALUE = "root";
 
   protected static final String USERNAME_ARGS = "u";
   protected static final String USERNAME_NAME = "username";
+  protected static final String USERNAME_DEFAULT_VALUE = "root";
 
   protected static final String TIME_FORMAT_ARGS = "tf";
   protected static final String TIME_FORMAT_NAME = "timeformat";
@@ -61,7 +66,7 @@ public abstract class AbstractDataTool {
   protected static final String TIME_ZONE_ARGS = "tz";
   protected static final String TIME_ZONE_NAME = "timeZone";
 
-  protected static final String TIMEOUT_ARGS = "t";
+  protected static final String TIMEOUT_ARGS = "timeout";
   protected static final String TIMEOUT_NAME = "timeout";
   protected static final int MAX_HELP_CONSOLE_WIDTH = 92;
   protected static final String[] TIME_FORMAT =
@@ -125,10 +130,14 @@ public abstract class AbstractDataTool {
 
   protected AbstractDataTool() {}
 
-  protected static String checkRequiredArg(String arg, String name, CommandLine commandLine)
+  protected static String checkRequiredArg(
+      String arg, String name, CommandLine commandLine, String defaultValue)
       throws ArgsErrorException {
     String str = commandLine.getOptionValue(arg);
     if (str == null) {
+      if (StringUtils.isNotBlank(defaultValue)) {
+        return defaultValue;
+      }
       String msg = String.format("Required values for option '%s' not provided", name);
       LOGGER.info(msg);
       LOGGER.info("Use -help for more information");
@@ -145,11 +154,10 @@ public abstract class AbstractDataTool {
   }
 
   protected static void parseBasicParams(CommandLine commandLine) throws ArgsErrorException {
-    host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
-    port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
-    username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);
-
-    password = commandLine.getOptionValue(PW_ARGS);
+    host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, HOST_DEFAULT_VALUE);
+    port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, PORT_DEFAULT_VALUE);
+    username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, USERNAME_DEFAULT_VALUE);
+    password = commandLine.getOptionValue(PW_ARGS, PW_DEFAULT_VALUE);
   }
 
   protected static boolean checkTimeFormat() {
@@ -176,30 +184,27 @@ public abstract class AbstractDataTool {
     Option opHost =
         Option.builder(HOST_ARGS)
             .longOpt(HOST_NAME)
-            .required()
             .argName(HOST_NAME)
             .hasArg()
-            .desc("Host Name (required)")
+            .desc("Host Name (optional)")
             .build();
     options.addOption(opHost);
 
     Option opPort =
         Option.builder(PORT_ARGS)
             .longOpt(PORT_NAME)
-            .required()
             .argName(PORT_NAME)
             .hasArg()
-            .desc("Port (required)")
+            .desc("Port (optional)")
             .build();
     options.addOption(opPort);
 
     Option opUsername =
         Option.builder(USERNAME_ARGS)
             .longOpt(USERNAME_NAME)
-            .required()
             .argName(USERNAME_NAME)
             .hasArg()
-            .desc("Username (required)")
+            .desc("Username (optional)")
             .build();
     options.addOption(opUsername);
 
@@ -209,7 +214,7 @@ public abstract class AbstractDataTool {
             .optionalArg(true)
             .argName(PW_NAME)
             .hasArg()
-            .desc("Password (required)")
+            .desc("Password (optional)")
             .build();
     options.addOption(opPassword);
     return options;

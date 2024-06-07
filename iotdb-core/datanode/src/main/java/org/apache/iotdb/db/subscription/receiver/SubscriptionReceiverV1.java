@@ -399,18 +399,21 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private List<SubscriptionEvent> handlePipeSubscribePollInternal(
       final ConsumerConfig consumerConfig, final PollPayload messagePayload) {
+    final Set<String> subscribedTopicNames =
+        SubscriptionAgent.consumer()
+            .getTopicsSubscribedByConsumer(
+                consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
     final Set<String> topicNames;
     if (messagePayload.getTopicNames().isEmpty()) {
       // poll all subscribed topics
-      topicNames =
-          SubscriptionAgent.consumer()
-              .getTopicsSubscribedByConsumer(
-                  consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+      topicNames = subscribedTopicNames;
     } else {
       topicNames =
           messagePayload.getTopicNames().stream()
               .map(ASTVisitor::parseIdentifier)
               .collect(Collectors.toSet());
+      // filter unsubscribed topics
+      topicNames.removeIf((topicName) -> !subscribedTopicNames.contains(topicName));
     }
 
     return SubscriptionAgent.broker().poll(consumerConfig, topicNames);

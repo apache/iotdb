@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
-import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 
 import com.codahale.metrics.Clock;
 import com.codahale.metrics.ExponentialMovingAverages;
@@ -41,8 +40,6 @@ class PipeDataNodeRemainingEventAndTimeOperator {
 
   private final ConcurrentMap<IoTDBDataRegionExtractor, IoTDBDataRegionExtractor>
       dataRegionExtractors = new ConcurrentHashMap<>();
-  private final ConcurrentMap<PipeProcessorSubtask, PipeProcessorSubtask> dataRegionProcessors =
-      new ConcurrentHashMap<>();
   private final ConcurrentMap<PipeConnectorSubtask, PipeConnectorSubtask> dataRegionConnectors =
       new ConcurrentHashMap<>();
   private final ConcurrentMap<IoTDBSchemaRegionExtractor, IoTDBSchemaRegionExtractor>

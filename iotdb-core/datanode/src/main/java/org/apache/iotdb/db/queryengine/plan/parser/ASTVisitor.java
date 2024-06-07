@@ -1981,7 +1981,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.SGLEVEL() != null) {
       loadTsFileStatement.setDatabaseLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
-      loadTsFileStatement.setVerifySchema(Boolean.parseBoolean(ctx.boolean_literal().getText()));
+      if (!Boolean.parseBoolean(ctx.boolean_literal().getText())) {
+        throw new SemanticException("Load option VERIFY can only be set to true.");
+      }
+      loadTsFileStatement.setVerifySchema(true);
     } else {
       throw new SemanticException(
           String.format(
@@ -3554,6 +3557,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       String dataTypeString = ctx.dataType.getText().toUpperCase();
       try {
         dataType = TSDataType.valueOf(dataTypeString);
+        if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
+          throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
+        }
       } catch (Exception e) {
         throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
       }

@@ -335,7 +335,8 @@ public class LimitOffsetPushDown implements PlanOptimizer {
       if (queryStatement.getResultTimeOrder() == Ordering.ASC) {
         startTime = startTime + offsetSize * step;
       } else {
-        startTime = startTime + (size - offsetSize - limitSize) * step;
+        long startTimeInterval = size - offsetSize - limitSize;
+        startTime = startTime + (startTimeInterval < 0 ? 0 : startTimeInterval) * step;
       }
       endTime =
           limitSize == 0
