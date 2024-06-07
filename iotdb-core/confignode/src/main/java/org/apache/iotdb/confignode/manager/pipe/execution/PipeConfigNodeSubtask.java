@@ -186,7 +186,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
 
       PipeConfigRegionConnectorMetrics.getInstance().markConfigEvent(taskID);
     } catch (final PipeException e) {
-      lastExceptionEvent = event;
+      setLastExceptionEvent(event);
       if (!isClosed.get()) {
         throw e;
       } else {
@@ -197,7 +197,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
         clearReferenceCountAndReleaseLastEvent();
       }
     } catch (final Exception e) {
-      lastExceptionEvent = event;
+      setLastExceptionEvent(event);
       if (!isClosed.get()) {
         throw new PipeException(
             String.format(

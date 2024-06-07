@@ -340,7 +340,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
             .map(
                 tablet ->
                     new PipeRawTabletInsertionEvent(
-                        tablet, isAligned, pipeName, pipeTaskMeta, this, false))
+                        tablet, isAligned, pipeName, creationTime, pipeTaskMeta, this, false))
             .filter(event -> !event.hasNoNeedParsingAndIsEmpty())
             .collect(Collectors.toList());
 
