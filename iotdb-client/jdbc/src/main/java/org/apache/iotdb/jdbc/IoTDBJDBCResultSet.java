@@ -1338,4 +1338,12 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public List<String> getSgColumns() {
     return sgColumns;
   }
+
+  public String getColumnTypeByIndex(int columnIndex) {
+    if (columnIndex == 1) {
+      // time column
+      return TSDataType.TIMESTAMP.name();
+    }
+    return columnTypeList.get(columnIndex - 2);
+  }
 }
