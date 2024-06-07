@@ -74,6 +74,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       LoggerFactory.getLogger(PipeRealtimeDataRegionExtractor.class);
 
   protected String pipeName;
+  protected long creationTime;
   protected String dataRegionId;
   protected PipeTaskMeta pipeTaskMeta;
 
@@ -167,7 +168,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     // indexed by the taskID of IoTDBDataRegionExtractor. To avoid PipeRealtimeDataRegionExtractor
     // holding a reference to IoTDBDataRegionExtractor, the taskID should be constructed to
     // match that of IoTDBDataRegionExtractor.
-    final long creationTime = environment.getCreationTime();
+    creationTime = environment.getCreationTime();
     taskID = pipeName + "_" + dataRegionId + "_" + creationTime;
 
     pipePattern = PipePattern.parsePipePatternFromSourceParameters(parameters);
@@ -385,6 +386,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public final String getPipeName() {
     return pipeName;
+  }
+
+  public final long getCreationTime() {
+    return creationTime;
   }
 
   public final PipeTaskMeta getPipeTaskMeta() {

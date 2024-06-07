@@ -94,6 +94,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
 
   private String pipeName;
+  private long creationTime;
+
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
 
@@ -250,6 +252,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
     pipeName = environment.getPipeName();
+    creationTime = environment.getCreationTime();
     pipeTaskMeta = environment.getPipeTaskMeta();
     startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
@@ -563,7 +566,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     if (resource == null) {
       isTerminateSignalSent = true;
       final PipeTerminateEvent terminateEvent =
-          new PipeTerminateEvent(pipeName, pipeTaskMeta, dataRegionId);
+          new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
       terminateEvent.increaseReferenceCount(
           PipeHistoricalDataRegionTsFileExtractor.class.getName());
       return terminateEvent;
