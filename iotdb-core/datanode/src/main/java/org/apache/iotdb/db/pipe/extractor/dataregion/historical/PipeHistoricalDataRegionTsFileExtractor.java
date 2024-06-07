@@ -579,6 +579,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             false,
             false,
             pipeName,
+            creationTime,
             pipeTaskMeta,
             pipePattern,
             historicalDataExtractionStartTime,
