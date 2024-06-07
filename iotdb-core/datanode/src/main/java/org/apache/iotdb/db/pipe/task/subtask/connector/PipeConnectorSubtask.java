@@ -230,7 +230,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       // now
       // we can reckon that the input pending queue does not contain any of the pipe's events
       if (lastEvent instanceof EnrichedEvent
-          && ((EnrichedEvent) lastEvent).getPipeName().equals(pipeNameToDrop)) {
+          && pipeNameToDrop.equals(((EnrichedEvent) lastEvent).getPipeName())) {
         // Do not clear last event's reference count because it may be on transferring
         lastEvent = null;
         // Submit self to avoid that the lastEvent has been retried "max times" times and is stopped
@@ -252,7 +252,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       // "nonnull"
       // detection.
       if (lastExceptionEvent instanceof EnrichedEvent
-          && ((EnrichedEvent) lastExceptionEvent).getPipeName().equals(pipeNameToDrop)) {
+          && pipeNameToDrop.equals(((EnrichedEvent) lastExceptionEvent).getPipeName())) {
         clearReferenceCountAndReleaseLastExceptionEvent();
       }
     }
