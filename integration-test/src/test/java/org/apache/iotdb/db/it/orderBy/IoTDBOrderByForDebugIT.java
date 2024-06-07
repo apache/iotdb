@@ -50,55 +50,55 @@ public class IoTDBOrderByForDebugIT {
   // https://docs.google.com/spreadsheets/d/1OWA1bKraArCwWVnuTjuhJ5yLG0PFLdD78gD6FjquepI/edit#gid=0
   private static final String[] sql =
       new String[] {
-          "CREATE DATABASE root.sg",
-          "CREATE TIMESERIES root.sg.d.num WITH DATATYPE=INT32, ENCODING=RLE",
-          "CREATE TIMESERIES root.sg.d.bigNum WITH DATATYPE=INT64, ENCODING=RLE",
-          "CREATE TIMESERIES root.sg.d.floatNum WITH DATATYPE=DOUBLE, ENCODING=RLE, 'MAX_POINT_NUMBER'='5'",
-          "CREATE TIMESERIES root.sg.d.str WITH DATATYPE=TEXT, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.sg.d.bool WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-          "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
-          "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
-          "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
-          "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
-          "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
-          "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
-          "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
-          "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
-          "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
-          "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
-          "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
-          "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
-          "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
-          "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
-          "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)",
-          // Newly added 'flush' command compared to IoTDBOrderByIT
-          "flush"
+        "CREATE DATABASE root.sg",
+        "CREATE TIMESERIES root.sg.d.num WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg.d.bigNum WITH DATATYPE=INT64, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg.d.floatNum WITH DATATYPE=DOUBLE, ENCODING=RLE, 'MAX_POINT_NUMBER'='5'",
+        "CREATE TIMESERIES root.sg.d.str WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg.d.bool WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
+        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
+        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
+        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
+        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
+        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
+        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
+        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
+        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
+        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
+        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
+        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
+        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
+        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
+        "insert into root.sg.d(timestamp,num,bigNum,floatNum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)",
+        // Newly added 'flush' command compared to IoTDBOrderByIT
+        "flush"
       };
 
   private static final String[] sql2 =
       new String[] {
-          "CREATE TIMESERIES root.sg.d2.num WITH DATATYPE=INT32, ENCODING=RLE",
-          "CREATE TIMESERIES root.sg.d2.bigNum WITH DATATYPE=INT64, ENCODING=RLE",
-          "CREATE TIMESERIES root.sg.d2.floatNum WITH DATATYPE=DOUBLE, ENCODING=RLE, 'MAX_POINT_NUMBER'='5'",
-          "CREATE TIMESERIES root.sg.d2.str WITH DATATYPE=TEXT, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.sg.d2.bool WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-          "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
-          "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
-          "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
-          "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
-          "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
-          "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
-          "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
-          "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
-          "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
-          "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
-          "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
-          "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
-          "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
-          "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
-          "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)",
-          // Newly added 'flush' command compared to IoTDBOrderByIT
-          "flush"
+        "CREATE TIMESERIES root.sg.d2.num WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg.d2.bigNum WITH DATATYPE=INT64, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg.d2.floatNum WITH DATATYPE=DOUBLE, ENCODING=RLE, 'MAX_POINT_NUMBER'='5'",
+        "CREATE TIMESERIES root.sg.d2.str WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.sg.d2.bool WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(0,3,2947483648,231.2121,\"coconut\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(20,2,2147483648,434.12,\"pineapple\",TRUE)",
+        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(40,1,2247483648,12.123,\"apricot\",TRUE)",
+        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(80,9,2147483646,43.12,\"apple\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(100,8,2147483964,4654.231,\"papaya\",TRUE)",
+        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536000000,6,2147483650,1231.21,\"banana\",TRUE)",
+        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536000100,10,3147483648,231.55,\"pumelo\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536000500,4,2147493648,213.1,\"peach\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536001000,5,2149783648,56.32,\"orange\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536010000,7,2147983648,213.112,\"lemon\",TRUE)",
+        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(31536100000,11,2147468648,54.121,\"pitaya\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(41536000000,12,2146483648,45.231,\"strawberry\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(41536000020,14,2907483648,231.34,\"cherry\",FALSE)",
+        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(41536900000,13,2107483648,54.12,\"lychee\",TRUE)",
+        "insert into root.sg.d2(timestamp,num,bigNum,floatNum,str,bool) values(51536000000,15,3147483648,235.213,\"watermelon\",TRUE)",
+        // Newly added 'flush' command compared to IoTDBOrderByIT
+        "flush"
       };
 
   @BeforeClass
@@ -115,7 +115,7 @@ public class IoTDBOrderByForDebugIT {
 
   protected static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       for (String sql : sql) {
         statement.execute(sql);
       }
@@ -130,21 +130,21 @@ public class IoTDBOrderByForDebugIT {
   // ordinal data
   String[][] res =
       new String[][] {
-          {"0", "3", "2947483648", "231.2121", "coconut", "false"},
-          {"20", "2", "2147483648", "434.12", "pineapple", "true"},
-          {"40", "1", "2247483648", "12.123", "apricot", "true"},
-          {"80", "9", "2147483646", "43.12", "apple", "false"},
-          {"100", "8", "2147483964", "4654.231", "papaya", "true"},
-          {"31536000000", "6", "2147483650", "1231.21", "banana", "true"},
-          {"31536000100", "10", "3147483648", "231.55", "pumelo", "false"},
-          {"31536000500", "4", "2147493648", "213.1", "peach", "false"},
-          {"31536001000", "5", "2149783648", "56.32", "orange", "false"},
-          {"31536010000", "7", "2147983648", "213.112", "lemon", "true"},
-          {"31536100000", "11", "2147468648", "54.121", "pitaya", "false"},
-          {"41536000000", "12", "2146483648", "45.231", "strawberry", "false"},
-          {"41536000020", "14", "2907483648", "231.34", "cherry", "false"},
-          {"41536900000", "13", "2107483648", "54.12", "lychee", "true"},
-          {"51536000000", "15", "3147483648", "235.213", "watermelon", "true"},
+        {"0", "3", "2947483648", "231.2121", "coconut", "false"},
+        {"20", "2", "2147483648", "434.12", "pineapple", "true"},
+        {"40", "1", "2247483648", "12.123", "apricot", "true"},
+        {"80", "9", "2147483646", "43.12", "apple", "false"},
+        {"100", "8", "2147483964", "4654.231", "papaya", "true"},
+        {"31536000000", "6", "2147483650", "1231.21", "banana", "true"},
+        {"31536000100", "10", "3147483648", "231.55", "pumelo", "false"},
+        {"31536000500", "4", "2147493648", "213.1", "peach", "false"},
+        {"31536001000", "5", "2149783648", "56.32", "orange", "false"},
+        {"31536010000", "7", "2147983648", "213.112", "lemon", "true"},
+        {"31536100000", "11", "2147468648", "54.121", "pitaya", "false"},
+        {"41536000000", "12", "2146483648", "45.231", "strawberry", "false"},
+        {"41536000020", "14", "2907483648", "231.34", "cherry", "false"},
+        {"41536900000", "13", "2107483648", "54.12", "lychee", "true"},
+        {"51536000000", "15", "3147483648", "235.213", "watermelon", "true"},
       };
 
   private void checkHeader(ResultSetMetaData resultSetMetaData, String[] title)
@@ -156,18 +156,18 @@ public class IoTDBOrderByForDebugIT {
 
   private void testNormalOrderBy(String sql, int[] ans) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         checkHeader(
             metaData,
             new String[] {
-                "Time",
-                "root.sg.d.num",
-                "root.sg.d.bigNum",
-                "root.sg.d.floatNum",
-                "root.sg.d.str",
-                "root.sg.d.bool"
+              "Time",
+              "root.sg.d.num",
+              "root.sg.d.bigNum",
+              "root.sg.d.floatNum",
+              "root.sg.d.str",
+              "root.sg.d.bool"
             });
         int i = 0;
         while (resultSet.next()) {
@@ -260,7 +260,7 @@ public class IoTDBOrderByForDebugIT {
     int[] ans = {3, 2, 5, 12, 0, 9, 13, 8, 4, 7, 1, 10, 6, 11, 14};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         checkHeader(
@@ -332,7 +332,7 @@ public class IoTDBOrderByForDebugIT {
     String sql = "select num+bigNum from root.sg.d order by num+floatNum desc, floatNum desc";
     int[] ans = {4, 5, 1, 14, 12, 6, 0, 9, 7, 13, 10, 8, 11, 3, 2};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         checkHeader(metaData, new String[] {"Time", "root.sg.d.num + root.sg.d.bigNum"});
@@ -361,7 +361,7 @@ public class IoTDBOrderByForDebugIT {
     String sql = "select num+floatNum from root.sg.d order by floatNum+num desc, floatNum desc";
     int[] ans = {4, 5, 1, 14, 12, 6, 0, 9, 7, 13, 10, 8, 11, 3, 2};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         checkHeader(metaData, new String[] {"Time", "root.sg.d.num + root.sg.d.floatNum"});
@@ -407,7 +407,7 @@ public class IoTDBOrderByForDebugIT {
     String sql = "select num from root.sg.d order by num limit 5";
     int[] ans = {2, 1, 0, 7, 8};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         checkHeader(metaData, new String[] {"Time", "root.sg.d.num"});
@@ -435,7 +435,7 @@ public class IoTDBOrderByForDebugIT {
     long[] times =
         new long[] {51536000000L, 41536000000L, 41536900000L, 31536100000L, 31536000000L, 0L};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         int i = 0;
         while (resultSet.next()) {
@@ -459,17 +459,17 @@ public class IoTDBOrderByForDebugIT {
         "select avg(num) from root.sg.d group by session(10000ms) order by max_value(floatNum)";
     double[][] ans =
         new double[][] {
-            {13.0, 54.12},
-            {11.0, 54.121},
-            {13.0, 231.34},
-            {15.0, 235.213},
-            {6.4, 1231.21},
-            {4.6, 4654.231}
+          {13.0, 54.12},
+          {11.0, 54.121},
+          {13.0, 231.34},
+          {15.0, 235.213},
+          {6.4, 1231.21},
+          {4.6, 4654.231}
         };
     long[] times =
         new long[] {41536900000L, 31536100000L, 41536000000L, 51536000000L, 31536000000L, 0L};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         int i = 0;
         while (resultSet.next()) {
@@ -495,7 +495,7 @@ public class IoTDBOrderByForDebugIT {
     long[] times =
         new long[] {51536000000L, 41536900000L, 41536000000L, 31536100000L, 31536000000L, 0L};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         int i = 0;
         while (resultSet.next()) {
@@ -523,7 +523,7 @@ public class IoTDBOrderByForDebugIT {
         new long[] {0L, 31536000000L, 31536100000L, 41536000000L, 41536900000L, 51536000000L};
     int[] order = new int[] {2, 4, 3, 5, 1, 0};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         int i = 0;
         while (resultSet.next()) {
@@ -551,7 +551,7 @@ public class IoTDBOrderByForDebugIT {
         new long[] {0L, 31536000000L, 31536100000L, 41536000000L, 41536900000L, 51536000000L};
     int[] order = new int[] {2, 4, 3, 5, 1, 0};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         int i = 0;
         while (resultSet.next()) {
@@ -579,7 +579,7 @@ public class IoTDBOrderByForDebugIT {
         new long[] {0L, 31536000000L, 31536100000L, 41536000000L, 41536900000L, 51536000000L};
     int[] order = new int[] {2, 4, 3, 5, 1, 0};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         int i = 0;
         while (resultSet.next()) {
@@ -603,17 +603,17 @@ public class IoTDBOrderByForDebugIT {
         "select avg(num)+min_value(floatNum) from root.sg.d group by session(10000ms) order by max_value(floatNum)";
     double[][] ans =
         new double[][] {
-            {13.0, 54.12, 54.12},
-            {11.0, 54.121, 54.121},
-            {13.0, 231.34, 45.231},
-            {15.0, 235.213, 235.213},
-            {6.4, 1231.21, 56.32},
-            {4.6, 4654.231, 12.123}
+          {13.0, 54.12, 54.12},
+          {11.0, 54.121, 54.121},
+          {13.0, 231.34, 45.231},
+          {15.0, 235.213, 235.213},
+          {6.4, 1231.21, 56.32},
+          {4.6, 4654.231, 12.123}
         };
     long[] times =
         new long[] {41536900000L, 31536100000L, 41536000000L, 51536000000L, 31536000000L, 0L};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         int i = 0;
         while (resultSet.next()) {
@@ -641,7 +641,7 @@ public class IoTDBOrderByForDebugIT {
         new long[] {0L, 31536000000L, 31536100000L, 41536000000L, 41536900000L, 51536000000L};
     int[] order = new int[] {2, 4, 3, 5, 1, 0};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         int i = 0;
         while (resultSet.next()) {
@@ -662,7 +662,7 @@ public class IoTDBOrderByForDebugIT {
   // 4. raw data query with align by device
   private void testNormalOrderByAlignByDevice(String sql, int[] ans) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         checkHeader(
@@ -712,7 +712,7 @@ public class IoTDBOrderByForDebugIT {
     int[] ans = {4, 5, 1, 14, 12, 6, 0, 9, 7, 13, 10, 8, 11, 3, 2};
     String device = "root.sg.d";
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         int i = 0;
         while (resultSet.next()) {
@@ -803,7 +803,7 @@ public class IoTDBOrderByForDebugIT {
 
   private void testNormalOrderByMixAlignBy(String sql, int[] ans) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         checkHeader(
@@ -849,7 +849,7 @@ public class IoTDBOrderByForDebugIT {
 
   private void testDeviceViewOrderByMixAlignBy(String sql, int[] ans) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         checkHeader(
@@ -897,7 +897,7 @@ public class IoTDBOrderByForDebugIT {
 
   private void orderByBigNumAlignByDevice(String sql, int[] ans) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         checkHeader(
@@ -1007,36 +1007,36 @@ public class IoTDBOrderByForDebugIT {
     double[] ans = {4.6, 4.6, 6.4, 6.4, 11.0, 11.0, 13.0, 13.0, 13.0, 13.0, 15.0, 15.0};
     long[] times =
         new long[] {
-            0L,
-            0L,
-            31536000000L,
-            31536000000L,
-            31536100000L,
-            31536100000L,
-            41536000000L,
-            41536900000L,
-            41536000000L,
-            41536900000L,
-            51536000000L,
-            51536000000L
+          0L,
+          0L,
+          31536000000L,
+          31536000000L,
+          31536100000L,
+          31536100000L,
+          41536000000L,
+          41536900000L,
+          41536000000L,
+          41536900000L,
+          51536000000L,
+          51536000000L
         };
     String[] device =
         new String[] {
-            "root.sg.d",
-            "root.sg.d2",
-            "root.sg.d",
-            "root.sg.d2",
-            "root.sg.d",
-            "root.sg.d2",
-            "root.sg.d",
-            "root.sg.d",
-            "root.sg.d2",
-            "root.sg.d2",
-            "root.sg.d",
-            "root.sg.d2"
+          "root.sg.d",
+          "root.sg.d2",
+          "root.sg.d",
+          "root.sg.d2",
+          "root.sg.d",
+          "root.sg.d2",
+          "root.sg.d",
+          "root.sg.d",
+          "root.sg.d2",
+          "root.sg.d2",
+          "root.sg.d",
+          "root.sg.d2"
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         int i = 0;
         while (resultSet.next()) {
@@ -1068,7 +1068,7 @@ public class IoTDBOrderByForDebugIT {
     String device = "root.sg.d";
     if (!deviceAsc) device = "root.sg.d2";
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         int i = 0;
         while (resultSet.next()) {
@@ -1185,27 +1185,27 @@ public class IoTDBOrderByForDebugIT {
 
   String[][] UDFRes =
       new String[][] {
-          {"0", "3", "0", "0"},
-          {"20", "2", "0", "0"},
-          {"40", "1", "0", "0"},
-          {"80", "9", "0", "0"},
-          {"100", "8", "0", "0"},
-          {"31536000000", "6", "0", "0"},
-          {"31536000100", "10", "0", "0"},
-          {"31536000500", "4", "0", "0"},
-          {"31536001000", "5", "0", "0"},
-          {"31536010000", "7", "0", "0"},
-          {"31536100000", "11", "0", "0"},
-          {"41536000000", "12", "2146483648", "0"},
-          {"41536000020", "14", "0", "14"},
-          {"41536900000", "13", "2107483648", "0"},
-          {"51536000000", "15", "0", "15"},
+        {"0", "3", "0", "0"},
+        {"20", "2", "0", "0"},
+        {"40", "1", "0", "0"},
+        {"80", "9", "0", "0"},
+        {"100", "8", "0", "0"},
+        {"31536000000", "6", "0", "0"},
+        {"31536000100", "10", "0", "0"},
+        {"31536000500", "4", "0", "0"},
+        {"31536001000", "5", "0", "0"},
+        {"31536010000", "7", "0", "0"},
+        {"31536100000", "11", "0", "0"},
+        {"41536000000", "12", "2146483648", "0"},
+        {"41536000020", "14", "0", "14"},
+        {"41536900000", "13", "2107483648", "0"},
+        {"51536000000", "15", "0", "15"},
       };
 
   // UDF Test
   private void orderByUDFTest(String sql, int[] ans) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         int i = 0;
         while (resultSet.next()) {
@@ -1256,7 +1256,7 @@ public class IoTDBOrderByForDebugIT {
 
   private void errorTest(String sql, String error) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
     } catch (Exception e) {
       assertEquals(error, e.getMessage());
@@ -1315,7 +1315,7 @@ public class IoTDBOrderByForDebugIT {
   // last query
   public void testLastQueryOrderBy(String sql, String[][] ans) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       try (ResultSet resultSet = statement.executeQuery(sql)) {
         int i = 0;
         while (resultSet.next()) {
@@ -1343,10 +1343,10 @@ public class IoTDBOrderByForDebugIT {
   public void lastQueryOrderBy() {
     String[][] ans =
         new String[][] {
-            {"51536000000", "51536000000", "51536000000", "51536000000"},
-            {"root.sg.d.num", "root.sg.d2.num", "root.sg.d.bigNum", "root.sg.d2.bigNum"},
-            {"15", "15", "3147483648", "3147483648"},
-            {"INT32", "INT32", "INT64", "INT64"}
+          {"51536000000", "51536000000", "51536000000", "51536000000"},
+          {"root.sg.d.num", "root.sg.d2.num", "root.sg.d.bigNum", "root.sg.d2.bigNum"},
+          {"15", "15", "3147483648", "3147483648"},
+          {"INT32", "INT32", "INT64", "INT64"}
         };
     String sql = "select last bigNum,num from root.** order by value, timeseries";
     testLastQueryOrderBy(sql, ans);
@@ -1356,10 +1356,10 @@ public class IoTDBOrderByForDebugIT {
   public void lastQueryOrderBy2() {
     String[][] ans =
         new String[][] {
-            {"51536000000", "51536000000", "51536000000", "51536000000"},
-            {"root.sg.d2.num", "root.sg.d2.bigNum", "root.sg.d.num", "root.sg.d.bigNum"},
-            {"15", "3147483648", "15", "3147483648"},
-            {"INT32", "INT64", "INT32", "INT64"}
+          {"51536000000", "51536000000", "51536000000", "51536000000"},
+          {"root.sg.d2.num", "root.sg.d2.bigNum", "root.sg.d.num", "root.sg.d.bigNum"},
+          {"15", "3147483648", "15", "3147483648"},
+          {"INT32", "INT64", "INT32", "INT64"}
         };
     String sql = "select last bigNum,num from root.** order by timeseries desc";
     testLastQueryOrderBy(sql, ans);
@@ -1369,10 +1369,10 @@ public class IoTDBOrderByForDebugIT {
   public void lastQueryOrderBy3() {
     String[][] ans =
         new String[][] {
-            {"51536000000", "51536000000", "51536000000", "51536000000"},
-            {"root.sg.d2.num", "root.sg.d2.bigNum", "root.sg.d.num", "root.sg.d.bigNum"},
-            {"15", "3147483648", "15", "3147483648"},
-            {"INT32", "INT64", "INT32", "INT64"}
+          {"51536000000", "51536000000", "51536000000", "51536000000"},
+          {"root.sg.d2.num", "root.sg.d2.bigNum", "root.sg.d.num", "root.sg.d.bigNum"},
+          {"15", "3147483648", "15", "3147483648"},
+          {"INT32", "INT64", "INT32", "INT64"}
         };
     String sql = "select last bigNum,num from root.** order by timeseries desc, value asc";
     testLastQueryOrderBy(sql, ans);
@@ -1382,10 +1382,10 @@ public class IoTDBOrderByForDebugIT {
   public void lastQueryOrderBy4() {
     String[][] ans =
         new String[][] {
-            {"51536000000", "51536000000", "51536000000", "51536000000"},
-            {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},
-            {"15", "15", "3147483648", "3147483648"},
-            {"INT32", "INT32", "INT64", "INT64"}
+          {"51536000000", "51536000000", "51536000000", "51536000000"},
+          {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},
+          {"15", "15", "3147483648", "3147483648"},
+          {"INT32", "INT32", "INT64", "INT64"}
         };
     String sql = "select last bigNum,num from root.** order by value, timeseries desc";
     testLastQueryOrderBy(sql, ans);
@@ -1395,10 +1395,10 @@ public class IoTDBOrderByForDebugIT {
   public void lastQueryOrderBy5() {
     String[][] ans =
         new String[][] {
-            {"51536000000", "51536000000", "51536000000", "51536000000"},
-            {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},
-            {"15", "15", "3147483648", "3147483648"},
-            {"INT32", "INT32", "INT64", "INT64"}
+          {"51536000000", "51536000000", "51536000000", "51536000000"},
+          {"root.sg.d2.num", "root.sg.d.num", "root.sg.d2.bigNum", "root.sg.d.bigNum"},
+          {"15", "15", "3147483648", "3147483648"},
+          {"INT32", "INT32", "INT64", "INT64"}
         };
     String sql = "select last bigNum,num from root.** order by datatype, timeseries desc";
     testLastQueryOrderBy(sql, ans);
