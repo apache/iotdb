@@ -395,6 +395,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                   .isNonExistPipe(
                       ((EnrichedEvent) peekedEvent).getPipeName(),
                       ((EnrichedEvent) peekedEvent).getCreationTime())) {
+            LOGGER.info(
+                "The retrying event is from a dropped pipe. Discard it. " + "Peeked event: {}.",
+                peekedEvent);
             ((EnrichedEvent) peekedEvent)
                 .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
           } else {
