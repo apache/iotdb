@@ -53,6 +53,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -232,12 +233,19 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   public void subscribe(final Set<String> topicNames) throws SubscriptionException {
     // parse topic names from external source
-    final Set<String> parsedTopicNames =
-        topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+    subscribe(topicNames, true);
+  }
+
+  private void subscribe(Set<String> topicNames, final boolean needParse)
+      throws SubscriptionException {
+    if (needParse) {
+      topicNames =
+          topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+    }
 
     providers.acquireReadLock();
     try {
-      subscribeWithRedirection(parsedTopicNames);
+      subscribeWithRedirection(topicNames);
     } finally {
       providers.releaseReadLock();
     }
@@ -253,12 +261,19 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
   public void unsubscribe(final Set<String> topicNames) throws SubscriptionException {
     // parse topic names from external source
-    final Set<String> parsedTopicNames =
-        topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+    unsubscribe(topicNames, true);
+  }
+
+  private void unsubscribe(Set<String> topicNames, final boolean needParse)
+      throws SubscriptionException {
+    if (needParse) {
+      topicNames =
+          topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+    }
 
     providers.acquireReadLock();
     try {
-      unsubscribeWithRedirection(parsedTopicNames);
+      unsubscribeWithRedirection(topicNames);
     } finally {
       providers.releaseReadLock();
     }
@@ -302,23 +317,32 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     return dirPath;
   }
 
-  private Path getFilePath(final String topicName, String fileName) throws SubscriptionException {
-    Path filePath;
+  private Path getFilePath(
+      final String topicName,
+      final String fileName,
+      final boolean allowFileAlreadyExistsException,
+      final boolean allowInvalidPathException)
+      throws SubscriptionException {
     try {
-      filePath = getFileDir(topicName).resolve(fileName);
+      final Path filePath = getFileDir(topicName).resolve(fileName);
       Files.createFile(filePath);
+      return filePath;
     } catch (final FileAlreadyExistsException fileAlreadyExistsException) {
-      fileName += "." + RandomStringGenerator.generate(16);
-      try {
-        filePath = getFileDir(topicName).resolve(fileName);
-        Files.createFile(filePath);
-      } catch (final IOException e) {
-        throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+      if (allowFileAlreadyExistsException) {
+        return getFilePath(
+            topicName, fileName + "." + RandomStringGenerator.generate(16), false, true);
       }
+      throw new SubscriptionRuntimeNonCriticalException(
+          fileAlreadyExistsException.getMessage(), fileAlreadyExistsException);
+    } catch (final InvalidPathException invalidPathException) {
+      if (allowInvalidPathException) {
+        return getFilePath(String.valueOf(topicName.hashCode()), fileName, true, false);
+      }
+      throw new SubscriptionRuntimeNonCriticalException(
+          invalidPathException.getMessage(), invalidPathException);
     } catch (final IOException e) {
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
-    return filePath;
   }
 
   /////////////////////////////// poll ///////////////////////////////
@@ -376,7 +400,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                   this,
                   topicNames,
                   topicNameToUnsubscribe);
-              unsubscribe(topicNameToUnsubscribe);
+              unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
               // TODO: notify user by ex?
               break;
             default:
@@ -429,7 +453,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       final SubscriptionCommitContext commitContext, final String fileName)
       throws SubscriptionException {
     final String topicName = commitContext.getTopicName();
-    final Path filePath = getFilePath(topicName, fileName);
+    final Path filePath = getFilePath(topicName, fileName, true, true);
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
       return Optional.of(pollFileInternal(commitContext, file, fileWriter));
