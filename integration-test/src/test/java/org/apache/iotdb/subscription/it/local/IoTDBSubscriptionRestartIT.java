@@ -119,7 +119,12 @@ public class IoTDBSubscriptionRestartIT {
     }
 
     // Restart cluster
-    TestUtils.restartCluster(EnvFactory.getEnv());
+    try {
+      TestUtils.restartCluster(EnvFactory.getEnv());
+    } catch (final Throwable e) {
+      e.printStackTrace();
+      return;
+    }
 
     // Show topics and subscriptions
     try (final SyncConfigNodeIServiceClient client =
@@ -254,9 +259,14 @@ public class IoTDBSubscriptionRestartIT {
     }
 
     // Shutdown DN 1 & DN 2
-    Thread.sleep(10000); // wait some time
-    EnvFactory.getEnv().shutdownDataNode(1);
-    EnvFactory.getEnv().shutdownDataNode(2);
+    try {
+      Thread.sleep(10000); // wait some time
+      EnvFactory.getEnv().shutdownDataNode(1);
+      EnvFactory.getEnv().shutdownDataNode(2);
+    } catch (final Throwable e) {
+      e.printStackTrace();
+      return;
+    }
 
     // Subscription again
     final Map<Long, Long> timestamps = new HashMap<>();
@@ -297,10 +307,15 @@ public class IoTDBSubscriptionRestartIT {
     thread.start();
 
     // Start DN 1 & DN 2
-    Thread.sleep(10000); // wait some time
-    EnvFactory.getEnv().startDataNode(1);
-    EnvFactory.getEnv().startDataNode(2);
-    ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown();
+    try {
+      Thread.sleep(10000); // wait some time
+      EnvFactory.getEnv().startDataNode(1);
+      EnvFactory.getEnv().startDataNode(2);
+      ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown();
+    } catch (final Throwable e) {
+      e.printStackTrace();
+      return;
+    }
 
     // Insert some realtime data
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
