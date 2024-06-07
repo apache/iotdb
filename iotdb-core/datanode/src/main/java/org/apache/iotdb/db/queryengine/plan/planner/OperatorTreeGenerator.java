@@ -2538,10 +2538,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             localInstanceId.toThrift(),
             node.getPlanNodeId().getId(),
             context.getInstanceContext());
+    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
     context.getDriverContext().setSink(sinkHandle);
 
-    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     return new IdentitySinkOperator(operatorContext, children, downStreamChannelIndex, sinkHandle);
   }
 
