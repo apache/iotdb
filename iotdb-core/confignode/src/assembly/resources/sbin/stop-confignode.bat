@@ -26,11 +26,11 @@ IF EXIST "%superior_dir%\conf\iotdb-system.properties" (
   set config_file="%superior_dir%\conf\iotdb-system.properties"
 ) ELSE (
   IF EXIST "%superior_dir%\conf\iotdb-confignode.properties" (
-      set config_file="%superior_dir%\conf\iotdb-confignode.properties"
-    ) ELSE (
-      echo "No configuration file found. Exiting."
-      exit /b 1
-    )
+    set config_file="%superior_dir%\conf\iotdb-confignode.properties"
+  ) ELSE (
+    echo "No configuration file found. Exiting."
+    exit /b 1
+  )
 )
 
 for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^cn_internal_port"

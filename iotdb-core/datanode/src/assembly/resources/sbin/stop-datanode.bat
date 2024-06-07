@@ -26,11 +26,11 @@ IF EXIST "%superior_dir%\conf\iotdb-system.properties" (
   set config_file="%superior_dir%\conf\iotdb-system.properties"
 ) ELSE (
   IF EXIST "%superior_dir%\conf\iotdb-datanode.properties" (
-      set config_file=%superior_dir%\conf\iotdb-datanode.properties
-    ) ELSE (
-      echo No configuration file found. Exiting.
-      exit /b 1
-    )
+    set config_file=%superior_dir%\conf\iotdb-datanode.properties
+  ) ELSE (
+    echo No configuration file found. Exiting.
+    exit /b 1
+  )
 )
 
 if not defined config_file (
