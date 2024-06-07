@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -1027,7 +1028,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> setConfiguration(TSetConfigurationReq req) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
     TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    List<String> ignoredConfigItems =
+        ConfigurationFileUtils.filterImmutableConfigItems(req.getConfigs());
+    TSStatus warningTsStatus = nll;
+    if (!ignoredConfigItems.isEmpty()) {
+      warningTsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      warningTsStatus.setMessage("ignored config items: " + ignoredConfigItems);
+      if (req.getConfigs().isEmpty()) {
+        future.setException(new IoTDBException(warningTsStatus.message, warningTsStatus.code));
+        return future;
+      }
+    }
+
     boolean onLocal = IoTDBDescriptor.getInstance().getConfig().getDataNodeId() == req.getNodeId();
     if (onLocal) {
       tsStatus = StorageEngine.getInstance().setConfiguration(req);
@@ -1039,6 +1053,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } catch (ClientManagerException | TException e) {
         future.setException(e);
       }
+    }
+    if (warningTsStatus != null) {
+      tsStatus = warningTsStatus;
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));

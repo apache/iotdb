@@ -608,19 +608,14 @@ public class StorageEngine implements IService {
   }
 
   public TSStatus setConfiguration(TSetConfigurationReq req) {
-    Map<String, String> newConfigItems = req.getConfigs();
-    Properties properties = new Properties();
-    properties.putAll(newConfigItems);
     TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    List<String> ignoredConfigItems = ConfigurationFileUtils.filterImmutableConfigItems(properties);
-    if (!ignoredConfigItems.isEmpty()) {
-      tsStatus.setMessage("ignored config items: " + ignoredConfigItems);
-      tsStatus.setCode(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-    }
-
+    Map<String, String> newConfigItems = req.getConfigs();
     if (newConfigItems.isEmpty()) {
       return tsStatus;
     }
+    Properties properties = new Properties();
+    properties.putAll(newConfigItems);
+
     URL configFileUrl = IoTDBDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     if (configFileUrl == null || !(new File(configFileUrl.getFile()).exists())) {
       // configuration file not exist, update in mem

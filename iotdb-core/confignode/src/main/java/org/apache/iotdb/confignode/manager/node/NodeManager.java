@@ -812,8 +812,12 @@ public class NodeManager {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     if (dataNodeLocationMap.containsKey(nodeId)) {
       TDataNodeLocation dataNodeLocation = dataNodeLocationMap.get(nodeId);
-      return SyncDataNodeClientPool.getInstance()
-          .showConfiguration(dataNodeLocation.getInternalEndPoint());
+      return (TShowConfigurationResp)
+          SyncDataNodeClientPool.getInstance()
+              .sendSyncRequestToDataNodeWithRetry(
+                  dataNodeLocation.getInternalEndPoint(),
+                  null,
+                  DataNodeRequestType.SHOW_CONFIGURATION);
     }
 
     // other config node

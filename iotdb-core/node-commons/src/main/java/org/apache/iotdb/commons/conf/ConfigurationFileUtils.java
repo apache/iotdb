@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -166,11 +167,11 @@ public class ConfigurationFileUtils {
     return content.toString();
   }
 
-  public static List<String> filterImmutableConfigItems(Properties newConfigItems) {
+  public static List<String> filterImmutableConfigItems(Map<String, String> configItems) {
     List<String> ignoredConfigItems = new ArrayList<>();
     for (String ignoredKey : ignoreConfigKeys) {
-      if (newConfigItems.containsKey(ignoredKey)) {
-        newConfigItems.remove(ignoredKey);
+      if (configItems.containsKey(ignoredKey)) {
+        configItems.remove(ignoredKey);
         ignoredConfigItems.add(ignoredKey);
       }
     }
@@ -179,44 +180,54 @@ public class ConfigurationFileUtils {
 
   public static void updateConfigurationFile(File file, Properties newConfigItems)
       throws IOException, InterruptedException {
-    logger.info("Updating configuration file {}", file.getAbsolutePath());
-    File lockFile = new File(file.getPath() + lockFileSuffix);
-    acquireTargetFileLock(lockFile);
-    try {
-      List<String> lines = new ArrayList<>();
-      try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-        String line = null;
-        while ((line = reader.readLine()) != null) {
-          lines.add(line);
+    // read configuration file
+    List<String> lines = new ArrayList<>();
+    try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+      String line = null;
+      while ((line = reader.readLine()) != null) {
+        lines.add(line);
+      }
+    }
+    // generate new configuration file content in memory
+    StringBuilder contentsOfNewConfigurationFile = new StringBuilder();
+    for (String currentLine : lines) {
+      if (currentLine.trim().isEmpty() || currentLine.trim().startsWith("#")) {
+        contentsOfNewConfigurationFile.append(currentLine).append(System.lineSeparator());
+        continue;
+      }
+      int equalsIndex = currentLine.indexOf('=');
+      // replace old config
+      if (equalsIndex != -1) {
+        String key = currentLine.substring(0, equalsIndex).trim();
+        String value = currentLine.substring(equalsIndex + 1).trim();
+        if (!newConfigItems.containsKey(key)) {
+          contentsOfNewConfigurationFile.append(currentLine).append(System.lineSeparator());
+          continue;
+        }
+        if (newConfigItems.getProperty(key).equals(value)) {
+          contentsOfNewConfigurationFile.append(currentLine).append(System.lineSeparator());
+          newConfigItems.remove(key);
+        } else {
+          contentsOfNewConfigurationFile
+              .append("#")
+              .append(currentLine)
+              .append(System.lineSeparator());
         }
       }
+    }
+    if (newConfigItems.isEmpty()) {
+      // No configuration needs to be modified
+      return;
+    }
+    File lockFile = new File(file.getPath() + lockFileSuffix);
+    acquireTargetFileLock(lockFile);
+    logger.info("Updating configuration file {}", file.getAbsolutePath());
+    try {
       try (FileWriter writer = new FileWriter(lockFile)) {
-        for (String currentLine : lines) {
-          if (currentLine.trim().isEmpty() || currentLine.trim().startsWith("#")) {
-            writer.write(currentLine + System.lineSeparator());
-            continue;
-          }
-          int equalsIndex = currentLine.indexOf('=');
-          // replace old config
-          if (equalsIndex != -1) {
-            String key = currentLine.substring(0, equalsIndex).trim();
-            String value = currentLine.substring(equalsIndex + 1).trim();
-            if (!newConfigItems.containsKey(key)) {
-              writer.write(currentLine + System.lineSeparator());
-              continue;
-            }
-            if (newConfigItems.getProperty(key).equals(value)) {
-              writer.write(currentLine + System.lineSeparator());
-              newConfigItems.remove(key);
-            } else {
-              writer.write("#" + currentLine + System.lineSeparator());
-            }
-          }
-        }
+        writer.write(contentsOfNewConfigurationFile.toString());
         // add new config items
-        if (!newConfigItems.isEmpty()) {
-          newConfigItems.store(writer, null);
-        }
+        newConfigItems.store(writer, null);
+        writer.flush();
       }
       Files.move(lockFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
     } finally {

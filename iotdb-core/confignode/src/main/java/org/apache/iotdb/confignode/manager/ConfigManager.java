@@ -1514,12 +1514,6 @@ public class ConfigManager implements IManager {
       File file = new File(url.getFile());
       Properties properties = new Properties();
       properties.putAll(req.getConfigs());
-      List<String> ignoredConfigItems =
-          ConfigurationFileUtils.filterImmutableConfigItems(properties);
-      if (!ignoredConfigItems.isEmpty()) {
-        tsStatus.setMessage("ignored config items" + ignoredConfigItems);
-        tsStatus.setCode(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      }
       try {
         ConfigurationFileUtils.updateConfigurationFile(file, properties);
       } catch (Exception e) {

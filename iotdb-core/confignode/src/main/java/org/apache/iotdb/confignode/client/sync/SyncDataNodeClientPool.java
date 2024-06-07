@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -188,19 +187,6 @@ public class SyncDataNodeClientPool {
       status.setMessage(e.getMessage());
     }
     return new TRegionLeaderChangeResp(status, -1L);
-  }
-
-  public TShowConfigurationResp showConfiguration(TEndPoint dataNode) {
-    TSStatus status;
-    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(dataNode)) {
-      return client.showConfiguration();
-    } catch (ClientManagerException e) {
-      LOGGER.error("Can't connect to Data node: {}", dataNode, e);
-      status = RpcUtils.getStatus(TSStatusCode.CAN_NOT_CONNECT_DATANODE, e.getMessage());
-    } catch (TException e) {
-      status = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
-    }
-    return new TShowConfigurationResp(status, "");
   }
 
   // TODO: Is the ClientPool must be a singleton?
