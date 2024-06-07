@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.URLEncoder;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -336,7 +337,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
           fileAlreadyExistsException.getMessage(), fileAlreadyExistsException);
     } catch (final InvalidPathException invalidPathException) {
       if (allowInvalidPathException) {
-        return getFilePath(String.valueOf(topicName.hashCode()), fileName, true, false);
+        return getFilePath(URLEncoder.encode(topicName), fileName, true, false);
       }
       throw new SubscriptionRuntimeNonCriticalException(
           invalidPathException.getMessage(), invalidPathException);
