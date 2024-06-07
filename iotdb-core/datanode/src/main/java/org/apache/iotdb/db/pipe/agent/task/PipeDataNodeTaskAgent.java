@@ -601,6 +601,21 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
   }
 
+  ///////////////////////// Useless Retry Detection Logic /////////////////////////
+
+  public boolean isNonExistPipe(final String pipeName, final long creationTime) {
+    if (!tryReadLockWithTimeOut(1)) {
+      return false;
+    }
+    try {
+      return !(pipeMetaKeeper.containsPipeMeta(pipeName)
+          && pipeMetaKeeper.getPipeMetaByPipeName(pipeName).getStaticMeta().getCreationTime()
+              == creationTime);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   ///////////////////////// Utils /////////////////////////
 
   public Set<Integer> getPipeTaskRegionIdSet(final String pipeName, final long creationTime) {
@@ -612,7 +627,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   ///////////////////////// Pipe Consensus /////////////////////////
 
-  public ProgressIndex getPipeTaskProgressIndex(String pipeName, int consensusGroupId) {
+  public ProgressIndex getPipeTaskProgressIndex(final String pipeName, final int consensusGroupId) {
     if (!tryReadLockWithTimeOut(10)) {
       throw new PipeException(
           String.format(
