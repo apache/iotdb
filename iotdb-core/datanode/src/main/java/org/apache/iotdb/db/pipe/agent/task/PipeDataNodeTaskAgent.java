@@ -604,7 +604,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   ///////////////////////// Useless Retry Detection Logic /////////////////////////
 
   public boolean isNonExistPipe(final String pipeName, final long creationTime) {
-    if (!tryReadLockWithTimeOut(1)) {
+    // Acquire the lock iff it's not held to avoid affecting the normal control
+    if (!tryReadLockWithTimeOut(0)) {
       return false;
     }
     try {

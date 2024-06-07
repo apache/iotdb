@@ -389,18 +389,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             ((EnrichedEvent) peekedEvent)
                 .decreaseReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), true);
           }
-
-          final Event polledEvent = retryEventQueue.poll();
-          if (polledEvent != peekedEvent) {
-            LOGGER.error(
-                "The event polled from the queue is not the same as the event peeked from the queue. "
-                    + "Peeked event: {}, polled event: {}.",
-                peekedEvent,
-                polledEvent);
-          }
-          if (polledEvent != null && LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Polled event {} from retry queue.", polledEvent);
-          }
         } catch (final Exception e) {
           if (peekedEvent instanceof EnrichedEvent
               && PipeAgent.task()
@@ -412,6 +400,18 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
           } else {
             throw e;
           }
+        }
+
+        final Event polledEvent = retryEventQueue.poll();
+        if (polledEvent != peekedEvent) {
+          LOGGER.error(
+              "The event polled from the queue is not the same as the event peeked from the queue. "
+                  + "Peeked event: {}, polled event: {}.",
+              peekedEvent,
+              polledEvent);
+        }
+        if (polledEvent != null && LOGGER.isDebugEnabled()) {
+          LOGGER.debug("Polled event {} from retry queue.", polledEvent);
         }
       }
     }
