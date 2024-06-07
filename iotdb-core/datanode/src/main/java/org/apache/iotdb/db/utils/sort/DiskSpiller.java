@@ -104,11 +104,16 @@ public class DiskSpiller {
     }
   }
 
-  private void writeData(List<TsBlock> sortedData, String fileName)
-      throws IOException, IoTDBException {
+  private void writeData(List<TsBlock> sortedData, String fileName) throws IoTDBException {
     Path filePath = Paths.get(fileName);
-    Files.createFile(filePath);
-    try (FileChannel fileChannel = FileChannel.open(filePath, StandardOpenOption.WRITE)) {
+    // for stream sort we may reuse the previous tmp file name, so we need TRUNCATE_EXISTING and
+    // CREATE
+    try (FileChannel fileChannel =
+        FileChannel.open(
+            filePath,
+            StandardOpenOption.WRITE,
+            StandardOpenOption.TRUNCATE_EXISTING,
+            StandardOpenOption.CREATE)) {
       for (TsBlock tsBlock : sortedData) {
         ByteBuffer tsBlockBuffer = serde.serialize(tsBlock);
         ByteBuffer length = ByteBuffer.allocate(4);
@@ -167,5 +172,9 @@ public class DiskSpiller {
 
   public int getFileSize() {
     return fileIndex;
+  }
+
+  public void reset() {
+    fileIndex = 0;
   }
 }

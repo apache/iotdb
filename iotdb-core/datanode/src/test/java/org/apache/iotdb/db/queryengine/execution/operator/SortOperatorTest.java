@@ -67,6 +67,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.utils.EnvironmentUtils.cleanDir;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -78,6 +79,9 @@ public class SortOperatorTest {
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
+
+  private final String sortTmpPrefixPath =
+      "target" + File.separator + "sort" + File.separator + "tmp";
 
   private int dataNodeId;
 
@@ -96,6 +100,7 @@ public class SortOperatorTest {
   @After
   public void tearDown() throws IOException {
     SeriesReaderTestUtil.tearDown(seqResources, unSeqResources);
+    cleanDir(sortTmpPrefixPath);
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(maxTsBlockSizeInBytes);
   }
@@ -197,7 +202,7 @@ public class SortOperatorTest {
 
     OperatorContext operatorContext = driverContext.getOperatorContexts().get(3);
     String filePrefix =
-        "target"
+        sortTmpPrefixPath
             + File.separator
             + operatorContext
                 .getDriverContext()
@@ -228,10 +233,9 @@ public class SortOperatorTest {
   // with data spilling
   @Test
   public void sortOperatorSpillingTest() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(5000);
     long sortBufferSize = IoTDBDescriptor.getInstance().getConfig().getSortBufferSize();
-    try {
-      IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(5000);
-      SortOperator root = (SortOperator) genSortOperator(Ordering.ASC, true);
+    try (SortOperator root = (SortOperator) genSortOperator(Ordering.ASC, true)) {
       int lastValue = -1;
       int count = 0;
       while (root.isBlocked().isDone() && root.hasNext()) {
@@ -248,7 +252,6 @@ public class SortOperatorTest {
           count++;
         }
       }
-      root.close();
       assertEquals(500, count);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
@@ -258,24 +261,24 @@ public class SortOperatorTest {
   // no data spilling
   @Test
   public void sortOperatorNormalTest() throws Exception {
-    Operator root = genSortOperator(Ordering.ASC, true);
-    int lastValue = -1;
-    int count = 0;
-    while (root.isBlocked().isDone() && root.hasNext()) {
-      TsBlock tsBlock = root.next();
-      if (tsBlock == null) continue;
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        long time = tsBlock.getTimeByIndex(i);
-        int v1 = tsBlock.getColumn(0).getInt(i);
-        int v2 = tsBlock.getColumn(1).getInt(i);
-        assertTrue(lastValue == -1 || lastValue < v1);
-        assertEquals(getValue(time), v1);
-        assertEquals(v1, v2);
-        lastValue = v1;
-        count++;
+    try (Operator root = genSortOperator(Ordering.ASC, true)) {
+      int lastValue = -1;
+      int count = 0;
+      while (root.isBlocked().isDone() && root.hasNext()) {
+        TsBlock tsBlock = root.next();
+        if (tsBlock == null) continue;
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          long time = tsBlock.getTimeByIndex(i);
+          int v1 = tsBlock.getColumn(0).getInt(i);
+          int v2 = tsBlock.getColumn(1).getInt(i);
+          assertTrue(lastValue == -1 || lastValue < v1);
+          assertEquals(getValue(time), v1);
+          assertEquals(v1, v2);
+          lastValue = v1;
+          count++;
+        }
       }
+      assertEquals(500, count);
     }
-    root.close();
-    assertEquals(500, count);
   }
 }
