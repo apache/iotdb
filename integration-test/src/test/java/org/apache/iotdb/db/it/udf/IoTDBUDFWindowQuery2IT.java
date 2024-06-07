@@ -58,16 +58,16 @@ public class IoTDBUDFWindowQuery2IT {
     // SessionWindow
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg.d1(time, s1, s2) values (1, 1, 1)");
-      statement.execute("insert into root.sg.d1(time, s1, s2) values (2, 2, 2)");
-      statement.execute("insert into root.sg.d1(time, s1, s2) values (3, 3, 3)");
-      statement.execute("insert into root.sg.d1(time, s1, s2) values (9, 9, 9)");
-      statement.execute("insert into root.sg.d1(time, s1, s2) values (5, 5, 5)");
-      statement.execute("insert into root.sg.d1(time, s1, s2) values (12, 12, 12)");
-      statement.execute("insert into root.sg.d1(time, s1, s2) values (14, 14, 14)");
-      statement.execute("insert into root.sg.d1(time, s1, s2) values (18, 18, 18)");
-      statement.execute("insert into root.sg.d1(time, s1, s2) values (21, 21, 21)");
-      statement.execute("insert into root.sg.d1(time, s1, s2) values (24, 24, 24)");
+      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (1, 1, 1)");
+      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (2, 2, 2)");
+      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (3, 3, 3)");
+      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (9, 9, 9)");
+      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (5, 5, 5)");
+      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (12, 12, 12)");
+      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (14, 14, 14)");
+      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (18, 18, 18)");
+      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (21, 21, 21)");
+      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (24, 24, 24)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -77,7 +77,7 @@ public class IoTDBUDFWindowQuery2IT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create function window_start_end as 'org.apache.iotdb.db.query.udf.example.WindowStartEnd'");
+          "CREATE FUNCTION window_start_end AS 'org.apache.iotdb.db.query.udf.example.WindowStartEnd'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
