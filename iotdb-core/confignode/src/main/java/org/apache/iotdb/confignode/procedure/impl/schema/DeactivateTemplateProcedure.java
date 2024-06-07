@@ -29,8 +29,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncRequestContext;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestSender;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -198,12 +198,12 @@ public class DeactivateTemplateProcedure
     if (!timeSeriesPatternTree.isEmpty()) {
       Map<Integer, TDataNodeLocation> dataNodeLocationMap =
           env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-      AsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
-          new AsyncRequestContext<>(
+      AsyncDataNodeRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
+          new AsyncDataNodeRequestContext<>(
               DataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
               new TInvalidateMatchedSchemaCacheReq(timeSeriesPatternTreeBytes),
               dataNodeLocationMap);
-      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+      AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
       Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
       for (TSStatus status : statusMap.values()) {
         // all dataNodes must clear the related schema cache

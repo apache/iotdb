@@ -35,8 +35,8 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncRequestContext;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestSender;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -370,12 +370,12 @@ public class RegionMaintainHandler {
       TConsensusGroupId regionId,
       List<TDataNodeLocation> correctDataNodeLocations,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
-    AsyncRequestContext<TResetPeerListReq, TSStatus> clientHandler =
-        new AsyncRequestContext<>(
+    AsyncDataNodeRequestContext<TResetPeerListReq, TSStatus> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.RESET_PEER_LIST,
             new TResetPeerListReq(regionId, correctDataNodeLocations),
             dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseMap();
   }
 

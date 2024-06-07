@@ -23,8 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncRequestContext;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestSender;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 
@@ -86,8 +86,8 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
             : getLeaderDataNodeRegionGroupMap(
                 configManager.getLoadManager().getRegionLeaderMap(), targetSchemaRegionGroup);
     while (!dataNodeConsensusGroupIdMap.isEmpty()) {
-      AsyncRequestContext<Q, R> clientHandler = prepareRequestHandler(dataNodeConsensusGroupIdMap);
-      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+      AsyncDataNodeRequestContext<Q, R> clientHandler = prepareRequestHandler(dataNodeConsensusGroupIdMap);
+      AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
       Map<TDataNodeLocation, List<TConsensusGroupId>> currentFailedDataNodeMap =
           checkDataNodeExecutionResult(clientHandler.getResponseMap(), dataNodeConsensusGroupIdMap);
 
@@ -112,9 +112,9 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
     }
   }
 
-  private AsyncRequestContext<Q, R> prepareRequestHandler(
+  private AsyncDataNodeRequestContext<Q, R> prepareRequestHandler(
       Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap) {
-    AsyncRequestContext<Q, R> clientHandler = new AsyncRequestContext<>(dataNodeRequestType);
+    AsyncDataNodeRequestContext<Q, R> clientHandler = new AsyncDataNodeRequestContext<>(dataNodeRequestType);
     for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
         dataNodeConsensusGroupIdMap.entrySet()) {
       clientHandler.putDataNodeLocation(entry.getKey().getDataNodeId(), entry.getKey());

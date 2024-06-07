@@ -34,8 +34,8 @@ import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncRequestContext;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestSender;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -429,7 +429,7 @@ public class ConfigNodeProcedureEnv {
       TConsensusGroupType consensusGroupType, CreateRegionGroupsPlan createRegionGroupsPlan) {
 
     // Prepare clientHandler
-    AsyncRequestContext<?, TSStatus> clientHandler;
+    AsyncDataNodeRequestContext<?, TSStatus> clientHandler;
     switch (consensusGroupType) {
       case SchemaRegion:
         clientHandler = getCreateSchemaRegionClientHandler(createRegionGroupsPlan);
@@ -444,7 +444,7 @@ public class ConfigNodeProcedureEnv {
     }
 
     // Send CreateRegion requests to DataNodes
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
 
     // Filter RegionGroups that weren't created successfully
     int requestId = 0;
@@ -468,10 +468,10 @@ public class ConfigNodeProcedureEnv {
     return failedRegions;
   }
 
-  private AsyncRequestContext<TCreateSchemaRegionReq, TSStatus> getCreateSchemaRegionClientHandler(
+  private AsyncDataNodeRequestContext<TCreateSchemaRegionReq, TSStatus> getCreateSchemaRegionClientHandler(
       CreateRegionGroupsPlan createRegionGroupsPlan) {
-    AsyncRequestContext<TCreateSchemaRegionReq, TSStatus> clientHandler =
-        new AsyncRequestContext<>(DataNodeRequestType.CREATE_SCHEMA_REGION);
+    AsyncDataNodeRequestContext<TCreateSchemaRegionReq, TSStatus> clientHandler =
+        new AsyncDataNodeRequestContext<>(DataNodeRequestType.CREATE_SCHEMA_REGION);
 
     int requestId = 0;
     for (Map.Entry<String, List<TRegionReplicaSet>> sgRegionsEntry :
@@ -491,11 +491,11 @@ public class ConfigNodeProcedureEnv {
     return clientHandler;
   }
 
-  private AsyncRequestContext<TCreateDataRegionReq, TSStatus> getCreateDataRegionClientHandler(
+  private AsyncDataNodeRequestContext<TCreateDataRegionReq, TSStatus> getCreateDataRegionClientHandler(
       CreateRegionGroupsPlan createRegionGroupsPlan) {
     Map<String, Long> ttlMap = getTTLMap(createRegionGroupsPlan);
-    AsyncRequestContext<TCreateDataRegionReq, TSStatus> clientHandler =
-        new AsyncRequestContext<>(DataNodeRequestType.CREATE_DATA_REGION);
+    AsyncDataNodeRequestContext<TCreateDataRegionReq, TSStatus> clientHandler =
+        new AsyncDataNodeRequestContext<>(DataNodeRequestType.CREATE_DATA_REGION);
 
     int requestId = 0;
     for (Map.Entry<String, List<TRegionReplicaSet>> sgRegionsEntry :
@@ -608,10 +608,10 @@ public class ConfigNodeProcedureEnv {
       request.setJarFile(ByteBuffer.wrap(jarFile.getValues()));
     }
 
-    AsyncRequestContext<TCreateTriggerInstanceReq, TSStatus> clientHandler =
-        new AsyncRequestContext<>(
+    AsyncDataNodeRequestContext<TCreateTriggerInstanceReq, TSStatus> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.CREATE_TRIGGER_INSTANCE, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -622,10 +622,10 @@ public class ConfigNodeProcedureEnv {
     final TDropTriggerInstanceReq request =
         new TDropTriggerInstanceReq(triggerName, needToDeleteJarFile);
 
-    AsyncRequestContext<TDropTriggerInstanceReq, TSStatus> clientHandler =
-        new AsyncRequestContext<>(
+    AsyncDataNodeRequestContext<TDropTriggerInstanceReq, TSStatus> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.DROP_TRIGGER_INSTANCE, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -635,10 +635,10 @@ public class ConfigNodeProcedureEnv {
         nodeManager.getRegisteredDataNodeLocations();
     final TActiveTriggerInstanceReq request = new TActiveTriggerInstanceReq(triggerName);
 
-    AsyncRequestContext<TActiveTriggerInstanceReq, TSStatus> clientHandler =
-        new AsyncRequestContext<>(
+    AsyncDataNodeRequestContext<TActiveTriggerInstanceReq, TSStatus> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.ACTIVE_TRIGGER_INSTANCE, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -648,10 +648,10 @@ public class ConfigNodeProcedureEnv {
         nodeManager.getRegisteredDataNodeLocations();
     final TInactiveTriggerInstanceReq request = new TInactiveTriggerInstanceReq(triggerName);
 
-    AsyncRequestContext<TInactiveTriggerInstanceReq, TSStatus> clientHandler =
-        new AsyncRequestContext<>(
+    AsyncDataNodeRequestContext<TInactiveTriggerInstanceReq, TSStatus> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.INACTIVE_TRIGGER_INSTANCE, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -662,10 +662,10 @@ public class ConfigNodeProcedureEnv {
     final TCreatePipePluginInstanceReq request =
         new TCreatePipePluginInstanceReq(pipePluginMeta.serialize(), ByteBuffer.wrap(jarFile));
 
-    final AsyncRequestContext<TCreatePipePluginInstanceReq, TSStatus> clientHandler =
-        new AsyncRequestContext<>(
+    final AsyncDataNodeRequestContext<TCreatePipePluginInstanceReq, TSStatus> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.CREATE_PIPE_PLUGIN, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -676,10 +676,10 @@ public class ConfigNodeProcedureEnv {
     final TDropPipePluginInstanceReq request =
         new TDropPipePluginInstanceReq(pipePluginName, needToDeleteJarFile);
 
-    AsyncRequestContext<TDropPipePluginInstanceReq, TSStatus> clientHandler =
-        new AsyncRequestContext<>(
+    AsyncDataNodeRequestContext<TDropPipePluginInstanceReq, TSStatus> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.DROP_PIPE_PLUGIN, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -689,10 +689,10 @@ public class ConfigNodeProcedureEnv {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushPipeMetaReq request = new TPushPipeMetaReq().setPipeMetas(pipeMetaBinaryList);
 
-    final AsyncRequestContext<TPushPipeMetaReq, TPushPipeMetaResp> clientHandler =
-        new AsyncRequestContext<>(
+    final AsyncDataNodeRequestContext<TPushPipeMetaReq, TPushPipeMetaResp> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.PIPE_PUSH_ALL_META, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance()
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
             PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
@@ -704,10 +704,10 @@ public class ConfigNodeProcedureEnv {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushSinglePipeMetaReq request = new TPushSinglePipeMetaReq().setPipeMeta(pipeMetaBinary);
 
-    final AsyncRequestContext<TPushSinglePipeMetaReq, TPushPipeMetaResp> clientHandler =
-        new AsyncRequestContext<>(
+    final AsyncDataNodeRequestContext<TPushSinglePipeMetaReq, TPushPipeMetaResp> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.PIPE_PUSH_SINGLE_META, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance()
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
             PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
@@ -720,10 +720,10 @@ public class ConfigNodeProcedureEnv {
     final TPushSinglePipeMetaReq request =
         new TPushSinglePipeMetaReq().setPipeNameToDrop(pipeNameToDrop);
 
-    final AsyncRequestContext<TPushSinglePipeMetaReq, TPushPipeMetaResp> clientHandler =
-        new AsyncRequestContext<>(
+    final AsyncDataNodeRequestContext<TPushSinglePipeMetaReq, TPushPipeMetaResp> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.PIPE_PUSH_SINGLE_META, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance()
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
             PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
@@ -737,10 +737,10 @@ public class ConfigNodeProcedureEnv {
     final TPushMultiPipeMetaReq request =
         new TPushMultiPipeMetaReq().setPipeMetas(pipeMetaBinaryList);
 
-    final AsyncRequestContext<TPushMultiPipeMetaReq, TPushPipeMetaResp> clientHandler =
-        new AsyncRequestContext<>(
+    final AsyncDataNodeRequestContext<TPushMultiPipeMetaReq, TPushPipeMetaResp> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.PIPE_PUSH_MULTI_META, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance()
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
             PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
@@ -753,10 +753,10 @@ public class ConfigNodeProcedureEnv {
     final TPushMultiPipeMetaReq request =
         new TPushMultiPipeMetaReq().setPipeNamesToDrop(pipeNamesToDrop);
 
-    final AsyncRequestContext<TPushMultiPipeMetaReq, TPushPipeMetaResp> clientHandler =
-        new AsyncRequestContext<>(
+    final AsyncDataNodeRequestContext<TPushMultiPipeMetaReq, TPushPipeMetaResp> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.PIPE_PUSH_MULTI_META, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance()
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
             PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
@@ -769,10 +769,10 @@ public class ConfigNodeProcedureEnv {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushTopicMetaReq request = new TPushTopicMetaReq().setTopicMetas(topicMetaBinaryList);
 
-    final AsyncRequestContext<TPushTopicMetaReq, TPushTopicMetaResp> clientHandler =
-        new AsyncRequestContext<>(
+    final AsyncDataNodeRequestContext<TPushTopicMetaReq, TPushTopicMetaResp> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.TOPIC_PUSH_ALL_META, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance()
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
             PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
@@ -784,10 +784,10 @@ public class ConfigNodeProcedureEnv {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushSingleTopicMetaReq request = new TPushSingleTopicMetaReq().setTopicMeta(topicMeta);
 
-    final AsyncRequestContext<TPushSingleTopicMetaReq, TPushTopicMetaResp> clientHandler =
-        new AsyncRequestContext<>(
+    final AsyncDataNodeRequestContext<TPushSingleTopicMetaReq, TPushTopicMetaResp> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList().stream()
         .map(TPushTopicMetaResp::getStatus)
         .collect(Collectors.toList());
@@ -799,10 +799,10 @@ public class ConfigNodeProcedureEnv {
     final TPushSingleTopicMetaReq request =
         new TPushSingleTopicMetaReq().setTopicNameToDrop(topicNameToDrop);
 
-    final AsyncRequestContext<TPushSingleTopicMetaReq, TPushTopicMetaResp> clientHandler =
-        new AsyncRequestContext<>(
+    final AsyncDataNodeRequestContext<TPushSingleTopicMetaReq, TPushTopicMetaResp> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.TOPIC_PUSH_SINGLE_META, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList().stream()
         .map(TPushTopicMetaResp::getStatus)
         .collect(Collectors.toList());
@@ -815,10 +815,10 @@ public class ConfigNodeProcedureEnv {
     final TPushMultiTopicMetaReq request =
         new TPushMultiTopicMetaReq().setTopicMetas(topicMetaBinaryList);
 
-    final AsyncRequestContext<TPushMultiTopicMetaReq, TPushTopicMetaResp> clientHandler =
-        new AsyncRequestContext<>(
+    final AsyncDataNodeRequestContext<TPushMultiTopicMetaReq, TPushTopicMetaResp> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.TOPIC_PUSH_MULTI_META, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance()
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
             PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
@@ -831,10 +831,10 @@ public class ConfigNodeProcedureEnv {
     final TPushMultiTopicMetaReq request =
         new TPushMultiTopicMetaReq().setTopicNamesToDrop(topicNamesToDrop);
 
-    final AsyncRequestContext<TPushMultiTopicMetaReq, TPushTopicMetaResp> clientHandler =
-        new AsyncRequestContext<>(
+    final AsyncDataNodeRequestContext<TPushMultiTopicMetaReq, TPushTopicMetaResp> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.TOPIC_PUSH_MULTI_META, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance()
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
             PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
@@ -848,10 +848,10 @@ public class ConfigNodeProcedureEnv {
     final TPushConsumerGroupMetaReq request =
         new TPushConsumerGroupMetaReq().setConsumerGroupMetas(consumerGroupMetaBinaryList);
 
-    final AsyncRequestContext<TPushConsumerGroupMetaReq, TPushConsumerGroupMetaResp> clientHandler =
-        new AsyncRequestContext<>(
+    final AsyncDataNodeRequestContext<TPushConsumerGroupMetaReq, TPushConsumerGroupMetaResp> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.CONSUMER_GROUP_PUSH_ALL_META, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance()
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
         .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
             clientHandler,
             PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
@@ -864,11 +864,11 @@ public class ConfigNodeProcedureEnv {
     final TPushSingleConsumerGroupMetaReq request =
         new TPushSingleConsumerGroupMetaReq().setConsumerGroupMeta(consumerGroupMeta);
 
-    final AsyncRequestContext<TPushSingleConsumerGroupMetaReq, TPushConsumerGroupMetaResp>
+    final AsyncDataNodeRequestContext<TPushSingleConsumerGroupMetaReq, TPushConsumerGroupMetaResp>
         clientHandler =
-            new AsyncRequestContext<>(
+            new AsyncDataNodeRequestContext<>(
                 DataNodeRequestType.CONSUMER_GROUP_PUSH_SINGLE_META, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList().stream()
         .map(TPushConsumerGroupMetaResp::getStatus)
         .collect(Collectors.toList());
@@ -880,11 +880,11 @@ public class ConfigNodeProcedureEnv {
     final TPushSingleConsumerGroupMetaReq request =
         new TPushSingleConsumerGroupMetaReq().setConsumerGroupNameToDrop(consumerGroupNameToDrop);
 
-    final AsyncRequestContext<TPushSingleConsumerGroupMetaReq, TPushConsumerGroupMetaResp>
+    final AsyncDataNodeRequestContext<TPushSingleConsumerGroupMetaReq, TPushConsumerGroupMetaResp>
         clientHandler =
-            new AsyncRequestContext<>(
+            new AsyncDataNodeRequestContext<>(
                 DataNodeRequestType.CONSUMER_GROUP_PUSH_SINGLE_META, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseList().stream()
         .map(TPushConsumerGroupMetaResp::getStatus)
         .collect(Collectors.toList());

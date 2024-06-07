@@ -33,8 +33,8 @@ import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncConfigNodeClientPool;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncRequestContext;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestSender;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncConfigNodeClientHandler;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -137,10 +137,10 @@ public class ClusterManager {
         configManager.getNodeManager().getRegisteredDataNodes().stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
-    AsyncRequestContext<TNodeLocations, TTestConnectionResp> dataNodeClientHandler =
-        new AsyncRequestContext<>(
+    AsyncDataNodeRequestContext<TNodeLocations, TTestConnectionResp> dataNodeClientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.SUBMIT_TEST_CONNECTION_TASK, nodeLocations, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNode(dataNodeClientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNode(dataNodeClientHandler);
     dataNodeClientHandler
         .getResponseMap()
         .values()
@@ -162,12 +162,12 @@ public class ClusterManager {
 
   private void submitTestConnectionTaskToAllDataNode() {
 
-    AsyncRequestContext<TNodeLocations, TTestConnectionResp> clientHandler =
-        new AsyncRequestContext<>(
+    AsyncDataNodeRequestContext<TNodeLocations, TTestConnectionResp> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.SUBMIT_TEST_CONNECTION_TASK,
             new TNodeLocations(),
             configManager.getNodeManager().getRegisteredDataNodeLocations());
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     clientHandler.getResponseMap();
   }
 
@@ -265,10 +265,10 @@ public class ClusterManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
-    AsyncRequestContext<Object, TSStatus> clientHandler =
-        new AsyncRequestContext<>(
+    AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
+        new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.TEST_CONNECTION, new Object(), dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     Map<Integer, TDataNodeLocation> anotherDataNodeLocationMap =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));

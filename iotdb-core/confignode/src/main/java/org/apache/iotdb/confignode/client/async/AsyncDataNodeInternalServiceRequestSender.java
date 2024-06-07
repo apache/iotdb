@@ -31,8 +31,9 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
+import org.apache.iotdb.commons.client.gg.AsyncRequestSender;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncRequestContext;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AbstractAsyncRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExistenceRPCHandler;
@@ -90,111 +91,37 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.TimeUnit;
-
 /** Asynchronously send RPC requests to DataNodes. See queryengine.thrift for more details. */
-public class AsyncDataNodeClientPool {
+public class AsyncDataNodeInternalServiceRequestSender extends AsyncRequestSender<DataNodeRequestType, TDataNodeLocation, AsyncDataNodeInternalServiceClient> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncDataNodeClientPool.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncDataNodeInternalServiceRequestSender.class);
 
-  private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> clientManager;
+  public AsyncDataNodeInternalServiceRequestSender() {
+    super();
+  }
 
-  private static final int MAX_RETRY_NUM = 6;
-
-  private AsyncDataNodeClientPool() {
+  @Override
+  protected void initClientManager() {
     clientManager =
-        new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
-            .createClientManager(
-                new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory());
+            new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
+                    .createClientManager(
+                            new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory());
   }
 
-  /**
-   * Send asynchronous requests to the specified DataNodes with default retry num
-   *
-   * <p>Notice: The DataNodes that failed to receive the requests will be reconnected
-   *
-   * @param requestContext <RequestType, ResponseType> which will also contain the result
-   * @param timeoutInMs timeout in milliseconds
-   */
-  public void sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
-          AsyncRequestContext<?, ?> requestContext, long timeoutInMs) {
-    sendAsyncRequest(requestContext, MAX_RETRY_NUM, timeoutInMs);
+  @Override
+  protected TEndPoint nodeLocationToEndPoint(TDataNodeLocation dataNodeLocation) {
+    return dataNodeLocation.getInternalEndPoint();
   }
 
-  /**
-   * Send asynchronous requests to the specified DataNodes with default retry num
-   *
-   * <p>Notice: The DataNodes that failed to receive the requests will be reconnected
-   *
-   * @param requestContext <RequestType, ResponseType> which will also contain the result
-   */
-  public void sendAsyncRequestToDataNodeWithRetry(AsyncRequestContext<?, ?> requestContext) {
-    sendAsyncRequest(requestContext, MAX_RETRY_NUM, null);
-  }
-
-  public void sendAsyncRequestToDataNode(AsyncRequestContext<?, ?> requestContext) {
-    sendAsyncRequest(requestContext, 1, null);
-  }
-
-  private void sendAsyncRequest(
-          AsyncRequestContext<?, ?> requestContext, int retryNum, Long timeoutInMs) {
-    if (requestContext.getRequestIndices().isEmpty()) {
-      return;
-    }
-
-    DataNodeRequestType requestType = requestContext.getRequestType();
-    for (int retry = 0; retry < retryNum; retry++) {
-      // Always Reset CountDownLatch first
-      requestContext.resetCountDownLatch();
-
-      // Send requests to all targetDataNodes
-      for (int requestId : requestContext.getRequestIndices()) {
-        TDataNodeLocation targetDataNode = requestContext.getDataNodeLocation(requestId);
-        sendAsyncRequestToDataNode(requestContext, requestId, targetDataNode, retry);
-      }
-
-      // Wait for this batch of asynchronous RPC requests finish
-      try {
-        if (timeoutInMs == null) {
-          requestContext.getCountDownLatch().await();
-        } else {
-          if (!requestContext.getCountDownLatch().await(timeoutInMs, TimeUnit.MILLISECONDS)) {
-            LOGGER.warn(
-                "Timeout during {} on ConfigNode. Retry: {}/{}", requestType, retry, retryNum);
-          }
-        }
-      } catch (InterruptedException e) {
-        LOGGER.error(
-            "Interrupted during {} on ConfigNode. Retry: {}/{}", requestType, retry, retryNum);
-        Thread.currentThread().interrupt();
-      }
-
-      // Check if there is a DataNode that fails to execute the request, and retry if there exists
-      if (requestContext.getRequestIndices().isEmpty()) {
-        return;
-      }
-    }
-
-    if (!requestContext.getRequestIndices().isEmpty()) {
-      LOGGER.warn(
-          "Failed to {} on ConfigNode after {} retries, requestIndices: {}",
-          requestType,
-          retryNum,
-          requestContext.getRequestIndices());
-    }
-  }
-
-  private void sendAsyncRequestToDataNode(
-      AsyncRequestContext<?, ?> requestContext,
-      int requestId,
-      TDataNodeLocation targetDataNode,
-      int retryCount) {
+  @Override
+  protected void sendAsyncRequestToNode(
+          AsyncRequestContext<?, ?, DataNodeRequestType, TDataNodeLocation> requestContext, int requestId, TDataNodeLocation targetNode, int retryCount) {
 
     try {
       AsyncDataNodeInternalServiceClient client;
-      client = clientManager.borrowClient(targetDataNode.getInternalEndPoint());
+      client = clientManager.borrowClient(nodeLocationToEndPoint(targetNode));
       Object req = requestContext.getRequest(requestId);
-      AbstractAsyncRPCHandler<?> handler = AbstractAsyncRPCHandler.buildHandler(requestContext, requestId, targetDataNode);
+      AbstractAsyncRPCHandler<?> handler = AbstractAsyncRPCHandler.buildHandler(requestContext, requestId, targetNode);
 
       AsyncTSStatusRPCHandler defaultHandler = null;
       if (handler instanceof AsyncTSStatusRPCHandler) {
@@ -255,19 +182,19 @@ public class AsyncDataNodeClientPool {
           break;
         case TOPIC_PUSH_SINGLE_META:
           client.pushSingleTopicMeta(
-              (TPushSingleTopicMetaReq) req, (TopicPushMetaRPCHandler) handler);
+                  (TPushSingleTopicMetaReq) req, (TopicPushMetaRPCHandler) handler);
           break;
         case TOPIC_PUSH_MULTI_META:
           client.pushMultiTopicMeta(
-              (TPushMultiTopicMetaReq) req, (TopicPushMetaRPCHandler) handler);
+                  (TPushMultiTopicMetaReq) req, (TopicPushMetaRPCHandler) handler);
           break;
         case CONSUMER_GROUP_PUSH_ALL_META:
           client.pushConsumerGroupMeta(
-              (TPushConsumerGroupMetaReq) req, (ConsumerGroupPushMetaRPCHandler) handler);
+                  (TPushConsumerGroupMetaReq) req, (ConsumerGroupPushMetaRPCHandler) handler);
           break;
         case CONSUMER_GROUP_PUSH_SINGLE_META:
           client.pushSingleConsumerGroupMeta(
-              (TPushSingleConsumerGroupMetaReq) req, (ConsumerGroupPushMetaRPCHandler) handler);
+                  (TPushSingleConsumerGroupMetaReq) req, (ConsumerGroupPushMetaRPCHandler) handler);
           break;
         case PIPE_HEARTBEAT:
           client.pipeHeartbeat((TPipeHeartbeatReq) req, (PipeHeartbeatRPCHandler) handler);
@@ -299,38 +226,38 @@ public class AsyncDataNodeClientPool {
           break;
         case CHANGE_REGION_LEADER:
           client.changeRegionLeader(
-              (TRegionLeaderChangeReq) req, (TransferLeaderRPCHandler) handler);
+                  (TRegionLeaderChangeReq) req, (TransferLeaderRPCHandler) handler);
           break;
         case CONSTRUCT_SCHEMA_BLACK_LIST:
           client.constructSchemaBlackList(
-              (TConstructSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
+                  (TConstructSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case ROLLBACK_SCHEMA_BLACK_LIST:
           client.rollbackSchemaBlackList(
-              (TRollbackSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
+                  (TRollbackSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case FETCH_SCHEMA_BLACK_LIST:
           client.fetchSchemaBlackList(
-              (TFetchSchemaBlackListReq) req, (FetchSchemaBlackListRPCHandler) handler);
+                  (TFetchSchemaBlackListReq) req, (FetchSchemaBlackListRPCHandler) handler);
           break;
         case INVALIDATE_MATCHED_SCHEMA_CACHE:
           client.invalidateMatchedSchemaCache(
-              (TInvalidateMatchedSchemaCacheReq) req, defaultHandler);
+                  (TInvalidateMatchedSchemaCacheReq) req, defaultHandler);
           break;
         case DELETE_DATA_FOR_DELETE_SCHEMA:
           client.deleteDataForDeleteSchema(
-              (TDeleteDataForDeleteSchemaReq) req, (SchemaUpdateRPCHandler) handler);
+                  (TDeleteDataForDeleteSchemaReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case DELETE_TIMESERIES:
           client.deleteTimeSeries((TDeleteTimeSeriesReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
           client.constructSchemaBlackListWithTemplate(
-              (TConstructSchemaBlackListWithTemplateReq) req, (SchemaUpdateRPCHandler) handler);
+                  (TConstructSchemaBlackListWithTemplateReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
           client.rollbackSchemaBlackListWithTemplate(
-              (TRollbackSchemaBlackListWithTemplateReq) req, (SchemaUpdateRPCHandler) handler);
+                  (TRollbackSchemaBlackListWithTemplateReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case DEACTIVATE_TEMPLATE:
           client.deactivateTemplate((TDeactivateTemplateReq) req, (SchemaUpdateRPCHandler) handler);
@@ -340,24 +267,24 @@ public class AsyncDataNodeClientPool {
           break;
         case COUNT_PATHS_USING_TEMPLATE:
           client.countPathsUsingTemplate(
-              (TCountPathsUsingTemplateReq) req, (CountPathsUsingTemplateRPCHandler) handler);
+                  (TCountPathsUsingTemplateReq) req, (CountPathsUsingTemplateRPCHandler) handler);
           break;
         case CHECK_SCHEMA_REGION_USING_TEMPLATE:
           client.checkSchemaRegionUsingTemplate(
-              (TCheckSchemaRegionUsingTemplateReq) req,
-              (CheckSchemaRegionUsingTemplateRPCHandler) handler);
+                  (TCheckSchemaRegionUsingTemplateReq) req,
+                  (CheckSchemaRegionUsingTemplateRPCHandler) handler);
           break;
         case CHECK_TIMESERIES_EXISTENCE:
           client.checkTimeSeriesExistence(
-              (TCheckTimeSeriesExistenceReq) req, (CheckTimeSeriesExistenceRPCHandler) handler);
+                  (TCheckTimeSeriesExistenceReq) req, (CheckTimeSeriesExistenceRPCHandler) handler);
           break;
         case CONSTRUCT_VIEW_SCHEMA_BLACK_LIST:
           client.constructViewSchemaBlackList(
-              (TConstructViewSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
+                  (TConstructViewSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case ROLLBACK_VIEW_SCHEMA_BLACK_LIST:
           client.rollbackViewSchemaBlackList(
-              (TRollbackViewSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
+                  (TRollbackViewSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case DELETE_VIEW:
           client.deleteViewSchema((TDeleteViewSchemaReq) req, (SchemaUpdateRPCHandler) handler);
@@ -379,36 +306,25 @@ public class AsyncDataNodeClientPool {
           break;
         case SUBMIT_TEST_CONNECTION_TASK:
           client.submitTestConnectionTask(
-              (TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler);
+                  (TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler);
           break;
         case TEST_CONNECTION:
           client.testConnection(defaultHandler);
           break;
         default:
           LOGGER.error(
-              "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",
-              requestContext.getRequestType());
+                  "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",
+                  requestContext.getRequestType());
       }
     } catch (Exception e) {
       LOGGER.warn(
-          "{} failed on DataNode {}, because {}, retrying {}...",
-          requestContext.getRequestType(),
-          targetDataNode.getInternalEndPoint(),
-          e.getMessage(),
-          retryCount);
+              "{} failed on DataNode {}, because {}, retrying {}...",
+              requestContext.getRequestType(),
+              nodeLocationToEndPoint(targetNode),
+              e.getMessage(),
+              retryCount);
     }
   }
-
-  /**
-   * Always call this interface when a DataNode is restarted or removed.
-   *
-   * @param endPoint The specific DataNode
-   */
-  public void resetClient(TEndPoint endPoint) {
-    clientManager.clear(endPoint);
-  }
-
-
 
   public AsyncDataNodeInternalServiceClient getAsyncClient(TDataNodeLocation targetDataNode)
       throws ClientManagerException {
@@ -418,14 +334,14 @@ public class AsyncDataNodeClientPool {
   // TODO: Is the ClientPool must be a singleton?
   private static class ClientPoolHolder {
 
-    private static final AsyncDataNodeClientPool INSTANCE = new AsyncDataNodeClientPool();
+    private static final AsyncDataNodeInternalServiceRequestSender INSTANCE = new AsyncDataNodeInternalServiceRequestSender();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static AsyncDataNodeClientPool getInstance() {
+  public static AsyncDataNodeInternalServiceRequestSender getInstance() {
     return ClientPoolHolder.INSTANCE;
   }
 }

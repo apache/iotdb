@@ -22,9 +22,10 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
+import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 
-import org.apache.iotdb.confignode.client.async.handlers.AsyncRequestContext;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
@@ -98,10 +99,10 @@ public abstract class AbstractAsyncRPCHandler<Response> implements AsyncMethodCa
     this.countDownLatch = countDownLatch;
   }
 
-  public static AbstractAsyncRPCHandler<?> buildHandler(AsyncRequestContext<?,?> context,
+  public static AbstractAsyncRPCHandler<?> buildHandler(AsyncRequestContext<?, ?, DataNodeRequestType, TDataNodeLocation> context,
                                                         int requestId, TDataNodeLocation targetDataNode) {
     DataNodeRequestType requestType = context.getRequestType();
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap = context.getDataNodeLocationMap();
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap = context.getNodeLocationMap();
     Map<Integer, ?> responseMap = context.getResponseMap();
     CountDownLatch countDownLatch = context.getCountDownLatch();
     switch (requestType) {
