@@ -42,7 +42,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public abstract class AbstractAsyncRPCHandler<T> implements AsyncMethodCallback<T> {
+public abstract class AbstractAsyncRPCHandler<Response> implements AsyncMethodCallback<Response> {
 
   // Type of RPC request
   protected final DataNodeRequestType requestType;
@@ -69,7 +69,7 @@ public abstract class AbstractAsyncRPCHandler<T> implements AsyncMethodCallback<
    * <p>All kinds of AsyncHandler will add response to the responseMap after its corresponding RPC
    * request finished
    */
-  protected final Map<Integer, T> responseMap;
+  protected final Map<Integer, Response> responseMap;
 
   // All kinds of AsyncHandler will invoke countDown after its corresponding RPC request finished
   protected final CountDownLatch countDownLatch;
@@ -81,7 +81,7 @@ public abstract class AbstractAsyncRPCHandler<T> implements AsyncMethodCallback<
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
-      Map<Integer, T> responseMap,
+      Map<Integer, Response> responseMap,
       CountDownLatch countDownLatch) {
     this.requestType = requestType;
     this.requestId = requestId;
@@ -98,8 +98,8 @@ public abstract class AbstractAsyncRPCHandler<T> implements AsyncMethodCallback<
     this.countDownLatch = countDownLatch;
   }
 
-  public static AbstractAsyncRPCHandler<?> create(AsyncRequestContext<?,?> context,
-                                                                 int requestId, TDataNodeLocation targetDataNode) {
+  public static AbstractAsyncRPCHandler<?> buildHandler(AsyncRequestContext<?,?> context,
+                                                        int requestId, TDataNodeLocation targetDataNode) {
     DataNodeRequestType requestType = context.getRequestType();
     Map<Integer, TDataNodeLocation> dataNodeLocationMap = context.getDataNodeLocationMap();
     Map<Integer, ?> responseMap = context.getResponseMap();

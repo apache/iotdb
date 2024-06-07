@@ -24,11 +24,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
-import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
@@ -51,14 +49,11 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicP
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
@@ -72,24 +67,18 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushMultiTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -101,8 +90,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 /** Asynchronously send RPC requests to DataNodes. See queryengine.thrift for more details. */
@@ -126,12 +113,12 @@ public class AsyncDataNodeClientPool {
    *
    * <p>Notice: The DataNodes that failed to receive the requests will be reconnected
    *
-   * @param clientHandler <RequestType, ResponseType> which will also contain the result
+   * @param requestContext <RequestType, ResponseType> which will also contain the result
    * @param timeoutInMs timeout in milliseconds
    */
   public void sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
-          AsyncRequestContext<?, ?> clientHandler, long timeoutInMs) {
-    sendAsyncRequest(clientHandler, MAX_RETRY_NUM, timeoutInMs);
+          AsyncRequestContext<?, ?> requestContext, long timeoutInMs) {
+    sendAsyncRequest(requestContext, MAX_RETRY_NUM, timeoutInMs);
   }
 
   /**
@@ -139,39 +126,39 @@ public class AsyncDataNodeClientPool {
    *
    * <p>Notice: The DataNodes that failed to receive the requests will be reconnected
    *
-   * @param clientHandler <RequestType, ResponseType> which will also contain the result
+   * @param requestContext <RequestType, ResponseType> which will also contain the result
    */
-  public void sendAsyncRequestToDataNodeWithRetry(AsyncRequestContext<?, ?> clientHandler) {
-    sendAsyncRequest(clientHandler, MAX_RETRY_NUM, null);
+  public void sendAsyncRequestToDataNodeWithRetry(AsyncRequestContext<?, ?> requestContext) {
+    sendAsyncRequest(requestContext, MAX_RETRY_NUM, null);
   }
 
-  public void sendAsyncRequestToDataNode(AsyncRequestContext<?, ?> clientHandler) {
-    sendAsyncRequest(clientHandler, 1, null);
+  public void sendAsyncRequestToDataNode(AsyncRequestContext<?, ?> requestContext) {
+    sendAsyncRequest(requestContext, 1, null);
   }
 
   private void sendAsyncRequest(
-          AsyncRequestContext<?, ?> clientHandler, int retryNum, Long timeoutInMs) {
-    if (clientHandler.getRequestIndices().isEmpty()) {
+          AsyncRequestContext<?, ?> requestContext, int retryNum, Long timeoutInMs) {
+    if (requestContext.getRequestIndices().isEmpty()) {
       return;
     }
 
-    DataNodeRequestType requestType = clientHandler.getRequestType();
+    DataNodeRequestType requestType = requestContext.getRequestType();
     for (int retry = 0; retry < retryNum; retry++) {
       // Always Reset CountDownLatch first
-      clientHandler.resetCountDownLatch();
+      requestContext.resetCountDownLatch();
 
       // Send requests to all targetDataNodes
-      for (int requestId : clientHandler.getRequestIndices()) {
-        TDataNodeLocation targetDataNode = clientHandler.getDataNodeLocation(requestId);
-        sendAsyncRequestToDataNode(clientHandler, requestId, targetDataNode, retry);
+      for (int requestId : requestContext.getRequestIndices()) {
+        TDataNodeLocation targetDataNode = requestContext.getDataNodeLocation(requestId);
+        sendAsyncRequestToDataNode(requestContext, requestId, targetDataNode, retry);
       }
 
       // Wait for this batch of asynchronous RPC requests finish
       try {
         if (timeoutInMs == null) {
-          clientHandler.getCountDownLatch().await();
+          requestContext.getCountDownLatch().await();
         } else {
-          if (!clientHandler.getCountDownLatch().await(timeoutInMs, TimeUnit.MILLISECONDS)) {
+          if (!requestContext.getCountDownLatch().await(timeoutInMs, TimeUnit.MILLISECONDS)) {
             LOGGER.warn(
                 "Timeout during {} on ConfigNode. Retry: {}/{}", requestType, retry, retryNum);
           }
@@ -183,17 +170,17 @@ public class AsyncDataNodeClientPool {
       }
 
       // Check if there is a DataNode that fails to execute the request, and retry if there exists
-      if (clientHandler.getRequestIndices().isEmpty()) {
+      if (requestContext.getRequestIndices().isEmpty()) {
         return;
       }
     }
 
-    if (!clientHandler.getRequestIndices().isEmpty()) {
+    if (!requestContext.getRequestIndices().isEmpty()) {
       LOGGER.warn(
           "Failed to {} on ConfigNode after {} retries, requestIndices: {}",
           requestType,
           retryNum,
-          clientHandler.getRequestIndices());
+          requestContext.getRequestIndices());
     }
   }
 
@@ -207,7 +194,7 @@ public class AsyncDataNodeClientPool {
       AsyncDataNodeInternalServiceClient client;
       client = clientManager.borrowClient(targetDataNode.getInternalEndPoint());
       Object req = requestContext.getRequest(requestId);
-      AbstractAsyncRPCHandler<?> handler = AbstractAsyncRPCHandler.create(requestContext, requestId, targetDataNode);
+      AbstractAsyncRPCHandler<?> handler = AbstractAsyncRPCHandler.buildHandler(requestContext, requestId, targetDataNode);
 
       AsyncTSStatusRPCHandler defaultHandler = null;
       if (handler instanceof AsyncTSStatusRPCHandler) {
