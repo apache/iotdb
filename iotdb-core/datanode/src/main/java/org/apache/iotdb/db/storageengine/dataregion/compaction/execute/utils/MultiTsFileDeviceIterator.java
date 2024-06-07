@@ -426,7 +426,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     List<List<Modification>> modificationForCurDevice = new ArrayList<>();
     for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
       if (valueChunkMetadata == null) {
-         modificationForCurDevice.add(Collections.emptyList());
+        modificationForCurDevice.add(Collections.emptyList());
         continue;
       }
       List<Modification> modificationList = new ArrayList<>();
@@ -441,7 +441,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       if (ttlDeletion != null) {
         modificationList.add(ttlDeletion);
       }
-      modificationForCurDevice.add(modificationList.isEmpty() ? Collections.emptyList() : modificationList);
+      modificationForCurDevice.add(
+          modificationList.isEmpty() ? Collections.emptyList() : modificationList);
     }
 
     ModificationUtils.modifyAlignedChunkMetaData(
