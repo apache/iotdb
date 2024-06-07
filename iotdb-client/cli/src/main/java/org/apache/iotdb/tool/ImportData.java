@@ -75,8 +75,8 @@ import static org.apache.tsfile.enums.TSDataType.TEXT;
 
 public class ImportData extends AbstractDataTool {
 
-  private static final String FILE_ARGS = "f";
-  private static final String FILE_NAME = "file or folder";
+  private static final String FILE_ARGS = "s";
+  private static final String FILE_NAME = "sourceFileOrFolder";
 
   private static final String FAILED_FILE_ARGS = "fd";
   private static final String FAILED_FILE_NAME = "failed file directory";
@@ -98,8 +98,8 @@ public class ImportData extends AbstractDataTool {
   private static final String TYPE_INFER_ARGS = "typeInfer";
   private static final String TYPE_INFER_ARGS_NAME = "type infer";
 
-  private static final String LINES_PER_FAILED_FILE_ARGS = "linesPerFailedFile";
-  private static final String LINES_PER_FAILED_FILE_ARGS_NAME = "Lines Per FailedFile";
+  private static final String LINES_PER_FAILED_FILE_ARGS = "lpf";
+  private static final String LINES_PER_FAILED_FILE_ARGS_NAME = "linesPerFailedFile";
 
   private static final String TSFILEDB_CLI_PREFIX = "ImportData";
 

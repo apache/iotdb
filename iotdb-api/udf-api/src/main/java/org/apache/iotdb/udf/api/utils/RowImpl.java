@@ -45,36 +45,57 @@ public class RowImpl implements Row {
 
   @Override
   public int getInt(int columnIndex) {
+    if (columnIndex >= size()) {
+      throw new IndexOutOfBoundsException("Index out of bound error!");
+    }
     return (int) rowRecord[columnIndex];
   }
 
   @Override
   public long getLong(int columnIndex) {
+    if (columnIndex >= size()) {
+      throw new IndexOutOfBoundsException("Index out of bound error!");
+    }
     return (long) rowRecord[columnIndex];
   }
 
   @Override
   public float getFloat(int columnIndex) {
+    if (columnIndex >= size()) {
+      throw new IndexOutOfBoundsException("Index out of bound error!");
+    }
     return (float) rowRecord[columnIndex];
   }
 
   @Override
   public double getDouble(int columnIndex) {
+    if (columnIndex >= size()) {
+      throw new IndexOutOfBoundsException("Index out of bound error!");
+    }
     return (double) rowRecord[columnIndex];
   }
 
   @Override
   public boolean getBoolean(int columnIndex) {
+    if (columnIndex >= size()) {
+      throw new IndexOutOfBoundsException("Index out of bound error!");
+    }
     return (boolean) rowRecord[columnIndex];
   }
 
   @Override
   public Binary getBinary(int columnIndex) {
+    if (columnIndex >= size()) {
+      throw new IndexOutOfBoundsException("Index out of bound error!");
+    }
     return transformToUDFBinary((org.apache.tsfile.utils.Binary) rowRecord[columnIndex]);
   }
 
   @Override
   public String getString(int columnIndex) {
+    if (columnIndex >= size()) {
+      throw new IndexOutOfBoundsException("Index out of bound error!");
+    }
     return rowRecord[columnIndex].toString();
   }
 
