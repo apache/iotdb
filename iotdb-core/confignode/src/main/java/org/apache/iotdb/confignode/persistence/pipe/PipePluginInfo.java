@@ -91,7 +91,8 @@ public class PipePluginInfo implements SnapshotProcessor {
 
   /////////////////////////////// Validator ///////////////////////////////
 
-  public void validateBeforeCreatingPipePlugin(String pluginName, String jarName, String jarMD5) {
+  public void validateBeforeCreatingPipePlugin(
+      final String pluginName, final String jarName, final String jarMD5) {
     // both build-in and user defined pipe plugin should be unique
     if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
       throw new PipeException(
@@ -108,9 +109,13 @@ public class PipePluginInfo implements SnapshotProcessor {
     }
   }
 
-  public void validateBeforeDroppingPipePlugin(String pluginName) {
-    if (pipePluginMetaKeeper.containsPipePlugin(pluginName)
-        && pipePluginMetaKeeper.getPipePluginMeta(pluginName).isBuiltin()) {
+  public void validateBeforeDroppingPipePlugin(final String pluginName) {
+    if (!pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
+      throw new PipeException(
+          String.format(
+              "Failed to drop PipePlugin [%s], this PipePlugin has not been created", pluginName));
+    }
+    if (pipePluginMetaKeeper.getPipePluginMeta(pluginName).isBuiltin()) {
       throw new PipeException(
           String.format(
               "Failed to drop PipePlugin [%s], the PipePlugin is a built-in PipePlugin",
@@ -118,14 +123,14 @@ public class PipePluginInfo implements SnapshotProcessor {
     }
   }
 
-  public boolean isJarNeededToBeSavedWhenCreatingPipePlugin(String jarName) {
+  public boolean isJarNeededToBeSavedWhenCreatingPipePlugin(final String jarName) {
     return !pipePluginMetaKeeper.containsJar(jarName);
   }
 
   public void checkPipePluginExistence(
-      Map<String, String> extractorAttributes,
-      Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes) {
+      final Map<String, String> extractorAttributes,
+      final Map<String, String> processorAttributes,
+      final Map<String, String> connectorAttributes) {
     final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
     final String extractorPluginName =
         extractorParameters.getStringOrDefault(
@@ -170,7 +175,7 @@ public class PipePluginInfo implements SnapshotProcessor {
 
   /////////////////////////////// Pipe Plugin Management ///////////////////////////////
 
-  public TSStatus createPipePlugin(CreatePipePluginPlan createPipePluginPlan) {
+  public TSStatus createPipePlugin(final CreatePipePluginPlan createPipePluginPlan) {
     try {
       final PipePluginMeta pipePluginMeta = createPipePluginPlan.getPipePluginMeta();
 
@@ -188,7 +193,7 @@ public class PipePluginInfo implements SnapshotProcessor {
       }
 
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (Exception e) {
+    } catch (final Exception e) {
       final String errorMessage =
           String.format(
               "Failed to execute createPipePlugin(%s) on config nodes, because of %s",
@@ -199,7 +204,7 @@ public class PipePluginInfo implements SnapshotProcessor {
     }
   }
 
-  public TSStatus dropPipePlugin(DropPipePluginPlan dropPipePluginPlan) {
+  public TSStatus dropPipePlugin(final DropPipePluginPlan dropPipePluginPlan) {
     final String pluginName = dropPipePluginPlan.getPluginName();
 
     if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
@@ -217,17 +222,17 @@ public class PipePluginInfo implements SnapshotProcessor {
         Arrays.asList(pipePluginMetaKeeper.getAllPipePluginMeta()));
   }
 
-  public JarResp getPipePluginJar(GetPipePluginJarPlan getPipePluginJarPlan) {
+  public JarResp getPipePluginJar(final GetPipePluginJarPlan getPipePluginJarPlan) {
     try {
       final List<ByteBuffer> jarList = new ArrayList<>();
-      for (String jarName : getPipePluginJarPlan.getJarNames()) {
+      for (final String jarName : getPipePluginJarPlan.getJarNames()) {
         jarList.add(
             ExecutableManager.transferToBytebuffer(
                 PipePluginExecutableManager.getInstance()
                     .getFileStringUnderInstallByName(jarName)));
       }
       return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.error("Get PipePlugin_Jar failed", e);
       return new JarResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
@@ -239,7 +244,7 @@ public class PipePluginInfo implements SnapshotProcessor {
   /////////////////////////////// Snapshot Processor ///////////////////////////////
 
   @Override
-  public boolean processTakeSnapshot(File snapshotDir) throws IOException {
+  public boolean processTakeSnapshot(final File snapshotDir) throws IOException {
     acquirePipePluginInfoLock();
     try {
       final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
@@ -261,7 +266,7 @@ public class PipePluginInfo implements SnapshotProcessor {
   }
 
   @Override
-  public void processLoadSnapshot(File snapshotDir) throws IOException {
+  public void processLoadSnapshot(final File snapshotDir) throws IOException {
     acquirePipePluginInfoLock();
     try {
       final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
@@ -288,7 +293,7 @@ public class PipePluginInfo implements SnapshotProcessor {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
