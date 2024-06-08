@@ -1343,7 +1343,6 @@ public class IoTDBJDBCResultSet implements ResultSet {
     if (!isIgnoreTimeStamp() && columnIndex == 1) {
       return TSDataType.TIMESTAMP.name();
     }
-
     return ioTDBRpcDataSet.columnTypeList.get(columnIndex - 1);
   }
 }
