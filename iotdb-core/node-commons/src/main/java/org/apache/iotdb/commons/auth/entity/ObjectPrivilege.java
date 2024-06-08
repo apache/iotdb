@@ -1,28 +1,59 @@
 package org.apache.iotdb.commons.auth.entity;
 
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
 public class ObjectPrivilege {
   private static final Logger LOGGER = LoggerFactory.getLogger(ObjectPrivilege.class);
-  private final String databaseName;
-  private static final int Object_PRI_SIZE = PrivilegeType.getPathPriCount();
+  private String databaseName;
+
+  private static final int PATH_PRI_SIZE = PrivilegeType.getPathPriCount();
   private Map<String, TablePrivilege> tablePrivilegeMap;
-  Set<PrivilegeType> privilegeTypeSet;
-  Set<PrivilegeType> grantOptionSet;
+  private Set<PrivilegeType> privilegeTypeSet;
+  private Set<PrivilegeType> grantOptionSet;
 
   public ObjectPrivilege(String databaseName) {
     this.databaseName = databaseName;
     this.tablePrivilegeMap = new HashMap<>();
     this.privilegeTypeSet = new HashSet<>();
     this.grantOptionSet = new HashSet<>();
+  }
+
+  public ObjectPrivilege() {
+    //
+  }
+
+  public String getDatabaseName() {
+    return this.databaseName;
+  }
+
+  public Map<String, TablePrivilege> getTablePrivilegeMap() {
+    return this.tablePrivilegeMap;
+  }
+
+  public int getAllPrivileges() {
+    return AuthUtils.getAllPrivileges(this.privilegeTypeSet, this.grantOptionSet);
+  }
+
+  public void setPrivileges(int privs) {
+    for (int i = 0; i < PATH_PRI_SIZE; i++) {
+      if (((1 << i) & privs) != 0) {
+        privilegeTypeSet.add(PrivilegeType.values()[AuthUtils.pathPosToPri(i)]);
+      }
+      if ((1 << (i + 16) & privs) != 0) {
+        grantOptionSet.add(PrivilegeType.values()[AuthUtils.pathPosToPri(i)]);
+      }
+    }
   }
 
   public void grantDBObjectPrivilege(PrivilegeType privilegeType) {
@@ -77,6 +108,29 @@ public class ObjectPrivilege {
     return false;
   }
 
+  public boolean checkDBPrivilege(PrivilegeType privilegeType) {
+    return this.privilegeTypeSet.contains(privilegeType);
+  }
+
+  public boolean checkTablePrivilege(String tableName, PrivilegeType privilegeType) {
+    if (!this.tablePrivilegeMap.containsKey(tableName)) {
+      return false;
+    }
+    return tablePrivilegeMap.get(tableName).getPrivileges().contains(privilegeType);
+  }
+
+  public boolean checkDBGrantOption(PrivilegeType type) {
+    return this.privilegeTypeSet.contains(type) && this.grantOptionSet.contains(type);
+  }
+
+  public boolean checkTableGrantOption(String tableName, PrivilegeType type) {
+    if (!this.tablePrivilegeMap.containsKey(tableName)) {
+      return false;
+    }
+    return this.tablePrivilegeMap.get(tableName).getPrivileges().contains(type)
+        && this.tablePrivilegeMap.get(tableName).getGrantOption().contains(type);
+  }
+
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -115,12 +169,31 @@ public class ObjectPrivilege {
     return builder.toString();
   }
 
-  public ByteBuffer serialize() {
+  public ByteBuffer serialize() throws IOException {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     SerializeUtils.serializePrivilegeTypeSet(this.privilegeTypeSet, dataOutputStream);
     SerializeUtils.serializePrivilegeTypeSet(this.grantOptionSet, dataOutputStream);
-
+    ReadWriteIOUtils.write(this.tablePrivilegeMap.size(), dataOutputStream);
+    for (Map.Entry<String, TablePrivilege> tablePrivilegeEntry :
+        this.tablePrivilegeMap.entrySet()) {
+      tablePrivilegeEntry.getValue().serialize(dataOutputStream);
+    }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    this.privilegeTypeSet = new HashSet<>();
+    this.grantOptionSet = new HashSet<>();
+    this.tablePrivilegeMap = new HashMap<>();
+    this.databaseName = SerializeUtils.deserializeString(buffer);
+    SerializeUtils.deserializePrivilegeTypeSet(this.privilegeTypeSet, buffer);
+    SerializeUtils.deserializePrivilegeTypeSet(this.grantOptionSet, buffer);
+    int length = buffer.getInt();
+    for (int i = 0; i < length; i++) {
+      TablePrivilege tablePrivilege = new TablePrivilege();
+      tablePrivilege.deserialize(buffer);
+      this.tablePrivilegeMap.put(tablePrivilege.getTableName(), tablePrivilege);
+    }
   }
 }

@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.commons.auth.entity.ObjectPrivilege;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.TablePrivilege;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 
@@ -33,6 +35,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class IOUtils {
 
@@ -198,6 +201,22 @@ public class IOUtils {
     }
   }
 
+  public static ObjectPrivilege readObjectPrivilege(
+      DataInputStream inputStream, String encoding, ThreadLocal<byte[]> strBufferLocal)
+      throws IOException {
+    String databaseName = IOUtils.readString(inputStream, encoding, strBufferLocal);
+    ObjectPrivilege objectPrivilege = new ObjectPrivilege(databaseName);
+    objectPrivilege.setPrivileges(inputStream.readInt());
+    int tableNum = inputStream.readInt();
+    for (int i = 0; i < tableNum; i++) {
+      String tableName = IOUtils.readString(inputStream, encoding, strBufferLocal);
+      TablePrivilege tablePrivilege = new TablePrivilege(tableName);
+      tablePrivilege.setPrivileges(inputStream.readInt());
+      objectPrivilege.getTablePrivilegeMap().put(tableName, tablePrivilege);
+    }
+    return objectPrivilege;
+  }
+
   // Because pre version's privilege will stored by path + privilege
   // This func will turn the privilege info into role's path privileges.
   // for the global privilege, they were stored by root + privilege.
@@ -243,6 +262,26 @@ public class IOUtils {
       throws IOException {
     writeString(outputStream, pathPrivilege.getPath().getFullPath(), encoding, encodingBufferLocal);
     writeInt(outputStream, pathPrivilege.getAllPrivileges(), encodingBufferLocal);
+  }
+
+  public static void writeObjectPrivilege(
+      OutputStream outputStream,
+      ObjectPrivilege objectPrivilege,
+      String encoding,
+      ThreadLocal<ByteBuffer> encodingBufferLocal)
+      throws IOException {
+    writeString(outputStream, objectPrivilege.getDatabaseName(), encoding, encodingBufferLocal);
+    writeInt(outputStream, objectPrivilege.getAllPrivileges(), encodingBufferLocal);
+    writeInt(outputStream, objectPrivilege.getTablePrivilegeMap().size(), encodingBufferLocal);
+    for (Map.Entry<String, TablePrivilege> entry :
+        objectPrivilege.getTablePrivilegeMap().entrySet()) {
+      writeString(outputStream, entry.getValue().getTableName(), encoding, encodingBufferLocal);
+      writeInt(
+          outputStream,
+          AuthUtils.getAllPrivileges(
+              entry.getValue().getPrivileges(), entry.getValue().getGrantOption()),
+          encodingBufferLocal);
+    }
   }
 
   /**

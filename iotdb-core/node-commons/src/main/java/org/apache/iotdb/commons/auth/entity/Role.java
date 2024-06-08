@@ -27,8 +27,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -44,6 +46,8 @@ public class Role {
 
   private static final int SYS_PRI_SIZE = PrivilegeType.getSysPriCount();
 
+  private Map<String, ObjectPrivilege> objectPrivileges;
+
   private boolean serviceReady = true;
 
   public Role() {
@@ -55,6 +59,7 @@ public class Role {
     this.pathPrivilegeList = new ArrayList<>();
     this.sysPrivilegeSet = new HashSet<>();
     this.sysPriGrantOpt = new HashSet<>();
+    this.objectPrivileges = new HashMap<>();
   }
 
   /** ------------- get func -----------------* */
@@ -64,6 +69,10 @@ public class Role {
 
   public List<PathPrivilege> getPathPrivilegeList() {
     return pathPrivilegeList;
+  }
+
+  public Map<String, ObjectPrivilege> getObjectPrivileges() {
+    return objectPrivileges;
   }
 
   public Set<Integer> getSysPrivilege() {
@@ -100,6 +109,10 @@ public class Role {
 
   public void setPrivilegeList(List<PathPrivilege> privilegeList) {
     this.pathPrivilegeList = privilegeList;
+  }
+
+  public void setObjectPrivileges(Map<String, ObjectPrivilege> objectPrivilegeMap) {
+    this.objectPrivileges = objectPrivilegeMap;
   }
 
   public void setPathPrivileges(PartialPath path, Set<Integer> privileges) {
@@ -168,6 +181,31 @@ public class Role {
     return AuthUtils.checkPathPrivilege(path, privilegeId, pathPrivilegeList);
   }
 
+  public boolean checkObjectPrivilege(String databaseName, String tableName, PrivilegeType type) {
+    if (!this.objectPrivileges.containsKey(databaseName)) {
+      return false;
+    }
+    ObjectPrivilege objectPrivilege = this.objectPrivileges.get(databaseName);
+    if (tableName == null) {
+      return objectPrivilege.checkDBPrivilege(type);
+    } else {
+      return objectPrivilege.checkTablePrivilege(tableName, type);
+    }
+  }
+
+  public boolean checkObjectPrivilegeGrantOpt(
+      String databaseName, String tableName, PrivilegeType type) {
+    if (!this.objectPrivileges.containsKey(databaseName)) {
+      return false;
+    }
+    ObjectPrivilege objectPrivileges = this.objectPrivileges.get(databaseName);
+    if (tableName == null) {
+      return objectPrivileges.checkDBGrantOption(type);
+    } else {
+      return objectPrivileges.checkTableGrantOption(tableName, type);
+    }
+  }
+
   public boolean checkPathPrivilegeGrantOpt(PartialPath path, int privilegeId) {
     return AuthUtils.checkPathPrivilegeGrantOpt(path, privilegeId, pathPrivilegeList);
   }
@@ -193,12 +231,13 @@ public class Role {
     return Objects.equals(name, role.name)
         && Objects.equals(pathPrivilegeList, role.pathPrivilegeList)
         && Objects.equals(sysPrivilegeSet, role.sysPrivilegeSet)
-        && Objects.equals(sysPriGrantOpt, role.sysPriGrantOpt);
+        && Objects.equals(sysPriGrantOpt, role.sysPriGrantOpt)
+        && Objects.equals(this.objectPrivileges, role.objectPrivileges);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, pathPrivilegeList, sysPrivilegeSet);
+    return Objects.hash(name, pathPrivilegeList, sysPrivilegeSet, objectPrivileges);
   }
 
   public ByteBuffer serialize() {
@@ -219,6 +258,10 @@ public class Role {
       dataOutputStream.writeInt(pathPrivilegeList.size());
       for (PathPrivilege pathPrivilege : pathPrivilegeList) {
         dataOutputStream.write(pathPrivilege.serialize().array());
+      }
+      dataOutputStream.writeInt(objectPrivileges.size());
+      for (Map.Entry<String, ObjectPrivilege> objectPrivilegeEntry : objectPrivileges.entrySet()) {
+        dataOutputStream.write(objectPrivilegeEntry.getValue().serialize().array());
       }
     } catch (IOException e) {
       // unreachable
@@ -246,6 +289,13 @@ public class Role {
       pathPrivilege.deserialize(buffer);
       pathPrivilegeList.add(pathPrivilege);
     }
+    int objectSize = buffer.getInt();
+    objectPrivileges = new HashMap<>();
+    for (int i = 0; i < objectSize; i++) {
+      ObjectPrivilege objectPrivilege = new ObjectPrivilege();
+      objectPrivilege.deserialize(buffer);
+      this.objectPrivileges.put(objectPrivilege.getDatabaseName(), objectPrivilege);
+    }
   }
 
   @Override
@@ -258,6 +308,8 @@ public class Role {
         + pathPrivilegeList
         + ", systemPrivilegeSet="
         + sysPriToString()
+        + ", objectPrivilegesMap"
+        + this.objectPrivileges
         + '}';
   }
 

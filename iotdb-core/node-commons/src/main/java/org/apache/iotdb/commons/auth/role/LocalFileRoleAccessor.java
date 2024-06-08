@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.auth.role;
 
+import org.apache.iotdb.commons.auth.entity.ObjectPrivilege;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -29,6 +30,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +46,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -127,11 +130,18 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       } else {
         role.setSysPrivilegeSet(dataInputStream.readInt());
         List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
-        for (int i = 0; dataInputStream.available() != 0; i++) {
+        int length = ReadWriteIOUtils.readInt(dataInputStream);
+        for (int i = 0; i < length; i++) {
           pathPrivilegeList.add(
               IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal, false));
         }
         role.setPrivilegeList(pathPrivilegeList);
+        length = ReadWriteIOUtils.readInt(dataInputStream);
+        for (int i = 0; i < length; i++) {
+          ObjectPrivilege objectPrivilege =
+              IOUtils.readObjectPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal);
+          role.getObjectPrivileges().put(objectPrivilege.getDatabaseName(), objectPrivilege);
+        }
         return role;
       }
     } catch (Exception e) {
@@ -161,12 +171,22 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       IOUtils.writeInt(outputStream, -1 * strBuffer.length, encodingBufferLocal);
       outputStream.write(strBuffer);
       IOUtils.writeInt(outputStream, role.getAllSysPrivileges(), encodingBufferLocal);
-      int privilegeNum = role.getPathPrivilegeList().size();
-      for (int i = 0; i < privilegeNum; i++) {
+      int pathPrivilegeNum = role.getPathPrivilegeList().size();
+      IOUtils.writeInt(outputStream, pathPrivilegeNum, encodingBufferLocal);
+      for (int i = 0; i < pathPrivilegeNum; i++) {
         PathPrivilege pathPrivilege = role.getPathPrivilegeList().get(i);
         IOUtils.writePathPrivilege(
             outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
       }
+
+      int objectPrivilegeNum = role.getObjectPrivileges().size();
+      IOUtils.writeInt(outputStream, objectPrivilegeNum, encodingBufferLocal);
+      for (Map.Entry<String, ObjectPrivilege> objectPrivilegeMap :
+          role.getObjectPrivileges().entrySet()) {
+        IOUtils.writeObjectPrivilege(
+            outputStream, objectPrivilegeMap.getValue(), STRING_ENCODING, encodingBufferLocal);
+      }
+
       // handle outputstream's exception in saveRole locally.
       outputStream.flush();
       fileOutputStream.getFD().sync();

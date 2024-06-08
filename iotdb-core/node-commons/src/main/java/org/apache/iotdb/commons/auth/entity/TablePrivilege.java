@@ -1,19 +1,32 @@
 package org.apache.iotdb.commons.auth.entity;
 
+import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.SerializeUtils;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
 
 public class TablePrivilege {
-  private final String tableName;
-  private final Set<PrivilegeType> privileges;
-  private final Set<PrivilegeType> grantOption;
+  private String tableName;
+  private Set<PrivilegeType> privileges;
+  private Set<PrivilegeType> grantOption;
+
+  private static final int PATH_PRI_SIZE = PrivilegeType.getPathPriCount();
 
   public TablePrivilege(String tableName) {
     this.tableName = tableName;
     this.privileges = new HashSet<>();
     this.grantOption = new HashSet<>();
+  }
+
+  public TablePrivilege() {
+    //
   }
 
   public String getTableName() {
@@ -44,6 +57,17 @@ public class TablePrivilege {
     this.grantOption.remove(priv);
   }
 
+  public void setPrivileges(int privs) {
+    for (int i = 0; i < PATH_PRI_SIZE; i++) {
+      if (((1 << i) & privs) != 0) {
+        privileges.add(PrivilegeType.values()[AuthUtils.pathPosToPri(i)]);
+      }
+      if ((1 << (i + 16) & privs) != 0) {
+        grantOption.add(PrivilegeType.values()[AuthUtils.pathPosToPri(i)]);
+      }
+    }
+  }
+
   public String toString() {
     StringBuilder builder = new StringBuilder();
     builder.append(this.tableName).append(" ");
@@ -56,5 +80,17 @@ public class TablePrivilege {
     return builder.toString();
   }
 
-  public void serialize(OutputStream outputStream) throws IOException {}
+  public void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(this.tableName, outputStream);
+    SerializeUtils.serializePrivilegeTypeSet(this.privileges, (DataOutputStream) outputStream);
+    SerializeUtils.serializePrivilegeTypeSet(this.grantOption, (DataOutputStream) outputStream);
+  }
+
+  public void deserialize(ByteBuffer byteBuffer) {
+    this.privileges = new HashSet<>();
+    this.grantOption = new HashSet<>();
+    this.tableName = SerializeUtils.deserializeString(byteBuffer);
+    SerializeUtils.deserializePrivilegeTypeSet(this.privileges, byteBuffer);
+    SerializeUtils.deserializePrivilegeTypeSet(this.grantOption, byteBuffer);
+  }
 }
