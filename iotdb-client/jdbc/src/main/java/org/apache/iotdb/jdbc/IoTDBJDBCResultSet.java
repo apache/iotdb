@@ -1340,10 +1340,10 @@ public class IoTDBJDBCResultSet implements ResultSet {
   }
 
   public String getColumnTypeByIndex(int columnIndex) {
-    if (columnIndex == 1) {
-      // time column
+    if (!isIgnoreTimeStamp() && columnIndex == 1) {
       return TSDataType.TIMESTAMP.name();
     }
-    return columnTypeList.get(columnIndex - 2);
+
+    return ioTDBRpcDataSet.columnTypeList.get(columnIndex - 1);
   }
 }
