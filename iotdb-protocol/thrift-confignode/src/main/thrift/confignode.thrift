@@ -320,9 +320,22 @@ struct TAuthorizerReq {
 
 struct TAuthorizerResp {
   1: required common.TSStatus status
-  2: optional string tag
-  3: optional list<string> memberInfo
+  2: optional string  3: optional list<string> memberInfo tag
+
   4: optional TPermissionInfoResp permissionInfo
+}
+
+struct tableAuthResp {
+    1. required string tablename
+    2. required set<i32> privileges
+    3. required set<i32> grantOption
+}
+
+struct ObjectResp {
+    1. required string databasename
+    2. required set<i32> privileges
+    3. required set<i32> grantOpt
+    4. optional map<string, tableAuthResp> tableinfo
 }
 
 struct TUserResp {

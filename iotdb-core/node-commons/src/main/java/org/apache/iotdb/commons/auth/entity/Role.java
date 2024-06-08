@@ -177,6 +177,19 @@ public class Role {
     }
   }
 
+  public boolean hasObjectPrivilegeToRevoke(
+      String databaseName, String tableName, PrivilegeType type) {
+    if (!objectPrivileges.containsKey(databaseName)) {
+      return false;
+    }
+    ObjectPrivilege objectPrivilege = this.objectPrivileges.get(databaseName);
+    if (tableName == null) {
+      return objectPrivilege.checkDBPrivilege(type);
+    } else {
+      return objectPrivilege.checkTablePrivilege(tableName, type);
+    }
+  }
+
   public boolean checkPathPrivilege(PartialPath path, int privilegeId) {
     return AuthUtils.checkPathPrivilege(path, privilegeId, pathPrivilegeList);
   }
