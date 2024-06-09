@@ -53,7 +53,7 @@ public abstract class LogWriter implements ILogWriter {
   private final ICompressor compressor = ICompressor.getCompressor(compressionAlg);
   private final ByteBuffer compressedByteBuffer;
   // Minimum size to compress, default is 32 KB
-  private static final long MIN_COMPRESS_SIZE = 0;
+  private static long minCompressionSize = 32 * 1024L;
 
   protected LogWriter(File logFile) throws IOException {
     this.logFile = logFile;
@@ -85,7 +85,7 @@ public abstract class LogWriter implements ILogWriter {
     int uncompressedSize = bufferSize;
     if (compressionAlg != CompressionType.UNCOMPRESSED
         /* Do not compress buffer that is less than min size */
-        && bufferSize > MIN_COMPRESS_SIZE) {
+        && bufferSize > minCompressionSize) {
       compressedByteBuffer.clear();
       compressor.compress(buffer, compressedByteBuffer);
       buffer = compressedByteBuffer;

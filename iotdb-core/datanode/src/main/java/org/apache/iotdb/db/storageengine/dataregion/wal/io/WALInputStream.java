@@ -37,6 +37,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES + 1);
   private final ByteBuffer compressedHeader = ByteBuffer.allocate(Integer.BYTES);
   private ByteBuffer dataBuffer = null;
+  private ByteBuffer compressedBuffer = null;
   private long fileSize;
   File logFile;
   private long endOffset = -1;
@@ -205,17 +206,37 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       }
       compressedHeader.flip();
       int uncompressedSize = compressedHeader.getInt();
-      dataBuffer = ByteBuffer.allocateDirect(uncompressedSize);
-      ByteBuffer compressedData = ByteBuffer.allocateDirect(dataBufferSize);
-      if (channel.read(compressedData) != dataBufferSize) {
+
+      if (Objects.isNull(dataBuffer)
+          || dataBuffer.capacity() < uncompressedSize
+          || dataBuffer.capacity() > uncompressedSize * 2) {
+        dataBuffer = ByteBuffer.allocateDirect(uncompressedSize);
+      }
+      dataBuffer.clear();
+
+      if (Objects.isNull(compressedBuffer)
+          || compressedBuffer.capacity() < dataBufferSize
+          || compressedBuffer.capacity() > dataBufferSize * 2) {
+        compressedBuffer = ByteBuffer.allocateDirect(dataBufferSize);
+      } else {
+        compressedBuffer.clear();
+      }
+
+      if (channel.read(compressedBuffer) != dataBufferSize) {
         throw new IOException("Unexpected end of file");
       }
-      compressedData.flip();
+      compressedBuffer.flip();
+
       IUnCompressor unCompressor = IUnCompressor.getUnCompressor(compressionType);
-      dataBuffer.clear();
-      unCompressor.uncompress(compressedData, dataBuffer);
+      unCompressor.uncompress(compressedBuffer, dataBuffer);
     } else {
-      dataBuffer = ByteBuffer.allocate(dataBufferSize);
+      // The case of UNCOMPRESSION
+      if (Objects.isNull(dataBuffer)
+          || dataBuffer.capacity() < dataBufferSize
+          || dataBuffer.capacity() > dataBufferSize * 2) {
+        dataBuffer = ByteBuffer.allocateDirect(dataBufferSize);
+      }
+      dataBuffer.clear();
       if (channel.read(dataBuffer) != dataBufferSize) {
         throw new IOException("Unexpected end of file");
       }

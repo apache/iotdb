@@ -163,7 +163,7 @@ public class WALMetaData implements SerializedSize {
     magicStringBytes.flip();
     String magicString = new String(magicStringBytes.array());
     return magicString.equals(WALWriter.MAGIC_STRING)
-        || magicString.startsWith(WALWriter.MAGIC_STRING_V1);
+        || magicString.contains(WALWriter.MAGIC_STRING_V1);
   }
 
   public void setTruncateOffSet(long offset) {

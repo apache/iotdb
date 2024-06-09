@@ -520,9 +520,9 @@ public class WALBuffer extends AbstractWALBuffer {
           forceFlag, syncingBuffer.position(), syncingBuffer.capacity(), usedRatio * 100);
 
       // flush buffer to os
-      double compressionRate = 1.0;
+      double compressionRatio = 1.0;
       try {
-        compressionRate = currentWALFileWriter.write(syncingBuffer, info.metaData);
+        compressionRatio = currentWALFileWriter.write(syncingBuffer, info.metaData);
       } catch (Throwable e) {
         logger.error(
             "Fail to sync wal node-{}'s buffer, change system mode to error.", identifier, e);
@@ -535,7 +535,7 @@ public class WALBuffer extends AbstractWALBuffer {
       memTableIdsOfWal
           .computeIfAbsent(currentWALFileVersion, memTableIds -> new HashSet<>())
           .addAll(info.metaData.getMemTablesId());
-      checkpointManager.updateCostOfActiveMemTables(info.memTableId2WalDiskUsage, compressionRate);
+      checkpointManager.updateCostOfActiveMemTables(info.memTableId2WalDiskUsage, compressionRatio);
 
       boolean forceSuccess = false;
       // try to roll log writer
