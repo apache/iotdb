@@ -44,7 +44,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class AsyncPlanNodeSender {
 
-  private static final Logger logger = LoggerFactory.getLogger(AsyncPlanNodeSender.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncPlanNodeSender.class);
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       asyncInternalServiceClientManager;
   private final List<FragmentInstance> instances;
@@ -116,14 +116,14 @@ public class AsyncPlanNodeSender {
       status = entry.getValue().getStatus();
       if (!entry.getValue().accepted) {
         if (status == null) {
-          logger.warn(
+          LOGGER.warn(
               "dispatch write failed. message: {}, node {}",
               entry.getValue().message,
               instances.get(entry.getKey()).getHostDataNode().getInternalEndPoint());
           failureStatusList.add(
               RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, entry.getValue().getMessage()));
         } else {
-          logger.warn(
+          LOGGER.warn(
               "dispatch write failed. status: {}, code: {}, message: {}, node {}",
               entry.getValue().status,
               TSStatusCode.representOf(status.code),

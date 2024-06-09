@@ -2550,10 +2550,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             localInstanceId.toThrift(),
             node.getPlanNodeId().getId(),
             context.getInstanceContext());
+    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
     context.getDriverContext().setSink(sinkHandle);
 
-    List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     return new IdentitySinkOperator(operatorContext, children, downStreamChannelIndex, sinkHandle);
   }
 
@@ -3557,7 +3557,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
     ActiveDeviceRegionScanOperator regionScanOperator =
         new ActiveDeviceRegionScanOperator(
-            operatorContext, node.getPlanNodeId(), deviceIDToAligned, filter);
+            operatorContext, node.getPlanNodeId(), deviceIDToAligned, filter, node.isOutputCount());
 
     DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
     dataDriverContext.addSourceOperator(regionScanOperator);
@@ -3590,7 +3590,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
     ActiveTimeSeriesRegionScanOperator regionScanOperator =
         new ActiveTimeSeriesRegionScanOperator(
-            operatorContext, node.getPlanNodeId(), timeseriesToSchemaInfo, filter);
+            operatorContext,
+            node.getPlanNodeId(),
+            timeseriesToSchemaInfo,
+            filter,
+            node.isOutputCount());
 
     dataDriverContext.addSourceOperator(regionScanOperator);
     dataDriverContext.setQueryDataSourceType(QueryDataSourceType.TIME_SERIES_REGION_SCAN);

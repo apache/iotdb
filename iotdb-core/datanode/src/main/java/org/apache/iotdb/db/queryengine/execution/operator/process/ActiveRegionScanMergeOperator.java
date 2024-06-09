@@ -117,26 +117,37 @@ public class ActiveRegionScanMergeOperator extends AbstractConsumeAllOperator {
       }
     }
 
-    TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    int curTsBlockRowIndex;
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      if (inputTsBlocks[i] == null) {
-        continue;
+    if (!needMergeBeforeCount) {
+      for (int i = 0; i < inputOperatorsCount; i++) {
+        if (inputTsBlocks[i] == null) {
+          continue;
+        }
+        for (int row = 0; row < maxRowCanBuild; row++) {
+          long childCount = inputTsBlocks[i].getValueColumns()[0].getLong(inputIndex[i] + row);
+          count += childCount;
+          inputIndex[i] += maxRowCanBuild;
+        }
       }
-      curTsBlockRowIndex = inputIndex[i];
-      for (int row = 0; row < maxRowCanBuild; row++) {
-        String id =
-            inputTsBlocks[i].getValueColumns()[0].getBinary(curTsBlockRowIndex + row).toString();
-        if (!outputCount || needMergeBeforeCount) {
+    } else {
+      TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
+      ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
+      int curTsBlockRowIndex;
+      for (int i = 0; i < inputOperatorsCount; i++) {
+        if (inputTsBlocks[i] == null) {
+          continue;
+        }
+        curTsBlockRowIndex = inputIndex[i];
+        for (int row = 0; row < maxRowCanBuild; row++) {
+          String id =
+              inputTsBlocks[i].getValueColumns()[0].getBinary(curTsBlockRowIndex + row).toString();
           if (deduplicatedSet.contains(id)) {
             continue;
           }
           deduplicatedSet.add(id);
+          buildOneRow(i, curTsBlockRowIndex + row, timeColumnBuilder, valueColumnBuilders);
         }
-        buildOneRow(i, curTsBlockRowIndex + row, timeColumnBuilder, valueColumnBuilders);
+        inputIndex[i] += maxRowCanBuild;
       }
-      inputIndex[i] += maxRowCanBuild;
     }
     return outputCount ? returnResultIfNoMoreData() : tsBlockBuilder.build();
   }

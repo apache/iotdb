@@ -377,7 +377,11 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public byte[] getBytes(int columnIndex) throws SQLException {
     try {
-      return ioTDBRpcDataSet.getDataType(columnIndex).equals(TSDataType.BLOB)
+      final TSDataType dataType = ioTDBRpcDataSet.getDataType(columnIndex);
+      if (dataType == null) {
+        return null;
+      }
+      return dataType.equals(TSDataType.BLOB)
           ? ioTDBRpcDataSet.getBinary(columnIndex).getValues()
           : ioTDBRpcDataSet.getString(columnIndex).getBytes(charset);
     } catch (StatementExecutionException e) {
@@ -388,7 +392,11 @@ public class IoTDBJDBCResultSet implements ResultSet {
   @Override
   public byte[] getBytes(String columnName) throws SQLException {
     try {
-      return ioTDBRpcDataSet.getDataType(columnName).equals(TSDataType.BLOB)
+      final TSDataType dataType = ioTDBRpcDataSet.getDataType(columnName);
+      if (dataType == null) {
+        return null;
+      }
+      return dataType.equals(TSDataType.BLOB)
           ? ioTDBRpcDataSet.getBinary(columnName).getValues()
           : ioTDBRpcDataSet.getString(columnName).getBytes(charset);
     } catch (StatementExecutionException e) {
