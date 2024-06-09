@@ -13,44 +13,49 @@ public class AuthTableStatement extends Statement implements IConfigStatement {
 
   private final AuthDDLType statementType;
 
-  private final String tableName;
+  private String tableName;
   private String database;
-  private final boolean toUser;
-  private final String username;
+  private String username;
+  private String rolename;
 
-  private final PrivilegeType privilegeType;
+  private PrivilegeType privilegeType;
 
-  private final boolean grantOption;
+  private boolean grantOption;
 
   public AuthTableStatement(
       AuthDDLType statementType,
       String database,
       String table,
       PrivilegeType type,
-      boolean toUser,
       String username,
+      String rolename,
       boolean grantOption) {
     super(null);
     this.statementType = statementType;
     this.database = database;
     this.tableName = table;
     this.privilegeType = type;
-    this.toUser = toUser;
+    this.rolename = rolename;
     this.username = username;
     this.grantOption = grantOption;
+  }
+
+  public AuthTableStatement(AuthDDLType statementType) {
+    super(null);
+    this.statementType = statementType;
   }
 
   public AuthTableStatement(
       AuthDDLType statementType,
       PrivilegeType type,
-      boolean toUser,
       String username,
+      String rolename,
       boolean grantOption) {
     super(null);
     this.statementType = statementType;
     this.privilegeType = type;
-    this.toUser = toUser;
     this.username = username;
+    this.rolename = rolename;
     this.grantOption = grantOption;
     this.tableName = null;
     this.database = null;
@@ -69,7 +74,7 @@ public class AuthTableStatement extends Statement implements IConfigStatement {
   }
 
   public boolean isToUser() {
-    return toUser;
+    return username != null;
   }
 
   public String getUsername() {
@@ -88,17 +93,25 @@ public class AuthTableStatement extends Statement implements IConfigStatement {
     this.database = database;
   }
 
+  public void setUserName(String name) {
+    this.username = username;
+  }
+
+  public void setRoleName(String name) {
+    this.username = name;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     AuthTableStatement that = (AuthTableStatement) o;
-    return toUser == that.toUser
-        && grantOption == that.grantOption
+    return grantOption == that.grantOption
         && statementType == that.statementType
         && Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
-        && Objects.equals(username, that.username);
+        && Objects.equals(username, that.username)
+        && Objects.equals(rolename, that.rolename);
   }
 
   @Override
@@ -114,14 +127,19 @@ public class AuthTableStatement extends Statement implements IConfigStatement {
   @Override
   public int hashCode() {
     return Objects.hash(
-        statementType, database, tableName, privilegeType, toUser, username, grantOption);
+        statementType, database, tableName, privilegeType, username, rolename, grantOption);
   }
 
   @Override
   public QueryType getQueryType() {
     switch (this.statementType) {
-      case GRANT:
-      case REVOKE:
+      case GRANT_USER:
+      case GRANT_ROLE:
+      case CREATE_ROLE:
+      case CREATE_USER:
+      case REVOKE_ROLE:
+      case REVOKE_USER:
+      case REVOKE_USER_ROLE:
         return QueryType.WRITE;
       case LIST_ROLE:
       case LIST_USER:
@@ -139,9 +157,10 @@ public class AuthTableStatement extends Statement implements IConfigStatement {
         + database
         + " "
         + tableName
-        + (toUser ? "user" : "role")
-        + "name:"
+        + "user name:"
         + username
+        + "role name"
+        + rolename
         + "privileges:"
         + privilegeType
         + "grantoption:"

@@ -341,9 +341,43 @@ localOrClusterMode
 
 // ------------------------------------------- Auth Statement ----------------------------------------------------------
 
+createUser
+    : CREATE USER userName=identifier password=string
+    ;
+
+createRole
+    : CREATE ROLE roleName=identifier
+    ;
+
+dropUser
+    : DROP USER userName=identifier
+    ;
+
+dropRole
+    : DROP ROLE roleName=identifier
+    ;
+
+grantUserRole
+    : GRANT ROLE roleName=identifier TO USER userName=identifier
+    ;
+
+revokeUserRole
+    : REVOKE ROLE roleName=identifier FROM USER userName=identifier
+    ;
+
 grantStatement
     : GRANT grant_privilege_object TO role_type role_name=identifier (grantOpt)?
     ;
+
+listUserPrivileges
+    : LIST PRIVILEGES OF USER userName=identifier
+    ;
+
+listRolePrivileges
+    : LIST PRIVILEGES OF ROLE roleName=identifier
+    ;
+
+
 revokeStatement
     : REVOKE revoke_privilege_object FROM role_type  role_name=identifier
     ;

@@ -410,6 +410,64 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitCreateUser(RelationalSqlParser.CreateUserContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.CREATE_USER);
+    stmt.setUserName(ctx.userName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitCreateRole(RelationalSqlParser.CreateRoleContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.CREATE_ROLE);
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitDropUser(RelationalSqlParser.DropUserContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.DROP_USER);
+    stmt.setUserName(ctx.userName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitDropRole(RelationalSqlParser.DropRoleContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.DROP_ROLE);
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitGrantUserRole(RelationalSqlParser.GrantUserRoleContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.GRANT_USER_ROLE);
+    stmt.setUserName(ctx.userName.getText());
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitRevokeUserRole(RelationalSqlParser.RevokeUserRoleContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.REVOKE_USER_ROLE);
+    stmt.setUserName(ctx.userName.getText());
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitListUserPrivileges(RelationalSqlParser.ListUserPrivilegesContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.LIST_USER);
+    stmt.setUserName(ctx.userName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitListRolePrivileges(RelationalSqlParser.ListRolePrivilegesContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.LIST_ROLE);
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
   public Node visitGrantStatement(RelationalSqlParser.GrantStatementContext ctx) {
     boolean toUser;
     String username;
@@ -421,23 +479,38 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     if (ctx.grant_privilege_object().ON() != null) {
       String privilegeText = ctx.grant_privilege_object().object_privilege().getText();
-      PrivilegeType priv = PrivilegeType.valueOf(privilegeText);
+      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
       if (ctx.grant_privilege_object().object_type().getText().equalsIgnoreCase("TABLE")) {
         toTable = true;
       }
       objectName = ctx.grant_privilege_object().object_name().getText();
-      return new AuthTableStatement(
-          AuthDDLType.GRANT,
-          toTable ? null : objectName,
-          toTable ? objectName : null,
-          priv,
-          toUser,
-          username,
-          grantOption);
+      if (toUser) {
+        return new AuthTableStatement(
+            AuthDDLType.GRANT_USER,
+            toTable ? null : objectName,
+            toTable ? objectName : null,
+            priv,
+            username,
+            null,
+            grantOption);
+      } else {
+        return new AuthTableStatement(
+            AuthDDLType.GRANT_ROLE,
+            toTable ? null : objectName,
+            toTable ? objectName : null,
+            priv,
+            null,
+            username,
+            grantOption);
+      }
     } else {
       String privilegeText = ctx.grant_privilege_object().object_privilege().getText();
-      PrivilegeType priv = PrivilegeType.valueOf(privilegeText);
-      return new AuthTableStatement(AuthDDLType.GRANT, priv, toUser, username, grantOption);
+      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
+      if (toUser) {
+        return new AuthTableStatement(AuthDDLType.GRANT_USER, priv, username, null, grantOption);
+      } else {
+        return new AuthTableStatement(AuthDDLType.GRANT_ROLE, priv, null, username, grantOption);
+      }
     }
   }
 
@@ -452,23 +525,39 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     boolean grantOption = ctx.revoke_privilege_object().OPTION() != null;
     if (ctx.revoke_privilege_object().SYSTEM_PRIVILEGE() != null) {
       String privlegeText = ctx.revoke_privilege_object().SYSTEM_PRIVILEGE().getText();
-      PrivilegeType priv = PrivilegeType.valueOf(privlegeText);
-      return new AuthTableStatement(AuthDDLType.REVOKE, priv, toUser, username, grantOption);
+      PrivilegeType priv = PrivilegeType.valueOf(privlegeText.toUpperCase());
+      if (toUser) {
+        return new AuthTableStatement(AuthDDLType.REVOKE_USER, priv, username, null, grantOption);
+      } else {
+        return new AuthTableStatement(AuthDDLType.REVOKE_ROLE, priv, null, username, grantOption);
+      }
+
     } else {
       String privilegeText = ctx.revoke_privilege_object().object_privilege().getText();
-      PrivilegeType priv = PrivilegeType.valueOf(privilegeText);
+      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
       if (ctx.revoke_privilege_object().object_type().getText().equalsIgnoreCase("TABLE")) {
         toTable = true;
       }
       objectName = ctx.revoke_privilege_object().object_name().getText();
-      return new AuthTableStatement(
-          AuthDDLType.REVOKE,
-          toTable ? null : objectName,
-          toTable ? objectName : null,
-          priv,
-          toUser,
-          username,
-          grantOption);
+      if (toUser) {
+        return new AuthTableStatement(
+            AuthDDLType.REVOKE_USER,
+            toTable ? null : objectName,
+            toTable ? objectName : null,
+            priv,
+            username,
+            null,
+            grantOption);
+      } else {
+        return new AuthTableStatement(
+            AuthDDLType.REVOKE_ROLE,
+            toTable ? null : objectName,
+            toTable ? objectName : null,
+            priv,
+            null,
+            username,
+            grantOption);
+      }
     }
   }
 
