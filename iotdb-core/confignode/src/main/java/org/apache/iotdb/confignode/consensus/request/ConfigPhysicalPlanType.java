@@ -126,7 +126,6 @@ public enum ConfigPhysicalPlanType {
   CreateUserWithRawPassword((short) 638),
 
   /** Table Author */
-
   GrantDatabasePrivilege((short) 641),
   GrantTablePrivilege((short) 642),
   RevokeDatabasePrivilege((short) 643),

@@ -33,7 +33,7 @@ import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -291,7 +291,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
       case RevokeRole:
       case RevokeRoleFromUser:
       case UpdateUser:
-        return configManager.getPermissionManager().operatePermission((AuthorPlan) plan, true);
+        return configManager.getPermissionManager().operatePermission((AuthorTreePlan) plan, true);
       case CreateSchemaTemplate:
       case CreateUser:
       case CreateRole:

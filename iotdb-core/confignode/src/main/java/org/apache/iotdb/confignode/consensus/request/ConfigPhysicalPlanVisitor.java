@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request;
 
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -58,29 +58,29 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
       case PipeDeactivateTemplate:
         return visitPipeDeactivateTemplate((PipeDeactivateTemplatePlan) plan, context);
       case CreateRole:
-        return visitCreateRole((AuthorPlan) plan, context);
+        return visitCreateRole((AuthorTreePlan) plan, context);
       case DropRole:
-        return visitDropRole((AuthorPlan) plan, context);
+        return visitDropRole((AuthorTreePlan) plan, context);
       case GrantRole:
-        return visitGrantRole((AuthorPlan) plan, context);
+        return visitGrantRole((AuthorTreePlan) plan, context);
       case RevokeRole:
-        return visitRevokeRole((AuthorPlan) plan, context);
+        return visitRevokeRole((AuthorTreePlan) plan, context);
       case CreateUser:
-        return visitCreateUser((AuthorPlan) plan, context);
+        return visitCreateUser((AuthorTreePlan) plan, context);
       case CreateUserWithRawPassword:
-        return visitCreateRawUser((AuthorPlan) plan, context);
+        return visitCreateRawUser((AuthorTreePlan) plan, context);
       case UpdateUser:
-        return visitUpdateUser((AuthorPlan) plan, context);
+        return visitUpdateUser((AuthorTreePlan) plan, context);
       case DropUser:
-        return visitDropUser((AuthorPlan) plan, context);
+        return visitDropUser((AuthorTreePlan) plan, context);
       case GrantUser:
-        return visitGrantUser((AuthorPlan) plan, context);
+        return visitGrantUser((AuthorTreePlan) plan, context);
       case RevokeUser:
-        return visitRevokeUser((AuthorPlan) plan, context);
+        return visitRevokeUser((AuthorTreePlan) plan, context);
       case GrantRoleToUser:
-        return visitGrantRoleToUser((AuthorPlan) plan, context);
+        return visitGrantRoleToUser((AuthorTreePlan) plan, context);
       case RevokeRoleFromUser:
-        return visitRevokeRoleFromUser((AuthorPlan) plan, context);
+        return visitRevokeRoleFromUser((AuthorTreePlan) plan, context);
       case SetTTL:
         return visitTTL((SetTTLPlan) plan, context);
       default:
@@ -139,51 +139,51 @@ public abstract class ConfigPhysicalPlanVisitor<R, C> {
     return visitPlan(pipeDeactivateTemplatePlan, context);
   }
 
-  public R visitCreateUser(AuthorPlan createUserPlan, C context) {
+  public R visitCreateUser(AuthorTreePlan createUserPlan, C context) {
     return visitPlan(createUserPlan, context);
   }
 
-  public R visitCreateRawUser(AuthorPlan createRawUserPlan, C context) {
+  public R visitCreateRawUser(AuthorTreePlan createRawUserPlan, C context) {
     return visitPlan(createRawUserPlan, context);
   }
 
-  public R visitUpdateUser(AuthorPlan updateUserPlan, C context) {
+  public R visitUpdateUser(AuthorTreePlan updateUserPlan, C context) {
     return visitPlan(updateUserPlan, context);
   }
 
-  public R visitDropUser(AuthorPlan dropUserPlan, C context) {
+  public R visitDropUser(AuthorTreePlan dropUserPlan, C context) {
     return visitPlan(dropUserPlan, context);
   }
 
-  public R visitGrantUser(AuthorPlan grantUserPlan, C context) {
+  public R visitGrantUser(AuthorTreePlan grantUserPlan, C context) {
     return visitPlan(grantUserPlan, context);
   }
 
-  public R visitRevokeUser(AuthorPlan revokeUserPlan, C context) {
+  public R visitRevokeUser(AuthorTreePlan revokeUserPlan, C context) {
     return visitPlan(revokeUserPlan, context);
   }
 
-  public R visitCreateRole(AuthorPlan createRolePlan, C context) {
+  public R visitCreateRole(AuthorTreePlan createRolePlan, C context) {
     return visitPlan(createRolePlan, context);
   }
 
-  public R visitDropRole(AuthorPlan dropRolePlan, C context) {
+  public R visitDropRole(AuthorTreePlan dropRolePlan, C context) {
     return visitPlan(dropRolePlan, context);
   }
 
-  public R visitGrantRole(AuthorPlan grantRolePlan, C context) {
+  public R visitGrantRole(AuthorTreePlan grantRolePlan, C context) {
     return visitPlan(grantRolePlan, context);
   }
 
-  public R visitRevokeRole(AuthorPlan revokeRolePlan, C context) {
+  public R visitRevokeRole(AuthorTreePlan revokeRolePlan, C context) {
     return visitPlan(revokeRolePlan, context);
   }
 
-  public R visitGrantRoleToUser(AuthorPlan grantRoleToUserPlan, C context) {
+  public R visitGrantRoleToUser(AuthorTreePlan grantRoleToUserPlan, C context) {
     return visitPlan(grantRoleToUserPlan, context);
   }
 
-  public R visitRevokeRoleFromUser(AuthorPlan revokeRoleFromUserPlan, C context) {
+  public R visitRevokeRoleFromUser(AuthorTreePlan revokeRoleFromUserPlan, C context) {
     return visitPlan(revokeRoleFromUserPlan, context);
   }
 

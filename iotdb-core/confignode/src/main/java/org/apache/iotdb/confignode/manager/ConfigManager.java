@@ -56,7 +56,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorTablePlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -1106,17 +1106,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus operateTablePermission(AuthorTablePlan authorPlan) {
-    TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return permissionManager.operatePermission(authorPlan, false);
-    } else {
-      return status;
-    }
-  }
-
-  @Override
-  public DataSet queryPermission(AuthorPlan authorPlan) {
+  public DataSet queryPermission(AuthorTreePlan authorPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.queryPermission(authorPlan);

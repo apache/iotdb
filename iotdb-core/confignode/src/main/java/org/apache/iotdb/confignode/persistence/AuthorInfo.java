@@ -39,8 +39,8 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorTablePlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TObjectResp;
@@ -204,7 +204,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public TSStatus authorNonQuery(AuthorPlan authorPlan) {
+  public TSStatus authorNonQuery(AuthorTreePlan authorPlan) {
     ConfigPhysicalPlanType authorType = authorPlan.getAuthorType();
     String userName = authorPlan.getUserName();
     String roleName = authorPlan.getRoleName();
@@ -357,7 +357,7 @@ public class AuthorInfo implements SnapshotProcessor {
               authorPlan.getDatabaseName(),
               null,
               authorPlan.getPermission(),
-              authorPlan.isGrantOpt());
+              authorPlan.getGrantOpt());
           break;
         case GrantTablePrivilege:
           authorizer.grantObjectPrivilegesToUserRole(
@@ -366,7 +366,7 @@ public class AuthorInfo implements SnapshotProcessor {
               authorPlan.getDatabaseName(),
               authorPlan.getTableName(),
               authorPlan.getPermission(),
-              authorPlan.isGrantOpt());
+              authorPlan.getGrantOpt());
           break;
         case RevokeDatabasePrivilege:
           authorizer.revokeObjectPrivilegesFromUserRole(
@@ -375,7 +375,7 @@ public class AuthorInfo implements SnapshotProcessor {
               authorPlan.getDatabaseName(),
               null,
               authorPlan.getPermission(),
-              authorPlan.isGrantOpt());
+              authorPlan.getGrantOpt());
           break;
         case ReovkeTablePrivilege:
           authorizer.revokeObjectPrivilegesFromUserRole(
@@ -384,7 +384,7 @@ public class AuthorInfo implements SnapshotProcessor {
               authorPlan.getDatabaseName(),
               authorPlan.getTableName(),
               authorPlan.getPermission(),
-              authorPlan.isGrantOpt());
+              authorPlan.getGrantOpt());
           break;
         default:
           throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "not support");
@@ -395,7 +395,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public PermissionInfoResp executeListUsers(AuthorPlan plan) throws AuthException {
+  public PermissionInfoResp executeListUsers(AuthorTreePlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     List<String> userList = authorizer.listAllUsers();
     if (!plan.getRoleName().isEmpty()) {
@@ -420,7 +420,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp executeListRoles(AuthorPlan plan) throws AuthException {
+  public PermissionInfoResp executeListRoles(AuthorTreePlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     List<String> permissionInfo = new ArrayList<>();
     List<String> roleList = new ArrayList<>();
@@ -442,7 +442,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp executeListRolePrivileges(AuthorPlan plan) throws AuthException {
+  public PermissionInfoResp executeListRolePrivileges(AuthorTreePlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     List<String> permissionInfo = new ArrayList<>();
     Role role = authorizer.getRole(plan.getRoleName());
@@ -477,7 +477,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp executeListUserPrivileges(AuthorPlan plan) throws AuthException {
+  public PermissionInfoResp executeListUserPrivileges(AuthorTreePlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     User user = authorizer.getUser(plan.getUserName());
     if (user == null) {

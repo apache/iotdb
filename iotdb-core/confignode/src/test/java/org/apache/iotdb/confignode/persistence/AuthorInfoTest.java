@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -105,7 +105,7 @@ public class AuthorInfoTest {
     roleList.add("role0");
     roleList.add("role1");
 
-    AuthorPlan authorPlan;
+    AuthorTreePlan authorPlan;
     TCheckUserPrivilegesReq checkUserPrivilegesReq;
 
     Set<Integer> privilegeList = new HashSet<>();
@@ -128,7 +128,7 @@ public class AuthorInfoTest {
     // create user
     {
       authorPlan =
-          new AuthorPlan(
+          new AuthorTreePlan(
               ConfigPhysicalPlanType.CreateUser,
               "user0",
               "",
@@ -154,7 +154,7 @@ public class AuthorInfoTest {
 
     // drop user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.DropUser,
             "user1",
             "",
@@ -168,7 +168,7 @@ public class AuthorInfoTest {
 
     // list user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListUser,
             "",
             "",
@@ -185,7 +185,7 @@ public class AuthorInfoTest {
 
     // create role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.CreateRole,
             "",
             "role0",
@@ -202,7 +202,7 @@ public class AuthorInfoTest {
 
     // drop role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.DropRole,
             "",
             "role1",
@@ -216,7 +216,7 @@ public class AuthorInfoTest {
 
     // list role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListRole,
             "",
             "",
@@ -233,7 +233,7 @@ public class AuthorInfoTest {
 
     // alter user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.UpdateUser,
             "user0",
             "",
@@ -249,7 +249,7 @@ public class AuthorInfoTest {
     List<PartialPath> nodeNameList = new ArrayList<>();
     nodeNameList.add(new PartialPath("root.ln.**"));
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantUser,
             "user0",
             "",
@@ -269,7 +269,7 @@ public class AuthorInfoTest {
 
     // grant user system privilege
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantUser, "user0", "", "", "", sysPriList, false, null);
     status = authorInfo.authorNonQuery(authorPlan);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -288,7 +288,7 @@ public class AuthorInfoTest {
 
     // grant role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantRole,
             "",
             "role0",
@@ -302,7 +302,7 @@ public class AuthorInfoTest {
 
     // grant role to user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantRoleToUser,
             "user0",
             "role0",
@@ -316,7 +316,7 @@ public class AuthorInfoTest {
 
     // revoke user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.RevokeUser,
             "user0",
             "",
@@ -330,7 +330,7 @@ public class AuthorInfoTest {
 
     // revoke role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.RevokeRole,
             "",
             "role0",
@@ -344,7 +344,7 @@ public class AuthorInfoTest {
 
     // list privileges user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListUserPrivilege,
             "user0",
             "",
@@ -361,7 +361,7 @@ public class AuthorInfoTest {
 
     // list privileges role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListRolePrivilege,
             "",
             "role0",
@@ -376,7 +376,7 @@ public class AuthorInfoTest {
 
     // list all role of user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListRole,
             "user0",
             "",
@@ -393,7 +393,7 @@ public class AuthorInfoTest {
 
     // list all user of role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListUser,
             "",
             "role0",
@@ -411,7 +411,7 @@ public class AuthorInfoTest {
 
     // revoke role from user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.RevokeRoleFromUser,
             "user0",
             "role0",
@@ -428,8 +428,8 @@ public class AuthorInfoTest {
     TSStatus status;
 
     // clean user
-    AuthorPlan authorPlan =
-        new AuthorPlan(
+    AuthorTreePlan authorPlan =
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListUser,
             "",
             "",
@@ -446,7 +446,7 @@ public class AuthorInfoTest {
     for (String user : allUsers) {
       if (!user.equals("root")) {
         authorPlan =
-            new AuthorPlan(
+            new AuthorTreePlan(
                 ConfigPhysicalPlanType.DropUser,
                 user,
                 "",
@@ -462,7 +462,7 @@ public class AuthorInfoTest {
 
     // clean role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListRole,
             "",
             "",
@@ -478,7 +478,7 @@ public class AuthorInfoTest {
     List<String> roleList = permissionInfoResp.getMemberList();
     for (String roleN : roleList) {
       authorPlan =
-          new AuthorPlan(
+          new AuthorTreePlan(
               ConfigPhysicalPlanType.DropRole,
               "",
               roleN,
@@ -496,18 +496,18 @@ public class AuthorInfoTest {
   public void takeSnapshot() throws TException, IOException, AuthException {
     cleanUserAndRole();
     // create role
-    AuthorPlan createRoleReq = new AuthorPlan(ConfigPhysicalPlanType.CreateRole);
+    AuthorTreePlan createRoleReq = new AuthorTreePlan(ConfigPhysicalPlanType.CreateRole);
     createRoleReq.setRoleName("testRole");
     TSStatus status = authorInfo.authorNonQuery(createRoleReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    AuthorPlan createUserReq = new AuthorPlan(ConfigPhysicalPlanType.CreateUser);
+    AuthorTreePlan createUserReq = new AuthorTreePlan(ConfigPhysicalPlanType.CreateUser);
     createUserReq.setUserName("testUser");
     createUserReq.setPassword("testPassword");
     status = authorInfo.authorNonQuery(createUserReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-    AuthorPlan listUserPlan =
-        new AuthorPlan(
+    AuthorTreePlan listUserPlan =
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListUser,
             "",
             "",
@@ -516,8 +516,8 @@ public class AuthorInfoTest {
             new HashSet<>(),
             false,
             new ArrayList<>());
-    AuthorPlan listRolePlan =
-        new AuthorPlan(
+    AuthorTreePlan listRolePlan =
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListRole,
             "",
             "",
@@ -539,7 +539,7 @@ public class AuthorInfoTest {
   public void testMultPathsPermission() throws TException, AuthException, IllegalPathException {
     TSStatus status;
 
-    AuthorPlan authorPlan;
+    AuthorTreePlan authorPlan;
 
     Set<Integer> privilegeList = new HashSet<>();
     privilegeList.add(PrivilegeType.WRITE_DATA.ordinal());
@@ -573,7 +573,7 @@ public class AuthorInfoTest {
 
     // create user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.CreateUser,
             "user0",
             "",
@@ -588,7 +588,7 @@ public class AuthorInfoTest {
 
     // create role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.CreateRole,
             "",
             "role0",
@@ -602,7 +602,7 @@ public class AuthorInfoTest {
 
     // grant user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantUser, "user0", "", "", "", privilegeList, false, userPaths);
     status = authorInfo.authorNonQuery(authorPlan);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -616,14 +616,14 @@ public class AuthorInfoTest {
 
     // grant role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantRole, "", "role0", "", "", privilegeList, false, rolePaths);
     status = authorInfo.authorNonQuery(authorPlan);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant role to user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.GrantRoleToUser,
             "user0",
             "role0",
@@ -637,7 +637,7 @@ public class AuthorInfoTest {
 
     // list privileges user
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListUserPrivilege,
             "user0",
             "",
@@ -653,7 +653,7 @@ public class AuthorInfoTest {
 
     // list privileges role
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.ListRolePrivilege,
             "",
             "role0",
@@ -670,7 +670,7 @@ public class AuthorInfoTest {
   @Test
   public void testDepAuthorPlan() throws TException, AuthException, IllegalPathException {
 
-    AuthorPlan authorPlan;
+    AuthorTreePlan authorPlan;
     TSStatus status;
     cleanUserAndRole();
 
@@ -678,7 +678,7 @@ public class AuthorInfoTest {
     // this operation will success for pre version.
     {
       authorPlan =
-          new AuthorPlan(
+          new AuthorTreePlan(
               ConfigPhysicalPlanType.CreateUserDep,
               "user1",
               "",
@@ -692,7 +692,7 @@ public class AuthorInfoTest {
 
       // this operation will success for pre version. --length~(32,64)
       authorPlan =
-          new AuthorPlan(
+          new AuthorTreePlan(
               ConfigPhysicalPlanType.CreateUserDep,
               "user1234567user1234567user1234567user1234567",
               "",
@@ -706,7 +706,7 @@ public class AuthorInfoTest {
 
       // this operation will fail for pre version. --length > 64
       authorPlan =
-          new AuthorPlan(
+          new AuthorTreePlan(
               ConfigPhysicalPlanType.CreateUserDep,
               "user1234567user1234567user1234567user1234567user1234567user1234567user1234567user1234567",
               "",
@@ -720,7 +720,7 @@ public class AuthorInfoTest {
 
       // this operation will fail for pre version. -- contain &%*@
       authorPlan =
-          new AuthorPlan(
+          new AuthorTreePlan(
               ConfigPhysicalPlanType.CreateUserDep,
               "user1*&%",
               "",
@@ -737,7 +737,7 @@ public class AuthorInfoTest {
           3,
           authorInfo
               .executeListUsers(
-                  new AuthorPlan(
+                  new AuthorTreePlan(
                       ConfigPhysicalPlanType.ListUser,
                       "",
                       "",
@@ -750,7 +750,7 @@ public class AuthorInfoTest {
               .size());
 
       authorPlan =
-          new AuthorPlan(
+          new AuthorTreePlan(
               ConfigPhysicalPlanType.DropUserDep,
               "user1234567user1234567user1234567user1234567",
               "",
@@ -766,7 +766,7 @@ public class AuthorInfoTest {
           2,
           authorInfo
               .executeListUsers(
-                  new AuthorPlan(
+                  new AuthorTreePlan(
                       ConfigPhysicalPlanType.ListUserDep,
                       "",
                       "",
@@ -780,7 +780,7 @@ public class AuthorInfoTest {
 
       // for pre version, password with &% will meet error.
       authorPlan =
-          new AuthorPlan(
+          new AuthorTreePlan(
               ConfigPhysicalPlanType.UpdateUserDep,
               "user1",
               "",
@@ -794,7 +794,7 @@ public class AuthorInfoTest {
 
       /*--TEST FOR ROLE CREATE AND DROP -*/
       authorPlan =
-          new AuthorPlan(
+          new AuthorTreePlan(
               ConfigPhysicalPlanType.CreateRoleDep,
               "",
               "role1",
@@ -808,7 +808,7 @@ public class AuthorInfoTest {
 
       // name longer than 32, It's ok.
       authorPlan =
-          new AuthorPlan(
+          new AuthorTreePlan(
               ConfigPhysicalPlanType.CreateRoleDep,
               "",
               "role1234567role1234567role1234567role1234567",
@@ -822,7 +822,7 @@ public class AuthorInfoTest {
 
       // contain wrong character, error.
       authorPlan =
-          new AuthorPlan(
+          new AuthorTreePlan(
               ConfigPhysicalPlanType.CreateRoleDep,
               "",
               "role1234567role1%%234567role1234567role1234567",
@@ -835,7 +835,7 @@ public class AuthorInfoTest {
       Assert.assertEquals(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode(), status.getCode());
 
       authorPlan =
-          new AuthorPlan(
+          new AuthorTreePlan(
               ConfigPhysicalPlanType.DropRoleDep,
               "",
               "role1234567role1234567role1234567role1234567",
@@ -851,7 +851,7 @@ public class AuthorInfoTest {
           1,
           authorInfo
               .executeListRoles(
-                  new AuthorPlan(
+                  new AuthorTreePlan(
                       ConfigPhysicalPlanType.ListRoleDep,
                       "",
                       "",
@@ -870,7 +870,7 @@ public class AuthorInfoTest {
       if (!item.isAccept()) {
         // for user to grant
         authorPlan =
-            new AuthorPlan(
+            new AuthorTreePlan(
                 ConfigPhysicalPlanType.GrantUserDep,
                 "user1",
                 "",
@@ -888,7 +888,7 @@ public class AuthorInfoTest {
 
         // for role to grant
         authorPlan =
-            new AuthorPlan(
+            new AuthorTreePlan(
                 ConfigPhysicalPlanType.GrantRoleDep,
                 "",
                 "role1",
@@ -906,7 +906,7 @@ public class AuthorInfoTest {
 
         // for user to revoke
         authorPlan =
-            new AuthorPlan(
+            new AuthorTreePlan(
                 ConfigPhysicalPlanType.RevokeUserDep,
                 "user1",
                 "",
@@ -924,7 +924,7 @@ public class AuthorInfoTest {
 
         // for role to revoke
         authorPlan =
-            new AuthorPlan(
+            new AuthorTreePlan(
                 ConfigPhysicalPlanType.RevokeRoleDep,
                 "",
                 "role1",
@@ -946,7 +946,7 @@ public class AuthorInfoTest {
         }
         if (item.isPrePathRelevant()) {
           authorPlan =
-              new AuthorPlan(
+              new AuthorTreePlan(
                   ConfigPhysicalPlanType.GrantUserDep,
                   "user1",
                   "",
@@ -982,7 +982,7 @@ public class AuthorInfoTest {
           }
         } else {
           authorPlan =
-              new AuthorPlan(
+              new AuthorTreePlan(
                   ConfigPhysicalPlanType.GrantUserDep,
                   "user1",
                   "",
@@ -1003,7 +1003,7 @@ public class AuthorInfoTest {
 
           for (PrivilegeType pri : item.getSubPri()) {
             authorPlan =
-                new AuthorPlan(
+                new AuthorTreePlan(
                     ConfigPhysicalPlanType.RevokeUser,
                     "user1",
                     "",
@@ -1025,9 +1025,9 @@ public class AuthorInfoTest {
   @Test
   public void createUserWithRawPassword() throws AuthException {
     TSStatus status;
-    AuthorPlan authorPlan;
+    AuthorTreePlan authorPlan;
     authorPlan =
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.CreateUserWithRawPassword,
             "testuser",
             "",

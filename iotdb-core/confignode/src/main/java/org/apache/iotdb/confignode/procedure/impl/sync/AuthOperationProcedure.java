@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -221,7 +222,7 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
     this.timeoutMS = ReadWriteIOUtils.readLong(byteBuffer);
     try {
       ReadWriteIOUtils.readInt(byteBuffer);
-      this.plan = (AuthorPlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
+      this.plan = (AuthorTreePlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
     } catch (IOException e) {
       LOGGER.error("IO error when deserialize authplan.", e);
     }

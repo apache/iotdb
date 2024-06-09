@@ -2,7 +2,6 @@ package org.apache.iotdb.confignode.consensus.request.auth;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -10,9 +9,11 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.Objects;
+import java.util.Set;
 
-public class AuthorTablePlan extends ConfigPhysicalPlan {
+public class AuthorTablePlan extends AuthorPlan {
   private static final org.slf4j.Logger logger =
       org.slf4j.LoggerFactory.getLogger(AuthorTablePlan.class);
 
@@ -26,7 +27,7 @@ public class AuthorTablePlan extends ConfigPhysicalPlan {
   private boolean grantOpt;
 
   public AuthorTablePlan(final ConfigPhysicalPlanType type) {
-    super(type);
+    super(type, false);
     authorType = type;
   }
 
@@ -41,6 +42,7 @@ public class AuthorTablePlan extends ConfigPhysicalPlan {
     this(authorType);
     this.authorType = authorType;
     this.name = name;
+    this.isUser = isUser;
     this.databaseName = databaseName;
     this.tableName = tableName;
     this.grantOpt = grantOpt;
@@ -71,11 +73,27 @@ public class AuthorTablePlan extends ConfigPhysicalPlan {
     return name;
   }
 
+  @Override
+  public String getUserName() {
+    return isUser ? name : null;
+  }
+
+  @Override
+  public String getRoleName() {
+    return isUser ? null : name;
+  }
+
+  @Override
+  public Set<Integer> getPermissions() {
+    return Collections.singleton(permission);
+  }
+
   public int getPermission() {
     return permission;
   }
 
-  public boolean isGrantOpt() {
+  @Override
+  public boolean getGrantOpt() {
     return this.grantOpt;
   }
 

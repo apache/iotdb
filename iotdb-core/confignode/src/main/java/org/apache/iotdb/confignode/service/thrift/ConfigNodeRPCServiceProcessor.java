@@ -39,7 +39,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTablePlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -555,7 +556,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
     return configManager.operatePermission(
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.values()[
                 req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
             req.getUserName(),
@@ -573,9 +574,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
     return configManager.operatePermission(
-            new AuthorPlan();
+        new AuthorTablePlan(
+            ConfigPhysicalPlanType.values()[
+                req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
+            req.getName(),
+            req.isIsuser(),
+            req.getDatabase(),
+            req.getTable(),
+            req.isGrantopt(),
+            req.getPrivilege()));
   }
-
 
   @Override
   public TAuthorizerResp queryPermission(final TAuthorizerReq req) {
@@ -585,7 +593,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     final PermissionInfoResp dataSet =
         (PermissionInfoResp)
             configManager.queryPermission(
-                new AuthorPlan(
+                new AuthorTreePlan(
                     ConfigPhysicalPlanType.values()[
                         req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
                     req.getUserName(),

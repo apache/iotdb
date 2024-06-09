@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanVisitor;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -165,30 +165,30 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
 
   @Override
   public Optional<ConfigPhysicalPlan> visitGrantUser(
-      final AuthorPlan grantUserPlan, final IoTDBPipePattern pattern) {
+      final AuthorTreePlan grantUserPlan, final IoTDBPipePattern pattern) {
     return visitPathRelatedAuthorPlan(grantUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRevokeUser(
-      final AuthorPlan revokeUserPlan, final IoTDBPipePattern pattern) {
+      final AuthorTreePlan revokeUserPlan, final IoTDBPipePattern pattern) {
     return visitPathRelatedAuthorPlan(revokeUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitGrantRole(
-      final AuthorPlan revokeUserPlan, final IoTDBPipePattern pattern) {
+      final AuthorTreePlan revokeUserPlan, final IoTDBPipePattern pattern) {
     return visitPathRelatedAuthorPlan(revokeUserPlan, pattern);
   }
 
   @Override
   public Optional<ConfigPhysicalPlan> visitRevokeRole(
-      final AuthorPlan revokeUserPlan, final IoTDBPipePattern pattern) {
+      final AuthorTreePlan revokeUserPlan, final IoTDBPipePattern pattern) {
     return visitPathRelatedAuthorPlan(revokeUserPlan, pattern);
   }
 
   private Optional<ConfigPhysicalPlan> visitPathRelatedAuthorPlan(
-      final AuthorPlan pathRelatedAuthorPlan, final IoTDBPipePattern pattern) {
+      final AuthorTreePlan pathRelatedAuthorPlan, final IoTDBPipePattern pattern) {
     final List<PartialPath> intersectedPaths =
         pathRelatedAuthorPlan.getNodeNameList().stream()
             .map(pattern::getIntersection)
@@ -196,7 +196,7 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
             .collect(Collectors.toList());
     return !intersectedPaths.isEmpty()
         ? Optional.of(
-            new AuthorPlan(
+            new AuthorTreePlan(
                 pathRelatedAuthorPlan.getAuthorType(),
                 pathRelatedAuthorPlan.getUserName(),
                 pathRelatedAuthorPlan.getRoleName(),

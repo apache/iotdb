@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorTablePlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -391,14 +391,12 @@ public interface IManager {
    */
   TSStatus operatePermission(AuthorPlan authorPlan);
 
-  TSStatus operateTablePermission(AuthorTablePlan authorPlan);
-
   /**
    * Query Permission.
    *
    * @return PermissionInfoDataSet
    */
-  DataSet queryPermission(AuthorPlan authorPlan);
+  DataSet queryPermission(AuthorTreePlan authorPlan);
 
   /** login. */
   TPermissionInfoResp login(String username, String password);
