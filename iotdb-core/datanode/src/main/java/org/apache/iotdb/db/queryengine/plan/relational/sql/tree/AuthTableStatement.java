@@ -1,69 +1,71 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.tree;
 
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 import java.util.Objects;
 
-public class AuthDDLStatement extends Statement {
+public class AuthTableStatement extends Statement implements IConfigStatement {
 
   private final AuthDDLType statementType;
 
-  private final AuthObjectType objectType;
-  private final String objectName;
+  private final String tableName;
+  private String database;
   private final boolean toUser;
   private final String username;
 
-  private final List<PrivilegeType> privilegeTypeList;
+  private final PrivilegeType privilegeType;
 
   private final boolean grantOption;
 
-  public AuthDDLStatement(
+  public AuthTableStatement(
       AuthDDLType statementType,
-      AuthObjectType objectType,
-      String objectName,
-      List<PrivilegeType> typeList,
+      String database,
+      String table,
+      PrivilegeType type,
       boolean toUser,
       String username,
       boolean grantOption) {
     super(null);
     this.statementType = statementType;
-    this.objectType = objectType;
-    this.objectName = objectName;
-    this.privilegeTypeList = typeList;
+    this.database = database;
+    this.tableName = table;
+    this.privilegeType = type;
     this.toUser = toUser;
     this.username = username;
     this.grantOption = grantOption;
   }
 
-  public AuthDDLStatement(
+  public AuthTableStatement(
       AuthDDLType statementType,
-      List<PrivilegeType> typeList,
+      PrivilegeType type,
       boolean toUser,
       String username,
       boolean grantOption) {
     super(null);
     this.statementType = statementType;
-    this.privilegeTypeList = typeList;
+    this.privilegeType = type;
     this.toUser = toUser;
     this.username = username;
     this.grantOption = grantOption;
-    this.objectName = null;
-    this.objectType = AuthObjectType.INVALIDATE;
+    this.tableName = null;
+    this.database = null;
   }
 
   public AuthDDLType getStatementType() {
     return statementType;
   }
 
-  public AuthObjectType getObjectType() {
-    return objectType;
+  public String getTableName() {
+    return tableName;
   }
 
-  public String getObjectName() {
-    return objectName;
+  public String getDatabase() {
+    return this.database;
   }
 
   public boolean isToUser() {
@@ -78,21 +80,30 @@ public class AuthDDLStatement extends Statement {
     return grantOption;
   }
 
-  public List<PrivilegeType> getPrivilegeType() {
-    return privilegeTypeList;
+  public PrivilegeType getPrivilegeType() {
+    return privilegeType;
+  }
+
+  public void setDatabase(String database) {
+    this.database = database;
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    AuthDDLStatement that = (AuthDDLStatement) o;
+    AuthTableStatement that = (AuthTableStatement) o;
     return toUser == that.toUser
         && grantOption == that.grantOption
         && statementType == that.statementType
-        && objectType == that.objectType
-        && Objects.equals(objectName, that.objectName)
+        && Objects.equals(database, that.database)
+        && Objects.equals(tableName, that.tableName)
         && Objects.equals(username, that.username);
+  }
+
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitTableAuthorPlan(this, context);
   }
 
   @Override
@@ -103,22 +114,36 @@ public class AuthDDLStatement extends Statement {
   @Override
   public int hashCode() {
     return Objects.hash(
-        statementType, objectType, objectName, privilegeTypeList, toUser, username, grantOption);
+        statementType, database, tableName, privilegeType, toUser, username, grantOption);
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    switch (this.statementType) {
+      case GRANT:
+      case REVOKE:
+        return QueryType.WRITE;
+      case LIST_ROLE:
+      case LIST_USER:
+        return QueryType.READ;
+      default:
+        throw new IllegalArgumentException("Unknow authorType:" + this.statementType);
+    }
   }
 
   @Override
   public String toString() {
     return "auth statement: "
         + statementType
-        + "to "
-        + objectType
+        + "to Database"
+        + database
         + " "
-        + objectName
+        + tableName
         + (toUser ? "user" : "role")
         + "name:"
         + username
         + "privileges:"
-        + privilegeTypeList
+        + privilegeType
         + "grantoption:"
         + grantOption;
   }

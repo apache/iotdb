@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -412,6 +413,12 @@ public class ConfigPlanExecutor {
       case RevokeRoleFromUserDep:
       case UpdateUserDep:
         return authorInfo.authorNonQuery((AuthorPlan) physicalPlan);
+      case GrantDatabasePrivilege:
+      case GrantTablePrivilege:
+      case RevokeDatabasePrivilege:
+      case ReovkeTablePrivilege:
+        return authorInfo.authorNonQuery((AuthorTablePlan) physicalPlan);
+
       case ApplyConfigNode:
         return nodeInfo.applyConfigNode((ApplyConfigNodePlan) physicalPlan);
       case RemoveConfigNode:

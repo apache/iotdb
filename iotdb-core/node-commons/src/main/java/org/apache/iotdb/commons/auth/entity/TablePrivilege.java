@@ -37,6 +37,22 @@ public class TablePrivilege {
     return this.privileges;
   }
 
+  public Set<Integer> getPrivilegesInt() {
+    Set<Integer> ret = new HashSet<>();
+    for (PrivilegeType type : privileges) {
+      ret.add(type.ordinal());
+    }
+    return ret;
+  }
+
+  public Set<Integer> getGrantOptionInt() {
+    Set<Integer> ret = new HashSet<>();
+    for (PrivilegeType type : grantOption) {
+      ret.add(type.ordinal());
+    }
+    return ret;
+  }
+
   public Set<PrivilegeType> getGrantOption() {
     return this.grantOption;
   }

@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthTableStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -95,6 +96,14 @@ public class AuthorityChecker {
   public static SettableFuture<ConfigTaskResult> operatePermission(
       AuthorStatement authorStatement) {
     return authorityFetcher.operatePermission(authorStatement);
+  }
+
+  public static SettableFuture<ConfigTaskResult> queryPermission(AuthTableStatement statement) {
+    return authorityFetcher.queryPermission(statement);
+  }
+
+  public static SettableFuture<ConfigTaskResult> operatePermission(AuthTableStatement statement) {
+    return authorityFetcher.operatePermission(statement);
   }
 
   /** Check whether specific Session has the authorization to given plan. */

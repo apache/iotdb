@@ -41,6 +41,22 @@ public class ObjectPrivilege {
     return this.tablePrivilegeMap;
   }
 
+  public Set<Integer> getPrivileges() {
+    Set<Integer> ret = new HashSet<>();
+    for (PrivilegeType type : privilegeTypeSet) {
+      ret.add(type.ordinal());
+    }
+    return ret;
+  }
+
+  public Set<Integer> getGrantOptions() {
+    Set<Integer> ret = new HashSet<>();
+    for (PrivilegeType type : grantOptionSet) {
+      ret.add(type.ordinal());
+    }
+    return ret;
+  }
+
   public int getAllPrivileges() {
     return AuthUtils.getAllPrivileges(this.privilegeTypeSet, this.grantOptionSet);
   }
@@ -62,6 +78,7 @@ public class ObjectPrivilege {
 
   public void revokeDBObjectPrivilege(PrivilegeType privilegeType) {
     this.privilegeTypeSet.remove(privilegeType);
+    revokeGrantOptionFromDB(privilegeType);
   }
 
   public void grantGrantoptionToDB(PrivilegeType privilegeType) {

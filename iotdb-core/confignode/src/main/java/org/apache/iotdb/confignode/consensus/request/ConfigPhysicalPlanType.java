@@ -125,6 +125,13 @@ public enum ConfigPhysicalPlanType {
   ListRoleUsers((short) 637),
   CreateUserWithRawPassword((short) 638),
 
+  /** Table Author */
+
+  GrantDatabasePrivilege((short) 641),
+  GrantTablePrivilege((short) 642),
+  RevokeDatabasePrivilege((short) 643),
+  ReovkeTablePrivilege((short) 644),
+
   /** Function. */
   CreateFunction((short) 700),
   DropFunction((short) 701),

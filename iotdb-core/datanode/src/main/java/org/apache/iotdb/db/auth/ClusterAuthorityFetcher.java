@@ -38,6 +38,7 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
@@ -46,6 +47,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthTableStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -328,6 +330,34 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> operatePermission(AuthTableStatement authorStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Construct request using statement
+      TAuthorizerTableReq authorizerReq = statementToAuthorizerTableReq(authorStatement);
+      // Send request to some API server
+      TSStatus tsStatus = configNodeClient.operateTablePermission(authorizerReq);
+      // Get response or throw exception
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.warn(
+            "Failed to execute {} in config node, status is {}.",
+            AuthorType.values()[authorizerReq.getAuthorType()].toString().toLowerCase(Locale.ROOT),
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      LOGGER.error(CONNECTERROR);
+      future.setException(e);
+    }
+    // If the action is executed successfully, return the Future.
+    // If your operation is async, you can return the corresponding future directly.
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TAuthorizerResp authorizerResp = new TAuthorizerResp();
@@ -358,6 +388,47 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
           new IoTDBException(authorizerResp.getStatus().message, authorizerResp.getStatus().code));
     } catch (AuthException e) {
       future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> queryPermission(AuthTableStatement authorStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TAuthorizerResp authorizerResp = new TAuthorizerResp();
+
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Construct request using statement
+      TAuthorizerReq authorizerReq = new TAuthorizerReq();
+      if (authorStatement.isToUser()) {
+        authorizerReq.setAuthorType(AuthorType.LIST_USER.ordinal());
+        authorizerReq.setUserName(authorStatement.getUsername());
+      } else {
+        authorizerReq.setAuthorType(AuthorType.LIST_ROLE.ordinal());
+        authorizerReq.setRoleName(authorStatement.getUsername());
+      }
+
+      // Send request to some API server
+      authorizerResp = configNodeClient.queryPermission(authorizerReq);
+      // Get response or throw exception
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != authorizerResp.getStatus().getCode()) {
+        LOGGER.error(
+            "Failed to execute {} in config node, status is {}.",
+            AuthorType.values()[authorizerReq.getAuthorType()].toString().toLowerCase(Locale.ROOT),
+            authorizerResp.getStatus());
+        future.setException(
+            new IoTDBException(
+                authorizerResp.getStatus().message, authorizerResp.getStatus().code));
+      } else {
+        AuthorityChecker.buildTSBlock(authorizerResp, future);
+      }
+    } catch (ClientManagerException | TException e) {
+      LOGGER.error(CONNECTERROR);
+      authorizerResp.setStatus(
+          RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
+      future.setException(
+          new IoTDBException(authorizerResp.getStatus().message, authorizerResp.getStatus().code));
     }
     return future;
   }
@@ -589,5 +660,20 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         AuthUtils.strToPermissions(authorStatement.getPrivilegeList()),
         authorStatement.getGrantOpt(),
         AuthUtils.serializePartialPathList(authorStatement.getNodeNameList()));
+  }
+
+  private TAuthorizerTableReq statementToAuthorizerTableReq(AuthTableStatement statement) {
+    TAuthorizerTableReq req = new TAuthorizerTableReq();
+    req.setAuthorType(statement.getStatementType().ordinal());
+    req.setName(statement.getUsername());
+    req.setIsuser(statement.isToUser());
+    req.setPassword("");
+    req.setDatabase(statement.getDatabase());
+    if (statement.getTableName() != null) {
+      req.setTable(statement.getTableName());
+    }
+    req.setPrivilege(statement.getPrivilegeType().ordinal());
+    req.setGrantopt(statement.hasGrantOption());
+    return req;
   }
 }

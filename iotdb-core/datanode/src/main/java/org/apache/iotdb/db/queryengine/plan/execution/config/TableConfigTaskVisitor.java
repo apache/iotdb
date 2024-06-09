@@ -34,8 +34,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.UseDBTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.AuthorizerTableTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthTableStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CreateTable;
@@ -183,5 +185,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCurrentDatabase(CurrentDatabase node, MPPQueryContext context) {
     return super.visitCurrentDatabase(node, context);
+  }
+
+  @Override
+  protected IConfigTask visitTableAuthorPlan(
+      AuthTableStatement statement, MPPQueryContext context) {
+    if (statement.getDatabase() == null) {
+      statement.setDatabase(clientSession.getDatabaseName());
+    }
+
+    return new AuthorizerTableTask(statement);
   }
 }

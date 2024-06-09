@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.auth.authorizer;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.ObjectPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
@@ -187,6 +188,43 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
+  public void grantObjectPrivilegesToUserRole(
+      String name, boolean isUser, String database, String table, int privilegeId, boolean grantOpt)
+      throws AuthException {
+    Role entry = isUser ? userManager.getUser(name) : roleManager.getRole(name);
+    ObjectPrivilege objectPrivilege;
+    if (entry.getObjectPrivileges().containsKey(database)) {
+      entry.getObjectPrivileges().put(database, new ObjectPrivilege(database));
+    }
+    objectPrivilege = entry.getObjectPrivileges().get(database);
+
+    if (table != null) {
+      objectPrivilege.grantTableObjectPrivilege(table, PrivilegeType.values()[privilegeId]);
+      objectPrivilege.grantTableObejctGrantOption(table, PrivilegeType.values()[privilegeId]);
+    } else {
+      objectPrivilege.grantDBObjectPrivilege(PrivilegeType.values()[privilegeId]);
+      objectPrivilege.grantGrantoptionToDB(PrivilegeType.values()[privilegeId]);
+    }
+  }
+
+  @Override
+  public void revokeObjectPrivilegesFromUserRole(
+      String name, boolean isUser, String database, String table, int privilegeId, boolean grantOpt)
+      throws AuthException {
+    Role entry = isUser ? userManager.getUser(name) : roleManager.getRole(name);
+    ObjectPrivilege objectPrivilege;
+    if (entry.getObjectPrivileges().containsKey(database)) {
+      entry.getObjectPrivileges().put(database, new ObjectPrivilege(database));
+    }
+    objectPrivilege = entry.getObjectPrivileges().get(database);
+    if (table != null) {
+      objectPrivilege.revokeTableObjectPrivilege(table, PrivilegeType.values()[privilegeId]);
+    } else {
+      objectPrivilege.revokeDBObjectPrivilege(PrivilegeType.values()[privilegeId]);
+    }
+  }
+
+  @Override
   public void createRole(String roleName) throws AuthException {
     if (!roleManager.createRole(roleName)) {
       LOGGER.error("Role {} already exists", roleName);
@@ -344,6 +382,29 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       }
     }
 
+    return false;
+  }
+
+  @Override
+  public boolean checkUserPrivileges(
+      String name, String databaseName, String tableName, int privilegeId) throws AuthException {
+    if (isAdmin(name)) {
+      return true;
+    }
+    User entry = this.userManager.getUser(name);
+    if (entry == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, name));
+    }
+    if (entry.checkObjectPrivilege(databaseName, tableName, PrivilegeType.values()[privilegeId])) {
+      return true;
+    }
+    for (String roleName : entry.getRoleList()) {
+      Role role = roleManager.getRole(roleName);
+      if (role.checkObjectPrivilege(databaseName, tableName, PrivilegeType.values()[privilegeId])) {
+        return true;
+      }
+    }
     return false;
   }
 

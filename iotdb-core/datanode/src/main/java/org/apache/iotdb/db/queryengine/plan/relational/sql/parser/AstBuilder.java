@@ -412,58 +412,60 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitGrantStatement(RelationalSqlParser.GrantStatementContext ctx) {
     boolean toUser;
-    AuthObjectType objectType = AuthObjectType.INVALIDATE;
     String username;
     String objectName;
     toUser = ctx.role_type().USER() != null;
     username = ctx.role_name.getText();
     boolean grantOption = ctx.grantOpt() != null;
+    boolean toTable = false;
 
     if (ctx.grant_privilege_object().ON() != null) {
       String privilegeText = ctx.grant_privilege_object().object_privilege().getText();
       PrivilegeType priv = PrivilegeType.valueOf(privilegeText);
-      objectType = AuthObjectType.valueOf(ctx.grant_privilege_object().object_type().getText());
+      if (ctx.grant_privilege_object().object_type().getText().equalsIgnoreCase("TABLE")) {
+        toTable = true;
+      }
       objectName = ctx.grant_privilege_object().object_name().getText();
-      return new AuthDDLStatement(
+      return new AuthTableStatement(
           AuthDDLType.GRANT,
-          objectType,
-          objectName,
-          Collections.singletonList(priv),
+          toTable ? null : objectName,
+          toTable ? objectName : null,
+          priv,
           toUser,
           username,
           grantOption);
     } else {
       String privilegeText = ctx.grant_privilege_object().object_privilege().getText();
       PrivilegeType priv = PrivilegeType.valueOf(privilegeText);
-      return new AuthDDLStatement(
-          AuthDDLType.GRANT, Collections.singletonList(priv), toUser, username, grantOption);
+      return new AuthTableStatement(AuthDDLType.GRANT, priv, toUser, username, grantOption);
     }
   }
 
   @Override
   public Node visitRevokeStatement(RelationalSqlParser.RevokeStatementContext ctx) {
     boolean toUser;
-    AuthObjectType objectType = AuthObjectType.INVALIDATE;
     String username;
     String objectName;
     toUser = ctx.role_type().USER() != null;
     username = ctx.role_name.getText();
+    boolean toTable = false;
     boolean grantOption = ctx.revoke_privilege_object().OPTION() != null;
     if (ctx.revoke_privilege_object().SYSTEM_PRIVILEGE() != null) {
       String privlegeText = ctx.revoke_privilege_object().SYSTEM_PRIVILEGE().getText();
       PrivilegeType priv = PrivilegeType.valueOf(privlegeText);
-      return new AuthDDLStatement(
-          AuthDDLType.REVOKE, Collections.singletonList(priv), toUser, username, grantOption);
+      return new AuthTableStatement(AuthDDLType.REVOKE, priv, toUser, username, grantOption);
     } else {
       String privilegeText = ctx.revoke_privilege_object().object_privilege().getText();
       PrivilegeType priv = PrivilegeType.valueOf(privilegeText);
-      objectType = AuthObjectType.valueOf(ctx.revoke_privilege_object().object_type().getText());
+      if (ctx.revoke_privilege_object().object_type().getText().equalsIgnoreCase("TABLE")) {
+        toTable = true;
+      }
       objectName = ctx.revoke_privilege_object().object_name().getText();
-      return new AuthDDLStatement(
+      return new AuthTableStatement(
           AuthDDLType.REVOKE,
-          objectType,
-          objectName,
-          Collections.singletonList(priv),
+          toTable ? null : objectName,
+          toTable ? objectName : null,
+          priv,
           toUser,
           username,
           grantOption);

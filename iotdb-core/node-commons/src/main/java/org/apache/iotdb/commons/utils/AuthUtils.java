@@ -393,9 +393,18 @@ public class AuthUtils {
     TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
     permissionInfoResp.setUserInfo(
         new TUserResp(
-            "", "", new ArrayList<>(), new HashSet<>(), new HashSet<>(), new ArrayList<>(), false));
+            "",
+            "",
+            new ArrayList<>(),
+            new HashSet<>(),
+            new HashSet<>(),
+            new ArrayList<>(),
+            false,
+            new HashMap<>()));
     Map<String, TRoleResp> roleInfo = new HashMap<>();
-    roleInfo.put("", new TRoleResp("", new ArrayList<>(), new HashSet<>(), new HashSet<>()));
+    roleInfo.put(
+        "",
+        new TRoleResp("", new ArrayList<>(), new HashSet<>(), new HashSet<>(), new HashMap<>()));
     permissionInfoResp.setRoleInfo(roleInfo);
     return permissionInfoResp;
   }

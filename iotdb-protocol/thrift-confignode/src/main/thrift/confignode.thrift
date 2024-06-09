@@ -318,24 +318,35 @@ struct TAuthorizerReq {
   8: required binary nodeNameList
 }
 
+struct TAuthorizerTableReq {
+   1: required i32 authorType
+   2: required string name
+   3: required bool isuser
+   4: optional string password
+   5: optional string database
+   6: optional string table
+   7: optional i32 privilege
+   8: optional bool grantopt
+}
+
 struct TAuthorizerResp {
   1: required common.TSStatus status
-  2: optional string  3: optional list<string> memberInfo tag
-
+  2: optional string tag
+  3: optional list<string> memberInfo
   4: optional TPermissionInfoResp permissionInfo
 }
 
-struct tableAuthResp {
-    1. required string tablename
-    2. required set<i32> privileges
-    3. required set<i32> grantOption
+struct TTableAuthResp {
+    1: required string tablename
+    2: required set<i32> privileges
+    3: required set<i32> grantOption
 }
 
-struct ObjectResp {
-    1. required string databasename
-    2. required set<i32> privileges
-    3. required set<i32> grantOpt
-    4. optional map<string, tableAuthResp> tableinfo
+struct TObjectResp {
+    1: required string databasename
+    2: required set<i32> privileges
+    3: required set<i32> grantOpt
+    4: optional map<string, TTableAuthResp> tableinfo
 }
 
 struct TUserResp {
@@ -346,6 +357,7 @@ struct TUserResp {
   5: required set<i32> sysPriSetGrantOpt
   6: required list<string> roleList
   7: required bool isOpenIdUser
+  8: required map<string, TObjectResp> objectInfo
 }
 
 struct TRoleResp {
@@ -353,6 +365,7 @@ struct TRoleResp {
   2: required list<TPathPrivilege> privilegeList
   3: required set<i32> sysPriSet
   4: required set<i32> sysPriSetGrantOpt
+  5: required map<string, TObjectResp> objectInfo
 }
 
 struct TPathPrivilege {
@@ -1133,6 +1146,7 @@ service IConfigNodeRPCService {
    *         INTERNAL_SERVER_ERROR if the permission type does not exist
    */
   common.TSStatus operatePermission(TAuthorizerReq req)
+  common.TSStatus operateTablePermission(TAuthorizerTableReq req)
 
   /**
    * Execute permission read operations such as list user

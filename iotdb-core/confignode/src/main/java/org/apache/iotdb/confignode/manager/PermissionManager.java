@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTablePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
@@ -74,6 +75,32 @@ public class PermissionManager {
             configManager
                 .getProcedureManager()
                 .operateAuthPlan(authorPlan, allDataNodes, isGeneratedByPipe);
+      }
+      return tsStatus;
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
+    }
+  }
+
+  public TSStatus operateTablePermission(AuthorTablePlan authorPlan) {
+    TSStatus tsStatus;
+    // If the permissions change, clear the cache content affected by the operation
+    LOGGER.info("Auth: run auth plan: {}", authorPlan.toString());
+    try {
+      if (authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUser
+              || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateRole
+              || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUserWithRawPassword) {
+        tsStatus = getConsensusManager().write(authorPlan);
+      } else {
+        List<TDataNodeConfiguration> allDataNodes =
+                configManager.getNodeManager().getRegisteredDataNodes();
+        tsStatus =
+                configManager
+                        .getProcedureManager()
+                        .operateAuthPlan(authorPlan, allDataNodes, isGeneratedByPipe);
       }
       return tsStatus;
     } catch (ConsensusException e) {

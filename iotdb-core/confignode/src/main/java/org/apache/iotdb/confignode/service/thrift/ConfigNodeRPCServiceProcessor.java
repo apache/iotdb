@@ -73,6 +73,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
@@ -565,6 +566,16 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             req.isGrantOpt(),
             AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));
   }
+
+  @Override
+  public TSStatus operateTablePermission(final TAuthorizerTableReq req) {
+    if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthorType.values().length) {
+      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+    }
+    return configManager.operatePermission(
+            new AuthorPlan();
+  }
+
 
   @Override
   public TAuthorizerResp queryPermission(final TAuthorizerReq req) {

@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
@@ -555,6 +556,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus operatePermission(TAuthorizerReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.operatePermission(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TSStatus operateTablePermission(TAuthorizerTableReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.operateTablePermission(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
