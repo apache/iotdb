@@ -357,7 +357,7 @@ struct TUserResp {
   5: required set<i32> sysPriSetGrantOpt
   6: required list<string> roleList
   7: required bool isOpenIdUser
-  8: required map<string, TObjectResp> objectInfo
+  8: optional map<string, TObjectResp> objectInfo
 }
 
 struct TRoleResp {
@@ -365,7 +365,7 @@ struct TRoleResp {
   2: required list<TPathPrivilege> privilegeList
   3: required set<i32> sysPriSet
   4: required set<i32> sysPriSetGrantOpt
-  5: required map<string, TObjectResp> objectInfo
+  5: optional map<string, TObjectResp> objectInfo
 }
 
 struct TPathPrivilege {

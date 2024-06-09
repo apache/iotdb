@@ -723,6 +723,8 @@ public class AuthorInfo implements SnapshotProcessor {
             }
             roleResp.putToObjectInfo(objectResp.getDatabasename(), objectResp);
           }
+        } else {
+          roleResp.objectInfo = new HashMap<>();
         }
 
         tRoleRespMap.put(roleName, roleResp);

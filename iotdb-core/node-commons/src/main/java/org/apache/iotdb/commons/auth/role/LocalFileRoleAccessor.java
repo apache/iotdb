@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -137,11 +138,13 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
         }
         role.setPrivilegeList(pathPrivilegeList);
         length = ReadWriteIOUtils.readInt(dataInputStream);
+        Map<String, ObjectPrivilege> objectPrivilegeMap = new HashMap<>();
         for (int i = 0; i < length; i++) {
           ObjectPrivilege objectPrivilege =
               IOUtils.readObjectPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal);
-          role.getObjectPrivileges().put(objectPrivilege.getDatabaseName(), objectPrivilege);
+          objectPrivilegeMap.put(objectPrivilege.getDatabaseName(), objectPrivilege);
         }
+        role.setObjectPrivileges(objectPrivilegeMap);
         return role;
       }
     } catch (Exception e) {
