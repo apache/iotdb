@@ -21,10 +21,14 @@ package org.apache.iotdb.db.schemaengine.schemaregion.utils.filter;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
+
+import java.util.Objects;
 
 public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> {
   @Override
@@ -58,5 +62,20 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
     } else {
       return false;
     }
+  }
+
+  @Override
+  public boolean visitDeviceIdFilter(DeviceIdFilter filter, IDeviceSchemaInfo info) {
+    String[] nodes = info.getPartialPath().getNodes();
+    if (nodes.length < filter.getIndex() + 3) {
+      return false;
+    } else {
+      return Objects.equals(nodes[filter.getIndex() + 3], filter.getValue());
+    }
+  }
+
+  @Override
+  public boolean visitDeviceAttributeFilter(DeviceAttributeFilter filter, IDeviceSchemaInfo info) {
+    return Objects.equals(filter.getValue(), info.getAttributeValue(filter.getKey()));
   }
 }

@@ -18,18 +18,31 @@
  */
 package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
 import java.util.Objects;
+import java.util.function.Function;
 
 public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchemaInfo {
   private Boolean isAligned;
   private int templateId;
 
+  private Function<String, String> attributeProvider;
+
+  private String[] rawNodes = null;
+
   public ShowDevicesResult(String name, Boolean isAligned, int templateId) {
     super(name);
     this.isAligned = isAligned;
     this.templateId = templateId;
+  }
+
+  public ShowDevicesResult(String name, Boolean isAligned, int templateId, String[] rawNodes) {
+    super(name);
+    this.isAligned = isAligned;
+    this.templateId = templateId;
+    this.rawNodes = rawNodes;
   }
 
   public Boolean isAligned() {
@@ -38,6 +51,24 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
 
   public int getTemplateId() {
     return templateId;
+  }
+
+  public void setAttributeProvider(Function<String, String> attributeProvider) {
+    this.attributeProvider = attributeProvider;
+  }
+
+  @Override
+  public String getAttributeValue(String attributeKey) {
+    return attributeProvider.apply(attributeKey);
+  }
+
+  public String[] getRawNodes() {
+    return rawNodes;
+  }
+
+  @Override
+  public PartialPath getPartialPath() {
+    return rawNodes == null ? super.getPartialPath() : new PartialPath(rawNodes);
   }
 
   @Override

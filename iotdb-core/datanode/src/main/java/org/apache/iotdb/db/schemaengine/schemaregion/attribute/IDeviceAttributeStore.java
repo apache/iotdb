@@ -17,26 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info;
+package org.apache.iotdb.db.schemaengine.schemaregion.attribute;
 
-public class BasicMNodeInfo {
-  private String name;
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
 
-  public BasicMNodeInfo(String name) {
-    this.name = name;
-  }
+public interface IDeviceAttributeStore {
 
-  public String getName() {
-    return name;
-  }
+  void clear();
 
-  public void setName(String name) {
-    this.name = name;
-  }
+  boolean createSnapshot(File targetDir);
 
-  public int estimateSize() {
-    // object header, 8B
-    // name reference, name length and name hash code, 8 + 4 + 4 = 16B
-    return 8 + 16 + 2 * (name == null ? 0 : name.length());
-  }
+  void loadFromSnapshot(File snapshotDir, String sgSchemaDirPath) throws IOException;
+
+  int createAttribute(List<String> nameList, List<String> valueList);
+
+  void alterAttribute(int pointer, List<String> nameList, List<String> valueList);
+
+  String getAttribute(int pointer, String name);
 }

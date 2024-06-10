@@ -49,6 +49,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionUtils;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.DeviceAttributeStore;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.IDeviceAttributeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Serializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.SchemaLogReader;
@@ -60,6 +62,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMN
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowNodesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl.ShowTableDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -159,6 +162,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private MTreeBelowSGMemoryImpl mtree;
   private TagManager tagManager;
+  private IDeviceAttributeStore deviceAttributeStore;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegionMemoryImpl(ISchemaRegionParams schemaRegionParams) throws MetadataException {
@@ -209,6 +213,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       // do not write log when recover
       isRecovering = true;
 
+      deviceAttributeStore = new DeviceAttributeStore(regionStatistics);
       tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mtree =
           new MTreeBelowSGMemoryImpl(
@@ -449,6 +454,13 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         schemaRegionId,
         System.currentTimeMillis() - tagSnapshotStartTime);
 
+    long deviceAttributeSnapshotStartTime = System.currentTimeMillis();
+    isSuccess = isSuccess && deviceAttributeStore.createSnapshot(snapshotDir);
+    logger.info(
+        "Device attribute snapshot creation of schemaRegion {} costs {}ms",
+        schemaRegionId,
+        System.currentTimeMillis() - deviceAttributeSnapshotStartTime);
+
     logger.info(
         "Snapshot creation of schemaRegion {} costs {}ms.",
         schemaRegionId,
@@ -470,6 +482,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       usingMLog = false;
 
       isRecovering = true;
+
+      long deviceAttributeSnapshotStartTime = System.currentTimeMillis();
+      deviceAttributeStore = new DeviceAttributeStore(regionStatistics);
+      deviceAttributeStore.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath);
+      logger.info(
+          "Device attribute snapshot loading of schemaRegion {} costs {}ms.",
+          schemaRegionId,
+          System.currentTimeMillis() - deviceAttributeSnapshotStartTime);
 
       long tagSnapshotStartTime = System.currentTimeMillis();
       tagManager =
@@ -1254,9 +1274,34 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
+  public void createTableDevice(
+      List<PartialPath> devicePathList,
+      List<String> attributeNameList,
+      List<List<String>> attributeValueList)
+      throws MetadataException {
+    for (int i = 0; i < devicePathList.size(); i++) {
+      int finalI = i;
+      mtree.createTableDevice(
+          devicePathList.get(i),
+          () ->
+              deviceAttributeStore.createAttribute(
+                  attributeNameList, attributeValueList.get(finalI)),
+          pointer ->
+              deviceAttributeStore.alterAttribute(
+                  pointer, attributeNameList, attributeValueList.get(finalI)));
+    }
+  }
+
+  @Override
+  public void deleteTableDevice(String table) throws MetadataException {
+    mtree.deleteTableDevice(table);
+  }
+
+  @Override
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
       throws MetadataException {
-    return mtree.getDeviceReader(showDevicesPlan);
+    return mtree.getDeviceReader(
+        showDevicesPlan, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
   }
 
   @Override
@@ -1284,6 +1329,22 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
       throws MetadataException {
     return mtree.getNodeReader(showNodesPlan);
+  }
+
+  @Override
+  public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
+      ShowTableDevicesPlan showTableDevicesPlan) throws MetadataException {
+    return mtree.getTableDeviceReader(
+        showTableDevicesPlan.getDevicePattern(),
+        showTableDevicesPlan.getAttributeFilter(),
+        (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
+  }
+
+  @Override
+  public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(List<PartialPath> devicePathList)
+      throws MetadataException {
+    return mtree.getTableDeviceReader(
+        devicePathList, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
   }
 
   // endregion
