@@ -417,10 +417,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return super.visitExplainAnalyze(ctx);
   }
 
+  public String stripQuotes(String text) {
+    if (text != null && text.length() >= 2 && text.startsWith("'") && text.endsWith("'")) {
+      return text.substring(1, text.length() - 1).replace("''", "'");
+    }
+    return text;
+  }
+
   @Override
   public Node visitCreateUser(RelationalSqlParser.CreateUserContext ctx) {
     AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.CREATE_USER);
     stmt.setUserName(ctx.userName.getText());
+    stmt.setPassword(stripQuotes(ctx.password.getText()));
     return stmt;
   }
 
@@ -505,7 +513,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           grantOption);
 
     } else {
-      String privilegeText = ctx.grant_privilege_object().object_privilege().getText();
+      String privilegeText = ctx.grant_privilege_object().SYSTEM_PRIVILEGE().getText();
       PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
       if (toUser) {
         return new AuthTableStatement(AuthDDLType.GRANT_USER, priv, username, null, grantOption);

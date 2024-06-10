@@ -103,12 +103,12 @@ public class AuthTableStatement extends Statement implements IConfigStatement {
     this.database = database;
   }
 
-  public void setUserName(String name) {
-    this.username = username;
+  public void setUserName(String userName) {
+    this.username = userName;
   }
 
-  public void setRoleName(String name) {
-    this.username = name;
+  public void setRoleName(String roleName) {
+    this.rolename = roleName;
   }
 
   public void setPassword(String password) {
@@ -147,6 +147,17 @@ public class AuthTableStatement extends Statement implements IConfigStatement {
   @Override
   public QueryType getQueryType() {
     switch (this.statementType) {
+      case GRANT_ROLE_DB:
+      case GRANT_USER_DB:
+      case REVOKE_ROLE_DB:
+      case REVOKE_USER_DB:
+      case GRANT_ROLE_TB:
+      case GRANT_USER_TB:
+      case REVOKE_ROLE_TB:
+      case REVOKE_USER_TB:
+      case DROP_ROLE:
+      case DROP_USER:
+      case GRANT_USER_ROLE:
       case GRANT_USER:
       case GRANT_ROLE:
       case CREATE_ROLE:

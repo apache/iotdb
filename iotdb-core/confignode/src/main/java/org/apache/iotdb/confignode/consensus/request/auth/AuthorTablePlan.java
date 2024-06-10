@@ -131,7 +131,7 @@ public class AuthorTablePlan extends AuthorPlan {
         + ", role:"
         + super.getRoleName()
         + ", permissions"
-        + PrivilegeType.values()[permission]
+        + (permission == -1 ? "-1" : PrivilegeType.values()[permission])
         + ", grant option:"
         + super.getGrantOpt()
         + ", DB:"

@@ -104,6 +104,9 @@ public class ObjectPrivilege {
       TablePrivilege tablePrivilege = this.tablePrivilegeMap.get(tableName);
       tablePrivilege.revokePrivilege(privilegeType);
       tablePrivilege.revokeGrantOption(privilegeType);
+      if (tablePrivilege.getPrivileges().isEmpty()) {
+        this.tablePrivilegeMap.remove(tableName);
+      }
     }
   }
 

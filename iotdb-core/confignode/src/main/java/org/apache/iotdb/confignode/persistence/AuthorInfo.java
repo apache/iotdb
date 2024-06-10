@@ -496,6 +496,24 @@ public class AuthorInfo implements SnapshotProcessor {
       pathPri.setPath(path.getPath().toString());
       pathList.add(pathPri);
     }
+    Map<String, TObjectResp> objectRespHashMap = new HashMap<>();
+    for (Map.Entry<String, ObjectPrivilege> objectPrivilegeEntry :
+        role.getObjectPrivileges().entrySet()) {
+      TObjectResp objectResp = new TObjectResp();
+      objectResp.setPrivileges(objectPrivilegeEntry.getValue().getPrivileges());
+      objectResp.setGrantOpt(objectPrivilegeEntry.getValue().getGrantOptions());
+      objectResp.setDatabasename(objectPrivilegeEntry.getKey());
+      for (Map.Entry<String, TablePrivilege> tablePrivilegeEntry :
+          objectPrivilegeEntry.getValue().getTablePrivilegeMap().entrySet()) {
+        TTableAuthResp tableAuthResp = new TTableAuthResp();
+        tableAuthResp.setTablename(tablePrivilegeEntry.getKey());
+        tableAuthResp.setPrivileges(tablePrivilegeEntry.getValue().getPrivilegesInt());
+        tableAuthResp.setGrantOption(tablePrivilegeEntry.getValue().getGrantOptionInt());
+        objectResp.putToTableinfo(tablePrivilegeEntry.getKey(), tableAuthResp);
+      }
+      objectRespHashMap.put(objectPrivilegeEntry.getKey(), objectResp);
+    }
+    roleResp.setObjectInfo(objectRespHashMap);
     roleResp.setPrivilegeList(pathList);
     roleResp.setSysPriSet(role.getSysPrivilege());
     roleResp.setSysPriSetGrantOpt(role.getSysPriGrantOpt());

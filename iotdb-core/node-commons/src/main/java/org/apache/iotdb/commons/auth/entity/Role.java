@@ -245,7 +245,7 @@ public class Role {
         && Objects.equals(pathPrivilegeList, role.pathPrivilegeList)
         && Objects.equals(sysPrivilegeSet, role.sysPrivilegeSet)
         && Objects.equals(sysPriGrantOpt, role.sysPriGrantOpt)
-        && Objects.equals(this.objectPrivileges, role.objectPrivileges);
+        && Objects.equals(objectPrivileges, role.objectPrivileges);
   }
 
   @Override

@@ -47,6 +47,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthTableStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
@@ -343,7 +344,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
             "Failed to execute {} in config node, status is {}.",
-            AuthorType.values()[authorizerReq.getAuthorType()].toString().toLowerCase(Locale.ROOT),
+            AuthDDLType.values()[authorizerReq.getAuthorType()].toString().toLowerCase(Locale.ROOT),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
@@ -402,13 +403,13 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Construct request using statement
       TAuthorizerReq authorizerReq = new TAuthorizerReq();
-      if (authorStatement.isToUser()) {
-        authorizerReq.setAuthorType(AuthorType.LIST_USER.ordinal());
+      if (authorStatement.getStatementType() == AuthDDLType.LIST_USER) {
+        authorizerReq.setAuthorType(AuthorType.LIST_USER_PRIVILEGE.ordinal());
         authorizerReq.setUserName(authorStatement.getUsername());
         authorizerReq.setRoleName("");
       } else {
-        authorizerReq.setAuthorType(AuthorType.LIST_ROLE.ordinal());
-        authorizerReq.setRoleName(authorStatement.getUsername());
+        authorizerReq.setAuthorType(AuthorType.LIST_ROLE_PRIVILEGE.ordinal());
+        authorizerReq.setRoleName(authorStatement.getRolename());
         authorizerReq.setUserName("");
       }
       authorizerReq.setPassword("");
@@ -680,7 +681,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     if (statement.getTableName() != null) {
       req.setTable(statement.getTableName());
     }
-    req.setPrivilege(statement.getPrivilegeType().ordinal());
+    req.setPrivilege(
+        statement.getPrivilegeType() == null ? -1 : statement.getPrivilegeType().ordinal());
     req.setGrantopt(statement.hasGrantOption());
     return req;
   }

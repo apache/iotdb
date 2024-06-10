@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.AuthorizerTableTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthTableStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CreateDB;
@@ -193,7 +194,12 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     if (statement.getDatabase() == null) {
       statement.setDatabase(clientSession.getDatabaseName());
     }
-
+    if (statement.getStatementType() != AuthDDLType.LIST_ROLE
+        && statement.getStatementType() != AuthDDLType.LIST_USER) {
+      context.setQueryType(QueryType.WRITE);
+    } else {
+      context.setQueryType(QueryType.READ);
+    }
     return new AuthorizerTableTask(statement);
   }
 }

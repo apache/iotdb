@@ -352,14 +352,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_singleStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSingleStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSingleStatement(this);
-		}
 	}
 
 	public final SingleStatementContext singleStatement() throws RecognitionException {
@@ -395,14 +387,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_standaloneExpression; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterStandaloneExpression(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitStandaloneExpression(this);
-		}
 	}
 
 	public final StandaloneExpressionContext standaloneExpression() throws RecognitionException {
@@ -438,14 +422,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_standaloneType; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterStandaloneType(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitStandaloneType(this);
-		}
 	}
 
 	public final StandaloneTypeContext standaloneType() throws RecognitionException {
@@ -630,14 +606,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_statement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitStatement(this);
-		}
 	}
 
 	public final StatementContext statement() throws RecognitionException {
@@ -1028,14 +996,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_useDatabaseStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterUseDatabaseStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitUseDatabaseStatement(this);
-		}
 	}
 
 	public final UseDatabaseStatementContext useDatabaseStatement() throws RecognitionException {
@@ -1069,14 +1029,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showDatabasesStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowDatabasesStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowDatabasesStatement(this);
-		}
 	}
 
 	public final ShowDatabasesStatementContext showDatabasesStatement() throws RecognitionException {
@@ -1121,14 +1073,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_createDbStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCreateDbStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCreateDbStatement(this);
-		}
 	}
 
 	public final CreateDbStatementContext createDbStatement() throws RecognitionException {
@@ -1197,14 +1141,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_dropDbStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDropDbStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDropDbStatement(this);
-		}
 	}
 
 	public final DropDbStatementContext dropDbStatement() throws RecognitionException {
@@ -1271,14 +1207,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_createTableStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCreateTableStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCreateTableStatement(this);
-		}
 	}
 
 	public final CreateTableStatementContext createTableStatement() throws RecognitionException {
@@ -1380,14 +1308,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_charsetDesc; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCharsetDesc(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCharsetDesc(this);
-		}
 	}
 
 	public final CharsetDescContext charsetDesc() throws RecognitionException {
@@ -1480,14 +1400,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_columnDefinition; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterColumnDefinition(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitColumnDefinition(this);
-		}
 	}
 
 	public final ColumnDefinitionContext columnDefinition() throws RecognitionException {
@@ -1556,14 +1468,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_charsetName; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCharsetName(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCharsetName(this);
-		}
 	}
 
 	public final CharsetNameContext charsetName() throws RecognitionException {
@@ -1632,14 +1536,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_dropTableStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDropTableStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDropTableStatement(this);
-		}
 	}
 
 	public final DropTableStatementContext dropTableStatement() throws RecognitionException {
@@ -1693,14 +1589,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showTableStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowTableStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowTableStatement(this);
-		}
 	}
 
 	public final ShowTableStatementContext showTableStatement() throws RecognitionException {
@@ -1759,14 +1647,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_descTableStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDescTableStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDescTableStatement(this);
-		}
 	}
 
 	public final DescTableStatementContext descTableStatement() throws RecognitionException {
@@ -1828,14 +1708,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(ColumnDefinitionContext.class,0);
 		}
 		public AddColumnContext(AlterTableStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterAddColumn(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitAddColumn(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class RenameTableContext extends AlterTableStatementContext {
@@ -1852,14 +1724,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(IdentifierContext.class,0);
 		}
 		public RenameTableContext(AlterTableStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterRenameTable(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitRenameTable(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class RenameColumnContext extends AlterTableStatementContext {
@@ -1881,14 +1745,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(IdentifierContext.class,i);
 		}
 		public RenameColumnContext(AlterTableStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterRenameColumn(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitRenameColumn(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class DropColumnContext extends AlterTableStatementContext {
@@ -1905,14 +1761,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(IdentifierContext.class,0);
 		}
 		public DropColumnContext(AlterTableStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDropColumn(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDropColumn(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class SetTablePropertiesContext extends AlterTableStatementContext {
@@ -1928,14 +1776,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(QualifiedNameContext.class,0);
 		}
 		public SetTablePropertiesContext(AlterTableStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSetTableProperties(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSetTableProperties(this);
-		}
 	}
 
 	public final AlterTableStatementContext alterTableStatement() throws RecognitionException {
@@ -2072,14 +1912,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_createIndexStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCreateIndexStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCreateIndexStatement(this);
-		}
 	}
 
 	public final CreateIndexStatementContext createIndexStatement() throws RecognitionException {
@@ -2125,14 +1957,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_identifierList; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterIdentifierList(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitIdentifierList(this);
-		}
 	}
 
 	public final IdentifierListContext identifierList() throws RecognitionException {
@@ -2190,14 +2014,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_dropIndexStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDropIndexStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDropIndexStatement(this);
-		}
 	}
 
 	public final DropIndexStatementContext dropIndexStatement() throws RecognitionException {
@@ -2243,14 +2059,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showIndexStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowIndexStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowIndexStatement(this);
-		}
 	}
 
 	public final ShowIndexStatementContext showIndexStatement() throws RecognitionException {
@@ -2307,14 +2115,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_insertStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterInsertStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitInsertStatement(this);
-		}
 	}
 
 	public final InsertStatementContext insertStatement() throws RecognitionException {
@@ -2370,14 +2170,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_deleteStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDeleteStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDeleteStatement(this);
-		}
 	}
 
 	public final DeleteStatementContext deleteStatement() throws RecognitionException {
@@ -2440,14 +2232,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_updateStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterUpdateStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitUpdateStatement(this);
-		}
 	}
 
 	public final UpdateStatementContext updateStatement() throws RecognitionException {
@@ -2526,14 +2310,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_createFunctionStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCreateFunctionStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCreateFunctionStatement(this);
-		}
 	}
 
 	public final CreateFunctionStatementContext createFunctionStatement() throws RecognitionException {
@@ -2588,14 +2364,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_uriClause; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterUriClause(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitUriClause(this);
-		}
 	}
 
 	public final UriClauseContext uriClause() throws RecognitionException {
@@ -2635,14 +2403,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_dropFunctionStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDropFunctionStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDropFunctionStatement(this);
-		}
 	}
 
 	public final DropFunctionStatementContext dropFunctionStatement() throws RecognitionException {
@@ -2678,14 +2438,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showFunctionsStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowFunctionsStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowFunctionsStatement(this);
-		}
 	}
 
 	public final ShowFunctionsStatementContext showFunctionsStatement() throws RecognitionException {
@@ -2725,14 +2477,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_loadTsFileStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterLoadTsFileStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitLoadTsFileStatement(this);
-		}
 	}
 
 	public final LoadTsFileStatementContext loadTsFileStatement() throws RecognitionException {
@@ -2799,14 +2543,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showDevicesStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowDevicesStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowDevicesStatement(this);
-		}
 	}
 
 	public final ShowDevicesStatementContext showDevicesStatement() throws RecognitionException {
@@ -2917,14 +2653,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_countDevicesStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCountDevicesStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCountDevicesStatement(this);
-		}
 	}
 
 	public final CountDevicesStatementContext countDevicesStatement() throws RecognitionException {
@@ -2984,14 +2712,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showClusterStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowClusterStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowClusterStatement(this);
-		}
 	}
 
 	public final ShowClusterStatementContext showClusterStatement() throws RecognitionException {
@@ -3052,14 +2772,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showRegionsStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowRegionsStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowRegionsStatement(this);
-		}
 	}
 
 	public final ShowRegionsStatementContext showRegionsStatement() throws RecognitionException {
@@ -3180,14 +2892,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showDataNodesStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowDataNodesStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowDataNodesStatement(this);
-		}
 	}
 
 	public final ShowDataNodesStatementContext showDataNodesStatement() throws RecognitionException {
@@ -3221,14 +2925,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showConfigNodesStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowConfigNodesStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowConfigNodesStatement(this);
-		}
 	}
 
 	public final ShowConfigNodesStatementContext showConfigNodesStatement() throws RecognitionException {
@@ -3262,14 +2958,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showClusterIdStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowClusterIdStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowClusterIdStatement(this);
-		}
 	}
 
 	public final ShowClusterIdStatementContext showClusterIdStatement() throws RecognitionException {
@@ -3316,14 +3004,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showRegionIdStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowRegionIdStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowRegionIdStatement(this);
-		}
 	}
 
 	public final ShowRegionIdStatementContext showRegionIdStatement() throws RecognitionException {
@@ -3392,14 +3072,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showTimeSlotListStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowTimeSlotListStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowTimeSlotListStatement(this);
-		}
 	}
 
 	public final ShowTimeSlotListStatementContext showTimeSlotListStatement() throws RecognitionException {
@@ -3452,14 +3124,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_countTimeSlotListStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCountTimeSlotListStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCountTimeSlotListStatement(this);
-		}
 	}
 
 	public final CountTimeSlotListStatementContext countTimeSlotListStatement() throws RecognitionException {
@@ -3515,14 +3179,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showSeriesSlotListStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowSeriesSlotListStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowSeriesSlotListStatement(this);
-		}
 	}
 
 	public final ShowSeriesSlotListStatementContext showSeriesSlotListStatement() throws RecognitionException {
@@ -3584,14 +3240,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_migrateRegionStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterMigrateRegionStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitMigrateRegionStatement(this);
-		}
 	}
 
 	public final MigrateRegionStatementContext migrateRegionStatement() throws RecognitionException {
@@ -3635,14 +3283,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showVariablesStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowVariablesStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowVariablesStatement(this);
-		}
 	}
 
 	public final ShowVariablesStatementContext showVariablesStatement() throws RecognitionException {
@@ -3687,14 +3327,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_flushStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterFlushStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitFlushStatement(this);
-		}
 	}
 
 	public final FlushStatementContext flushStatement() throws RecognitionException {
@@ -3776,14 +3408,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_clearCacheStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterClearCacheStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitClearCacheStatement(this);
-		}
 	}
 
 	public final ClearCacheStatementContext clearCacheStatement() throws RecognitionException {
@@ -3831,14 +3455,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_repairDataStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterRepairDataStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitRepairDataStatement(this);
-		}
 	}
 
 	public final RepairDataStatementContext repairDataStatement() throws RecognitionException {
@@ -3889,14 +3505,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_setSystemStatusStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSetSystemStatusStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSetSystemStatusStatement(this);
-		}
 	}
 
 	public final SetSystemStatusStatementContext setSystemStatusStatement() throws RecognitionException {
@@ -3953,14 +3561,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showVersionStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowVersionStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowVersionStatement(this);
-		}
 	}
 
 	public final ShowVersionStatementContext showVersionStatement() throws RecognitionException {
@@ -4021,14 +3621,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_showQueriesStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterShowQueriesStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitShowQueriesStatement(this);
-		}
 	}
 
 	public final ShowQueriesStatementContext showQueriesStatement() throws RecognitionException {
@@ -4171,14 +3763,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_killQueryStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterKillQueryStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitKillQueryStatement(this);
-		}
 	}
 
 	public final KillQueryStatementContext killQueryStatement() throws RecognitionException {
@@ -4235,14 +3819,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_loadConfigurationStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterLoadConfigurationStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitLoadConfigurationStatement(this);
-		}
 	}
 
 	public final LoadConfigurationStatementContext loadConfigurationStatement() throws RecognitionException {
@@ -4288,14 +3864,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_localOrClusterMode; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterLocalOrClusterMode(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitLocalOrClusterMode(this);
-		}
 	}
 
 	public final LocalOrClusterModeContext localOrClusterMode() throws RecognitionException {
@@ -4348,14 +3916,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_createUser; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCreateUser(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCreateUser(this);
-		}
 	}
 
 	public final CreateUserContext createUser() throws RecognitionException {
@@ -4397,14 +3957,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_createRole; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCreateRole(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCreateRole(this);
-		}
 	}
 
 	public final CreateRoleContext createRole() throws RecognitionException {
@@ -4444,14 +3996,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_dropUser; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDropUser(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDropUser(this);
-		}
 	}
 
 	public final DropUserContext dropUser() throws RecognitionException {
@@ -4491,14 +4035,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_dropRole; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDropRole(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDropRole(this);
-		}
 	}
 
 	public final DropRoleContext dropRole() throws RecognitionException {
@@ -4544,14 +4080,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_grantUserRole; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterGrantUserRole(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitGrantUserRole(this);
-		}
 	}
 
 	public final GrantUserRoleContext grantUserRole() throws RecognitionException {
@@ -4603,14 +4131,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_revokeUserRole; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterRevokeUserRole(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitRevokeUserRole(this);
-		}
 	}
 
 	public final RevokeUserRoleContext revokeUserRole() throws RecognitionException {
@@ -4665,14 +4185,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_grantStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterGrantStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitGrantStatement(this);
-		}
 	}
 
 	public final GrantStatementContext grantStatement() throws RecognitionException {
@@ -4729,14 +4241,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_listUserPrivileges; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterListUserPrivileges(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitListUserPrivileges(this);
-		}
 	}
 
 	public final ListUserPrivilegesContext listUserPrivileges() throws RecognitionException {
@@ -4782,14 +4286,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_listRolePrivileges; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterListRolePrivileges(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitListRolePrivileges(this);
-		}
 	}
 
 	public final ListRolePrivilegesContext listRolePrivileges() throws RecognitionException {
@@ -4839,14 +4335,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_revokeStatement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterRevokeStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitRevokeStatement(this);
-		}
 	}
 
 	public final RevokeStatementContext revokeStatement() throws RecognitionException {
@@ -4895,14 +4383,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_grant_privilege_object; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterGrant_privilege_object(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitGrant_privilege_object(this);
-		}
 	}
 
 	public final Grant_privilege_objectContext grant_privilege_object() throws RecognitionException {
@@ -4960,14 +4440,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_object_privilege; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterObject_privilege(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitObject_privilege(this);
-		}
 	}
 
 	public final Object_privilegeContext object_privilege() throws RecognitionException {
@@ -5008,14 +4480,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_object_type; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterObject_type(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitObject_type(this);
-		}
 	}
 
 	public final Object_typeContext object_type() throws RecognitionException {
@@ -5056,14 +4520,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_role_type; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterRole_type(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitRole_type(this);
-		}
 	}
 
 	public final Role_typeContext role_type() throws RecognitionException {
@@ -5105,14 +4561,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_grantOpt; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterGrantOpt(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitGrantOpt(this);
-		}
 	}
 
 	public final GrantOptContext grantOpt() throws RecognitionException {
@@ -5147,14 +4595,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_object_name; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterObject_name(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitObject_name(this);
-		}
 	}
 
 	public final Object_nameContext object_name() throws RecognitionException {
@@ -5198,14 +4638,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_revoke_privilege_object; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterRevoke_privilege_object(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitRevoke_privilege_object(this);
-		}
 	}
 
 	public final Revoke_privilege_objectContext revoke_privilege_object() throws RecognitionException {
@@ -5299,14 +4731,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(QueryContext.class,0);
 		}
 		public ExplainContext(QueryStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterExplain(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitExplain(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class StatementDefaultContext extends QueryStatementContext {
@@ -5314,14 +4738,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(QueryContext.class,0);
 		}
 		public StatementDefaultContext(QueryStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterStatementDefault(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitStatementDefault(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class ExplainAnalyzeContext extends QueryStatementContext {
@@ -5332,14 +4748,6 @@ public class RelationalSqlParser extends Parser {
 		}
 		public TerminalNode VERBOSE() { return getToken(RelationalSqlParser.VERBOSE, 0); }
 		public ExplainAnalyzeContext(QueryStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterExplainAnalyze(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitExplainAnalyze(this);
-		}
 	}
 
 	public final QueryStatementContext queryStatement() throws RecognitionException {
@@ -5415,14 +4823,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_query; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterQuery(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitQuery(this);
-		}
 	}
 
 	public final QueryContext query() throws RecognitionException {
@@ -5471,14 +4871,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_with; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterWith(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitWith(this);
-		}
 	}
 
 	public final WithContext with() throws RecognitionException {
@@ -5540,14 +4932,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_properties; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterProperties(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitProperties(this);
-		}
 	}
 
 	public final PropertiesContext properties() throws RecognitionException {
@@ -5587,14 +4971,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_propertyAssignments; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterPropertyAssignments(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitPropertyAssignments(this);
-		}
 	}
 
 	public final PropertyAssignmentsContext propertyAssignments() throws RecognitionException {
@@ -5648,14 +5024,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_property; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterProperty(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitProperty(this);
-		}
 	}
 
 	public final PropertyContext property() throws RecognitionException {
@@ -5699,14 +5067,6 @@ public class RelationalSqlParser extends Parser {
 	public static class DefaultPropertyValueContext extends PropertyValueContext {
 		public TerminalNode DEFAULT() { return getToken(RelationalSqlParser.DEFAULT, 0); }
 		public DefaultPropertyValueContext(PropertyValueContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDefaultPropertyValue(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDefaultPropertyValue(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class NonDefaultPropertyValueContext extends PropertyValueContext {
@@ -5714,14 +5074,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(ExpressionContext.class,0);
 		}
 		public NonDefaultPropertyValueContext(PropertyValueContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterNonDefaultPropertyValue(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitNonDefaultPropertyValue(this);
-		}
 	}
 
 	public final PropertyValueContext propertyValue() throws RecognitionException {
@@ -5797,14 +5149,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_queryNoWith; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterQueryNoWith(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitQueryNoWith(this);
-		}
 	}
 
 	public final QueryNoWithContext queryNoWith() throws RecognitionException {
@@ -5953,14 +5297,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_limitRowCount; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterLimitRowCount(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitLimitRowCount(this);
-		}
 	}
 
 	public final LimitRowCountContext limitRowCount() throws RecognitionException {
@@ -6008,14 +5344,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_rowCount; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterRowCount(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitRowCount(this);
-		}
 	}
 
 	public final RowCountContext rowCount() throws RecognitionException {
@@ -6066,14 +5394,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(QueryPrimaryContext.class,0);
 		}
 		public QueryTermDefaultContext(QueryTermContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterQueryTermDefault(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitQueryTermDefault(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class SetOperationContext extends QueryTermContext {
@@ -6093,14 +5413,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(SetQuantifierContext.class,0);
 		}
 		public SetOperationContext(QueryTermContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSetOperation(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSetOperation(this);
-		}
 	}
 
 	public final QueryTermContext queryTerm() throws RecognitionException {
@@ -6203,14 +5515,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(QueryNoWithContext.class,0);
 		}
 		public SubqueryContext(QueryPrimaryContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSubquery(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSubquery(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class QueryPrimaryDefaultContext extends QueryPrimaryContext {
@@ -6218,14 +5522,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(QuerySpecificationContext.class,0);
 		}
 		public QueryPrimaryDefaultContext(QueryPrimaryContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterQueryPrimaryDefault(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitQueryPrimaryDefault(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class TableContext extends QueryPrimaryContext {
@@ -6234,14 +5530,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(QualifiedNameContext.class,0);
 		}
 		public TableContext(QueryPrimaryContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterTable(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitTable(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class InlineTableContext extends QueryPrimaryContext {
@@ -6253,14 +5541,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(ExpressionContext.class,i);
 		}
 		public InlineTableContext(QueryPrimaryContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterInlineTable(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitInlineTable(this);
-		}
 	}
 
 	public final QueryPrimaryContext queryPrimary() throws RecognitionException {
@@ -6360,14 +5640,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_sortItem; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSortItem(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSortItem(this);
-		}
 	}
 
 	public final SortItemContext sortItem() throws RecognitionException {
@@ -6470,14 +5742,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_querySpecification; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterQuerySpecification(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitQuerySpecification(this);
-		}
 	}
 
 	public final QuerySpecificationContext querySpecification() throws RecognitionException {
@@ -6615,14 +5879,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_groupBy; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterGroupBy(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitGroupBy(this);
-		}
 	}
 
 	public final GroupByContext groupBy() throws RecognitionException {
@@ -6698,14 +5954,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(GroupingSetContext.class,i);
 		}
 		public MultipleGroupingSetsContext(GroupingElementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterMultipleGroupingSets(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitMultipleGroupingSets(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class TimenGroupingContext extends GroupingElementContext {
@@ -6722,14 +5970,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(TimeRangeContext.class,0);
 		}
 		public TimenGroupingContext(GroupingElementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterTimenGrouping(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitTimenGrouping(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class ConditionGroupingContext extends GroupingElementContext {
@@ -6744,14 +5984,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(PropertyAssignmentsContext.class,0);
 		}
 		public ConditionGroupingContext(GroupingElementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterConditionGrouping(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitConditionGrouping(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class CountGroupingContext extends GroupingElementContext {
@@ -6765,14 +5997,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(PropertyAssignmentsContext.class,0);
 		}
 		public CountGroupingContext(GroupingElementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCountGrouping(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCountGrouping(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class SingleGroupingSetContext extends GroupingElementContext {
@@ -6780,14 +6004,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(GroupingSetContext.class,0);
 		}
 		public SingleGroupingSetContext(GroupingElementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSingleGroupingSet(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSingleGroupingSet(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class SessionGroupingContext extends GroupingElementContext {
@@ -6797,14 +6013,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(TimeDurationContext.class,0);
 		}
 		public SessionGroupingContext(GroupingElementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSessionGrouping(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSessionGrouping(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class CubeContext extends GroupingElementContext {
@@ -6816,14 +6024,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(GroupingSetContext.class,i);
 		}
 		public CubeContext(GroupingElementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCube(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCube(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class VariationGroupingContext extends GroupingElementContext {
@@ -6839,14 +6039,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(NumberContext.class,0);
 		}
 		public VariationGroupingContext(GroupingElementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterVariationGrouping(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitVariationGrouping(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class RollupContext extends GroupingElementContext {
@@ -6858,14 +6050,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(GroupingSetContext.class,i);
 		}
 		public RollupContext(GroupingElementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterRollup(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitRollup(this);
-		}
 	}
 
 	public final GroupingElementContext groupingElement() throws RecognitionException {
@@ -7194,14 +6378,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(TimeValueContext.class,i);
 		}
 		public LeftClosedRightOpenContext(TimeRangeContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterLeftClosedRightOpen(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitLeftClosedRightOpen(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class LeftOpenRightClosedContext extends TimeRangeContext {
@@ -7214,14 +6390,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(TimeValueContext.class,i);
 		}
 		public LeftOpenRightClosedContext(TimeRangeContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterLeftOpenRightClosed(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitLeftOpenRightClosed(this);
-		}
 	}
 
 	public final TimeRangeContext timeRange() throws RecognitionException {
@@ -7290,14 +6458,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_timeValue; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterTimeValue(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitTimeValue(this);
-		}
 	}
 
 	public final TimeValueContext timeValue() throws RecognitionException {
@@ -7381,14 +6541,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_dateExpression; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDateExpression(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDateExpression(this);
-		}
 	}
 
 	public final DateExpressionContext dateExpression() throws RecognitionException {
@@ -7445,14 +6597,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_datetimeLiteral; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDatetimeLiteral(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDatetimeLiteral(this);
-		}
 	}
 
 	public final DatetimeLiteralContext datetimeLiteral() throws RecognitionException {
@@ -7508,14 +6652,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_keepExpression; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterKeepExpression(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitKeepExpression(this);
-		}
 	}
 
 	public final KeepExpressionContext keepExpression() throws RecognitionException {
@@ -7572,14 +6708,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_groupingSet; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterGroupingSet(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitGroupingSet(this);
-		}
 	}
 
 	public final GroupingSetContext groupingSet() throws RecognitionException {
@@ -7662,14 +6790,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_namedQuery; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterNamedQuery(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitNamedQuery(this);
-		}
 	}
 
 	public final NamedQueryContext namedQuery() throws RecognitionException {
@@ -7720,14 +6840,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_setQuantifier; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSetQuantifier(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSetQuantifier(this);
-		}
 	}
 
 	public final SetQuantifierContext setQuantifier() throws RecognitionException {
@@ -7783,14 +6895,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(ColumnAliasesContext.class,0);
 		}
 		public SelectAllContext(SelectItemContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSelectAll(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSelectAll(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class SelectSingleContext extends SelectItemContext {
@@ -7802,14 +6906,6 @@ public class RelationalSqlParser extends Parser {
 		}
 		public TerminalNode AS() { return getToken(RelationalSqlParser.AS, 0); }
 		public SelectSingleContext(SelectItemContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSelectSingle(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSelectSingle(this);
-		}
 	}
 
 	public final SelectItemContext selectItem() throws RecognitionException {
@@ -7911,14 +7007,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(AliasedRelationContext.class,0);
 		}
 		public RelationDefaultContext(RelationContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterRelationDefault(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitRelationDefault(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class JoinRelationContext extends RelationContext {
@@ -7944,14 +7032,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(AliasedRelationContext.class,0);
 		}
 		public JoinRelationContext(RelationContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterJoinRelation(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitJoinRelation(this);
-		}
 	}
 
 	public final RelationContext relation() throws RecognitionException {
@@ -8067,14 +7147,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_joinType; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterJoinType(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitJoinType(this);
-		}
 	}
 
 	public final JoinTypeContext joinType() throws RecognitionException {
@@ -8184,14 +7256,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_joinCriteria; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterJoinCriteria(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitJoinCriteria(this);
-		}
 	}
 
 	public final JoinCriteriaContext joinCriteria() throws RecognitionException {
@@ -8271,14 +7335,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_aliasedRelation; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterAliasedRelation(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitAliasedRelation(this);
-		}
 	}
 
 	public final AliasedRelationContext aliasedRelation() throws RecognitionException {
@@ -8345,14 +7401,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_columnAliases; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterColumnAliases(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitColumnAliases(this);
-		}
 	}
 
 	public final ColumnAliasesContext columnAliases() throws RecognitionException {
@@ -8415,14 +7463,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(QueryContext.class,0);
 		}
 		public SubqueryRelationContext(RelationPrimaryContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSubqueryRelation(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSubqueryRelation(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class ParenthesizedRelationContext extends RelationPrimaryContext {
@@ -8430,14 +7470,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(RelationContext.class,0);
 		}
 		public ParenthesizedRelationContext(RelationPrimaryContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterParenthesizedRelation(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitParenthesizedRelation(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class TableNameContext extends RelationPrimaryContext {
@@ -8445,14 +7477,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(QualifiedNameContext.class,0);
 		}
 		public TableNameContext(RelationPrimaryContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterTableName(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitTableName(this);
-		}
 	}
 
 	public final RelationPrimaryContext relationPrimary() throws RecognitionException {
@@ -8516,14 +7540,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_expression; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterExpression(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitExpression(this);
-		}
 	}
 
 	public final ExpressionContext expression() throws RecognitionException {
@@ -8566,14 +7582,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(BooleanExpressionContext.class,0);
 		}
 		public LogicalNotContext(BooleanExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterLogicalNot(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitLogicalNot(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class PredicatedContext extends BooleanExpressionContext {
@@ -8585,14 +7593,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(PredicateContext.class,0);
 		}
 		public PredicatedContext(BooleanExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterPredicated(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitPredicated(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class OrContext extends BooleanExpressionContext {
@@ -8604,14 +7604,6 @@ public class RelationalSqlParser extends Parser {
 		}
 		public TerminalNode OR() { return getToken(RelationalSqlParser.OR, 0); }
 		public OrContext(BooleanExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterOr(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitOr(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class AndContext extends BooleanExpressionContext {
@@ -8623,14 +7615,6 @@ public class RelationalSqlParser extends Parser {
 		}
 		public TerminalNode AND() { return getToken(RelationalSqlParser.AND, 0); }
 		public AndContext(BooleanExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterAnd(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitAnd(this);
-		}
 	}
 
 	public final BooleanExpressionContext booleanExpression() throws RecognitionException {
@@ -9051,14 +8035,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(ValueExpressionContext.class,0);
 		}
 		public ComparisonContext(PredicateContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterComparison(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitComparison(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class LikeContext extends PredicateContext {
@@ -9074,14 +8050,6 @@ public class RelationalSqlParser extends Parser {
 		public TerminalNode NOT() { return getToken(RelationalSqlParser.NOT, 0); }
 		public TerminalNode ESCAPE() { return getToken(RelationalSqlParser.ESCAPE, 0); }
 		public LikeContext(PredicateContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterLike(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitLike(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class InSubqueryContext extends PredicateContext {
@@ -9091,14 +8059,6 @@ public class RelationalSqlParser extends Parser {
 		}
 		public TerminalNode NOT() { return getToken(RelationalSqlParser.NOT, 0); }
 		public InSubqueryContext(PredicateContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterInSubquery(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitInSubquery(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class DistinctFromContext extends PredicateContext {
@@ -9111,14 +8071,6 @@ public class RelationalSqlParser extends Parser {
 		}
 		public TerminalNode NOT() { return getToken(RelationalSqlParser.NOT, 0); }
 		public DistinctFromContext(PredicateContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDistinctFrom(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDistinctFrom(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class InListContext extends PredicateContext {
@@ -9131,14 +8083,6 @@ public class RelationalSqlParser extends Parser {
 		}
 		public TerminalNode NOT() { return getToken(RelationalSqlParser.NOT, 0); }
 		public InListContext(PredicateContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterInList(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitInList(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class NullPredicateContext extends PredicateContext {
@@ -9146,14 +8090,6 @@ public class RelationalSqlParser extends Parser {
 		public TerminalNode NULL() { return getToken(RelationalSqlParser.NULL, 0); }
 		public TerminalNode NOT() { return getToken(RelationalSqlParser.NOT, 0); }
 		public NullPredicateContext(PredicateContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterNullPredicate(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitNullPredicate(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class BetweenContext extends PredicateContext {
@@ -9169,14 +8105,6 @@ public class RelationalSqlParser extends Parser {
 		}
 		public TerminalNode NOT() { return getToken(RelationalSqlParser.NOT, 0); }
 		public BetweenContext(PredicateContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterBetween(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitBetween(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class QuantifiedComparisonContext extends PredicateContext {
@@ -9190,14 +8118,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(QueryContext.class,0);
 		}
 		public QuantifiedComparisonContext(PredicateContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterQuantifiedComparison(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitQuantifiedComparison(this);
-		}
 	}
 
 	public final PredicateContext predicate(ParserRuleContext value) throws RecognitionException {
@@ -9429,14 +8349,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(PrimaryExpressionContext.class,0);
 		}
 		public ValueExpressionDefaultContext(ValueExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterValueExpressionDefault(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitValueExpressionDefault(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class ConcatenationContext extends ValueExpressionContext {
@@ -9450,14 +8362,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(ValueExpressionContext.class,i);
 		}
 		public ConcatenationContext(ValueExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterConcatenation(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitConcatenation(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class ArithmeticBinaryContext extends ValueExpressionContext {
@@ -9476,14 +8380,6 @@ public class RelationalSqlParser extends Parser {
 		public TerminalNode PLUS() { return getToken(RelationalSqlParser.PLUS, 0); }
 		public TerminalNode MINUS() { return getToken(RelationalSqlParser.MINUS, 0); }
 		public ArithmeticBinaryContext(ValueExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterArithmeticBinary(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitArithmeticBinary(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class ArithmeticUnaryContext extends ValueExpressionContext {
@@ -9494,14 +8390,6 @@ public class RelationalSqlParser extends Parser {
 		public TerminalNode MINUS() { return getToken(RelationalSqlParser.MINUS, 0); }
 		public TerminalNode PLUS() { return getToken(RelationalSqlParser.PLUS, 0); }
 		public ArithmeticUnaryContext(ValueExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterArithmeticUnary(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitArithmeticUnary(this);
-		}
 	}
 
 	public final ValueExpressionContext valueExpression() throws RecognitionException {
@@ -9666,14 +8554,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(IdentifierContext.class,0);
 		}
 		public DereferenceContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDereference(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDereference(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class SimpleCaseContext extends PrimaryExpressionContext {
@@ -9695,14 +8575,6 @@ public class RelationalSqlParser extends Parser {
 		}
 		public TerminalNode ELSE() { return getToken(RelationalSqlParser.ELSE, 0); }
 		public SimpleCaseContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSimpleCase(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSimpleCase(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class ColumnReferenceContext extends PrimaryExpressionContext {
@@ -9710,14 +8582,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(IdentifierContext.class,0);
 		}
 		public ColumnReferenceContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterColumnReference(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitColumnReference(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class RowConstructorContext extends PrimaryExpressionContext {
@@ -9729,28 +8593,12 @@ public class RelationalSqlParser extends Parser {
 		}
 		public TerminalNode ROW() { return getToken(RelationalSqlParser.ROW, 0); }
 		public RowConstructorContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterRowConstructor(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitRowConstructor(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class SpecialDateTimeFunctionContext extends PrimaryExpressionContext {
 		public Token name;
 		public TerminalNode NOW() { return getToken(RelationalSqlParser.NOW, 0); }
 		public SpecialDateTimeFunctionContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSpecialDateTimeFunction(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSpecialDateTimeFunction(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class SubqueryExpressionContext extends PrimaryExpressionContext {
@@ -9758,28 +8606,12 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(QueryContext.class,0);
 		}
 		public SubqueryExpressionContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSubqueryExpression(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSubqueryExpression(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class CurrentDatabaseContext extends PrimaryExpressionContext {
 		public Token name;
 		public TerminalNode CURRENT_DATABASE() { return getToken(RelationalSqlParser.CURRENT_DATABASE, 0); }
 		public CurrentDatabaseContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCurrentDatabase(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCurrentDatabase(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class SubstringContext extends PrimaryExpressionContext {
@@ -9793,14 +8625,6 @@ public class RelationalSqlParser extends Parser {
 		public TerminalNode FROM() { return getToken(RelationalSqlParser.FROM, 0); }
 		public TerminalNode FOR() { return getToken(RelationalSqlParser.FOR, 0); }
 		public SubstringContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSubstring(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSubstring(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class LiteralContext extends PrimaryExpressionContext {
@@ -9808,14 +8632,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(LiteralExpressionContext.class,0);
 		}
 		public LiteralContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterLiteral(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitLiteral(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class CastContext extends PrimaryExpressionContext {
@@ -9828,28 +8644,12 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(TypeContext.class,0);
 		}
 		public CastContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCast(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCast(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class CurrentUserContext extends PrimaryExpressionContext {
 		public Token name;
 		public TerminalNode CURRENT_USER() { return getToken(RelationalSqlParser.CURRENT_USER, 0); }
 		public CurrentUserContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCurrentUser(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCurrentUser(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class ParenthesizedExpressionContext extends PrimaryExpressionContext {
@@ -9857,14 +8657,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(ExpressionContext.class,0);
 		}
 		public ParenthesizedExpressionContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterParenthesizedExpression(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitParenthesizedExpression(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class TrimContext extends PrimaryExpressionContext {
@@ -9882,14 +8674,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(TrimsSpecificationContext.class,0);
 		}
 		public TrimContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterTrim(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitTrim(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class FunctionCallContext extends PrimaryExpressionContext {
@@ -9911,14 +8695,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(SetQuantifierContext.class,0);
 		}
 		public FunctionCallContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterFunctionCall(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitFunctionCall(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class ExistsContext extends PrimaryExpressionContext {
@@ -9927,14 +8703,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(QueryContext.class,0);
 		}
 		public ExistsContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterExists(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitExists(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class SearchedCaseContext extends PrimaryExpressionContext {
@@ -9952,14 +8720,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(ExpressionContext.class,0);
 		}
 		public SearchedCaseContext(PrimaryExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSearchedCase(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSearchedCase(this);
-		}
 	}
 
 	public final PrimaryExpressionContext primaryExpression() throws RecognitionException {
@@ -10462,27 +9222,11 @@ public class RelationalSqlParser extends Parser {
 	public static class BinaryLiteralContext extends LiteralExpressionContext {
 		public TerminalNode BINARY_LITERAL() { return getToken(RelationalSqlParser.BINARY_LITERAL, 0); }
 		public BinaryLiteralContext(LiteralExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterBinaryLiteral(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitBinaryLiteral(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class NullLiteralContext extends LiteralExpressionContext {
 		public TerminalNode NULL() { return getToken(RelationalSqlParser.NULL, 0); }
 		public NullLiteralContext(LiteralExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterNullLiteral(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitNullLiteral(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class StringLiteralContext extends LiteralExpressionContext {
@@ -10490,27 +9234,11 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(StringContext.class,0);
 		}
 		public StringLiteralContext(LiteralExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterStringLiteral(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitStringLiteral(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class ParameterContext extends LiteralExpressionContext {
 		public TerminalNode QUESTION_MARK() { return getToken(RelationalSqlParser.QUESTION_MARK, 0); }
 		public ParameterContext(LiteralExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterParameter(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitParameter(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class NumericLiteralContext extends LiteralExpressionContext {
@@ -10518,14 +9246,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(NumberContext.class,0);
 		}
 		public NumericLiteralContext(LiteralExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterNumericLiteral(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitNumericLiteral(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class BooleanLiteralContext extends LiteralExpressionContext {
@@ -10533,14 +9253,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(BooleanValueContext.class,0);
 		}
 		public BooleanLiteralContext(LiteralExpressionContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterBooleanLiteral(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitBooleanLiteral(this);
-		}
 	}
 
 	public final LiteralExpressionContext literalExpression() throws RecognitionException {
@@ -10627,14 +9339,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_trimsSpecification; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterTrimsSpecification(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitTrimsSpecification(this);
-		}
 	}
 
 	public final TrimsSpecificationContext trimsSpecification() throws RecognitionException {
@@ -10685,27 +9389,11 @@ public class RelationalSqlParser extends Parser {
 		public TerminalNode UESCAPE() { return getToken(RelationalSqlParser.UESCAPE, 0); }
 		public TerminalNode STRING() { return getToken(RelationalSqlParser.STRING, 0); }
 		public UnicodeStringLiteralContext(StringContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterUnicodeStringLiteral(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitUnicodeStringLiteral(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class BasicStringLiteralContext extends StringContext {
 		public TerminalNode STRING() { return getToken(RelationalSqlParser.STRING, 0); }
 		public BasicStringLiteralContext(StringContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterBasicStringLiteral(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitBasicStringLiteral(this);
-		}
 	}
 
 	public final StringContext string() throws RecognitionException {
@@ -10770,14 +9458,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_identifierOrString; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterIdentifierOrString(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitIdentifierOrString(this);
-		}
 	}
 
 	public final IdentifierOrStringContext identifierOrString() throws RecognitionException {
@@ -11093,14 +9773,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_comparisonOperator; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterComparisonOperator(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitComparisonOperator(this);
-		}
 	}
 
 	public final ComparisonOperatorContext comparisonOperator() throws RecognitionException {
@@ -11142,14 +9814,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_comparisonQuantifier; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterComparisonQuantifier(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitComparisonQuantifier(this);
-		}
 	}
 
 	public final ComparisonQuantifierContext comparisonQuantifier() throws RecognitionException {
@@ -11190,14 +9854,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_booleanValue; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterBooleanValue(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitBooleanValue(this);
-		}
 	}
 
 	public final BooleanValueContext booleanValue() throws RecognitionException {
@@ -11252,14 +9908,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_interval; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterInterval(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitInterval(this);
-		}
 	}
 
 	public final IntervalContext interval() throws RecognitionException {
@@ -11335,14 +9983,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_intervalField; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterIntervalField(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitIntervalField(this);
-		}
 	}
 
 	public final IntervalFieldContext intervalField() throws RecognitionException {
@@ -11391,14 +10031,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_timeDuration; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterTimeDuration(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitTimeDuration(this);
-		}
 	}
 
 	public final TimeDurationContext timeDuration() throws RecognitionException {
@@ -11475,14 +10107,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(TypeParameterContext.class,i);
 		}
 		public GenericTypeContext(TypeContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterGenericType(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitGenericType(this);
-		}
 	}
 
 	public final TypeContext type() throws RecognitionException {
@@ -11548,14 +10172,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_typeParameter; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterTypeParameter(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitTypeParameter(this);
-		}
 	}
 
 	public final TypeParameterContext typeParameter() throws RecognitionException {
@@ -11874,14 +10490,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_whenClause; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterWhenClause(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitWhenClause(this);
-		}
 	}
 
 	public final WhenClauseContext whenClause() throws RecognitionException {
@@ -11924,14 +10532,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_updateAssignment; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterUpdateAssignment(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitUpdateAssignment(this);
-		}
 	}
 
 	public final UpdateAssignmentContext updateAssignment() throws RecognitionException {
@@ -11990,14 +10590,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(IdentifierContext.class,0);
 		}
 		public WhileStatementContext(ControlStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterWhileStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitWhileStatement(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class SimpleCaseStatementContext extends ControlStatementContext {
@@ -12019,14 +10611,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(ElseClauseContext.class,0);
 		}
 		public SimpleCaseStatementContext(ControlStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSimpleCaseStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSimpleCaseStatement(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class RepeatStatementContext extends ControlStatementContext {
@@ -12047,14 +10631,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(IdentifierContext.class,0);
 		}
 		public RepeatStatementContext(ControlStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterRepeatStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitRepeatStatement(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class AssignmentStatementContext extends ControlStatementContext {
@@ -12067,14 +10643,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(ExpressionContext.class,0);
 		}
 		public AssignmentStatementContext(ControlStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterAssignmentStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitAssignmentStatement(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class LeaveStatementContext extends ControlStatementContext {
@@ -12083,14 +10651,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(IdentifierContext.class,0);
 		}
 		public LeaveStatementContext(ControlStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterLeaveStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitLeaveStatement(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class CompoundStatementContext extends ControlStatementContext {
@@ -12110,14 +10670,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(SqlStatementListContext.class,0);
 		}
 		public CompoundStatementContext(ControlStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCompoundStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCompoundStatement(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class IterateStatementContext extends ControlStatementContext {
@@ -12126,14 +10678,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(IdentifierContext.class,0);
 		}
 		public IterateStatementContext(ControlStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterIterateStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitIterateStatement(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class LoopStatementContext extends ControlStatementContext {
@@ -12150,14 +10694,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(IdentifierContext.class,0);
 		}
 		public LoopStatementContext(ControlStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterLoopStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitLoopStatement(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class ReturnStatementContext extends ControlStatementContext {
@@ -12166,14 +10702,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(ValueExpressionContext.class,0);
 		}
 		public ReturnStatementContext(ControlStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterReturnStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitReturnStatement(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class IfStatementContext extends ControlStatementContext {
@@ -12199,14 +10727,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(ElseClauseContext.class,0);
 		}
 		public IfStatementContext(ControlStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterIfStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitIfStatement(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class SearchedCaseStatementContext extends ControlStatementContext {
@@ -12225,14 +10745,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(ElseClauseContext.class,0);
 		}
 		public SearchedCaseStatementContext(ControlStatementContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSearchedCaseStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSearchedCaseStatement(this);
-		}
 	}
 
 	public final ControlStatementContext controlStatement() throws RecognitionException {
@@ -12555,14 +11067,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_caseStatementWhenClause; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCaseStatementWhenClause(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCaseStatementWhenClause(this);
-		}
 	}
 
 	public final CaseStatementWhenClauseContext caseStatementWhenClause() throws RecognitionException {
@@ -12606,14 +11110,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_elseIfClause; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterElseIfClause(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitElseIfClause(this);
-		}
 	}
 
 	public final ElseIfClauseContext elseIfClause() throws RecognitionException {
@@ -12653,14 +11149,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_elseClause; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterElseClause(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitElseClause(this);
-		}
 	}
 
 	public final ElseClauseContext elseClause() throws RecognitionException {
@@ -12706,14 +11194,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_variableDeclaration; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterVariableDeclaration(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitVariableDeclaration(this);
-		}
 	}
 
 	public final VariableDeclarationContext variableDeclaration() throws RecognitionException {
@@ -12786,14 +11266,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_sqlStatementList; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSqlStatementList(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSqlStatementList(this);
-		}
 	}
 
 	public final SqlStatementListContext sqlStatementList() throws RecognitionException {
@@ -12849,14 +11321,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_privilege; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterPrivilege(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitPrivilege(this);
-		}
 	}
 
 	public final PrivilegeContext privilege() throws RecognitionException {
@@ -12901,14 +11365,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_qualifiedName; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterQualifiedName(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitQualifiedName(this);
-		}
 	}
 
 	public final QualifiedNameContext qualifiedName() throws RecognitionException {
@@ -12967,14 +11423,6 @@ public class RelationalSqlParser extends Parser {
 	public static class CurrentUserGrantorContext extends GrantorContext {
 		public TerminalNode CURRENT_USER() { return getToken(RelationalSqlParser.CURRENT_USER, 0); }
 		public CurrentUserGrantorContext(GrantorContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCurrentUserGrantor(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCurrentUserGrantor(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class SpecifiedPrincipalContext extends GrantorContext {
@@ -12982,27 +11430,11 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(PrincipalContext.class,0);
 		}
 		public SpecifiedPrincipalContext(GrantorContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterSpecifiedPrincipal(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitSpecifiedPrincipal(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class CurrentRoleGrantorContext extends GrantorContext {
 		public TerminalNode CURRENT_ROLE() { return getToken(RelationalSqlParser.CURRENT_ROLE, 0); }
 		public CurrentRoleGrantorContext(GrantorContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterCurrentRoleGrantor(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitCurrentRoleGrantor(this);
-		}
 	}
 
 	public final GrantorContext grantor() throws RecognitionException {
@@ -13333,14 +11765,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(IdentifierContext.class,0);
 		}
 		public UnspecifiedPrincipalContext(PrincipalContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterUnspecifiedPrincipal(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitUnspecifiedPrincipal(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class UserPrincipalContext extends PrincipalContext {
@@ -13349,14 +11773,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(IdentifierContext.class,0);
 		}
 		public UserPrincipalContext(PrincipalContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterUserPrincipal(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitUserPrincipal(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class RolePrincipalContext extends PrincipalContext {
@@ -13365,14 +11781,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(IdentifierContext.class,0);
 		}
 		public RolePrincipalContext(PrincipalContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterRolePrincipal(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitRolePrincipal(this);
-		}
 	}
 
 	public final PrincipalContext principal() throws RecognitionException {
@@ -13435,14 +11843,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_roles; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterRoles(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitRoles(this);
-		}
 	}
 
 	public final RolesContext roles() throws RecognitionException {
@@ -13499,40 +11899,16 @@ public class RelationalSqlParser extends Parser {
 	public static class BackQuotedIdentifierContext extends IdentifierContext {
 		public TerminalNode BACKQUOTED_IDENTIFIER() { return getToken(RelationalSqlParser.BACKQUOTED_IDENTIFIER, 0); }
 		public BackQuotedIdentifierContext(IdentifierContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterBackQuotedIdentifier(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitBackQuotedIdentifier(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class QuotedIdentifierContext extends IdentifierContext {
 		public TerminalNode QUOTED_IDENTIFIER() { return getToken(RelationalSqlParser.QUOTED_IDENTIFIER, 0); }
 		public QuotedIdentifierContext(IdentifierContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterQuotedIdentifier(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitQuotedIdentifier(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class DigitIdentifierContext extends IdentifierContext {
 		public TerminalNode DIGIT_IDENTIFIER() { return getToken(RelationalSqlParser.DIGIT_IDENTIFIER, 0); }
 		public DigitIdentifierContext(IdentifierContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDigitIdentifier(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDigitIdentifier(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class UnquotedIdentifierContext extends IdentifierContext {
@@ -13541,14 +11917,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(NonReservedContext.class,0);
 		}
 		public UnquotedIdentifierContext(IdentifierContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterUnquotedIdentifier(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitUnquotedIdentifier(this);
-		}
 	}
 
 	public final IdentifierContext identifier() throws RecognitionException {
@@ -13890,42 +12258,18 @@ public class RelationalSqlParser extends Parser {
 		public TerminalNode DECIMAL_VALUE() { return getToken(RelationalSqlParser.DECIMAL_VALUE, 0); }
 		public TerminalNode MINUS() { return getToken(RelationalSqlParser.MINUS, 0); }
 		public DecimalLiteralContext(NumberContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDecimalLiteral(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDecimalLiteral(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class DoubleLiteralContext extends NumberContext {
 		public TerminalNode DOUBLE_VALUE() { return getToken(RelationalSqlParser.DOUBLE_VALUE, 0); }
 		public TerminalNode MINUS() { return getToken(RelationalSqlParser.MINUS, 0); }
 		public DoubleLiteralContext(NumberContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterDoubleLiteral(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitDoubleLiteral(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class IntegerLiteralContext extends NumberContext {
 		public TerminalNode INTEGER_VALUE() { return getToken(RelationalSqlParser.INTEGER_VALUE, 0); }
 		public TerminalNode MINUS() { return getToken(RelationalSqlParser.MINUS, 0); }
 		public IntegerLiteralContext(NumberContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterIntegerLiteral(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitIntegerLiteral(this);
-		}
 	}
 
 	public final NumberContext number() throws RecognitionException {
@@ -14021,14 +12365,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(StringContext.class,0);
 		}
 		public StringUserContext(AuthorizationUserContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterStringUser(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitStringUser(this);
-		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class IdentifierUserContext extends AuthorizationUserContext {
@@ -14036,14 +12372,6 @@ public class RelationalSqlParser extends Parser {
 			return getRuleContext(IdentifierContext.class,0);
 		}
 		public IdentifierUserContext(AuthorizationUserContext ctx) { copyFrom(ctx); }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterIdentifierUser(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitIdentifierUser(this);
-		}
 	}
 
 	public final AuthorizationUserContext authorizationUser() throws RecognitionException {
@@ -14616,14 +12944,6 @@ public class RelationalSqlParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_nonReserved; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).enterNonReserved(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof RelationalSqlListener ) ((RelationalSqlListener)listener).exitNonReserved(this);
-		}
 	}
 
 	public final NonReservedContext nonReserved() throws RecognitionException {

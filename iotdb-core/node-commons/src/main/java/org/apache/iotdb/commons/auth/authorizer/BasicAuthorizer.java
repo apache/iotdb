@@ -192,18 +192,27 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       String name, boolean isUser, String database, String table, int privilegeId, boolean grantOpt)
       throws AuthException {
     Role entry = isUser ? userManager.getUser(name) : roleManager.getRole(name);
+    if (entry == null) {
+      throw new AuthException(
+          isUser ? TSStatusCode.USER_NOT_EXIST : TSStatusCode.ROLE_NOT_EXIST,
+          String.format("User/Role %s does not exist", name));
+    }
     ObjectPrivilege objectPrivilege;
-    if (entry.getObjectPrivileges().containsKey(database)) {
+    if (!entry.getObjectPrivileges().containsKey(database)) {
       entry.getObjectPrivileges().put(database, new ObjectPrivilege(database));
     }
     objectPrivilege = entry.getObjectPrivileges().get(database);
 
     if (table != null) {
       objectPrivilege.grantTableObjectPrivilege(table, PrivilegeType.values()[privilegeId]);
-      objectPrivilege.grantTableObejctGrantOption(table, PrivilegeType.values()[privilegeId]);
+      if (grantOpt) {
+        objectPrivilege.grantTableObejctGrantOption(table, PrivilegeType.values()[privilegeId]);
+      }
     } else {
       objectPrivilege.grantDBObjectPrivilege(PrivilegeType.values()[privilegeId]);
-      objectPrivilege.grantGrantoptionToDB(PrivilegeType.values()[privilegeId]);
+      if (grantOpt) {
+        objectPrivilege.grantGrantoptionToDB(PrivilegeType.values()[privilegeId]);
+      }
     }
   }
 
@@ -212,15 +221,24 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       String name, boolean isUser, String database, String table, int privilegeId, boolean grantOpt)
       throws AuthException {
     Role entry = isUser ? userManager.getUser(name) : roleManager.getRole(name);
+    if (entry == null) {
+      throw new AuthException(
+          isUser ? TSStatusCode.USER_NOT_EXIST : TSStatusCode.ROLE_NOT_EXIST,
+          String.format("User/Role %s does not exist", name));
+    }
     ObjectPrivilege objectPrivilege;
-    if (entry.getObjectPrivileges().containsKey(database)) {
-      entry.getObjectPrivileges().put(database, new ObjectPrivilege(database));
+    if (!entry.getObjectPrivileges().containsKey(database)) {
+      return;
     }
     objectPrivilege = entry.getObjectPrivileges().get(database);
     if (table != null) {
       objectPrivilege.revokeTableObjectPrivilege(table, PrivilegeType.values()[privilegeId]);
     } else {
       objectPrivilege.revokeDBObjectPrivilege(PrivilegeType.values()[privilegeId]);
+    }
+    if (objectPrivilege.getTablePrivilegeMap().isEmpty()
+        && objectPrivilege.getPrivileges().isEmpty()) {
+      entry.getObjectPrivileges().remove(database);
     }
   }
 

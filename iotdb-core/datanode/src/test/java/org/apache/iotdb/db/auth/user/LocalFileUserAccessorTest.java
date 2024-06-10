@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.auth.user;
 
+import org.apache.iotdb.commons.auth.entity.ObjectPrivilege;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.user.LocalFileUserAccessor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -35,8 +37,10 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -70,10 +74,15 @@ public class LocalFileUserAccessorTest {
       users[i] = new User("user" + i, "password" + i);
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
+        ObjectPrivilege objectPrivilege = new ObjectPrivilege("test");
+        objectPrivilege.grantTableObjectPrivilege("test_table", PrivilegeType.READ_DATA);
+        Map<String, ObjectPrivilege> map = new HashMap<>();
+        map.put("test", objectPrivilege);
         pathPrivilege.getPrivileges().add(j);
         users[i].getPathPrivilegeList().add(pathPrivilege);
         users[i].getSysPrivilege().add(j + 5);
         users[i].getRoleList().add("role" + j);
+        users[i].setObjectPrivileges(map);
       }
     }
 
