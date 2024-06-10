@@ -178,7 +178,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
 
     Map<String, String> attributeMap = new HashMap<>();
     attributeMap.put("type", "new");
-    attributeMap.put("cycle", "monthly");
+    attributeMap.put("cycle", null);
     SchemaRegionTestUtil.createTableDevice(
         schemaRegion, tableName, new String[] {"hebei", null, "d_0"}, attributeMap);
     attributeMap.put("type", "old");
@@ -219,8 +219,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             tableName,
             3,
             Collections.emptyList(),
-            new OrFilter(
-                new DeviceIdFilter(2, null), new DeviceAttributeFilter("cycle", "monthly")));
+            new OrFilter(new DeviceIdFilter(2, null), new DeviceAttributeFilter("cycle", null)));
     Assert.assertEquals(3, deviceSchemaInfoList.size());
   }
 
