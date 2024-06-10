@@ -68,7 +68,7 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
 
   @Override
   public PartialPath getPartialPath() {
-    return new PartialPath(rawNodes);
+    return rawNodes == null ? super.getPartialPath() : new PartialPath(rawNodes);
   }
 
   @Override
