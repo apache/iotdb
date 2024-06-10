@@ -300,7 +300,7 @@ public class AnalyzerTest {
             context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
-    PlanNode tableScanNode = rootNode.getChildren().get(0).getChildren().get(0);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals(
         Arrays.asList("time", "tag1", "attr1", "s1"), tableScanNode.getOutputColumnNames());
 
@@ -315,7 +315,7 @@ public class AnalyzerTest {
             context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
-    tableScanNode = rootNode.getChildren().get(0).getChildren().get(0);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals(
         Arrays.asList("time", "tag1", "tag2", "attr1", "s1", "s2"),
         tableScanNode.getOutputColumnNames());
@@ -330,10 +330,24 @@ public class AnalyzerTest {
                 context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
-    tableScanNode = rootNode.getChildren().get(0).getChildren().get(0);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals(
         Arrays.asList("time", "tag1", "attr2", "s1", "s2", "s3"),
         tableScanNode.getOutputColumnNames());
+
+    // 4. project with not all attributes, to test the rightness of PruneUnUsedColumns
+    sql = "SELECT tag2, attr2, s2 FROM table1";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalQueryPlan =
+        new LogicalPlanner(
+                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertEquals(
+        Arrays.asList("time", "tag2", "attr2", "s2"), tableScanNode.getOutputColumnNames());
+    assertEquals(2, tableScanNode.getIdAndAttributeIndexMap().size());
   }
 
   @Test
