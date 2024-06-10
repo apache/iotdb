@@ -98,8 +98,11 @@ public class IndexScan implements RelationalPlanOptimizer {
         context.predicate = node.getPushDownPredicate();
       }
 
-      List<Expression> conjExpressions = getConjunctionExpressions(context, node);
-      node.setPushDownPredicate(context.getPredicate());
+      List<Expression> metadataExpressions =
+          context.queryContext.tableModelPredicateExpressions == null
+                  || context.queryContext.tableModelPredicateExpressions.get(0).isEmpty()
+              ? Collections.emptyList()
+              : context.queryContext.tableModelPredicateExpressions.get(0);
       String dbName = context.getSessionInfo().getDatabaseName().get();
       List<String> attributeColumns =
           node.getOutputSymbols().stream()
@@ -112,7 +115,7 @@ public class IndexScan implements RelationalPlanOptimizer {
               .getMetadata()
               .indexScan(
                   new QualifiedObjectName(dbName, node.getQualifiedTableName()),
-                  conjExpressions,
+                  metadataExpressions,
                   attributeColumns);
       node.setDeviceEntries(deviceEntries);
 

@@ -90,8 +90,10 @@ public class MPPQueryContext {
 
   private final LocalExecutionPlanner LOCAL_EXECUTION_PLANNER = LocalExecutionPlanner.getInstance();
 
-  // 0 : metadataExpressions, 1 : expressionsPushDownToOperator, 2 : expressionsCannotPushDown
-  public List<List<Expression>> splitPredicateExpression;
+  // splits predicate expression in table model into three parts,
+  // index 0 represents metadataExpressions, index 1 represents expressionsCanPushDownToOperator,
+  // index 2 represents expressionsCannotPushDownToOperator
+  public List<List<Expression>> tableModelPredicateExpressions;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;

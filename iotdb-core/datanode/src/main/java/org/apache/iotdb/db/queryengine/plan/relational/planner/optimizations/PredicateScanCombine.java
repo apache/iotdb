@@ -22,6 +22,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateCombineIntoTableScanChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -40,8 +41,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/** Push down predicate to TableScanNode as possible. */
-public class PredicatePushDown implements RelationalPlanOptimizer {
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
+
+/**
+ * After the optimized rule {@link SimplifyExpressions} finished, predicate expression in FilterNode
+ * has been transformed to conjunctive normal forms(CNF).
+ *
+ * <p>In this class, we examine each expression in CNFs, determine how to use it, in metadata query,
+ * or pushed down into ScanOperators, or it can only be used in FilterNode above with TableScanNode.
+ */
+public class PredicateScanCombine implements RelationalPlanOptimizer {
 
   @Override
   public PlanNode optimize(
@@ -50,13 +59,13 @@ public class PredicatePushDown implements RelationalPlanOptimizer {
       Metadata metadata,
       IPartitionFetcher partitionFetcher,
       SessionInfo sessionInfo,
-      MPPQueryContext context) {
+      MPPQueryContext queryContext) {
 
     if (!analysis.hasValueFilter()) {
       return planNode;
     }
 
-    return planNode.accept(new Rewriter(), new RewriterContext());
+    return planNode.accept(new Rewriter(), new RewriterContext(queryContext));
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, RewriterContext> {
@@ -96,15 +105,12 @@ public class PredicatePushDown implements RelationalPlanOptimizer {
         }
 
         context.pushDownPredicate = node.getPredicate();
-        node.getChild().accept(this, context);
-
-        // remove FilterNode after push down
-        return node.getChild();
+        node.setChild(node.getChild().accept(this, context));
+        return node;
+      } else {
+        throw new IllegalStateException(
+            "Filter node has no predicate, node: " + node.getPlanNodeId());
       }
-
-      // when reach this case?
-      node.getChild().accept(this, context);
-      return node.getChild();
     }
 
     @Override
@@ -115,10 +121,11 @@ public class PredicatePushDown implements RelationalPlanOptimizer {
         return node;
       }
 
-      context.queryContext.splitPredicateExpression = splitConjunctionExpressions(context, node);
+      context.queryContext.tableModelPredicateExpressions =
+          splitConjunctionExpressions(context, node);
 
-      if (context.queryContext.splitPredicateExpression.get(1).size() > 0) {
-        List<Expression> expressions = context.queryContext.splitPredicateExpression.get(1);
+      if (!context.queryContext.tableModelPredicateExpressions.get(1).isEmpty()) {
+        List<Expression> expressions = context.queryContext.tableModelPredicateExpressions.get(1);
         node.setPushDownPredicate(
             expressions.size() == 1
                 ? expressions.get(0)
@@ -128,8 +135,8 @@ public class PredicatePushDown implements RelationalPlanOptimizer {
       }
 
       // exist expressions can not push down
-      if (context.queryContext.splitPredicateExpression.get(2).size() > 0) {
-        List<Expression> expressions = context.queryContext.splitPredicateExpression.get(2);
+      if (!context.queryContext.tableModelPredicateExpressions.get(2).isEmpty()) {
+        List<Expression> expressions = context.queryContext.tableModelPredicateExpressions.get(2);
         return new FilterNode(
             context.queryContext.getQueryId().genPlanNodeId(),
             node,
@@ -151,8 +158,14 @@ public class PredicatePushDown implements RelationalPlanOptimizer {
             .map(Symbol::getName)
             .collect(Collectors.toSet());
 
+    Set<String> measurementColumnNames =
+        node.getAssignments().entrySet().stream()
+            .filter(e -> MEASUREMENT.equals(e.getValue().getColumnCategory()))
+            .map(e -> e.getKey().getName())
+            .collect(Collectors.toSet());
+
     List<Expression> metadataExpressions = new ArrayList<>();
-    List<Expression> expressionsCanPushDownToOperator = new ArrayList<>();
+    List<Expression> expressionsCanPushDown = new ArrayList<>();
     List<Expression> expressionsCannotPushDown = new ArrayList<>();
 
     if (predicate instanceof LogicalExpression
@@ -161,24 +174,25 @@ public class PredicatePushDown implements RelationalPlanOptimizer {
       for (Expression expression : ((LogicalExpression) predicate).getTerms()) {
         if (PredicatePushIntoMetadataChecker.check(idOrAttributeColumnNames, expression)) {
           metadataExpressions.add(expression);
-        } else if (cannotPushDownToOperator(expression)) {
-          expressionsCannotPushDown.add(expression);
+        } else if (PredicateCombineIntoTableScanChecker.check(measurementColumnNames, expression)) {
+          expressionsCanPushDown.add(expression);
         } else {
-          expressionsCanPushDownToOperator.add(expression);
+          expressionsCannotPushDown.add(expression);
         }
       }
+
+      return Arrays.asList(metadataExpressions, expressionsCanPushDown, expressionsCannotPushDown);
     }
 
     if (PredicatePushIntoMetadataChecker.check(idOrAttributeColumnNames, predicate)) {
       metadataExpressions.add(predicate);
-    } else if (cannotPushDownToOperator(predicate)) {
-      expressionsCannotPushDown.add(predicate);
+    } else if (PredicateCombineIntoTableScanChecker.check(measurementColumnNames, predicate)) {
+      expressionsCanPushDown.add(predicate);
     } else {
-      expressionsCanPushDownToOperator.add(predicate);
+      expressionsCannotPushDown.add(predicate);
     }
 
-    return Arrays.asList(
-        metadataExpressions, expressionsCanPushDownToOperator, expressionsCannotPushDown);
+    return Arrays.asList(metadataExpressions, expressionsCanPushDown, expressionsCannotPushDown);
   }
 
   static boolean containsDiffFunction(Expression expression) {
@@ -199,8 +213,8 @@ public class PredicatePushDown implements RelationalPlanOptimizer {
   }
 
   /**
-   * When filter exists NotExpression or IsNullPredicate, this filter can not be pushed down into
-   * Operator
+   * 1. predicate expression equals NotExpression or IsNullPredicate. 2. predicate expression
+   * contains this filter can not be pushed down into Operator
    */
   static boolean cannotPushDownToOperator(Expression expression) {
     if (expression instanceof NotExpression || expression instanceof IsNullPredicate) {
@@ -209,7 +223,7 @@ public class PredicatePushDown implements RelationalPlanOptimizer {
 
     if (!expression.getChildren().isEmpty()) {
       for (Node node : expression.getChildren()) {
-        if (containsDiffFunction((Expression) node)) {
+        if (cannotPushDownToOperator((Expression) node)) {
           return true;
         }
       }
@@ -222,5 +236,9 @@ public class PredicatePushDown implements RelationalPlanOptimizer {
     Expression pushDownPredicate;
     MPPQueryContext queryContext;
     FilterNode filterNode;
+
+    public RewriterContext(MPPQueryContext queryContext) {
+      this.queryContext = queryContext;
+    }
   }
 }
