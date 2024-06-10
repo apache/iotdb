@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTablePlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
@@ -319,6 +320,23 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case CreateUserWithRawPassword:
           plan = new AuthorTreePlan(configPhysicalPlanType);
           break;
+        case RCreateRole:
+        case RCreateUser:
+        case RDropRole:
+        case RDropUser:
+        case RGrantUserDBPriv:
+        case RGrantUserTBPriv:
+        case RGrantRoleDBPriv:
+        case RGrantRoleTBPriv:
+        case RRevokeUserDBPriv:
+        case RRevokeUserTBPriv:
+        case RRevokeRoleDBPriv:
+        case RRevokeRoleTBPriv:
+        case RListRole:
+        case RListUser:
+          plan = new AuthorTablePlan(configPhysicalPlanType);
+          break;
+
         case ApplyConfigNode:
           plan = new ApplyConfigNodePlan();
           break;

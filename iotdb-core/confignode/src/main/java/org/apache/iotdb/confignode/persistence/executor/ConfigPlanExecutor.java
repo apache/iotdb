@@ -413,12 +413,27 @@ public class ConfigPlanExecutor {
       case RevokeRoleFromUserDep:
       case UpdateUserDep:
         return authorInfo.authorNonQuery((AuthorTreePlan) physicalPlan);
-      case GrantDatabasePrivilege:
-      case GrantTablePrivilege:
-      case RevokeDatabasePrivilege:
-      case ReovkeTablePrivilege:
+      case RCreateRole:
+      case RDropRole:
+      case RCreateUser:
+      case RDropUser:
+      case RGrantUserRole:
+      case RGrantRoleDBPriv:
+      case RGrantRoleTBPriv:
+      case RGrantUserDBPriv:
+      case RGrantUserTBPriv:
+      case RRevokeUserRole:
+      case RRevokeRoleDBPriv:
+      case RRevokeRoleTBPriv:
+      case RRevokeUserDBPriv:
+      case RRevokeUserTBPriv:
+      case RGrantRole:
+      case RGrantUser:
+      case RRevokeRole:
+      case RRevokeUser:
+      case RListRole:
+      case RListUser:
         return authorInfo.authorNonQuery((AuthorTablePlan) physicalPlan);
-
       case ApplyConfigNode:
         return nodeInfo.applyConfigNode((ApplyConfigNodePlan) physicalPlan);
       case RemoveConfigNode:

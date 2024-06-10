@@ -61,6 +61,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 
@@ -404,10 +405,17 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       if (authorStatement.isToUser()) {
         authorizerReq.setAuthorType(AuthorType.LIST_USER.ordinal());
         authorizerReq.setUserName(authorStatement.getUsername());
+        authorizerReq.setRoleName("");
       } else {
         authorizerReq.setAuthorType(AuthorType.LIST_ROLE.ordinal());
         authorizerReq.setRoleName(authorStatement.getUsername());
+        authorizerReq.setUserName("");
       }
+      authorizerReq.setPassword("");
+      authorizerReq.setPermissions(new HashSet<>());
+      authorizerReq.setGrantOpt(false);
+      authorizerReq.setNewPassword("");
+      authorizerReq.setNodeNameList(AuthUtils.serializePartialPathList(Collections.emptyList()));
 
       // Send request to some API server
       authorizerResp = configNodeClient.queryPermission(authorizerReq);
@@ -665,9 +673,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private TAuthorizerTableReq statementToAuthorizerTableReq(AuthTableStatement statement) {
     TAuthorizerTableReq req = new TAuthorizerTableReq();
     req.setAuthorType(statement.getStatementType().ordinal());
-    req.setName(statement.getUsername());
-    req.setIsuser(statement.isToUser());
-    req.setPassword("");
+    req.setUsername(statement.getUsername() == null ? "" : statement.getUsername());
+    req.setRolename(statement.getRolename() == null ? "" : statement.getRolename());
+    req.setPassword(statement.getPassword() == null ? "" : statement.getPassword());
     req.setDatabase(statement.getDatabase());
     if (statement.getTableName() != null) {
       req.setTable(statement.getTableName());

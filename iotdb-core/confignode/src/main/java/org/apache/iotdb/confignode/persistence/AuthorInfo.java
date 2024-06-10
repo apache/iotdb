@@ -209,7 +209,6 @@ public class AuthorInfo implements SnapshotProcessor {
     String userName = authorPlan.getUserName();
     String roleName = authorPlan.getRoleName();
     String password = authorPlan.getPassword();
-    String newPassword = authorPlan.getNewPassword();
     Set<Integer> permissions = authorPlan.getPermissions();
     boolean grantOpt = authorPlan.getGrantOpt();
     List<PartialPath> nodeNameList = authorPlan.getNodeNameList();
@@ -239,7 +238,7 @@ public class AuthorInfo implements SnapshotProcessor {
       switch (authorType) {
         case UpdateUserDep:
         case UpdateUser:
-          authorizer.updateUserPassword(userName, newPassword);
+          authorizer.updateUserPassword(userName, password);
           break;
         case CreateUserDep:
           AuthUtils.validatePasswordPre(password);
@@ -348,43 +347,77 @@ public class AuthorInfo implements SnapshotProcessor {
 
   public TSStatus authorNonQuery(AuthorTablePlan authorPlan) {
     ConfigPhysicalPlanType authorType = authorPlan.getAuthorType();
+    String userName = authorPlan.getUserName();
+    String roleName = authorPlan.getRoleName();
+    String database = authorPlan.getDatabaseName();
+    String tablename = authorPlan.getTableName();
+    boolean grantOpt = authorPlan.getGrantOpt();
+    int priv = authorPlan.getPermission();
+
     try {
       switch (authorType) {
-        case GrantDatabasePrivilege:
+        case RCreateUser:
+          authorizer.createUser(userName, authorPlan.getPassword());
+          break;
+        case RCreateRole:
+          authorizer.createRole(roleName);
+          break;
+        case RDropRole:
+          authorizer.deleteRole(roleName);
+          break;
+        case RDropUser:
+          authorizer.deleteUser(userName);
+          break;
+        case RGrantUserRole:
+          authorizer.grantRoleToUser(roleName, userName);
+          break;
+        case RRevokeUserRole:
+          authorizer.revokeRoleFromUser(roleName, userName);
+          break;
+        case RGrantRole:
+          authorizer.grantPrivilegeToRole(roleName, null, priv, grantOpt);
+          break;
+        case RGrantUser:
+          authorizer.grantPrivilegeToUser(userName, null, priv, grantOpt);
+          break;
+        case RRevokeRole:
+          authorizer.revokePrivilegeFromRole(roleName, null, priv);
+          break;
+        case RRevokeUser:
+          authorizer.revokePrivilegeFromUser(userName, null, priv);
+          break;
+        case RGrantUserDBPriv:
           authorizer.grantObjectPrivilegesToUserRole(
-              authorPlan.getName(),
-              authorPlan.getIsUser(),
-              authorPlan.getDatabaseName(),
-              null,
-              authorPlan.getPermission(),
-              authorPlan.getGrantOpt());
+              userName, true, database, null, priv, grantOpt);
           break;
-        case GrantTablePrivilege:
+        case RGrantUserTBPriv:
           authorizer.grantObjectPrivilegesToUserRole(
-              authorPlan.getName(),
-              authorPlan.getIsUser(),
-              authorPlan.getDatabaseName(),
-              authorPlan.getTableName(),
-              authorPlan.getPermission(),
-              authorPlan.getGrantOpt());
+              userName, true, database, null, priv, grantOpt);
           break;
-        case RevokeDatabasePrivilege:
-          authorizer.revokeObjectPrivilegesFromUserRole(
-              authorPlan.getName(),
-              authorPlan.getIsUser(),
-              authorPlan.getDatabaseName(),
-              null,
-              authorPlan.getPermission(),
-              authorPlan.getGrantOpt());
+        case RGrantRoleDBPriv:
+          authorizer.grantObjectPrivilegesToUserRole(
+              roleName, false, database, null, priv, grantOpt);
           break;
-        case ReovkeTablePrivilege:
+        case RGrantRoleTBPriv:
+          authorizer.grantObjectPrivilegesToUserRole(
+              roleName, false, database, tablename, priv, grantOpt);
+          break;
+
+        case RRevokeUserDBPriv:
           authorizer.revokeObjectPrivilegesFromUserRole(
-              authorPlan.getName(),
-              authorPlan.getIsUser(),
-              authorPlan.getDatabaseName(),
-              authorPlan.getTableName(),
-              authorPlan.getPermission(),
-              authorPlan.getGrantOpt());
+              userName, true, database, null, priv, grantOpt);
+          break;
+        case RRevokeUserTBPriv:
+          authorizer.revokeObjectPrivilegesFromUserRole(
+              userName, true, database, tablename, priv, grantOpt);
+          break;
+        case RRevokeRoleDBPriv:
+          authorizer.revokeObjectPrivilegesFromUserRole(
+              roleName, false, database, null, priv, grantOpt);
+          break;
+        case RRevokeRoleTBPriv:
+          authorizer.revokeObjectPrivilegesFromUserRole(
+              roleName, false, database, tablename, priv, grantOpt);
           break;
         default:
           throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "not support");

@@ -17,48 +17,31 @@ public class AuthorTablePlan extends AuthorPlan {
   private static final org.slf4j.Logger logger =
       org.slf4j.LoggerFactory.getLogger(AuthorTablePlan.class);
 
-  private ConfigPhysicalPlanType authorType;
-
-  private String name;
-  private boolean isUser;
   private int permission;
   private String databaseName;
   private String tableName;
-  private boolean grantOpt;
 
   public AuthorTablePlan(final ConfigPhysicalPlanType type) {
     super(type, false);
-    authorType = type;
   }
 
   public AuthorTablePlan(
       final ConfigPhysicalPlanType authorType,
-      final String name,
-      final boolean isUser,
+      final String userName,
+      final String roleName,
       final String databaseName,
       final String tableName,
       final boolean grantOpt,
-      final int permission) {
+      final int permission,
+      final String password) {
     this(authorType);
-    this.authorType = authorType;
-    this.name = name;
-    this.isUser = isUser;
+    super.setUserName(userName);
+    super.setRoleName(roleName);
+    super.setPassword(password);
+    super.setGrantOpt(grantOpt);
     this.databaseName = databaseName;
     this.tableName = tableName;
-    this.grantOpt = grantOpt;
     this.permission = permission;
-  }
-
-  public ConfigPhysicalPlanType getAuthorType() {
-    return authorType;
-  }
-
-  public void setAuthorType(ConfigPhysicalPlanType authorType) {
-    this.authorType = authorType;
-  }
-
-  public boolean getIsUser() {
-    return this.isUser;
   }
 
   public String getDatabaseName() {
@@ -67,20 +50,6 @@ public class AuthorTablePlan extends AuthorPlan {
 
   public String getTableName() {
     return tableName;
-  }
-
-  public String getName() {
-    return name;
-  }
-
-  @Override
-  public String getUserName() {
-    return isUser ? name : null;
-  }
-
-  @Override
-  public String getRoleName() {
-    return isUser ? null : name;
   }
 
   @Override
@@ -92,32 +61,16 @@ public class AuthorTablePlan extends AuthorPlan {
     return permission;
   }
 
-  @Override
-  public boolean getGrantOpt() {
-    return this.grantOpt;
-  }
-
-  public void setUser(boolean isUser) {
-    this.isUser = isUser;
-  }
-
-  public void setName(String name) {
-    this.name = name;
-  }
-
-  public void setGrantOpt(boolean grantOpt) {
-    this.grantOpt = grantOpt;
-  }
-
   public void setPermission(int permission) {
     this.permission = permission;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(authorType.getPlanType(), stream);
-    BasicStructureSerDeUtil.write(name, stream);
-    BasicStructureSerDeUtil.write(isUser ? (byte) 1 : (byte) 0, stream);
+    ReadWriteIOUtils.write(super.getAuthorType().ordinal(), stream);
+    BasicStructureSerDeUtil.write(super.getUserName(), stream);
+    BasicStructureSerDeUtil.write(super.getRoleName(), stream);
+    BasicStructureSerDeUtil.write(super.getPassword(), stream);
     if (this.databaseName == null) {
       BasicStructureSerDeUtil.write((byte) 0, stream);
     } else {
@@ -132,13 +85,13 @@ public class AuthorTablePlan extends AuthorPlan {
       BasicStructureSerDeUtil.write(tableName, stream);
     }
     BasicStructureSerDeUtil.write(this.permission, stream);
-    BasicStructureSerDeUtil.write(this.grantOpt ? (byte) 1 : (byte) 0, stream);
+    BasicStructureSerDeUtil.write(super.getGrantOpt() ? (byte) 1 : (byte) 0, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    this.name = BasicStructureSerDeUtil.readString(buffer);
-    this.isUser = buffer.get() == (byte) 1;
+    super.setUserName(BasicStructureSerDeUtil.readString(buffer));
+    super.setRoleName(BasicStructureSerDeUtil.readString(buffer));
     if (buffer.get() == (byte) 1) {
       this.databaseName = BasicStructureSerDeUtil.readString(buffer);
     }
@@ -146,7 +99,7 @@ public class AuthorTablePlan extends AuthorPlan {
       this.tableName = BasicStructureSerDeUtil.readString(buffer);
     }
     this.permission = BasicStructureSerDeUtil.readInt(buffer);
-    this.grantOpt = buffer.get() == (byte) 1;
+    super.setGrantOpt(buffer.get() == (byte) 1);
   }
 
   @Override
@@ -158,32 +111,29 @@ public class AuthorTablePlan extends AuthorPlan {
       return false;
     }
     AuthorTablePlan that = (AuthorTablePlan) o;
-    return Objects.equals(this.authorType, that.authorType)
-        && Objects.equals(this.isUser, that.isUser)
-        && Objects.equals(this.name, that.name)
+    return super.equals(o)
         && Objects.equals(this.databaseName, that.databaseName)
         && Objects.equals(this.tableName, that.tableName)
-        && Objects.equals(this.permission, that.permission)
-        && Objects.equals(this.grantOpt, that.grantOpt);
+        && Objects.equals(this.permission, that.permission);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(authorType, name, isUser, databaseName, tableName, permission, grantOpt);
+    return Objects.hash(super.hashCode(), databaseName, tableName, permission);
   }
 
   @Override
   public String toString() {
     return "[type:"
-        + authorType
+        + super.getAuthorType()
         + ", name:"
-        + name
-        + "isUser:"
-        + isUser
+        + super.getUserName()
+        + ", role:"
+        + super.getRoleName()
         + ", permissions"
         + PrivilegeType.values()[permission]
         + ", grant option:"
-        + grantOpt
+        + super.getGrantOpt()
         + ", DB:"
         + databaseName
         + ", TABLE:"

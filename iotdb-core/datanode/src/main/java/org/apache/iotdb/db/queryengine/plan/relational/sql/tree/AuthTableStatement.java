@@ -18,6 +18,8 @@ public class AuthTableStatement extends Statement implements IConfigStatement {
   private String username;
   private String rolename;
 
+  private String password;
+
   private PrivilegeType privilegeType;
 
   private boolean grantOption;
@@ -81,6 +83,14 @@ public class AuthTableStatement extends Statement implements IConfigStatement {
     return username;
   }
 
+  public String getRolename() {
+    return rolename;
+  }
+
+  public String getPassword() {
+    return this.password;
+  }
+
   public boolean hasGrantOption() {
     return grantOption;
   }
@@ -99,6 +109,10 @@ public class AuthTableStatement extends Statement implements IConfigStatement {
 
   public void setRoleName(String name) {
     this.username = name;
+  }
+
+  public void setPassword(String password) {
+    this.password = password;
   }
 
   @Override

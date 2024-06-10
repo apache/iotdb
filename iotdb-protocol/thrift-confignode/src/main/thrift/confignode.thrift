@@ -320,8 +320,8 @@ struct TAuthorizerReq {
 
 struct TAuthorizerTableReq {
    1: required i32 authorType
-   2: required string name
-   3: required bool isuser
+   2: required string username
+   3: required string rolename
    4: optional string password
    5: optional string database
    6: optional string table

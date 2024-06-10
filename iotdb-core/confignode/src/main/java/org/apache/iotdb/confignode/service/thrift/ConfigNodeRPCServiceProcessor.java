@@ -562,7 +562,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             req.getUserName(),
             req.getRoleName(),
             req.getPassword(),
-            req.getNewPassword(),
             req.getPermissions(),
             req.isGrantOpt(),
             AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));
@@ -576,13 +575,14 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return configManager.operatePermission(
         new AuthorTablePlan(
             ConfigPhysicalPlanType.values()[
-                req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
-            req.getName(),
-            req.isIsuser(),
+                req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()],
+            req.getUsername(),
+            req.getRolename(),
             req.getDatabase(),
             req.getTable(),
             req.isGrantopt(),
-            req.getPrivilege()));
+            req.getPrivilege(),
+            req.getPassword()));
   }
 
   @Override
@@ -599,7 +599,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                     req.getUserName(),
                     req.getRoleName(),
                     req.getPassword(),
-                    req.getNewPassword(),
                     req.getPermissions(),
                     req.isGrantOpt(),
                     AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));

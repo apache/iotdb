@@ -201,7 +201,6 @@ public class PipeConfigPhysicalPlanPatternParseVisitor
                 pathRelatedAuthorPlan.getUserName(),
                 pathRelatedAuthorPlan.getRoleName(),
                 pathRelatedAuthorPlan.getPassword(),
-                pathRelatedAuthorPlan.getNewPassword(),
                 pathRelatedAuthorPlan.getPermissions(),
                 pathRelatedAuthorPlan.getGrantOpt(),
                 intersectedPaths))

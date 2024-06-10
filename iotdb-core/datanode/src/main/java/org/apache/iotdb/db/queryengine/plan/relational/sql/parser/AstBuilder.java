@@ -39,6 +39,14 @@ import java.util.function.Function;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.GRANT_ROLE_DB;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.GRANT_ROLE_TB;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.GRANT_USER_DB;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.GRANT_USER_TB;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.REVOKE_ROLE_DB;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.REVOKE_ROLE_TB;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.REVOKE_USER_DB;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.REVOKE_USER_TB;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.GroupingSets.Type.ROLLUP;
@@ -484,25 +492,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         toTable = true;
       }
       objectName = ctx.grant_privilege_object().object_name().getText();
-      if (toUser) {
-        return new AuthTableStatement(
-            AuthDDLType.GRANT_USER,
-            toTable ? null : objectName,
-            toTable ? objectName : null,
-            priv,
-            username,
-            null,
-            grantOption);
-      } else {
-        return new AuthTableStatement(
-            AuthDDLType.GRANT_ROLE,
-            toTable ? null : objectName,
-            toTable ? objectName : null,
-            priv,
-            null,
-            username,
-            grantOption);
-      }
+
+      return new AuthTableStatement(
+          toUser
+              ? (toTable ? GRANT_USER_TB : GRANT_USER_DB)
+              : (toTable ? GRANT_ROLE_TB : GRANT_ROLE_DB),
+          toTable ? null : objectName,
+          toTable ? objectName : null,
+          priv,
+          toUser ? username : null,
+          toUser ? null : username,
+          grantOption);
+
     } else {
       String privilegeText = ctx.grant_privilege_object().object_privilege().getText();
       PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
@@ -539,25 +540,17 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         toTable = true;
       }
       objectName = ctx.revoke_privilege_object().object_name().getText();
-      if (toUser) {
-        return new AuthTableStatement(
-            AuthDDLType.REVOKE_USER,
-            toTable ? null : objectName,
-            toTable ? objectName : null,
-            priv,
-            username,
-            null,
-            grantOption);
-      } else {
-        return new AuthTableStatement(
-            AuthDDLType.REVOKE_ROLE,
-            toTable ? null : objectName,
-            toTable ? objectName : null,
-            priv,
-            null,
-            username,
-            grantOption);
-      }
+
+      return new AuthTableStatement(
+          toUser
+              ? (toTable ? REVOKE_USER_TB : REVOKE_USER_DB)
+              : (toTable ? REVOKE_ROLE_TB : REVOKE_ROLE_DB),
+          toTable ? null : objectName,
+          toTable ? objectName : null,
+          priv,
+          toUser ? username : null,
+          toUser ? null : username,
+          grantOption);
     }
   }
 
