@@ -21,6 +21,9 @@ package org.apache.iotdb.commons.schema.filter;
 
 import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceAttributeFilter;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceIdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
@@ -73,6 +76,12 @@ public abstract class SchemaFilter {
         return new AndFilter(byteBuffer);
       case TEMPLATE_FILTER:
         return new TemplateFilter(byteBuffer);
+      case OR:
+        return new OrFilter(byteBuffer);
+      case DEVICE_ID:
+        return new DeviceIdFilter(byteBuffer);
+      case DEVICE_ATTRIBUTE:
+        return new DeviceAttributeFilter(byteBuffer);
       default:
         throw new IllegalArgumentException("Unsupported schema filter type: " + type);
     }

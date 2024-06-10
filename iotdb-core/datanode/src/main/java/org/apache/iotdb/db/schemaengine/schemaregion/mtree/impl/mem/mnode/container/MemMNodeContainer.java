@@ -28,11 +28,10 @@ import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static java.util.Collections.emptySet;
 
-public class MemMNodeContainer extends ConcurrentHashMap<String, IMemMNode>
+public class MemMNodeContainer extends KeyNullableConcurrentHashMap<String, IMemMNode>
     implements IMNodeContainer<IMemMNode> {
 
   private static final IMNodeContainer<IMemMNode> EMPTY_CONTAINER =

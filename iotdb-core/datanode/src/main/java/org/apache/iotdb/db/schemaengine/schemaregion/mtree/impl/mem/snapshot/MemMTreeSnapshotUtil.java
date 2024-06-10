@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MemMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -59,6 +60,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.LOGICAL_VIEW_MNODE_
 import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
 
 public class MemMTreeSnapshotUtil {
@@ -250,6 +252,11 @@ public class MemMTreeSnapshotUtil {
         node = deserializer.deserializeLogicalViewMNode(inputStream);
         measurementProcess.accept(node.getAsMeasurementMNode());
         break;
+      case TABLE_MNODE_TYPE:
+        childrenNum = ReadWriteIOUtils.readInt(inputStream);
+        node = deserializer.deserializeTableDeviceMNode(inputStream);
+        deviceProcess.accept(node.getAsDeviceMNode());
+        break;
       default:
         throw new IOException("Unrecognized MNode type " + type);
     }
@@ -280,12 +287,20 @@ public class MemMTreeSnapshotUtil {
     public Boolean visitBasicMNode(IMNode<?> node, OutputStream outputStream) {
       try {
         if (node.isDevice()) {
-          ReadWriteIOUtils.write(ENTITY_MNODE_TYPE, outputStream);
-          serializeBasicMNode(node, outputStream);
-          IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
-          ReadWriteIOUtils.write(deviceMNode.getSchemaTemplateIdWithState(), outputStream);
-          ReadWriteIOUtils.write(deviceMNode.isUseTemplate(), outputStream);
-          ReadWriteIOUtils.write(deviceMNode.isAlignedNullable(), outputStream);
+          if (node.getAsDeviceMNode().getDeviceInfo() instanceof TableDeviceInfo) {
+            ReadWriteIOUtils.write(TABLE_MNODE_TYPE, outputStream);
+            TableDeviceInfo<IMemMNode> tableDeviceInfo =
+                (TableDeviceInfo<IMemMNode>) (node.getAsDeviceMNode().getDeviceInfo());
+            serializeBasicMNode(node, outputStream);
+            ReadWriteIOUtils.write(tableDeviceInfo.getAttributePointer(), outputStream);
+          } else {
+            ReadWriteIOUtils.write(ENTITY_MNODE_TYPE, outputStream);
+            serializeBasicMNode(node, outputStream);
+            IDeviceMNode<?> deviceMNode = node.getAsDeviceMNode();
+            ReadWriteIOUtils.write(deviceMNode.getSchemaTemplateIdWithState(), outputStream);
+            ReadWriteIOUtils.write(deviceMNode.isUseTemplate(), outputStream);
+            ReadWriteIOUtils.write(deviceMNode.isAlignedNullable(), outputStream);
+          }
         } else {
           ReadWriteIOUtils.write(INTERNAL_MNODE_TYPE, outputStream);
           serializeBasicMNode(node, outputStream);
@@ -391,6 +406,15 @@ public class MemMTreeSnapshotUtil {
       node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
       node.setAligned(ReadWriteIOUtils.readBoolObject(inputStream));
+      return node.getAsMNode();
+    }
+
+    public IMemMNode deserializeTableDeviceMNode(InputStream inputStream) throws IOException {
+      String name = ReadWriteIOUtils.readString(inputStream);
+      IDeviceMNode<IMemMNode> node = nodeFactory.createDeviceMNode(null, name);
+      TableDeviceInfo<IMemMNode> tableDeviceInfo = new TableDeviceInfo<>();
+      tableDeviceInfo.setAttributePointer(ReadWriteIOUtils.readInt(inputStream));
+      node.getAsInternalMNode().setDeviceInfo(tableDeviceInfo);
       return node.getAsMNode();
     }
 
