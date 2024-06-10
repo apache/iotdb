@@ -29,7 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.IndexScan;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PredicatePushDown;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PredicateScanCombine;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PruneUnUsedColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RelationalPlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RemoveRedundantIdentityProjections;
@@ -52,7 +52,6 @@ import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
-import static org.apache.tsfile.read.common.type.IntType.INT32;
 
 public class LogicalPlanner {
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanner.class);
@@ -80,7 +79,7 @@ public class LogicalPlanner {
         Arrays.asList(
             new SimplifyExpressions(),
             new PruneUnUsedColumns(),
-            new PredicatePushDown(),
+            new PredicateScanCombine(),
             new RemoveRedundantIdentityProjections(),
             new IndexScan());
   }
