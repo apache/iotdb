@@ -24,8 +24,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl.ShowTableDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -49,6 +51,7 @@ import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 
 public class SchemaRegionTestUtil {
 
@@ -376,5 +379,69 @@ public class SchemaRegionTestUtil {
     long num = schemaRegion.constructSchemaBlackList(patternTree);
     schemaRegion.deleteTimeseriesInBlackList(patternTree);
     return num;
+  }
+
+  public static void createTableDevice(
+      ISchemaRegion schemaRegion, String table, String[] deviceIds, Map<String, String> attributes)
+      throws MetadataException {
+    String[] fullId = new String[deviceIds.length + 3];
+    fullId[0] = ROOT;
+    fullId[1] = schemaRegion.getDatabaseFullPath().substring(ROOT.length() + 1);
+    fullId[2] = table;
+    System.arraycopy(deviceIds, 0, fullId, 3, deviceIds.length);
+    schemaRegion.createTableDevice(
+        Collections.singletonList(new PartialPath(fullId)),
+        new ArrayList<>(attributes.keySet()),
+        Collections.singletonList(new ArrayList<>(attributes.values())));
+  }
+
+  public static List<IDeviceSchemaInfo> getTableDevice(
+      ISchemaRegion schemaRegion, String table, List<String[]> deviceIdList)
+      throws MetadataException {
+    List<PartialPath> pathList = new ArrayList<>();
+    for (String[] deviceId : deviceIdList) {
+      String[] fullId = new String[deviceId.length + 3];
+      fullId[0] = ROOT;
+      fullId[1] = schemaRegion.getDatabaseFullPath().substring(ROOT.length() + 1);
+      fullId[2] = table;
+      System.arraycopy(deviceId, 0, fullId, 3, deviceId.length);
+      pathList.add(new PartialPath(fullId));
+    }
+    List<IDeviceSchemaInfo> result = new ArrayList<>();
+    try (ISchemaReader<IDeviceSchemaInfo> reader = schemaRegion.getTableDeviceReader(pathList)) {
+      while (reader.hasNext()) {
+        result.add(reader.next());
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    return result;
+  }
+
+  public static List<IDeviceSchemaInfo> getTableDevice(
+      ISchemaRegion schemaRegion,
+      String table,
+      int idColumnNum,
+      List<SchemaFilter> idDeterminedFilterList,
+      SchemaFilter idFuzzyFilter)
+      throws MetadataException {
+    List<PartialPath> patternList =
+        DeviceFilterUtil.convertToDevicePattern(
+            schemaRegion.getDatabaseFullPath().substring(ROOT.length() + 1),
+            table,
+            idColumnNum,
+            Collections.singletonList(idDeterminedFilterList));
+    List<IDeviceSchemaInfo> result = new ArrayList<>();
+    for (PartialPath pattern : patternList) {
+      try (ISchemaReader<IDeviceSchemaInfo> reader =
+          schemaRegion.getTableDeviceReader(new ShowTableDevicesPlan(pattern, idFuzzyFilter))) {
+        while (reader.hasNext()) {
+          result.add(reader.next());
+        }
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
+    return result;
   }
 }

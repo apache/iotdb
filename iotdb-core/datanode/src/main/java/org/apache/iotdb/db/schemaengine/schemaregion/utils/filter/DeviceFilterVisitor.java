@@ -70,7 +70,7 @@ public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> 
     if (nodes.length < filter.getIndex() + 3) {
       return false;
     } else {
-      return nodes[filter.getIndex() + 3].equals(filter.getValue());
+      return Objects.equals(nodes[filter.getIndex() + 3], filter.getValue());
     }
   }
 

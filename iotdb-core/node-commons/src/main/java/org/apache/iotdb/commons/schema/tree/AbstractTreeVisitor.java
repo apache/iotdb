@@ -121,7 +121,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
     boolean usingDFA = false;
     // Use DFA if there are ** and no regex node in pathPattern
     for (String pathNode : pathPattern.getNodes()) {
-      if (IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(pathNode)) {
+      if (pathNode == null) {
+        continue;
+      } else if (IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(pathNode)) {
         // ** node
         usingDFA = true;
       } else if (pathNode.length() > 1 && PathPatternUtil.hasWildcard(pathNode)) {

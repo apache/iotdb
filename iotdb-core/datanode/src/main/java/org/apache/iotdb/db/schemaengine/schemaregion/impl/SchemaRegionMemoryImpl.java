@@ -1341,7 +1341,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(List<PartialPath> devicePathList)
+  public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(List<PartialPath> devicePathList)
       throws MetadataException {
     return mtree.getTableDeviceReader(
         devicePathList, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
