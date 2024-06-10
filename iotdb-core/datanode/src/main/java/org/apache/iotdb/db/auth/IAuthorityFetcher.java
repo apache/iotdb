@@ -39,6 +39,10 @@ public interface IAuthorityFetcher {
 
   List<Integer> checkUserPathPrivileges(String username, List<PartialPath> allPath, int permission);
 
+  boolean checkUserDBPrivilege(String username, String database, int permission);
+
+  boolean checkUserTablePrivilege(String username, String database, String table, int permission);
+
   TSStatus checkUserSysPrivileges(String username, int permisssion);
 
   boolean checkUserPrivilegeGrantOpt(String username, List<PartialPath> paths, int permission);

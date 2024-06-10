@@ -168,6 +168,31 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
+  public TPermissionInfoResp checkUserObjectPrivileges(
+          String username, String database, String tableName, int permission) {
+    boolean status = true;
+    TPermissionInfoResp result = new TPermissionInfoResp();
+    try {
+      status = authorizer.checkUserPrivileges(username, database, tableName, permission);
+    } catch (AuthException e) {
+      status = false;
+    }
+    if (status) {
+      try {
+        // Bring this user's permission information back to the datanode for caching
+        result = getUserPermissionInfo(username);
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      } catch (AuthException e) {
+        result.setStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
+      }
+    } else {
+      result = AuthUtils.generateEmptyPermissionInfoResp();
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
+    }
+    return result;
+  }
+
+
   private boolean checkOnePath(String username, PartialPath path, int permission)
       throws AuthException {
     try {

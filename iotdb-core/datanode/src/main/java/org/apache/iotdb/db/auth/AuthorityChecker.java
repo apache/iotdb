@@ -181,6 +181,10 @@ public class AuthorityChecker {
         .isEmpty();
   }
 
+  public static boolean checkDBPermision(String userName, String database, int permission) {
+    return false;
+  }
+
   public static List<Integer> checkFullPathListPermission(
       String userName, List<PartialPath> fullPaths, int permission) {
     return authorityFetcher.checkUserPathPrivileges(userName, fullPaths, permission);
@@ -331,6 +335,17 @@ public class AuthorityChecker {
       builder.getColumnBuilder(3).writeBoolean(grantOpt.contains(i));
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.declarePosition();
+    }
+  }
+
+  public static TSStatus checkAuthority(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement s,
+      IClientSession clientSession) {
+    long startTime = System.nanoTime();
+    try {
+      return s.checkPermissionBeforeProcess(clientSession.getUsername());
+    } finally {
+      PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
   }
 }

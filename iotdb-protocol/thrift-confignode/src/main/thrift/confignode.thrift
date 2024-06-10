@@ -401,6 +401,14 @@ struct TCheckUserPrivilegesReq {
   4: optional bool grantOpt
 }
 
+struct TCheckUserObjectPrivilegesReq {
+   1:required string username
+   2: required string database
+   3: optional string tablename
+   4: required i32 permission
+   5: optional bool grantOpt
+}
+
 // ConfigNode
 
 /* These parameters should be consist within the cluster */
@@ -1174,6 +1182,8 @@ service IConfigNodeRPCService {
    *         NO_PERMISSION_ERROR if the user does not have this permission
    */
   TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
+
+  TPermissionInfoResp checkUserObjectPrivilege(TCheckUserObjectPrivilegesReq req)
 
   TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
 

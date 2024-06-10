@@ -1142,6 +1142,18 @@ public class ConfigManager implements IManager {
     }
   }
 
+  @Override
+  public TPermissionInfoResp checkUserObjectPrivileges(String username, String database, String tableName, int permission) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return permissionManager.checkUserObjectPrivileges(username, database, tableName, permission);
+    } else {
+      TPermissionInfoResp resp = AuthUtils.generateEmptyPermissionInfoResp();
+      resp.setStatus(status);
+      return resp;
+    }
+  }
+
   public TAuthizedPatternTreeResp fetchAuthizedPatternTree(String username, int permission) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

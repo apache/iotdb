@@ -122,6 +122,36 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
+  public boolean checkUserDBPrivilege(String username, String database, int permission) {
+    checkCacheAvailable();
+    User user = iAuthorCache.getUserCache(username);
+    if (user != null) {
+      if (user.isOpenIdUser()) {
+        return true;
+      }
+      if (!user.checkObjectPrivilege(database, null, PrivilegeType.values()[permission])) {
+        for (String roleName : user.getRoleList()) {
+          Role cachedRole = iAuthorCache.getRoleCache(roleName);
+          if (cachedRole == null) {
+
+          }
+        }
+      }
+    } else {
+
+    }
+    return false;
+  }
+
+  @Override
+  public boolean checkUserTablePrivilege(
+      String username, String database, String table, int permission) {
+
+  }
+
+
+
+  @Override
   public boolean checkUserPrivilegeGrantOpt(
       String username, List<PartialPath> paths, int permission) {
     checkCacheAvailable();
@@ -562,6 +592,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       }
     }
     return permissionInfoResp.getFailPos();
+  }
+
+  private boolean checkObjectPrivilegeFromConfignode(
+      String username, String database, String tableName, int permission) {
+    return false;
   }
 
   private boolean checkRoleFromConfigNode(String username, String rolename) {

@@ -19,12 +19,21 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.tree;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+
 import javax.annotation.Nullable;
 
 public abstract class Statement extends Node {
 
   protected Statement(@Nullable NodeLocation location) {
     super(location);
+  }
+
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.SUPER_USER.equals(userName),
+        "Only the admin user can perform this operation");
   }
 
   @Override

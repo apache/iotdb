@@ -75,6 +75,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerTableReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserObjectPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
@@ -620,6 +621,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     List<PartialPath> partialPaths =
         AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
     return configManager.checkUserPrivileges(req.getUsername(), partialPaths, req.getPermission());
+  }
+
+  @Override
+  public TPermissionInfoResp checkUserObjectPrivileges(TCheckUserObjectPrivilegesReq req) {
+    return configManager.checkUserObjectPrivileges(req.getUsername(), req.getDatabase(), req.isSetTablename() ? req.getTablename() : null, req.getPermission());
   }
 
   @Override

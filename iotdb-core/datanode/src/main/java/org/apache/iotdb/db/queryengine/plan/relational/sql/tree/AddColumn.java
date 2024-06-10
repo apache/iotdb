@@ -54,6 +54,17 @@ public class AddColumn extends Statement {
     return column;
   }
 
+  //  @Override
+  //  public TSStatus checkPermissionBeforeProcess(String userName) {
+  //    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+  //      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  //    }
+  //    return AuthorityChecker.getTSStatus(
+  //            AuthorityChecker.check),
+  //            checkedPaths,
+  //            PrivilegeType.WRITE_SCHEMA);
+  //  }
+
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitAddColumn(this, context);

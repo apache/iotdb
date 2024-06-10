@@ -114,7 +114,7 @@ public class User extends Role {
         && Objects.equals(password, user.password)
         && Objects.equals(super.getPathPrivilegeList(), user.getPathPrivilegeList())
         && Objects.equals(super.getSysPrivilege(), user.getSysPrivilege())
-            &&Objects.equals(super.getObjectPrivileges(), user.getObjectPrivileges())
+        && Objects.equals(super.getObjectPrivileges(), user.getObjectPrivileges())
         && Objects.equals(roleList, user.roleList);
   }
 
