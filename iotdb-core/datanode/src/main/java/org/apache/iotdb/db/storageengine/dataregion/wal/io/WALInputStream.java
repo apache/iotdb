@@ -214,14 +214,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       }
       dataBuffer.clear();
 
-      if (Objects.isNull(compressedBuffer)
-          || compressedBuffer.capacity() < dataBufferSize
-          || compressedBuffer.capacity() > dataBufferSize * 2) {
-        compressedBuffer = ByteBuffer.allocateDirect(dataBufferSize);
-      } else {
-        compressedBuffer.clear();
-      }
-
+      compressedBuffer = ByteBuffer.allocateDirect(dataBufferSize);
       if (channel.read(compressedBuffer) != dataBufferSize) {
         throw new IOException("Unexpected end of file");
       }
@@ -231,12 +224,9 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       unCompressor.uncompress(compressedBuffer, dataBuffer);
     } else {
       // The case of UNCOMPRESSION
-      if (Objects.isNull(dataBuffer)
-          || dataBuffer.capacity() < dataBufferSize
-          || dataBuffer.capacity() > dataBufferSize * 2) {
-        dataBuffer = ByteBuffer.allocateDirect(dataBufferSize);
-      }
-      dataBuffer.clear();
+      // TODO: reuse the buffer, and make the buffer read the correct bytes
+      dataBuffer = ByteBuffer.allocateDirect(dataBufferSize);
+
       if (channel.read(dataBuffer) != dataBufferSize) {
         throw new IOException("Unexpected end of file");
       }
