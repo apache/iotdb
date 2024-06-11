@@ -56,6 +56,6 @@ public class MemUsageUtil {
    */
   private static long estimateStringSize(String string) {
     // each char takes 2B in Java
-    return string == null ? 0 : 32 + 2 * string.length();
+    return string == null ? 0 : 32 + 2L * string.length();
   }
 }
