@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQue
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
 import org.apache.iotdb.db.subscription.event.SubscriptionTsFileEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -65,7 +66,22 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   }
 
   @Override
-  public SubscriptionTsFileEvent pollInternal(final String consumerId) {
+  public void cleanup() {
+    super.cleanup();
+
+    // clean up events in consumerIdToCurrentEventMap
+    consumerIdToCurrentEventMap
+        .values()
+        .forEach(
+            (event) -> {
+              event.clearReferenceCount();
+              SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, true);
+            });
+    consumerIdToCurrentEventMap.clear();
+  }
+
+  @Override
+  public SubscriptionTsFileEvent poll(final String consumerId) {
     if (hasUnPollableOnTheFlySubscriptionTsFileEvent(consumerId)) {
       return null;
     }

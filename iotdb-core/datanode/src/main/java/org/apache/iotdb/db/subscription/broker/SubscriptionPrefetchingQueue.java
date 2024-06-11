@@ -52,6 +52,7 @@ public abstract class SubscriptionPrefetchingQueue {
   private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
 
   private volatile boolean isCompleted = false;
+  private volatile boolean isClosed = false;
 
   public SubscriptionPrefetchingQueue(
       final String brokerId,
@@ -64,23 +65,20 @@ public abstract class SubscriptionPrefetchingQueue {
     this.uncommittedEvents = new ConcurrentHashMap<>();
   }
 
-  public SubscriptionEvent poll(final String consumerId) {
-    if (isCompleted()) {
-      return generateSubscriptionPollTerminationResponse();
-    }
-
-    return pollInternal(consumerId);
-  }
-
-  public abstract SubscriptionEvent pollInternal(final String consumerId);
+  public abstract SubscriptionEvent poll(final String consumerId);
 
   public abstract void executePrefetch();
 
-  /** clean up uncommitted events */
   public void cleanup() {
+    // clean up uncommitted events
     for (final SubscriptionEvent event : uncommittedEvents.values()) {
+      event.clearReferenceCount();
       SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, true);
     }
+    uncommittedEvents.clear();
+
+    // no need to clean up events in inputPendingQueue, see
+    // org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask.close
   }
 
   /////////////////////////////// commit ///////////////////////////////
@@ -168,6 +166,14 @@ public abstract class SubscriptionPrefetchingQueue {
 
   /////////////////////////////// termination ///////////////////////////////
 
+  public boolean isClosed() {
+    return isClosed;
+  }
+
+  public void markClosed() {
+    isClosed = true;
+  }
+
   public boolean isCompleted() {
     return isCompleted;
   }
@@ -176,7 +182,7 @@ public abstract class SubscriptionPrefetchingQueue {
     isCompleted = true;
   }
 
-  private SubscriptionTsFileEvent generateSubscriptionPollTerminationResponse() {
+  public SubscriptionTsFileEvent generateSubscriptionPollTerminationResponse() {
     return new SubscriptionTsFileEvent(
         Collections.emptyList(),
         new SubscriptionPollResponse(
