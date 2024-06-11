@@ -55,7 +55,7 @@ jobs:
           -DskipUTs \
           -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 \
           -pl integration-test \
-          -am -PClusterIT
+          -am -PClusterIT2
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
