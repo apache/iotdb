@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
-import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 
 import java.util.List;
 
@@ -29,5 +29,5 @@ public abstract class WritePlanNode extends PlanNode implements IPartitionRelate
     super(id);
   }
 
-  public abstract List<WritePlanNode> splitByPartition(Analysis analysis);
+  public abstract List<WritePlanNode> splitByPartition(IAnalysis analysis);
 }

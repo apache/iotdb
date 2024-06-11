@@ -31,12 +31,12 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeReportableSubtask.class);
 
-  protected PipeReportableSubtask(String taskID, long creationTime) {
+  protected PipeReportableSubtask(final String taskID, final long creationTime) {
     super(taskID, creationTime);
   }
 
   @Override
-  public synchronized void onFailure(Throwable throwable) {
+  public synchronized void onFailure(final Throwable throwable) {
     if (isClosed.get()) {
       LOGGER.info("onFailure in pipe subtask, ignored because pipe is dropped.", throwable);
       clearReferenceCountAndReleaseLastEvent();
@@ -55,7 +55,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     // is dropped or the process is running normally.
   }
 
-  private void onEnrichedEventFailure(Throwable throwable) {
+  private void onEnrichedEventFailure(final Throwable throwable) {
     final int maxRetryTimes =
         throwable instanceof PipeRuntimeConnectorRetryTimesConfigurableException
             ? ((PipeRuntimeConnectorRetryTimesConfigurableException) throwable).getRetryTimes()
@@ -75,15 +75,17 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     retryCount.incrementAndGet();
     if (retryCount.get() <= MAX_RETRY_TIMES) {
       LOGGER.warn(
-          "Retry executing subtask {} (creation time: {}, simple class: {}), retry count [{}/{}]",
+          "Retry executing subtask {} (creation time: {}, simple class: {}), retry count [{}/{}], last exception: {}",
           taskID,
           creationTime,
           this.getClass().getSimpleName(),
           retryCount.get(),
-          maxRetryTimes);
+          maxRetryTimes,
+          throwable.getMessage(),
+          throwable);
       try {
         Thread.sleep(Math.min(1000L * retryCount.get(), 10000));
-      } catch (InterruptedException e) {
+      } catch (final InterruptedException e) {
         LOGGER.warn(
             "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
             taskID,
@@ -123,11 +125,11 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     }
   }
 
-  protected abstract String getRootCause(Throwable throwable);
+  protected abstract String getRootCause(final Throwable throwable);
 
-  protected abstract void report(EnrichedEvent event, PipeRuntimeException exception);
+  protected abstract void report(final EnrichedEvent event, final PipeRuntimeException exception);
 
-  private void onNonEnrichedEventFailure(Throwable throwable) {
+  private void onNonEnrichedEventFailure(final Throwable throwable) {
     if (retryCount.get() == 0) {
       LOGGER.warn(
           "Failed to execute subtask {} (creation time: {}, simple class: {}), "
@@ -141,14 +143,16 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
 
     retryCount.incrementAndGet();
     LOGGER.warn(
-        "Retry executing subtask {} (creation time: {}, simple class: {}), retry count {}",
+        "Retry executing subtask {} (creation time: {}, simple class: {}), retry count {}, last exception: {}",
         taskID,
         creationTime,
         this.getClass().getSimpleName(),
-        retryCount.get());
+        retryCount.get(),
+        throwable.getMessage(),
+        throwable);
     try {
       Thread.sleep(Math.min(1000L * retryCount.get(), 10000));
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       LOGGER.warn(
           "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
           taskID,
