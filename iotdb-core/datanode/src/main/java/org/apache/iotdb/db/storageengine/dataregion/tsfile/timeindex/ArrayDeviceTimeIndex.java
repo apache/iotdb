@@ -442,4 +442,20 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   public byte getTimeIndexType() {
     return ARRAY_DEVICE_TIME_INDEX_TYPE;
   }
+
+  @Override
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append(" DeviceIndexMapSize = ").append(deviceToIndex.size());
+    builder.append(" startTimeLength = ").append(startTimes.length);
+    builder.append(" endTimeLength = ").append(endTimes.length);
+    builder.append(" DeviceIndexMap = [");
+    deviceToIndex.forEach(
+        (key, value) ->
+            builder.append(" device = ").append(key).append(", index = ").append(value));
+    builder.append("]");
+    builder.append(" StartTimes = ").append(Arrays.toString(startTimes));
+    builder.append(" EndTimes = ").append(Arrays.toString(endTimes));
+    return builder.toString();
+  }
 }

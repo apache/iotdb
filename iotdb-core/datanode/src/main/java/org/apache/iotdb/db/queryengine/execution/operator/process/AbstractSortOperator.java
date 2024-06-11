@@ -17,14 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.operator.process.relational;
+package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.SortOperator;
 import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
@@ -40,7 +38,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
-import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,17 +47,13 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.utils.sort.SortBufferManager.SORT_BUFFER_SIZE;
+public abstract class AbstractSortOperator implements ProcessOperator {
 
-public class StreamSortOperator implements ProcessOperator {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractSortOperator.class);
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(StreamSortOperator.class);
-
-  private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(SortOperator.class);
-  private final OperatorContext operatorContext;
-  private final Operator inputOperator;
-  private final TsBlockBuilder tsBlockBuilder;
+  protected final OperatorContext operatorContext;
+  protected final Operator inputOperator;
+  protected final TsBlockBuilder tsBlockBuilder;
 
   // Use to output the result in memory.
   // Because the memory may be larger than tsBlockBuilder's max size
@@ -71,22 +64,22 @@ public class StreamSortOperator implements ProcessOperator {
   private final Comparator<SortKey> comparator;
   private long cachedBytes;
   private final DiskSpiller diskSpiller;
-  private final SortBufferManager sortBufferManager;
+  private SortBufferManager sortBufferManager;
 
   // For mergeSort
 
   private MergeSortHeap mergeSortHeap;
   private List<SortReader> sortReaders;
-  private boolean[] noMoreData;
+  protected boolean[] noMoreData;
 
   private final int maxReturnSize =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
-  private long prepareUntilReadyCost = 0;
-  private long dataSize = 0;
+  protected long prepareUntilReadyCost = 0;
+  protected long dataSize = 0;
   private long sortCost = 0;
 
-  public StreamSortOperator(
+  AbstractSortOperator(
       OperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> dataTypes,
@@ -100,7 +93,30 @@ public class StreamSortOperator implements ProcessOperator {
     this.cachedBytes = 0;
     this.diskSpiller =
         new DiskSpiller(folderPath, folderPath + operatorContext.getOperatorId(), dataTypes);
-    this.sortBufferManager = new SortBufferManager();
+    this.sortBufferManager =
+        new SortBufferManager(
+            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+            IoTDBDescriptor.getInstance().getConfig().getSortBufferSize());
+  }
+
+  protected void buildResult() throws IoTDBException {
+    if (diskSpiller.hasSpilledData()) {
+      try {
+        prepareSortReaders();
+        mergeSort();
+      } catch (Exception e) {
+        clear();
+        throw e;
+      }
+    } else {
+      if (curRow == -1) {
+        long startTime = System.nanoTime();
+        cachedData.sort(comparator);
+        sortCost += System.nanoTime() - startTime;
+        curRow = 0;
+      }
+      buildTsBlockInMemory();
+    }
   }
 
   @Override
@@ -111,45 +127,6 @@ public class StreamSortOperator implements ProcessOperator {
   @Override
   public ListenableFuture<?> isBlocked() {
     return inputOperator.isBlocked();
-  }
-
-  @Override
-  public TsBlock next() throws Exception {
-    if (!inputOperator.hasNextWithTimer()) {
-      if (diskSpiller.hasSpilledData()) {
-        try {
-          prepareSortReaders();
-          return mergeSort();
-        } catch (Exception e) {
-          clear();
-          throw e;
-        }
-      } else {
-        if (curRow == -1) {
-          long startTime = System.nanoTime();
-          cachedData.sort(comparator);
-          sortCost += System.nanoTime() - startTime;
-          curRow = 0;
-        }
-        return buildTsBlockInMemory();
-      }
-    }
-    long startTime = System.nanoTime();
-    try {
-      TsBlock tsBlock = inputOperator.nextWithTimer();
-      if (tsBlock == null) {
-        return null;
-      }
-      dataSize += tsBlock.getRetainedSizeInBytes();
-      cacheTsBlock(tsBlock);
-    } catch (IoTDBException e) {
-      clear();
-      throw e;
-    } finally {
-      prepareUntilReadyCost += System.nanoTime() - startTime;
-    }
-
-    return null;
   }
 
   private void recordMetrics() {
@@ -185,9 +162,9 @@ public class StreamSortOperator implements ProcessOperator {
     noMoreData = new boolean[sortReaders.size()];
   }
 
-  private void cacheTsBlock(TsBlock tsBlock) throws IoTDBException {
+  protected void cacheTsBlock(TsBlock tsBlock) throws IoTDBException {
     long bytesSize = tsBlock.getRetainedSizeInBytes();
-    if (bytesSize + cachedBytes < SORT_BUFFER_SIZE) {
+    if (bytesSize + cachedBytes < sortBufferManager.getSortBufferSize()) {
       cachedBytes += bytesSize;
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
         cachedData.add(new MergeSortKey(tsBlock, i));
@@ -211,8 +188,7 @@ public class StreamSortOperator implements ProcessOperator {
     diskSpiller.spillSortedData(cachedData);
   }
 
-  private TsBlock buildTsBlockInMemory() {
-    tsBlockBuilder.reset();
+  private void buildTsBlockInMemory() {
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
     for (int i = curRow; i < cachedData.size(); i++) {
@@ -232,11 +208,9 @@ public class StreamSortOperator implements ProcessOperator {
         break;
       }
     }
-
-    return tsBlockBuilder.build();
   }
 
-  private TsBlock mergeSort() throws IoTDBException {
+  private void mergeSort() throws IoTDBException {
 
     // 1. fill the input from each reader
     initMergeSortHeap();
@@ -245,7 +219,6 @@ public class StreamSortOperator implements ProcessOperator {
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
 
     // 2. do merge sort until one TsBlock is consumed up
-    tsBlockBuilder.reset();
     TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
     while (!mergeSortHeap.isEmpty()) {
@@ -277,7 +250,6 @@ public class StreamSortOperator implements ProcessOperator {
       }
     }
     sortCost += System.nanoTime() - startTime;
-    return tsBlockBuilder.build();
   }
 
   private void initMergeSortHeap() throws IoTDBException {
@@ -329,15 +301,22 @@ public class StreamSortOperator implements ProcessOperator {
           sortReader.close();
         }
       }
+      sortReaders = null;
+      diskSpiller.reset();
     } catch (Exception e) {
-      LOGGER.error("Fail to close fileChannel", e);
+      LOGGER.warn("Fail to close fileChannel", e);
     }
   }
 
   @Override
   public boolean hasNext() throws Exception {
-    return inputOperator.hasNextWithTimer()
-        || (!diskSpiller.hasSpilledData() && curRow != cachedData.size())
+    return inputOperator.hasNextWithTimer() || hasMoreSortedData();
+  }
+
+  protected boolean hasMoreSortedData() {
+    return (!diskSpiller.hasSpilledData()
+            && ((curRow == -1 && !cachedData.isEmpty())
+                || (curRow != -1 && curRow != cachedData.size())))
         || (diskSpiller.hasSpilledData() && hasMoreData());
   }
 
@@ -358,7 +337,7 @@ public class StreamSortOperator implements ProcessOperator {
   public long calculateMaxPeekMemory() {
     return inputOperator.calculateMaxPeekMemoryWithCounter()
         + inputOperator.calculateRetainedSizeAfterCallingNext()
-        + SORT_BUFFER_SIZE;
+        + sortBufferManager.getSortBufferSize();
   }
 
   @Override
@@ -368,15 +347,22 @@ public class StreamSortOperator implements ProcessOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return inputOperator.calculateRetainedSizeAfterCallingNext() + SORT_BUFFER_SIZE;
+    return inputOperator.calculateRetainedSizeAfterCallingNext()
+        + sortBufferManager.getSortBufferSize();
   }
 
-  @Override
-  public long ramBytesUsed() {
-    return INSTANCE_SIZE
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(inputOperator)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
-        + RamUsageEstimator.sizeOf(noMoreData)
-        + tsBlockBuilder.getRetainedSizeInBytes();
+  protected void resetSortRelatedResource() {
+    curRow = -1;
+    cachedData = new ArrayList<>();
+    cachedBytes = 0;
+    clear();
+    sortBufferManager =
+        new SortBufferManager(
+            sortBufferManager.getMaxTsBlockSizeInBytes(), sortBufferManager.getSortBufferSize());
+    if (mergeSortHeap != null && !mergeSortHeap.isEmpty()) {
+      throw new IllegalStateException("mergeSortHeap should be empty!");
+    }
+    mergeSortHeap = null;
+    noMoreData = null;
   }
 }

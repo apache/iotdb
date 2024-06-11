@@ -32,6 +32,7 @@ import org.apache.iotdb.db.schemaengine.rescon.ISchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowNodesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl.ShowTableDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -297,6 +298,18 @@ public interface ISchemaRegion {
 
   // endregion
 
+  // region table device management
+
+  void createTableDevice(
+      List<PartialPath> devicePathList,
+      List<String> attributeNameList,
+      List<List<String>> attributeValueList)
+      throws MetadataException;
+
+  void deleteTableDevice(String table) throws MetadataException;
+
+  // endregion
+
   // region Interfaces for SchemaReader
 
   ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
@@ -307,6 +320,13 @@ public interface ISchemaRegion {
 
   ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
       throws MetadataException;
+
+  ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(ShowTableDevicesPlan showTableDevicesPlan)
+      throws MetadataException;
+
+  ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(List<PartialPath> devicePathList)
+      throws MetadataException;
+  // endregion
 
   // endregion
 }

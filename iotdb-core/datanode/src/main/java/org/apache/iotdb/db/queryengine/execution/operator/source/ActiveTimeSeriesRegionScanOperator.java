@@ -53,7 +53,9 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
       OperatorContext operatorContext,
       PlanNodeId sourceId,
       Map<IDeviceID, Map<String, TimeseriesSchemaInfo>> timeSeriesToSchemasInfo,
-      Filter timeFilter) {
+      Filter timeFilter,
+      boolean isOutputCount) {
+    this.outputCount = isOutputCount;
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
     this.timeSeriesToSchemasInfo = timeSeriesToSchemasInfo;
@@ -94,6 +96,16 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
 
     Map<IDeviceID, List<String>> activeTimeSeries =
         ((RegionScanForActiveTimeSeriesUtil) regionScanUtil).getActiveTimeSeries();
+
+    if (outputCount) {
+      for (Map.Entry<IDeviceID, List<String>> entry : activeTimeSeries.entrySet()) {
+        List<String> timeSeriesList = entry.getValue();
+        count += timeSeriesList.size();
+        removeTimeseriesListFromDevice(entry.getKey(), timeSeriesList);
+      }
+      return;
+    }
+
     for (Map.Entry<IDeviceID, List<String>> entry : activeTimeSeries.entrySet()) {
       IDeviceID deviceID = entry.getKey();
       String deviceStr = deviceID.toString();
@@ -116,11 +128,18 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
         checkAndAppend(schemaInfo.getDeadbandParameters(), columnBuilders[9]); // DeadbandParameters
         columnBuilders[10].writeBinary(VIEW_TYPE); // ViewType
         resultTsBlockBuilder.declarePosition();
-        timeSeriesInfo.remove(timeSeries);
       }
-      if (timeSeriesInfo.isEmpty()) {
-        timeSeriesToSchemasInfo.remove(deviceID);
-      }
+      removeTimeseriesListFromDevice(deviceID, timeSeriesList);
+    }
+  }
+
+  private void removeTimeseriesListFromDevice(IDeviceID deviceID, List<String> timeSeriesList) {
+    Map<String, TimeseriesSchemaInfo> timeSeriesInfo = timeSeriesToSchemasInfo.get(deviceID);
+    for (String timeSeries : timeSeriesList) {
+      timeSeriesInfo.remove(timeSeries);
+    }
+    if (timeSeriesInfo.isEmpty()) {
+      timeSeriesToSchemasInfo.remove(deviceID);
     }
   }
 
@@ -130,6 +149,11 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
 
   @Override
   protected List<TSDataType> getResultDataTypes() {
+    if (outputCount) {
+      return ColumnHeaderConstant.countTimeSeriesColumnHeaders.stream()
+          .map(ColumnHeader::getColumnType)
+          .collect(Collectors.toList());
+    }
     return ColumnHeaderConstant.showTimeSeriesColumnHeaders.stream()
         .map(ColumnHeader::getColumnType)
         .collect(Collectors.toList());

@@ -33,21 +33,17 @@ import org.apache.iotdb.consensus.iot.util.TestEntry;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
 
 import org.apache.ratis.util.FileUtils;
-import org.apache.tsfile.utils.PublicBAOS;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -102,60 +98,39 @@ public class ReplicateTest {
     }
   }
 
-  public void changeConfiguration(int i) {
-    try (PublicBAOS publicBAOS = new PublicBAOS();
-        DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
-      outputStream.writeInt(this.peers.size());
-      for (Peer peer : this.peers) {
-        peer.serialize(outputStream);
-      }
-      File storageDir = new File(IoTConsensus.buildPeerDir(peersStorage.get(i), gid));
-      Path tmpConfigurationPath =
-          Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
-      Path configurationPath =
-          Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
-      if (!Files.exists(configurationPath) && !Files.exists(tmpConfigurationPath)) {
-        return;
-      }
-      if (!Files.exists(tmpConfigurationPath)) {
-        Files.createDirectories(tmpConfigurationPath.getParent());
-        Files.createFile(tmpConfigurationPath);
-      }
-      Files.write(tmpConfigurationPath, publicBAOS.getBuf());
-      if (Files.exists(configurationPath)) {
-        Files.delete(configurationPath);
-      }
-      Files.move(tmpConfigurationPath, configurationPath);
-    } catch (IOException e) {
-      logger.error("Unexpected error occurs when persisting configuration", e);
-    }
-  }
-
   private void initServer() throws IOException {
-    for (int i = 0; i < peers.size(); i++) {
-      findPortAvailable(i);
-    }
-    for (int i = 0; i < peers.size(); i++) {
-      int finalI = i;
-      changeConfiguration(i);
-      servers.add(
-          (IoTConsensus)
-              ConsensusFactory.getConsensusImpl(
-                      ConsensusFactory.IOT_CONSENSUS,
-                      ConsensusConfig.newBuilder()
-                          .setThisNodeId(peers.get(i).getNodeId())
-                          .setThisNode(peers.get(i).getEndpoint())
-                          .setStorageDir(peersStorage.get(i).getAbsolutePath())
-                          .setConsensusGroupType(TConsensusGroupType.DataRegion)
-                          .build(),
-                      groupId -> stateMachines.get(finalI))
-                  .orElseThrow(
-                      () ->
-                          new IllegalArgumentException(
-                              String.format(
-                                  ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                                  ConsensusFactory.IOT_CONSENSUS))));
-      servers.get(i).start();
+    Assume.assumeTrue(checkPortAvailable());
+    try {
+      for (int i = 0; i < peers.size(); i++) {
+        int finalI = i;
+        servers.add(
+            (IoTConsensus)
+                ConsensusFactory.getConsensusImpl(
+                        ConsensusFactory.IOT_CONSENSUS,
+                        ConsensusConfig.newBuilder()
+                            .setThisNodeId(peers.get(i).getNodeId())
+                            .setThisNode(peers.get(i).getEndpoint())
+                            .setStorageDir(peersStorage.get(i).getAbsolutePath())
+                            .setConsensusGroupType(TConsensusGroupType.DataRegion)
+                            .build(),
+                        groupId -> stateMachines.get(finalI))
+                    .orElseThrow(
+                        () ->
+                            new IllegalArgumentException(
+                                String.format(
+                                    ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                                    ConsensusFactory.IOT_CONSENSUS))));
+        servers.get(i).start();
+      }
+    } catch (IOException e) {
+      if (e.getCause() instanceof StartupException) {
+        // just succeed when can not bind socket
+        logger.info("Can not start IoTConsensus because", e);
+        Assume.assumeTrue(false);
+      } else {
+        logger.error("Failed because", e);
+        Assert.fail("Failed because " + e.getMessage());
+      }
     }
   }
 
@@ -363,23 +338,15 @@ public class ReplicateTest {
     }
   }
 
-  private void findPortAvailable(int i) {
-    long start = System.currentTimeMillis();
-    while (System.currentTimeMillis() - start < timeout) {
-      try (ServerSocket ignored = new ServerSocket(this.peers.get(i).getEndpoint().port)) {
-        // success
-        return;
+  private boolean checkPortAvailable() {
+    for (Peer peer : this.peers) {
+      try (ServerSocket ignored = new ServerSocket(peer.getEndpoint().port)) {
+        logger.info("check port {} success for node {}", peer.getEndpoint().port, peer.getNodeId());
       } catch (IOException e) {
-        // Port is already in use, wait and retry
-        this.peers.set(i, new Peer(gid, i + 1, new TEndPoint("127.0.0.1", this.basePort)));
-        logger.info("try port {} for node {}.", this.basePort++, i + 1);
-        try {
-          Thread.sleep(50); // Wait for 1 second before retrying
-        } catch (InterruptedException ex) {
-          // Handle the interruption if needed
-        }
+        logger.error("check port {} failed for node {}", peer.getEndpoint().port, peer.getNodeId());
+        return false;
       }
     }
-    Assert.fail(String.format("can not find port for node %d after 300s", i + 1));
+    return true;
   }
 }

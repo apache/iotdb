@@ -70,8 +70,7 @@ public class IoTDBRepairDataIT {
       statement.execute("CREATE DATABASE root.tesgsg");
       statement.execute("CREATE TIMESERIES root.testsg.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN");
       File tsfile = generateUnsortedFile();
-      statement.execute(
-          String.format("load \"%s\" verify=false", tsfile.getParentFile().getAbsolutePath()));
+      statement.execute(String.format("load \"%s\"", tsfile.getParentFile().getAbsolutePath()));
 
       Assert.assertFalse(validate(statement));
       statement.execute("START REPAIR DATA");

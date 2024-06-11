@@ -37,6 +37,9 @@ public abstract class AbstractRegionScanDataSourceOperator extends AbstractSourc
 
   protected boolean finished = false;
 
+  protected boolean outputCount;
+  protected long count = 0;
+
   protected AbstractRegionScanForActiveDataUtil regionScanUtil;
   protected TsBlockBuilder resultTsBlockBuilder;
 
@@ -97,14 +100,26 @@ public abstract class AbstractRegionScanDataSourceOperator extends AbstractSourc
       } while (System.nanoTime() - start < maxRuntime && !resultTsBlockBuilder.isFull());
 
       finished =
-          resultTsBlockBuilder.isEmpty()
+          (resultTsBlockBuilder.isEmpty())
               && ((!regionScanUtil.hasMoreData() && regionScanUtil.isCurrentTsFileFinished())
                   || isAllDataChecked());
 
-      return !finished;
+      boolean hasCachedCountValue = buildCountResultIfNeed();
+      return !finished || hasCachedCountValue;
     } catch (IOException e) {
       throw new IOException("Error occurs when scanning active time series.", e);
     }
+  }
+
+  private boolean buildCountResultIfNeed() {
+    if (!outputCount || !finished || count == -1) {
+      return false;
+    }
+    resultTsBlockBuilder.getTimeColumnBuilder().writeLong(-1);
+    resultTsBlockBuilder.getValueColumnBuilders()[0].writeLong(count);
+    resultTsBlockBuilder.declarePosition();
+    count = -1;
+    return true;
   }
 
   @Override
