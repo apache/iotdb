@@ -40,6 +40,12 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   private ByteBuffer compressedBuffer = null;
   private long fileSize;
   File logFile;
+  /*
+   The WAL file consist of following parts:
+   [MagicString] [Segment 1] [Segment 2] ... [Segment N] [Metadata] [MagicString]
+   The endOffset indicates the maximum offset that a segment can reach.
+   Aka, the last byte of the last segment.
+  */
   private long endOffset = -1;
 
   enum FileVersion {
@@ -60,6 +66,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   private void getEndOffset() throws IOException {
     if (channel.size() < WALWriter.MAGIC_STRING_BYTES + Integer.BYTES) {
+      // An broken file
       endOffset = channel.size();
       return;
     }
@@ -67,16 +74,20 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     long position;
     try {
       if (version == FileVersion.V2) {
+        // New Version
         ByteBuffer magicStringBuffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
         channel.read(magicStringBuffer, channel.size() - WALWriter.MAGIC_STRING_BYTES);
         magicStringBuffer.flip();
         if (!new String(magicStringBuffer.array()).equals(WALWriter.MAGIC_STRING)) {
-          // this is a broken wal file
+          // This is a broken wal file
           endOffset = channel.size();
           return;
+        } else {
+          // This is a normal wal file
+          position = channel.size() - WALWriter.MAGIC_STRING_BYTES - Integer.BYTES;
         }
-        position = channel.size() - WALWriter.MAGIC_STRING_BYTES - Integer.BYTES;
       } else {
+        // Old version
         ByteBuffer magicStringBuffer =
             ByteBuffer.allocate(WALWriter.MAGIC_STRING_V1.getBytes().length);
         channel.read(
@@ -86,9 +97,11 @@ public class WALInputStream extends InputStream implements AutoCloseable {
           // this is a broken wal file
           endOffset = channel.size();
           return;
+        } else {
+          position = channel.size() - WALWriter.MAGIC_STRING_V1.getBytes().length - Integer.BYTES;
         }
-        position = channel.size() - WALWriter.MAGIC_STRING_V1.getBytes().length - Integer.BYTES;
       }
+      // Read the meta data size
       channel.read(metadataSizeBuf, position);
       metadataSizeBuf.flip();
       int metadataSize = metadataSizeBuf.getInt();
@@ -191,43 +204,30 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   }
 
   private void loadNextSegmentV2() throws IOException {
-    segmentHeaderBuffer.clear();
-    if (channel.read(segmentHeaderBuffer) != Integer.BYTES + 1) {
-      throw new IOException("Unexpected end of file");
-    }
-    // compressionType originalSize compressedSize
-    segmentHeaderBuffer.flip();
-    CompressionType compressionType = CompressionType.deserialize(segmentHeaderBuffer.get());
-    int dataBufferSize = segmentHeaderBuffer.getInt();
-    if (compressionType != CompressionType.UNCOMPRESSED) {
-      compressedHeader.clear();
-      if (channel.read(compressedHeader) != Integer.BYTES) {
-        throw new IOException("Unexpected end of file");
-      }
-      compressedHeader.flip();
-      int uncompressedSize = compressedHeader.getInt();
-
+    SegmentInfo segmentInfo = getNextSegmentInfo();
+    if (segmentInfo.compressionType != CompressionType.UNCOMPRESSED) {
+      // A compressed segment
       if (Objects.isNull(dataBuffer)
-          || dataBuffer.capacity() < uncompressedSize
-          || dataBuffer.capacity() > uncompressedSize * 2) {
-        dataBuffer = ByteBuffer.allocateDirect(uncompressedSize);
+          || dataBuffer.capacity() < segmentInfo.uncompressedSize
+          || dataBuffer.capacity() > segmentInfo.uncompressedSize * 2) {
+        dataBuffer = ByteBuffer.allocateDirect(segmentInfo.uncompressedSize);
       }
       dataBuffer.clear();
 
-      compressedBuffer = ByteBuffer.allocateDirect(dataBufferSize);
-      if (channel.read(compressedBuffer) != dataBufferSize) {
+      compressedBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
+      if (channel.read(compressedBuffer) != segmentInfo.dataInDiskSize) {
         throw new IOException("Unexpected end of file");
       }
       compressedBuffer.flip();
 
-      IUnCompressor unCompressor = IUnCompressor.getUnCompressor(compressionType);
+      IUnCompressor unCompressor = IUnCompressor.getUnCompressor(segmentInfo.compressionType);
       unCompressor.uncompress(compressedBuffer, dataBuffer);
     } else {
-      // The case of UNCOMPRESSION
+      // An uncompressed segment
       // TODO: reuse the buffer, and make the buffer read the correct bytes
-      dataBuffer = ByteBuffer.allocateDirect(dataBufferSize);
+      dataBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
 
-      if (channel.read(dataBuffer) != dataBufferSize) {
+      if (channel.read(dataBuffer) != segmentInfo.dataInDiskSize) {
         throw new IOException("Unexpected end of file");
       }
     }
@@ -274,7 +274,6 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         dataBuffer = ByteBuffer.allocate(segmentInfo.uncompressedSize);
         unCompressor.uncompress(compressedBuffer, dataBuffer);
       } else {
-        long p = channel.position();
         dataBuffer = ByteBuffer.allocate(segmentInfo.dataInDiskSize);
         channel.read(dataBuffer);
         dataBuffer.flip();
