@@ -16,14 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.partition.executor.hash;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 public class BKDRHashExecutor extends SeriesPartitionExecutor {
 
   private static final int SEED = 131;
+  private static final char PATH_SEPARATOR = '.';
 
   public BKDRHashExecutor(int deviceGroupCount) {
     super(deviceGroupCount);
@@ -35,6 +39,25 @@ public class BKDRHashExecutor extends SeriesPartitionExecutor {
 
     for (int i = 0; i < device.length(); i++) {
       hash = hash * SEED + (int) device.charAt(i);
+    }
+    hash &= Integer.MAX_VALUE;
+
+    return new TSeriesPartitionSlot(hash % seriesPartitionSlotNum);
+  }
+
+  @Override
+  public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {
+    int hash = 0;
+    int segmentNum = deviceID.segmentNum();
+
+    for (int segmentID = 0; segmentID < segmentNum; segmentID++) {
+      String segment = (String) deviceID.segment(segmentID);
+      for (int i = 0; i < segment.length(); i++) {
+        hash = hash * SEED + (int) segment.charAt(i);
+      }
+      if (segmentID < segmentNum - 1) {
+        hash = hash * SEED + (int) PATH_SEPARATOR;
+      }
     }
     hash &= Integer.MAX_VALUE;
 

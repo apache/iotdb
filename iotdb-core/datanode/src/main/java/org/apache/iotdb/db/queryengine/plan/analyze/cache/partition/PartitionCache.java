@@ -59,6 +59,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.thrift.TException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -540,7 +541,8 @@ public class PartitionCache {
         // check cache for each device
         for (String device : entry.getValue()) {
           TSeriesPartitionSlot seriesPartitionSlot =
-              partitionExecutor.getSeriesPartitionSlot(device);
+              partitionExecutor.getSeriesPartitionSlot(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(device));
           if (!map.containsKey(seriesPartitionSlot)) {
             // if one device not find, then return cache miss.
             logger.debug(
@@ -706,7 +708,8 @@ public class PartitionCache {
     TSeriesPartitionSlot seriesPartitionSlot;
     if (null != dataPartitionQueryParam.getDevicePath()) {
       seriesPartitionSlot =
-          partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDevicePath());
+          partitionExecutor.getSeriesPartitionSlot(
+              IDeviceID.Factory.DEFAULT_FACTORY.create(dataPartitionQueryParam.getDevicePath()));
     } else {
       return false;
     }

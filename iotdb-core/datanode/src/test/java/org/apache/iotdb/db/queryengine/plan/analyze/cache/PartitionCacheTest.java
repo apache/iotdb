@@ -34,6 +34,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -94,7 +95,9 @@ public class PartitionCacheTest {
         // init each device
         String deviceName = getDeviceName(storageGroupName, deviceNumber);
         TSeriesPartitionSlot seriesPartitionSlot =
-            new TSeriesPartitionSlot(partitionExecutor.getSeriesPartitionSlot(deviceName));
+            new TSeriesPartitionSlot(
+                partitionExecutor.getSeriesPartitionSlot(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(deviceName)));
         // init schemaRegion of device
         TConsensusGroupId schemaConsensusGroupId =
             new TConsensusGroupId(
@@ -273,7 +276,8 @@ public class PartitionCacheTest {
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
         String deviceName = getDeviceName(storageGroupName, deviceNumber);
         TSeriesPartitionSlot seriesPartitionSlot =
-            partitionExecutor.getSeriesPartitionSlot(deviceName);
+            partitionExecutor.getSeriesPartitionSlot(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(deviceName));
         Map<String, List<String>> searchMap = new HashMap<>();
         searchMap.put(storageGroupName, Collections.singletonList(deviceName));
         SchemaPartition schemaPartition = partitionCache.getSchemaPartition(searchMap);
@@ -338,7 +342,8 @@ public class PartitionCacheTest {
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
         String deviceName = getDeviceName(storageGroupName, deviceNumber);
         TSeriesPartitionSlot seriesPartitionSlot =
-            partitionExecutor.getSeriesPartitionSlot(deviceName);
+            partitionExecutor.getSeriesPartitionSlot(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(deviceName));
         // try to get DataPartition from partitionCache
         Map<String, List<DataPartitionQueryParam>> searchMap =
             getStorageGroupToQueryParamsMap(storageGroupName, deviceName, false);

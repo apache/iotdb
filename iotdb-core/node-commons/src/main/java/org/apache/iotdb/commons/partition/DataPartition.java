@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
@@ -77,7 +78,8 @@ public class DataPartition extends Partition {
   public List<List<TTimePartitionSlot>> getTimePartitionRange(
       String deviceName, Filter timeFilter) {
     String storageGroup = getStorageGroupByDevice(deviceName);
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    TSeriesPartitionSlot seriesPartitionSlot =
+        calculateDeviceGroupId(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceName));
     if (!dataPartitionMap.containsKey(storageGroup)
         || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
       return Collections.emptyList();
@@ -120,7 +122,8 @@ public class DataPartition extends Partition {
   public List<TRegionReplicaSet> getDataRegionReplicaSetWithTimeFilter(
       String deviceName, Filter timeFilter) {
     String storageGroup = getStorageGroupByDevice(deviceName);
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    TSeriesPartitionSlot seriesPartitionSlot =
+        calculateDeviceGroupId(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceName));
     if (!dataPartitionMap.containsKey(storageGroup)
         || !dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
       return Collections.singletonList(NOT_ASSIGNED);
@@ -142,7 +145,8 @@ public class DataPartition extends Partition {
     if (dbMap == null) {
       return Collections.singletonList(NOT_ASSIGNED);
     }
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    TSeriesPartitionSlot seriesPartitionSlot =
+        calculateDeviceGroupId(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceName));
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> seriesSlotMap = dbMap.get(seriesPartitionSlot);
     if (seriesSlotMap == null) {
       return Collections.singletonList(NOT_ASSIGNED);
@@ -163,7 +167,8 @@ public class DataPartition extends Partition {
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
     String storageGroup = getStorageGroupByDevice(deviceName);
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    TSeriesPartitionSlot seriesPartitionSlot =
+        calculateDeviceGroupId(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceName));
     // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
     // more than 1 Regions for one timeSlot
     List<TRegionReplicaSet> dataRegionReplicaSets = new ArrayList<>();
@@ -191,7 +196,8 @@ public class DataPartition extends Partition {
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
     String storageGroup = getStorageGroupByDevice(deviceName);
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    TSeriesPartitionSlot seriesPartitionSlot =
+        calculateDeviceGroupId(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceName));
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         databasePartitionMap = dataPartitionMap.get(storageGroup);
     if (databasePartitionMap == null) {
