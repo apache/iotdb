@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputationWithAutoCreation;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -67,4 +69,19 @@ public interface Metadata {
       QualifiedObjectName tableName,
       List<Expression> expressionList,
       List<String> attributeColumns);
+
+  /**
+   * Fetch and compute the schema of target timeseries, with device and measurement defined in given
+   * schemaComputationWithAutoCreation. The computation defined in given
+   * schemaComputationWithAutoCreation will be executed during scanning the fetched schema. If some
+   * target timeseries doesn't exist, they will be auto created.
+   *
+   * @param schemaComputationWithAutoCreationList define the target devices, measurements and
+   *     computation
+   */
+  default void fetchAndComputeSchemaWithAutoCreate(
+      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList,
+      MPPQueryContext context) {
+    throw new UnsupportedOperationException();
+  }
 }

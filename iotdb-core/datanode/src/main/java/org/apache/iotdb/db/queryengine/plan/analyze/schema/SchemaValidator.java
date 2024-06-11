@@ -24,6 +24,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -54,6 +56,18 @@ public class SchemaValidator {
       throw new SemanticException(e.getMessage());
     }
   }
+
+  public static void validate(
+      Metadata metadata, WrappedInsertStatement insertStatement, MPPQueryContext context) {
+    try {
+      metadata.fetchAndComputeSchemaWithAutoCreate(insertStatement.getSchemaValidationList(),
+          context);
+      insertStatement.updateAfterSchemaValidation(context);
+    } catch (QueryProcessException e) {
+      throw new SemanticException(e.getMessage());
+    }
+  }
+
 
   public static ISchemaTree validate(
       ISchemaFetcher schemaFetcher,

@@ -17,18 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.tree;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 
 public abstract class WrappedStatement extends Statement {
-  private final org.apache.iotdb.db.queryengine.plan.statement.Statement innerTreeStatement;
+  protected final org.apache.iotdb.db.queryengine.plan.statement.Statement innerTreeStatement;
+  protected final MPPQueryContext context;
 
-  public WrappedStatement(org.apache.iotdb.db.queryengine.plan.statement.Statement innerTreeStatement) {
+  public WrappedStatement(org.apache.iotdb.db.queryengine.plan.statement.Statement innerTreeStatement,
+      MPPQueryContext context) {
     super(null);
     this.innerTreeStatement = innerTreeStatement;
+    this.context = context;
   }
 
   @Override
@@ -56,5 +60,13 @@ public abstract class WrappedStatement extends Statement {
   @Override
   public String toString() {
     return innerTreeStatement.toString();
+  }
+
+  public org.apache.iotdb.db.queryengine.plan.statement.Statement getInnerTreeStatement() {
+    return innerTreeStatement;
+  }
+
+  public MPPQueryContext getContext() {
+    return context;
   }
 }

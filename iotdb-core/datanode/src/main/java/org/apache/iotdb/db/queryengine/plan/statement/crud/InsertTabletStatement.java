@@ -26,13 +26,19 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition.ColumnCategory;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
@@ -59,6 +65,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   private long[] times; // times should be sorted. It is done in the session API.
   private BitMap[] bitMaps;
   private Object[] columns;
+
+  private ColumnCategory[] columnCategories;
+  private List<Integer> idColumnIndices;
+  private IDeviceID[] deviceIDs;
 
   private int rowCount = 0;
 
@@ -408,5 +418,46 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   public void setWriteToTable(boolean writeToTable) {
     this.writeToTable = writeToTable;
+  }
+
+  @Override
+  public Statement toRelationalStatement(MPPQueryContext context) {
+    return super.toRelationalStatement(context);
+  }
+
+  public ColumnCategory[] getColumnCategories() {
+    return columnCategories;
+  }
+
+  public void setColumnCategories(
+      ColumnCategory[] columnCategories) {
+    this.columnCategories = columnCategories;
+    idColumnIndices = new ArrayList<>();
+    for (int i = 0; i < columnCategories.length; i++) {
+      if (columnCategories[i].equals(ColumnCategory.ID)) {
+        idColumnIndices.add(i);
+      }
+    }
+  }
+
+  public List<Integer> getIdColumnIndices() {
+    return idColumnIndices;
+  }
+
+  public IDeviceID getTableDeviceID(int rowIdx) {
+    if (deviceIDs == null) {
+      deviceIDs = new IDeviceID[rowCount];
+    }
+    if (deviceIDs[rowIdx] == null) {
+      String[] deviceIdSegments = new String[idColumnIndices.size() + 1];
+      deviceIdSegments[0] = this.devicePath.getFullPath();
+      for (int i = 0; i < idColumnIndices.size(); i++) {
+        final Integer columnIndex = idColumnIndices.get(i);
+        deviceIdSegments[i + 1] = ((Binary[]) columns[columnIndex])[rowIdx].toString();
+      }
+      deviceIDs[rowIdx] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
+    }
+
+    return deviceIDs[rowIdx];
   }
 }

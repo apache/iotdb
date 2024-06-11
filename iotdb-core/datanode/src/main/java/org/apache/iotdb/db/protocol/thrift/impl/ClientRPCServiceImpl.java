@@ -2072,7 +2072,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       long queryId = SESSION_MANAGER.requestQueryId();
       ExecutionResult result;
       if (statement.isWriteToTable()) {
-        result = COORDINATOR.executeForTableModel(statement.toRelationalStatement(),
+        result = COORDINATOR.executeForTableModel(statement,
             relationSqlParser, clientSession,
             queryId,
             SESSION_MANAGER.getSessionInfo(clientSession), "", metadata,

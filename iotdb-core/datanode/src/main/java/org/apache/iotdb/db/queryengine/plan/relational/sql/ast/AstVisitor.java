@@ -371,6 +371,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitInsertTablet(InsertTablet node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitDelete(Delete node, C context) {
     return visitStatement(node, context);
   }

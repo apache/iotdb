@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition.ColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeComponent;
@@ -335,8 +336,19 @@ public class StatementGenerator {
     }
     insertStatement.setDataTypes(dataTypes);
     insertStatement.setAligned(insertTabletReq.isAligned);
-    PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     insertStatement.setWriteToTable(insertTabletReq.isWriteToTable());
+    if (insertTabletReq.isWriteToTable()) {
+      if (!insertTabletReq.isSetColumnCategories() || insertTabletReq.getColumnCategoriesSize() != insertTabletReq.getMeasurementsSize()) {
+        throw new IllegalArgumentException("Missing or invalid column categories for table "
+            + "insertion");
+      }
+      ColumnCategory[] columnCategories = new ColumnCategory[insertTabletReq.columnCategories.size()];
+      for (int i = 0; i < columnCategories.length; i++) {
+        columnCategories[i] = ColumnCategory.values()[insertTabletReq.getColumnCategories().get(i)];
+      }
+      insertStatement.setColumnCategories(columnCategories);
+    }
+    PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
     return insertStatement;
   }
 

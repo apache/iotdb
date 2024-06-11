@@ -256,6 +256,53 @@ public class Coordinator {
                 startTime)));
   }
 
+  public ExecutionResult executeForTableModel(
+      Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      Metadata metadata,
+      long timeOut) {
+    return execution(
+        queryId,
+        session,
+        sql,
+        ((queryContext, startTime) ->
+            createQueryExecutionForTableModel(
+                statement,
+                sqlParser,
+                clientSession,
+                queryContext,
+                metadata,
+                timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+                startTime)));
+  }
+
+  private IQueryExecution createQueryExecutionForTableModel(
+      Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      MPPQueryContext queryContext,
+      Metadata metadata,
+      long timeOut,
+      long startTime) {
+    queryContext.setTimeOut(timeOut);
+    queryContext.setStartTime(startTime);
+    RelationalModelPlanner relationalModelPlanner =
+        new RelationalModelPlanner(
+            statement.toRelationalStatement(queryContext),
+            sqlParser,
+            metadata,
+            executor,
+            writeOperationExecutor,
+            scheduledExecutor,
+            SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+            ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
+    return new QueryExecution(relationalModelPlanner, queryContext, executor);
+  }
+
   private IQueryExecution createQueryExecutionForTableModel(
       org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
       SqlParser sqlParser,
