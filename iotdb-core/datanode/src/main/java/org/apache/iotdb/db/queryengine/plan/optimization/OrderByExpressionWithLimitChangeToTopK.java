@@ -65,7 +65,7 @@ public class OrderByExpressionWithLimitChangeToTopK implements PlanOptimizer {
 
   @Override
   public PlanNode optimize(PlanNode plan, Analysis analysis, MPPQueryContext context) {
-    if (analysis.getStatement().getType() != StatementType.QUERY) {
+    if (analysis.getTreeStatement().getType() != StatementType.QUERY) {
       return plan;
     }
 

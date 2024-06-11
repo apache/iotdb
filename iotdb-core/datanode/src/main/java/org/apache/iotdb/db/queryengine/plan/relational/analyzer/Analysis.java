@@ -186,7 +186,7 @@ public class Analysis implements IAnalysis {
     return parameters;
   }
 
-  public Statement getStatement() {
+  public Statement getTreeStatement() {
     return root;
   }
 

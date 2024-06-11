@@ -59,7 +59,7 @@ public class TableDistributionPlanner {
     }
 
     PlanNode outputNodeWithExchange = distributedPlanNodeResult.get(0);
-    if (analysis.getStatement() instanceof Query) {
+    if (analysis.getTreeStatement() instanceof Query) {
       analysis
           .getRespDatasetHeader()
           .setColumnToTsBlockIndexMap(

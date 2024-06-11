@@ -370,11 +370,11 @@ public class Analysis implements IAnalysis {
     return (QueryStatement) statement;
   }
 
-  public Statement getStatement() {
+  public Statement getTreeStatement() {
     return statement;
   }
 
-  public void setStatement(Statement statement) {
+  public void setTreeStatement(Statement statement) {
     this.statement = statement;
   }
 
@@ -469,7 +469,7 @@ public class Analysis implements IAnalysis {
   public TsBlock constructResultForMemorySource(MPPQueryContext context) {
     StatementMemorySource memorySource =
         new StatementMemorySourceVisitor()
-            .process(getStatement(), new StatementMemorySourceContext(context, this));
+            .process(getTreeStatement(), new StatementMemorySourceContext(context, this));
     setRespDatasetHeader(memorySource.getDatasetHeader());
     return memorySource.getTsBlock();
   }

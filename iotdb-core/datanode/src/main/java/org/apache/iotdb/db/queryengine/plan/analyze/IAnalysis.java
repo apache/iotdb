@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.tsfile.read.common.block.TsBlock;
 
 public interface IAnalysis {
@@ -49,5 +51,18 @@ public interface IAnalysis {
 
   default void setFailStatus(TSStatus status) {
 
+  }
+
+  default boolean isFinishQueryAfterAnalyze() {
+    return false;
+  }
+
+  default void setTreeStatement(Statement realStatement) {}
+
+  default void setDataPartitionInfo(DataPartition dataPartition) {
+  }
+
+  default Statement getTreeStatement(){
+    return null;
   }
 }
