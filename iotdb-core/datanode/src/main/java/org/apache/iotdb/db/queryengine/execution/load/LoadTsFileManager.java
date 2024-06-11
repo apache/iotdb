@@ -138,7 +138,7 @@ public class LoadTsFileManager {
 
   private void recover() {
     if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
-      synchronized (LOAD_BASE_DIRS) {
+      synchronized (FOLDER_MANAGER) {
         if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
           LOAD_BASE_DIRS.set(CONFIG.getLoadTsFileDirs());
         }
