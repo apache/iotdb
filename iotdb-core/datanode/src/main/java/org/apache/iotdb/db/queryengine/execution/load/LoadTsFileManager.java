@@ -94,7 +94,7 @@ public class LoadTsFileManager {
           new FolderManager(Arrays.asList(LOAD_BASE_DIRS), DirectoryStrategyType.SEQUENCE_STRATEGY);
     } catch (final DiskSpaceInsufficientException e) {
       LOGGER.error(
-          "Fail to create load tsfile folders allocation strategy because all disks of folders are full.",
+          "Fail to create LoadTsFileManager because of insufficient disk space, please check the disk space.",
           e);
     }
   }
@@ -147,16 +147,13 @@ public class LoadTsFileManager {
 
   private void recover() {
     final File[] baseDirs = Arrays.stream(LOAD_BASE_DIRS).map(File::new).toArray(File[]::new);
-    if (!Arrays.stream(baseDirs).allMatch(File::exists)) {
-      return;
-    }
-
     final File[] files =
         Arrays.stream(baseDirs)
+            .filter(File::exists)
             .flatMap(
                 dir -> {
-                  File[] tmpfiles = dir.listFiles();
-                  return tmpfiles != null ? Arrays.stream(tmpfiles) : Stream.empty();
+                  final File[] listedFiles = dir.listFiles();
+                  return listedFiles != null ? Arrays.stream(listedFiles) : Stream.empty();
                 })
             .toArray(File[]::new);
 
@@ -164,8 +161,8 @@ public class LoadTsFileManager {
         .parallel()
         .forEach(
             taskDir -> {
-              String uuid = taskDir.getName();
-              TsFileWriterManager writerManager = new TsFileWriterManager(taskDir);
+              final String uuid = taskDir.getName();
+              final TsFileWriterManager writerManager = new TsFileWriterManager(taskDir);
 
               uuid2WriterManager.put(uuid, writerManager);
               writerManager.close();
