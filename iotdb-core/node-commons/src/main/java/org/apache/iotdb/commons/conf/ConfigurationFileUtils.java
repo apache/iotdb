@@ -82,6 +82,7 @@ public class ConfigurationFileUtils {
               "dn_data_region_consensus_port",
               "dn_seed_config_node",
               "dn_session_timeout_threshold",
+              "cluster_name",
               "config_node_consensus_protocol_class",
               "schema_replication_factor",
               "data_replication_factor",
