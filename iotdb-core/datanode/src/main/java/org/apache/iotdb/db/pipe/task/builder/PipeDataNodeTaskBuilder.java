@@ -89,7 +89,7 @@ public class PipeDataNodeTaskBuilder {
               blendUserAndSystemParameters(pipeStaticMeta.getConnectorParameters()),
               regionId,
               CONNECTOR_EXECUTOR_MAP.get(pipeType));
-    } else { // user pipe
+    } else { // user pipe or consensus pipe
       connectorStage =
           new PipeTaskConnectorStage(
               pipeStaticMeta.getPipeName(),
