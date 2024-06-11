@@ -16,11 +16,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -182,6 +184,18 @@ public class TestMatadata implements Metadata {
         new DeviceEntry(
             new StringArrayDeviceID("root.testdb", "table1", "t1", "t2", "t3"),
             Arrays.asList("a1", "a2")));
+  }
+
+  @Override
+  public TableSchema validateTableHeaderSchema(
+      String database, TableSchema tableSchema, MPPQueryContext context) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void validateDeviceSchema(
+      ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context) {
+    throw new UnsupportedOperationException();
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
