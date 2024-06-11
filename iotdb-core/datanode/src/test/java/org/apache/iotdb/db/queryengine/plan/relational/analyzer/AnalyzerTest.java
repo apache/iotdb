@@ -330,7 +330,9 @@ public class AnalyzerTest {
                 context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
-    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    tableScanNode =
+        (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
     assertEquals(
         Arrays.asList("time", "tag1", "attr2", "s1", "s2", "s3"),
         tableScanNode.getOutputColumnNames());

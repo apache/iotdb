@@ -105,8 +105,7 @@ public class PredicateScanCombine implements RelationalPlanOptimizer {
         }
 
         context.pushDownPredicate = node.getPredicate();
-        node.setChild(node.getChild().accept(this, context));
-        return node;
+        return node.getChild().accept(this, context);
       } else {
         throw new IllegalStateException(
             "Filter node has no predicate, node: " + node.getPlanNodeId());
