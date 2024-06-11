@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestSender;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
@@ -171,7 +171,7 @@ public class DeleteDatabaseProcedure
             }
           }
           if (!schemaRegionDeleteTaskMap.isEmpty()) {
-            AsyncDataNodeInternalServiceRequestSender.getInstance()
+            AsyncDataNodeInternalServiceRequestManager.getInstance()
                 .sendAsyncRequestToNodeWithRetry(asyncClientHandler);
             for (Map.Entry<Integer, TSStatus> entry :
                 asyncClientHandler.getResponseMap().entrySet()) {

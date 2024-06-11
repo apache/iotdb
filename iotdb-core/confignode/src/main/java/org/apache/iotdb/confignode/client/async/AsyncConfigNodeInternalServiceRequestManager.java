@@ -36,14 +36,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Asynchronously send RPC requests to ConfigNodes. See queryengine.thrift for more details. */
-public class AsyncConfigNodeInternalServiceRequestSender
+public class AsyncConfigNodeInternalServiceRequestManager
     extends AsyncRequestManager<
         ConfigNodeRequestType, TConfigNodeLocation, AsyncConfigNodeInternalServiceClient> {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(AsyncConfigNodeInternalServiceRequestSender.class);
+      LoggerFactory.getLogger(AsyncConfigNodeInternalServiceRequestManager.class);
 
-  private AsyncConfigNodeInternalServiceRequestSender() {
+  private AsyncConfigNodeInternalServiceRequestManager() {
     super();
   }
 
@@ -103,15 +103,15 @@ public class AsyncConfigNodeInternalServiceRequestSender
   // TODO: Is the ClientPool must be a singleton?
   private static class ClientPoolHolder {
 
-    private static final AsyncConfigNodeInternalServiceRequestSender INSTANCE =
-        new AsyncConfigNodeInternalServiceRequestSender();
+    private static final AsyncConfigNodeInternalServiceRequestManager INSTANCE =
+        new AsyncConfigNodeInternalServiceRequestManager();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static AsyncConfigNodeInternalServiceRequestSender getInstance() {
+  public static AsyncConfigNodeInternalServiceRequestManager getInstance() {
     return ClientPoolHolder.INSTANCE;
   }
 }

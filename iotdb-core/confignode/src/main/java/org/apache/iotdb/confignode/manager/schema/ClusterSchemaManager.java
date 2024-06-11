@@ -32,7 +32,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestSender;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -450,7 +450,7 @@ public class ClusterSchemaManager {
               clientHandler.putNodeLocation(dataNodeId, dataNodeLocationMap.get(dataNodeId));
             });
     // TODO: Check response
-    AsyncDataNodeInternalServiceRequestSender.getInstance()
+    AsyncDataNodeInternalServiceRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetry(clientHandler);
 
     try {
@@ -1103,7 +1103,7 @@ public class ClusterSchemaManager {
     AsyncDataNodeRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
         new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.UPDATE_TEMPLATE, updateTemplateReq, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance()
+    AsyncDataNodeInternalServiceRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {

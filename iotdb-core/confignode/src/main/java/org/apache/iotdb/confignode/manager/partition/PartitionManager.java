@@ -35,7 +35,7 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestSender;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -1276,7 +1276,7 @@ public class PartitionManager {
                                 schemaRegionCreateTask.getTargetDataNode());
                           }
 
-                          AsyncDataNodeInternalServiceRequestSender.getInstance()
+                          AsyncDataNodeInternalServiceRequestManager.getInstance()
                               .sendAsyncRequestToNodeWithRetry(createSchemaRegionHandler);
 
                           for (Map.Entry<Integer, TSStatus> entry :
@@ -1313,7 +1313,7 @@ public class PartitionManager {
                                 dataRegionCreateTask.getTargetDataNode());
                           }
 
-                          AsyncDataNodeInternalServiceRequestSender.getInstance()
+                          AsyncDataNodeInternalServiceRequestManager.getInstance()
                               .sendAsyncRequestToNodeWithRetry(createDataRegionHandler);
 
                           for (Map.Entry<Integer, TSStatus> entry :
@@ -1349,7 +1349,7 @@ public class PartitionManager {
                       }
 
                       long startTime = System.currentTimeMillis();
-                      AsyncDataNodeInternalServiceRequestSender.getInstance()
+                      AsyncDataNodeInternalServiceRequestManager.getInstance()
                           .sendAsyncRequestToNodeWithRetry(deleteRegionHandler);
 
                       LOGGER.info(

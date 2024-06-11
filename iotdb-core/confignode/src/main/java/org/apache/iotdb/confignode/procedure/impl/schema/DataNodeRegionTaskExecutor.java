@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestSender;
+import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -88,7 +88,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
     while (!dataNodeConsensusGroupIdMap.isEmpty()) {
       AsyncDataNodeRequestContext<Q, R> clientHandler =
           prepareRequestHandler(dataNodeConsensusGroupIdMap);
-      AsyncDataNodeInternalServiceRequestSender.getInstance()
+      AsyncDataNodeInternalServiceRequestManager.getInstance()
           .sendAsyncRequestToNodeWithRetry(clientHandler);
       Map<TDataNodeLocation, List<TConsensusGroupId>> currentFailedDataNodeMap =
           checkDataNodeExecutionResult(clientHandler.getResponseMap(), dataNodeConsensusGroupIdMap);

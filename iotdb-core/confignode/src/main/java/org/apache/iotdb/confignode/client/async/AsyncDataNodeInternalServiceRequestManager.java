@@ -91,14 +91,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Asynchronously send RPC requests to DataNodes. See queryengine.thrift for more details. */
-public class AsyncDataNodeInternalServiceRequestSender
+public class AsyncDataNodeInternalServiceRequestManager
     extends AsyncRequestManager<
         DataNodeRequestType, TDataNodeLocation, AsyncDataNodeInternalServiceClient> {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(AsyncDataNodeInternalServiceRequestSender.class);
+      LoggerFactory.getLogger(AsyncDataNodeInternalServiceRequestManager.class);
 
-  private AsyncDataNodeInternalServiceRequestSender() {
+  private AsyncDataNodeInternalServiceRequestManager() {
     super();
   }
 
@@ -335,15 +335,15 @@ public class AsyncDataNodeInternalServiceRequestSender
   // TODO: Is the ClientPool must be a singleton?
   private static class ClientPoolHolder {
 
-    private static final AsyncDataNodeInternalServiceRequestSender INSTANCE =
-        new AsyncDataNodeInternalServiceRequestSender();
+    private static final AsyncDataNodeInternalServiceRequestManager INSTANCE =
+        new AsyncDataNodeInternalServiceRequestManager();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static AsyncDataNodeInternalServiceRequestSender getInstance() {
+  public static AsyncDataNodeInternalServiceRequestManager getInstance() {
     return ClientPoolHolder.INSTANCE;
   }
 }
