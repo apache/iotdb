@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.tree;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.rpc.TSStatusCode;
+
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
@@ -55,6 +61,28 @@ public final class RenameColumn extends Statement {
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitRenameColumn(this, context);
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName, String databaseName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
+    String database = databaseName;
+    if (databaseName == null) {
+      if (this.table.getPrefix().isPresent()) {
+        database = this.table.getPrefix().get().toString();
+      }
+    }
+    if (database == null) {
+      throw new SemanticException("unknown database");
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkDBPermision(userName, database, PrivilegeType.WRITE_SCHEMA.ordinal())
+            || AuthorityChecker.checkTBPermission(
+                userName, database, table.toString(), PrivilegeType.WRITE_SCHEMA.ordinal()),
+        PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override

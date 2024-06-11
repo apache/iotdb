@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.auth.entity;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.SerializeUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TObjectResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTableAuthResp;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -105,6 +107,28 @@ public class Role {
   /** -------------- set func ----------------* */
   public void setName(String name) {
     this.name = name;
+  }
+
+  public void addObjectPrivilege(TObjectResp resp) {
+    if (this.objectPrivileges == null) {
+      this.objectPrivileges = new HashMap<>();
+    }
+    ObjectPrivilege objectPrivilege = new ObjectPrivilege(resp.getDatabasename());
+    if (resp.isSetTableinfo()) {
+      for (Map.Entry<String, TTableAuthResp> tbResp : resp.getTableinfo().entrySet()) {
+        TablePrivilege tablePrivilege = new TablePrivilege(tbResp.getKey());
+        tablePrivilege.setPrivileges(tbResp.getValue().getPrivileges());
+        tablePrivilege.setGrantOption(tbResp.getValue().getGrantOption());
+        objectPrivilege.getTablePrivilegeMap().put(tbResp.getKey(), tablePrivilege);
+      }
+    }
+    if (resp.isSetPrivileges()) {
+      objectPrivilege.setPrivileges(resp.getPrivileges());
+    }
+    if (resp.isSetGrantOpt()) {
+      objectPrivilege.setPrivileges(resp.getGrantOpt());
+    }
+    this.objectPrivileges.put(resp.getDatabasename(), objectPrivilege);
   }
 
   public void setPrivilegeList(List<PathPrivilege> privilegeList) {

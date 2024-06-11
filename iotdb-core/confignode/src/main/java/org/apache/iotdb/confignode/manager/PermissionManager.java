@@ -115,9 +115,11 @@ public class PermissionManager {
     return authorInfo.checkUserPrivileges(username, paths, permission);
   }
 
-  public TPermissionInfoResp checkUserObjectPrivileges(String username, String database,String tableName, int permission) {
+  public TPermissionInfoResp checkUserObjectPrivileges(
+      String username, String database, String tableName, int permission) {
     return authorInfo.checkUserObjectPrivileges(username, database, tableName, permission);
   }
+
   public TAuthizedPatternTreeResp fetchAuthizedPTree(String username, int permission)
       throws AuthException {
     return authorInfo.generateAuthizedPTree(username, permission);

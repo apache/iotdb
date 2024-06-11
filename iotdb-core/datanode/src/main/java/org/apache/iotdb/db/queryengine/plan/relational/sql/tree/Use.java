@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.tree;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nonnull;
@@ -50,6 +53,10 @@ public final class Use extends Statement {
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitUse(this, context);
+  }
+
+  public TSStatus checkPermissionBeforeProcess(String userName, String databaseName) {
+    return AuthorityChecker.getTSStatus(true, "Only the admin user can perform this operation");
   }
 
   @Override

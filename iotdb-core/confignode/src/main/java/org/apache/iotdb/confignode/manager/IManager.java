@@ -403,7 +403,9 @@ public interface IManager {
 
   /** Check User Privileges. */
   TPermissionInfoResp checkUserPrivileges(String username, List<PartialPath> paths, int permission);
-  TPermissionInfoResp checkUserObjectPrivileges(String username, String database, String tableName, int permission);
+
+  TPermissionInfoResp checkUserObjectPrivileges(
+      String username, String database, String tableName, int permission);
 
   /**
    * Register ConfigNode when it is first startup.

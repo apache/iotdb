@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.tree;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.rpc.TSStatusCode;
+
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
@@ -55,6 +61,22 @@ public class DropDB extends Statement {
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitDropDB(this, context);
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName, String databaseName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
+    if (databaseName == null) {
+      throw new SemanticException("unknown database");
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE.ordinal())
+            || AuthorityChecker.checkDBPermision(
+                userName, databaseName, PrivilegeType.WRITE_SCHEMA.ordinal()),
+        PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override

@@ -1143,7 +1143,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TPermissionInfoResp checkUserObjectPrivileges(String username, String database, String tableName, int permission) {
+  public TPermissionInfoResp checkUserObjectPrivileges(
+      String username, String database, String tableName, int permission) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.checkUserObjectPrivileges(username, database, tableName, permission);

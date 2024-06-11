@@ -182,7 +182,12 @@ public class AuthorityChecker {
   }
 
   public static boolean checkDBPermision(String userName, String database, int permission) {
-    return false;
+    return authorityFetcher.checkUserDBPrivilege(userName, database, permission);
+  }
+
+  public static boolean checkTBPermission(
+      String userName, String database, String tableName, int permission) {
+    return authorityFetcher.checkUserTablePrivilege(userName, database, tableName, permission);
   }
 
   public static List<Integer> checkFullPathListPermission(
@@ -343,7 +348,8 @@ public class AuthorityChecker {
       IClientSession clientSession) {
     long startTime = System.nanoTime();
     try {
-      return s.checkPermissionBeforeProcess(clientSession.getUsername());
+      return s.checkPermissionBeforeProcess(
+          clientSession.getUsername(), clientSession.getDatabaseName());
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }

@@ -30,7 +30,7 @@ public abstract class Statement extends Node {
     super(location);
   }
 
-  public TSStatus checkPermissionBeforeProcess(String userName) {
+  public TSStatus checkPermissionBeforeProcess(String userName, String databaseName) {
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.SUPER_USER.equals(userName),
         "Only the admin user can perform this operation");

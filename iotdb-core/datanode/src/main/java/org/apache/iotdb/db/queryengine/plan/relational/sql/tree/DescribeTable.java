@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.tree;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.rpc.TSStatusCode;
+
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nonnull;
@@ -49,6 +55,35 @@ public class DescribeTable extends Statement {
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitDescribeTable(this, context);
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName, String databaseName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
+    if (databaseName == null) {
+      throw new SemanticException("unknown database");
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkDBPermision(
+                userName, databaseName, PrivilegeType.WRITE_SCHEMA.ordinal())
+            || AuthorityChecker.checkDBPermision(
+                userName, databaseName, PrivilegeType.READ_SCHEMA.ordinal())
+            || AuthorityChecker.checkDBPermision(
+                userName, databaseName, PrivilegeType.READ_DATA.ordinal())
+            || AuthorityChecker.checkDBPermision(
+                userName, databaseName, PrivilegeType.WRITE_DATA.ordinal())
+            || AuthorityChecker.checkTBPermission(
+                userName, databaseName, table.toString(), PrivilegeType.READ_SCHEMA.ordinal())
+            || AuthorityChecker.checkTBPermission(
+                userName, databaseName, table.toString(), PrivilegeType.WRITE_SCHEMA.ordinal())
+            || AuthorityChecker.checkTBPermission(
+                userName, databaseName, table.toString(), PrivilegeType.WRITE_DATA.ordinal())
+            || AuthorityChecker.checkTBPermission(
+                userName, databaseName, table.toString(), PrivilegeType.READ_DATA.ordinal()),
+        "NEED ONE PRIVILEGES OF DB OR TABLE");
   }
 
   @Override

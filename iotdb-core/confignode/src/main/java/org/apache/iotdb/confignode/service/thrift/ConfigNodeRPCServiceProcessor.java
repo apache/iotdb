@@ -624,8 +624,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TPermissionInfoResp checkUserObjectPrivileges(TCheckUserObjectPrivilegesReq req) {
-    return configManager.checkUserObjectPrivileges(req.getUsername(), req.getDatabase(), req.isSetTablename() ? req.getTablename() : null, req.getPermission());
+  public TPermissionInfoResp checkUserObjectPrivilege(TCheckUserObjectPrivilegesReq req) {
+    return configManager.checkUserObjectPrivileges(
+        req.getUsername(),
+        req.getDatabase(),
+        req.isSetTablename() ? req.getTablename() : null,
+        req.getPermission());
   }
 
   @Override

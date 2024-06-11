@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.tree;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.rpc.TSStatusCode;
+
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
@@ -70,6 +76,28 @@ public final class Insert extends Statement {
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitInsert(this, context);
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName, String databaseName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
+    String database = databaseName;
+    if (databaseName == null) {
+      if (this.table.getName().getPrefix().isPresent()) {
+        database = this.table.getName().getPrefix().get().toString();
+      }
+    }
+    if (database == null) {
+      throw new SemanticException("unknown database");
+    }
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkDBPermision(userName, database, PrivilegeType.WRITE_DATA.ordinal())
+            || AuthorityChecker.checkTBPermission(
+                userName, database, table.getName().toString(), PrivilegeType.WRITE_DATA.ordinal()),
+        "NEED WRITE_DATA ON DB OR TABLE");
   }
 
   @Override

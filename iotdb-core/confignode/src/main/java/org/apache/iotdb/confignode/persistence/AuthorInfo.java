@@ -169,7 +169,7 @@ public class AuthorInfo implements SnapshotProcessor {
   }
 
   public TPermissionInfoResp checkUserObjectPrivileges(
-          String username, String database, String tableName, int permission) {
+      String username, String database, String tableName, int permission) {
     boolean status = true;
     TPermissionInfoResp result = new TPermissionInfoResp();
     try {
@@ -191,7 +191,6 @@ public class AuthorInfo implements SnapshotProcessor {
     }
     return result;
   }
-
 
   private boolean checkOnePath(String username, PartialPath path, int permission)
       throws AuthException {
@@ -417,7 +416,7 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case RGrantUserTBPriv:
           authorizer.grantObjectPrivilegesToUserRole(
-              userName, true, database, null, priv, grantOpt);
+              userName, true, database, tablename, priv, grantOpt);
           break;
         case RGrantRoleDBPriv:
           authorizer.grantObjectPrivilegesToUserRole(
@@ -783,12 +782,12 @@ public class AuthorInfo implements SnapshotProcessor {
         roleResp.setPrivilegeList(rolePrivilegeList);
 
         if (!role.getObjectPrivileges().isEmpty()) {
-          for (Map.Entry<String, ObjectPrivilege> entry : user.getObjectPrivileges().entrySet()) {
+          for (Map.Entry<String, ObjectPrivilege> entry : role.getObjectPrivileges().entrySet()) {
             ObjectPrivilege objectPrivilege = entry.getValue();
             TObjectResp objectResp = new TObjectResp();
             objectResp.setDatabasename(objectPrivilege.getDatabaseName());
             objectResp.setPrivileges(objectPrivilege.getPrivileges());
-            objectResp.setGrantOpt(objectPrivilege.getPrivileges());
+            objectResp.setGrantOpt(objectPrivilege.getGrantOptions());
             for (Map.Entry<String, TablePrivilege> entry1 :
                 objectPrivilege.getTablePrivilegeMap().entrySet()) {
               TTableAuthResp tableAuthResp = new TTableAuthResp();

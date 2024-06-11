@@ -72,6 +72,18 @@ public class ObjectPrivilege {
     }
   }
 
+  public void setPrivileges(Set<Integer> privs) {
+    for (Integer priv : privs) {
+      this.privilegeTypeSet.add(PrivilegeType.values()[priv]);
+    }
+  }
+
+  public void setGrantOptionSet(Set<Integer> privs) {
+    for (Integer priv : privs) {
+      this.grantOptionSet.add(PrivilegeType.values()[priv]);
+    }
+  }
+
   public void grantDBObjectPrivilege(PrivilegeType privilegeType) {
     this.privilegeTypeSet.add(privilegeType);
   }

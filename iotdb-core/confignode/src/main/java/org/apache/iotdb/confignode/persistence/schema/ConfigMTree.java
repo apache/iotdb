@@ -726,7 +726,7 @@ public class ConfigMTree {
       if (child.isDatabase()) {
         serializeDatabaseNode(child.getAsDatabaseMNode(), outputStream);
       } else if (child instanceof ConfigTableNode) {
-        serializeTableNode((ConfigTableNode) node, outputStream);
+        serializeChildren((ConfigTableNode) node, outputStream);
       } else {
         serializeConfigBasicMNode(child, outputStream);
       }

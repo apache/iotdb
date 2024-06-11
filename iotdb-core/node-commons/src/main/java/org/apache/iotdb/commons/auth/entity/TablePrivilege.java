@@ -84,6 +84,18 @@ public class TablePrivilege {
     }
   }
 
+  public void setPrivileges(Set<Integer> privs) {
+    for (Integer priv : privs) {
+      this.privileges.add(PrivilegeType.values()[priv]);
+    }
+  }
+
+  public void setGrantOption(Set<Integer> privs) {
+    for (Integer priv : privs) {
+      this.grantOption.add(PrivilegeType.values()[priv]);
+    }
+  }
+
   public String toString() {
     StringBuilder builder = new StringBuilder();
     builder.append(this.tableName).append(" ");

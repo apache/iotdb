@@ -39,8 +39,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerTableReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserObjectPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TObjectResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -65,6 +67,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
@@ -133,12 +136,15 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         for (String roleName : user.getRoleList()) {
           Role cachedRole = iAuthorCache.getRoleCache(roleName);
           if (cachedRole == null) {
-
+            return checkUserObjectPrivilegesFromConfignode(username, database, null, permission);
+          }
+          if (cachedRole.checkObjectPrivilege(database, null, PrivilegeType.values()[permission])) {
+            return true;
           }
         }
       }
     } else {
-
+      return checkUserObjectPrivilegesFromConfignode(username, database, null, permission);
     }
     return false;
   }
@@ -146,10 +152,55 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public boolean checkUserTablePrivilege(
       String username, String database, String table, int permission) {
-
+    checkCacheAvailable();
+    User user = iAuthorCache.getUserCache(username);
+    if (user != null) {
+      if (user.isOpenIdUser()) {
+        return true;
+      }
+      if (!user.checkObjectPrivilege(database, table, PrivilegeType.values()[permission])) {
+        for (String roleName : user.getRoleList()) {
+          Role cachedRole = iAuthorCache.getRoleCache(roleName);
+          if (cachedRole == null) {
+            return checkUserObjectPrivilegesFromConfignode(username, database, table, permission);
+          }
+          if (cachedRole.checkObjectPrivilege(
+              database, table, PrivilegeType.values()[permission])) {
+            return true;
+          }
+        }
+      }
+    } else {
+      return checkUserObjectPrivilegesFromConfignode(username, database, null, permission);
+    }
+    return false;
   }
 
-
+  public boolean checkUserObjectPrivilegesFromConfignode(
+      String username, String database, String tableName, int permission) {
+    TCheckUserObjectPrivilegesReq req =
+        new TCheckUserObjectPrivilegesReq(username, database, permission);
+    if (tableName != null) {
+      req.setTablename(tableName);
+    }
+    TPermissionInfoResp resp;
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      resp = configNodeClient.checkUserObjectPrivilege(req);
+    } catch (ClientManagerException | TException e) {
+      LOGGER.error(CONNECTERROR);
+      resp = new TPermissionInfoResp();
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
+    }
+    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (acceptCache) {
+        iAuthorCache.putUserCache(username, cacheUser(resp));
+      }
+      return true;
+    }
+    return false;
+  }
 
   @Override
   public boolean checkUserPrivilegeGrantOpt(
@@ -655,6 +706,14 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         LOGGER.error("Failed to parse path {}.", tPathPrivilege.getPath(), e);
       }
     }
+
+    if (tPermissionInfoResp.getUserInfo().isSetObjectInfo()) {
+      Map<String, TObjectResp> objresp = tPermissionInfoResp.getUserInfo().getObjectInfo();
+      for (Map.Entry<String, TObjectResp> obj : objresp.entrySet()) {
+        user.addObjectPrivilege(obj.getValue());
+      }
+    }
+
     user.setOpenIdUser(tPermissionInfoResp.getUserInfo().isIsOpenIdUser());
     user.setPrivilegeList(pathPrivilegeList);
     user.setRoleList(tPermissionInfoResp.getUserInfo().getRoleList());
@@ -684,6 +743,14 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         LOGGER.error("Failed to parse path {}.", tPathPrivilege.getPath(), e);
       }
     }
+    if (tPermissionInfoResp.getRoleInfo().get(roleName).isSetObjectInfo()) {
+      Map<String, TObjectResp> objresp =
+          tPermissionInfoResp.getRoleInfo().get(roleName).getObjectInfo();
+      for (Map.Entry<String, TObjectResp> obj : objresp.entrySet()) {
+        role.addObjectPrivilege(obj.getValue());
+      }
+    }
+
     role.setSysPriGrantOpt(tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSetGrantOpt());
     role.setSysPrivilegeSet(tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSet());
     role.setPrivilegeList(pathPrivilegeList);
