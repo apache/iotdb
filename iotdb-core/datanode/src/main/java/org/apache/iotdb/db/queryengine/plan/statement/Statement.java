@@ -66,4 +66,8 @@ public abstract class Statement extends StatementNode {
         AuthorityChecker.SUPER_USER.equals(userName),
         "Only the admin user can perform this operation");
   }
+
+  public org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement toRelationalStatement() {
+    throw new UnsupportedOperationException("Method not implemented yet");
+  }
 }
