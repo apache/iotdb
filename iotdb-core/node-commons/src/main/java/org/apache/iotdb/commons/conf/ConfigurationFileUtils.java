@@ -158,7 +158,7 @@ public class ConfigurationFileUtils {
         BufferedReader reader = new BufferedReader(isr)) {
       String line;
       while ((line = reader.readLine()) != null) {
-        content.append(line).append(System.lineSeparator());
+        content.append(line).append("\n");
       }
     } catch (IOException e) {
       logger.warn("Failed to read configuration template", e);
@@ -192,7 +192,7 @@ public class ConfigurationFileUtils {
     StringBuilder contentsOfNewConfigurationFile = new StringBuilder();
     for (String currentLine : lines) {
       if (currentLine.trim().isEmpty() || currentLine.trim().startsWith("#")) {
-        contentsOfNewConfigurationFile.append(currentLine).append(System.lineSeparator());
+        contentsOfNewConfigurationFile.append(currentLine).append("\n");
         continue;
       }
       int equalsIndex = currentLine.indexOf('=');
@@ -201,17 +201,14 @@ public class ConfigurationFileUtils {
         String key = currentLine.substring(0, equalsIndex).trim();
         String value = currentLine.substring(equalsIndex + 1).trim();
         if (!newConfigItems.containsKey(key)) {
-          contentsOfNewConfigurationFile.append(currentLine).append(System.lineSeparator());
+          contentsOfNewConfigurationFile.append(currentLine).append("\n");
           continue;
         }
         if (newConfigItems.getProperty(key).equals(value)) {
-          contentsOfNewConfigurationFile.append(currentLine).append(System.lineSeparator());
+          contentsOfNewConfigurationFile.append(currentLine).append("\n");
           newConfigItems.remove(key);
         } else {
-          contentsOfNewConfigurationFile
-              .append("#")
-              .append(currentLine)
-              .append(System.lineSeparator());
+          contentsOfNewConfigurationFile.append("#").append(currentLine).append("\n");
         }
       }
     }

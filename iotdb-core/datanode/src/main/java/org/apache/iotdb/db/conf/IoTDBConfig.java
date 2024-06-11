@@ -2175,14 +2175,6 @@ public class IoTDBConfig {
     this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
   }
 
-  public long getCrossCompactionFileSelectionTimeBudget() {
-    return crossCompactionFileSelectionTimeBudget;
-  }
-
-  void setCrossCompactionFileSelectionTimeBudget(long crossCompactionFileSelectionTimeBudget) {
-    this.crossCompactionFileSelectionTimeBudget = crossCompactionFileSelectionTimeBudget;
-  }
-
   public boolean isRpcThriftCompressionEnable() {
     return rpcThriftCompressionEnable;
   }
