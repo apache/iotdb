@@ -42,4 +42,12 @@ public interface IAnalysis {
   DatasetHeader getRespDatasetHeader();
 
   String getStatementType();
+
+  default void setFinishQueryAfterAnalyze(boolean b) {
+
+  }
+
+  default void setFailStatus(TSStatus status) {
+
+  }
 }

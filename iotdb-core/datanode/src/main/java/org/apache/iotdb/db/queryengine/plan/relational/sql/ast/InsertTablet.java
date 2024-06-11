@@ -17,13 +17,99 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.sql.tree;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputationWithAutoCreation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Pair;
 
-public class InsertTablet extends WrappedStatement {
+public class InsertTablet extends WrappedInsertStatement {
 
-  public InsertTablet(InsertTabletStatement insertTabletStatement) {
-    super(insertTabletStatement);
+  private InsertTabletStatement insertTabletStatement;
+
+  public InsertTablet(InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
+    super(insertTabletStatement, context);
+    this.insertTabletStatement = insertTabletStatement;
+  }
+
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitInsertTablet(this, context);
+  }
+
+  @Override
+  public InsertTabletStatement getInnerTreeStatement() {
+    return insertTabletStatement;
+  }
+
+  @Override
+  public List<ISchemaComputationWithAutoCreation> getSchemaValidationList() {
+    Map<IDeviceID, ISchemaComputationWithAutoCreation> map = new HashMap<>();
+    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+      map.computeIfAbsent(insertTabletStatement.getTableDeviceID(i), this::getSchemaComputation);
+    }
+    return new ArrayList<>(map.values());
+  }
+
+  @Override
+  public void updateAfterSchemaValidation(MPPQueryContext context) throws QueryProcessException {
+    insertTabletStatement.updateAfterSchemaValidation(context);
+  }
+
+  @Override
+  public ISchemaComputationWithAutoCreation getSchemaComputation(IDeviceID deviceID) {
+    return new SchemaExecutions(deviceID);
+  }
+
+  public class SchemaExecutions extends BasicSchemaExecutions {
+
+    public SchemaExecutions(IDeviceID deviceID) {
+      super(deviceID);
+    }
+
+    @Override
+    public void computeMeasurement(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
+      insertTabletStatement.computeMeasurement(index, measurementSchemaInfo);
+    }
+
+    @Override
+    public boolean hasLogicalViewNeedProcess() {
+      return insertTabletStatement.hasLogicalViewNeedProcess();
+    }
+
+    @Override
+    public List<LogicalViewSchema> getLogicalViewSchemaList() {
+      return insertTabletStatement.getLogicalViewSchemaList();
+    }
+
+    @Override
+    public List<Integer> getIndexListOfLogicalViewPaths() {
+      return insertTabletStatement.getIndexListOfLogicalViewPaths();
+    }
+
+    @Override
+    public void recordRangeOfLogicalViewSchemaListNow() {
+      insertTabletStatement.recordRangeOfLogicalViewSchemaListNow();
+    }
+
+    @Override
+    public Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded() {
+      return insertTabletStatement.getRangeOfLogicalViewSchemaListRecorded();
+    }
+
+    @Override
+    public void computeMeasurementOfView(int index, IMeasurementSchemaInfo measurementSchemaInfo,
+        boolean isAligned) {
+      insertTabletStatement.computeMeasurementOfView(index, measurementSchemaInfo, isAligned);
+    }
   }
 }

@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -185,6 +184,11 @@ import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.computeAnalysisForInsertRows;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.computeAnalysisForMultiTablets;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.getAnalysisForWriting;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.removeLogicalView;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.validateSchema;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.bindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
@@ -2616,7 +2620,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     insertTabletStatement.semanticCheck();
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertTabletStatement, context);
+    validateSchema(analysis, insertTabletStatement,
+        () -> SchemaValidator.validate(schemaFetcher, insertTabletStatement, context));
     InsertBaseStatement realStatement = removeLogicalView(analysis, insertTabletStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
@@ -2634,12 +2639,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return getAnalysisForWriting(
           analysis,
           Collections.singletonList(dataPartitionQueryParam),
-          context.getSession().getUserName());
+          context.getSession().getUserName(), partitionFetcher);
     } else {
       return computeAnalysisForMultiTablets(
           analysis,
           (InsertMultiTabletsStatement) realStatement,
-          context.getSession().getUserName());
+          context.getSession().getUserName(), partitionFetcher);
     }
   }
 
@@ -2648,7 +2653,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     insertRowStatement.semanticCheck();
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertRowStatement, context);
+    validateSchema(analysis, insertRowStatement,
+        () -> SchemaValidator.validate(schemaFetcher, insertRowStatement, context));
     InsertBaseStatement realInsertStatement = removeLogicalView(analysis, insertRowStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
@@ -2665,32 +2671,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return getAnalysisForWriting(
           analysis,
           Collections.singletonList(dataPartitionQueryParam),
-          context.getSession().getUserName());
+          context.getSession().getUserName(), partitionFetcher);
     } else {
       return computeAnalysisForInsertRows(
-          analysis, (InsertRowsStatement) realInsertStatement, context.getSession().getUserName());
+          analysis, (InsertRowsStatement) realInsertStatement, context.getSession().getUserName()
+          , partitionFetcher);
     }
-  }
-
-  private Analysis computeAnalysisForInsertRows(
-      Analysis analysis, InsertRowsStatement insertRowsStatement, String userName) {
-    Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
-    for (InsertRowStatement insertRowStatement : insertRowsStatement.getInsertRowStatementList()) {
-      Set<TTimePartitionSlot> timePartitionSlotSet =
-          dataPartitionQueryParamMap.computeIfAbsent(
-              insertRowStatement.getDevicePath().getFullPath(), k -> new HashSet<>());
-      timePartitionSlotSet.add(insertRowStatement.getTimePartitionSlot());
-    }
-
-    List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
-    for (Map.Entry<String, Set<TTimePartitionSlot>> entry : dataPartitionQueryParamMap.entrySet()) {
-      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(entry.getKey());
-      dataPartitionQueryParam.setTimePartitionSlotList(new ArrayList<>(entry.getValue()));
-      dataPartitionQueryParams.add(dataPartitionQueryParam);
-    }
-
-    return getAnalysisForWriting(analysis, dataPartitionQueryParams, userName);
   }
 
   @Override
@@ -2699,7 +2685,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     insertRowsStatement.semanticCheck();
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertRowsStatement, context);
+    validateSchema(analysis, insertRowsStatement,
+        () -> SchemaValidator.validate(schemaFetcher, insertRowsStatement, context));
     InsertRowsStatement realInsertRowsStatement =
         (InsertRowsStatement) removeLogicalView(analysis, insertRowsStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
@@ -2708,29 +2695,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setStatement(realInsertRowsStatement);
 
     return computeAnalysisForInsertRows(
-        analysis, realInsertRowsStatement, context.getSession().getUserName());
-  }
-
-  private Analysis computeAnalysisForMultiTablets(
-      Analysis analysis, InsertMultiTabletsStatement insertMultiTabletsStatement, String userName) {
-    Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
-    for (InsertTabletStatement insertTabletStatement :
-        insertMultiTabletsStatement.getInsertTabletStatementList()) {
-      Set<TTimePartitionSlot> timePartitionSlotSet =
-          dataPartitionQueryParamMap.computeIfAbsent(
-              insertTabletStatement.getDevicePath().getFullPath(), k -> new HashSet<>());
-      timePartitionSlotSet.addAll(insertTabletStatement.getTimePartitionSlots());
-    }
-
-    List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
-    for (Map.Entry<String, Set<TTimePartitionSlot>> entry : dataPartitionQueryParamMap.entrySet()) {
-      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(entry.getKey());
-      dataPartitionQueryParam.setTimePartitionSlotList(new ArrayList<>(entry.getValue()));
-      dataPartitionQueryParams.add(dataPartitionQueryParam);
-    }
-
-    return getAnalysisForWriting(analysis, dataPartitionQueryParams, userName);
+        analysis, realInsertRowsStatement, context.getSession().getUserName(), partitionFetcher);
   }
 
   @Override
@@ -2739,7 +2704,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     insertMultiTabletsStatement.semanticCheck();
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertMultiTabletsStatement, context);
+    validateSchema(analysis, insertMultiTabletsStatement,
+        () -> SchemaValidator.validate(schemaFetcher, insertMultiTabletsStatement, context));
     InsertMultiTabletsStatement realStatement =
         (InsertMultiTabletsStatement) removeLogicalView(analysis, insertMultiTabletsStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
@@ -2748,7 +2714,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setStatement(realStatement);
 
     return computeAnalysisForMultiTablets(
-        analysis, realStatement, context.getSession().getUserName());
+        analysis, realStatement, context.getSession().getUserName(), partitionFetcher);
   }
 
   @Override
@@ -2757,7 +2723,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     insertRowsOfOneDeviceStatement.semanticCheck();
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertRowsOfOneDeviceStatement, context);
+    validateSchema(analysis, insertRowsOfOneDeviceStatement,
+        () -> SchemaValidator.validate(schemaFetcher, insertRowsOfOneDeviceStatement, context));
     InsertBaseStatement realInsertStatement =
         removeLogicalView(analysis, insertRowsOfOneDeviceStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
@@ -2775,10 +2742,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return getAnalysisForWriting(
           analysis,
           Collections.singletonList(dataPartitionQueryParam),
-          context.getSession().getUserName());
+          context.getSession().getUserName(),
+          partitionFetcher);
     } else {
       return computeAnalysisForInsertRows(
-          analysis, (InsertRowsStatement) realInsertStatement, context.getSession().getUserName());
+          analysis, (InsertRowsStatement) realInsertStatement, context.getSession().getUserName()
+          , partitionFetcher);
     }
   }
 
@@ -2793,53 +2762,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return analysis;
   }
 
-  private void validateSchema(
-      Analysis analysis, InsertBaseStatement insertStatement, MPPQueryContext context) {
-    final long startTime = System.nanoTime();
-    try {
-      SchemaValidator.validate(schemaFetcher, insertStatement, context);
-    } catch (SemanticException e) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      if (e.getCause() instanceof IoTDBException) {
-        IoTDBException exception = (IoTDBException) e.getCause();
-        analysis.setFailStatus(
-            RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
-      } else {
-        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
-      }
-    } finally {
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleSchemaValidateCost(System.nanoTime() - startTime);
-    }
-    boolean hasFailedMeasurement = insertStatement.hasFailedMeasurements();
-    String partialInsertMessage;
-    if (hasFailedMeasurement) {
-      partialInsertMessage =
-          String.format(
-              "Fail to insert measurements %s caused by %s",
-              insertStatement.getFailedMeasurements(), insertStatement.getFailedMessages());
-      logger.warn(partialInsertMessage);
-      analysis.setFailStatus(
-          RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
-    }
-  }
-
-  private InsertBaseStatement removeLogicalView(
-      Analysis analysis, InsertBaseStatement insertBaseStatement) {
-    try {
-      return insertBaseStatement.removeLogicalView();
-    } catch (SemanticException e) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      if (e.getCause() instanceof IoTDBException) {
-        IoTDBException exception = (IoTDBException) e.getCause();
-        analysis.setFailStatus(
-            RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
-      } else {
-        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
-      }
-      return insertBaseStatement;
-    }
-  }
-
   @Override
   public Analysis visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     LoadTsfileAnalyzer loadTsfileAnalyzer =
@@ -2849,24 +2771,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } finally {
       loadTsfileAnalyzer.close();
     }
-  }
-
-  /** get analysis according to statement and params */
-  private Analysis getAnalysisForWriting(
-      Analysis analysis, List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
-
-    DataPartition dataPartition =
-        partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams, userName);
-    if (dataPartition.isEmpty()) {
-      analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(
-          RpcUtils.getStatus(
-              TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(),
-              "Database not exists and failed to create automatically "
-                  + "because enable_auto_create_schema is FALSE."));
-    }
-    analysis.setDataPartitionInfo(dataPartition);
-    return analysis;
   }
 
   private boolean analyzeTimeseriesRegionScan(

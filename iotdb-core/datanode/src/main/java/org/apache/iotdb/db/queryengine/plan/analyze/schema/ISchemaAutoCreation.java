@@ -39,7 +39,8 @@ public interface ISchemaAutoCreation {
 
   TSDataType getDataType(int index);
 
+  //TODO: Check necessity because all implementations return null
   TSEncoding getEncoding(int index);
-
+  //TODO: Check necessity because all implementations return null
   CompressionType getCompressionType(int index);
 }

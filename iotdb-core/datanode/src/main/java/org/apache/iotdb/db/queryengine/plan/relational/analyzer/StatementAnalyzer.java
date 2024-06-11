@@ -19,11 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import java.util.Collections;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -57,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingElement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Insert;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
@@ -106,6 +113,9 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
 
@@ -134,6 +144,10 @@ import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.computeAnalysisForMultiTablets;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.getAnalysisForWriting;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.removeLogicalView;
+import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.validateSchema;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifySourceAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.CanonicalizationAware.canonicalizationAwareKey;
@@ -153,7 +167,7 @@ public class StatementAnalyzer {
 
   private final StatementAnalyzerFactory statementAnalyzerFactory;
 
-  private final Analysis analysis;
+  private Analysis analysis;
 
   private final AccessControl accessControl;
 
@@ -212,6 +226,7 @@ public class StatementAnalyzer {
    * scopes hierarchy should always have outer query scope (if provided) as ancestor.
    */
   private final class Visitor extends AstVisitor<Scope, Optional<Scope>> {
+
     private final boolean isTopLevel;
     private final Optional<Scope> outerQueryScope;
     private final WarningCollector warningCollector;
@@ -350,6 +365,46 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitInsert(Insert insert, Optional<Scope> scope) {
       throw new SemanticException("Insert statement is not supported yet.");
+    }
+
+    protected Scope visitInsertTablet(InsertTablet insert, Optional<Scope> scope) {
+      final Scope ret = Scope.create();
+
+      final MPPQueryContext context = insert.getContext();
+      final InsertTabletStatement insertTabletStatement = insert.getInnerTreeStatement();
+      context.setQueryType(QueryType.WRITE);
+      insertTabletStatement.semanticCheck();
+      IAnalysis analysis = new org.apache.iotdb.db.queryengine.plan.analyze.Analysis();
+
+      validateSchema(analysis, insertTabletStatement,
+          () -> SchemaValidator.validate(metadata, insert, context));
+      InsertBaseStatement realStatement = removeLogicalView(analysis, insertTabletStatement);
+      if (analysis.isFinishQueryAfterAnalyze()) {
+        return ret;
+      }
+      analysis.setStatement(realStatement);
+
+      if (realStatement instanceof InsertTabletStatement) {
+        InsertTabletStatement realInsertTabletStatement = (InsertTabletStatement) realStatement;
+        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+        dataPartitionQueryParam.setDevicePath(
+            realInsertTabletStatement.getDevicePath().getFullPath());
+        dataPartitionQueryParam.setTimePartitionSlotList(
+            realInsertTabletStatement.getTimePartitionSlots());
+
+        analysis = getAnalysisForWriting(
+            analysis,
+            Collections.singletonList(dataPartitionQueryParam),
+            context.getSession().getUserName(), partitionFetcher);
+      } else {
+        analysis =  computeAnalysisForMultiTablets(
+            analysis,
+            (InsertMultiTabletsStatement) realStatement,
+            context.getSession().getUserName(), partitionFetcher);
+      }
+      // TODO-TableIngestion: use IAnalysis
+      // StatementAnalyzer.this.analysis = analysis;
+      return ret;
     }
 
     @Override
@@ -1965,7 +2020,7 @@ public class StatementAnalyzer {
 
     /**
      * @return true if the Query / QuerySpecification containing the analyzed Limit or FetchFirst,
-     *     must contain orderBy (i.e., for FetchFirst with ties).
+     * must contain orderBy (i.e., for FetchFirst with ties).
      */
     private boolean analyzeLimit(Node node, Scope scope) {
       //      checkState(
