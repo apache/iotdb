@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthTableStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 
 import com.google.common.util.concurrent.SettableFuture;
@@ -38,6 +39,10 @@ public interface IAuthorityFetcher {
 
   List<Integer> checkUserPathPrivileges(String username, List<PartialPath> allPath, int permission);
 
+  boolean checkUserDBPrivilege(String username, String database, int permission);
+
+  boolean checkUserTablePrivilege(String username, String database, String table, int permission);
+
   TSStatus checkUserSysPrivileges(String username, int permisssion);
 
   boolean checkUserPrivilegeGrantOpt(String username, List<PartialPath> paths, int permission);
@@ -47,6 +52,10 @@ public interface IAuthorityFetcher {
   SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement);
 
   SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement);
+
+  SettableFuture<ConfigTaskResult> operatePermission(AuthTableStatement authorStatement);
+
+  SettableFuture<ConfigTaskResult> queryPermission(AuthTableStatement authorStatement);
 
   IAuthorCache getAuthorCache();
 

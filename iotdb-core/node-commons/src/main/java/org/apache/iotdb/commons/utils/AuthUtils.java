@@ -577,4 +577,16 @@ public class AuthUtils {
         return -1;
     }
   }
+
+  public static int getAllPrivileges(
+      Set<PrivilegeType> privileges, Set<PrivilegeType> grantOption) {
+    int privilege = 0;
+    for (PrivilegeType pri : privileges) {
+      privilege |= 1 << AuthUtils.pathPriToPos(pri);
+    }
+    for (PrivilegeType grantOpt : grantOption) {
+      privilege |= 1 << (AuthUtils.pathPriToPos(grantOpt) + 16);
+    }
+    return privilege;
+  }
 }

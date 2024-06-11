@@ -41,6 +41,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerTableReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserObjectPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
@@ -558,6 +560,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus operateTablePermission(TAuthorizerTableReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.operateTablePermission(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TAuthorizerResp queryPermission(TAuthorizerReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.queryPermission(req), resp -> !updateConfigNodeLeader(resp.status));
@@ -573,6 +581,13 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.checkUserPrivileges(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TPermissionInfoResp checkUserObjectPrivilege(TCheckUserObjectPrivilegesReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.checkUserObjectPrivilege(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

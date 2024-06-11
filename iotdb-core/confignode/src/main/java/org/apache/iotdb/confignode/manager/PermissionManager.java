@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
@@ -90,7 +91,7 @@ public class PermissionManager {
    * @param authorPlan AuthorReq
    * @return PermissionInfoResp
    */
-  public PermissionInfoResp queryPermission(AuthorPlan authorPlan) {
+  public PermissionInfoResp queryPermission(AuthorTreePlan authorPlan) {
     try {
       return (PermissionInfoResp) getConsensusManager().read(authorPlan);
     } catch (ConsensusException e) {
@@ -114,6 +115,9 @@ public class PermissionManager {
     return authorInfo.checkUserPrivileges(username, paths, permission);
   }
 
+  public TPermissionInfoResp checkUserObjectPrivileges(String username, String database,String tableName, int permission) {
+    return authorInfo.checkUserObjectPrivileges(username, database, tableName, permission);
+  }
   public TAuthizedPatternTreeResp fetchAuthizedPTree(String username, int permission)
       throws AuthException {
     return authorInfo.generateAuthizedPTree(username, permission);

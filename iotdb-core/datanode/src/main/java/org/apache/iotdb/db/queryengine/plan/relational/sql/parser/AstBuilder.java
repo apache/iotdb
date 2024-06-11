@@ -19,104 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AddColumn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AliasedRelation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AllColumns;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AllRows;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ArithmeticUnaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.BinaryLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CoalesceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ColumnDefinition;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CreateDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CreateIndex;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CreateTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CurrentDatabase;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CurrentTime;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CurrentUser;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DataType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DataTypeParameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Delete;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DereferenceExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DescribeTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DoubleLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DropColumn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DropDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DropIndex;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DropTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Except;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ExistsPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.GenericDataType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.GroupBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.GroupingElement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.GroupingSets;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.InListExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Insert;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Intersect;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Join;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.JoinCriteria;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.JoinOn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.JoinUsing;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Limit;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NaturalJoin;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NodeLocation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NumericParameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Offset;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.OrderBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Parameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Property;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.QualifiedName;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.QuantifiedComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Query;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.QueryBody;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.QuerySpecification;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Relation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.RenameColumn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.RenameTable;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Row;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Select;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SelectItem;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SetProperties;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ShowDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ShowIndex;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ShowTables;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SimpleGroupBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SingleColumn;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SortItem;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SubqueryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Table;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.TableSubquery;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Trim;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.TypeParameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Union;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Update;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.UpdateAssignment;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Use;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Values;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.WhenClause;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.With;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.WithQuery;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.*;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
@@ -129,17 +33,20 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import javax.annotation.Nullable;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.GRANT_ROLE_DB;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.GRANT_ROLE_TB;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.GRANT_USER_DB;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.GRANT_USER_TB;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.REVOKE_ROLE_DB;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.REVOKE_ROLE_TB;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.REVOKE_USER_DB;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType.REVOKE_USER_TB;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.GroupingSets.Type.ROLLUP;
@@ -508,6 +415,151 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitExplainAnalyze(RelationalSqlParser.ExplainAnalyzeContext ctx) {
     return super.visitExplainAnalyze(ctx);
+  }
+
+  public String stripQuotes(String text) {
+    if (text != null && text.length() >= 2 && text.startsWith("'") && text.endsWith("'")) {
+      return text.substring(1, text.length() - 1).replace("''", "'");
+    }
+    return text;
+  }
+
+  @Override
+  public Node visitCreateUser(RelationalSqlParser.CreateUserContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.CREATE_USER);
+    stmt.setUserName(ctx.userName.getText());
+    stmt.setPassword(stripQuotes(ctx.password.getText()));
+    return stmt;
+  }
+
+  @Override
+  public Node visitCreateRole(RelationalSqlParser.CreateRoleContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.CREATE_ROLE);
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitDropUser(RelationalSqlParser.DropUserContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.DROP_USER);
+    stmt.setUserName(ctx.userName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitDropRole(RelationalSqlParser.DropRoleContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.DROP_ROLE);
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitGrantUserRole(RelationalSqlParser.GrantUserRoleContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.GRANT_USER_ROLE);
+    stmt.setUserName(ctx.userName.getText());
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitRevokeUserRole(RelationalSqlParser.RevokeUserRoleContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.REVOKE_USER_ROLE);
+    stmt.setUserName(ctx.userName.getText());
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitListUserPrivileges(RelationalSqlParser.ListUserPrivilegesContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.LIST_USER);
+    stmt.setUserName(ctx.userName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitListRolePrivileges(RelationalSqlParser.ListRolePrivilegesContext ctx) {
+    AuthTableStatement stmt = new AuthTableStatement(AuthDDLType.LIST_ROLE);
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitGrantStatement(RelationalSqlParser.GrantStatementContext ctx) {
+    boolean toUser;
+    String username;
+    String objectName;
+    toUser = ctx.role_type().USER() != null;
+    username = ctx.role_name.getText();
+    boolean grantOption = ctx.grantOpt() != null;
+    boolean toTable = false;
+
+    if (ctx.grant_privilege_object().ON() != null) {
+      String privilegeText = ctx.grant_privilege_object().object_privilege().getText();
+      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
+      if (ctx.grant_privilege_object().object_type().getText().equalsIgnoreCase("TABLE")) {
+        toTable = true;
+      }
+      objectName = ctx.grant_privilege_object().object_name().getText();
+
+      return new AuthTableStatement(
+          toUser
+              ? (toTable ? GRANT_USER_TB : GRANT_USER_DB)
+              : (toTable ? GRANT_ROLE_TB : GRANT_ROLE_DB),
+          toTable ? null : objectName,
+          toTable ? objectName : null,
+          priv,
+          toUser ? username : null,
+          toUser ? null : username,
+          grantOption);
+
+    } else {
+      String privilegeText = ctx.grant_privilege_object().SYSTEM_PRIVILEGE().getText();
+      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
+      if (toUser) {
+        return new AuthTableStatement(AuthDDLType.GRANT_USER, priv, username, null, grantOption);
+      } else {
+        return new AuthTableStatement(AuthDDLType.GRANT_ROLE, priv, null, username, grantOption);
+      }
+    }
+  }
+
+  @Override
+  public Node visitRevokeStatement(RelationalSqlParser.RevokeStatementContext ctx) {
+    boolean toUser;
+    String username;
+    String objectName;
+    toUser = ctx.role_type().USER() != null;
+    username = ctx.role_name.getText();
+    boolean toTable = false;
+    boolean grantOption = ctx.revoke_privilege_object().OPTION() != null;
+    if (ctx.revoke_privilege_object().SYSTEM_PRIVILEGE() != null) {
+      String privlegeText = ctx.revoke_privilege_object().SYSTEM_PRIVILEGE().getText();
+      PrivilegeType priv = PrivilegeType.valueOf(privlegeText.toUpperCase());
+      if (toUser) {
+        return new AuthTableStatement(AuthDDLType.REVOKE_USER, priv, username, null, grantOption);
+      } else {
+        return new AuthTableStatement(AuthDDLType.REVOKE_ROLE, priv, null, username, grantOption);
+      }
+
+    } else {
+      String privilegeText = ctx.revoke_privilege_object().object_privilege().getText();
+      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
+      if (ctx.revoke_privilege_object().object_type().getText().equalsIgnoreCase("TABLE")) {
+        toTable = true;
+      }
+      objectName = ctx.revoke_privilege_object().object_name().getText();
+
+      return new AuthTableStatement(
+          toUser
+              ? (toTable ? REVOKE_USER_TB : REVOKE_USER_DB)
+              : (toTable ? REVOKE_ROLE_TB : REVOKE_ROLE_DB),
+          toTable ? null : objectName,
+          toTable ? objectName : null,
+          priv,
+          toUser ? username : null,
+          toUser ? null : username,
+          grantOption);
+    }
   }
 
   // ********************** query expressions ********************

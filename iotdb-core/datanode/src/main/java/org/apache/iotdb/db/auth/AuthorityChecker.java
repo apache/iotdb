@@ -27,14 +27,17 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TObjectResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTableAuthResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthTableStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -95,6 +98,14 @@ public class AuthorityChecker {
   public static SettableFuture<ConfigTaskResult> operatePermission(
       AuthorStatement authorStatement) {
     return authorityFetcher.operatePermission(authorStatement);
+  }
+
+  public static SettableFuture<ConfigTaskResult> queryPermission(AuthTableStatement statement) {
+    return authorityFetcher.queryPermission(statement);
+  }
+
+  public static SettableFuture<ConfigTaskResult> operatePermission(AuthTableStatement statement) {
+    return authorityFetcher.operatePermission(statement);
   }
 
   /** Check whether specific Session has the authorization to given plan. */
@@ -170,6 +181,10 @@ public class AuthorityChecker {
         .isEmpty();
   }
 
+  public static boolean checkDBPermision(String userName, String database, int permission) {
+    return false;
+  }
+
   public static List<Integer> checkFullPathListPermission(
       String userName, List<PartialPath> fullPaths, int permission) {
     return authorityFetcher.checkUserPathPrivileges(userName, fullPaths, permission);
@@ -234,7 +249,33 @@ public class AuthorityChecker {
       if (user != null) {
         appendPriBuilder("", "root.**", user.getSysPriSet(), user.getSysPriSetGrantOpt(), builder);
         for (TPathPrivilege path : user.getPrivilegeList()) {
-          appendPriBuilder("", path.getPath(), path.getPriSet(), path.getPriGrantOpt(), builder);
+          appendPriBuilder(
+              "", "PATH:" + path.getPath(), path.getPriSet(), path.getPriGrantOpt(), builder);
+        }
+        if (user.isSetObjectInfo() && !user.getObjectInfo().isEmpty()) {
+          for (Map.Entry<String, TObjectResp> objectResp : user.getObjectInfo().entrySet()) {
+            TObjectResp resp = objectResp.getValue();
+            if (!resp.getPrivileges().isEmpty()) {
+              appendPriBuilder(
+                  "",
+                  "DB:" + resp.getDatabasename(),
+                  resp.getPrivileges(),
+                  resp.getGrantOpt(),
+                  builder);
+            }
+            if (resp.getTableinfoSize() != 0) {
+              for (Map.Entry<String, TTableAuthResp> tableAuthRespEntry :
+                  resp.getTableinfo().entrySet()) {
+                TTableAuthResp tableAuthResp = tableAuthRespEntry.getValue();
+                appendPriBuilder(
+                    "",
+                    "DB:" + resp.getDatabasename() + " TB:" + tableAuthResp.getTablename(),
+                    tableAuthResp.getPrivileges(),
+                    tableAuthResp.getGrantOption(),
+                    builder);
+              }
+            }
+          }
         }
       }
       Iterator<Map.Entry<String, TRoleResp>> it =
@@ -250,6 +291,31 @@ public class AuthorityChecker {
         for (TPathPrivilege path : role.getPrivilegeList()) {
           appendPriBuilder(
               role.getRoleName(), path.getPath(), path.getPriSet(), path.getPriGrantOpt(), builder);
+        }
+        if (role.isSetObjectInfo() && !role.getObjectInfo().isEmpty()) {
+          for (Map.Entry<String, TObjectResp> objectResp : role.getObjectInfo().entrySet()) {
+            TObjectResp resp = objectResp.getValue();
+            if (!resp.getPrivileges().isEmpty()) {
+              appendPriBuilder(
+                  role.getRoleName(),
+                  "DB:" + resp.getDatabasename(),
+                  resp.getPrivileges(),
+                  resp.getGrantOpt(),
+                  builder);
+            }
+            if (resp.getTableinfoSize() != 0) {
+              for (Map.Entry<String, TTableAuthResp> tableAuthRespEntry :
+                  resp.getTableinfo().entrySet()) {
+                TTableAuthResp tableAuthResp = tableAuthRespEntry.getValue();
+                appendPriBuilder(
+                    role.getRoleName(),
+                    "DB:" + resp.getDatabasename() + " TB:" + tableAuthResp.getTablename(),
+                    tableAuthResp.getPrivileges(),
+                    tableAuthResp.getGrantOption(),
+                    builder);
+              }
+            }
+          }
         }
       }
     }
@@ -269,6 +335,17 @@ public class AuthorityChecker {
       builder.getColumnBuilder(3).writeBoolean(grantOpt.contains(i));
       builder.getTimeColumnBuilder().writeLong(0L);
       builder.declarePosition();
+    }
+  }
+
+  public static TSStatus checkAuthority(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement s,
+      IClientSession clientSession) {
+    long startTime = System.nanoTime();
+    try {
+      return s.checkPermissionBeforeProcess(clientSession.getUsername());
+    } finally {
+      PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
   }
 }

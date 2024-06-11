@@ -102,6 +102,16 @@ statement
     | loadConfigurationStatement
 
     // auth Statement
+    | grantStatement
+    | revokeStatement
+    | createUser
+    | createRole
+    | dropUser
+    | dropRole
+    | grantUserRole
+    | revokeUserRole
+    | listUserPrivileges
+    | listRolePrivileges
 
     // View, Trigger, pipe, CQ, Quota are not supported yet
     ;
@@ -337,7 +347,96 @@ localOrClusterMode
     : (ON (LOCAL | CLUSTER))
     ;
 
+// ------------------------------------------- Auth Statement ----------------------------------------------------------
 
+createUser
+    : CREATE USER userName=identifier password=string
+    ;
+
+createRole
+    : CREATE ROLE roleName=identifier
+    ;
+
+dropUser
+    : DROP USER userName=identifier
+    ;
+
+dropRole
+    : DROP ROLE roleName=identifier
+    ;
+
+grantUserRole
+    : GRANT ROLE roleName=identifier TO USER userName=identifier
+    ;
+
+revokeUserRole
+    : REVOKE ROLE roleName=identifier FROM USER userName=identifier
+    ;
+
+grantStatement
+    : GRANT grant_privilege_object TO role_type role_name=identifier (grantOpt)?
+    ;
+
+listUserPrivileges
+    : LIST PRIVILEGES OF USER userName=identifier
+    ;
+
+listRolePrivileges
+    : LIST PRIVILEGES OF ROLE roleName=identifier
+    ;
+
+
+revokeStatement
+    : REVOKE revoke_privilege_object FROM role_type  role_name=identifier
+    ;
+
+grant_privilege_object
+    : SYSTEM_PRIVILEGE
+    | object_privilege ON object_type object_name
+    ;
+
+SYSTEM_PRIVILEGE
+    : MANAGE_DATABASE
+    | MANAGE_USER
+    | MANAGE_ROLE
+    | USE_TRIGGER
+    | USE_UDF
+    | USE_PIPE
+    | EXTEND_TEMPLATE
+    | MAINTAIN
+    ;
+
+object_privilege
+    : READ_DATA
+    | READ_SCHEMA
+    | WRITE_DATA
+    | WRITE_SCHEMA
+    ;
+
+object_type
+    : TABLE
+    | DATABASE
+    ;
+
+role_type
+    : USER
+    | ROLE
+    ;
+
+grantOpt
+    : WITH GRANT OPTION
+    ;
+
+object_name
+    : IDENTIFIER
+    ;
+
+revoke_privilege_object 
+    : SYSTEM_PRIVILEGE
+    | object_privilege ON object_type object_name
+    | GRANT OPTION FOR object_privilege ON object_type object_name
+    | GRANT OPTION FOR SYSTEM_PRIVILEGE
+    ;
 
 
 // ------------------------------------------- Query Statement ---------------------------------------------------------
@@ -720,7 +819,7 @@ nonReserved
     | ID | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
     | JSON
     | KEEP | KEY | KEYS | KILL
-    | LANGUAGE | LAST | LATERAL | LEADING | LEAVE | LEVEL | LIMIT | LINEAR | LOAD | LOCAL | LOGICAL | LOOP
+    | LANGUAGE | LAST | LATERAL | LEADING | LEAVE | LEVEL | LIMIT | LINEAR | LOAD | LOCAL | LOGICAL | LOOP | LIST
     | MAP | MATCH | MATCHED | MATCHES | MATCH_RECOGNIZE | MATERIALIZED | MEASUREMENT | MEASURES | MERGE | MICROSECOND | MIGRATE | MILLISECOND | MINUTE | MONTH
     | NANOSECOND | NESTED | NEXT | NFC | NFD | NFKC | NFKD | NO | NODEID | NONE | NULLIF | NULLS
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
@@ -899,6 +998,7 @@ LEVEL: 'LEVEL';
 LIKE: 'LIKE';
 LIMIT: 'LIMIT';
 LINEAR: 'LINEAR';
+LIST: 'LIST';
 LISTAGG: 'LISTAGG';
 LOAD: 'LOAD';
 LOCAL: 'LOCAL';
@@ -1096,6 +1196,20 @@ PERCENT: '%';
 CONCAT: '||';
 QUESTION_MARK: '?';
 SEMICOLON: ';';
+
+// auth 
+MANAGE_DATABASE: 'MANAGE_DATABASE';
+MANAGE_USER: 'MANAGE_USER';
+MANAGE_ROLE: 'MANAGE_ROLE';
+USE_TRIGGER: 'USE_TRIGGER';
+USE_UDF: 'USE_UDF';
+USE_PIPE: 'USE_PIPE';
+EXTEND_TEMPLATE: 'EXTEND_TEMPLATE';
+MAINTAIN: 'MAINTAIN';
+READ_DATA: 'READ_DATA';
+READ_SCHEMA: 'READ_SCHEMA';
+WRITE_DATA: 'WRITE_DATA';
+WRITE_SCHEMA: 'WRITE_SCHEMA';
 
 STRING
     : '\'' ( ~'\'' | '\'\'' )* '\''

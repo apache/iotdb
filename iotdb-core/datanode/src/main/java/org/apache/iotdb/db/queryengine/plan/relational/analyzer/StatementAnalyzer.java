@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AllRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthTableStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.CreateTable;
@@ -365,6 +366,11 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitExplainAnalyze(ExplainAnalyze node, Optional<Scope> context) {
       throw new SemanticException("Explain Analyze statement is not supported yet.");
+    }
+
+    @Override
+    protected Scope visitTableAuthorPlan(AuthTableStatement node, Optional<Scope> context) {
+      throw new SemanticException("Table author statement is not supported yet.");
     }
 
     @Override

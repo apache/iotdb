@@ -129,6 +129,14 @@ public interface IAuthorizer extends SnapshotProcessor {
   void revokePrivilegeFromRole(String roleName, PartialPath path, int privilegeId)
       throws AuthException;
 
+  void grantObjectPrivilegesToUserRole(
+      String name, boolean isUser, String database, String table, int privilegeId, boolean grantOpt)
+      throws AuthException;
+
+  void revokeObjectPrivilegesFromUserRole(
+      String name, boolean isUser, String database, String table, int privilegeId, boolean grantOpt)
+      throws AuthException;
+
   /**
    * Add a role to a user.
    *
@@ -178,6 +186,9 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException If the seriesPath or the privilege is illegal.
    */
   boolean checkUserPrivileges(String username, PartialPath path, int privilegeId)
+      throws AuthException;
+
+  boolean checkUserPrivileges(String name, String databaseName, String tableName, int privilegeId)
       throws AuthException;
 
   /** Reset the Authorizer to initiative status. */

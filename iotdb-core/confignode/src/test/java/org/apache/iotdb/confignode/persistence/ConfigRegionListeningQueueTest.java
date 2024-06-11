@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -72,7 +72,7 @@ public class ConfigRegionListeningQueueTest {
             ConfigPhysicalPlanType.CreateDatabase, new TDatabaseSchema("root.test1"));
     PipeEnrichedPlan plan2 =
         new PipeEnrichedPlan(
-            new AuthorPlan(
+            new AuthorTreePlan(
                 ConfigPhysicalPlanType.CreateUser,
                 "user0",
                 "",

@@ -39,7 +39,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTablePlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -73,6 +74,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerTableReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserObjectPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatReq;
@@ -172,6 +175,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AuthDDLType;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -554,16 +558,33 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
     return configManager.operatePermission(
-        new AuthorPlan(
+        new AuthorTreePlan(
             ConfigPhysicalPlanType.values()[
                 req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
             req.getUserName(),
             req.getRoleName(),
             req.getPassword(),
-            req.getNewPassword(),
             req.getPermissions(),
             req.isGrantOpt(),
             AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));
+  }
+
+  @Override
+  public TSStatus operateTablePermission(final TAuthorizerTableReq req) {
+    if (req.getAuthorType() < 0 || req.getAuthorType() >= AuthDDLType.values().length) {
+      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+    }
+    return configManager.operatePermission(
+        new AuthorTablePlan(
+            ConfigPhysicalPlanType.values()[
+                req.getAuthorType() + ConfigPhysicalPlanType.RCreateUser.ordinal()],
+            req.getUsername(),
+            req.getRolename(),
+            req.getDatabase(),
+            req.getTable(),
+            req.isGrantopt(),
+            req.getPrivilege(),
+            req.getPassword()));
   }
 
   @Override
@@ -574,13 +595,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     final PermissionInfoResp dataSet =
         (PermissionInfoResp)
             configManager.queryPermission(
-                new AuthorPlan(
+                new AuthorTreePlan(
                     ConfigPhysicalPlanType.values()[
                         req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
                     req.getUserName(),
                     req.getRoleName(),
                     req.getPassword(),
-                    req.getNewPassword(),
                     req.getPermissions(),
                     req.isGrantOpt(),
                     AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList()))));
@@ -601,6 +621,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     List<PartialPath> partialPaths =
         AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
     return configManager.checkUserPrivileges(req.getUsername(), partialPaths, req.getPermission());
+  }
+
+  @Override
+  public TPermissionInfoResp checkUserObjectPrivileges(TCheckUserObjectPrivilegesReq req) {
+    return configManager.checkUserObjectPrivileges(req.getUsername(), req.getDatabase(), req.isSetTablename() ? req.getTablename() : null, req.getPermission());
   }
 
   @Override

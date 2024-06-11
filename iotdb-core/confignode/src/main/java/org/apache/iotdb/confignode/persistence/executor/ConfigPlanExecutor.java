@@ -27,7 +27,8 @@ import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTablePlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -261,13 +262,13 @@ public class ConfigPlanExecutor {
       case GetOrCreateSchemaPartition:
         return partitionInfo.getSchemaPartition((GetSchemaPartitionPlan) req);
       case ListUser:
-        return authorInfo.executeListUsers((AuthorPlan) req);
+        return authorInfo.executeListUsers((AuthorTreePlan) req);
       case ListRole:
-        return authorInfo.executeListRoles((AuthorPlan) req);
+        return authorInfo.executeListRoles((AuthorTreePlan) req);
       case ListUserPrivilege:
-        return authorInfo.executeListUserPrivileges((AuthorPlan) req);
+        return authorInfo.executeListUserPrivileges((AuthorTreePlan) req);
       case ListRolePrivilege:
-        return authorInfo.executeListRolePrivileges((AuthorPlan) req);
+        return authorInfo.executeListRolePrivileges((AuthorTreePlan) req);
       case GetNodePathsPartition:
         return getSchemaNodeManagementPartition(req);
       case GetRegionInfoList:
@@ -411,7 +412,28 @@ public class ConfigPlanExecutor {
       case RevokeRoleDep:
       case RevokeRoleFromUserDep:
       case UpdateUserDep:
-        return authorInfo.authorNonQuery((AuthorPlan) physicalPlan);
+        return authorInfo.authorNonQuery((AuthorTreePlan) physicalPlan);
+      case RCreateRole:
+      case RDropRole:
+      case RCreateUser:
+      case RDropUser:
+      case RGrantUserRole:
+      case RGrantRoleDBPriv:
+      case RGrantRoleTBPriv:
+      case RGrantUserDBPriv:
+      case RGrantUserTBPriv:
+      case RRevokeUserRole:
+      case RRevokeRoleDBPriv:
+      case RRevokeRoleTBPriv:
+      case RRevokeUserDBPriv:
+      case RRevokeUserTBPriv:
+      case RGrantRole:
+      case RGrantUser:
+      case RRevokeRole:
+      case RRevokeUser:
+      case RListRole:
+      case RListUser:
+        return authorInfo.authorNonQuery((AuthorTablePlan) physicalPlan);
       case ApplyConfigNode:
         return nodeInfo.applyConfigNode((ApplyConfigNodePlan) physicalPlan);
       case RemoveConfigNode:

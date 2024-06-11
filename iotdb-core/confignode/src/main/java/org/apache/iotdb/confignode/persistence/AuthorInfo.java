@@ -24,9 +24,11 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer;
+import org.apache.iotdb.commons.auth.entity.ObjectPrivilege;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PriPrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.TablePrivilege;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -37,12 +39,15 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTablePlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TObjectResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTableAuthResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -163,6 +168,31 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
+  public TPermissionInfoResp checkUserObjectPrivileges(
+          String username, String database, String tableName, int permission) {
+    boolean status = true;
+    TPermissionInfoResp result = new TPermissionInfoResp();
+    try {
+      status = authorizer.checkUserPrivileges(username, database, tableName, permission);
+    } catch (AuthException e) {
+      status = false;
+    }
+    if (status) {
+      try {
+        // Bring this user's permission information back to the datanode for caching
+        result = getUserPermissionInfo(username);
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      } catch (AuthException e) {
+        result.setStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
+      }
+    } else {
+      result = AuthUtils.generateEmptyPermissionInfoResp();
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
+    }
+    return result;
+  }
+
+
   private boolean checkOnePath(String username, PartialPath path, int permission)
       throws AuthException {
     try {
@@ -176,12 +206,34 @@ public class AuthorInfo implements SnapshotProcessor {
     return false;
   }
 
-  public TSStatus authorNonQuery(AuthorPlan authorPlan) {
+  public TPermissionInfoResp checkEntryObjectPrivileges(
+      String name, String databaseName, String tableName, int permission) {
+    boolean status = true;
+    TPermissionInfoResp result = new TPermissionInfoResp();
+    try {
+      status = authorizer.checkUserPrivileges(name, databaseName, tableName, permission);
+    } catch (AuthException e) {
+      status = false;
+    }
+    if (status) {
+      try {
+        result = getUserPermissionInfo(name);
+        result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      } catch (AuthException e) {
+        result.setStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
+      }
+    } else {
+      result = AuthUtils.generateEmptyPermissionInfoResp();
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
+    }
+    return result;
+  }
+
+  public TSStatus authorNonQuery(AuthorTreePlan authorPlan) {
     ConfigPhysicalPlanType authorType = authorPlan.getAuthorType();
     String userName = authorPlan.getUserName();
     String roleName = authorPlan.getRoleName();
     String password = authorPlan.getPassword();
-    String newPassword = authorPlan.getNewPassword();
     Set<Integer> permissions = authorPlan.getPermissions();
     boolean grantOpt = authorPlan.getGrantOpt();
     List<PartialPath> nodeNameList = authorPlan.getNodeNameList();
@@ -211,7 +263,7 @@ public class AuthorInfo implements SnapshotProcessor {
       switch (authorType) {
         case UpdateUserDep:
         case UpdateUser:
-          authorizer.updateUserPassword(userName, newPassword);
+          authorizer.updateUserPassword(userName, password);
           break;
         case CreateUserDep:
           AuthUtils.validatePasswordPre(password);
@@ -318,7 +370,90 @@ public class AuthorInfo implements SnapshotProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public PermissionInfoResp executeListUsers(AuthorPlan plan) throws AuthException {
+  public TSStatus authorNonQuery(AuthorTablePlan authorPlan) {
+    ConfigPhysicalPlanType authorType = authorPlan.getAuthorType();
+    String userName = authorPlan.getUserName();
+    String roleName = authorPlan.getRoleName();
+    String database = authorPlan.getDatabaseName();
+    String tablename = authorPlan.getTableName();
+    boolean grantOpt = authorPlan.getGrantOpt();
+    int priv = authorPlan.getPermission();
+
+    try {
+      switch (authorType) {
+        case RCreateUser:
+          authorizer.createUser(userName, authorPlan.getPassword());
+          break;
+        case RCreateRole:
+          authorizer.createRole(roleName);
+          break;
+        case RDropRole:
+          authorizer.deleteRole(roleName);
+          break;
+        case RDropUser:
+          authorizer.deleteUser(userName);
+          break;
+        case RGrantUserRole:
+          authorizer.grantRoleToUser(roleName, userName);
+          break;
+        case RRevokeUserRole:
+          authorizer.revokeRoleFromUser(roleName, userName);
+          break;
+        case RGrantRole:
+          authorizer.grantPrivilegeToRole(roleName, null, priv, grantOpt);
+          break;
+        case RGrantUser:
+          authorizer.grantPrivilegeToUser(userName, null, priv, grantOpt);
+          break;
+        case RRevokeRole:
+          authorizer.revokePrivilegeFromRole(roleName, null, priv);
+          break;
+        case RRevokeUser:
+          authorizer.revokePrivilegeFromUser(userName, null, priv);
+          break;
+        case RGrantUserDBPriv:
+          authorizer.grantObjectPrivilegesToUserRole(
+              userName, true, database, null, priv, grantOpt);
+          break;
+        case RGrantUserTBPriv:
+          authorizer.grantObjectPrivilegesToUserRole(
+              userName, true, database, null, priv, grantOpt);
+          break;
+        case RGrantRoleDBPriv:
+          authorizer.grantObjectPrivilegesToUserRole(
+              roleName, false, database, null, priv, grantOpt);
+          break;
+        case RGrantRoleTBPriv:
+          authorizer.grantObjectPrivilegesToUserRole(
+              roleName, false, database, tablename, priv, grantOpt);
+          break;
+
+        case RRevokeUserDBPriv:
+          authorizer.revokeObjectPrivilegesFromUserRole(
+              userName, true, database, null, priv, grantOpt);
+          break;
+        case RRevokeUserTBPriv:
+          authorizer.revokeObjectPrivilegesFromUserRole(
+              userName, true, database, tablename, priv, grantOpt);
+          break;
+        case RRevokeRoleDBPriv:
+          authorizer.revokeObjectPrivilegesFromUserRole(
+              roleName, false, database, null, priv, grantOpt);
+          break;
+        case RRevokeRoleTBPriv:
+          authorizer.revokeObjectPrivilegesFromUserRole(
+              roleName, false, database, tablename, priv, grantOpt);
+          break;
+        default:
+          throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "not support");
+      }
+    } catch (AuthException e) {
+      return RpcUtils.getStatus(e.getCode(), e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public PermissionInfoResp executeListUsers(AuthorTreePlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     List<String> userList = authorizer.listAllUsers();
     if (!plan.getRoleName().isEmpty()) {
@@ -343,7 +478,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp executeListRoles(AuthorPlan plan) throws AuthException {
+  public PermissionInfoResp executeListRoles(AuthorTreePlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     List<String> permissionInfo = new ArrayList<>();
     List<String> roleList = new ArrayList<>();
@@ -365,7 +500,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp executeListRolePrivileges(AuthorPlan plan) throws AuthException {
+  public PermissionInfoResp executeListRolePrivileges(AuthorTreePlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     List<String> permissionInfo = new ArrayList<>();
     Role role = authorizer.getRole(plan.getRoleName());
@@ -386,6 +521,24 @@ public class AuthorInfo implements SnapshotProcessor {
       pathPri.setPath(path.getPath().toString());
       pathList.add(pathPri);
     }
+    Map<String, TObjectResp> objectRespHashMap = new HashMap<>();
+    for (Map.Entry<String, ObjectPrivilege> objectPrivilegeEntry :
+        role.getObjectPrivileges().entrySet()) {
+      TObjectResp objectResp = new TObjectResp();
+      objectResp.setPrivileges(objectPrivilegeEntry.getValue().getPrivileges());
+      objectResp.setGrantOpt(objectPrivilegeEntry.getValue().getGrantOptions());
+      objectResp.setDatabasename(objectPrivilegeEntry.getKey());
+      for (Map.Entry<String, TablePrivilege> tablePrivilegeEntry :
+          objectPrivilegeEntry.getValue().getTablePrivilegeMap().entrySet()) {
+        TTableAuthResp tableAuthResp = new TTableAuthResp();
+        tableAuthResp.setTablename(tablePrivilegeEntry.getKey());
+        tableAuthResp.setPrivileges(tablePrivilegeEntry.getValue().getPrivilegesInt());
+        tableAuthResp.setGrantOption(tablePrivilegeEntry.getValue().getGrantOptionInt());
+        objectResp.putToTableinfo(tablePrivilegeEntry.getKey(), tableAuthResp);
+      }
+      objectRespHashMap.put(objectPrivilegeEntry.getKey(), objectResp);
+    }
+    roleResp.setObjectInfo(objectRespHashMap);
     roleResp.setPrivilegeList(pathList);
     roleResp.setSysPriSet(role.getSysPrivilege());
     roleResp.setSysPriSetGrantOpt(role.getSysPriGrantOpt());
@@ -400,7 +553,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp executeListUserPrivileges(AuthorPlan plan) throws AuthException {
+  public PermissionInfoResp executeListUserPrivileges(AuthorTreePlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     User user = authorizer.getUser(plan.getUserName());
     if (user == null) {
@@ -585,6 +738,25 @@ public class AuthorInfo implements SnapshotProcessor {
         userPrivilegeList.add(path);
       }
     }
+    if (!user.getObjectPrivileges().isEmpty()) {
+      for (Map.Entry<String, ObjectPrivilege> entry : user.getObjectPrivileges().entrySet()) {
+        ObjectPrivilege objectPrivilege = entry.getValue();
+        TObjectResp objectResp = new TObjectResp();
+        objectResp.setDatabasename(objectPrivilege.getDatabaseName());
+        objectResp.setPrivileges(objectPrivilege.getPrivileges());
+        objectResp.setGrantOpt(objectPrivilege.getPrivileges());
+        for (Map.Entry<String, TablePrivilege> entry1 :
+            objectPrivilege.getTablePrivilegeMap().entrySet()) {
+          TTableAuthResp tableAuthResp = new TTableAuthResp();
+          tableAuthResp.setTablename(entry1.getKey());
+          tableAuthResp.setPrivileges(entry1.getValue().getPrivilegesInt());
+          tableAuthResp.setGrantOption(entry1.getValue().getGrantOptionInt());
+          objectResp.putToTableinfo(entry1.getKey(), tableAuthResp);
+        }
+        tUserResp.putToObjectInfo(objectResp.getDatabasename(), objectResp);
+      }
+    }
+
     tUserResp.setUsername(user.getName());
     tUserResp.setPassword(user.getPassword());
     tUserResp.setPrivilegeList(userPrivilegeList);
@@ -595,6 +767,7 @@ public class AuthorInfo implements SnapshotProcessor {
     // Permission information for roles owned by users
     if (user.getRoleList() != null) {
       for (String roleName : user.getRoleList()) {
+        TRoleResp roleResp = new TRoleResp();
         Role role = authorizer.getRole(roleName);
         List<TPathPrivilege> rolePrivilegeList = new ArrayList<>();
         for (PathPrivilege pathPrivilege : role.getPathPrivilegeList()) {
@@ -604,10 +777,33 @@ public class AuthorInfo implements SnapshotProcessor {
           path.setPriGrantOpt(pathPrivilege.getGrantOpt());
           rolePrivilegeList.add(path);
         }
-        tRoleRespMap.put(
-            roleName,
-            new TRoleResp(
-                roleName, rolePrivilegeList, role.getSysPrivilege(), role.getSysPriGrantOpt()));
+        roleResp.setRoleName(roleName);
+        roleResp.setSysPriSet(role.getSysPrivilege());
+        roleResp.setSysPriSetGrantOpt(role.getSysPriGrantOpt());
+        roleResp.setPrivilegeList(rolePrivilegeList);
+
+        if (!role.getObjectPrivileges().isEmpty()) {
+          for (Map.Entry<String, ObjectPrivilege> entry : user.getObjectPrivileges().entrySet()) {
+            ObjectPrivilege objectPrivilege = entry.getValue();
+            TObjectResp objectResp = new TObjectResp();
+            objectResp.setDatabasename(objectPrivilege.getDatabaseName());
+            objectResp.setPrivileges(objectPrivilege.getPrivileges());
+            objectResp.setGrantOpt(objectPrivilege.getPrivileges());
+            for (Map.Entry<String, TablePrivilege> entry1 :
+                objectPrivilege.getTablePrivilegeMap().entrySet()) {
+              TTableAuthResp tableAuthResp = new TTableAuthResp();
+              tableAuthResp.setTablename(entry1.getKey());
+              tableAuthResp.setPrivileges(entry1.getValue().getPrivilegesInt());
+              tableAuthResp.setGrantOption(entry1.getValue().getGrantOptionInt());
+              objectResp.putToTableinfo(entry1.getKey(), tableAuthResp);
+            }
+            roleResp.putToObjectInfo(objectResp.getDatabasename(), objectResp);
+          }
+        } else {
+          roleResp.objectInfo = new HashMap<>();
+        }
+
+        tRoleRespMap.put(roleName, roleResp);
       }
     }
     result.setUserInfo(tUserResp);

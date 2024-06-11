@@ -327,6 +327,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 schemaFetcher,
                 req.getTimeout());
       } else {
+
         org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement s =
             relationSqlParser.createStatement(statement);
 
@@ -334,6 +335,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           return RpcUtils.getTSExecuteStatementResp(
               RpcUtils.getStatus(
                   TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+        }
+        TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return RpcUtils.getTSExecuteStatementResp(status);
         }
 
         queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);

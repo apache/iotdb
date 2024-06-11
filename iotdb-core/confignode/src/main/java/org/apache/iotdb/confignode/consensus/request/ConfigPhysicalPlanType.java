@@ -125,6 +125,29 @@ public enum ConfigPhysicalPlanType {
   ListRoleUsers((short) 637),
   CreateUserWithRawPassword((short) 638),
 
+  /** Table Author */
+  RCreateUser((short) 641),
+  RCreateRole((short) 642),
+  RDropUser((short) 643),
+  RDropRole((short) 644),
+  RGrantUserRole((short) 645),
+  RRevokeUserRole((short) 646),
+
+  RGrantUserDBPriv((short) 647),
+  RGrantUserTBPriv((short) 648),
+  RGrantRoleDBPriv((short) 649),
+  RGrantRoleTBPriv((short) 650),
+  RRevokeUserDBPriv((short) 651),
+  RRevokeUserTBPriv((short) 652),
+  RRevokeRoleDBPriv((short) 653),
+  RRevokeRoleTBPriv((short) 654),
+  RGrantUser((short) 655),
+  RGrantRole((short) 656),
+  RRevokeUser((short) 657),
+  RRevokeRole((short) 658),
+  RListUser((short) 659),
+  RListRole((short) 660),
+
   /** Function. */
   CreateFunction((short) 700),
   DropFunction((short) 701),

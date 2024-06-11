@@ -318,11 +318,35 @@ struct TAuthorizerReq {
   8: required binary nodeNameList
 }
 
+struct TAuthorizerTableReq {
+   1: required i32 authorType
+   2: required string username
+   3: required string rolename
+   4: optional string password
+   5: optional string database
+   6: optional string table
+   7: optional i32 privilege
+   8: optional bool grantopt
+}
+
 struct TAuthorizerResp {
   1: required common.TSStatus status
   2: optional string tag
   3: optional list<string> memberInfo
   4: optional TPermissionInfoResp permissionInfo
+}
+
+struct TTableAuthResp {
+    1: required string tablename
+    2: required set<i32> privileges
+    3: required set<i32> grantOption
+}
+
+struct TObjectResp {
+    1: required string databasename
+    2: required set<i32> privileges
+    3: required set<i32> grantOpt
+    4: optional map<string, TTableAuthResp> tableinfo
 }
 
 struct TUserResp {
@@ -333,6 +357,7 @@ struct TUserResp {
   5: required set<i32> sysPriSetGrantOpt
   6: required list<string> roleList
   7: required bool isOpenIdUser
+  8: optional map<string, TObjectResp> objectInfo
 }
 
 struct TRoleResp {
@@ -340,6 +365,7 @@ struct TRoleResp {
   2: required list<TPathPrivilege> privilegeList
   3: required set<i32> sysPriSet
   4: required set<i32> sysPriSetGrantOpt
+  5: optional map<string, TObjectResp> objectInfo
 }
 
 struct TPathPrivilege {
@@ -373,6 +399,14 @@ struct TCheckUserPrivilegesReq {
   2: required binary paths
   3: required i32 permission
   4: optional bool grantOpt
+}
+
+struct TCheckUserObjectPrivilegesReq {
+   1:required string username
+   2: required string database
+   3: optional string tablename
+   4: required i32 permission
+   5: optional bool grantOpt
 }
 
 // ConfigNode
@@ -1120,6 +1154,7 @@ service IConfigNodeRPCService {
    *         INTERNAL_SERVER_ERROR if the permission type does not exist
    */
   common.TSStatus operatePermission(TAuthorizerReq req)
+  common.TSStatus operateTablePermission(TAuthorizerTableReq req)
 
   /**
    * Execute permission read operations such as list user
@@ -1147,6 +1182,8 @@ service IConfigNodeRPCService {
    *         NO_PERMISSION_ERROR if the user does not have this permission
    */
   TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
+
+  TPermissionInfoResp checkUserObjectPrivilege(TCheckUserObjectPrivilegesReq req)
 
   TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
 
