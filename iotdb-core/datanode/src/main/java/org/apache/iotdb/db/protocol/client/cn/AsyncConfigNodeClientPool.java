@@ -43,7 +43,8 @@ public class AsyncConfigNodeClientPool {
   private AsyncConfigNodeClientPool() {
     clientManager =
         new IClientManager.Factory<TEndPoint, AsyncConfigNodeInternalServiceClient>()
-            .createClientManager(new ClientPoolFactory.AsyncConfigNodeInternalServiceClientPoolFactory());
+            .createClientManager(
+                new ClientPoolFactory.AsyncConfigNodeInternalServiceClientPoolFactory());
   }
 
   /**

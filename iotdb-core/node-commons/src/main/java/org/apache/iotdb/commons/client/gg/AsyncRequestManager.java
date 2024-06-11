@@ -19,71 +19,25 @@
 
 package org.apache.iotdb.commons.client.gg;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TFlushReq;
-import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
-import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
-import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
-import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
-import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
-import org.apache.iotdb.mpp.rpc.thrift.TConstructViewSchemaBlackListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
-import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDeleteTimeSeriesReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDeleteViewSchemaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPushMultiPipeMetaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPushMultiTopicMetaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPushSingleConsumerGroupMetaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
-import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
-import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
-import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
-import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
 /** Asynchronously send RPC requests to Nodes. See queryengine.thrift for more details. */
-public abstract class AsyncRequestSender<RequestType, NodeLocation, Client> {
+public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncRequestSender.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncRequestManager.class);
 
   protected IClientManager<TEndPoint, Client> clientManager;
 
   private static final int MAX_RETRY_NUM = 6;
 
-  protected AsyncRequestSender() {
+  protected AsyncRequestManager() {
     initClientManager();
   }
 
@@ -98,7 +52,7 @@ public abstract class AsyncRequestSender<RequestType, NodeLocation, Client> {
    * @param timeoutInMs timeout in milliseconds
    */
   public void sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
-          AsyncRequestContext<?,?,RequestType,NodeLocation> requestContext, long timeoutInMs) {
+      AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext, long timeoutInMs) {
     sendAsyncRequest(requestContext, MAX_RETRY_NUM, timeoutInMs);
   }
 
@@ -109,16 +63,20 @@ public abstract class AsyncRequestSender<RequestType, NodeLocation, Client> {
    *
    * @param requestContext <RequestType, ResponseType> which will also contain the result
    */
-  public final void sendAsyncRequestToNodeWithRetry(AsyncRequestContext<?,?,RequestType,NodeLocation> requestContext) {
+  public final void sendAsyncRequestToNodeWithRetry(
+      AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext) {
     sendAsyncRequest(requestContext, MAX_RETRY_NUM, null);
   }
 
-  public final void sendAsyncRequestToNode(AsyncRequestContext<?,?,RequestType,NodeLocation> requestContext) {
+  public final void sendAsyncRequestToNode(
+      AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext) {
     sendAsyncRequest(requestContext, 1, null);
   }
 
   private final void sendAsyncRequest(
-          AsyncRequestContext<?,?,RequestType,NodeLocation> requestContext, int retryNum, Long timeoutInMs) {
+      AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
+      int retryNum,
+      Long timeoutInMs) {
     if (requestContext.getRequestIndices().isEmpty()) {
       return;
     }
@@ -164,11 +122,11 @@ public abstract class AsyncRequestSender<RequestType, NodeLocation, Client> {
           requestContext.getRequestIndices());
     }
   }
-  
+
   protected abstract TEndPoint nodeLocationToEndPoint(NodeLocation location);
 
-  abstract protected void sendAsyncRequestToNode(
-      AsyncRequestContext<?,?,RequestType,NodeLocation> requestContext,
+  protected abstract void sendAsyncRequestToNode(
+      AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
       int requestId,
       NodeLocation targetNode,
       int retryCount);
@@ -181,10 +139,8 @@ public abstract class AsyncRequestSender<RequestType, NodeLocation, Client> {
   public void resetClient(TEndPoint endPoint) {
     clientManager.clear(endPoint);
   }
-  
 
-  public Client getAsyncClient(NodeLocation targetNode)
-      throws ClientManagerException {
+  public Client getAsyncClient(NodeLocation targetNode) throws ClientManagerException {
     return clientManager.borrowClient(nodeLocationToEndPoint(targetNode));
   }
 }

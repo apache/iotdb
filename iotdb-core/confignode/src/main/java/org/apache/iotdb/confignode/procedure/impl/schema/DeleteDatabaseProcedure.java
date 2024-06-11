@@ -163,7 +163,7 @@ public class DeleteDatabaseProcedure
             for (TDataNodeLocation dataNodeLocation :
                 schemaRegionReplicaSet.getDataNodeLocations()) {
               asyncClientHandler.putRequest(requestIndex, schemaRegionReplicaSet.getRegionId());
-              asyncClientHandler.putDataNodeLocation(requestIndex, dataNodeLocation);
+              asyncClientHandler.putNodeLocation(requestIndex, dataNodeLocation);
               schemaRegionDeleteTaskMap.put(
                   requestIndex,
                   new RegionDeleteTask(dataNodeLocation, schemaRegionReplicaSet.getRegionId()));
@@ -172,7 +172,7 @@ public class DeleteDatabaseProcedure
           }
           if (!schemaRegionDeleteTaskMap.isEmpty()) {
             AsyncDataNodeInternalServiceRequestSender.getInstance()
-                .sendAsyncRequestToDataNodeWithRetry(asyncClientHandler);
+                .sendAsyncRequestToNodeWithRetry(asyncClientHandler);
             for (Map.Entry<Integer, TSStatus> entry :
                 asyncClientHandler.getResponseMap().entrySet()) {
               if (entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

@@ -22,10 +22,9 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
-import org.apache.iotdb.commons.client.gg.AbstractAsyncRPCHandler;
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
+import org.apache.iotdb.commons.client.gg.AsyncRequestRPCHandler;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
@@ -38,30 +37,42 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
-import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public abstract class DataNodeAbstractAsyncRPCHandler<Response> extends AbstractAsyncRPCHandler<Response, DataNodeRequestType, TDataNodeLocation> {
+public abstract class DataNodeAbstractAsyncRPCHandler<Response>
+    extends AsyncRequestRPCHandler<Response, DataNodeRequestType, TDataNodeLocation> {
 
-
-  protected DataNodeAbstractAsyncRPCHandler(DataNodeRequestType requestType, int requestId, TDataNodeLocation targetNode, Map<Integer, TDataNodeLocation> dataNodeLocationMap, Map<Integer, Response> integerResponseMap, CountDownLatch countDownLatch) {
-    super(requestType, requestId, targetNode, dataNodeLocationMap, integerResponseMap, countDownLatch);
+  protected DataNodeAbstractAsyncRPCHandler(
+      DataNodeRequestType requestType,
+      int requestId,
+      TDataNodeLocation targetNode,
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      Map<Integer, Response> integerResponseMap,
+      CountDownLatch countDownLatch) {
+    super(
+        requestType,
+        requestId,
+        targetNode,
+        dataNodeLocationMap,
+        integerResponseMap,
+        countDownLatch);
   }
 
   @Override
   protected String generateFormattedTargetLocation(TDataNodeLocation dataNodeLocation) {
     return "{id="
-            + targetNode.getDataNodeId()
-            + ", internalEndPoint="
-            + targetNode.getInternalEndPoint()
-            + "}";
-
+        + targetNode.getDataNodeId()
+        + ", internalEndPoint="
+        + targetNode.getInternalEndPoint()
+        + "}";
   }
 
-  public static DataNodeAbstractAsyncRPCHandler<?> buildHandler(AsyncRequestContext<?, ?, DataNodeRequestType, TDataNodeLocation> context,
-                                                                int requestId, TDataNodeLocation targetDataNode) {
+  public static DataNodeAbstractAsyncRPCHandler<?> buildHandler(
+      AsyncRequestContext<?, ?, DataNodeRequestType, TDataNodeLocation> context,
+      int requestId,
+      TDataNodeLocation targetDataNode) {
     DataNodeRequestType requestType = context.getRequestType();
     Map<Integer, TDataNodeLocation> dataNodeLocationMap = context.getNodeLocationMap();
     Map<Integer, ?> responseMap = context.getResponseMap();
@@ -79,97 +90,97 @@ public abstract class DataNodeAbstractAsyncRPCHandler<Response> extends Abstract
       case DELETE_VIEW:
       case ALTER_VIEW:
         return new SchemaUpdateRPCHandler(
-                requestType,
-                requestId,
-                targetDataNode,
-                dataNodeLocationMap,
-                (Map<Integer, TSStatus>) responseMap,
-                countDownLatch);
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TSStatus>) responseMap,
+            countDownLatch);
       case FETCH_SCHEMA_BLACK_LIST:
         return new FetchSchemaBlackListRPCHandler(
-                requestType,
-                requestId,
-                targetDataNode,
-                dataNodeLocationMap,
-                (Map<Integer, TFetchSchemaBlackListResp>) responseMap,
-                countDownLatch);
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TFetchSchemaBlackListResp>) responseMap,
+            countDownLatch);
       case COUNT_PATHS_USING_TEMPLATE:
         return new CountPathsUsingTemplateRPCHandler(
-                requestType,
-                requestId,
-                targetDataNode,
-                dataNodeLocationMap,
-                (Map<Integer, TCountPathsUsingTemplateResp>) responseMap,
-                countDownLatch);
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TCountPathsUsingTemplateResp>) responseMap,
+            countDownLatch);
       case CHECK_SCHEMA_REGION_USING_TEMPLATE:
         return new CheckSchemaRegionUsingTemplateRPCHandler(
-                requestType,
-                requestId,
-                targetDataNode,
-                dataNodeLocationMap,
-                (Map<Integer, TCheckSchemaRegionUsingTemplateResp>) responseMap,
-                countDownLatch);
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TCheckSchemaRegionUsingTemplateResp>) responseMap,
+            countDownLatch);
       case CHECK_TIMESERIES_EXISTENCE:
         return new CheckTimeSeriesExistenceRPCHandler(
-                requestType,
-                requestId,
-                targetDataNode,
-                dataNodeLocationMap,
-                (Map<Integer, TCheckTimeSeriesExistenceResp>) responseMap,
-                countDownLatch);
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TCheckTimeSeriesExistenceResp>) responseMap,
+            countDownLatch);
       case PIPE_HEARTBEAT:
         return new PipeHeartbeatRPCHandler(
-                requestType,
-                requestId,
-                targetDataNode,
-                dataNodeLocationMap,
-                (Map<Integer, TPipeHeartbeatResp>) responseMap,
-                countDownLatch);
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TPipeHeartbeatResp>) responseMap,
+            countDownLatch);
       case PIPE_PUSH_ALL_META:
       case PIPE_PUSH_SINGLE_META:
       case PIPE_PUSH_MULTI_META:
         return new PipePushMetaRPCHandler(
-                requestType,
-                requestId,
-                targetDataNode,
-                dataNodeLocationMap,
-                (Map<Integer, TPushPipeMetaResp>) responseMap,
-                countDownLatch);
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TPushPipeMetaResp>) responseMap,
+            countDownLatch);
       case TOPIC_PUSH_ALL_META:
       case TOPIC_PUSH_SINGLE_META:
       case TOPIC_PUSH_MULTI_META:
         return new TopicPushMetaRPCHandler(
-                requestType,
-                requestId,
-                targetDataNode,
-                dataNodeLocationMap,
-                (Map<Integer, TPushTopicMetaResp>) responseMap,
-                countDownLatch);
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TPushTopicMetaResp>) responseMap,
+            countDownLatch);
       case CONSUMER_GROUP_PUSH_ALL_META:
       case CONSUMER_GROUP_PUSH_SINGLE_META:
         return new ConsumerGroupPushMetaRPCHandler(
-                requestType,
-                requestId,
-                targetDataNode,
-                dataNodeLocationMap,
-                (Map<Integer, TPushConsumerGroupMetaResp>) responseMap,
-                countDownLatch);
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TPushConsumerGroupMetaResp>) responseMap,
+            countDownLatch);
       case CHANGE_REGION_LEADER:
         return new TransferLeaderRPCHandler(
-                requestType,
-                requestId,
-                targetDataNode,
-                dataNodeLocationMap,
-                (Map<Integer, TRegionLeaderChangeResp>) responseMap,
-                countDownLatch);
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TRegionLeaderChangeResp>) responseMap,
+            countDownLatch);
       case SUBMIT_TEST_CONNECTION_TASK:
         return new SubmitTestConnectionTaskRPCHandler(
-                requestType,
-                requestId,
-                targetDataNode,
-                dataNodeLocationMap,
-                (Map<Integer, TTestConnectionResp>) responseMap,
-                countDownLatch);
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TTestConnectionResp>) responseMap,
+            countDownLatch);
       case SET_TTL:
       case CREATE_DATA_REGION:
       case CREATE_SCHEMA_REGION:
@@ -196,12 +207,12 @@ public abstract class DataNodeAbstractAsyncRPCHandler<Response> extends Abstract
       case TEST_CONNECTION:
       default:
         return new AsyncTSStatusRPCHandler(
-                requestType,
-                requestId,
-                targetDataNode,
-                dataNodeLocationMap,
-                (Map<Integer, TSStatus>) responseMap,
-                countDownLatch);
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TSStatus>) responseMap,
+            countDownLatch);
     }
   }
 }

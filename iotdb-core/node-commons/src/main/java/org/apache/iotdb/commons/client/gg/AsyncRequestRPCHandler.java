@@ -24,7 +24,8 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public abstract class AbstractAsyncRPCHandler<Response, RequestType, NodeLocation> implements AsyncMethodCallback<Response> {
+public abstract class AsyncRequestRPCHandler<Response, RequestType, NodeLocation>
+    implements AsyncMethodCallback<Response> {
 
   // Type of RPC request
   protected final RequestType requestType;
@@ -38,8 +39,8 @@ public abstract class AbstractAsyncRPCHandler<Response, RequestType, NodeLocatio
    *
    * <p>Map value: The target Nodes of corresponding indices
    *
-   * <p>All kinds of AsyncHandler will remove its targetNode from the nodeLocationMap only
-   * if its corresponding RPC request success
+   * <p>All kinds of AsyncHandler will remove its targetNode from the nodeLocationMap only if its
+   * corresponding RPC request success
    */
   protected final Map<Integer, NodeLocation> nodeLocationMap;
 
@@ -58,7 +59,7 @@ public abstract class AbstractAsyncRPCHandler<Response, RequestType, NodeLocatio
 
   protected final String formattedTargetLocation;
 
-  protected AbstractAsyncRPCHandler(
+  protected AsyncRequestRPCHandler(
       RequestType requestType,
       int requestId,
       NodeLocation targetNode,
@@ -75,5 +76,5 @@ public abstract class AbstractAsyncRPCHandler<Response, RequestType, NodeLocatio
     this.countDownLatch = countDownLatch;
   }
 
-  abstract protected String generateFormattedTargetLocation(NodeLocation location);
+  protected abstract String generateFormattedTargetLocation(NodeLocation location);
 }

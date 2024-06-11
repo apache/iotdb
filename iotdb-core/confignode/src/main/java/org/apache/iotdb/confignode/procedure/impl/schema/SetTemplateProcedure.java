@@ -211,8 +211,10 @@ public class SetTemplateProcedure
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     AsyncDataNodeRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(DataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+        new AsyncDataNodeRequestContext<>(
+            DataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -383,8 +385,10 @@ public class SetTemplateProcedure
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     AsyncDataNodeRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(DataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+        new AsyncDataNodeRequestContext<>(
+            DataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -489,7 +493,8 @@ public class SetTemplateProcedure
     AsyncDataNodeRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
         new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.UPDATE_TEMPLATE, invalidateTemplateSetInfoReq, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       // all dataNodes must clear the related template cache

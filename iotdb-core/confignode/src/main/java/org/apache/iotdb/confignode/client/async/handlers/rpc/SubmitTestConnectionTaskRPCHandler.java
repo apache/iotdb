@@ -48,7 +48,7 @@ public class SubmitTestConnectionTaskRPCHandler
   @Override
   public void onComplete(TTestConnectionResp resp) {
     responseMap.put(requestId, resp);
-    dataNodeLocationMap.remove(requestId);
+    nodeLocationMap.remove(requestId);
     countDownLatch.countDown();
   }
 
@@ -57,7 +57,7 @@ public class SubmitTestConnectionTaskRPCHandler
   public void onError(Exception e) {
     LOGGER.error("gg", e);
     responseMap.put(requestId, new TTestConnectionResp());
-    dataNodeLocationMap.remove(requestId);
+    nodeLocationMap.remove(requestId);
     countDownLatch.countDown();
   }
 }

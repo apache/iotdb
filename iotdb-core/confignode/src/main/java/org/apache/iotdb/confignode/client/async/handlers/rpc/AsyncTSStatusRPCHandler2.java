@@ -59,7 +59,7 @@ public class AsyncTSStatusRPCHandler2 extends ConfigNodeAbstractAsyncRPCHandler<
 
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Remove only if success
-      configNodeLocationMap.remove(requestId);
+      nodeLocationMap.remove(requestId);
       LOGGER.info("Successfully {} on ConfigNode: {}", requestType, formattedTargetLocation);
     } else {
       LOGGER.error(

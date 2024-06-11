@@ -48,8 +48,8 @@ public class AsyncRequestContext<Request, Response, RequestType, NodeLocation> {
    *
    * <p>Map value: The target Nodes of corresponding indices
    *
-   * <p>All kinds of AsyncHandler will remove its targetNode from the nodeLocationMap only
-   * if its corresponding RPC request success
+   * <p>All kinds of AsyncHandler will remove its targetNode from the nodeLocationMap only if its
+   * corresponding RPC request success
    */
   private final Map<Integer, NodeLocation> nodeLocationMap;
 
@@ -82,8 +82,7 @@ public class AsyncRequestContext<Request, Response, RequestType, NodeLocation> {
   }
 
   /** Constructor for null requests. */
-  public AsyncRequestContext(
-      RequestType requestType, Map<Integer, NodeLocation> nodeLocationMap) {
+  public AsyncRequestContext(RequestType requestType, Map<Integer, NodeLocation> nodeLocationMap) {
     this.requestType = requestType;
     this.nodeLocationMap = nodeLocationMap;
 
@@ -93,15 +92,11 @@ public class AsyncRequestContext<Request, Response, RequestType, NodeLocation> {
 
   /** Constructor for unique request. */
   public AsyncRequestContext(
-      RequestType requestType,
-      Request request,
-      Map<Integer, NodeLocation> nodeLocationMap) {
+      RequestType requestType, Request request, Map<Integer, NodeLocation> nodeLocationMap) {
     this.requestType = requestType;
     this.nodeLocationMap = nodeLocationMap;
     this.requestMap = new ConcurrentHashMap<>();
-    this.nodeLocationMap
-        .keySet()
-        .forEach(nodeId -> this.requestMap.put(nodeId, request));
+    this.nodeLocationMap.keySet().forEach(nodeId -> this.requestMap.put(nodeId, request));
     this.responseMap = new ConcurrentHashMap<>();
   }
 

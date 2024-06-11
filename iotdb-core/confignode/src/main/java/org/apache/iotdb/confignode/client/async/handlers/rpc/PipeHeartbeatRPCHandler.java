@@ -47,7 +47,7 @@ public class PipeHeartbeatRPCHandler extends DataNodeAbstractAsyncRPCHandler<TPi
   public void onComplete(TPipeHeartbeatResp response) {
     // Put response
     responseMap.put(requestId, response);
-    dataNodeLocationMap.remove(requestId);
+    nodeLocationMap.remove(requestId);
     LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
 
     // Always CountDown

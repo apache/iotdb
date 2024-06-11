@@ -53,15 +53,13 @@ public class CountPathsUsingTemplateRPCHandler
     TSStatus tsStatus = response.getStatus();
     responseMap.put(requestId, response);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeLocationMap.remove(requestId);
-      LOGGER.info("Successfully count paths using template on DataNode: {}", targetDataNode);
+      nodeLocationMap.remove(requestId);
+      LOGGER.info("Successfully count paths using template on DataNode: {}", targetNode);
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-      dataNodeLocationMap.remove(requestId);
-      LOGGER.error(
-          "Failed to count paths using template on DataNode {}, {}", targetDataNode, tsStatus);
+      nodeLocationMap.remove(requestId);
+      LOGGER.error("Failed to count paths using template on DataNode {}, {}", targetNode, tsStatus);
     } else {
-      LOGGER.error(
-          "Failed to count paths using template on DataNode {}, {}", targetDataNode, tsStatus);
+      LOGGER.error("Failed to count paths using template on DataNode {}, {}", targetNode, tsStatus);
     }
     countDownLatch.countDown();
   }
@@ -70,9 +68,9 @@ public class CountPathsUsingTemplateRPCHandler
   public void onError(Exception e) {
     String errorMsg =
         "Count paths using template error on DataNode: {id="
-            + targetDataNode.getDataNodeId()
+            + targetNode.getDataNodeId()
             + ", internalEndPoint="
-            + targetDataNode.getInternalEndPoint()
+            + targetNode.getInternalEndPoint()
             + "}"
             + e.getMessage();
     LOGGER.error(errorMsg);

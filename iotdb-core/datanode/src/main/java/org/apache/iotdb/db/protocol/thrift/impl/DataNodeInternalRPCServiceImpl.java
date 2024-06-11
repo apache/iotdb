@@ -1433,7 +1433,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         testAllDataNodeInternalServiceConnection(nodeLocations.getDataNodeLocations());
     List<TTestConnectionResult> mppResult =
         testAllDataNodeMPPServiceConnection(nodeLocations.getDataNodeLocations());
-    List<TTestConnectionResult> clientResult = testAllDataNodeExternalServiceConnection(nodeLocations.getDataNodeLocations());
+    List<TTestConnectionResult> clientResult =
+        testAllDataNodeExternalServiceConnection(nodeLocations.getDataNodeLocations());
     configNodeResult.addAll(dataNodeResult);
     configNodeResult.addAll(mppResult);
     configNodeResult.addAll(clientResult);
@@ -1501,7 +1502,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         .getResponseMap()
         .forEach(
             (dataNodeId, status) -> {
-              TEndPoint endPoint = anotherDataNodeLocationMap.get(dataNodeId).getMPPDataExchangeEndPoint();
+              TEndPoint endPoint =
+                  anotherDataNodeLocationMap.get(dataNodeId).getMPPDataExchangeEndPoint();
               TServiceProvider serviceProvider =
                   new TServiceProvider(endPoint, TServiceType.DataNodeInternalService);
               TTestConnectionResult result = new TTestConnectionResult();
@@ -1540,7 +1542,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         .getResponseMap()
         .forEach(
             (dataNodeId, status) -> {
-              TEndPoint endPoint = anotherDataNodeLocationMap.get(dataNodeId).getMPPDataExchangeEndPoint();
+              TEndPoint endPoint =
+                  anotherDataNodeLocationMap.get(dataNodeId).getMPPDataExchangeEndPoint();
               TServiceProvider serviceProvider =
                   new TServiceProvider(endPoint, TServiceType.DataNodeMPPService);
               TTestConnectionResult result = new TTestConnectionResult();
@@ -1558,41 +1561,42 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   private List<TTestConnectionResult> testAllDataNodeExternalServiceConnection(
-          List<TDataNodeLocation> dataNodeLocations) {
+      List<TDataNodeLocation> dataNodeLocations) {
     final TSender sender =
-            new TSender()
-                    .setDataNodeLocation(
-                            IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation());
+        new TSender()
+            .setDataNodeLocation(
+                IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation());
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-            dataNodeLocations.stream()
-                    .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
+        dataNodeLocations.stream()
+            .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
     AsyncClientHandler<Object, TSStatus> clientHandler =
-            new AsyncClientHandler<>(
-                    DataNodeRequestType.TEST_CONNECTION, new Object(), dataNodeLocationMap);
+        new AsyncClientHandler<>(
+            DataNodeRequestType.TEST_CONNECTION, new Object(), dataNodeLocationMap);
     AsyncDataNodeExternalServiceClientPool.getInstance()
-            .sendAsyncRequestToDataNodeWithRetry(clientHandler);
+        .sendAsyncRequestToDataNodeWithRetry(clientHandler);
     Map<Integer, TDataNodeLocation> anotherDataNodeLocationMap =
-            dataNodeLocations.stream()
-                    .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
+        dataNodeLocations.stream()
+            .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
     List<TTestConnectionResult> results = new ArrayList<>();
     clientHandler
-            .getResponseMap()
-            .forEach(
-                    (dataNodeId, status) -> {
-                      TEndPoint endPoint = anotherDataNodeLocationMap.get(dataNodeId).getClientRpcEndPoint();
-                      TServiceProvider serviceProvider =
-                              new TServiceProvider(endPoint, TServiceType.DataNodeExternalService);
-                      TTestConnectionResult result = new TTestConnectionResult();
-                      result.setSender(sender);
-                      result.setServiceProvider(serviceProvider);
-                      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                        result.setSuccess(true);
-                      } else {
-                        result.setSuccess(false);
-                        result.setReason(status.getMessage());
-                      }
-                      results.add(result);
-                    });
+        .getResponseMap()
+        .forEach(
+            (dataNodeId, status) -> {
+              TEndPoint endPoint =
+                  anotherDataNodeLocationMap.get(dataNodeId).getClientRpcEndPoint();
+              TServiceProvider serviceProvider =
+                  new TServiceProvider(endPoint, TServiceType.DataNodeExternalService);
+              TTestConnectionResult result = new TTestConnectionResult();
+              result.setSender(sender);
+              result.setServiceProvider(serviceProvider);
+              if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                result.setSuccess(true);
+              } else {
+                result.setSuccess(false);
+                result.setReason(status.getMessage());
+              }
+              results.add(result);
+            });
     return results;
   }
 

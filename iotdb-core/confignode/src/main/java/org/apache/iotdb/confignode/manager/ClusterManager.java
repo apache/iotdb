@@ -34,8 +34,8 @@ import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncConfigNodeInternalServiceRequestSender;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestSender;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncConfigNodeRequestContext;
+import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -120,7 +120,8 @@ public class ClusterManager {
             ConfigNodeRequestType.SUBMIT_TEST_CONNECTION_TASK,
             nodeLocations,
             configNodeLocationMap);
-    AsyncConfigNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToNode(configNodeClientHandler);
+    AsyncConfigNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNode(configNodeClientHandler);
     configNodeClientHandler
         .getResponseMap()
         .values()
@@ -140,7 +141,8 @@ public class ClusterManager {
     AsyncDataNodeRequestContext<TNodeLocations, TTestConnectionResp> dataNodeClientHandler =
         new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.SUBMIT_TEST_CONNECTION_TASK, nodeLocations, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToNode(dataNodeClientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNode(dataNodeClientHandler);
     dataNodeClientHandler
         .getResponseMap()
         .values()
@@ -167,7 +169,8 @@ public class ClusterManager {
             DataNodeRequestType.SUBMIT_TEST_CONNECTION_TASK,
             new TNodeLocations(),
             configManager.getNodeManager().getRegisteredDataNodeLocations());
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     clientHandler.getResponseMap();
   }
 
@@ -229,7 +232,8 @@ public class ClusterManager {
     AsyncConfigNodeRequestContext<Object, TSStatus> clientHandler =
         new AsyncConfigNodeRequestContext<>(
             ConfigNodeRequestType.TEST_CONNECTION, new Object(), configNodeLocationMap);
-    AsyncConfigNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToNodeWithRetry(clientHandler);
+    AsyncConfigNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TConfigNodeLocation> anotherConfigNodeLocationMap =
         configNodeLocations.stream()
             .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
@@ -268,7 +272,8 @@ public class ClusterManager {
     AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
         new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.TEST_CONNECTION, new Object(), dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TDataNodeLocation> anotherDataNodeLocationMap =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));

@@ -251,7 +251,8 @@ public class TriggerManager {
     AsyncDataNodeRequestContext<TUpdateTriggerLocationReq, TSStatus> clientHandler =
         new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.UPDATE_TRIGGER_LOCATION, request, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 }

@@ -86,8 +86,10 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
             : getLeaderDataNodeRegionGroupMap(
                 configManager.getLoadManager().getRegionLeaderMap(), targetSchemaRegionGroup);
     while (!dataNodeConsensusGroupIdMap.isEmpty()) {
-      AsyncDataNodeRequestContext<Q, R> clientHandler = prepareRequestHandler(dataNodeConsensusGroupIdMap);
-      AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+      AsyncDataNodeRequestContext<Q, R> clientHandler =
+          prepareRequestHandler(dataNodeConsensusGroupIdMap);
+      AsyncDataNodeInternalServiceRequestSender.getInstance()
+          .sendAsyncRequestToNodeWithRetry(clientHandler);
       Map<TDataNodeLocation, List<TConsensusGroupId>> currentFailedDataNodeMap =
           checkDataNodeExecutionResult(clientHandler.getResponseMap(), dataNodeConsensusGroupIdMap);
 
@@ -114,10 +116,11 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
 
   private AsyncDataNodeRequestContext<Q, R> prepareRequestHandler(
       Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap) {
-    AsyncDataNodeRequestContext<Q, R> clientHandler = new AsyncDataNodeRequestContext<>(dataNodeRequestType);
+    AsyncDataNodeRequestContext<Q, R> clientHandler =
+        new AsyncDataNodeRequestContext<>(dataNodeRequestType);
     for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
         dataNodeConsensusGroupIdMap.entrySet()) {
-      clientHandler.putDataNodeLocation(entry.getKey().getDataNodeId(), entry.getKey());
+      clientHandler.putNodeLocation(entry.getKey().getDataNodeId(), entry.getKey());
       clientHandler.putRequest(
           entry.getKey().getDataNodeId(),
           dataNodeRequestGenerator.apply(entry.getKey(), entry.getValue()));

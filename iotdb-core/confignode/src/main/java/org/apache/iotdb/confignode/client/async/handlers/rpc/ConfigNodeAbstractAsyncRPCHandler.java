@@ -20,34 +20,47 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
-import org.apache.iotdb.commons.client.gg.AbstractAsyncRPCHandler;
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
+import org.apache.iotdb.commons.client.gg.AsyncRequestRPCHandler;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
 
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public abstract class ConfigNodeAbstractAsyncRPCHandler<Response> extends AbstractAsyncRPCHandler<Response, ConfigNodeRequestType, TConfigNodeLocation> {
+public abstract class ConfigNodeAbstractAsyncRPCHandler<Response>
+    extends AsyncRequestRPCHandler<Response, ConfigNodeRequestType, TConfigNodeLocation> {
 
-  protected ConfigNodeAbstractAsyncRPCHandler(ConfigNodeRequestType configNodeRequestType, int requestId, TConfigNodeLocation targetNode, Map<Integer, TConfigNodeLocation> integerTConfigNodeLocationMap, Map<Integer, Response> integerResponseMap, CountDownLatch countDownLatch) {
-    super(configNodeRequestType, requestId, targetNode, integerTConfigNodeLocationMap, integerResponseMap, countDownLatch);
+  protected ConfigNodeAbstractAsyncRPCHandler(
+      ConfigNodeRequestType configNodeRequestType,
+      int requestId,
+      TConfigNodeLocation targetNode,
+      Map<Integer, TConfigNodeLocation> integerTConfigNodeLocationMap,
+      Map<Integer, Response> integerResponseMap,
+      CountDownLatch countDownLatch) {
+    super(
+        configNodeRequestType,
+        requestId,
+        targetNode,
+        integerTConfigNodeLocationMap,
+        integerResponseMap,
+        countDownLatch);
   }
 
   @Override
   protected String generateFormattedTargetLocation(TConfigNodeLocation configNodeLocation) {
     return "{id="
-            + targetNode.getConfigNodeId()
-            + ", internalEndPoint="
-            + targetNode.getInternalEndPoint()
-            + "}";
+        + targetNode.getConfigNodeId()
+        + ", internalEndPoint="
+        + targetNode.getInternalEndPoint()
+        + "}";
   }
 
-  public static ConfigNodeAbstractAsyncRPCHandler<?> buildHandler(AsyncRequestContext<?, ?, ConfigNodeRequestType, TConfigNodeLocation> context,
-                                                                int requestId, TConfigNodeLocation targetConfigNode) {
+  public static ConfigNodeAbstractAsyncRPCHandler<?> buildHandler(
+      AsyncRequestContext<?, ?, ConfigNodeRequestType, TConfigNodeLocation> context,
+      int requestId,
+      TConfigNodeLocation targetConfigNode) {
     ConfigNodeRequestType requestType = context.getRequestType();
     Map<Integer, TConfigNodeLocation> nodeLocationMap = context.getNodeLocationMap();
     Map<Integer, ?> responseMap = context.getResponseMap();
@@ -55,21 +68,21 @@ public abstract class ConfigNodeAbstractAsyncRPCHandler<Response> extends Abstra
     switch (requestType) {
       case SUBMIT_TEST_CONNECTION_TASK:
         return new SubmitTestConnectionTaskToConfigNodeRPCHandler(
-                requestType,
-                requestId,
-                targetConfigNode,
-                nodeLocationMap,
-                (Map<Integer, TTestConnectionResp>) responseMap,
-                countDownLatch);
+            requestType,
+            requestId,
+            targetConfigNode,
+            nodeLocationMap,
+            (Map<Integer, TTestConnectionResp>) responseMap,
+            countDownLatch);
       case TEST_CONNECTION:
       default:
         return new AsyncTSStatusRPCHandler2(
-                requestType,
-                requestId,
-                targetConfigNode,
-                nodeLocationMap,
-                (Map<Integer, TSStatus>) responseMap,
-                countDownLatch);
+            requestType,
+            requestId,
+            targetConfigNode,
+            nodeLocationMap,
+            (Map<Integer, TSStatus>) responseMap,
+            countDownLatch);
     }
   }
 }

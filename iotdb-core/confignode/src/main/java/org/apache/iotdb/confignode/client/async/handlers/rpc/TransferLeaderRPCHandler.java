@@ -31,7 +31,8 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class TransferLeaderRPCHandler extends DataNodeAbstractAsyncRPCHandler<TRegionLeaderChangeResp> {
+public class TransferLeaderRPCHandler
+    extends DataNodeAbstractAsyncRPCHandler<TRegionLeaderChangeResp> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TransferLeaderRPCHandler.class);
 
@@ -52,7 +53,7 @@ public class TransferLeaderRPCHandler extends DataNodeAbstractAsyncRPCHandler<TR
 
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Remove only if success
-      dataNodeLocationMap.remove(requestId);
+      nodeLocationMap.remove(requestId);
       LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
     } else {
       LOGGER.error(

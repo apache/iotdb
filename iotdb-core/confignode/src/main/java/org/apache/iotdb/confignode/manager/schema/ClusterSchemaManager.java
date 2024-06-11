@@ -447,10 +447,11 @@ public class ClusterSchemaManager {
               TSetTTLReq setTTLReq =
                   new TSetTTLReq(dnlToSgMap.get(dataNodeId), setTTLPlan.getTTL());
               clientHandler.putRequest(dataNodeId, setTTLReq);
-              clientHandler.putDataNodeLocation(dataNodeId, dataNodeLocationMap.get(dataNodeId));
+              clientHandler.putNodeLocation(dataNodeId, dataNodeLocationMap.get(dataNodeId));
             });
     // TODO: Check response
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
 
     try {
       return getConsensusManager()
@@ -1102,7 +1103,8 @@ public class ClusterSchemaManager {
     AsyncDataNodeRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
         new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.UPDATE_TEMPLATE, updateTemplateReq, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

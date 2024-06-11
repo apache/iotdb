@@ -97,9 +97,10 @@ public class PipeHeartbeatScheduler {
     LOGGER.info("Collecting pipe heartbeat {} from data nodes", request.heartbeatId);
 
     final AsyncDataNodeRequestContext<TPipeHeartbeatReq, TPipeHeartbeatResp> clientHandler =
-        new AsyncDataNodeRequestContext<>(DataNodeRequestType.PIPE_HEARTBEAT, request, dataNodeLocationMap);
+        new AsyncDataNodeRequestContext<>(
+            DataNodeRequestType.PIPE_HEARTBEAT, request, dataNodeLocationMap);
     AsyncDataNodeInternalServiceRequestSender.getInstance()
-        .sendAsyncRequestToDataNodeWithRetryAndTimeoutInMs(
+        .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
             clientHandler,
             PipeConfig.getInstance().getPipeHeartbeatIntervalSecondsForCollectingPipeMeta()
                 * 1000L

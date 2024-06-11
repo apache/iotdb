@@ -702,7 +702,8 @@ public class NodeManager {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
         new AsyncDataNodeRequestContext<>(DataNodeRequestType.MERGE, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -711,7 +712,8 @@ public class NodeManager {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     AsyncDataNodeRequestContext<TFlushReq, TSStatus> clientHandler =
         new AsyncDataNodeRequestContext<>(DataNodeRequestType.FLUSH, req, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -720,7 +722,8 @@ public class NodeManager {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
         new AsyncDataNodeRequestContext<>(DataNodeRequestType.CLEAR_CACHE, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -728,8 +731,10 @@ public class NodeManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(DataNodeRequestType.START_REPAIR_DATA, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+        new AsyncDataNodeRequestContext<>(
+            DataNodeRequestType.START_REPAIR_DATA, dataNodeLocationMap);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -737,8 +742,10 @@ public class NodeManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(DataNodeRequestType.STOP_REPAIR_DATA, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+        new AsyncDataNodeRequestContext<>(
+            DataNodeRequestType.STOP_REPAIR_DATA, dataNodeLocationMap);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -746,8 +753,10 @@ public class NodeManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(DataNodeRequestType.LOAD_CONFIGURATION, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+        new AsyncDataNodeRequestContext<>(
+            DataNodeRequestType.LOAD_CONFIGURATION, dataNodeLocationMap);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -757,7 +766,8 @@ public class NodeManager {
     AsyncDataNodeRequestContext<String, TSStatus> clientHandler =
         new AsyncDataNodeRequestContext<>(
             DataNodeRequestType.SET_SYSTEM_STATUS, status, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -788,8 +798,10 @@ public class NodeManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     AsyncDataNodeRequestContext<String, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(DataNodeRequestType.KILL_QUERY_INSTANCE, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+        new AsyncDataNodeRequestContext<>(
+            DataNodeRequestType.KILL_QUERY_INSTANCE, dataNodeLocationMap);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
   }
 

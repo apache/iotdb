@@ -31,12 +31,12 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
-import org.apache.iotdb.commons.client.gg.AsyncRequestSender;
+import org.apache.iotdb.commons.client.gg.AsyncRequestManager;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAbstractAsyncRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExistenceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAbstractAsyncRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
@@ -91,9 +91,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Asynchronously send RPC requests to DataNodes. See queryengine.thrift for more details. */
-public class AsyncDataNodeInternalServiceRequestSender extends AsyncRequestSender<DataNodeRequestType, TDataNodeLocation, AsyncDataNodeInternalServiceClient> {
+public class AsyncDataNodeInternalServiceRequestSender
+    extends AsyncRequestManager<
+        DataNodeRequestType, TDataNodeLocation, AsyncDataNodeInternalServiceClient> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncDataNodeInternalServiceRequestSender.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AsyncDataNodeInternalServiceRequestSender.class);
 
   private AsyncDataNodeInternalServiceRequestSender() {
     super();
@@ -102,9 +105,9 @@ public class AsyncDataNodeInternalServiceRequestSender extends AsyncRequestSende
   @Override
   protected void initClientManager() {
     clientManager =
-            new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
-                    .createClientManager(
-                            new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory());
+        new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
+            .createClientManager(
+                new ClientPoolFactory.AsyncDataNodeInternalServiceClientPoolFactory());
   }
 
   @Override
@@ -114,13 +117,17 @@ public class AsyncDataNodeInternalServiceRequestSender extends AsyncRequestSende
 
   @Override
   protected void sendAsyncRequestToNode(
-          AsyncRequestContext<?, ?, DataNodeRequestType, TDataNodeLocation> requestContext, int requestId, TDataNodeLocation targetNode, int retryCount) {
+      AsyncRequestContext<?, ?, DataNodeRequestType, TDataNodeLocation> requestContext,
+      int requestId,
+      TDataNodeLocation targetNode,
+      int retryCount) {
 
     try {
       AsyncDataNodeInternalServiceClient client;
       client = clientManager.borrowClient(nodeLocationToEndPoint(targetNode));
       Object req = requestContext.getRequest(requestId);
-      DataNodeAbstractAsyncRPCHandler<?> handler = DataNodeAbstractAsyncRPCHandler.buildHandler(requestContext, requestId, targetNode);
+      DataNodeAbstractAsyncRPCHandler<?> handler =
+          DataNodeAbstractAsyncRPCHandler.buildHandler(requestContext, requestId, targetNode);
 
       AsyncTSStatusRPCHandler defaultHandler = null;
       if (handler instanceof AsyncTSStatusRPCHandler) {
@@ -181,19 +188,19 @@ public class AsyncDataNodeInternalServiceRequestSender extends AsyncRequestSende
           break;
         case TOPIC_PUSH_SINGLE_META:
           client.pushSingleTopicMeta(
-                  (TPushSingleTopicMetaReq) req, (TopicPushMetaRPCHandler) handler);
+              (TPushSingleTopicMetaReq) req, (TopicPushMetaRPCHandler) handler);
           break;
         case TOPIC_PUSH_MULTI_META:
           client.pushMultiTopicMeta(
-                  (TPushMultiTopicMetaReq) req, (TopicPushMetaRPCHandler) handler);
+              (TPushMultiTopicMetaReq) req, (TopicPushMetaRPCHandler) handler);
           break;
         case CONSUMER_GROUP_PUSH_ALL_META:
           client.pushConsumerGroupMeta(
-                  (TPushConsumerGroupMetaReq) req, (ConsumerGroupPushMetaRPCHandler) handler);
+              (TPushConsumerGroupMetaReq) req, (ConsumerGroupPushMetaRPCHandler) handler);
           break;
         case CONSUMER_GROUP_PUSH_SINGLE_META:
           client.pushSingleConsumerGroupMeta(
-                  (TPushSingleConsumerGroupMetaReq) req, (ConsumerGroupPushMetaRPCHandler) handler);
+              (TPushSingleConsumerGroupMetaReq) req, (ConsumerGroupPushMetaRPCHandler) handler);
           break;
         case PIPE_HEARTBEAT:
           client.pipeHeartbeat((TPipeHeartbeatReq) req, (PipeHeartbeatRPCHandler) handler);
@@ -225,38 +232,38 @@ public class AsyncDataNodeInternalServiceRequestSender extends AsyncRequestSende
           break;
         case CHANGE_REGION_LEADER:
           client.changeRegionLeader(
-                  (TRegionLeaderChangeReq) req, (TransferLeaderRPCHandler) handler);
+              (TRegionLeaderChangeReq) req, (TransferLeaderRPCHandler) handler);
           break;
         case CONSTRUCT_SCHEMA_BLACK_LIST:
           client.constructSchemaBlackList(
-                  (TConstructSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
+              (TConstructSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case ROLLBACK_SCHEMA_BLACK_LIST:
           client.rollbackSchemaBlackList(
-                  (TRollbackSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
+              (TRollbackSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case FETCH_SCHEMA_BLACK_LIST:
           client.fetchSchemaBlackList(
-                  (TFetchSchemaBlackListReq) req, (FetchSchemaBlackListRPCHandler) handler);
+              (TFetchSchemaBlackListReq) req, (FetchSchemaBlackListRPCHandler) handler);
           break;
         case INVALIDATE_MATCHED_SCHEMA_CACHE:
           client.invalidateMatchedSchemaCache(
-                  (TInvalidateMatchedSchemaCacheReq) req, defaultHandler);
+              (TInvalidateMatchedSchemaCacheReq) req, defaultHandler);
           break;
         case DELETE_DATA_FOR_DELETE_SCHEMA:
           client.deleteDataForDeleteSchema(
-                  (TDeleteDataForDeleteSchemaReq) req, (SchemaUpdateRPCHandler) handler);
+              (TDeleteDataForDeleteSchemaReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case DELETE_TIMESERIES:
           client.deleteTimeSeries((TDeleteTimeSeriesReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
           client.constructSchemaBlackListWithTemplate(
-                  (TConstructSchemaBlackListWithTemplateReq) req, (SchemaUpdateRPCHandler) handler);
+              (TConstructSchemaBlackListWithTemplateReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
           client.rollbackSchemaBlackListWithTemplate(
-                  (TRollbackSchemaBlackListWithTemplateReq) req, (SchemaUpdateRPCHandler) handler);
+              (TRollbackSchemaBlackListWithTemplateReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case DEACTIVATE_TEMPLATE:
           client.deactivateTemplate((TDeactivateTemplateReq) req, (SchemaUpdateRPCHandler) handler);
@@ -266,24 +273,24 @@ public class AsyncDataNodeInternalServiceRequestSender extends AsyncRequestSende
           break;
         case COUNT_PATHS_USING_TEMPLATE:
           client.countPathsUsingTemplate(
-                  (TCountPathsUsingTemplateReq) req, (CountPathsUsingTemplateRPCHandler) handler);
+              (TCountPathsUsingTemplateReq) req, (CountPathsUsingTemplateRPCHandler) handler);
           break;
         case CHECK_SCHEMA_REGION_USING_TEMPLATE:
           client.checkSchemaRegionUsingTemplate(
-                  (TCheckSchemaRegionUsingTemplateReq) req,
-                  (CheckSchemaRegionUsingTemplateRPCHandler) handler);
+              (TCheckSchemaRegionUsingTemplateReq) req,
+              (CheckSchemaRegionUsingTemplateRPCHandler) handler);
           break;
         case CHECK_TIMESERIES_EXISTENCE:
           client.checkTimeSeriesExistence(
-                  (TCheckTimeSeriesExistenceReq) req, (CheckTimeSeriesExistenceRPCHandler) handler);
+              (TCheckTimeSeriesExistenceReq) req, (CheckTimeSeriesExistenceRPCHandler) handler);
           break;
         case CONSTRUCT_VIEW_SCHEMA_BLACK_LIST:
           client.constructViewSchemaBlackList(
-                  (TConstructViewSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
+              (TConstructViewSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case ROLLBACK_VIEW_SCHEMA_BLACK_LIST:
           client.rollbackViewSchemaBlackList(
-                  (TRollbackViewSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
+              (TRollbackViewSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler);
           break;
         case DELETE_VIEW:
           client.deleteViewSchema((TDeleteViewSchemaReq) req, (SchemaUpdateRPCHandler) handler);
@@ -305,30 +312,31 @@ public class AsyncDataNodeInternalServiceRequestSender extends AsyncRequestSende
           break;
         case SUBMIT_TEST_CONNECTION_TASK:
           client.submitTestConnectionTask(
-                  (TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler);
+              (TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler);
           break;
         case TEST_CONNECTION:
           client.testConnection(defaultHandler);
           break;
         default:
           LOGGER.error(
-                  "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",
-                  requestContext.getRequestType());
+              "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",
+              requestContext.getRequestType());
       }
     } catch (Exception e) {
       LOGGER.warn(
-              "{} failed on DataNode {}, because {}, retrying {}...",
-              requestContext.getRequestType(),
-              nodeLocationToEndPoint(targetNode),
-              e.getMessage(),
-              retryCount);
+          "{} failed on DataNode {}, because {}, retrying {}...",
+          requestContext.getRequestType(),
+          nodeLocationToEndPoint(targetNode),
+          e.getMessage(),
+          retryCount);
     }
   }
 
   // TODO: Is the ClientPool must be a singleton?
   private static class ClientPoolHolder {
 
-    private static final AsyncDataNodeInternalServiceRequestSender INSTANCE = new AsyncDataNodeInternalServiceRequestSender();
+    private static final AsyncDataNodeInternalServiceRequestSender INSTANCE =
+        new AsyncDataNodeInternalServiceRequestSender();
 
     private ClientPoolHolder() {
       // Empty constructor

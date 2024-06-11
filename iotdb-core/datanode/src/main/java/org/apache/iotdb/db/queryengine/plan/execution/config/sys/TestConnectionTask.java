@@ -62,11 +62,14 @@ public class TestConnectionTask implements IConfigTask {
     for (TTestConnectionResult result : resp.getResultList()) {
       // ServiceProvider column
       builder.getTimeColumnBuilder().writeLong(0);
-      StringBuilder serviceStr = new StringBuilder(serviceProviderToString(result.getServiceProvider()));
+      StringBuilder serviceStr =
+          new StringBuilder(serviceProviderToString(result.getServiceProvider()));
       while (serviceStr.length() < maxLen) {
         serviceStr.append(" ");
       }
-      builder.getColumnBuilder(0).writeBinary(new Binary(serviceStr.toString(), TSFileConfig.STRING_CHARSET));
+      builder
+          .getColumnBuilder(0)
+          .writeBinary(new Binary(serviceStr.toString(), TSFileConfig.STRING_CHARSET));
       // Sender column
       String senderStr;
       if (result.getSender().isSetConfigNodeLocation()) {
@@ -137,9 +140,11 @@ public class TestConnectionTask implements IConfigTask {
 
   private static int calculateServiceProviderMaxLen(TTestConnectionResp origin) {
     return origin.getResultList().stream()
-            .map(TTestConnectionResult::getServiceProvider)
-            .map(TestConnectionTask::serviceProviderToString)
-            .max(Comparator.comparingInt(String::length)).get().length();
+        .map(TTestConnectionResult::getServiceProvider)
+        .map(TestConnectionTask::serviceProviderToString)
+        .max(Comparator.comparingInt(String::length))
+        .get()
+        .length();
   }
 
   private static String addLineBreak(String origin, int interval) {

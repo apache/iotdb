@@ -128,8 +128,10 @@ public class UDFManager {
     final TCreateFunctionInstanceReq req =
         new TCreateFunctionInstanceReq(udfInformation.serialize()).setJarFile(jarFile);
     AsyncDataNodeRequestContext<TCreateFunctionInstanceReq, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(DataNodeRequestType.CREATE_FUNCTION, req, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+        new AsyncDataNodeRequestContext<>(
+            DataNodeRequestType.CREATE_FUNCTION, req, dataNodeLocationMap);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -161,8 +163,10 @@ public class UDFManager {
     final TDropFunctionInstanceReq request = new TDropFunctionInstanceReq(functionName, false);
 
     AsyncDataNodeRequestContext<TDropFunctionInstanceReq, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(DataNodeRequestType.DROP_FUNCTION, request, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+        new AsyncDataNodeRequestContext<>(
+            DataNodeRequestType.DROP_FUNCTION, request, dataNodeLocationMap);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 

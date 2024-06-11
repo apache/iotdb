@@ -50,10 +50,10 @@ public class SchemaUpdateRPCHandler extends AsyncTSStatusRPCHandler {
     responseMap.put(requestId, tsStatus);
     LOGGER.info("{} for {} receives: {}", requestType, requestId, tsStatus);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeLocationMap.remove(requestId);
+      nodeLocationMap.remove(requestId);
       LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-      dataNodeLocationMap.remove(requestId);
+      nodeLocationMap.remove(requestId);
       LOGGER.warn(
           "Failed to {} on DataNode {}, {}", requestType, formattedTargetLocation, tsStatus);
     } else {
@@ -68,9 +68,9 @@ public class SchemaUpdateRPCHandler extends AsyncTSStatusRPCHandler {
     String errorMsg =
         requestType
             + " error on DataNode: {id="
-            + targetDataNode.getDataNodeId()
+            + targetNode.getDataNodeId()
             + ", internalEndPoint="
-            + targetDataNode.getInternalEndPoint()
+            + targetNode.getInternalEndPoint()
             + "}"
             + e.getMessage();
     LOGGER.warn(errorMsg);

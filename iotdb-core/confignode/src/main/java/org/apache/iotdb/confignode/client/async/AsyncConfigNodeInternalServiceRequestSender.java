@@ -26,19 +26,22 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
-import org.apache.iotdb.commons.client.gg.AsyncRequestSender;
+import org.apache.iotdb.commons.client.gg.AsyncRequestManager;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.ConfigNodeAbstractAsyncRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler2;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.ConfigNodeAbstractAsyncRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskToConfigNodeRPCHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Asynchronously send RPC requests to ConfigNodes. See queryengine.thrift for more details. */
-public class AsyncConfigNodeInternalServiceRequestSender extends AsyncRequestSender<ConfigNodeRequestType, TConfigNodeLocation, AsyncConfigNodeInternalServiceClient> {
+public class AsyncConfigNodeInternalServiceRequestSender
+    extends AsyncRequestManager<
+        ConfigNodeRequestType, TConfigNodeLocation, AsyncConfigNodeInternalServiceClient> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncConfigNodeInternalServiceRequestSender.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AsyncConfigNodeInternalServiceRequestSender.class);
 
   private AsyncConfigNodeInternalServiceRequestSender() {
     super();
@@ -47,8 +50,9 @@ public class AsyncConfigNodeInternalServiceRequestSender extends AsyncRequestSen
   @Override
   protected void initClientManager() {
     clientManager =
-            new IClientManager.Factory<TEndPoint, AsyncConfigNodeInternalServiceClient>()
-                    .createClientManager(new ClientPoolFactory.AsyncConfigNodeInternalServiceClientPoolFactory());
+        new IClientManager.Factory<TEndPoint, AsyncConfigNodeInternalServiceClient>()
+            .createClientManager(
+                new ClientPoolFactory.AsyncConfigNodeInternalServiceClientPoolFactory());
   }
 
   @Override
@@ -58,15 +62,17 @@ public class AsyncConfigNodeInternalServiceRequestSender extends AsyncRequestSen
 
   @Override
   protected void sendAsyncRequestToNode(
-          AsyncRequestContext<?, ?, ConfigNodeRequestType, TConfigNodeLocation> requestContext, int requestId, TConfigNodeLocation targetNode, int retryCount) {
-
+      AsyncRequestContext<?, ?, ConfigNodeRequestType, TConfigNodeLocation> requestContext,
+      int requestId,
+      TConfigNodeLocation targetNode,
+      int retryCount) {
 
     try {
       AsyncConfigNodeInternalServiceClient client;
       client = clientManager.borrowClient(nodeLocationToEndPoint(targetNode));
       Object req = requestContext.getRequest(requestId);
       ConfigNodeAbstractAsyncRPCHandler<?> handler =
-              ConfigNodeAbstractAsyncRPCHandler.buildHandler(requestContext, requestId, targetNode);
+          ConfigNodeAbstractAsyncRPCHandler.buildHandler(requestContext, requestId, targetNode);
       AsyncTSStatusRPCHandler2 defaultHandler = null;
       if (handler instanceof AsyncTSStatusRPCHandler2) {
         defaultHandler = (AsyncTSStatusRPCHandler2) handler;
@@ -97,7 +103,8 @@ public class AsyncConfigNodeInternalServiceRequestSender extends AsyncRequestSen
   // TODO: Is the ClientPool must be a singleton?
   private static class ClientPoolHolder {
 
-    private static final AsyncConfigNodeInternalServiceRequestSender INSTANCE = new AsyncConfigNodeInternalServiceRequestSender();
+    private static final AsyncConfigNodeInternalServiceRequestSender INSTANCE =
+        new AsyncConfigNodeInternalServiceRequestSender();
 
     private ClientPoolHolder() {
       // Empty constructor

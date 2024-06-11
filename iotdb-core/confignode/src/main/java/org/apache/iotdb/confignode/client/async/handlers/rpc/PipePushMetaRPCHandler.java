@@ -60,7 +60,7 @@ public class PipePushMetaRPCHandler extends DataNodeAbstractAsyncRPCHandler<TPus
     }
 
     // Always remove to avoid retrying
-    dataNodeLocationMap.remove(requestId);
+    nodeLocationMap.remove(requestId);
 
     // Always CountDown
     countDownLatch.countDown();

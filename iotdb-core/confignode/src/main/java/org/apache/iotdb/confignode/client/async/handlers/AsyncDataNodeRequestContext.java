@@ -23,11 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 
 /**
  * Asynchronous Client handler.
@@ -35,17 +31,20 @@ import java.util.concurrent.CountDownLatch;
  * @param <Q> ClassName of RPC request
  * @param <R> ClassName of RPC response
  */
-public class AsyncDataNodeRequestContext<Q, R> extends AsyncRequestContext<Q, R, DataNodeRequestType, TDataNodeLocation> {
+public class AsyncDataNodeRequestContext<Q, R>
+    extends AsyncRequestContext<Q, R, DataNodeRequestType, TDataNodeLocation> {
 
   public AsyncDataNodeRequestContext(DataNodeRequestType requestType) {
     super(requestType);
   }
 
-  public AsyncDataNodeRequestContext(DataNodeRequestType requestType, Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+  public AsyncDataNodeRequestContext(
+      DataNodeRequestType requestType, Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
     super(requestType, dataNodeLocationMap);
   }
 
-  public AsyncDataNodeRequestContext(DataNodeRequestType requestType, Q q, Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+  public AsyncDataNodeRequestContext(
+      DataNodeRequestType requestType, Q q, Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
     super(requestType, q, dataNodeLocationMap);
   }
 }

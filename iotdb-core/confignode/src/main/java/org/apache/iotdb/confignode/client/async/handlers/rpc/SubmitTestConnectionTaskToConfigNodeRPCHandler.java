@@ -56,7 +56,7 @@ public class SubmitTestConnectionTaskToConfigNodeRPCHandler
   @Override
   public void onComplete(TTestConnectionResp resp) {
     responseMap.put(requestId, resp);
-    configNodeLocationMap.remove(requestId);
+    nodeLocationMap.remove(requestId);
     countDownLatch.countDown();
   }
 
@@ -67,7 +67,7 @@ public class SubmitTestConnectionTaskToConfigNodeRPCHandler
     TTestConnectionResp resp = new TTestConnectionResp();
     resp.setStatus(new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
     responseMap.put(requestId, new TTestConnectionResp());
-    configNodeLocationMap.remove(requestId);
+    nodeLocationMap.remove(requestId);
     countDownLatch.countDown();
   }
 }

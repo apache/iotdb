@@ -1271,13 +1271,13 @@ public class PartitionManager {
                                 new TCreateSchemaRegionReq(
                                     schemaRegionCreateTask.getRegionReplicaSet(),
                                     schemaRegionCreateTask.getStorageGroup()));
-                            createSchemaRegionHandler.putDataNodeLocation(
+                            createSchemaRegionHandler.putNodeLocation(
                                 schemaRegionCreateTask.getRegionId().getId(),
                                 schemaRegionCreateTask.getTargetDataNode());
                           }
 
                           AsyncDataNodeInternalServiceRequestSender.getInstance()
-                              .sendAsyncRequestToDataNodeWithRetry(createSchemaRegionHandler);
+                              .sendAsyncRequestToNodeWithRetry(createSchemaRegionHandler);
 
                           for (Map.Entry<Integer, TSStatus> entry :
                               createSchemaRegionHandler.getResponseMap().entrySet()) {
@@ -1293,7 +1293,8 @@ public class PartitionManager {
                           // Create DataRegion
                           AsyncDataNodeRequestContext<TCreateDataRegionReq, TSStatus>
                               createDataRegionHandler =
-                                  new AsyncDataNodeRequestContext<>(DataNodeRequestType.CREATE_DATA_REGION);
+                                  new AsyncDataNodeRequestContext<>(
+                                      DataNodeRequestType.CREATE_DATA_REGION);
                           for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                             RegionCreateTask dataRegionCreateTask =
                                 (RegionCreateTask) regionMaintainTask;
@@ -1307,13 +1308,13 @@ public class PartitionManager {
                                         dataRegionCreateTask.getRegionReplicaSet(),
                                         dataRegionCreateTask.getStorageGroup())
                                     .setTtl(dataRegionCreateTask.getTTL()));
-                            createDataRegionHandler.putDataNodeLocation(
+                            createDataRegionHandler.putNodeLocation(
                                 dataRegionCreateTask.getRegionId().getId(),
                                 dataRegionCreateTask.getTargetDataNode());
                           }
 
                           AsyncDataNodeInternalServiceRequestSender.getInstance()
-                              .sendAsyncRequestToDataNodeWithRetry(createDataRegionHandler);
+                              .sendAsyncRequestToNodeWithRetry(createDataRegionHandler);
 
                           for (Map.Entry<Integer, TSStatus> entry :
                               createDataRegionHandler.getResponseMap().entrySet()) {
@@ -1340,7 +1341,7 @@ public class PartitionManager {
                             regionDeleteTask.getTargetDataNode());
                         deleteRegionHandler.putRequest(
                             regionDeleteTask.getRegionId().getId(), regionDeleteTask.getRegionId());
-                        deleteRegionHandler.putDataNodeLocation(
+                        deleteRegionHandler.putNodeLocation(
                             regionDeleteTask.getRegionId().getId(),
                             regionDeleteTask.getTargetDataNode());
                         regionIdMap.put(
@@ -1349,7 +1350,7 @@ public class PartitionManager {
 
                       long startTime = System.currentTimeMillis();
                       AsyncDataNodeInternalServiceRequestSender.getInstance()
-                          .sendAsyncRequestToDataNodeWithRetry(deleteRegionHandler);
+                          .sendAsyncRequestToNodeWithRetry(deleteRegionHandler);
 
                       LOGGER.info(
                           "Deleting regions costs {}ms", (System.currentTimeMillis() - startTime));

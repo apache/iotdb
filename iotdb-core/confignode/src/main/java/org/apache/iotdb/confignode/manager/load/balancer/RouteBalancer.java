@@ -210,7 +210,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
                       new TRegionLeaderChangeReq(regionGroupId, newLeader);
                   int requestIndex = requestId.getAndIncrement();
                   clientHandler.putRequest(requestIndex, regionLeaderChangeReq);
-                  clientHandler.putDataNodeLocation(requestIndex, newLeader);
+                  clientHandler.putNodeLocation(requestIndex, newLeader);
                 }
                 break;
             }
@@ -218,7 +218,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
         });
     if (requestId.get() > 0) {
       // Don't retry ChangeLeader request
-      AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNode(clientHandler);
+      AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToNode(clientHandler);
       for (int i = 0; i < requestId.get(); i++) {
         if (clientHandler.getResponseMap().get(i).getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -305,7 +305,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
             DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
             new TRegionRouteReq(broadcastTime, tmpPriorityMap),
             dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestSender.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeInternalServiceRequestSender.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
   }
 
   private void recordRegionPriorityMap(

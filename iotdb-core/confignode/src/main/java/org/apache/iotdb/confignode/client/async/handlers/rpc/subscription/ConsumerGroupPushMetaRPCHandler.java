@@ -63,7 +63,7 @@ public class ConsumerGroupPushMetaRPCHandler
     }
 
     // Always remove to avoid retrying
-    dataNodeLocationMap.remove(requestId);
+    nodeLocationMap.remove(requestId);
 
     // Always CountDown
     countDownLatch.countDown();

@@ -188,7 +188,8 @@ public class CQScheduleTask implements Runnable {
           new TExecuteCQ(queryBody, startTime, endTime, everyInterval, zoneId, cqId, username);
       try {
         AsyncDataNodeInternalServiceClient client =
-            AsyncDataNodeInternalServiceRequestSender.getInstance().getAsyncClient(targetDataNode.get());
+            AsyncDataNodeInternalServiceRequestSender.getInstance()
+                .getAsyncClient(targetDataNode.get());
         client.executeCQ(executeCQReq, new AsyncExecuteCQCallback(startTime, endTime));
       } catch (Exception t) {
         LOGGER.warn("Execute CQ {} failed", cqId, t);

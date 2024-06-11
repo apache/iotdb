@@ -39,7 +39,8 @@ import java.io.IOException;
 public class AsyncConfigNodeInternalServiceClient extends IConfigNodeRPCService.AsyncClient
     implements ThriftClient {
 
-  private static final Logger logger = LoggerFactory.getLogger(AsyncConfigNodeInternalServiceClient.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(AsyncConfigNodeInternalServiceClient.class);
 
   private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
