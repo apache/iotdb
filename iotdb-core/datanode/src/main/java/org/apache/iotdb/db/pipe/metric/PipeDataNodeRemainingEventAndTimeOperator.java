@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.metric;
 
+import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
@@ -89,6 +90,8 @@ class PipeDataNodeRemainingEventAndTimeOperator {
   double getRemainingTime() {
     final double pipeRemainingTimeCommitRateSmoothingFactor =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateSmoothingFactor();
+    final PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
+        PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 
     // Do not take heartbeat event into account
     final int totalDataRegionWriteEventCount =
@@ -111,8 +114,9 @@ class PipeDataNodeRemainingEventAndTimeOperator {
 
     lastDataRegionCommitSmoothingValue =
         lastDataRegionCommitSmoothingValue == Long.MIN_VALUE
-            ? dataRegionCommitMeter.getOneMinuteRate()
-            : pipeRemainingTimeCommitRateSmoothingFactor * dataRegionCommitMeter.getOneMinuteRate()
+            ? pipeRemainingTimeCommitRateAverageTime.getMeterRate(dataRegionCommitMeter)
+            : pipeRemainingTimeCommitRateSmoothingFactor
+                    * pipeRemainingTimeCommitRateAverageTime.getMeterRate(dataRegionCommitMeter)
                 + (1 - pipeRemainingTimeCommitRateSmoothingFactor)
                     * lastDataRegionCommitSmoothingValue;
     final double dataRegionRemainingTime;
@@ -133,9 +137,9 @@ class PipeDataNodeRemainingEventAndTimeOperator {
 
     lastSchemaRegionCommitSmoothingValue =
         lastSchemaRegionCommitSmoothingValue == Long.MIN_VALUE
-            ? schemaRegionCommitMeter.getOneMinuteRate()
+            ? pipeRemainingTimeCommitRateAverageTime.getMeterRate(schemaRegionCommitMeter)
             : pipeRemainingTimeCommitRateSmoothingFactor
-                    * schemaRegionCommitMeter.getOneMinuteRate()
+                    * pipeRemainingTimeCommitRateAverageTime.getMeterRate(schemaRegionCommitMeter)
                 + (1 - pipeRemainingTimeCommitRateSmoothingFactor)
                     * lastSchemaRegionCommitSmoothingValue;
     final double schemaRegionRemainingTime;

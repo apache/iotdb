@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.config;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -141,6 +142,10 @@ public class PipeConfig {
 
   public double getPipeRemainingTimeCommitRateSmoothingFactor() {
     return COMMON_CONFIG.getPipeRemainingTimeCommitRateSmoothingFactor();
+  }
+
+  public PipeRemainingTimeRateAverageTime getPipeRemainingTimeCommitRateAverageTime() {
+    return COMMON_CONFIG.getPipeRemainingTimeCommitRateAverageTime();
   }
 
   /////////////////////////////// Meta Consistency ///////////////////////////////
@@ -330,6 +335,8 @@ public class PipeConfig {
     LOGGER.info(
         "PipeRemainingTimeCommitRateSmoothingFactor: {}",
         getPipeRemainingTimeCommitRateSmoothingFactor());
+    LOGGER.info(
+        "PipeRemainingTimeCommitRateAverageTime: {}", getPipeRemainingTimeCommitRateAverageTime());
 
     LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
     LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());

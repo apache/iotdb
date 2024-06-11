@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.metric;
 
+import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.manager.pipe.extractor.IoTDBConfigRegionExtractor;
 
@@ -63,6 +64,8 @@ class PipeConfigNodeRemainingTimeOperator {
   double getRemainingTime() {
     final double pipeRemainingTimeCommitRateSmoothingFactor =
         PipeConfig.getInstance().getPipeRemainingTimeCommitRateSmoothingFactor();
+    final PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
+        PipeConfig.getInstance().getPipeRemainingTimeCommitRateAverageTime();
 
     // Do not calculate heartbeat event
     final long totalConfigRegionWriteEventCount =
@@ -73,9 +76,9 @@ class PipeConfigNodeRemainingTimeOperator {
 
     lastConfigRegionCommitSmoothingValue =
         lastConfigRegionCommitSmoothingValue == Long.MIN_VALUE
-            ? configRegionCommitMeter.getOneMinuteRate()
+            ? pipeRemainingTimeCommitRateAverageTime.getMeterRate(configRegionCommitMeter)
             : pipeRemainingTimeCommitRateSmoothingFactor
-                    * configRegionCommitMeter.getOneMinuteRate()
+                    * pipeRemainingTimeCommitRateAverageTime.getMeterRate(configRegionCommitMeter)
                 + (1 - pipeRemainingTimeCommitRateSmoothingFactor)
                     * lastConfigRegionCommitSmoothingValue;
     final double configRegionRemainingTime;

@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.conf;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
 
@@ -235,7 +236,9 @@ public class CommonConfig {
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
-  private double pipeRemainingTimeCommitRateSmoothingFactor = 0.5;
+  private double pipeRemainingTimeCommitRateSmoothingFactor = 0.4;
+  private PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
+      PipeRemainingTimeRateAverageTime.FIFTEEN_MINUTES;
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
@@ -1027,6 +1030,15 @@ public class CommonConfig {
   public void setPipeRemainingTimeCommitRateSmoothingFactor(
       double pipeRemainingTimeCommitRateSmoothingFactor) {
     this.pipeRemainingTimeCommitRateSmoothingFactor = pipeRemainingTimeCommitRateSmoothingFactor;
+  }
+
+  public PipeRemainingTimeRateAverageTime getPipeRemainingTimeCommitRateAverageTime() {
+    return pipeRemainingTimeCommitRateAverageTime;
+  }
+
+  public void setPipeRemainingTimeCommitRateAverageTime(
+      PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime) {
+    this.pipeRemainingTimeCommitRateAverageTime = pipeRemainingTimeCommitRateAverageTime;
   }
 
   public double getPipeAllSinksRateLimitBytesPerSecond() {
