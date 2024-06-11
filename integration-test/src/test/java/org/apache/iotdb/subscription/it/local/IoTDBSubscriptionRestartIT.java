@@ -37,13 +37,16 @@ import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
+import org.apache.iotdb.subscription.it.SkipOnSetupFailure;
 
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +66,7 @@ public class IoTDBSubscriptionRestartIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionRestartIT.class);
 
-  private volatile boolean setupFailed = false;
+  @Rule public final TestRule skipOnSetupFailure = new SkipOnSetupFailure();
 
   @Before
   public void setUp() throws Exception {
@@ -76,14 +79,7 @@ public class IoTDBSubscriptionRestartIT {
         .setSchemaReplicationFactor(3)
         .setDataReplicationFactor(2);
 
-    try {
-      EnvFactory.getEnv().initClusterEnvironment(3, 3);
-    } catch (final Throwable e) {
-      e.printStackTrace();
-      setupFailed = true;
-      return;
-    }
-    setupFailed = false;
+    EnvFactory.getEnv().initClusterEnvironment(3, 3);
   }
 
   @After
@@ -93,10 +89,6 @@ public class IoTDBSubscriptionRestartIT {
 
   @Test
   public void testSubscriptionAfterRestartCluster() throws Exception {
-    if (setupFailed) {
-      return;
-    }
-
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
@@ -226,10 +218,6 @@ public class IoTDBSubscriptionRestartIT {
 
   @Test
   public void testSubscriptionAfterRestartDataNode() throws Exception {
-    if (setupFailed) {
-      return;
-    }
-
     // Fetch ip and port from DN 0
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
@@ -372,10 +360,6 @@ public class IoTDBSubscriptionRestartIT {
 
   @Test
   public void testSubscriptionWhenConfigNodeLeaderChange() throws Exception {
-    if (setupFailed) {
-      return;
-    }
-
     // Fetch ip and port from DN 0
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
