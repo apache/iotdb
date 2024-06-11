@@ -63,6 +63,8 @@ public class CrossSpaceCompactionCandidate {
     if (nextUnseqFileIndex >= unseqFiles.size()) {
       return false;
     }
+    // unseq files should be compacted in order to avoid old data overwriting new data
+    // if any unseq file fails to be selected, the remaining ones cannot be selected either
     return prepareNextSplit();
   }
 
@@ -78,7 +80,8 @@ public class CrossSpaceCompactionCandidate {
     // check one by one. And we cannot skip any device in the unseq file because it may lead to
     // omission of target seq file
     if (!unseqFile.hasDetailedDeviceInfo()) {
-      // unseq file resource has been deleted due to TTL and cannot upgrade to DEVICE_TIME_INDEX
+      // unseq file resource is unsealed or has been deleted due to TTL and cannot upgrade to
+      // DEVICE_TIME_INDEX
       return false;
     }
     for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
@@ -87,6 +90,12 @@ public class CrossSpaceCompactionCandidate {
       // The `previousSeqFile` means the seqFile which contains the device and its endTime is just
       // be smaller than startTime of the device in unseqFile
       TsFileResourceCandidate previousSeqFile = null;
+
+      // if a seq file actually overlaps or effectively overlaps with the unseq file, the seq
+      // file should be merged with the unseq file
+      // e.g.: two seq files seq1 and seq2. seq1 ranges [0, 100] and seq2 ranges [200, 300]. One
+      // unseq file unseq1 ranges [80, 150]. Then the [80, 100] part from unseq1 actually
+      // overlaps with seq1, while the [101, 150] part effectively overlaps with seq2.
       for (TsFileResourceCandidate seqFile : seqFiles) {
         // If the seqFile may need to be selected but its invalid, the selection should be
         // terminated.
@@ -122,14 +131,17 @@ public class CrossSpaceCompactionCandidate {
           }
         }
       }
-      // Most of cases, one unsetFile should have at least one conresponding seqFile whose startTime
-      // is larger than unseqFiles's endTime for each device in unseqFile. But some scenario will
-      // break this rule such as:
-      // 1. Delete or TTL operation deletes the seqFile
-      // 2. the unseqFile is created by load operation
-      // In these scenario, the data for soem device in unseqFile will be written to wrong seqFile,
-      // which lead to failed overlap check after compaction. The following changes ensure the
-      // correct seqFile won't be lost in this selection.
+
+      // If: 1.some seq files are removed by deletion or TTL; 2. the unseq file is loaded; the
+      // unseq file may have larger timestamps and does not overlap with any seqFile.
+      //
+      // For example, previously we have two seqFiles, ranging [0, 100] [200, 300] respectively.
+      // Then the seqFile of [200, 300] is deleted and an unseqFile of [150, 180] is written/loaded.
+      // The unseqFile does not overlap with any seqFile and not seqFile has larger timestamp
+      // than it, thus the unseqFile cannot select any candidate seqFiles throughput the loop above.
+      //
+      // In this case, the unseqFile should be merged with the last seqFile if possible.
+      // TODO: let insertionCompaction handle this case
 
       // That this judgement is true indicates `previousSeqFile` is unnecessary.
       if (atLeastOneSeqFileSelected || previousSeqFile == null) {

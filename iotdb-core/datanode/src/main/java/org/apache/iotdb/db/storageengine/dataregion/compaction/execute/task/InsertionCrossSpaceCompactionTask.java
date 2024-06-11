@@ -266,9 +266,10 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         throw new CompactionRecoverException("Can not recover InsertionCrossSpaceCompactionTask");
       }
       if (shouldRollback()) {
+        // the target file is not fully generated, remove the partially generated result
         rollback();
       } else {
-        // That finishTask() is revoked means
+        //  the target file is fully generated, remove the source file
         finishTask();
       }
     } catch (Exception e) {
