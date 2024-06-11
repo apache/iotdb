@@ -68,13 +68,11 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
 
   @Override
   public Boolean call() throws Exception {
-    final boolean hasAtLeastOneEventProcessed = super.call();
-
     // Wait for the callable to be decorated by Futures.addCallback in the executorService
     // to make sure that the callback can be submitted again on success or failure.
     callbackDecoratingLock.waitForDecorated();
 
-    return hasAtLeastOneEventProcessed;
+    return super.call();
   }
 
   @Override
