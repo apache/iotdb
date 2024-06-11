@@ -127,6 +127,11 @@ struct TSetTTLReq {
   3: required bool isDataBase
 }
 
+struct TSetConfigurationReq {
+  1: required map<string,string> configs
+  2: required i32 nodeId
+}
+
 // for File
 struct TFile {
   1: required string fileName
@@ -211,3 +216,14 @@ enum TAggregationType {
   MIN_BY,
   UDAF
 }
+
+struct TShowConfigurationTemplateResp {
+  1: required TSStatus status
+  2: required string content
+}
+
+struct TShowConfigurationResp {
+  1: required TSStatus status
+  2: required string content
+}
+

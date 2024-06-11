@@ -70,6 +70,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.KillQueryTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.LoadConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.MergeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetSystemStatusTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StartRepairDataTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.StopRepairDataTask;
@@ -149,6 +150,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
@@ -257,6 +259,12 @@ public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryCon
   public IConfigTask visitClearCache(
       ClearCacheStatement clearCacheStatement, MPPQueryContext context) {
     return new ClearCacheTask(clearCacheStatement);
+  }
+
+  @Override
+  public IConfigTask visitSetConfiguration(
+      SetConfigurationStatement setConfigurationStatement, MPPQueryContext context) {
+    return new SetConfigurationTask(setConfigurationStatement);
   }
 
   @Override
