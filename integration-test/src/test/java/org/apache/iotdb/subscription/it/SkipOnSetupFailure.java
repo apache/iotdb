@@ -32,7 +32,7 @@ public class SkipOnSetupFailure implements TestRule {
   public Statement apply(final Statement base, final Description description) {
     return new Statement() {
       @Override
-      public void evaluate() {
+      public void evaluate() throws Throwable {
         try {
           base.evaluate();
         } catch (final Throwable e) {
@@ -43,6 +43,8 @@ public class SkipOnSetupFailure implements TestRule {
                     "Skipping test due to setup failure for %s@%s",
                     description.getClassName(), description.getMethodName()));
           }
+          // rethrow
+          throw e;
         }
       }
     };
