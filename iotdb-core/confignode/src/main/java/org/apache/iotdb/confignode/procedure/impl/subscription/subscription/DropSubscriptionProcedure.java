@@ -234,7 +234,8 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   protected void rollbackFromOperateOnConfigNodes(final ConfigNodeProcedureEnv env) {
     LOGGER.info("DropSubscriptionProcedure: rollbackFromOperateOnConfigNodes");
 
-    // Do nothing to rollback DropPipeProcedureV2s
+    // Rollback AlterConsumerGroupProcedure
+    alterConsumerGroupProcedure.rollbackFromOperateOnConfigNodes(env);
 
     // Rollback AlterTopicProcedures
     TSStatus response;
@@ -260,14 +261,22 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
       throw new SubscriptionException(response.getMessage());
     }
 
-    // Rollback AlterConsumerGroupProcedure
-    alterConsumerGroupProcedure.rollbackFromOperateOnConfigNodes(env);
+    // Do nothing to rollback DropPipeProcedureV2s
   }
 
   @Override
   protected void rollbackFromOperateOnDataNodes(final ConfigNodeProcedureEnv env)
       throws IOException {
     LOGGER.info("DropSubscriptionProcedure: rollbackFromOperateOnDataNodes");
+
+    // Rollback AlterConsumerGroupProcedure
+    alterConsumerGroupProcedure.rollbackFromOperateOnDataNodes(env);
+
+    // Push all topic metas to datanode, may be time-consuming
+    if (pushTopicMetaHasException(pushTopicMetaToDataNodes(env))) {
+      LOGGER.warn(
+          "Failed to rollback alter topics when dropping subscription, metadata will be synchronized later.");
+    }
 
     // Push all pipe metas to datanode, may be time-consuming
     final String exceptionMessage =
@@ -278,15 +287,6 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
           "Failed to rollback create pipes when dropping subscription, details: {}, metadata will be synchronized later.",
           exceptionMessage);
     }
-
-    // Push all topic metas to datanode, may be time-consuming
-    if (pushTopicMetaHasException(pushTopicMetaToDataNodes(env))) {
-      LOGGER.warn(
-          "Failed to rollback alter topics when dropping subscription, metadata will be synchronized later.");
-    }
-
-    // Rollback AlterConsumerGroupProcedure
-    alterConsumerGroupProcedure.rollbackFromOperateOnDataNodes(env);
   }
 
   @Override
