@@ -233,6 +233,7 @@ struct TSInsertTabletReq {
   6: required list<i32> types
   7: required i32 size
   8: optional bool isAligned
+  9: optional bool writeToTable
 }
 
 struct TSInsertTabletsReq {

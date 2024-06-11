@@ -249,6 +249,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @FunctionalInterface
   public interface SelectResult {
+
     boolean apply(TSExecuteStatementResp resp, IQueryExecution queryExecution, int fetchSize)
         throws IoTDBException, IOException;
   }
@@ -724,7 +725,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 true,
                 true),
             AggregationStep.SINGLE,
-            Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)}));
+            Collections.singletonList(new InputLocation[]{new InputLocation(0, 0)}));
 
     GroupByTimeParameter groupByTimeParameter =
         new GroupByTimeParameter(
@@ -752,7 +753,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               !TSDataType.BLOB.equals(dataType)
                   || (!TAggregationType.LAST_VALUE.equals(aggregationType)
-                      && !TAggregationType.FIRST_VALUE.equals(aggregationType)));
+                  && !TAggregationType.FIRST_VALUE.equals(aggregationType)));
     } else {
       path = new NonAlignedFullPath(Factory.DEFAULT_FACTORY.create(device), measurementSchema);
       operator =
@@ -768,7 +769,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
               !TSDataType.BLOB.equals(dataType)
                   || (!TAggregationType.LAST_VALUE.equals(aggregationType)
-                      && !TAggregationType.FIRST_VALUE.equals(aggregationType)));
+                  && !TAggregationType.FIRST_VALUE.equals(aggregationType)));
     }
 
     try {
@@ -1213,7 +1214,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   public TSStatus closeSession(TSCloseSessionReq req) {
     return new TSStatus(
         !SESSION_MANAGER.closeSession(
-                SESSION_MANAGER.getCurrSession(), COORDINATOR::cleanupQueryExecution)
+            SESSION_MANAGER.getCurrSession(), COORDINATOR::cleanupQueryExecution)
             ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
@@ -2069,15 +2070,22 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       // Step 2: call the coordinator
       long queryId = SESSION_MANAGER.requestQueryId();
-      ExecutionResult result =
-          COORDINATOR.executeForTreeModel(
-              statement,
-              queryId,
-              SESSION_MANAGER.getSessionInfo(clientSession),
-              "",
-              partitionFetcher,
-              schemaFetcher);
-
+      ExecutionResult result;
+      if (statement.isWriteToTable()) {
+        result = COORDINATOR.executeForTableModel(statement.toRelationalStatement(),
+            relationSqlParser, clientSession,
+            queryId,
+            SESSION_MANAGER.getSessionInfo(clientSession), "", metadata,
+            config.getConnectionTimeoutInMS());
+      } else {
+        result = COORDINATOR.executeForTreeModel(
+            statement,
+            queryId,
+            SESSION_MANAGER.getSessionInfo(clientSession),
+            "",
+            partitionFetcher,
+            schemaFetcher);
+      }
       return result.status;
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_TABLET, e.getErrorCode());
@@ -2745,7 +2753,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         "Log in failed. Either you are not authorized or the session has timed out.");
   }
 
-  /** Add stat of whole stage query into metrics */
+  /**
+   * Add stat of whole stage query into metrics
+   */
   private void addQueryLatency(StatementType statementType, long costTimeInNanos) {
     if (statementType == null) {
       return;
@@ -2763,7 +2773,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             statementType.name());
   }
 
-  /** Add stat of operation into metrics */
+  /**
+   * Add stat of operation into metrics
+   */
   private void addStatementExecutionLatency(
       OperationType operation, String statementType, long costTime) {
     if (statementType == null) {

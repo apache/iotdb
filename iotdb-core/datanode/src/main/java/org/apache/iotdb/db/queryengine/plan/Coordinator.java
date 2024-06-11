@@ -293,6 +293,7 @@ public class Coordinator {
     return new QueryExecution(treeModelPlanner, queryContext, executor);
   }
 
+
   public IQueryExecution getQueryExecution(Long queryId) {
     return queryExecutionMap.get(queryId);
   }

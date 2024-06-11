@@ -336,6 +336,7 @@ public class StatementGenerator {
     insertStatement.setDataTypes(dataTypes);
     insertStatement.setAligned(insertTabletReq.isAligned);
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
+    insertStatement.setWriteToTable(insertTabletReq.isWriteToTable());
     return insertStatement;
   }
 
