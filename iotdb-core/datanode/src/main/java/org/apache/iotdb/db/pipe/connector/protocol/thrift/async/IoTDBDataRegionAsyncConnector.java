@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeEventBatch;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
@@ -163,7 +163,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private void transferWithoutCheck(final TabletInsertionEvent tabletInsertionEvent)
       throws Exception {
     if (isTabletBatchModeEnabled) {
-      final Pair<TEndPoint, PipeEventBatch> endPointAndBatch =
+      final Pair<TEndPoint, PipeTabletEventPlainBatch> endPointAndBatch =
           tabletBatchBuilder.onEvent(tabletInsertionEvent);
       if (Objects.nonNull(endPointAndBatch)) {
         transfer(
@@ -409,7 +409,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    for (final Pair<TEndPoint, PipeEventBatch> endPointAndBatch :
+    for (final Pair<TEndPoint, PipeTabletEventPlainBatch> endPointAndBatch :
         tabletBatchBuilder.getAllNonEmptyBatches()) {
       transfer(
           endPointAndBatch.getLeft(),

@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeEventBatch;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
@@ -105,7 +105,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
     try {
       if (isTabletBatchModeEnabled) {
-        final Pair<TEndPoint, PipeEventBatch> endPointAndBatch =
+        final Pair<TEndPoint, PipeTabletEventPlainBatch> endPointAndBatch =
             tabletBatchBuilder.onEvent(tabletInsertionEvent);
         if (Objects.nonNull(endPointAndBatch)) {
           doTransfer(endPointAndBatch);
@@ -171,10 +171,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     }
   }
 
-  private void doTransfer(Pair<TEndPoint, PipeEventBatch> endPointAndBatch) {
+  private void doTransfer(Pair<TEndPoint, PipeTabletEventPlainBatch> endPointAndBatch) {
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
         clientManager.getClient(endPointAndBatch.getLeft());
-    final PipeEventBatch batchToTransfer = endPointAndBatch.getRight();
+    final PipeTabletEventPlainBatch batchToTransfer = endPointAndBatch.getRight();
 
     final TPipeTransferResp resp;
     try {

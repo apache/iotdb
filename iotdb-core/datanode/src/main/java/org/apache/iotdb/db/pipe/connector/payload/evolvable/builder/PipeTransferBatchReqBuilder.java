@@ -62,10 +62,10 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   // If the leader cache is disabled (or unable to find the endpoint of event in the leader cache),
   // the event will be stored in the default batch.
-  private final PipeEventBatch defaultBatch;
+  private final PipeTabletEventPlainBatch defaultBatch;
   // If the leader cache is enabled, the batch will be divided by the leader endpoint,
   // each endpoint has a batch.
-  private final Map<TEndPoint, PipeEventBatch> endPointToBatch = new HashMap<>();
+  private final Map<TEndPoint, PipeTabletEventPlainBatch> endPointToBatch = new HashMap<>();
 
   public PipeTransferBatchReqBuilder(final PipeParameters parameters) {
     useLeaderCache =
@@ -83,7 +83,8 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
             Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
             CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE);
 
-    this.defaultBatch = new PipeEventBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes);
+    this.defaultBatch =
+        new PipeTabletEventPlainBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes);
   }
 
   /**
@@ -91,12 +92,12 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
    * duplicated.
    *
    * @param event the given {@link Event}
-   * @return {@link Pair}<{@link TEndPoint}, {@link PipeEventBatch}> not null means this {@link
-   *     PipeEventBatch} can be transferred. the first element is the leader endpoint to transfer to
-   *     (might be null), the second element is the batch to be transferred.
+   * @return {@link Pair}<{@link TEndPoint}, {@link PipeTabletEventPlainBatch}> not null means this
+   *     {@link PipeTabletEventPlainBatch} can be transferred. the first element is the leader
+   *     endpoint to transfer to (might be null), the second element is the batch to be transferred.
    */
-  public synchronized Pair<TEndPoint, PipeEventBatch> onEvent(final TabletInsertionEvent event)
-      throws IOException, WALPipeException {
+  public synchronized Pair<TEndPoint, PipeTabletEventPlainBatch> onEvent(
+      final TabletInsertionEvent event) throws IOException, WALPipeException {
     if (!(event instanceof EnrichedEvent)) {
       LOGGER.warn(
           "Unsupported event {} type {} when building transfer request", event, event.getClass());
@@ -124,15 +125,16 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
       return defaultBatch.onEvent(event) ? new Pair<>(null, defaultBatch) : null;
     }
 
-    final PipeEventBatch batch =
+    final PipeTabletEventPlainBatch batch =
         endPointToBatch.computeIfAbsent(
-            endPoint, k -> new PipeEventBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes));
+            endPoint,
+            k -> new PipeTabletEventPlainBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes));
     return batch.onEvent(event) ? new Pair<>(endPoint, batch) : null;
   }
 
   /** Get all batches that have at least 1 event. */
-  public synchronized List<Pair<TEndPoint, PipeEventBatch>> getAllNonEmptyBatches() {
-    final List<Pair<TEndPoint, PipeEventBatch>> nonEmptyBatches = new ArrayList<>();
+  public synchronized List<Pair<TEndPoint, PipeTabletEventPlainBatch>> getAllNonEmptyBatches() {
+    final List<Pair<TEndPoint, PipeTabletEventPlainBatch>> nonEmptyBatches = new ArrayList<>();
     if (!defaultBatch.isEmpty()) {
       nonEmptyBatches.add(new Pair<>(null, defaultBatch));
     }
@@ -147,12 +149,12 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   public boolean isEmpty() {
     return defaultBatch.isEmpty()
-        && endPointToBatch.values().stream().allMatch(PipeEventBatch::isEmpty);
+        && endPointToBatch.values().stream().allMatch(PipeTabletEventPlainBatch::isEmpty);
   }
 
   @Override
   public synchronized void close() {
     defaultBatch.close();
-    endPointToBatch.values().forEach(PipeEventBatch::close);
+    endPointToBatch.values().forEach(PipeTabletEventPlainBatch::close);
   }
 }
