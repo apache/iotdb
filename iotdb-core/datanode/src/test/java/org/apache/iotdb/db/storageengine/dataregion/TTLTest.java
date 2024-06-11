@@ -398,7 +398,8 @@ public class TTLTest {
     ShowTTLStatement statement1 =
         (ShowTTLStatement)
             StatementGenerator.createStatement("SHOW ALL TTL", ZoneId.systemDefault());
-    assertTrue(statement1.getPaths().isEmpty());
+    assertEquals(1, statement1.getPaths().size());
+    assertEquals("root.**", statement1.getPaths().get(0).getFullPath());
   }
 
   @Test
