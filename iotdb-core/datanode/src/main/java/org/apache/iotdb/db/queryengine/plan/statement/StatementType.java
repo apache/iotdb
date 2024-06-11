@@ -184,4 +184,5 @@ public enum StatementType {
   SHOW_TOPICS,
 
   SHOW_SUBSCRIPTIONS,
+  SET_CONFIGURATION
 }

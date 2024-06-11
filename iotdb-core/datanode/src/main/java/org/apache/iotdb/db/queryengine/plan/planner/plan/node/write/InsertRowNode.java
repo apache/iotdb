@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -107,7 +107,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(Analysis analysis) {
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(time);
     this.dataRegionReplicaSet =
         analysis

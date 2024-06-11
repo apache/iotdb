@@ -856,6 +856,10 @@ service IDataNodeRPCService {
 
   common.TSStatus clearCache()
 
+  common.TShowConfigurationResp showConfiguration()
+
+  common.TSStatus setConfiguration(common.TSetConfigurationReq req)
+
   common.TSStatus loadConfiguration()
 
   common.TSStatus setSystemStatus(string status)
