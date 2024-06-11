@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.execution.executor;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -48,10 +49,15 @@ public abstract class PipeSubtaskExecutor {
   private final int corePoolSize;
   private int runningSubtaskNumber;
 
-  protected PipeSubtaskExecutor(final int corePoolSize, final ThreadName threadName) {
-    subtaskWorkerThreadPoolExecutor =
-        MoreExecutors.listeningDecorator(
-            IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, threadName.getName()));
+  protected PipeSubtaskExecutor(
+      final int corePoolSize, final ThreadName threadName, final boolean disableLogInThreadPool) {
+    final WrappedThreadPoolExecutor executor =
+        (WrappedThreadPoolExecutor)
+            IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, threadName.getName());
+    if (disableLogInThreadPool) {
+      executor.disableErrorLog();
+    }
+    subtaskWorkerThreadPoolExecutor = MoreExecutors.listeningDecorator(executor);
 
     registeredIdSubtaskMapper = new ConcurrentHashMap<>();
 

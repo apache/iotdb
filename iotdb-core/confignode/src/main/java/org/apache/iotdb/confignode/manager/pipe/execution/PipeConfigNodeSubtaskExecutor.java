@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.manager.pipe.execution;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -29,8 +28,7 @@ public class PipeConfigNodeSubtaskExecutor extends PipeSubtaskExecutor {
   private static final int THREAD_NUM = 1;
 
   private PipeConfigNodeSubtaskExecutor() {
-    super(THREAD_NUM, ThreadName.PIPE_CONFIGNODE_EXECUTOR_POOL);
-    ((WrappedThreadPoolExecutor) subtaskWorkerThreadPoolExecutor).disableErrorLog();
+    super(THREAD_NUM, ThreadName.PIPE_CONFIGNODE_EXECUTOR_POOL, true);
   }
 
   /**
@@ -38,7 +36,7 @@ public class PipeConfigNodeSubtaskExecutor extends PipeSubtaskExecutor {
    */
   @TestOnly
   public PipeConfigNodeSubtaskExecutor(final Object ignored) {
-    super(THREAD_NUM, ThreadName.PIPE_CONFIGNODE_EXECUTOR_POOL);
+    super(THREAD_NUM, ThreadName.PIPE_CONFIGNODE_EXECUTOR_POOL, true);
   }
 
   private static class PipeSchemaSubtaskExecutorHolder {
