@@ -29,7 +29,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-final class SubscriptionExecutorServiceManager {
+public final class SubscriptionExecutorServiceManager {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionExecutorServiceManager.class);
@@ -172,9 +172,9 @@ final class SubscriptionExecutorServiceManager {
     }
 
     void setCorePoolSize(final int corePoolSize) {
-      if (!isShutdown()) {
+      if (isShutdown()) {
         synchronized (this) {
-          if (!isShutdown()) {
+          if (isShutdown()) {
             this.corePoolSize = corePoolSize;
             return;
           }

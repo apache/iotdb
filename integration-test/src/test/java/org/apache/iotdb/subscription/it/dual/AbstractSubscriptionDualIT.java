@@ -21,17 +21,28 @@ package org.apache.iotdb.subscription.it.dual;
 
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.session.subscription.consumer.SubscriptionExecutorServiceManager;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
+import org.junit.rules.TestName;
 
 abstract class AbstractSubscriptionDualIT {
 
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;
 
+  @Rule public TestName testName = new TestName();
+
   @Before
   public void setUp() {
+    // set thread names
+    Thread.currentThread().setName(String.format("%s - main", testName.getMethodName()));
+    SubscriptionExecutorServiceManager.setControlFlowExecutorCorePoolSize(1);
+    SubscriptionExecutorServiceManager.setUpstreamDataFlowExecutorCorePoolSize(1);
+    SubscriptionExecutorServiceManager.setDownstreamDataFlowExecutorCorePoolSize(1);
+
     MultiEnvFactory.createEnv(2);
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
