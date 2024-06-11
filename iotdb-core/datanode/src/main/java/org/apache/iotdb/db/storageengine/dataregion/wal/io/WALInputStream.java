@@ -34,7 +34,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(WALInputStream.class);
   private final FileChannel channel;
-  private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES + 1);
+  private final ByteBuffer segmentHeaderBuffer = ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
   private final ByteBuffer compressedHeader = ByteBuffer.allocate(Integer.BYTES);
   private ByteBuffer dataBuffer = null;
   private ByteBuffer compressedBuffer = null;
@@ -191,14 +191,14 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   }
 
   private void loadNextSegmentV2() throws IOException {
-    headerBuffer.clear();
-    if (channel.read(headerBuffer) != Integer.BYTES + 1) {
+    segmentHeaderBuffer.clear();
+    if (channel.read(segmentHeaderBuffer) != Integer.BYTES + 1) {
       throw new IOException("Unexpected end of file");
     }
     // compressionType originalSize compressedSize
-    headerBuffer.flip();
-    CompressionType compressionType = CompressionType.deserialize(headerBuffer.get());
-    int dataBufferSize = headerBuffer.getInt();
+    segmentHeaderBuffer.flip();
+    CompressionType compressionType = CompressionType.deserialize(segmentHeaderBuffer.get());
+    int dataBufferSize = segmentHeaderBuffer.getInt();
     if (compressionType != CompressionType.UNCOMPRESSED) {
       compressedHeader.clear();
       if (channel.read(compressedHeader) != Integer.BYTES) {
@@ -254,28 +254,32 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   public void skipToGivenPosition(long pos) throws IOException {
     if (version == FileVersion.V2) {
       channel.position(WALWriter.MAGIC_STRING_BYTES);
-      ByteBuffer buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
       long posRemain = pos;
-      int currSegmentSize = 0;
-      while (posRemain > 0) {
-        buffer.clear();
-        channel.read(buffer);
-        buffer.flip();
-        CompressionType type = CompressionType.deserialize(buffer.get());
-        currSegmentSize = buffer.getInt();
-        if (posRemain >= currSegmentSize) {
-          posRemain -= currSegmentSize;
-          channel.position(
-              channel.position()
-                  + currSegmentSize
-                  + (type == CompressionType.UNCOMPRESSED ? 0 : Integer.BYTES));
+      SegmentInfo segmentInfo = null;
+      do {
+        segmentInfo = getNextSegmentInfo();
+        if (posRemain >= segmentInfo.uncompressedSize) {
+          posRemain -= segmentInfo.uncompressedSize;
+          channel.position(channel.position() + segmentInfo.dataInDiskSize);
         } else {
           break;
         }
+      } while (posRemain >= 0);
+
+      if (segmentInfo.compressionType != CompressionType.UNCOMPRESSED) {
+        compressedBuffer = ByteBuffer.allocate(segmentInfo.dataInDiskSize);
+        channel.read(compressedBuffer);
+        compressedBuffer.flip();
+        IUnCompressor unCompressor = IUnCompressor.getUnCompressor(segmentInfo.compressionType);
+        dataBuffer = ByteBuffer.allocate(segmentInfo.uncompressedSize);
+        unCompressor.uncompress(compressedBuffer, dataBuffer);
+      } else {
+        long p = channel.position();
+        dataBuffer = ByteBuffer.allocate(segmentInfo.dataInDiskSize);
+        channel.read(dataBuffer);
+        dataBuffer.flip();
       }
-      dataBuffer = ByteBuffer.allocate(currSegmentSize);
-      channel.read(dataBuffer);
-      dataBuffer.flip();
+
       dataBuffer.position((int) posRemain);
     } else {
       dataBuffer = null;
@@ -295,5 +299,29 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   public long getFileCurrentPos() throws IOException {
     return channel.position();
+  }
+
+  private SegmentInfo getNextSegmentInfo() throws IOException {
+    segmentHeaderBuffer.clear();
+    channel.read(segmentHeaderBuffer);
+    segmentHeaderBuffer.flip();
+    SegmentInfo info = new SegmentInfo();
+    info.compressionType = CompressionType.deserialize(segmentHeaderBuffer.get());
+    info.dataInDiskSize = segmentHeaderBuffer.getInt();
+    if (info.compressionType != CompressionType.UNCOMPRESSED) {
+      compressedHeader.clear();
+      channel.read(compressedHeader);
+      compressedHeader.flip();
+      info.uncompressedSize = compressedHeader.getInt();
+    } else {
+      info.uncompressedSize = info.dataInDiskSize;
+    }
+    return info;
+  }
+
+  private class SegmentInfo {
+    public CompressionType compressionType;
+    public int dataInDiskSize;
+    public int uncompressedSize;
   }
 }

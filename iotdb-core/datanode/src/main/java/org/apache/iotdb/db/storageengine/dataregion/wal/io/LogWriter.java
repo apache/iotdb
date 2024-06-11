@@ -48,7 +48,7 @@ public abstract class LogWriter implements ILogWriter {
   protected long size = 0;
   protected long originalSize = 0;
   private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES * 2 + 1);
-  private static final CompressionType compressionAlg =
+  private final CompressionType compressionAlg =
       IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm();
   private final ICompressor compressor = ICompressor.getCompressor(compressionAlg);
   private final ByteBuffer compressedByteBuffer;
