@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -281,8 +282,8 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    ISchemaTree schemaTree = analysis.getSchemaTree();
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+    ISchemaTree schemaTree = ((Analysis) analysis).getSchemaTree();
     DataPartition dataPartition = analysis.getDataPartitionInfo();
 
     Map<TRegionReplicaSet, List<PartialPath>> regionToPatternMap = new HashMap<>();
