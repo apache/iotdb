@@ -187,8 +187,7 @@ public class SyncDataNodeClientPool {
     return new TRegionLeaderChangeResp(status, -1L);
   }
 
-  // TODO: Is the ClientPool must be a singleton?
-  private static class ClientPoolHolder {
+    private static class ClientPoolHolder {
 
     private static final SyncDataNodeClientPool INSTANCE = new SyncDataNodeClientPool();
 

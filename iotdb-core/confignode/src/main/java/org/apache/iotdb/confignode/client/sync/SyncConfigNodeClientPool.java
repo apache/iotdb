@@ -147,8 +147,7 @@ public class SyncConfigNodeClientPool {
     }
   }
 
-  // TODO: Is the ClientPool must be a singleton?
-  private static class SyncConfigNodeClientPoolHolder {
+    private static class SyncConfigNodeClientPoolHolder {
 
     private static final SyncConfigNodeClientPool INSTANCE = new SyncConfigNodeClientPool();
 

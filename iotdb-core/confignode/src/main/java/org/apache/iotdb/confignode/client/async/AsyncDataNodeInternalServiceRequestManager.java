@@ -332,8 +332,7 @@ public class AsyncDataNodeInternalServiceRequestManager
     }
   }
 
-  // TODO: Is the ClientPool must be a singleton?
-  private static class ClientPoolHolder {
+    private static class ClientPoolHolder {
 
     private static final AsyncDataNodeInternalServiceRequestManager INSTANCE =
         new AsyncDataNodeInternalServiceRequestManager();

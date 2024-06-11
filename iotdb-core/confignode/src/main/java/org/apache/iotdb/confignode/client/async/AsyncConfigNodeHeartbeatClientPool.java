@@ -53,8 +53,7 @@ public class AsyncConfigNodeHeartbeatClientPool {
     }
   }
 
-  // TODO: Is the ClientPool must be a singleton?
-  private static class AsyncConfigNodeHeartbeatClientPoolHolder {
+    private static class AsyncConfigNodeHeartbeatClientPoolHolder {
 
     private static final AsyncConfigNodeHeartbeatClientPool INSTANCE =
         new AsyncConfigNodeHeartbeatClientPool();

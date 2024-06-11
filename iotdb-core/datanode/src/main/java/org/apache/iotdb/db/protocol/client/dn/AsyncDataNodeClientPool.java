@@ -135,5 +135,4 @@ public abstract class AsyncDataNodeClientPool<ClientType> {
     return clientManager.borrowClient(targetDataNode.getInternalEndPoint());
   }
 
-  // TODO: Is the ClientPool must be a singleton?
-}
+  }
