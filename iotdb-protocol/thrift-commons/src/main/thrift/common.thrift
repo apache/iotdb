@@ -121,10 +121,15 @@ struct TSchemaNode {
   2: required byte nodeType
 }
 
+// for TTL
 struct TSetTTLReq {
   1: required list<string> pathPattern
   2: required i64 TTL
   3: required bool isDataBase
+}
+
+struct TShowTTLReq {
+  1: required list<string> pathPattern
 }
 
 // for File

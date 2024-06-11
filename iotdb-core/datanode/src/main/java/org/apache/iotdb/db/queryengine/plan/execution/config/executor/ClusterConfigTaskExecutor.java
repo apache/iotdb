@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.commons.client.IClientManager;
@@ -1251,8 +1252,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     Map<String, Long> databaseToTTL = new TreeMap<>();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowTTLResp resp = client.showAllTTL();
-      databaseToTTL.putAll(resp.getPathTTLMap());
+      for (PartialPath pathPattern : showTTLStatement.getPaths()) {
+        TShowTTLReq req = new TShowTTLReq(Arrays.asList(pathPattern.getNodes()));
+        TShowTTLResp resp = client.showTTL(req);
+        databaseToTTL.putAll(resp.getPathTTLMap());
+      }
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }

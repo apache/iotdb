@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -490,8 +491,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TShowTTLResp showAllTTL() {
-    ShowTTLResp showTTLResp = (ShowTTLResp) configManager.showAllTTL(new ShowTTLPlan());
+  public TShowTTLResp showTTL(TShowTTLReq req) {
+    ShowTTLResp showTTLResp =
+        (ShowTTLResp)
+            configManager.showTTL(new ShowTTLPlan(req.getPathPattern().toArray(new String[0])));
     return showTTLResp.convertToRPCTShowTTLResp();
   }
 

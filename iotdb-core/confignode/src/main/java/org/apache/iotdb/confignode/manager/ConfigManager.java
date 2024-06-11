@@ -620,10 +620,10 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet showAllTTL(ShowTTLPlan showTTLPlan) {
+  public DataSet showTTL(ShowTTLPlan showTTLPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return ttlManager.showAllTTL(showTTLPlan);
+      return ttlManager.showTTL(showTTLPlan);
     } else {
       ShowTTLResp resp = new ShowTTLResp();
       resp.setStatus(status);

@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -43,6 +44,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -118,12 +120,19 @@ public class TTLInfo implements SnapshotProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public ShowTTLResp showAllTTL() {
+  public ShowTTLResp showTTL(ShowTTLPlan plan) {
     ShowTTLResp resp = new ShowTTLResp();
-    Map<String, Long> pathTTLMap;
+    Map<String, Long> pathTTLMap = new HashMap<>();
     lock.readLock().lock();
     try {
-      pathTTLMap = ttlCache.getAllPathTTL();
+      PartialPath pathPattern = new PartialPath(plan.getPathPattern());
+      for (Map.Entry<String[], Long> entry : ttlCache.getAllTTLs().entrySet()) {
+        if (pathPattern.matchFullPath(new PartialPath(entry.getKey()))) {
+          pathTTLMap.put(
+              String.join(String.valueOf(IoTDBConstant.PATH_SEPARATOR), entry.getKey()),
+              entry.getValue());
+        }
+      }
     } finally {
       lock.readLock().unlock();
     }
@@ -175,6 +184,8 @@ public class TTLInfo implements SnapshotProcessor {
         BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
       ttlCache.clear();
       ttlCache.deserialize(bufferedInputStream);
+    } catch (IllegalPathException e) {
+      throw new IOException(e);
     } finally {
       lock.writeLock().unlock();
     }
@@ -190,7 +201,9 @@ public class TTLInfo implements SnapshotProcessor {
     }
     TTLInfo other = (TTLInfo) o;
     return this.getTTLCount() == other.getTTLCount()
-        && this.showAllTTL().getPathTTLMap().equals(other.showAllTTL().getPathTTLMap());
+        && this.showTTL(new ShowTTLPlan())
+            .getPathTTLMap()
+            .equals(other.showTTL(new ShowTTLPlan()).getPathTTLMap());
   }
 
   @TestOnly

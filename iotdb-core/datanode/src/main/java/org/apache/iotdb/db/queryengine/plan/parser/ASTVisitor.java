@@ -2565,9 +2565,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   @Override
+  public Statement visitShowTTL(IoTDBSqlParser.ShowTTLContext ctx) {
+    ShowTTLStatement showTTLStatement = new ShowTTLStatement();
+    for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+      PartialPath partialPath = parsePrefixPath(prefixPathContext);
+      showTTLStatement.addPathPatterns(partialPath);
+    }
+    return showTTLStatement;
+  }
+
+  @Override
   public Statement visitShowAllTTL(IoTDBSqlParser.ShowAllTTLContext ctx) {
     ShowTTLStatement showTTLStatement = new ShowTTLStatement();
-    showTTLStatement.setAll(true);
+    showTTLStatement.addPathPatterns(new PartialPath(SqlConstant.getSingleRootArray()));
     return showTTLStatement;
   }
 
