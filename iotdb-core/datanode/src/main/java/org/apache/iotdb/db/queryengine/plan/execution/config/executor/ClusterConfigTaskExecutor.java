@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
@@ -30,6 +31,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -1016,6 +1018,46 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } catch (Exception e) {
         tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
+    }
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setConfiguration(TSetConfigurationReq req) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    List<String> ignoredConfigItems =
+        ConfigurationFileUtils.filterImmutableConfigItems(req.getConfigs());
+    TSStatus warningTsStatus = null;
+    if (!ignoredConfigItems.isEmpty()) {
+      warningTsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      warningTsStatus.setMessage("ignored config items: " + ignoredConfigItems);
+      if (req.getConfigs().isEmpty()) {
+        future.setException(new IoTDBException(warningTsStatus.message, warningTsStatus.code));
+        return future;
+      }
+    }
+
+    boolean onLocal = IoTDBDescriptor.getInstance().getConfig().getDataNodeId() == req.getNodeId();
+    if (onLocal) {
+      tsStatus = StorageEngine.getInstance().setConfiguration(req);
+    } else {
+      try (ConfigNodeClient client =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        // Send request to some API server
+        tsStatus = client.setConfiguration(req);
+      } catch (ClientManagerException | TException e) {
+        future.setException(e);
+      }
+    }
+    if (warningTsStatus != null) {
+      tsStatus = warningTsStatus;
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));

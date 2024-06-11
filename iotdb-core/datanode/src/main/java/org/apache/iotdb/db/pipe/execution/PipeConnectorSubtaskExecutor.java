@@ -28,10 +28,11 @@ public class PipeConnectorSubtaskExecutor extends PipeSubtaskExecutor {
   public PipeConnectorSubtaskExecutor() {
     super(
         PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
-        ThreadName.PIPE_CONNECTOR_EXECUTOR_POOL);
+        ThreadName.PIPE_CONNECTOR_EXECUTOR_POOL,
+        true);
   }
 
-  public PipeConnectorSubtaskExecutor(int corePoolSize, ThreadName threadName) {
-    super(corePoolSize, threadName);
+  public PipeConnectorSubtaskExecutor(final int corePoolSize, final ThreadName threadName) {
+    super(corePoolSize, threadName, true);
   }
 }

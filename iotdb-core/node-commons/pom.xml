@@ -181,6 +181,15 @@
         </dependency>
     </dependencies>
     <build>
+        <resources>
+            <resource>
+                <directory>${project.basedir}/src/assembly/resources/conf</directory>
+                <includes>
+                    <include>iotdb-system.properties</include>
+                </includes>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
         <plugins>
             <!--
         Generate an OSGI compatible MANIFEST file.
@@ -331,6 +340,73 @@
                                 </goals>
                                 <!-- this is used for inheritance merges -->
                                 <phase>package</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>generate-properties-unix</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                </os>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <!-- Unix execution -->
+                            <execution>
+                                <id>generate-config-unix</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>sh</executable>
+                                    <arguments>
+                                        <argument>${project.basedir}/src/assembly/resources/conf/generate_properties.sh</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>generate-properties-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <!-- Windows execution -->
+                            <execution>
+                                <id>generate-properties-windows</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>cmd</executable>
+                                    <arguments>
+                                        <argument>/c</argument>
+                                        <argument>${project.basedir}\src\assembly\resources\conf\generate_properties.bat</argument>
+                                    </arguments>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
