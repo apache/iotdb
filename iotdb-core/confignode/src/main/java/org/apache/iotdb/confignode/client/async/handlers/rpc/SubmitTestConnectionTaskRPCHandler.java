@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public class SubmitTestConnectionTaskRPCHandler
-    extends DataNodeAbstractAsyncRPCHandler<TTestConnectionResp> {
+    extends DataNodeAsyncRequestRPCHandler<TTestConnectionResp> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubmitTestConnectionTaskRPCHandler.class);

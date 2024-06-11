@@ -28,8 +28,8 @@ import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClien
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
 import org.apache.iotdb.commons.client.gg.AsyncRequestManager;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler2;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.ConfigNodeAbstractAsyncRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.ConfigNodeTSStatusRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.ConfigNodeAsyncRequestRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskToConfigNodeRPCHandler;
 
 import org.slf4j.Logger;
@@ -71,11 +71,11 @@ public class AsyncConfigNodeInternalServiceRequestManager
       AsyncConfigNodeInternalServiceClient client;
       client = clientManager.borrowClient(nodeLocationToEndPoint(targetNode));
       Object req = requestContext.getRequest(requestId);
-      ConfigNodeAbstractAsyncRPCHandler<?> handler =
-          ConfigNodeAbstractAsyncRPCHandler.buildHandler(requestContext, requestId, targetNode);
-      AsyncTSStatusRPCHandler2 defaultHandler = null;
-      if (handler instanceof AsyncTSStatusRPCHandler2) {
-        defaultHandler = (AsyncTSStatusRPCHandler2) handler;
+      ConfigNodeAsyncRequestRPCHandler<?> handler =
+          ConfigNodeAsyncRequestRPCHandler.buildHandler(requestContext, requestId, targetNode);
+      ConfigNodeTSStatusRPCHandler defaultHandler = null;
+      if (handler instanceof ConfigNodeTSStatusRPCHandler) {
+        defaultHandler = (ConfigNodeTSStatusRPCHandler) handler;
       }
       switch (requestContext.getRequestType()) {
         case SUBMIT_TEST_CONNECTION_TASK:

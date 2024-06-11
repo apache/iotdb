@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -32,24 +32,18 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 /** General RPC handler for TSStatus response type. */
-public class AsyncTSStatusRPCHandler2 extends ConfigNodeAbstractAsyncRPCHandler<TSStatus> {
+public class DataNodeTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSStatus> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncTSStatusRPCHandler2.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTSStatusRPCHandler.class);
 
-  public AsyncTSStatusRPCHandler2(
-      ConfigNodeRequestType requestType,
+  public DataNodeTSStatusRPCHandler(
+      DataNodeRequestType requestType,
       int requestId,
-      TConfigNodeLocation targetConfigNode,
-      Map<Integer, TConfigNodeLocation> configNodeLocationMap,
+      TDataNodeLocation targetDataNode,
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
       Map<Integer, TSStatus> responseMap,
       CountDownLatch countDownLatch) {
-    super(
-        requestType,
-        requestId,
-        targetConfigNode,
-        configNodeLocationMap,
-        responseMap,
-        countDownLatch);
+    super(requestType, requestId, targetDataNode, dataNodeLocationMap, responseMap, countDownLatch);
   }
 
   @Override
@@ -60,10 +54,10 @@ public class AsyncTSStatusRPCHandler2 extends ConfigNodeAbstractAsyncRPCHandler<
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Remove only if success
       nodeLocationMap.remove(requestId);
-      LOGGER.info("Successfully {} on ConfigNode: {}", requestType, formattedTargetLocation);
+      LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
     } else {
       LOGGER.error(
-          "Failed to {} on ConfigNode: {}, response: {}",
+          "Failed to {} on DataNode: {}, response: {}",
           requestType,
           formattedTargetLocation,
           response);
@@ -78,7 +72,7 @@ public class AsyncTSStatusRPCHandler2 extends ConfigNodeAbstractAsyncRPCHandler<
     String errorMsg =
         "Failed to "
             + requestType
-            + " on ConfigNode: "
+            + " on DataNode: "
             + formattedTargetLocation
             + ", exception: "
             + e.getMessage();

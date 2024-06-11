@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAbstractAsyncRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class TopicPushMetaRPCHandler extends DataNodeAbstractAsyncRPCHandler<TPushTopicMetaResp> {
+public class TopicPushMetaRPCHandler extends DataNodeAsyncRequestRPCHandler<TPushTopicMetaResp> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TopicPushMetaRPCHandler.class);
 

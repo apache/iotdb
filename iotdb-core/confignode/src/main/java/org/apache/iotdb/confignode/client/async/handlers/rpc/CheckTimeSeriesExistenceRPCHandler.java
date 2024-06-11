@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public class CheckTimeSeriesExistenceRPCHandler
-    extends DataNodeAbstractAsyncRPCHandler<TCheckTimeSeriesExistenceResp> {
+    extends DataNodeAsyncRequestRPCHandler<TCheckTimeSeriesExistenceResp> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(CheckTimeSeriesExistenceRPCHandler.class);

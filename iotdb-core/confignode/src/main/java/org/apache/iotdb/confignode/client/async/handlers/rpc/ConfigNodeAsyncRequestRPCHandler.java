@@ -29,10 +29,10 @@ import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public abstract class ConfigNodeAbstractAsyncRPCHandler<Response>
+public abstract class ConfigNodeAsyncRequestRPCHandler<Response>
     extends AsyncRequestRPCHandler<Response, ConfigNodeRequestType, TConfigNodeLocation> {
 
-  protected ConfigNodeAbstractAsyncRPCHandler(
+  protected ConfigNodeAsyncRequestRPCHandler(
       ConfigNodeRequestType configNodeRequestType,
       int requestId,
       TConfigNodeLocation targetNode,
@@ -57,7 +57,7 @@ public abstract class ConfigNodeAbstractAsyncRPCHandler<Response>
         + "}";
   }
 
-  public static ConfigNodeAbstractAsyncRPCHandler<?> buildHandler(
+  public static ConfigNodeAsyncRequestRPCHandler<?> buildHandler(
       AsyncRequestContext<?, ?, ConfigNodeRequestType, TConfigNodeLocation> context,
       int requestId,
       TConfigNodeLocation targetConfigNode) {
@@ -76,7 +76,7 @@ public abstract class ConfigNodeAbstractAsyncRPCHandler<Response>
             countDownLatch);
       case TEST_CONNECTION:
       default:
-        return new AsyncTSStatusRPCHandler2(
+        return new ConfigNodeTSStatusRPCHandler(
             requestType,
             requestId,
             targetConfigNode,

@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public class CountPathsUsingTemplateRPCHandler
-    extends DataNodeAbstractAsyncRPCHandler<TCountPathsUsingTemplateResp> {
+    extends DataNodeAsyncRequestRPCHandler<TCountPathsUsingTemplateResp> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(CountPathsUsingTemplateRPCHandler.class);

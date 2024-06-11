@@ -33,10 +33,10 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
 import org.apache.iotdb.commons.client.gg.AsyncRequestManager;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.AsyncTSStatusRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExistenceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAbstractAsyncRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
@@ -126,12 +126,12 @@ public class AsyncDataNodeInternalServiceRequestManager
       AsyncDataNodeInternalServiceClient client;
       client = clientManager.borrowClient(nodeLocationToEndPoint(targetNode));
       Object req = requestContext.getRequest(requestId);
-      DataNodeAbstractAsyncRPCHandler<?> handler =
-          DataNodeAbstractAsyncRPCHandler.buildHandler(requestContext, requestId, targetNode);
+      DataNodeAsyncRequestRPCHandler<?> handler =
+          DataNodeAsyncRequestRPCHandler.buildHandler(requestContext, requestId, targetNode);
 
-      AsyncTSStatusRPCHandler defaultHandler = null;
-      if (handler instanceof AsyncTSStatusRPCHandler) {
-        defaultHandler = (AsyncTSStatusRPCHandler) handler;
+      DataNodeTSStatusRPCHandler defaultHandler = null;
+      if (handler instanceof DataNodeTSStatusRPCHandler) {
+        defaultHandler = (DataNodeTSStatusRPCHandler) handler;
       }
 
       switch (requestContext.getRequestType()) {

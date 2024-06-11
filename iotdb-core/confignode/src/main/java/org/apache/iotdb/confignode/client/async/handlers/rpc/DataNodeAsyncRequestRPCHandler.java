@@ -41,10 +41,10 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public abstract class DataNodeAbstractAsyncRPCHandler<Response>
+public abstract class DataNodeAsyncRequestRPCHandler<Response>
     extends AsyncRequestRPCHandler<Response, DataNodeRequestType, TDataNodeLocation> {
 
-  protected DataNodeAbstractAsyncRPCHandler(
+  protected DataNodeAsyncRequestRPCHandler(
       DataNodeRequestType requestType,
       int requestId,
       TDataNodeLocation targetNode,
@@ -69,7 +69,7 @@ public abstract class DataNodeAbstractAsyncRPCHandler<Response>
         + "}";
   }
 
-  public static DataNodeAbstractAsyncRPCHandler<?> buildHandler(
+  public static DataNodeAsyncRequestRPCHandler<?> buildHandler(
       AsyncRequestContext<?, ?, DataNodeRequestType, TDataNodeLocation> context,
       int requestId,
       TDataNodeLocation targetDataNode) {
@@ -206,7 +206,7 @@ public abstract class DataNodeAbstractAsyncRPCHandler<Response>
       case RESET_PEER_LIST:
       case TEST_CONNECTION:
       default:
-        return new AsyncTSStatusRPCHandler(
+        return new DataNodeTSStatusRPCHandler(
             requestType,
             requestId,
             targetDataNode,

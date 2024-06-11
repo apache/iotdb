@@ -32,7 +32,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public class TransferLeaderRPCHandler
-    extends DataNodeAbstractAsyncRPCHandler<TRegionLeaderChangeResp> {
+    extends DataNodeAsyncRequestRPCHandler<TRegionLeaderChangeResp> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TransferLeaderRPCHandler.class);
 

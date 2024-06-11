@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class SchemaUpdateRPCHandler extends AsyncTSStatusRPCHandler {
+public class SchemaUpdateRPCHandler extends DataNodeTSStatusRPCHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaUpdateRPCHandler.class);
 
