@@ -41,4 +41,9 @@ public class PipeZSTDCompressor extends PipeCompressor {
   public byte[] decompress(byte[] byteArray) {
     return Zstd.decompress(byteArray, (int) Zstd.decompressedSize(byteArray, 0, byteArray.length));
   }
+
+  @Override
+  public byte[] decompress(byte[] byteArray, int decompressedLength) {
+    return Zstd.decompress(byteArray, decompressedLength);
+  }
 }
