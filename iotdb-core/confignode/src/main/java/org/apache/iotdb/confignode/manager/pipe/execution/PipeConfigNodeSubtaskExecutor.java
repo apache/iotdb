@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.execution;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -29,13 +30,14 @@ public class PipeConfigNodeSubtaskExecutor extends PipeSubtaskExecutor {
 
   private PipeConfigNodeSubtaskExecutor() {
     super(THREAD_NUM, ThreadName.PIPE_CONFIGNODE_EXECUTOR_POOL);
+    ((WrappedThreadPoolExecutor) subtaskWorkerThreadPoolExecutor).disableErrorLog();
   }
 
   /**
    * @param ignored Used to distinguish this constructor from the default constructor.
    */
   @TestOnly
-  public PipeConfigNodeSubtaskExecutor(Object ignored) {
+  public PipeConfigNodeSubtaskExecutor(final Object ignored) {
     super(THREAD_NUM, ThreadName.PIPE_CONFIGNODE_EXECUTOR_POOL);
   }
 
