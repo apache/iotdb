@@ -80,6 +80,8 @@ public interface Metadata {
    *
    * <p>When the input dataType or category of one column is null, the column cannot be auto
    * created.
+   *
+   * <p>If validation failed, a SemanticException will be thrown.
    */
   TableSchema validateTableHeaderSchema(
       String database, TableSchema tableSchema, MPPQueryContext context);
@@ -91,6 +93,8 @@ public interface Metadata {
    *
    * <p>When device attribute is missing or different from that stored in IoTDB, the attribute will
    * be auto upsert.
+   *
+   * <p>If validation failed, a SemanticException will be thrown.
    */
   void validateDeviceSchema(ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context);
 }
