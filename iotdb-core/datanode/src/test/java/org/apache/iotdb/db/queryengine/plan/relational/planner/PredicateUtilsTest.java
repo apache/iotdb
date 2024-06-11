@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import org.apache.tsfile.utils.Pair;
 import org.junit.Test;

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

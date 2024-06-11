@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;

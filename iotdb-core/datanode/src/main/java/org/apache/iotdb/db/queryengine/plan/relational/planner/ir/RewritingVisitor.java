@@ -19,22 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import java.util.List;
 import java.util.Optional;

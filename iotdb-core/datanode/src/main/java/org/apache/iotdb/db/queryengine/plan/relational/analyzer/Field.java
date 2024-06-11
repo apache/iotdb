@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 
 import org.apache.tsfile.read.common.type.Type;
 

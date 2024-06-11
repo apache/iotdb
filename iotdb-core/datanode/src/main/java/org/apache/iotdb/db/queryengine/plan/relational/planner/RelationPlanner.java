@@ -13,7 +13,6 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -23,25 +22,24 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AliasedRelation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Except;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Intersect;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Join;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Query;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.QuerySpecification;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SubqueryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Table;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.TableSubquery;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Union;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Values;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Intersect;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -94,12 +92,11 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           expansion.getRoot(), expansion.getScope(), expansion.getFieldMappings());
     }
 
-    Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>();
     Scope scope = analysis.getScope(table);
     ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
     ImmutableMap.Builder<Symbol, ColumnSchema> symbolToColumnSchema = ImmutableMap.builder();
     Collection<Field> fields = scope.getRelationType().getAllFields();
-    int IDIdx = 0, attributeIdx = 0;
+
     for (Field field : fields) {
       Symbol symbol = symbolAllocator.newSymbol(field);
       outputSymbolsBuilder.add(symbol);
@@ -107,12 +104,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           symbol,
           new ColumnSchema(
               field.getName().get(), field.getType(), field.isHidden(), field.getColumnCategory()));
-
-      if (TsTableColumnCategory.ID.equals(field.getColumnCategory())) {
-        idAndAttributeIndexMap.put(symbol, IDIdx++);
-      } else if (TsTableColumnCategory.ATTRIBUTE.equals(field.getColumnCategory())) {
-        idAndAttributeIndexMap.put(symbol, attributeIdx++);
-      }
     }
 
     List<Symbol> outputSymbols = outputSymbolsBuilder.build();
@@ -123,7 +114,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             outputSymbols,
             symbolToColumnSchema.build());
 
-    tableScanNode.setIdAndAttributeIndexMap(idAndAttributeIndexMap);
     return new RelationPlan(tableScanNode, scope, outputSymbols);
 
     // Collection<Field> fields = analysis.getMaterializedViewStorageTableFields(node);

@@ -23,7 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableList;
@@ -164,6 +164,13 @@ public class TableScanNode extends SourceNode {
     }
 
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
+
+    if (pushDownPredicate != null) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+      Expression.serialize(pushDownPredicate, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+    }
   }
 
   @Override
@@ -194,6 +201,13 @@ public class TableScanNode extends SourceNode {
     }
 
     ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+
+    if (pushDownPredicate != null) {
+      ReadWriteIOUtils.write(true, stream);
+      Expression.serialize(pushDownPredicate, stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
   }
 
   public static TableScanNode deserialize(ByteBuffer byteBuffer) {
@@ -226,6 +240,12 @@ public class TableScanNode extends SourceNode {
 
     Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
 
+    Expression pushDownPredicate = null;
+    boolean hasPushDownPredicate = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasPushDownPredicate) {
+      pushDownPredicate = Expression.deserialize(byteBuffer);
+    }
+
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
     return new TableScanNode(
@@ -236,7 +256,7 @@ public class TableScanNode extends SourceNode {
         deviceEntries,
         idAndAttributeIndexMap,
         scanOrder,
-        null);
+        pushDownPredicate);
   }
 
   @Override

@@ -28,15 +28,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.FilterScanCombine;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.IndexScan;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PredicatePushDown;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PruneUnUsedColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RelationalPlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SimplifyExpressions;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Query;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -79,7 +79,7 @@ public class LogicalPlanner {
         Arrays.asList(
             new SimplifyExpressions(),
             new PruneUnUsedColumns(),
-            new PredicatePushDown(),
+            new FilterScanCombine(),
             new RemoveRedundantIdentityProjections(),
             new IndexScan());
   }
