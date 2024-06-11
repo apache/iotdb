@@ -61,6 +61,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -191,6 +192,7 @@ public class LoadTsFileManager {
     final Optional<CleanupTask> cleanupTask = Optional.of(uuid2CleanupTask.get(uuid));
     cleanupTask.ifPresent(CleanupTask::markLoadTaskRunning);
     try {
+      final AtomicReference<Exception> exception = new AtomicReference<>();
       final TsFileWriterManager writerManager =
           uuid2WriterManager.computeIfAbsent(
               uuid,
@@ -198,9 +200,18 @@ public class LoadTsFileManager {
                 try {
                   return new TsFileWriterManager(new File(folderManager.getNextFolder(), uuid));
                 } catch (DiskSpaceInsufficientException e) {
-                  throw new RuntimeException(e);
+                  exception.set(e);
+                  return null;
                 }
               });
+      if (exception.get() != null || writerManager == null) {
+        throw new IOException(
+            "Failed to create TsFileWriterManager for uuid "
+                + uuid
+                + " because of insufficient disk space.",
+            exception.get());
+      }
+
       for (TsFileData tsFileData : pieceNode.getAllTsFileData()) {
         if (!tsFileData.isModification()) {
           ChunkData chunkData = (ChunkData) tsFileData;
@@ -258,20 +269,18 @@ public class LoadTsFileManager {
       writerManager.close();
     }
 
-    for (Path loadDirPath :
+    for (final Path loadDirPath :
         Arrays.stream(LOAD_BASE_DIRS)
             .map(File::new)
+            .filter(File::exists)
             .map(File::toPath)
             .collect(Collectors.toList())) {
-      if (!Files.exists(loadDirPath)) {
-        continue;
-      }
       try {
         Files.deleteIfExists(loadDirPath);
         LOGGER.info("Load dir {} was deleted.", loadDirPath);
       } catch (DirectoryNotEmptyException e) {
         LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
-      } catch (IOException e) {
+      } catch (Exception e) {
         LOGGER.info(MESSAGE_DELETE_FAIL, loadDirPath);
       }
     }
