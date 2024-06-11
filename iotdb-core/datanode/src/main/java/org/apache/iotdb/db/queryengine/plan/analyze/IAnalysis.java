@@ -45,24 +45,13 @@ public interface IAnalysis {
 
   String getStatementType();
 
-  default void setFinishQueryAfterAnalyze(boolean b) {
+  void setFinishQueryAfterAnalyze(boolean b);
 
-  }
+  void setFailStatus(TSStatus status);
 
-  default void setFailStatus(TSStatus status) {
+  boolean isFinishQueryAfterAnalyze();
 
-  }
+  default void setRealStatement(Statement realStatement) {}
 
-  default boolean isFinishQueryAfterAnalyze() {
-    return false;
-  }
-
-  default void setTreeStatement(Statement realStatement) {}
-
-  default void setDataPartitionInfo(DataPartition dataPartition) {
-  }
-
-  default Statement getTreeStatement(){
-    return null;
-  }
+  void setDataPartitionInfo(DataPartition dataPartition);
 }

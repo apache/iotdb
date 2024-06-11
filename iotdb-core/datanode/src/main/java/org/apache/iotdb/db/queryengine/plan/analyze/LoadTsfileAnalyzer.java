@@ -195,7 +195,7 @@ public class LoadTsfileAnalyzer {
 
     // data partition will be queried in the scheduler
     final Analysis analysis = new Analysis();
-    analysis.setTreeStatement(loadTsFileStatement);
+    analysis.setRealStatement(loadTsFileStatement);
     return analysis;
   }
 

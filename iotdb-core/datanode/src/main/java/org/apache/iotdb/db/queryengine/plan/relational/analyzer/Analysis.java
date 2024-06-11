@@ -161,6 +161,8 @@ public class Analysis implements IAnalysis {
   // indicate is there a value filter
   private boolean hasValueFilter = false;
 
+  private TSStatus failStatus;
+
   public Expression getGlobalTableModelTimePredicate() {
     return this.globalTableModelTimePredicate;
   }
@@ -186,7 +188,7 @@ public class Analysis implements IAnalysis {
     return parameters;
   }
 
-  public Statement getTreeStatement() {
+  public Statement getStatement() {
     return root;
   }
 
@@ -585,7 +587,12 @@ public class Analysis implements IAnalysis {
 
   @Override
   public TSStatus getFailStatus() {
-    return null;
+    return failStatus;
+  }
+
+  @Override
+  public void setFailStatus(TSStatus failStatus) {
+    this.failStatus = failStatus;
   }
 
   @Override
@@ -595,6 +602,11 @@ public class Analysis implements IAnalysis {
 
   public void setFinishQueryAfterAnalyze() {
     this.finishQueryAfterAnalyze = true;
+  }
+
+  @Override
+  public void setFinishQueryAfterAnalyze(boolean finishQueryAfterAnalyze) {
+    this.finishQueryAfterAnalyze = finishQueryAfterAnalyze;
   }
 
   public boolean isFinishQueryAfterAnalyze() {
@@ -607,6 +619,11 @@ public class Analysis implements IAnalysis {
     //            || statement instanceof ShowQueriesStatement
     //            || (statement instanceof QueryStatement
     //            && ((QueryStatement) statement).isAggregationQuery());
+  }
+
+  @Override
+  public void setDataPartitionInfo(DataPartition dataPartition) {
+    this.dataPartition = dataPartition;
   }
 
   @Override

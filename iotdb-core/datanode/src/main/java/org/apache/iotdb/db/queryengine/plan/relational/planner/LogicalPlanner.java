@@ -85,7 +85,7 @@ public class LogicalPlanner {
   }
 
   public LogicalQueryPlan plan(Analysis analysis) throws IoTDBException {
-    PlanNode planNode = planStatement(analysis, analysis.getTreeStatement());
+    PlanNode planNode = planStatement(analysis, analysis.getStatement());
 
     relationalPlanOptimizers.forEach(
         optimizer ->

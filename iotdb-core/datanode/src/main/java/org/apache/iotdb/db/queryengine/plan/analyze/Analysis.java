@@ -374,7 +374,7 @@ public class Analysis implements IAnalysis {
     return statement;
   }
 
-  public void setTreeStatement(Statement statement) {
+  public void setRealStatement(Statement statement) {
     this.statement = statement;
   }
 

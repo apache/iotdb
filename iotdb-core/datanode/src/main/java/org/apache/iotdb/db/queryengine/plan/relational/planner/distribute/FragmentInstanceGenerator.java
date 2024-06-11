@@ -141,7 +141,7 @@ public class FragmentInstanceGenerator {
           return v;
         });
 
-    if (analysis.getTreeStatement() instanceof Query) {
+    if (analysis.getStatement() instanceof Query) {
       fragmentInstance.getFragment().generateTableModelTypeProvider(queryContext.getTypeProvider());
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);

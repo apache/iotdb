@@ -228,7 +228,7 @@ public class Util {
       analysis.setSchemaPartitionInfo(schemaPartition);
       analysis.setSchemaTree(genSchemaTree());
       // to avoid some special case which is not the point of test
-      analysis.setTreeStatement(Mockito.mock(QueryStatement.class));
+      analysis.setRealStatement(Mockito.mock(QueryStatement.class));
       Mockito.when(analysis.getTreeStatement().isQuery()).thenReturn(false);
       return analysis;
     } catch (IllegalPathException e) {
