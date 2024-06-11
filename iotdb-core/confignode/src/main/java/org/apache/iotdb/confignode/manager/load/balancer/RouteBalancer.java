@@ -218,7 +218,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
         });
     if (requestId.get() > 0) {
       // Don't retry ChangeLeader request
-      AsyncDataNodeInternalServiceRequestManager.getInstance().sendAsyncRequestToNode(clientHandler);
+      AsyncDataNodeInternalServiceRequestManager.getInstance()
+          .sendAsyncRequestToNode(clientHandler);
       for (int i = 0; i < requestId.get(); i++) {
         if (clientHandler.getResponseMap().get(i).getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

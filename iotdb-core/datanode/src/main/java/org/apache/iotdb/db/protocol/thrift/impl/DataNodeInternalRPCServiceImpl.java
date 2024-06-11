@@ -73,8 +73,8 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
-import org.apache.iotdb.db.protocol.client.cn.AsyncConfigNodeClientHandler;
-import org.apache.iotdb.db.protocol.client.cn.AsyncConfigNodeClientPool;
+import org.apache.iotdb.db.protocol.client.cn.AsyncConfigNodeInternalServiceRequestManager;
+import org.apache.iotdb.db.protocol.client.cn.AsyncConfigNodeRequestContext;
 import org.apache.iotdb.db.protocol.client.cn.ConfigNodeRequestType;
 import org.apache.iotdb.db.protocol.client.dn.AsyncClientHandler;
 import org.apache.iotdb.db.protocol.client.dn.AsyncDataNodeExternalServiceClientPool;
@@ -1450,10 +1450,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     Map<Integer, TConfigNodeLocation> configNodeLocationMap =
         configNodeLocations.stream()
             .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
-    AsyncConfigNodeClientHandler<Object, TSStatus> clientHandler =
-        new AsyncConfigNodeClientHandler<>(
+    AsyncConfigNodeRequestContext<Object, TSStatus> clientHandler =
+        new AsyncConfigNodeRequestContext<>(
             ConfigNodeRequestType.TEST_CONNECTION, new Object(), configNodeLocationMap);
-    AsyncConfigNodeClientPool.getInstance().sendAsyncRequestToConfigNodeWithRetry(clientHandler);
+    AsyncConfigNodeInternalServiceRequestManager.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TConfigNodeLocation> anotherConfigNodeLocationMap =
         configNodeLocations.stream()
             .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));

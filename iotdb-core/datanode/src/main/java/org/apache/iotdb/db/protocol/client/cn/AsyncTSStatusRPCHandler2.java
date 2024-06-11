@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 /** General RPC handler for TSStatus response type. */
-public class AsyncTSStatusRPCHandler2 extends AbstractAsyncRPCHandler2<TSStatus> {
+public class AsyncTSStatusRPCHandler2 extends ConfigNodeAsyncRequestRPCHandler<TSStatus> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AsyncTSStatusRPCHandler2.class);
 
@@ -58,7 +58,7 @@ public class AsyncTSStatusRPCHandler2 extends AbstractAsyncRPCHandler2<TSStatus>
 
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Remove only if success
-      configNodeLocationMap.remove(requestId);
+      nodeLocationMap.remove(requestId);
       LOGGER.info("Successfully {} on ConfigNode: {}", requestType, formattedTargetLocation);
     } else {
       LOGGER.error(

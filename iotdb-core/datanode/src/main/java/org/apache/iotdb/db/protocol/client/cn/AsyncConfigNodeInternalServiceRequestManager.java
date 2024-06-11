@@ -17,20 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client.async;
+package org.apache.iotdb.db.protocol.client.cn;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
 import org.apache.iotdb.commons.client.gg.AsyncRequestManager;
-import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.ConfigNodeAsyncRequestRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.ConfigNodeTSStatusRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskToConfigNodeRPCHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,13 +34,8 @@ import org.slf4j.LoggerFactory;
 public class AsyncConfigNodeInternalServiceRequestManager
     extends AsyncRequestManager<
         ConfigNodeRequestType, TConfigNodeLocation, AsyncConfigNodeInternalServiceClient> {
-
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AsyncConfigNodeInternalServiceRequestManager.class);
-
-  private AsyncConfigNodeInternalServiceRequestManager() {
-    super();
-  }
 
   @Override
   protected void initClientManager() {
@@ -66,22 +56,15 @@ public class AsyncConfigNodeInternalServiceRequestManager
       int requestId,
       TConfigNodeLocation targetNode,
       int retryCount) {
-
     try {
       AsyncConfigNodeInternalServiceClient client;
-      client = clientManager.borrowClient(nodeLocationToEndPoint(targetNode));
+      client = clientManager.borrowClient(targetNode.getInternalEndPoint());
       Object req = requestContext.getRequest(requestId);
       ConfigNodeAsyncRequestRPCHandler<?> handler =
           ConfigNodeAsyncRequestRPCHandler.buildHandler(requestContext, requestId, targetNode);
-      ConfigNodeTSStatusRPCHandler defaultHandler = null;
-      if (handler instanceof ConfigNodeTSStatusRPCHandler) {
-        defaultHandler = (ConfigNodeTSStatusRPCHandler) handler;
-      }
+      AsyncTSStatusRPCHandler2 defaultHandler = (AsyncTSStatusRPCHandler2) handler;
+
       switch (requestContext.getRequestType()) {
-        case SUBMIT_TEST_CONNECTION_TASK:
-          client.submitTestConnectionTask(
-              (TNodeLocations) req, (SubmitTestConnectionTaskToConfigNodeRPCHandler) handler);
-          break;
         case TEST_CONNECTION:
           client.testConnection(defaultHandler);
           break;
@@ -94,13 +77,12 @@ public class AsyncConfigNodeInternalServiceRequestManager
       LOGGER.warn(
           "{} failed on ConfigNode {}, because {}, retrying {}...",
           requestContext.getRequestType(),
-          nodeLocationToEndPoint(targetNode),
+          targetNode.getInternalEndPoint(),
           e.getMessage(),
           retryCount);
     }
   }
 
-  // TODO: Is the ClientPool must be a singleton?
   private static class ClientPoolHolder {
 
     private static final AsyncConfigNodeInternalServiceRequestManager INSTANCE =
