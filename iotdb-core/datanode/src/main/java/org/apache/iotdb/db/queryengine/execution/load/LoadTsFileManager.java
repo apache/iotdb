@@ -81,24 +81,14 @@ public class LoadTsFileManager {
       "%s TsFileWriterManager has been closed.";
   private static final String MESSAGE_DELETE_FAIL = "failed to delete {}.";
 
-  private static final String[] LOAD_BASE_DIRS = CONFIG.getLoadTsFileDirs();
-  private static FolderManager folderManager;
+  private static final AtomicReference<String[]> LOAD_BASE_DIRS =
+      new AtomicReference<>(CONFIG.getLoadTsFileDirs());
+  private static final AtomicReference<FolderManager> FOLDER_MANAGER = new AtomicReference<>();
 
   private final Map<String, TsFileWriterManager> uuid2WriterManager = new ConcurrentHashMap<>();
 
   private final Map<String, CleanupTask> uuid2CleanupTask = new ConcurrentHashMap<>();
   private final PriorityBlockingQueue<CleanupTask> cleanupTaskQueue = new PriorityBlockingQueue<>();
-
-  static {
-    try {
-      folderManager =
-          new FolderManager(Arrays.asList(LOAD_BASE_DIRS), DirectoryStrategyType.SEQUENCE_STRATEGY);
-    } catch (final DiskSpaceInsufficientException e) {
-      LOGGER.error(
-          "Fail to create LoadTsFileManager because of insufficient disk space, please check the disk space.",
-          e);
-    }
-  }
 
   public LoadTsFileManager() {
     registerCleanupTaskExecutor();
@@ -147,7 +137,15 @@ public class LoadTsFileManager {
   }
 
   private void recover() {
-    final File[] baseDirs = Arrays.stream(LOAD_BASE_DIRS).map(File::new).toArray(File[]::new);
+    if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
+      synchronized (LOAD_BASE_DIRS) {
+        if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
+          LOAD_BASE_DIRS.set(CONFIG.getLoadTsFileDirs());
+        }
+      }
+    }
+
+    final File[] baseDirs = Arrays.stream(LOAD_BASE_DIRS.get()).map(File::new).toArray(File[]::new);
     final File[] files =
         Arrays.stream(baseDirs)
             .filter(File::exists)
@@ -198,7 +196,7 @@ public class LoadTsFileManager {
               uuid,
               o -> {
                 try {
-                  return new TsFileWriterManager(new File(folderManager.getNextFolder(), uuid));
+                  return new TsFileWriterManager(new File(getNextFolder(), uuid));
                 } catch (DiskSpaceInsufficientException e) {
                   exception.set(e);
                   return null;
@@ -224,6 +222,33 @@ public class LoadTsFileManager {
     } finally {
       cleanupTask.ifPresent(CleanupTask::markLoadTaskNotRunning);
     }
+  }
+
+  private String getNextFolder() throws DiskSpaceInsufficientException {
+    if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
+      synchronized (FOLDER_MANAGER) {
+        if (CONFIG.getLoadTsFileDirs() != LOAD_BASE_DIRS.get()) {
+          LOAD_BASE_DIRS.set(CONFIG.getLoadTsFileDirs());
+          FOLDER_MANAGER.set(
+              new FolderManager(
+                  Arrays.asList(LOAD_BASE_DIRS.get()), DirectoryStrategyType.SEQUENCE_STRATEGY));
+          return FOLDER_MANAGER.get().getNextFolder();
+        }
+      }
+    }
+
+    if (FOLDER_MANAGER.get() == null) {
+      synchronized (FOLDER_MANAGER) {
+        if (FOLDER_MANAGER.get() == null) {
+          FOLDER_MANAGER.set(
+              new FolderManager(
+                  Arrays.asList(LOAD_BASE_DIRS.get()), DirectoryStrategyType.SEQUENCE_STRATEGY));
+          return FOLDER_MANAGER.get().getNextFolder();
+        }
+      }
+    }
+
+    return FOLDER_MANAGER.get().getNextFolder();
   }
 
   public boolean loadAll(String uuid, boolean isGeneratedByPipe, ProgressIndex progressIndex)
@@ -270,7 +295,7 @@ public class LoadTsFileManager {
     }
 
     for (final Path loadDirPath :
-        Arrays.stream(LOAD_BASE_DIRS)
+        Arrays.stream(LOAD_BASE_DIRS.get())
             .map(File::new)
             .filter(File::exists)
             .map(File::toPath)
