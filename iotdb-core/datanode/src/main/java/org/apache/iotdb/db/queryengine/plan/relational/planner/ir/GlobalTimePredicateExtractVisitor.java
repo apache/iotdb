@@ -20,34 +20,34 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeException;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.IfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SearchedCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SimpleCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 
 import org.apache.tsfile.utils.Pair;
 
 import java.util.Arrays;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.BooleanLiteral.TRUE_LITERAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression.Operator.AND;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression.Operator.OR;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression.and;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression.or;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.AND;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.OR;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.and;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.or;
 
 public class GlobalTimePredicateExtractVisitor
     extends IrVisitor<Pair<Expression, Boolean>, GlobalTimePredicateExtractVisitor.Context> {

@@ -21,8 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;

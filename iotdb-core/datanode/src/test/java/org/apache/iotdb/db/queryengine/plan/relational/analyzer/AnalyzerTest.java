@@ -50,8 +50,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.junit.Test;
@@ -300,7 +301,7 @@ public class AnalyzerTest {
             context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
-    PlanNode tableScanNode = rootNode.getChildren().get(0).getChildren().get(0);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals(
         Arrays.asList("time", "tag1", "attr1", "s1"), tableScanNode.getOutputColumnNames());
 
@@ -315,7 +316,7 @@ public class AnalyzerTest {
             context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
-    tableScanNode = rootNode.getChildren().get(0).getChildren().get(0);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals(
         Arrays.asList("time", "tag1", "tag2", "attr1", "s1", "s2"),
         tableScanNode.getOutputColumnNames());
@@ -330,10 +331,26 @@ public class AnalyzerTest {
                 context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
-    tableScanNode = rootNode.getChildren().get(0).getChildren().get(0);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    tableScanNode =
+        (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
     assertEquals(
         Arrays.asList("time", "tag1", "attr2", "s1", "s2", "s3"),
         tableScanNode.getOutputColumnNames());
+
+    // 4. project with not all attributes, to test the rightness of PruneUnUsedColumns
+    sql = "SELECT tag2, attr2, s2 FROM table1";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalQueryPlan =
+        new LogicalPlanner(
+                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertEquals(
+        Arrays.asList("time", "tag2", "attr2", "s2"), tableScanNode.getOutputColumnNames());
+    assertEquals(2, tableScanNode.getIdAndAttributeIndexMap().size());
   }
 
   @Test
@@ -432,6 +449,36 @@ public class AnalyzerTest {
             context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
+  }
+
+  @Test
+  public void predicatePushDownTest() throws IoTDBException {
+    // `is null expression`, `not expression` cannot be pushed down into TableScanOperator
+    sql =
+        "SELECT *, s1/2, s2+1 FROM table1 WHERE tag1 in ('A', 'B') and tag2 = 'C' "
+            + "and s2 iS NUll and S1 = 6 and s3 < 8.0 and tAG1 LIKE '%m'";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(
+                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertTrue(filterNode.getPredicate() instanceof LogicalExpression);
+    assertEquals(3, ((LogicalExpression) filterNode.getPredicate()).getTerms().size());
+    assertTrue(
+        rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof TableScanNode);
+    tableScanNode =
+        (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+    assertTrue(
+        tableScanNode.getPushDownPredicate() != null
+            && tableScanNode.getPushDownPredicate() instanceof LogicalExpression);
+    assertEquals(2, ((LogicalExpression) tableScanNode.getPushDownPredicate()).getTerms().size());
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {

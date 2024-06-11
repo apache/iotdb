@@ -327,7 +327,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 schemaFetcher,
                 req.getTimeout());
       } else {
-        org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement s =
+        org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
             relationSqlParser.createStatement(statement);
 
         if (s == null) {

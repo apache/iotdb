@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.relational.type;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DataType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.DataTypeParameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.GenericDataType;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NumericParameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.TypeParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NumericParameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
 
 import com.google.common.collect.ImmutableList;
 

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 
 import java.util.OptionalInt;
 

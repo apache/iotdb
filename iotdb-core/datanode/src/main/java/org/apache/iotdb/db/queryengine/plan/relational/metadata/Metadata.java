@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 
