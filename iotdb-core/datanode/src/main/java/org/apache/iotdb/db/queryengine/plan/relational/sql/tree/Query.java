@@ -111,26 +111,21 @@ public class Query extends Statement {
       throw new SemanticException("unknown database");
     }
     String tableName = null;
-    if (this.queryBody instanceof Table) {
-      tableName = ((Table) this.queryBody).getName().toString();
+    if (this.queryBody instanceof QuerySpecification) {
+      QuerySpecification specification = (QuerySpecification) this.queryBody;
+      if (specification.getFrom().get() instanceof Table) {
+        Table table = (Table) specification.getFrom().get();
+        tableName = table.getName().toString();
+      }
     }
 
     if (null == tableName) {
       throw new SemanticException("unknown table");
     }
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkDBPermision(
-                userName, databaseName, PrivilegeType.WRITE_SCHEMA.ordinal())
-            || AuthorityChecker.checkDBPermision(
-                userName, databaseName, PrivilegeType.READ_SCHEMA.ordinal())
-            || AuthorityChecker.checkDBPermision(
-                userName, databaseName, PrivilegeType.READ_DATA.ordinal())
+        AuthorityChecker.checkDBPermision(userName, databaseName, PrivilegeType.READ_DATA.ordinal())
             || AuthorityChecker.checkDBPermision(
                 userName, databaseName, PrivilegeType.WRITE_DATA.ordinal())
-            || AuthorityChecker.checkTBPermission(
-                userName, databaseName, tableName, PrivilegeType.READ_SCHEMA.ordinal())
-            || AuthorityChecker.checkTBPermission(
-                userName, databaseName, tableName, PrivilegeType.WRITE_SCHEMA.ordinal())
             || AuthorityChecker.checkTBPermission(
                 userName, databaseName, tableName, PrivilegeType.WRITE_DATA.ordinal())
             || AuthorityChecker.checkTBPermission(

@@ -64,6 +64,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -712,6 +713,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       for (Map.Entry<String, TObjectResp> obj : objresp.entrySet()) {
         user.addObjectPrivilege(obj.getValue());
       }
+    } else {
+      user.setObjectPrivileges(new HashMap<>());
     }
 
     user.setOpenIdUser(tPermissionInfoResp.getUserInfo().isIsOpenIdUser());
@@ -749,6 +752,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       for (Map.Entry<String, TObjectResp> obj : objresp.entrySet()) {
         role.addObjectPrivilege(obj.getValue());
       }
+    } else {
+      role.setObjectPrivileges(new HashMap<>());
     }
 
     role.setSysPriGrantOpt(tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSetGrantOpt());
