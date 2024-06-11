@@ -32,20 +32,24 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.SymbolReference;
 
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
 
-public class PredicatePushIntoIndexScanChecker extends PredicateVisitor<Boolean, Void> {
+public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boolean, Void> {
 
-  private final Set<String> idOrAttributeColumnNames;
+  private final Set<String> measurementColumns;
 
-  public PredicatePushIntoIndexScanChecker(Set<String> idOrAttributeColumnNames) {
-    this.idOrAttributeColumnNames = idOrAttributeColumnNames;
+  public static boolean check(Set<String> measurementColumns, Expression expression) {
+    return new PredicateCombineIntoTableScanChecker(measurementColumns).process(expression);
+  }
+
+  public PredicateCombineIntoTableScanChecker(Set<String> measurementColumns) {
+    this.measurementColumns = measurementColumns;
   }
 
   @Override
@@ -54,7 +58,7 @@ public class PredicatePushIntoIndexScanChecker extends PredicateVisitor<Boolean,
   }
 
   @Override
-  protected Boolean visitInPredicate(InPredicate node, Void context) {
+  protected Boolean visitNotExpression(NotExpression node, Void context) {
     return Boolean.FALSE;
   }
 
@@ -64,53 +68,64 @@ public class PredicatePushIntoIndexScanChecker extends PredicateVisitor<Boolean,
   }
 
   @Override
-  protected Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
-    return Boolean.FALSE;
+  protected Boolean visitInPredicate(InPredicate node, Void context) {
+    return isMeasurementColumn(node.getValue());
   }
 
   @Override
   protected Boolean visitLikePredicate(LikePredicate node, Void context) {
-    return Boolean.FALSE;
+    return isMeasurementColumn(node.getValue())
+        && isLiteral(node.getPattern())
+        && node.getEscape().map(PredicatePushIntoScanChecker::isLiteral).orElse(true);
   }
 
   @Override
   protected Boolean visitLogicalExpression(LogicalExpression node, Void context) {
     if (node.getOperator() == LogicalExpression.Operator.AND) {
-      throw new IllegalStateException("Shouldn't have AND operator in index scan expression.");
+      throw new IllegalStateException(
+          "Shouldn't have AND operator in PredicateCombineIntoTableScanChecker.");
     }
+
     List<Expression> children = node.getTerms();
     for (Expression child : children) {
       Boolean result = process(child, context);
       if (result == null) {
-        throw new IllegalStateException("Should never return null.");
+        throw new IllegalStateException(
+            "Should never return null in PredicateCombineIntoTableScanChecker.");
       }
       if (!result) {
         return Boolean.FALSE;
       }
     }
+
     return Boolean.TRUE;
   }
 
   @Override
-  protected Boolean visitNotExpression(NotExpression node, Void context) {
-    return Boolean.FALSE;
+  protected Boolean visitComparisonExpression(ComparisonExpression node, Void context) {
+    return (isMeasurementColumn(node.getLeft()) && isLiteral(node.getRight()))
+        || (isMeasurementColumn(node.getRight()) && isLiteral(node.getLeft()));
   }
 
   @Override
-  protected Boolean visitComparisonExpression(ComparisonExpression node, Void context) {
-    if (node.getOperator() == ComparisonExpression.Operator.EQUAL) {
-      return (isIdOrAttributeColumn(node.getLeft()) && isStringLiteral(node.getRight()))
-          || (isIdOrAttributeColumn(node.getRight()) && isStringLiteral(node.getLeft()));
-    } else {
-      return Boolean.FALSE;
-    }
+  protected Boolean visitBetweenPredicate(BetweenPredicate node, Void context) {
+    return (isMeasurementColumn(node.getValue())
+            && isLiteral(node.getMin())
+            && isLiteral(node.getMax()))
+        || (isLiteral(node.getValue())
+            && isMeasurementColumn(node.getMin())
+            && isLiteral(node.getMax()))
+        || (isLiteral(node.getValue())
+            && isLiteral(node.getMin())
+            && isMeasurementColumn(node.getMax()));
   }
 
-  private boolean isIdOrAttributeColumn(Expression expression) {
-    return isSymbolReference(expression)
-        && idOrAttributeColumnNames.contains(((SymbolReference) expression).getName());
+  @Override
+  protected Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
+    return isMeasurementColumn(node.getValue());
   }
 
+  // expression below will be supported later
   @Override
   protected Boolean visitSimpleCaseExpression(SimpleCaseExpression node, Void context) {
     return Boolean.FALSE;
@@ -131,12 +146,8 @@ public class PredicatePushIntoIndexScanChecker extends PredicateVisitor<Boolean,
     return Boolean.FALSE;
   }
 
-  @Override
-  protected Boolean visitBetweenPredicate(BetweenPredicate node, Void context) {
-    return Boolean.FALSE;
-  }
-
-  public static boolean isStringLiteral(Expression expression) {
-    return expression instanceof StringLiteral;
+  private boolean isMeasurementColumn(Expression expression) {
+    return isSymbolReference(expression)
+        && measurementColumns.contains(((SymbolReference) expression).getName());
   }
 }
