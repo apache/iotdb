@@ -80,8 +80,8 @@ public class LoadTsFileManager {
   private static final String MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED =
       "%s TsFileWriterManager has been closed.";
   private static final String MESSAGE_DELETE_FAIL = "failed to delete {}.";
-  private static final String[] LOAD_BASE_DIRS = CONFIG.getLoadTsFileDirs();
 
+  private static final String[] LOAD_BASE_DIRS = CONFIG.getLoadTsFileDirs();
   private static FolderManager folderManager;
 
   private final Map<String, TsFileWriterManager> uuid2WriterManager = new ConcurrentHashMap<>();
