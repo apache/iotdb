@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
 import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -40,7 +39,7 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
   private MPPQueryContext queryContext;
 
   public WriteFragmentParallelPlanner(
-      SubPlan subPlan, Analysis analysis, MPPQueryContext queryContext) {
+      SubPlan subPlan, IAnalysis analysis, MPPQueryContext queryContext) {
     this.subPlan = subPlan;
     this.analysis = analysis;
     this.queryContext = queryContext;
