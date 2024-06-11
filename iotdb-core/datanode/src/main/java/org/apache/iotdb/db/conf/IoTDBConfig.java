@@ -1467,11 +1467,16 @@ public class IoTDBConfig {
   }
 
   public void formulateLoadTsFileDirs(String[][] tierDataDirs) {
-    loadTsFileDirs = new String[tierDataDirs.length];
+    final String[] newLoadTsFileDirs = new String[tierDataDirs.length];
     for (int i = 0; i < tierDataDirs.length; i++) {
-      loadTsFileDirs[i] =
+      newLoadTsFileDirs[i] =
           tierDataDirs[i][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
     }
+
+    // Update loadTsFileDirs after all newLoadTsFileDirs are generated,
+    // or the newLoadTsFileDirs will be used in the middle of the process
+    // and cause the undefined behavior.
+    this.loadTsFileDirs = newLoadTsFileDirs;
   }
 
   public String getSchemaDir() {
