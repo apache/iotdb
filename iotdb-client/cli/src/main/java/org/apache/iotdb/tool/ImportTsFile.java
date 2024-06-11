@@ -310,7 +310,9 @@ public class ImportTsFile extends AbstractTsFileTool {
       }
 
       sessionPool =
-          new SessionPool(host, Integer.parseInt(port), username, password, threadNum + 1);
+          new SessionPool(
+              host, Integer.parseInt(port), username, password, threadNum + 1, false, false);
+      sessionPool.setEnableQueryRedirection(false);
 
       traverseAndCollectFiles(file);
       addNoResourceOrModsToQueue();
