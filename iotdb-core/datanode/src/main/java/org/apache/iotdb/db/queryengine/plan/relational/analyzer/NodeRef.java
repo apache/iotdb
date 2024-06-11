@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 
 import static java.lang.System.identityHashCode;
 import static java.util.Objects.requireNonNull;

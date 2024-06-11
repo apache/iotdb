@@ -282,7 +282,7 @@ public class PredicateUtils {
   }
 
   public static Filter convertPredicateToTimeFilter(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression predicate) {
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate) {
     if (predicate == null) {
       return null;
     }
@@ -308,7 +308,7 @@ public class PredicateUtils {
   }
 
   public static Filter convertPredicateToFilter(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression predicate,
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate,
       List<String> allMeasurements,
       Map<Symbol, ColumnSchema> schemaMap) {
     if (predicate == null) {
@@ -429,7 +429,7 @@ public class PredicateUtils {
   }
 
   public static boolean predicateCanPushIntoScan(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression predicate) {
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate) {
     return new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
             .PredicatePushIntoScanChecker()
         .process(predicate, null);
