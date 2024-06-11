@@ -354,6 +354,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               context.getTypeProvider().getTemplatedInfo() != null,
               context.getTypeProvider(),
               context.getZoneId()));
+    }
+    if (pushDownPredicate == null || predicateCanPushIntoScan) {
       scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
       scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
     }
@@ -443,6 +445,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               context.getTypeProvider().getTemplatedInfo() != null,
               context.getTypeProvider(),
               context.getZoneId()));
+    }
+    if (pushDownPredicate == null || predicateCanPushIntoScan) {
       scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
       scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
     }
