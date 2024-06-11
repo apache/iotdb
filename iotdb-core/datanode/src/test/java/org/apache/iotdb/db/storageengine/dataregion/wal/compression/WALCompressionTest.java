@@ -333,4 +333,77 @@ public class WALCompressionTest {
       }
     }
   }
+
+  @Test
+  public void testHotLoad()
+      throws IOException,
+          QueryProcessException,
+          IllegalPathException,
+          InterruptedException,
+          NoSuchFieldException,
+          ClassNotFoundException,
+          IllegalAccessException {
+    File dir = new File(compressionDir);
+    if (!dir.exists()) {
+      dir.mkdirs();
+    }
+    WALTestUtils.setMinCompressionSize(0);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setWALCompressionAlgorithm(CompressionType.UNCOMPRESSED);
+    // Do not compress wal for these entries
+    WALBuffer walBuffer = new WALBuffer("", compressionDir);
+    List<WALEntry> entryList = new ArrayList<>();
+    for (int i = 0; i < 50; ++i) {
+      InsertRowNode node = WALTestUtils.getInsertRowNode(devicePath, i);
+      WALEntry entry = new WALInfoEntry(0, node);
+      walBuffer.write(entry);
+      entryList.add(entry);
+    }
+    long sleepTime = 0;
+    while (!walBuffer.isAllWALEntriesConsumed()) {
+      Thread.sleep(100);
+      sleepTime += 100;
+      if (sleepTime > 10_000) {
+        Assert.fail("It has been too long for all entries to be consumed");
+      }
+    }
+
+    // compress wal for these entries
+    IoTDBDescriptor.getInstance().getConfig().setWALCompressionAlgorithm(CompressionType.LZ4);
+    for (int i = 50; i < 100; ++i) {
+      InsertRowNode node = WALTestUtils.getInsertRowNode(devicePath, i);
+      WALEntry entry = new WALInfoEntry(0, node);
+      walBuffer.write(entry);
+      entryList.add(entry);
+    }
+    sleepTime = 0;
+    while (!walBuffer.isAllWALEntriesConsumed()) {
+      Thread.sleep(100);
+      sleepTime += 100;
+      if (sleepTime > 10_000) {
+        Assert.fail("It has been too long for all entries to be consumed");
+      }
+    }
+    walBuffer.close();
+
+    File[] walFiles = WALFileUtils.listAllWALFiles(new File(compressionDir));
+    Assert.assertNotNull(walFiles);
+    Assert.assertEquals(1, walFiles.length);
+    List<WALEntry> readWALEntryList = new ArrayList<>();
+    try (WALReader reader = new WALReader(walFiles[0])) {
+      while (reader.hasNext()) {
+        readWALEntryList.add(reader.next());
+      }
+    }
+    Assert.assertEquals(entryList, readWALEntryList);
+
+    try (WALByteBufReader reader = new WALByteBufReader(walFiles[0])) {
+      for (int i = 0; i < 100; ++i) {
+        Assert.assertTrue(reader.hasNext());
+        ByteBuffer buffer = reader.next();
+        Assert.assertEquals(entryList.get(i).serializedSize(), buffer.array().length);
+      }
+    }
+  }
 }

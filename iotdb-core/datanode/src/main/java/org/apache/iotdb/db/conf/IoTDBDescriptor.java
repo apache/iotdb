@@ -1798,6 +1798,10 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "merge_threshold_of_explain_analyze",
                   String.valueOf(conf.getMergeThresholdOfExplainAnalyze()))));
+      boolean enableWALCompression =
+          Boolean.parseBoolean(properties.getProperty("enable_wal_compression", "false"));
+      conf.setWALCompressionAlgorithm(
+          enableWALCompression ? CompressionType.LZ4 : CompressionType.UNCOMPRESSED);
 
       // update Consensus config
       reloadConsensusProps(properties);

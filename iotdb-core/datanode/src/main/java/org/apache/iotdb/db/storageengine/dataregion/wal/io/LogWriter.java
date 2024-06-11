@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
+import java.util.Objects;
 
 /**
  * LogWriter writes the binary logs into a file, including writing {@link WALEntry} into .wal file
@@ -48,10 +49,10 @@ public abstract class LogWriter implements ILogWriter {
   protected long size = 0;
   protected long originalSize = 0;
   private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES * 2 + 1);
-  private final CompressionType compressionAlg =
-      IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm();
-  private final ICompressor compressor = ICompressor.getCompressor(compressionAlg);
-  private final ByteBuffer compressedByteBuffer;
+  private ICompressor compressor =
+      ICompressor.getCompressor(
+          IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm());
+  private ByteBuffer compressedByteBuffer;
   // Minimum size to compress, default is 32 KB
   private static long minCompressionSize = 32 * 1024L;
 
@@ -63,7 +64,9 @@ public abstract class LogWriter implements ILogWriter {
       this.logChannel.write(ByteBuffer.wrap(WALWriter.MAGIC_STRING.getBytes()));
       size += logChannel.position();
     }
-    if (compressionAlg != CompressionType.UNCOMPRESSED) {
+    if (IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm()
+        != CompressionType.UNCOMPRESSED) {
+      // TODO: Use a dynamic strategy to enlarge the buffer size
       compressedByteBuffer =
           ByteBuffer.allocate(
               compressor.getMaxBytesForCompression(
@@ -75,6 +78,8 @@ public abstract class LogWriter implements ILogWriter {
 
   @Override
   public double write(ByteBuffer buffer) throws IOException {
+    CompressionType compressionType =
+        IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm();
     int bufferSize = buffer.position();
     if (bufferSize == 0) {
       return 1.0;
@@ -83,10 +88,19 @@ public abstract class LogWriter implements ILogWriter {
     buffer.flip();
     boolean compressed = false;
     int uncompressedSize = bufferSize;
-    if (compressionAlg != CompressionType.UNCOMPRESSED
+    if (compressionType != CompressionType.UNCOMPRESSED
         /* Do not compress buffer that is less than min size */
         && bufferSize > minCompressionSize) {
+      if (Objects.isNull(compressedByteBuffer)) {
+        compressedByteBuffer =
+            ByteBuffer.allocate(
+                compressor.getMaxBytesForCompression(
+                    IoTDBDescriptor.getInstance().getConfig().getWalBufferSize()));
+      }
       compressedByteBuffer.clear();
+      if (compressor.getType() != compressionType) {
+        compressor = ICompressor.getCompressor(compressionType);
+      }
       compressor.compress(buffer, compressedByteBuffer);
       buffer = compressedByteBuffer;
       bufferSize = buffer.position();
@@ -100,7 +114,7 @@ public abstract class LogWriter implements ILogWriter {
     */
     headerBuffer.clear();
     headerBuffer.put(
-        compressed ? compressionAlg.serialize() : CompressionType.UNCOMPRESSED.serialize());
+        compressed ? compressionType.serialize() : CompressionType.UNCOMPRESSED.serialize());
     headerBuffer.putInt(bufferSize);
     if (compressed) {
       headerBuffer.putInt(uncompressedSize);
