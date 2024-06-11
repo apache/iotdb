@@ -93,7 +93,7 @@ public class MPPQueryContext {
   // splits predicate expression in table model into three parts,
   // index 0 represents metadataExpressions, index 1 represents expressionsCanPushDownToOperator,
   // index 2 represents expressionsCannotPushDownToOperator
-  public List<List<Expression>> tableModelPredicateExpressions;
+  private List<List<Expression>> tableModelPredicateExpressions;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -316,6 +316,15 @@ public class MPPQueryContext {
       queryPlanStatistics = new QueryPlanStatistics();
     }
     queryPlanStatistics.setLogicalOptimizationCost(logicalOptimizeCost);
+  }
+
+  public List<List<Expression>> getTableModelPredicateExpressions() {
+    return tableModelPredicateExpressions;
+  }
+
+  public void setTableModelPredicateExpressions(
+      List<List<Expression>> tableModelPredicateExpressions) {
+    this.tableModelPredicateExpressions = tableModelPredicateExpressions;
   }
 
   // region =========== FE memory related, make sure its not called concurrently ===========

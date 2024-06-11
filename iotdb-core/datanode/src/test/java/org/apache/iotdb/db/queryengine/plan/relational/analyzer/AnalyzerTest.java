@@ -51,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
@@ -448,6 +449,36 @@ public class AnalyzerTest {
             context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
+  }
+
+  @Test
+  public void predicatePushDownTest() throws IoTDBException {
+    // `is null expression`, `not expression` cannot be pushed down into TableScanOperator
+    sql =
+        "SELECT *, s1/2, s2+1 FROM table1 WHERE tag1 in ('A', 'B') and tag2 = 'C' "
+            + "and s2 iS NUll and S1 = 6 and s3 < 8.0 and tAG1 LIKE '%m'";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(
+                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertTrue(filterNode.getPredicate() instanceof LogicalExpression);
+    assertEquals(3, ((LogicalExpression) filterNode.getPredicate()).getTerms().size());
+    assertTrue(
+        rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof TableScanNode);
+    tableScanNode =
+        (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+    assertTrue(
+        tableScanNode.getPushDownPredicate() != null
+            && tableScanNode.getPushDownPredicate() instanceof LogicalExpression);
+    assertEquals(2, ((LogicalExpression) tableScanNode.getPushDownPredicate()).getTerms().size());
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {

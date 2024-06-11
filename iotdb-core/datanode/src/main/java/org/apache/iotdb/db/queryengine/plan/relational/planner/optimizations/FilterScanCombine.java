@@ -30,10 +30,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.IsNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Node;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.NotExpression;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,8 +47,11 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
  *
  * <p>In this class, we examine each expression in CNFs, determine how to use it, in metadata query,
  * or pushed down into ScanOperators, or it can only be used in FilterNode above with TableScanNode.
+ *
+ * <p>Notice that, when aggregation, multi-table, join are introduced, this optimization rule need
+ * to be adapted.
  */
-public class PredicateScanCombine implements RelationalPlanOptimizer {
+public class FilterScanCombine implements RelationalPlanOptimizer {
 
   @Override
   public PlanNode optimize(
@@ -120,11 +121,13 @@ public class PredicateScanCombine implements RelationalPlanOptimizer {
         return node;
       }
 
-      context.queryContext.tableModelPredicateExpressions =
-          splitConjunctionExpressions(context, node);
+      context.queryContext.setTableModelPredicateExpressions(
+          splitConjunctionExpressions(context, node));
 
-      if (!context.queryContext.tableModelPredicateExpressions.get(1).isEmpty()) {
-        List<Expression> expressions = context.queryContext.tableModelPredicateExpressions.get(1);
+      // exist expressions can push down to scan operator
+      if (!context.queryContext.getTableModelPredicateExpressions().get(1).isEmpty()) {
+        List<Expression> expressions =
+            context.queryContext.getTableModelPredicateExpressions().get(1);
         node.setPushDownPredicate(
             expressions.size() == 1
                 ? expressions.get(0)
@@ -133,9 +136,10 @@ public class PredicateScanCombine implements RelationalPlanOptimizer {
         node.setPushDownPredicate(null);
       }
 
-      // exist expressions can not push down
-      if (!context.queryContext.tableModelPredicateExpressions.get(2).isEmpty()) {
-        List<Expression> expressions = context.queryContext.tableModelPredicateExpressions.get(2);
+      // exist expressions can not push down to scan operator
+      if (!context.queryContext.getTableModelPredicateExpressions().get(2).isEmpty()) {
+        List<Expression> expressions =
+            context.queryContext.getTableModelPredicateExpressions().get(2);
         return new FilterNode(
             context.queryContext.getQueryId().genPlanNodeId(),
             node,
@@ -203,26 +207,6 @@ public class PredicateScanCombine implements RelationalPlanOptimizer {
     if (!expression.getChildren().isEmpty()) {
       for (Node node : expression.getChildren()) {
         if (containsDiffFunction((Expression) node)) {
-          return true;
-        }
-      }
-    }
-
-    return false;
-  }
-
-  /**
-   * 1. predicate expression equals NotExpression or IsNullPredicate. 2. predicate expression
-   * contains this filter can not be pushed down into Operator
-   */
-  static boolean cannotPushDownToOperator(Expression expression) {
-    if (expression instanceof NotExpression || expression instanceof IsNullPredicate) {
-      return true;
-    }
-
-    if (!expression.getChildren().isEmpty()) {
-      for (Node node : expression.getChildren()) {
-        if (cannotPushDownToOperator((Expression) node)) {
           return true;
         }
       }

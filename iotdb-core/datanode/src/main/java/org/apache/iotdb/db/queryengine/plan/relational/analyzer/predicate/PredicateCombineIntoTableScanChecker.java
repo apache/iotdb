@@ -44,8 +44,8 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
 
   private final Set<String> measurementColumns;
 
-  public static boolean check(Set<String> idOrAttributeColumnNames, Expression expression) {
-    return new PredicateCombineIntoTableScanChecker(idOrAttributeColumnNames).process(expression);
+  public static boolean check(Set<String> measurementColumns, Expression expression) {
+    return new PredicateCombineIntoTableScanChecker(measurementColumns).process(expression);
   }
 
   public PredicateCombineIntoTableScanChecker(Set<String> measurementColumns) {
