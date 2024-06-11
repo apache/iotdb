@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
@@ -372,36 +373,11 @@ public class StatementAnalyzer {
 
       final MPPQueryContext context = insert.getContext();
       final InsertTabletStatement insertTabletStatement = insert.getInnerTreeStatement();
-      context.setQueryType(QueryType.WRITE);
-      insertTabletStatement.semanticCheck();
-      IAnalysis analysis = new org.apache.iotdb.db.queryengine.plan.analyze.Analysis();
 
-      validateSchema(analysis, insertTabletStatement,
-          () -> SchemaValidator.validate(metadata, insert, context));
-      InsertBaseStatement realStatement = removeLogicalView(analysis, insertTabletStatement);
-      if (analysis.isFinishQueryAfterAnalyze()) {
-        return ret;
-      }
-      analysis.setStatement(realStatement);
+      IAnalysis analysis = AnalyzeUtils.analyzeInsert(context, insertTabletStatement,
+          () -> SchemaValidator.validate(metadata, insert, context),
+          metadata::getOrCreateDataPartition);
 
-      if (realStatement instanceof InsertTabletStatement) {
-        InsertTabletStatement realInsertTabletStatement = (InsertTabletStatement) realStatement;
-        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-        dataPartitionQueryParam.setDevicePath(
-            realInsertTabletStatement.getDevicePath().getFullPath());
-        dataPartitionQueryParam.setTimePartitionSlotList(
-            realInsertTabletStatement.getTimePartitionSlots());
-
-        analysis = getAnalysisForWriting(
-            analysis,
-            Collections.singletonList(dataPartitionQueryParam),
-            context.getSession().getUserName(), partitionFetcher);
-      } else {
-        analysis =  computeAnalysisForMultiTablets(
-            analysis,
-            (InsertMultiTabletsStatement) realStatement,
-            context.getSession().getUserName(), partitionFetcher);
-      }
       // TODO-TableIngestion: use IAnalysis
       // StatementAnalyzer.this.analysis = analysis;
       return ret;

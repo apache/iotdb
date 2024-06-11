@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import java.util.Map;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputationWithAutoCreation;
@@ -82,6 +85,18 @@ public interface Metadata {
   default void fetchAndComputeSchemaWithAutoCreate(
       List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList,
       MPPQueryContext context) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Get or create data partition, used in cluster write scenarios. if enableAutoCreateSchema is
+   * true and database/series/time slots not exists, then automatically create.
+   *
+   * @param dataPartitionQueryParams the list of DataPartitionQueryParams
+   * @param userName
+   */
+  default DataPartition getOrCreateDataPartition(
+      List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
     throw new UnsupportedOperationException();
   }
 }

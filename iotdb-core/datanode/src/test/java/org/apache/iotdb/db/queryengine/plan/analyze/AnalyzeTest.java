@@ -642,7 +642,7 @@ public class AnalyzeTest {
 
     for (int i = 0; i < sqls.length; i++) {
       Analysis analysis = analyzeSQL(sqls[i]);
-      QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
+      QueryStatement queryStatement = (QueryStatement) analysis.getTreeStatement();
       if (predicates[i] == null) {
         Assert.assertNull(queryStatement.getWhereCondition());
       } else {

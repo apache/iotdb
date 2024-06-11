@@ -33,7 +33,6 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -52,6 +51,41 @@ public class AnalyzeUtils {
 
   private AnalyzeUtils() {
     // util class
+  }
+
+  public static IAnalysis analyzeInsert(MPPQueryContext context,
+      InsertBaseStatement insertBaseStatement, Runnable schemaValidation,
+      DataPartitionQueryFunc partitionFetcher) {
+    context.setQueryType(QueryType.WRITE);
+    insertBaseStatement.semanticCheck();
+    IAnalysis analysis = new org.apache.iotdb.db.queryengine.plan.analyze.Analysis();
+    validateSchema(analysis, insertBaseStatement,
+        schemaValidation);
+    InsertBaseStatement realStatement = removeLogicalView(analysis, insertBaseStatement);
+    if (analysis.isFinishQueryAfterAnalyze()) {
+      return analysis;
+    }
+    analysis.setTreeStatement(realStatement);
+
+    if (realStatement instanceof InsertTabletStatement) {
+      InsertTabletStatement realInsertTabletStatement = (InsertTabletStatement) realStatement;
+      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+      dataPartitionQueryParam.setDevicePath(
+          realInsertTabletStatement.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setTimePartitionSlotList(
+          realInsertTabletStatement.getTimePartitionSlots());
+
+      analysis = getAnalysisForWriting(
+          analysis,
+          Collections.singletonList(dataPartitionQueryParam),
+          context.getSession().getUserName(), partitionFetcher);
+    } else {
+      analysis =  computeAnalysisForMultiTablets(
+          analysis,
+          (InsertMultiTabletsStatement) realStatement,
+          context.getSession().getUserName(), partitionFetcher);
+    }
+    return analysis;
   }
 
   public static void validateSchema(
@@ -103,12 +137,12 @@ public class AnalyzeUtils {
   }
 
   /** get analysis according to statement and params */
-  public static Analysis getAnalysisForWriting(
-      Analysis analysis, List<DataPartitionQueryParam> dataPartitionQueryParams, String userName,
-      IPartitionFetcher partitionFetcher) {
+  public static IAnalysis getAnalysisForWriting(
+      IAnalysis analysis, List<DataPartitionQueryParam> dataPartitionQueryParams, String userName,
+      DataPartitionQueryFunc partitionQueryFunc) {
 
     DataPartition dataPartition =
-        partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams, userName);
+        partitionQueryFunc.queryDataPartition(dataPartitionQueryParams, userName);
     if (dataPartition.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(
@@ -121,9 +155,9 @@ public class AnalyzeUtils {
     return analysis;
   }
 
-  public static Analysis computeAnalysisForInsertRows(
-      Analysis analysis, InsertRowsStatement insertRowsStatement, String userName,
-      IPartitionFetcher partitionFetcher) {
+  public static IAnalysis computeAnalysisForInsertRows(
+      IAnalysis analysis, InsertRowsStatement insertRowsStatement, String userName,
+      DataPartitionQueryFunc partitionFetcher) {
     Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
     for (InsertRowStatement insertRowStatement : insertRowsStatement.getInsertRowStatementList()) {
       Set<TTimePartitionSlot> timePartitionSlotSet =
@@ -143,9 +177,9 @@ public class AnalyzeUtils {
     return getAnalysisForWriting(analysis, dataPartitionQueryParams, userName, partitionFetcher);
   }
 
-  public static Analysis computeAnalysisForMultiTablets(
-      Analysis analysis, InsertMultiTabletsStatement insertMultiTabletsStatement, String userName
-      , IPartitionFetcher partitionFetcher) {
+  public static IAnalysis computeAnalysisForMultiTablets(
+      IAnalysis analysis, InsertMultiTabletsStatement insertMultiTabletsStatement, String userName
+      , DataPartitionQueryFunc partitionFetcher) {
     Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
     for (InsertTabletStatement insertTabletStatement :
         insertMultiTabletsStatement.getInsertTabletStatementList()) {
@@ -164,5 +198,10 @@ public class AnalyzeUtils {
     }
 
     return getAnalysisForWriting(analysis, dataPartitionQueryParams, userName, partitionFetcher);
+  }
+
+  public interface DataPartitionQueryFunc {
+    DataPartition queryDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams,
+        String userName);
   }
 }

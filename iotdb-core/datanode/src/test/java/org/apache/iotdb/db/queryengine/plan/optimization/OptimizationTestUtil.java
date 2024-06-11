@@ -122,7 +122,7 @@ public class OptimizationTestUtil {
     Analysis analysis = analyzer.analyze(statement);
 
     PlanNode actualPlan =
-        new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
+        new LogicalPlanVisitor(analysis).process(analysis.getTreeStatement(), context);
     for (PlanOptimizer preOptimizer : preOptimizers) {
       actualPlan = preOptimizer.optimize(actualPlan, analysis, context);
     }
@@ -142,7 +142,7 @@ public class OptimizationTestUtil {
     Analysis analysis = analyzer.analyze(statement);
 
     PlanNode actualPlan =
-        new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
+        new LogicalPlanVisitor(analysis).process(analysis.getTreeStatement(), context);
     for (PlanOptimizer preOptimizer : preOptimizers) {
       actualPlan = preOptimizer.optimize(actualPlan, analysis, context);
     }
