@@ -156,10 +156,17 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
+  public ISchemaTree fetchSchemaInDeviceLevel(PathPatternTree patternTree, MPPQueryContext context) {
+    patternTree.constructTree();
+
+    return ISchemaFetcher.super.fetchSchemaInDeviceLevel(patternTree, context);
+  }
+
+  @Override
   public ClusterSchemaTree fetchSchemaWithTags(
       PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
     patternTree.constructTree();
-    return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(
+   return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(
         patternTree, true, withTemplate, context);
   }
 

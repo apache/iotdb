@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.common.schematree;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -55,6 +56,7 @@ import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 import static org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode.SCHEMA_ENTITY_NODE;
 import static org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode.SCHEMA_MEASUREMENT_NODE;
@@ -73,6 +75,8 @@ public class ClusterSchemaTree implements ISchemaTree {
   /** used to judge schema tree type */
   private boolean hasNormalTimeSeries = false;
 
+  private PathPatternTree authorityScope = ALL_MATCH_SCOPE;
+
   private Map<Integer, Template> templateMap = new HashMap<>();
 
   public ClusterSchemaTree() {
@@ -87,6 +91,10 @@ public class ClusterSchemaTree implements ISchemaTree {
     this.templateMap = templateMap;
   }
 
+  public void setAuthorityScope(PathPatternTree authorityScope) {
+    this.authorityScope = authorityScope;
+  }
+
   /**
    * Return all measurement paths for given path pattern and filter the result by slimit and offset.
    *
@@ -99,7 +107,7 @@ public class ClusterSchemaTree implements ISchemaTree {
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
     try (SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
         SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
-            root, pathPattern, isPrefixMatch, slimit, soffset)) {
+            root, pathPattern, isPrefixMatch, slimit, soffset, authorityScope)) {
       visitor.setTemplateMap(templateMap);
       return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
     }
