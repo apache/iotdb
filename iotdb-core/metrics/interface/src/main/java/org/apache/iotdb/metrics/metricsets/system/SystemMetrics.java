@@ -169,7 +169,6 @@ public class SystemMetrics implements IMetricSet {
         a -> osMxBean.getCommittedVirtualMemorySize(),
         SystemTag.NAME.toString(),
         SYSTEM);
-    logger.info("System type: {}", CONFIG.getSystemType());
     if (CONFIG.getSystemType() == SystemType.LINUX) {
       metricService.createAutoGauge(
           SystemMetric.LINUX_MEMORY_SIZE.toString(),
