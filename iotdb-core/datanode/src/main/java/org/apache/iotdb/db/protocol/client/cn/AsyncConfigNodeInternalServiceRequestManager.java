@@ -88,10 +88,8 @@ public class AsyncConfigNodeInternalServiceRequestManager
   }
 
   private static class ClientPoolHolder {
-
     private static final AsyncConfigNodeInternalServiceRequestManager INSTANCE =
         new AsyncConfigNodeInternalServiceRequestManager();
-
     private ClientPoolHolder() {
       // Empty constructor
     }
