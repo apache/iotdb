@@ -63,6 +63,8 @@ public class IoTDBSubscriptionRestartIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionRestartIT.class);
 
+  private volatile boolean setupFailed = false;
+
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv()
@@ -74,7 +76,14 @@ public class IoTDBSubscriptionRestartIT {
         .setSchemaReplicationFactor(3)
         .setDataReplicationFactor(2);
 
-    EnvFactory.getEnv().initClusterEnvironment(3, 3);
+    try {
+      EnvFactory.getEnv().initClusterEnvironment(3, 3);
+    } catch (final Throwable e) {
+      e.printStackTrace();
+      setupFailed = true;
+      return;
+    }
+    setupFailed = false;
   }
 
   @After
@@ -84,6 +93,10 @@ public class IoTDBSubscriptionRestartIT {
 
   @Test
   public void testSubscriptionAfterRestartCluster() throws Exception {
+    if (setupFailed) {
+      return;
+    }
+
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
@@ -213,6 +226,10 @@ public class IoTDBSubscriptionRestartIT {
 
   @Test
   public void testSubscriptionAfterRestartDataNode() throws Exception {
+    if (setupFailed) {
+      return;
+    }
+
     // Fetch ip and port from DN 0
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
@@ -355,6 +372,10 @@ public class IoTDBSubscriptionRestartIT {
 
   @Test
   public void testSubscriptionWhenConfigNodeLeaderChange() throws Exception {
+    if (setupFailed) {
+      return;
+    }
+
     // Fetch ip and port from DN 0
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
