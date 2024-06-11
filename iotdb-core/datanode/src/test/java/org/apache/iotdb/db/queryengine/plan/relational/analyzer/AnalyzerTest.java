@@ -50,9 +50,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Statement;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.junit.Test;

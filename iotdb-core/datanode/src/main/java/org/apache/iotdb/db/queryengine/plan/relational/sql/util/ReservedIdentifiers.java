@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Identifier;
 
 import java.util.Set;
 

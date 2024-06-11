@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.util;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 
 import com.google.common.graph.SuccessorsFunction;
 import com.google.common.graph.Traverser;

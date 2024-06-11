@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeException;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 
 import org.apache.tsfile.utils.Pair;
 
@@ -36,11 +36,11 @@ import java.util.List;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.BooleanLiteral.TRUE_LITERAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression.Operator.AND;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression.Operator.OR;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression.and;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression.or;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.AND;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.OR;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.and;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.or;
 
 public class PredicateUtils {
 

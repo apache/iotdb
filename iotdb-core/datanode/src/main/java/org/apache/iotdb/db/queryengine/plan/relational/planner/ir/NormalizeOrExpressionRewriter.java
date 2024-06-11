@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMultimap;
@@ -37,8 +37,8 @@ import java.util.Set;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.and;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.or;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.ComparisonExpression.Operator.EQUAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.tree.LogicalExpression.Operator.AND;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.AND;
 
 public final class NormalizeOrExpressionRewriter {
 

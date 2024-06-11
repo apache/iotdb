@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.AllColumns;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.QualifiedName;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.tree.WithQuery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 
 import com.google.common.collect.ImmutableMap;
 
