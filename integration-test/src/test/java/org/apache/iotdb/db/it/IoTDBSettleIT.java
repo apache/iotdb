@@ -56,7 +56,7 @@ public class IoTDBSettleIT {
   @AfterClass
   public static void tearDown() throws Exception {
     close();
-    EnvFactory.getEnv().initClusterEnvironment();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   @Test

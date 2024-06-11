@@ -24,9 +24,11 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
@@ -649,6 +651,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus setConfiguration(TSetConfigurationReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.setConfiguration(req), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
   public TSStatus startRepairData() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.startRepairData(), status -> !updateConfigNodeLeader(status));
@@ -664,6 +672,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TSStatus loadConfiguration() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.loadConfiguration(), status -> !updateConfigNodeLeader(status));
+  }
+
+  @Override
+  public TShowConfigurationResp showConfiguration(int nodeId) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showConfiguration(nodeId), resp -> !updateConfigNodeLeader(resp.getStatus()));
   }
 
   @Override

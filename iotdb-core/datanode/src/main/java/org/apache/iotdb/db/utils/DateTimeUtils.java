@@ -54,6 +54,8 @@ public class DateTimeUtils {
     // forbidding instantiation
   }
 
+  private static final String TIMESTAMP_PRECISION =
+      CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
   private static Function<Long, Long> CAST_TIMESTAMP_TO_MS;
 
   static {
@@ -825,7 +827,7 @@ public class DateTimeUtils {
     parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
     parser1.removeErrorListeners();
     parser1.addErrorListener(SqlParseError.INSTANCE);
-    return astVisitor.parseDateExpression(parser1.dateExpression(), "ms");
+    return astVisitor.parseDateExpression(parser1.dateExpression(), TIMESTAMP_PRECISION);
   }
 
   public static Integer parseDateExpressionToInt(String dateExpression) {

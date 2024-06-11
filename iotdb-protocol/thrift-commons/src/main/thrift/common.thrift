@@ -121,6 +121,11 @@ struct TSchemaNode {
   2: required byte nodeType
 }
 
+struct TSetConfigurationReq {
+  1: required map<string,string> configs
+  2: required i32 nodeId
+}
+
 // for TTL
 struct TSetTTLReq {
   1: required list<string> pathPattern
@@ -216,3 +221,14 @@ enum TAggregationType {
   MIN_BY,
   UDAF
 }
+
+struct TShowConfigurationTemplateResp {
+  1: required TSStatus status
+  2: required string content
+}
+
+struct TShowConfigurationResp {
+  1: required TSStatus status
+  2: required string content
+}
+
