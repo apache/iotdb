@@ -95,7 +95,8 @@ public class ConfigurationFileUtils {
               "tag_attribute_total_size",
               "timestamp_precision",
               "iotdb_server_encrypt_decrypt_provider",
-              "iotdb_server_encrypt_decrypt_provider_parameter"));
+              "iotdb_server_encrypt_decrypt_provider_parameter",
+              "pipe_lib_dir"));
 
   public static void checkAndMayUpdate(
       URL systemUrl, URL configNodeUrl, URL dataNodeUrl, URL commonUrl)
