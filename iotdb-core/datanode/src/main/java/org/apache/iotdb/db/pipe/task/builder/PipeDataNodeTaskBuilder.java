@@ -54,7 +54,7 @@ public class PipeDataNodeTaskBuilder {
     CONNECTOR_EXECUTOR_MAP.put(
         PipeType.SUBSCRIPTION, PipeSubtaskExecutorManager.getInstance().getSubscriptionExecutor());
     CONNECTOR_EXECUTOR_MAP.put(
-        PipeType.CONSENSUS, PipeSubtaskExecutorManager.getInstance().getConnectorExecutor());
+        PipeType.CONSENSUS, PipeSubtaskExecutorManager.getInstance().getConsensusExecutor());
   }
 
   protected final Map<String, String> systemParameters = new HashMap<>();
@@ -89,7 +89,7 @@ public class PipeDataNodeTaskBuilder {
               blendUserAndSystemParameters(pipeStaticMeta.getConnectorParameters()),
               regionId,
               CONNECTOR_EXECUTOR_MAP.get(pipeType));
-    } else { // user pipe
+    } else { // user pipe or consensus pipe
       connectorStage =
           new PipeTaskConnectorStage(
               pipeStaticMeta.getPipeName(),
