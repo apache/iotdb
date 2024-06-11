@@ -236,9 +236,9 @@ public class CommonConfig {
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
-  private double pipeRemainingTimeCommitRateSmoothingFactor = 0.4;
+  private double pipeRemainingTimeCommitRateSmoothingFactor = 1.0;
   private PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
-      PipeRemainingTimeRateAverageTime.FIFTEEN_MINUTES;
+      PipeRemainingTimeRateAverageTime.MEAN;
 
   private long twoStageAggregateMaxCombinerLiveTimeInMs = 8 * 60 * 1000L; // 8 minutes
   private long twoStageAggregateDataRegionInfoCacheTimeInMs = 3 * 60 * 1000L; // 3 minutes
