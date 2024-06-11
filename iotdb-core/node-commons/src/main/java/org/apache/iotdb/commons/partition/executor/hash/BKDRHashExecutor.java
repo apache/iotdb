@@ -24,10 +24,11 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
+
 public class BKDRHashExecutor extends SeriesPartitionExecutor {
 
   private static final int SEED = 131;
-  private static final char PATH_SEPARATOR = '.';
 
   public BKDRHashExecutor(int deviceGroupCount) {
     super(deviceGroupCount);
