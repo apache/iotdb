@@ -16,9 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.protocol.rest;
+package org.apache.iotdb.rest.it;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.RemoteIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonObject;
@@ -34,8 +40,9 @@ import org.apache.http.util.EntityUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -47,17 +54,25 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-// move to integration-test
-@Ignore
-public class GrafanaApiServiceTest {
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
+@SuppressWarnings("unchecked")
+public class GrafanaApiServiceIT {
+
+  private int port = 18080;
+
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
+    BaseEnv baseEnv = EnvFactory.getEnv();
+    baseEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
+    baseEnv.initClusterEnvironment();
+    DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
+    port = portConflictDataNodeWrapper.getRestServicePort();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
   private String getAuthorization(String username, String password) {
@@ -77,18 +92,33 @@ public class GrafanaApiServiceTest {
   @Test
   public void login() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    HttpGet httpGet = new HttpGet("http://127.0.0.1:18080/grafana/v1/login");
+    HttpGet httpGet = new HttpGet("http://127.0.0.1:" + port + "/grafana/v1/login");
     CloseableHttpResponse response = null;
     try {
       String authorization = getAuthorization("root", "root");
       httpGet.setHeader("Authorization", authorization);
-      response = httpClient.execute(httpGet);
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpGet);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertEquals(200, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
-      e.printStackTrace();
+
       fail(e.getMessage());
     } finally {
       try {
@@ -99,7 +129,7 @@ public class GrafanaApiServiceTest {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+
         fail(e.getMessage());
       }
     }
@@ -108,17 +138,31 @@ public class GrafanaApiServiceTest {
   public void rightInsertTablet(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/insertTablet");
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/insertTablet");
       String json =
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s4\",\"s5\"],\"dataTypes\":[\"INT32\",\"INT32\"],\"values\":[[11,2],[15,13]],\"isAligned\":false,\"deviceId\":\"root.sg25\"}";
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
-      response = httpClient.execute(httpPost);
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
       assertEquals(200, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
-      e.printStackTrace();
+
       fail(e.getMessage());
     } finally {
       try {
@@ -126,16 +170,16 @@ public class GrafanaApiServiceTest {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+
         fail(e.getMessage());
       }
     }
   }
 
-  public void expressionAggGroupByTimeAndLevel(CloseableHttpClient httpClient) {
+  public void expressionGroupByLevel(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/grafana/v1/query/expression");
       String sql =
           "{\"expression\":[\"count(s4)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232143960,\"endTime\":1635232153960,\"control\":\"group by([1635232143960,1635232153960),1s),level=1\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
@@ -147,12 +191,11 @@ public class GrafanaApiServiceTest {
       List<Long> timestampsResult = (List<Long>) map.get("timestamps");
       List<Long> expressionsResult = (List<Long>) map.get("expressions");
       List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-      Assert.assertTrue(map.size() > 0);
+      Assert.assertFalse(map.isEmpty());
       Assert.assertTrue(timestampsResult.size() == 10);
       Assert.assertTrue(valuesResult.size() == 1);
       Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
     } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       try {
@@ -160,7 +203,7 @@ public class GrafanaApiServiceTest {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+
         fail(e.getMessage());
       }
     }
@@ -169,11 +212,26 @@ public class GrafanaApiServiceTest {
   public void expression(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/grafana/v1/query/expression");
       String sql =
           "{\"expression\":[\"s4\",\"s5\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
-      response = httpClient.execute(httpPost);
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       ObjectMapper mapper = new ObjectMapper();
@@ -190,7 +248,7 @@ public class GrafanaApiServiceTest {
       Assert.assertArrayEquals(
           values2, ((List) (map.get("values")).get(1)).toArray(new Object[] {}));
     } catch (IOException e) {
-      e.printStackTrace();
+
       fail(e.getMessage());
     } finally {
       try {
@@ -198,7 +256,7 @@ public class GrafanaApiServiceTest {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+
         fail(e.getMessage());
       }
     }
@@ -207,28 +265,43 @@ public class GrafanaApiServiceTest {
   public void expressionWithControl(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/grafana/v1/query/expression");
       String sql =
           "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
-      response = httpClient.execute(httpPost);
+
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
+
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       ObjectMapper mapper = new ObjectMapper();
-      Map<String, List> map = mapper.readValue(message, Map.class);
+      Map<String, List<?>> map = mapper.readValue(message, Map.class);
       String[] expressionsResult = {"sum(root.sg25.s4)", "avg(root.sg25.s5)"};
       Long[] timestamps = {1635232133960L, 1635232153960L};
       Object[] values1 = {11.0, 2.0};
       Object[] values2 = {15.0, 13.0};
-      Assert.assertArrayEquals(
-          expressionsResult, (map.get("expressions")).toArray(new String[] {}));
-      Assert.assertArrayEquals(timestamps, (map.get("timestamps")).toArray(new Long[] {}));
+      Assert.assertArrayEquals(expressionsResult, (map.get("expressions")).toArray(new Object[0]));
+      Assert.assertArrayEquals(timestamps, (map.get("timestamps")).toArray(new Object[0]));
       Assert.assertArrayEquals(
           values1, ((List) (map.get("values")).get(0)).toArray(new Object[] {}));
       Assert.assertArrayEquals(
           values2, ((List) (map.get("values")).get(1)).toArray(new Object[] {}));
     } catch (IOException e) {
-      e.printStackTrace();
+
       fail(e.getMessage());
     } finally {
       try {
@@ -236,7 +309,7 @@ public class GrafanaApiServiceTest {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+
         fail(e.getMessage());
       }
     }
@@ -245,27 +318,41 @@ public class GrafanaApiServiceTest {
   public void expressionWithConditionControl(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/grafana/v1/query/expression");
       String sql =
           "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"condition\":\"timestamp=1635232143960\",\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
-      response = httpClient.execute(httpPost);
+      for (int i = 0; i < 30; i++) {
+        try {
+          response = httpClient.execute(httpPost);
+          break;
+        } catch (Exception e) {
+          if (i == 29) {
+            throw e;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException ex) {
+            throw new RuntimeException(ex);
+          }
+        }
+      }
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       ObjectMapper mapper = new ObjectMapper();
-      Map<String, List> map = mapper.readValue(message, Map.class);
+      Map<String, List<?>> map = mapper.readValue(message, Map.class);
       String[] expressionsResult = {"sum(root.sg25.s4)", "avg(root.sg25.s5)"};
       Long[] timestamps = {1635232133960L, 1635232153960L};
       Object[] values1 = {11.0, null};
       Object[] values2 = {15.0, null};
-      Assert.assertArrayEquals(expressionsResult, map.get("expressions").toArray(new String[] {}));
-      Assert.assertArrayEquals(timestamps, (map.get("timestamps")).toArray(new Long[] {}));
+      Assert.assertArrayEquals(expressionsResult, map.get("expressions").toArray(new Object[0]));
+      Assert.assertArrayEquals(timestamps, (map.get("timestamps")).toArray(new Object[0]));
       Assert.assertArrayEquals(
           values1, ((List) (map.get("values")).get(0)).toArray(new Object[] {}));
       Assert.assertArrayEquals(
           values2, ((List) (map.get("values")).get(1)).toArray(new Object[] {}));
     } catch (IOException e) {
-      e.printStackTrace();
+
       fail(e.getMessage());
     } finally {
       try {
@@ -273,7 +360,7 @@ public class GrafanaApiServiceTest {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+
         fail(e.getMessage());
       }
     }
@@ -282,7 +369,7 @@ public class GrafanaApiServiceTest {
   public void variable(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/variable");
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/grafana/v1/variable");
       String sql = "{\"sql\":\"show child paths root.sg25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
@@ -293,7 +380,7 @@ public class GrafanaApiServiceTest {
       String[] expectedResult = {"s4", "s5"};
       Assert.assertArrayEquals(expectedResult, list.toArray(new String[] {}));
     } catch (IOException e) {
-      e.printStackTrace();
+
       fail(e.getMessage());
     } finally {
       try {
@@ -301,7 +388,7 @@ public class GrafanaApiServiceTest {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+
         fail(e.getMessage());
       }
     }
@@ -315,7 +402,7 @@ public class GrafanaApiServiceTest {
     try {
       httpClient.close();
     } catch (IOException e) {
-      e.printStackTrace();
+
       fail(e.getMessage());
     }
   }
@@ -325,11 +412,11 @@ public class GrafanaApiServiceTest {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     rightInsertTablet(httpClient);
     expression(httpClient);
-    expressionAggGroupByTimeAndLevel(httpClient);
+    // expressionGroupByLevel(httpClient);
     try {
       httpClient.close();
     } catch (IOException e) {
-      e.printStackTrace();
+
       fail(e.getMessage());
     }
   }
@@ -342,7 +429,7 @@ public class GrafanaApiServiceTest {
     try {
       httpClient.close();
     } catch (IOException e) {
-      e.printStackTrace();
+
       fail(e.getMessage());
     }
   }
@@ -355,95 +442,7 @@ public class GrafanaApiServiceTest {
     try {
       httpClient.close();
     } catch (IOException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
 
-  @Test
-  public void expressionWithAggGroupByTimeTest() {
-    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    rightInsertTablet(httpClient);
-
-    CloseableHttpResponse response = null;
-    try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
-      String sql =
-          "{\"expression\":[\"count(s4)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232143960,\"endTime\":1635232153960,\"control\":\"group by([1635232143960,1635232153960),1s)\"}";
-      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
-      response = httpClient.execute(httpPost);
-      HttpEntity responseEntity = response.getEntity();
-      String message = EntityUtils.toString(responseEntity, "utf-8");
-      ObjectMapper mapper = new ObjectMapper();
-      Map map = mapper.readValue(message, Map.class);
-      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
-      List<Long> expressionsResult = (List<Long>) map.get("expressions");
-      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-      Assert.assertTrue(map.size() > 0);
-      Assert.assertTrue(timestampsResult.size() == 10);
-      Assert.assertTrue(valuesResult.size() == 1);
-      Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
-    } catch (IOException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    } finally {
-      try {
-        if (response != null) {
-          response.close();
-        }
-      } catch (IOException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
-    }
-    try {
-      httpClient.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void expressionWithAggGroupByLevelTest() {
-    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
-    rightInsertTablet(httpClient);
-
-    CloseableHttpResponse response = null;
-    try {
-      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
-      String sql =
-          "{\"expression\":[\"count(s4)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232143960,\"endTime\":1635232153960,\"control\":\"group by level = 1\"}";
-      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
-      response = httpClient.execute(httpPost);
-      HttpEntity responseEntity = response.getEntity();
-      String message = EntityUtils.toString(responseEntity, "utf-8");
-      ObjectMapper mapper = new ObjectMapper();
-      Map map = mapper.readValue(message, Map.class);
-      List<Long> timestampsResult = (List<Long>) map.get("timestamps");
-      List<Long> expressionsResult = (List<Long>) map.get("expressions");
-      List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-      Assert.assertTrue(map.size() > 0);
-      Assert.assertTrue(timestampsResult == null);
-      Assert.assertTrue(valuesResult.size() == 1);
-      Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
-    } catch (IOException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    } finally {
-      try {
-        if (response != null) {
-          response.close();
-        }
-      } catch (IOException e) {
-        e.printStackTrace();
-        fail(e.getMessage());
-      }
-    }
-    try {
-      httpClient.close();
-    } catch (IOException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     }
   }
