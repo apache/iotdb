@@ -153,7 +153,7 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     final long startTime = System.nanoTime();
     if (skipExecute()) {
-      LOGGER.debug("[SkipExecute]");
+      LOGGER.debug("[SkipExecute After Analyze]");
       if (context.getQueryType() == QueryType.WRITE && analysis.isFailed()) {
         stateMachine.transitionToFailed(analysis.getFailStatus());
       } else {

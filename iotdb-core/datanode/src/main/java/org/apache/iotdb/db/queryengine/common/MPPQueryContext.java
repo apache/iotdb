@@ -81,7 +81,7 @@ public class MPPQueryContext {
   // splits predicate expression in table model into three parts,
   // index 0 represents metadataExpressions, index 1 represents expressionsCanPushDownToOperator,
   // index 2 represents expressionsCannotPushDownToOperator
-  public List<List<Expression>> tableModelPredicateExpressions;
+  private List<List<Expression>> tableModelPredicateExpressions;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -307,6 +307,28 @@ public class MPPQueryContext {
 
   public boolean isSkipSchemaValidate() {
     return skipSchemaValidate;
+  }
+
+  public List<List<Expression>> getTableModelPredicateExpressions() {
+    return tableModelPredicateExpressions;
+  }
+
+  public void setTableModelPredicateExpressions(
+      List<List<Expression>> tableModelPredicateExpressions) {
+    this.tableModelPredicateExpressions = tableModelPredicateExpressions;
+  }
+
+  // region =========== FE memory related, make sure its not called concurrently ===========
+
+  /**
+   * This method does not require concurrency control because the query plan is generated in a
+   * single-threaded manner.
+   */
+  public void reserveMemoryForFrontEnd(final long bytes) {
+    //    this.bytesToBeReservedForFrontEnd += bytes;
+    //    if (this.bytesToBeReservedForFrontEnd >= MEMORY_BATCH_THRESHOLD) {
+    //      reserveMemoryForFrontEndImmediately();
+    //    }
   }
 
   public void setSkipSchemaValidate(boolean skipSchemaValidate) {

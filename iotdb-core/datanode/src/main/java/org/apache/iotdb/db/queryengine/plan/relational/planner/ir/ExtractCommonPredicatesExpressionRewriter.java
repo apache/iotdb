@@ -163,7 +163,7 @@ public final class ExtractCommonPredicatesExpressionRewriter {
     }
 
     private Set<Expression> filterDeterministicPredicates(List<Expression> predicates) {
-      return predicates.stream().filter(expression -> isDeterministic(expression)).collect(toSet());
+      return predicates.stream().filter(DeterminismEvaluator::isDeterministic).collect(toSet());
     }
 
     private static <T> List<T> removeAll(Collection<T> collection, Collection<T> elementsToRemove) {

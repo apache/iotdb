@@ -27,7 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -35,7 +34,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.relational.sql.tree.Expression;
-import org.apache.iotdb.db.relational.sql.tree.LogicalExpression;
 
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -99,10 +97,10 @@ public class IndexScan implements RelationalPlanOptimizer {
       }
 
       List<Expression> metadataExpressions =
-          context.queryContext.tableModelPredicateExpressions == null
-                  || context.queryContext.tableModelPredicateExpressions.get(0).isEmpty()
+          context.queryContext.getTableModelPredicateExpressions() == null
+                  || context.queryContext.getTableModelPredicateExpressions().get(0).isEmpty()
               ? Collections.emptyList()
-              : context.queryContext.tableModelPredicateExpressions.get(0);
+              : context.queryContext.getTableModelPredicateExpressions().get(0);
       String dbName = context.getSessionInfo().getDatabaseName().get();
       List<String> attributeColumns =
           node.getOutputSymbols().stream()
@@ -159,49 +157,6 @@ public class IndexScan implements RelationalPlanOptimizer {
       }
 
       return node;
-    }
-  }
-
-  private static List<Expression> getConjunctionExpressions(
-      RewriterContext context, TableScanNode node) {
-    Expression predicate = context.predicate;
-    if (predicate == null) {
-      return Collections.emptyList();
-    }
-
-    Set<String> idOrAttributeColumnNames =
-        node.getIdAndAttributeIndexMap().keySet().stream()
-            .map(Symbol::getName)
-            .collect(Collectors.toSet());
-    if (predicate instanceof LogicalExpression
-        && ((LogicalExpression) predicate).getOperator() == LogicalExpression.Operator.AND) {
-      List<Expression> resultExpressions = new ArrayList<>();
-      List<Expression> beExpressions = new ArrayList<>();
-      for (Expression subExpression : ((LogicalExpression) predicate).getTerms()) {
-        if (Boolean.TRUE.equals(
-            new PredicatePushIntoMetadataChecker(idOrAttributeColumnNames)
-                .process(subExpression))) {
-          resultExpressions.add(subExpression);
-        } else {
-          beExpressions.add(subExpression);
-        }
-      }
-      if (beExpressions.isEmpty()) {
-        context.predicate = null;
-      } else if (beExpressions.size() == 1) {
-        context.predicate = beExpressions.get(0);
-      } else {
-        context.predicate = new LogicalExpression(LogicalExpression.Operator.AND, beExpressions);
-      }
-      return resultExpressions;
-    }
-
-    if (Boolean.FALSE.equals(
-        new PredicatePushIntoMetadataChecker(idOrAttributeColumnNames).process(predicate))) {
-      return Collections.emptyList();
-    } else {
-      context.predicate = null;
-      return Collections.singletonList(predicate);
     }
   }
 

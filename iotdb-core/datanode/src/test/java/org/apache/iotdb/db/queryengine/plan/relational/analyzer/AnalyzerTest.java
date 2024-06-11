@@ -45,10 +45,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributionPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.relational.sql.parser.SqlParser;
+import org.apache.iotdb.db.relational.sql.tree.LogicalExpression;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
@@ -218,6 +221,258 @@ public class AnalyzerTest {
     distributionPlanner = new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(4, distributedQueryPlan.getInstances().size());
+
+    // value filter which can be pushed down
+    sql = "SELECT tag1, attr1, s2 FROM table1 where s1 > 1";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    assertNotNull(actualAnalysis);
+    assertEquals(1, actualAnalysis.getTables().size());
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalPlanner =
+        new LogicalPlanner(
+            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertEquals(
+        Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+
+    // value filter which can not be pushed down
+    sql = "SELECT tag1, attr1, s2 FROM table1 where diff(s1) > 1";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    assertEquals(1, actualAnalysis.getTables().size());
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalPlanner =
+        new LogicalPlanner(
+            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    assertTrue(
+        rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof TableScanNode);
+    tableScanNode =
+        (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+    assertEquals(
+        Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+
+    sql = "SELECT tag1, attr1, s2 FROM table1 where diff(s1) + 1 > 1";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    assertEquals(1, actualAnalysis.getTables().size());
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalPlanner =
+        new LogicalPlanner(
+            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    assertTrue(
+        rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof TableScanNode);
+    tableScanNode =
+        (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+    assertEquals(
+        Arrays.asList("time", "tag1", "attr1", "s1", "s2"), tableScanNode.getOutputColumnNames());
+  }
+
+  @Test
+  public void singleTableProjectTest() throws IoTDBException {
+    // 1. project without filter
+    sql = "SELECT tag1, attr1, s1 FROM table1";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    assertNotNull(actualAnalysis);
+    assertEquals(1, actualAnalysis.getTables().size());
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalPlanner =
+        new LogicalPlanner(
+            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertEquals(
+        Arrays.asList("time", "tag1", "attr1", "s1"), tableScanNode.getOutputColumnNames());
+
+    // 2. project with filter
+    sql = "SELECT tag1, attr1, s1 FROM table1 WHERE tag2='A' and s2=8";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    assertNotNull(actualAnalysis);
+    assertEquals(1, actualAnalysis.getTables().size());
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalPlanner =
+        new LogicalPlanner(
+            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertEquals(
+        Arrays.asList("time", "tag1", "tag2", "attr1", "s1", "s2"),
+        tableScanNode.getOutputColumnNames());
+
+    // 3. project with filter and function
+    sql =
+        "SELECT s1+s3, CAST(s2 AS DOUBLE) FROM table1 WHERE REPLACE(tag1, 'low', '!')='!' AND attr2='B'";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalQueryPlan =
+        new LogicalPlanner(
+                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    tableScanNode =
+        (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+    assertEquals(
+        Arrays.asList("time", "tag1", "attr2", "s1", "s2", "s3"),
+        tableScanNode.getOutputColumnNames());
+
+    // 4. project with not all attributes, to test the rightness of PruneUnUsedColumns
+    sql = "SELECT tag2, attr2, s2 FROM table1";
+    actualAnalysis = analyzeSQL(sql, metadata);
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    logicalQueryPlan =
+        new LogicalPlanner(
+                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertEquals(
+        Arrays.asList("time", "tag2", "attr2", "s2"), tableScanNode.getOutputColumnNames());
+    assertEquals(2, tableScanNode.getIdAndAttributeIndexMap().size());
+  }
+
+  @Test
+  public void expressionTest() throws IoTDBException {
+    // 1. is null / is not null
+    sql = "SELECT * FROM table1 WHERE tag1 is not null and s1 is null";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(
+                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+
+    // 2. like
+    sql = "SELECT * FROM table1 WHERE tag1 like '%m'";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(
+                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+
+    // 3. in / not in
+    sql =
+        "SELECT *, s1/2, s2+1, s2*3, s1+s2, s2%1 FROM table1 WHERE tag1 in ('A', 'B') and tag2 not in ('A', 'C')";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(
+                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+
+    // 4. not
+    sql = "SELECT * FROM table1 WHERE tag1 not like '%m'";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(
+                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+  }
+
+  @Test
+  public void functionTest() throws IoTDBException {
+    // 1. cast
+    sql = "SELECT CAST(s2 AS DOUBLE) FROM table1 WHERE CAST(s1 AS DOUBLE) > 1.0";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalPlanner =
+        new LogicalPlanner(
+            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+
+    // 2. substring
+    sql =
+        "SELECT SUBSTRING(tag1, 2), SUBSTRING(tag2, s1) FROM table1 WHERE SUBSTRING(tag2, 1) = 'A'";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalPlanner =
+        new LogicalPlanner(
+            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+
+    // 3. round
+    sql = "SELECT ROUND(s1, 1) FROM table1 WHERE ROUND(s2, 2) > 1.0";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalPlanner =
+        new LogicalPlanner(
+            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+
+    // 4. replace
+    sql = "SELECT REPLACE(tag1, 'A', 'B') FROM table1 WHERE REPLACE(attr1, 'C', 'D') = 'D'";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalPlanner =
+        new LogicalPlanner(
+            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+
+    // 5. diff
+    sql = "SELECT DIFF(s1) FROM table1 WHERE DIFF(s2) > 0";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalPlanner =
+        new LogicalPlanner(
+            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+  }
+
+  @Test
+  public void predicatePushDownTest() throws IoTDBException {
+    // `is null expression`, `not expression` cannot be pushed down into TableScanOperator
+    sql =
+        "SELECT *, s1/2, s2+1 FROM table1 WHERE tag1 in ('A', 'B') and tag2 = 'C' "
+            + "and s2 iS NUll and S1 = 6 and s3 < 8.0 and tAG1 LIKE '%m'";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(
+                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode instanceof OutputNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
+    FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertTrue(filterNode.getPredicate() instanceof LogicalExpression);
+    assertEquals(3, ((LogicalExpression) filterNode.getPredicate()).getTerms().size());
+    assertTrue(
+        rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
+            instanceof TableScanNode);
+    tableScanNode =
+        (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0).getChildren().get(0);
+    assertTrue(
+        tableScanNode.getPushDownPredicate() != null
+            && tableScanNode.getPushDownPredicate() instanceof LogicalExpression);
+    assertEquals(2, ((LogicalExpression) tableScanNode.getPushDownPredicate()).getTerms().size());
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {
