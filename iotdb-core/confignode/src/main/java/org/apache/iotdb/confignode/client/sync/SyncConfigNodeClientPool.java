@@ -147,7 +147,7 @@ public class SyncConfigNodeClientPool {
     }
   }
 
-    private static class SyncConfigNodeClientPoolHolder {
+  private static class SyncConfigNodeClientPoolHolder {
 
     private static final SyncConfigNodeClientPool INSTANCE = new SyncConfigNodeClientPool();
 

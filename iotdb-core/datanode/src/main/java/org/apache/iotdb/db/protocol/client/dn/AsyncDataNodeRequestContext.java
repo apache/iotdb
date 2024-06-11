@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.protocol.client.cn;
+package org.apache.iotdb.db.protocol.client.dn;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
 
 import java.util.Map;
@@ -30,23 +30,23 @@ import java.util.Map;
  * @param <Q> ClassName of RPC request
  * @param <R> ClassName of RPC response
  */
-public class AsyncConfigNodeRequestContext<Q, R>
-    extends AsyncRequestContext<Q, R, DataNodeToConfigNodeRequestType, TConfigNodeLocation> {
+public class AsyncDataNodeRequestContext<Q, R>
+    extends AsyncRequestContext<Q, R, DataNodeToDataNodeRequestType, TDataNodeLocation> {
 
-  public AsyncConfigNodeRequestContext(DataNodeToConfigNodeRequestType configNodeRequestType) {
-    super(configNodeRequestType);
+  public AsyncDataNodeRequestContext(DataNodeToDataNodeRequestType dataNodeToDataNodeRequestType) {
+    super(dataNodeToDataNodeRequestType);
   }
 
-  public AsyncConfigNodeRequestContext(
-      DataNodeToConfigNodeRequestType configNodeRequestType,
-      Map<Integer, TConfigNodeLocation> integerTConfigNodeLocationMap) {
-    super(configNodeRequestType, integerTConfigNodeLocationMap);
+  public AsyncDataNodeRequestContext(
+      DataNodeToDataNodeRequestType dataNodeToDataNodeRequestType,
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+    super(dataNodeToDataNodeRequestType, dataNodeLocationMap);
   }
 
-  public AsyncConfigNodeRequestContext(
-      DataNodeToConfigNodeRequestType configNodeRequestType,
+  public AsyncDataNodeRequestContext(
+      DataNodeToDataNodeRequestType dataNodeToDataNodeRequestType,
       Q q,
-      Map<Integer, TConfigNodeLocation> integerTConfigNodeLocationMap) {
-    super(configNodeRequestType, q, integerTConfigNodeLocationMap);
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+    super(dataNodeToDataNodeRequestType, q, dataNodeLocationMap);
   }
 }

@@ -31,12 +31,13 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 /** General RPC handler for TSStatus response type. */
-public class AsyncTSStatusRPCHandler2 extends ConfigNodeAsyncRequestRPCHandler<TSStatus> {
+public class AsyncConfigNodeTSStatusRPCHandler extends AsyncConfigNodeRequestRPCHandler<TSStatus> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncTSStatusRPCHandler2.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AsyncConfigNodeTSStatusRPCHandler.class);
 
-  public AsyncTSStatusRPCHandler2(
-      ConfigNodeRequestType requestType,
+  public AsyncConfigNodeTSStatusRPCHandler(
+      DataNodeToConfigNodeRequestType requestType,
       int requestId,
       TConfigNodeLocation targetConfigNode,
       Map<Integer, TConfigNodeLocation> configNodeLocationMap,

@@ -17,64 +17,67 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.protocol.client.cn;
+package org.apache.iotdb.db.protocol.client.dn;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
 import org.apache.iotdb.commons.client.gg.AsyncRequestRPCHandler;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-// TODO: ConfigNodeRequestType可抽
-public abstract class ConfigNodeAsyncRequestRPCHandler<Response>
-    extends AsyncRequestRPCHandler<Response, ConfigNodeRequestType, TConfigNodeLocation> {
+public abstract class AsyncDataNodeRPCHandler<Response>
+    extends AsyncRequestRPCHandler<Response, DataNodeToDataNodeRequestType, TDataNodeLocation> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncDataNodeRPCHandler.class);
 
-  protected ConfigNodeAsyncRequestRPCHandler(
-      ConfigNodeRequestType configNodeRequestType,
+  protected AsyncDataNodeRPCHandler(
+      DataNodeToDataNodeRequestType dataNodeToDataNodeRequestType,
       int requestId,
-      TConfigNodeLocation targetNode,
-      Map<Integer, TConfigNodeLocation> integerTConfigNodeLocationMap,
+      TDataNodeLocation targetNode,
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
       Map<Integer, Response> integerResponseMap,
       CountDownLatch countDownLatch) {
     super(
-        configNodeRequestType,
+        dataNodeToDataNodeRequestType,
         requestId,
         targetNode,
-        integerTConfigNodeLocationMap,
+        dataNodeLocationMap,
         integerResponseMap,
         countDownLatch);
   }
 
   @Override
-  protected String generateFormattedTargetLocation(TConfigNodeLocation configNodeLocation) {
+  protected String generateFormattedTargetLocation(TDataNodeLocation dataNodeLocation) {
     return "{id="
-        + targetNode.getConfigNodeId()
+        + targetNode.getDataNodeId()
         + ", internalEndPoint="
         + targetNode.getInternalEndPoint()
         + "}";
   }
 
-  public static ConfigNodeAsyncRequestRPCHandler<?> buildHandler(
-      AsyncRequestContext<?, ?, ConfigNodeRequestType, TConfigNodeLocation> context,
+  public static AsyncDataNodeRPCHandler<?> createAsyncRPCHandler(
+      AsyncRequestContext<?, ?, DataNodeToDataNodeRequestType, TDataNodeLocation> context,
       int requestId,
-      TConfigNodeLocation targetConfigNode) {
-    ConfigNodeRequestType requestType = context.getRequestType();
-    Map<Integer, TConfigNodeLocation> nodeLocationMap = context.getNodeLocationMap();
+      TDataNodeLocation targetDataNode) {
+    DataNodeToDataNodeRequestType requestType = context.getRequestType();
+    Map<Integer, TDataNodeLocation> nodeLocationMap = context.getNodeLocationMap();
     Map<Integer, ?> responseMap = context.getResponseMap();
     CountDownLatch countDownLatch = context.getCountDownLatch();
     switch (requestType) {
-      case SUBMIT_TEST_CONNECTION_TASK:
       case TEST_CONNECTION:
-      default:
-        return new AsyncTSStatusRPCHandler2(
+        return new AsyncTSStatusRPCHandler(
             requestType,
             requestId,
-            targetConfigNode,
+            targetDataNode,
             nodeLocationMap,
             (Map<Integer, TSStatus>) responseMap,
             countDownLatch);
+      default:
+        throw new UnsupportedOperationException("request type is not supported: " + requestType);
     }
   }
 }

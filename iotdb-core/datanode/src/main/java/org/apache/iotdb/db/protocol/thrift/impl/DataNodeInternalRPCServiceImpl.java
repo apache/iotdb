@@ -75,12 +75,12 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.cn.AsyncConfigNodeInternalServiceRequestManager;
 import org.apache.iotdb.db.protocol.client.cn.AsyncConfigNodeRequestContext;
-import org.apache.iotdb.db.protocol.client.cn.ConfigNodeRequestType;
-import org.apache.iotdb.db.protocol.client.dn.AsyncClientHandler;
-import org.apache.iotdb.db.protocol.client.dn.AsyncDataNodeExternalServiceClientPool;
-import org.apache.iotdb.db.protocol.client.dn.AsyncDataNodeInternalServiceClientPool;
-import org.apache.iotdb.db.protocol.client.dn.AsyncDataNodeMPPServiceClientPool;
-import org.apache.iotdb.db.protocol.client.dn.DataNodeRequestType;
+import org.apache.iotdb.db.protocol.client.cn.DataNodeToConfigNodeRequestType;
+import org.apache.iotdb.db.protocol.client.dn.AsyncDataNodeExternalServiceRequestManager;
+import org.apache.iotdb.db.protocol.client.dn.AsyncDataNodeInternalServiceRequestManager;
+import org.apache.iotdb.db.protocol.client.dn.AsyncDataNodeMPPServiceRequestManager;
+import org.apache.iotdb.db.protocol.client.dn.AsyncDataNodeRequestContext;
+import org.apache.iotdb.db.protocol.client.dn.DataNodeToDataNodeRequestType;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -1452,7 +1452,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
     AsyncConfigNodeRequestContext<Object, TSStatus> clientHandler =
         new AsyncConfigNodeRequestContext<>(
-            ConfigNodeRequestType.TEST_CONNECTION, new Object(), configNodeLocationMap);
+            DataNodeToConfigNodeRequestType.TEST_CONNECTION, new Object(), configNodeLocationMap);
     AsyncConfigNodeInternalServiceRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TConfigNodeLocation> anotherConfigNodeLocationMap =
@@ -1490,11 +1490,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
-    AsyncClientHandler<Object, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.TEST_CONNECTION, new Object(), dataNodeLocationMap);
-    AsyncDataNodeInternalServiceClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
+        new AsyncDataNodeRequestContext<>(
+            DataNodeToDataNodeRequestType.TEST_CONNECTION, new Object(), dataNodeLocationMap);
+    AsyncDataNodeInternalServiceRequestManager.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TDataNodeLocation> anotherDataNodeLocationMap =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
@@ -1503,8 +1503,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         .getResponseMap()
         .forEach(
             (dataNodeId, status) -> {
-              TEndPoint endPoint =
-                  anotherDataNodeLocationMap.get(dataNodeId).getMPPDataExchangeEndPoint();
+              TEndPoint endPoint = anotherDataNodeLocationMap.get(dataNodeId).getInternalEndPoint();
               TServiceProvider serviceProvider =
                   new TServiceProvider(endPoint, TServiceType.DataNodeInternalService);
               TTestConnectionResult result = new TTestConnectionResult();
@@ -1530,11 +1529,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
-    AsyncClientHandler<Object, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.TEST_CONNECTION, new Object(), dataNodeLocationMap);
-    AsyncDataNodeMPPServiceClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
+        new AsyncDataNodeRequestContext<>(
+            DataNodeToDataNodeRequestType.TEST_CONNECTION, new Object(), dataNodeLocationMap);
+    AsyncDataNodeMPPServiceRequestManager.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TDataNodeLocation> anotherDataNodeLocationMap =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
@@ -1570,11 +1569,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
-    AsyncClientHandler<Object, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.TEST_CONNECTION, new Object(), dataNodeLocationMap);
-    AsyncDataNodeExternalServiceClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
+        new AsyncDataNodeRequestContext<>(
+            DataNodeToDataNodeRequestType.TEST_CONNECTION, new Object(), dataNodeLocationMap);
+    AsyncDataNodeExternalServiceRequestManager.getInstance()
+        .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TDataNodeLocation> anotherDataNodeLocationMap =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));

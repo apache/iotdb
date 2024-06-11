@@ -1252,7 +1252,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // TODO: now sync, maybe async in future
       TTestConnectionResp result = client.submitTestConnectionTaskToLeader();
-      TestConnectionTask.buildTSBlock(result, future);
+      int configNodeNum = client.showConfigNodes().getConfigNodesInfoListSize();
+      int dataNodeNum = client.showDataNodes().getDataNodesInfoListSize();
+      TestConnectionTask.buildTSBlock(result, configNodeNum, dataNodeNum, future);
     } catch (Exception e) {
       future.setException(e);
     }

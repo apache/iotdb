@@ -51,7 +51,10 @@ public class TestConnectionTask implements IConfigTask {
   }
 
   public static void buildTSBlock(
-      TTestConnectionResp resp, SettableFuture<ConfigTaskResult> future) {
+      TTestConnectionResp resp,
+      int configNodeNum,
+      int dataNodeNum,
+      SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.testConnectionColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
@@ -118,23 +121,21 @@ public class TestConnectionTask implements IConfigTask {
         .getResultList()
         .sort(
             (o1, o2) -> {
-              if (!o1.getServiceProvider().equals(o2.getServiceProvider())) {
-                return endPointToString(o1.getServiceProvider().getEndPoint())
-                    .compareTo(endPointToString(o2.getServiceProvider().getEndPoint()));
+              {
+                String serviceIp1 = o1.getServiceProvider().getEndPoint().getIp();
+                String serviceIp2 = o2.getServiceProvider().getEndPoint().getIp();
+                if (!serviceIp1.equals(serviceIp2)) {
+                  return serviceIp1.compareTo(serviceIp2);
+                }
               }
-              TEndPoint sender1;
-              if (o1.getSender().isSetConfigNodeLocation()) {
-                sender1 = o1.getSender().getConfigNodeLocation().getInternalEndPoint();
-              } else {
-                sender1 = o1.getSender().getDataNodeLocation().getInternalEndPoint();
+              {
+                int servicePort1 = o1.getServiceProvider().getEndPoint().getPort();
+                int servicePort2 = o2.getServiceProvider().getEndPoint().getPort();
+                if (servicePort1 != servicePort2) {
+                  return Integer.compare(servicePort1, servicePort2);
+                }
               }
-              TEndPoint sender2;
-              if (o2.getSender().isSetConfigNodeLocation()) {
-                sender2 = o2.getSender().getConfigNodeLocation().getInternalEndPoint();
-              } else {
-                sender2 = o2.getSender().getDataNodeLocation().getInternalEndPoint();
-              }
-              return endPointToString(sender1).compareTo(endPointToString(sender2));
+              return 0;
             });
   }
 

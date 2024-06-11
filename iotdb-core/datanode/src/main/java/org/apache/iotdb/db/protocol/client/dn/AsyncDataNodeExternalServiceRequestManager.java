@@ -17,56 +17,56 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.protocol.client.cn;
+package org.apache.iotdb.db.protocol.client.dn;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncDataNodeExternalServiceClient;
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
 import org.apache.iotdb.commons.client.gg.AsyncRequestManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Asynchronously send RPC requests to ConfigNodes. See queryengine.thrift for more details. */
-public class AsyncConfigNodeInternalServiceRequestManager
+public class AsyncDataNodeExternalServiceRequestManager
     extends AsyncRequestManager<
-        DataNodeToConfigNodeRequestType,
-        TConfigNodeLocation,
-        AsyncConfigNodeInternalServiceClient> {
+        DataNodeToDataNodeRequestType, TDataNodeLocation, AsyncDataNodeExternalServiceClient> {
+
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(AsyncConfigNodeInternalServiceRequestManager.class);
+      LoggerFactory.getLogger(AsyncDataNodeExternalServiceRequestManager.class);
+
+  public AsyncDataNodeExternalServiceRequestManager() {
+    super();
+  }
 
   @Override
   protected void initClientManager() {
     clientManager =
-        new IClientManager.Factory<TEndPoint, AsyncConfigNodeInternalServiceClient>()
+        new IClientManager.Factory<TEndPoint, AsyncDataNodeExternalServiceClient>()
             .createClientManager(
-                new ClientPoolFactory.AsyncConfigNodeInternalServiceClientPoolFactory());
+                new ClientPoolFactory.AsyncDataNodeExternalServiceClientPoolFactory());
   }
 
   @Override
-  protected TEndPoint nodeLocationToEndPoint(TConfigNodeLocation configNodeLocation) {
-    return configNodeLocation.getInternalEndPoint();
+  protected TEndPoint nodeLocationToEndPoint(TDataNodeLocation dataNodeLocation) {
+    return dataNodeLocation.getClientRpcEndPoint();
   }
 
   @Override
   protected void sendAsyncRequestToNode(
-      AsyncRequestContext<?, ?, DataNodeToConfigNodeRequestType, TConfigNodeLocation>
-          requestContext,
+      AsyncRequestContext<?, ?, DataNodeToDataNodeRequestType, TDataNodeLocation> requestContext,
       int requestId,
-      TConfigNodeLocation targetNode,
+      TDataNodeLocation targetNode,
       int retryCount) {
     try {
-      AsyncConfigNodeInternalServiceClient client;
-      client = clientManager.borrowClient(targetNode.getInternalEndPoint());
+      AsyncDataNodeExternalServiceClient client =
+          clientManager.borrowClient(targetNode.getClientRpcEndPoint());
       Object req = requestContext.getRequest(requestId);
-      AsyncConfigNodeRequestRPCHandler<?> handler =
-          AsyncConfigNodeRequestRPCHandler.buildHandler(requestContext, requestId, targetNode);
-      AsyncConfigNodeTSStatusRPCHandler defaultHandler =
-          (AsyncConfigNodeTSStatusRPCHandler) handler;
+      AsyncDataNodeRPCHandler<?> handler =
+          AsyncDataNodeRPCHandler.createAsyncRPCHandler(requestContext, requestId, targetNode);
+      AsyncTSStatusRPCHandler defaultHandler = (AsyncTSStatusRPCHandler) handler;
 
       switch (requestContext.getRequestType()) {
         case TEST_CONNECTION:
@@ -74,14 +74,14 @@ public class AsyncConfigNodeInternalServiceRequestManager
           break;
         default:
           LOGGER.error(
-              "Unexpected ConfigNode Request Type: {} when sendAsyncRequestToConfigNode",
+              "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",
               requestContext.getRequestType());
       }
     } catch (Exception e) {
       LOGGER.warn(
-          "{} failed on ConfigNode {}, because {}, retrying {}...",
+          "{} failed on DataNode {}, because {}, retrying {}...",
           requestContext.getRequestType(),
-          targetNode.getInternalEndPoint(),
+          targetNode.getClientRpcEndPoint(),
           e.getMessage(),
           retryCount);
     }
@@ -89,15 +89,15 @@ public class AsyncConfigNodeInternalServiceRequestManager
 
   private static class ClientPoolHolder {
 
-    private static final AsyncConfigNodeInternalServiceRequestManager INSTANCE =
-        new AsyncConfigNodeInternalServiceRequestManager();
+    private static final AsyncDataNodeExternalServiceRequestManager INSTANCE =
+        new AsyncDataNodeExternalServiceRequestManager();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static AsyncConfigNodeInternalServiceRequestManager getInstance() {
-    return ClientPoolHolder.INSTANCE;
+  public static AsyncDataNodeExternalServiceRequestManager getInstance() {
+    return AsyncDataNodeExternalServiceRequestManager.ClientPoolHolder.INSTANCE;
   }
 }

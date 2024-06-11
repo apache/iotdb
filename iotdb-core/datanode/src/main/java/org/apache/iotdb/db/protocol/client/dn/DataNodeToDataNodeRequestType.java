@@ -17,17 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.protocol.client.cn;
+package org.apache.iotdb.db.protocol.client.dn;
 
-public enum ConfigNodeRequestType {
-  ADD_CONSENSUS_GROUP,
-  NOTIFY_REGISTER_SUCCESS,
-  REGISTER_CONFIG_NODE,
-  RESTART_CONFIG_NODE,
-  REMOVE_CONFIG_NODE,
-  DELETE_CONFIG_NODE_PEER,
-  REPORT_CONFIG_NODE_SHUTDOWN,
-  STOP_CONFIG_NODE,
-  SUBMIT_TEST_CONNECTION_TASK,
+public enum DataNodeToDataNodeRequestType {
   TEST_CONNECTION,
 }

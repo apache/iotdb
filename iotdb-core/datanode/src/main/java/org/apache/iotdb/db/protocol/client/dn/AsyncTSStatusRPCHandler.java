@@ -31,12 +31,12 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 /** General RPC handler for TSStatus response type. */
-public class AsyncTSStatusRPCHandler extends AbstractAsyncRPCHandler<TSStatus> {
+public class AsyncTSStatusRPCHandler extends AsyncDataNodeRPCHandler<TSStatus> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AsyncTSStatusRPCHandler.class);
 
   public AsyncTSStatusRPCHandler(
-      DataNodeRequestType requestType,
+      DataNodeToDataNodeRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
@@ -52,7 +52,7 @@ public class AsyncTSStatusRPCHandler extends AbstractAsyncRPCHandler<TSStatus> {
 
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Remove only if success
-      dataNodeLocationMap.remove(requestId);
+      nodeLocationMap.remove(requestId);
       LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
     } else {
       LOGGER.error(

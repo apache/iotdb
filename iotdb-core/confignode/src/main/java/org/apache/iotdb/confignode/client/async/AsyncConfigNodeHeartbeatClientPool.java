@@ -53,7 +53,7 @@ public class AsyncConfigNodeHeartbeatClientPool {
     }
   }
 
-    private static class AsyncConfigNodeHeartbeatClientPoolHolder {
+  private static class AsyncConfigNodeHeartbeatClientPoolHolder {
 
     private static final AsyncConfigNodeHeartbeatClientPool INSTANCE =
         new AsyncConfigNodeHeartbeatClientPool();

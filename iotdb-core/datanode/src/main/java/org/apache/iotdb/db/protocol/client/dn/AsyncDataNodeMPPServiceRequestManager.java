@@ -24,16 +24,26 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
+import org.apache.iotdb.commons.client.gg.AsyncRequestManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class AsyncDataNodeMPPServiceClientPool
-    extends AsyncDataNodeClientPool<AsyncDataNodeMPPDataExchangeServiceClient> {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(AsyncDataNodeMPPServiceClientPool.class);
+import static org.apache.iotdb.db.protocol.client.dn.DataNodeToDataNodeRequestType.TEST_CONNECTION;
 
-  public AsyncDataNodeMPPServiceClientPool() {
+public class AsyncDataNodeMPPServiceRequestManager
+    extends AsyncRequestManager<
+        DataNodeToDataNodeRequestType,
+        TDataNodeLocation,
+        AsyncDataNodeMPPDataExchangeServiceClient> {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AsyncDataNodeMPPServiceRequestManager.class);
+
+  public AsyncDataNodeMPPServiceRequestManager() {}
+
+  @Override
+  protected void initClientManager() {
     clientManager =
         new IClientManager.Factory<TEndPoint, AsyncDataNodeMPPDataExchangeServiceClient>()
             .createClientManager(
@@ -41,33 +51,37 @@ public class AsyncDataNodeMPPServiceClientPool
   }
 
   @Override
-  void sendAsyncRequestToDataNode(
-      AsyncClientHandler<?, ?> clientHandler,
+  protected TEndPoint nodeLocationToEndPoint(TDataNodeLocation dataNodeLocation) {
+    return null;
+  }
+
+  @Override
+  protected void sendAsyncRequestToNode(
+      AsyncRequestContext<?, ?, DataNodeToDataNodeRequestType, TDataNodeLocation> requestContext,
       int requestId,
-      TDataNodeLocation targetDataNode,
+      TDataNodeLocation targetNode,
       int retryCount) {
     try {
       AsyncDataNodeMPPDataExchangeServiceClient client;
-      client = clientManager.borrowClient(targetDataNode.getInternalEndPoint());
-      Object req = clientHandler.getRequest(requestId);
-      AbstractAsyncRPCHandler<?> handler =
-          clientHandler.createAsyncRPCHandler(requestId, targetDataNode);
+      client = clientManager.borrowClient(targetNode.getInternalEndPoint());
+      Object req = requestContext.getRequest(requestId);
+      AsyncDataNodeRPCHandler<?> handler =
+          AsyncDataNodeRPCHandler.createAsyncRPCHandler(requestContext, requestId, targetNode);
       AsyncTSStatusRPCHandler defaultHandler = (AsyncTSStatusRPCHandler) handler;
 
-      switch (clientHandler.getRequestType()) {
+      switch (requestContext.getRequestType()) {
         case TEST_CONNECTION:
           client.testConnection(defaultHandler);
           break;
         default:
-          LOGGER.error(
-              "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",
-              clientHandler.getRequestType());
+          throw new UnsupportedOperationException(
+              "unsupported request type: " + requestContext.getRequestType());
       }
     } catch (Exception e) {
       LOGGER.warn(
           "{} failed on DataNode {}, because {}, retrying {}...",
-          clientHandler.getRequestType(),
-          targetDataNode.getInternalEndPoint(),
+          requestContext.getRequestType(),
+          targetNode.getInternalEndPoint(),
           e.getMessage(),
           retryCount);
     }
@@ -75,15 +89,15 @@ public class AsyncDataNodeMPPServiceClientPool
 
   private static class ClientPoolHolder {
 
-    private static final AsyncDataNodeMPPServiceClientPool INSTANCE =
-        new AsyncDataNodeMPPServiceClientPool();
+    private static final AsyncDataNodeMPPServiceRequestManager INSTANCE =
+        new AsyncDataNodeMPPServiceRequestManager();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static AsyncDataNodeMPPServiceClientPool getInstance() {
+  public static AsyncDataNodeMPPServiceRequestManager getInstance() {
     return ClientPoolHolder.INSTANCE;
   }
 }
