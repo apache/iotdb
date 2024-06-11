@@ -107,11 +107,12 @@ public class AuthOperationProcedure extends AbstractNodeProcedure<AuthOperationP
               continue;
             }
             status =
-                SyncDataNodeClientPool.getInstance()
-                    .sendSyncRequestToDataNodeWithRetry(
-                        pair.getLeft().getLocation().getInternalEndPoint(),
-                        req,
-                        DataNodeRequestType.INVALIDATE_PERMISSION_CACHE);
+                (TSStatus)
+                    SyncDataNodeClientPool.getInstance()
+                        .sendSyncRequestToDataNodeWithRetry(
+                            pair.getLeft().getLocation().getInternalEndPoint(),
+                            req,
+                            DataNodeRequestType.INVALIDATE_PERMISSION_CACHE);
             if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               it.remove();
             }

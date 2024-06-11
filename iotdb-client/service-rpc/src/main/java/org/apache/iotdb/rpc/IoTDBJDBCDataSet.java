@@ -587,6 +587,7 @@ public class IoTDBJDBCDataSet {
       case INT32:
         return String.valueOf(BytesUtils.bytesToInt(values[index]));
       case INT64:
+      case TIMESTAMP:
         return String.valueOf(BytesUtils.bytesToLong(values[index]));
       case FLOAT:
         return String.valueOf(BytesUtils.bytesToFloat(values[index]));
@@ -597,9 +598,6 @@ public class IoTDBJDBCDataSet {
         return new String(values[index], StandardCharsets.UTF_8);
       case BLOB:
         return BytesUtils.parseBlobByteArrayToString(values[index]);
-      case TIMESTAMP:
-        return RpcUtils.formatDatetime(
-            RpcUtils.DEFAULT_TIME_FORMAT, "ms", BytesUtils.bytesToLong(values[index]), zoneId);
       case DATE:
         return DateUtils.formatDate(BytesUtils.bytesToInt(values[index]));
       default:

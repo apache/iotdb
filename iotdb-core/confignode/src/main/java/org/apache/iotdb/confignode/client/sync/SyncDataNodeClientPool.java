@@ -65,7 +65,7 @@ public class SyncDataNodeClientPool {
                 new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
   }
 
-  public TSStatus sendSyncRequestToDataNodeWithRetry(
+  public Object sendSyncRequestToDataNodeWithRetry(
       TEndPoint endPoint, Object req, DataNodeRequestType requestType) {
     Throwable lastException = new TException();
     for (int retry = 0; retry < DEFAULT_RETRY_NUM; retry++) {
@@ -84,7 +84,7 @@ public class SyncDataNodeClientPool {
         .setMessage("All retry failed due to: " + lastException.getMessage());
   }
 
-  public TSStatus sendSyncRequestToDataNodeWithGivenRetry(
+  public Object sendSyncRequestToDataNodeWithGivenRetry(
       TEndPoint endPoint, Object req, DataNodeRequestType requestType, int retryNum) {
     Throwable lastException = new TException();
     for (int retry = 0; retry < retryNum; retry++) {
@@ -103,7 +103,7 @@ public class SyncDataNodeClientPool {
         .setMessage("All retry failed due to: " + lastException.getMessage());
   }
 
-  private TSStatus executeSyncRequest(
+  private Object executeSyncRequest(
       DataNodeRequestType requestType, SyncDataNodeInternalServiceClient client, Object req)
       throws TException {
     switch (requestType) {
@@ -141,6 +141,8 @@ public class SyncDataNodeClientPool {
         return client.deleteOldRegionPeer((TMaintainPeerReq) req);
       case RESET_PEER_LIST:
         return client.resetPeerList((TResetPeerListReq) req);
+      case SHOW_CONFIGURATION:
+        return client.showConfiguration();
       default:
         return RpcUtils.getStatus(
             TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);

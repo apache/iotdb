@@ -117,7 +117,7 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected PipeReceiverStatusHandler receiverStatusHandler;
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     final PipeParameters parameters = validator.getParameters();
 
     validator.validate(
@@ -232,7 +232,8 @@ public abstract class IoTDBConnector implements PipeConnector {
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     nodeUrls.clear();
     nodeUrls.addAll(parseNodeUrls(parameters));
@@ -276,7 +277,7 @@ public abstract class IoTDBConnector implements PipeConnector {
                 CONNECTOR_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_DEFAULT_VALUE));
   }
 
-  protected LinkedHashSet<TEndPoint> parseNodeUrls(PipeParameters parameters)
+  protected LinkedHashSet<TEndPoint> parseNodeUrls(final PipeParameters parameters)
       throws PipeParameterNotValidException {
     final LinkedHashSet<TEndPoint> givenNodeUrls = new LinkedHashSet<>(nodeUrls);
 
@@ -317,15 +318,22 @@ public abstract class IoTDBConnector implements PipeConnector {
         givenNodeUrls.addAll(
             NodeUrlUtils.parseTEndPointUrls(
                 Arrays.asList(
-                    parameters.getStringByKeys(CONNECTOR_IOTDB_NODE_URLS_KEY).split(","))));
+                    parameters
+                        .getStringByKeys(CONNECTOR_IOTDB_NODE_URLS_KEY)
+                        .replace(" ", "")
+                        .split(","))));
       }
 
       if (parameters.hasAttribute(SINK_IOTDB_NODE_URLS_KEY)) {
         givenNodeUrls.addAll(
             NodeUrlUtils.parseTEndPointUrls(
-                Arrays.asList(parameters.getStringByKeys(SINK_IOTDB_NODE_URLS_KEY).split(","))));
+                Arrays.asList(
+                    parameters
+                        .getStringByKeys(SINK_IOTDB_NODE_URLS_KEY)
+                        .replace(" ", "")
+                        .split(","))));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(PARSE_URL_ERROR_FORMATTER, e.toString());
       throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
     }
@@ -335,8 +343,8 @@ public abstract class IoTDBConnector implements PipeConnector {
     return givenNodeUrls;
   }
 
-  private void checkNodeUrls(Set<TEndPoint> nodeUrls) throws PipeParameterNotValidException {
-    for (TEndPoint nodeUrl : nodeUrls) {
+  private void checkNodeUrls(final Set<TEndPoint> nodeUrls) throws PipeParameterNotValidException {
+    for (final TEndPoint nodeUrl : nodeUrls) {
       if (Objects.isNull(nodeUrl.ip) || nodeUrl.ip.isEmpty()) {
         LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "host cannot be empty");
         throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
@@ -354,13 +362,13 @@ public abstract class IoTDBConnector implements PipeConnector {
     PIPE_END_POINT_RATE_LIMITER_MAP.clear();
   }
 
-  protected TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
+  protected TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
     return isRpcCompressionEnabled
         ? PipeTransferCompressedReq.toTPipeTransferReq(req, compressors)
         : req;
   }
 
-  protected byte[] compressIfNeeded(byte[] reqInBytes) throws IOException {
+  protected byte[] compressIfNeeded(final byte[] reqInBytes) throws IOException {
     return isRpcCompressionEnabled
         ? PipeTransferCompressedReq.toTPipeTransferReqBytes(reqInBytes, compressors)
         : reqInBytes;
