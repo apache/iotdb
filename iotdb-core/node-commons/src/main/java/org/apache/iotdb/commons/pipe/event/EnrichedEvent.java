@@ -342,8 +342,8 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * Used for pipeConsensus. In PipeConsensus, we only need committerKey, commitId and rebootTimes to
-   * uniquely identify an event
+   * Used for pipeConsensus. In PipeConsensus, we only need committerKey, commitId and rebootTimes
+   * to uniquely identify an event
    */
   public boolean equalsInPipeConsensus(Object o) {
     if (this == o) {

@@ -32,10 +32,10 @@ public class PipeConsensusTabletInsertNodeEventHandler
     extends PipeConsensusTabletInsertionEventHandler<TPipeConsensusTransferResp> {
 
   public PipeConsensusTabletInsertNodeEventHandler(
-          PipeInsertNodeTabletInsertionEvent event,
-          TPipeConsensusTransferReq req,
-          PipeConsensusAsyncConnector connector,
-          PipeConsensusConnectorMetric metric) {
+      PipeInsertNodeTabletInsertionEvent event,
+      TPipeConsensusTransferReq req,
+      PipeConsensusAsyncConnector connector,
+      PipeConsensusConnectorMetric metric) {
     super(event, req, connector, metric);
   }
 
