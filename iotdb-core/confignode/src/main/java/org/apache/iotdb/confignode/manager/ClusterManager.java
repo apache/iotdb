@@ -119,11 +119,12 @@ public class ClusterManager {
     Map<Integer, TConfigNodeLocation> configNodeLocationMap =
         configManager.getNodeManager().getRegisteredConfigNodes().stream()
             .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
-    ConfigNodeAsyncRequestContext<TNodeLocations, TTestConnectionResp> configNodeAsyncRequestContext =
-        new ConfigNodeAsyncRequestContext<>(
-            ConfigNodeToConfigNodeRequestType.SUBMIT_TEST_CONNECTION_TASK,
-            nodeLocations,
-            configNodeLocationMap);
+    ConfigNodeAsyncRequestContext<TNodeLocations, TTestConnectionResp>
+        configNodeAsyncRequestContext =
+            new ConfigNodeAsyncRequestContext<>(
+                ConfigNodeToConfigNodeRequestType.SUBMIT_TEST_CONNECTION_TASK,
+                nodeLocations,
+                configNodeLocationMap);
     ConfigNodeToConfigNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequest(configNodeAsyncRequestContext);
     Map<Integer, TConfigNodeLocation> anotherConfigNodeLocationMap =
