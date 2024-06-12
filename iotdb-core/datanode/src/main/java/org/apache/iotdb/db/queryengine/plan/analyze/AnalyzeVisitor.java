@@ -2832,7 +2832,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       final String exceptionMessage =
           String.format(
               "Failed to execute load tsfile statement %s. Detail: %s",
-              loadTsFileStatement, e.getMessage());
+              loadTsFileStatement,
+              e.getMessage() == null ? e.getClass().getName() : e.getMessage());
       logger.warn(exceptionMessage, e);
       final Analysis analysis = new Analysis();
       analysis.setFinishQueryAfterAnalyze(true);

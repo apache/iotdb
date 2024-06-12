@@ -177,7 +177,7 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
         final String exceptionMessage =
             String.format(
                 "The file %s is not a valid tsfile. Please check the input file. Detail: %s",
-                tsFile.getPath(), e.getMessage());
+                tsFile.getPath(), e.getMessage() == null ? e.getClass().getName() : e.getMessage());
         LOGGER.warn(exceptionMessage, e);
         analysis.setFinishQueryAfterAnalyze(true);
         analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
@@ -193,7 +193,8 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
       final String exceptionMessage =
           String.format(
               "Auto create or verify schema error when executing statement %s. Detail: %s.",
-              loadTsFileStatement, e.getMessage());
+              loadTsFileStatement,
+              e.getMessage() == null ? e.getClass().getName() : e.getMessage());
       LOGGER.warn(exceptionMessage, e);
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(
