@@ -405,11 +405,11 @@ public class TemplatedAnalyze {
             CONFIG.getSeriesPartitionSlotNum());
       }
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      for (IDeviceID deviceIDPath : deviceSet) {
+      for (IDeviceID deviceID : deviceSet) {
         DataPartitionQueryParam queryParam =
-            new DataPartitionQueryParam(deviceIDPath, res.left, res.right.left, res.right.right);
+            new DataPartitionQueryParam(deviceID, res.left, res.right.left, res.right.right);
         sgNameToQueryParamsMap
-            .computeIfAbsent(schemaTree.getBelongedDatabase(deviceIDPath), key -> new ArrayList<>())
+            .computeIfAbsent(schemaTree.getBelongedDatabase(deviceID), key -> new ArrayList<>())
             .add(queryParam);
       }
 

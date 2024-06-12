@@ -221,7 +221,6 @@ public class Util {
       schemaRegionMap.put(executor.getSeriesPartitionSlot(device1), schemaRegion1);
       schemaRegionMap.put(executor.getSeriesPartitionSlot(device2), schemaRegion2);
       schemaRegionMap.put(executor.getSeriesPartitionSlot(device3), schemaRegion2);
-
       schemaPartitionMap.put("root.sg", schemaRegionMap);
       schemaPartition.setSchemaPartitionMap(schemaPartitionMap);
 

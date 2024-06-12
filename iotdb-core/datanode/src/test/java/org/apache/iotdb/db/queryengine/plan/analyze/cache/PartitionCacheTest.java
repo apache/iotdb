@@ -94,11 +94,10 @@ public class PartitionCacheTest {
       }
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
         // init each device
-        String deviceName = getDeviceName(storageGroupName, deviceNumber);
+        IDeviceID deviceID =
+            Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
         TSeriesPartitionSlot seriesPartitionSlot =
-            new TSeriesPartitionSlot(
-                partitionExecutor.getSeriesPartitionSlot(
-                    IDeviceID.Factory.DEFAULT_FACTORY.create(deviceName)));
+            new TSeriesPartitionSlot(partitionExecutor.getSeriesPartitionSlot(deviceID));
         // init schemaRegion of device
         TConsensusGroupId schemaConsensusGroupId =
             new TConsensusGroupId(
@@ -290,12 +289,12 @@ public class PartitionCacheTest {
         storageGroupNumber++) {
       String storageGroupName = getStorageGroupName(storageGroupNumber);
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
-        IDeviceID deviceName =
+        IDeviceID deviceID =
             Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
         TSeriesPartitionSlot seriesPartitionSlot =
-            partitionExecutor.getSeriesPartitionSlot(deviceName);
+            partitionExecutor.getSeriesPartitionSlot(deviceID);
         Map<String, List<IDeviceID>> searchMap = new HashMap<>();
-        searchMap.put(storageGroupName, Collections.singletonList(deviceName));
+        searchMap.put(storageGroupName, Collections.singletonList(deviceID));
         SchemaPartition schemaPartition = partitionCache.getSchemaPartition(searchMap);
         assertNotNull(schemaPartition);
         Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> result =
@@ -311,10 +310,10 @@ public class PartitionCacheTest {
     List<String> missedStorageGroupNames = Arrays.asList("root.sg", "root.*");
     for (String missedStorageGroupName : missedStorageGroupNames) {
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
-        IDeviceID deviceName =
+        IDeviceID deviceID =
             Factory.DEFAULT_FACTORY.create(getDeviceName(missedStorageGroupName, deviceNumber));
         Map<String, List<IDeviceID>> searchMap = new HashMap<>();
-        searchMap.put(missedStorageGroupName, Collections.singletonList(deviceName));
+        searchMap.put(missedStorageGroupName, Collections.singletonList(deviceID));
         SchemaPartition schemaPartition = partitionCache.getSchemaPartition(searchMap);
         assertNull(schemaPartition);
       }
@@ -327,10 +326,10 @@ public class PartitionCacheTest {
       for (int deviceNumber = DEVICE_PER_STORAGE_GROUP;
           deviceNumber < 2 * DEVICE_PER_STORAGE_GROUP;
           deviceNumber++) {
-        IDeviceID deviceName =
+        IDeviceID deviceID =
             Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
         Map<String, List<IDeviceID>> searchMap = new HashMap<>();
-        searchMap.put(storageGroupName, Collections.singletonList(deviceName));
+        searchMap.put(storageGroupName, Collections.singletonList(deviceID));
         SchemaPartition schemaPartition = partitionCache.getSchemaPartition(searchMap);
         assertNull(schemaPartition);
       }
@@ -342,10 +341,10 @@ public class PartitionCacheTest {
         storageGroupNumber++) {
       String storageGroupName = getStorageGroupName(storageGroupNumber);
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
-        IDeviceID deviceName =
+        IDeviceID deviceID =
             Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
         Map<String, List<IDeviceID>> searchMap = new HashMap<>();
-        searchMap.put(storageGroupName, Collections.singletonList(deviceName));
+        searchMap.put(storageGroupName, Collections.singletonList(deviceID));
         SchemaPartition schemaPartition = partitionCache.getSchemaPartition(searchMap);
         assertNull(schemaPartition);
       }

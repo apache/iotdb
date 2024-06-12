@@ -152,6 +152,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     }
 
     String device = node.getDevice();
+    // TODO: remove conversion for device and OutputDeviceToQueriedDevicesMap
     List<TRegionReplicaSet> regionReplicaSets =
         !analysis.useLogicalView()
             ? new ArrayList<>(

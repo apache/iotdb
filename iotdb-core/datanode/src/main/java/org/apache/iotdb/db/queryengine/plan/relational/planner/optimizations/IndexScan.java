@@ -173,9 +173,9 @@ public class IndexScan implements RelationalPlanOptimizer {
     }
 
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-    for (IDeviceID deviceIDPath : deviceSet) {
+    for (IDeviceID deviceID : deviceSet) {
       DataPartitionQueryParam queryParam =
-          new DataPartitionQueryParam(deviceIDPath, res.left, res.right.left, res.right.right);
+          new DataPartitionQueryParam(deviceID, res.left, res.right.left, res.right.right);
       sgNameToQueryParamsMap.computeIfAbsent(database, key -> new ArrayList<>()).add(queryParam);
     }
 

@@ -534,24 +534,14 @@ public class ClusterSchemaTree implements ISchemaTree {
   }
 
   /**
-   * Get database name by path
+   * Get database name by device path
    *
-   * <p>e.g., root.sg1 is a database and path = root.sg1.d1, return root.sg1
+   * <p>e.g., root.sg1 is a database and device path = root.sg1.d1, return root.sg1
    *
-   * @param pathName only full path, cannot be path pattern
+   * @param deviceID only full device path, cannot be path pattern
    * @return database in the given path
    * @throws SemanticException no matched database
    */
-  @Override
-  public String getBelongedDatabase(String pathName) {
-    for (String database : databases) {
-      if (PathUtils.isStartWith(pathName, database)) {
-        return database;
-      }
-    }
-    throw new SemanticException("No matched database. Please check the path " + pathName);
-  }
-
   @Override
   public String getBelongedDatabase(IDeviceID deviceID) {
     for (String database : databases) {
@@ -564,7 +554,7 @@ public class ClusterSchemaTree implements ISchemaTree {
 
   @Override
   public String getBelongedDatabase(PartialPath path) {
-    return getBelongedDatabase(path.getFullPath());
+    return getBelongedDatabase(path.getIDeviceID());
   }
 
   @Override

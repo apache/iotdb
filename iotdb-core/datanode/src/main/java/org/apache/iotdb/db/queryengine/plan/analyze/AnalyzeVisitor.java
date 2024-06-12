@@ -1340,6 +1340,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       String deviceName = entry.getKey();
       Set<Expression> sourceExpressionsUnderDevice = entry.getValue();
       Set<String> queriedDevices = new HashSet<>();
+      // TODO: Change outputDeviceToQueriedDevicesMap to Map<IDeviceID, IDeviceID> to remove
+      // conversion
       for (Expression expression : sourceExpressionsUnderDevice) {
         queriedDevices.add(
             ExpressionAnalyzer.getDeviceNameInSourceExpression(expression).toString());
@@ -1983,6 +1985,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       MPPQueryContext context) {
     Set<IDeviceID> deviceSet = new HashSet<>();
     if (queryStatement.isAlignByDevice()) {
+      // TODO: change OutputDeviceToQueriedDevicesMap to Map<IDeviceID, IDeviceID> to remove
+      // conversion
       deviceSet =
           analysis.getOutputDeviceToQueriedDevicesMap().values().stream()
               .map(Factory.DEFAULT_FACTORY::create)
@@ -2010,11 +2014,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             CONFIG.getSeriesPartitionSlotNum());
       }
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      for (IDeviceID deviceIDPath : deviceSet) {
+      for (IDeviceID deviceID : deviceSet) {
         DataPartitionQueryParam queryParam =
-            new DataPartitionQueryParam(deviceIDPath, res.left, res.right.left, res.right.right);
+            new DataPartitionQueryParam(deviceID, res.left, res.right.left, res.right.right);
         sgNameToQueryParamsMap
-            .computeIfAbsent(schemaTree.getBelongedDatabase(deviceIDPath), key -> new ArrayList<>())
+            .computeIfAbsent(schemaTree.getBelongedDatabase(deviceID), key -> new ArrayList<>())
             .add(queryParam);
       }
 
