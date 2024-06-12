@@ -75,6 +75,8 @@ public class PipeEventCollector implements EventCollector {
       } else if (event instanceof PipeSchemaRegionWritePlanEvent
           && ((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType()
               == PlanNodeType.DELETE_DATA) {
+        // This is only for delete data node in data region since plan nodes in schema regions are
+        // already parsed in schema region extractor
         parseAndCollectEvent((PipeSchemaRegionWritePlanEvent) event);
       } else if (!(event instanceof ProgressReportEvent)) {
         collectEvent(event);
@@ -131,8 +133,8 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeSchemaRegionWritePlanEvent deleteDataEvent) {
-    // No need to bind progress index here since delete data event does not have progress index
-    // currently
+    // Only used by events containing delete data node, no need to bind progress index here since
+    // delete data event does not have progress index currently
     IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
         .process(deleteDataEvent.getPlanNode(), (IoTDBPipePattern) deleteDataEvent.getPipePattern())
         .map(

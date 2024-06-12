@@ -118,6 +118,8 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
         outputPipeConnector.transfer(event);
         if (((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType()
             != PlanNodeType.DELETE_DATA) {
+          // Only plan nodes in schema region will be marked, delete data node is currently not
+          // taken into account
           PipeSchemaRegionConnectorMetrics.getInstance().markSchemaEvent(taskID);
         }
       } else if (event instanceof PipeHeartbeatEvent) {
