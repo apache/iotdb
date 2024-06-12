@@ -979,7 +979,7 @@ setConfiguration
     ;
 
 setConfigurationEntry
-    : STRING_LITERAL OPERATOR_SEQ STRING_LITERAL
+    : DQUOTA_STRING OPERATOR_SEQ DQUOTA_STRING
     ;
 
 // Settle
