@@ -79,6 +79,20 @@ class PipeDataNodeRemainingEventAndTimeOperator {
             .orElse(0L);
   }
 
+  long getRemainingEventsInExtractors() {
+    return dataRegionExtractors.keySet().stream()
+        .map(IoTDBDataRegionExtractor::getEventCount)
+        .reduce(Integer::sum)
+        .orElse(0);
+  }
+
+  long getRemainingEventsInConnectors() {
+    return dataRegionConnectors.keySet().stream()
+        .map(connectorSubtask -> connectorSubtask.getEventCount(pipeName))
+        .reduce(Integer::sum)
+        .orElse(0);
+  }
+
   /**
    * This will calculate the estimated remaining time of pipe.
    *

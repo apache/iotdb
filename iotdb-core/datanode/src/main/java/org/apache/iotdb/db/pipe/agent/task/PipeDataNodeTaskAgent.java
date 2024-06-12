@@ -332,14 +332,20 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         pipeRemainingEventCountList.add(remainingEventAndTime.getLeft());
         pipeRemainingTimeList.add(remainingEventAndTime.getRight());
 
+        final Pair<Long, Long> remainingEvents =
+            PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+                .getRemainingEvents(staticMeta.getPipeName(), staticMeta.getCreationTime());
+
         logger.ifPresent(
             l ->
                 l.info(
-                    "Reporting pipe meta: {}, isCompleted: {}, remainingEventCount: {}, estimatedRemainingTime: {}",
+                    "Reporting pipe meta: {}, isCompleted: {}, remainingEventCount: {}, estimatedRemainingTime: {}, remainingEventsInExtractors: {}, getRemainingEventsInConnectors: {}",
                     pipeMeta.coreReportMessage(),
                     isCompleted,
                     remainingEventAndTime.getLeft(),
-                    remainingEventAndTime.getRight()));
+                    remainingEventAndTime.getRight(),
+                    remainingEvents.getLeft(),
+                    remainingEvents.getRight()));
       }
       LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
     } catch (final IOException | IllegalPathException e) {
@@ -411,14 +417,20 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         pipeRemainingEventCountList.add(remainingEventAndTime.getLeft());
         pipeRemainingTimeList.add(remainingEventAndTime.getRight());
 
+        final Pair<Long, Long> remainingEvents =
+            PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+                .getRemainingEvents(staticMeta.getPipeName(), staticMeta.getCreationTime());
+
         logger.ifPresent(
             l ->
                 l.info(
-                    "Reporting pipe meta: {}, isCompleted: {}, remainingEventCount: {}, estimatedRemainingTime: {}",
+                    "Reporting pipe meta: {}, isCompleted: {}, remainingEventCount: {}, estimatedRemainingTime: {}, remainingEventsInExtractors: {}, getRemainingEventsInConnectors: {}",
                     pipeMeta.coreReportMessage(),
                     isCompleted,
                     remainingEventAndTime.getLeft(),
-                    remainingEventAndTime.getRight()));
+                    remainingEventAndTime.getRight(),
+                    remainingEvents.getLeft(),
+                    remainingEvents.getRight()));
       }
       LOGGER.info("Reported {} pipe metas.", pipeMetaBinaryList.size());
     } catch (final IOException | IllegalPathException e) {

@@ -203,9 +203,9 @@ public class CommonConfig {
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
 
   private boolean isSeperatedPipeHeartbeatEnabled = true;
-  private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
-  private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
-  private long pipeMetaSyncerSyncIntervalMinutes = 3;
+  private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 30;
+  private long pipeMetaSyncerInitialSyncDelayMinutes = 1;
+  private long pipeMetaSyncerSyncIntervalMinutes = 1;
   private long pipeMetaSyncerAutoRestartPipeCheckIntervalRound = 1;
   private boolean pipeAutoRestartEnabled = true;
 

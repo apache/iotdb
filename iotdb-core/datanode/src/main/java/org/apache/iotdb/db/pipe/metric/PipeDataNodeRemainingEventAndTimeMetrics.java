@@ -208,6 +208,14 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     return new Pair<>(operator.getRemainingEvents(), operator.getRemainingTime());
   }
 
+  public Pair<Long, Long> getRemainingEvents(final String pipeName, final long creationTime) {
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.computeIfAbsent(
+            pipeName + "_" + creationTime, k -> new PipeDataNodeRemainingEventAndTimeOperator());
+    return new Pair<>(
+        operator.getRemainingEventsInExtractors(), operator.getRemainingEventsInConnectors());
+  }
+
   //////////////////////////// singleton ////////////////////////////
 
   private static class PipeDataNodeRemainingEventAndTimeMetricsHolder {
