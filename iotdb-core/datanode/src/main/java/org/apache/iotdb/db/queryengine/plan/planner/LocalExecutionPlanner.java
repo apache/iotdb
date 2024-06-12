@@ -52,12 +52,12 @@ public class LocalExecutionPlanner {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanner.class);
   private static final long ALLOCATE_MEMORY_FOR_OPERATORS;
-  private static final long MAX_REST_MEMORY_FOR_LOAD;
+  private static final long MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
 
   static {
     IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
     ALLOCATE_MEMORY_FOR_OPERATORS = CONFIG.getAllocateMemoryForOperators();
-    MAX_REST_MEMORY_FOR_LOAD =
+    MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD =
         (long)
             ((ALLOCATE_MEMORY_FOR_OPERATORS) * (1.0 - CONFIG.getMaxAllocateMemoryRatioForLoad()));
   }
@@ -67,6 +67,10 @@ public class LocalExecutionPlanner {
 
   public long getFreeMemoryForOperators() {
     return freeMemoryForOperators;
+  }
+
+  public long getFreeMemoryForLoadTsFile() {
+    return freeMemoryForOperators - MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
   }
 
   public static LocalExecutionPlanner getInstance() {
@@ -211,7 +215,7 @@ public class LocalExecutionPlanner {
   }
 
   public synchronized boolean forceAllocateFreeMemoryForOperators(long memoryInBytes) {
-    if (freeMemoryForOperators - memoryInBytes <= MAX_REST_MEMORY_FOR_LOAD) {
+    if (freeMemoryForOperators - memoryInBytes <= MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD) {
       return false;
     } else {
       freeMemoryForOperators -= memoryInBytes;
@@ -220,9 +224,9 @@ public class LocalExecutionPlanner {
   }
 
   public synchronized long tryAllocateFreeMemoryForOperators(long memoryInBytes) {
-    if (freeMemoryForOperators - memoryInBytes <= MAX_REST_MEMORY_FOR_LOAD) {
-      long result = freeMemoryForOperators - MAX_REST_MEMORY_FOR_LOAD;
-      freeMemoryForOperators = MAX_REST_MEMORY_FOR_LOAD;
+    if (freeMemoryForOperators - memoryInBytes <= MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD) {
+      long result = freeMemoryForOperators - MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
+      freeMemoryForOperators = MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
       return result;
     } else {
       freeMemoryForOperators -= memoryInBytes;

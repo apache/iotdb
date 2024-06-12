@@ -19,20 +19,15 @@
     under the License.
 
 -->
-<gradleEnterprise xmlns="https://www.gradle.com/gradle-enterprise-maven" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://www.gradle.com/gradle-enterprise-maven https://www.gradle.com/schema/gradle-enterprise-maven.xsd">
+<develocity xmlns="https://www.gradle.com/develocity-maven" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://www.gradle.com/develocity-maven https://www.gradle.com/schema/develocity-maven.xsd">
     <server>
         <url>https://ge.apache.org</url>
-        <allowUntrusted>false</allowUntrusted>
     </server>
     <buildScan>
-        <capture>
-            <goalInputFiles>true</goalInputFiles>
-            <buildLogging>true</buildLogging>
-            <testLogging>true</testLogging>
-        </capture>
         <backgroundBuildScanUpload>#{isFalse(env['GITHUB_ACTIONS'])}</backgroundBuildScanUpload>
-        <publish>ALWAYS</publish>
-        <publishIfAuthenticated>true</publishIfAuthenticated>
+        <publishing>
+            <onlyIf><![CDATA[authenticated]]></onlyIf>
+        </publishing>
         <obfuscation>
             <ipAddresses>#{{'0.0.0.0'}}</ipAddresses>
         </obfuscation>
@@ -45,4 +40,4 @@
             <enabled>false</enabled>
         </remote>
     </buildCache>
-</gradleEnterprise>
+</develocity>

@@ -45,7 +45,7 @@ public class JDBCCharsetExample {
         final IoTDBStatement statement = (IoTDBStatement) connection.createStatement()) {
 
       final String insertSQLWithGB18030 =
-          "insert into root.测试(timestamp, 维语, 彝语, 繁体, 蒙文, 简体, 标点符号, 藏语) values(1, 'ئۇيغۇر تىلى', 'ꆈꌠꉙ', \"繁體\", 'ᠮᠣᠩᠭᠣᠯ ᠬᠡᠯᠡ', '简体', '——？！', \"བོད་སྐད།\");";
+          "insert into root.测试(timestamp, 彝语, 繁体, 蒙文, 简体, 标点符号, 藏语) values(1, 'ꆈꌠꉙ', \"繁體\", 'ᠮᠣᠩᠭᠣᠯ ᠬᠡᠯᠡ', '简体', '——？！', \"བོད་སྐད།\");";
       final byte[] insertSQLWithGB18030Bytes = insertSQLWithGB18030.getBytes("GB18030");
       statement.execute(insertSQLWithGB18030Bytes);
     } catch (IoTDBSQLException e) {

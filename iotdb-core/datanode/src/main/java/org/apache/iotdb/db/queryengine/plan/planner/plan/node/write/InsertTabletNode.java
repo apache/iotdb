@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -192,7 +192,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(Analysis analysis) {
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     // only single device in single database
     List<WritePlanNode> result = new ArrayList<>();
     if (times.length == 0) {

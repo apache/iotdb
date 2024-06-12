@@ -42,7 +42,6 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.utils.Pair;
-import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -62,11 +61,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -108,6 +107,15 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
   }
 
+  @Override
+  protected void setUpConfig() {
+    super.setUpConfig();
+
+    // Enable air gap receiver
+    receiverEnv.getConfig().getCommonConfig().setPipeAirGapReceiverEnabled(true);
+  }
+
+  @Override
   @Before
   public void setUp() {
     super.setUp();
@@ -996,7 +1004,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                   LOGGER.info("consumer {} exiting...", consumers.get(index));
                 }
               },
-              consumers.get(index).toString());
+              String.format("%s - %s", testName.getMethodName(), consumers.get(index).toString()));
       t.start();
       threads.add(t);
     }
@@ -1006,21 +1014,16 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
       try (final Connection connection = receiverEnv.getConnection();
           final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
-        Awaitility.await()
-            .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-            .pollInterval(
-                IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-            .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-            .untilAsserted(
-                () -> {
-                  if (receiverCrashed.get()) {
-                    LOGGER.info("detect receiver crashed, skipping this test...");
-                    return;
-                  }
-                  TestUtils.assertSingleResultSetEqual(
-                      TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
-                      expectedHeaderWithResult);
-                });
+        AWAIT.untilAsserted(
+            () -> {
+              if (receiverCrashed.get()) {
+                LOGGER.info("detect receiver crashed, skipping this test...");
+                return;
+              }
+              TestUtils.assertSingleResultSetEqual(
+                  TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                  expectedHeaderWithResult);
+            });
       }
     } catch (final Exception e) {
       e.printStackTrace();

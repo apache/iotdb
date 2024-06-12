@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -154,7 +154,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(Analysis analysis) {
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     List<WritePlanNode> result = new ArrayList<>();
 
     Map<TRegionReplicaSet, Map<TTimePartitionSlot, List<InsertRowNode>>> splitMap = new HashMap<>();

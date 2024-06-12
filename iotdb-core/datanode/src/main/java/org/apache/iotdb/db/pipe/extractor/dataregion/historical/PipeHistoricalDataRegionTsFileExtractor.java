@@ -173,11 +173,13 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         if (historicalDataExtractionStartTime > historicalDataExtractionEndTime) {
           throw new PipeParameterNotValidException(
               String.format(
-                  "%s or %s should be less than or equal to %s or %s.",
+                  "%s (%s) [%s] should be less than or equal to %s (%s) [%s].",
                   SOURCE_START_TIME_KEY,
                   EXTRACTOR_START_TIME_KEY,
+                  historicalDataExtractionStartTime,
                   SOURCE_END_TIME_KEY,
-                  EXTRACTOR_END_TIME_KEY));
+                  EXTRACTOR_END_TIME_KEY,
+                  historicalDataExtractionEndTime));
         }
       } catch (final Exception e) {
         // compatible with the current validation framework
@@ -220,11 +222,13 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       if (historicalDataExtractionStartTime > historicalDataExtractionEndTime) {
         throw new PipeParameterNotValidException(
             String.format(
-                "%s (%s) should be less than or equal to %s (%s).",
+                "%s (%s) [%s] should be less than or equal to %s (%s) [%s].",
                 EXTRACTOR_HISTORY_START_TIME_KEY,
                 SOURCE_HISTORY_START_TIME_KEY,
+                historicalDataExtractionStartTime,
                 EXTRACTOR_HISTORY_END_TIME_KEY,
-                SOURCE_HISTORY_END_TIME_KEY));
+                SOURCE_HISTORY_END_TIME_KEY,
+                historicalDataExtractionEndTime));
       }
     } catch (final Exception e) {
       // Compatible with the current validation framework
