@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTransferringTriggersPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
@@ -248,8 +248,8 @@ public class TriggerManager {
     final TUpdateTriggerLocationReq request =
         new TUpdateTriggerLocationReq(triggerName, dataNodeLocation);
 
-    AsyncDataNodeRequestContext<TUpdateTriggerLocationReq, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(
+    DataNodeAsyncRequestContext<TUpdateTriggerLocationReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
             ConfigNodeToDataNodeRequestType.UPDATE_TRIGGER_LOCATION, request, dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(clientHandler);

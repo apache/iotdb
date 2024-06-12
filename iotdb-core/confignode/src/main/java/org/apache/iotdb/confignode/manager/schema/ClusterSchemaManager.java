@@ -34,7 +34,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
@@ -1039,8 +1039,8 @@ public class ClusterSchemaManager {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
 
-    AsyncDataNodeRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(
+    DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
             ConfigNodeToDataNodeRequestType.UPDATE_TEMPLATE,
             updateTemplateReq,
             dataNodeLocationMap);

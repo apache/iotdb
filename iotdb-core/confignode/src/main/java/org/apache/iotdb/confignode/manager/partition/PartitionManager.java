@@ -36,7 +36,7 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -1255,9 +1255,9 @@ public class PartitionManager {
                       switch (selectedRegionMaintainTask.get(0).getRegionId().getType()) {
                         case SchemaRegion:
                           // create SchemaRegion
-                          AsyncDataNodeRequestContext<TCreateSchemaRegionReq, TSStatus>
+                          DataNodeAsyncRequestContext<TCreateSchemaRegionReq, TSStatus>
                               createSchemaRegionHandler =
-                                  new AsyncDataNodeRequestContext<>(
+                                  new DataNodeAsyncRequestContext<>(
                                       ConfigNodeToDataNodeRequestType.CREATE_SCHEMA_REGION);
                           for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                             RegionCreateTask schemaRegionCreateTask =
@@ -1291,9 +1291,9 @@ public class PartitionManager {
                           break;
                         case DataRegion:
                           // Create DataRegion
-                          AsyncDataNodeRequestContext<TCreateDataRegionReq, TSStatus>
+                          DataNodeAsyncRequestContext<TCreateDataRegionReq, TSStatus>
                               createDataRegionHandler =
-                                  new AsyncDataNodeRequestContext<>(
+                                  new DataNodeAsyncRequestContext<>(
                                       ConfigNodeToDataNodeRequestType.CREATE_DATA_REGION);
                           for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                             RegionCreateTask dataRegionCreateTask =
@@ -1329,8 +1329,8 @@ public class PartitionManager {
                       break;
                     case DELETE:
                       // delete region
-                      AsyncDataNodeRequestContext<TConsensusGroupId, TSStatus> deleteRegionHandler =
-                          new AsyncDataNodeRequestContext<>(
+                      DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> deleteRegionHandler =
+                          new DataNodeAsyncRequestContext<>(
                               ConfigNodeToDataNodeRequestType.DELETE_REGION);
                       Map<Integer, TConsensusGroupId> regionIdMap = new HashMap<>();
                       for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {

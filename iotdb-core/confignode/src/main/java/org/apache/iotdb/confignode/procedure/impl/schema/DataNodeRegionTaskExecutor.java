@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 
@@ -86,7 +86,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
             : getLeaderDataNodeRegionGroupMap(
                 configManager.getLoadManager().getRegionLeaderMap(), targetSchemaRegionGroup);
     while (!dataNodeConsensusGroupIdMap.isEmpty()) {
-      AsyncDataNodeRequestContext<Q, R> clientHandler =
+      DataNodeAsyncRequestContext<Q, R> clientHandler =
           prepareRequestHandler(dataNodeConsensusGroupIdMap);
       ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
           .sendAsyncRequestWithRetry(clientHandler);
@@ -114,10 +114,10 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
     }
   }
 
-  private AsyncDataNodeRequestContext<Q, R> prepareRequestHandler(
+  private DataNodeAsyncRequestContext<Q, R> prepareRequestHandler(
       Map<TDataNodeLocation, List<TConsensusGroupId>> dataNodeConsensusGroupIdMap) {
-    AsyncDataNodeRequestContext<Q, R> clientHandler =
-        new AsyncDataNodeRequestContext<>(dataNodeRequestType);
+    DataNodeAsyncRequestContext<Q, R> clientHandler =
+        new DataNodeAsyncRequestContext<>(dataNodeRequestType);
     for (Map.Entry<TDataNodeLocation, List<TConsensusGroupId>> entry :
         dataNodeConsensusGroupIdMap.entrySet()) {
       clientHandler.putNodeLocation(entry.getKey().getDataNodeId(), entry.getKey());

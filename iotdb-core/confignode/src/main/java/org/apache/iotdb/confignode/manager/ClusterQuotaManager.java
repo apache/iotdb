@@ -28,7 +28,7 @@ import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -87,8 +87,8 @@ public class ClusterQuotaManager {
       if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         Map<Integer, TDataNodeLocation> dataNodeLocationMap =
             configManager.getNodeManager().getRegisteredDataNodeLocations();
-        AsyncDataNodeRequestContext<TSetSpaceQuotaReq, TSStatus> clientHandler =
-            new AsyncDataNodeRequestContext<>(
+        DataNodeAsyncRequestContext<TSetSpaceQuotaReq, TSStatus> clientHandler =
+            new DataNodeAsyncRequestContext<>(
                 ConfigNodeToDataNodeRequestType.SET_SPACE_QUOTA, req, dataNodeLocationMap);
         ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
             .sendAsyncRequestWithRetry(clientHandler);
@@ -194,8 +194,8 @@ public class ClusterQuotaManager {
       if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         Map<Integer, TDataNodeLocation> dataNodeLocationMap =
             configManager.getNodeManager().getRegisteredDataNodeLocations();
-        AsyncDataNodeRequestContext<TSetThrottleQuotaReq, TSStatus> clientHandler =
-            new AsyncDataNodeRequestContext<>(
+        DataNodeAsyncRequestContext<TSetThrottleQuotaReq, TSStatus> clientHandler =
+            new DataNodeAsyncRequestContext<>(
                 ConfigNodeToDataNodeRequestType.SET_THROTTLE_QUOTA, req, dataNodeLocationMap);
         ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
             .sendAsyncRequestWithRetry(clientHandler);

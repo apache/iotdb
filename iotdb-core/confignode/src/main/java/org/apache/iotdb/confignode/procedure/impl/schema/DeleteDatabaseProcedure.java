@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
@@ -155,8 +155,8 @@ public class DeleteDatabaseProcedure
               MetricService.getInstance(), deleteDatabaseSchema.getName());
 
           // try sync delete schemaengine region
-          AsyncDataNodeRequestContext<TConsensusGroupId, TSStatus> asyncClientHandler =
-              new AsyncDataNodeRequestContext<>(ConfigNodeToDataNodeRequestType.DELETE_REGION);
+          DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> asyncClientHandler =
+              new DataNodeAsyncRequestContext<>(ConfigNodeToDataNodeRequestType.DELETE_REGION);
           Map<Integer, RegionDeleteTask> schemaRegionDeleteTaskMap = new HashMap<>();
           int requestIndex = 0;
           for (TRegionReplicaSet schemaRegionReplicaSet : schemaRegionReplicaSets) {

@@ -27,7 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
@@ -167,8 +167,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     // Transfer leader to the optimal distribution
     long currentTime = System.nanoTime();
     AtomicInteger requestId = new AtomicInteger(0);
-    AsyncDataNodeRequestContext<TRegionLeaderChangeReq, TRegionLeaderChangeResp> clientHandler =
-        new AsyncDataNodeRequestContext<>(ConfigNodeToDataNodeRequestType.CHANGE_REGION_LEADER);
+    DataNodeAsyncRequestContext<TRegionLeaderChangeReq, TRegionLeaderChangeResp> clientHandler =
+        new DataNodeAsyncRequestContext<>(ConfigNodeToDataNodeRequestType.CHANGE_REGION_LEADER);
     Map<TConsensusGroupId, ConsensusGroupHeartbeatSample> successTransferMap = new TreeMap<>();
     optimalLeaderMap.forEach(
         (regionGroupId, newLeaderId) -> {
@@ -308,8 +308,8 @@ public class RouteBalancer implements IClusterStatusSubscriber {
 
     long broadcastTime = System.currentTimeMillis();
     Map<TConsensusGroupId, TRegionReplicaSet> tmpPriorityMap = getRegionPriorityMap();
-    AsyncDataNodeRequestContext<TRegionRouteReq, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(
+    DataNodeAsyncRequestContext<TRegionRouteReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
             ConfigNodeToDataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
             new TRegionRouteReq(broadcastTime, tmpPriorityMap),
             dataNodeLocationMap);

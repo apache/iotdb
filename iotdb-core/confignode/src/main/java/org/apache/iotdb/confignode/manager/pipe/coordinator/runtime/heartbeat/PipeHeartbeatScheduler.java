@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -94,8 +94,8 @@ public class PipeHeartbeatScheduler {
     final TPipeHeartbeatReq request = new TPipeHeartbeatReq(System.currentTimeMillis());
     LOGGER.info("Collecting pipe heartbeat {} from data nodes", request.heartbeatId);
 
-    final AsyncDataNodeRequestContext<TPipeHeartbeatReq, TPipeHeartbeatResp> clientHandler =
-        new AsyncDataNodeRequestContext<>(
+    final DataNodeAsyncRequestContext<TPipeHeartbeatReq, TPipeHeartbeatResp> clientHandler =
+        new DataNodeAsyncRequestContext<>(
             ConfigNodeToDataNodeRequestType.PIPE_HEARTBEAT, request, dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(

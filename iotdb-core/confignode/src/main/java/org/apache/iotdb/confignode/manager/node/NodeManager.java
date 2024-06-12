@@ -38,7 +38,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.confignode.client.ConfigNodeToConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -705,8 +705,8 @@ public class NodeManager {
   public List<TSStatus> merge() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(
+    DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
             ConfigNodeToDataNodeRequestType.MERGE, dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(clientHandler);
@@ -716,8 +716,8 @@ public class NodeManager {
   public List<TSStatus> flush(TFlushReq req) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    AsyncDataNodeRequestContext<TFlushReq, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(
+    DataNodeAsyncRequestContext<TFlushReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
             ConfigNodeToDataNodeRequestType.FLUSH, req, dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(clientHandler);
@@ -727,8 +727,8 @@ public class NodeManager {
   public List<TSStatus> clearCache() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(
+    DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
             ConfigNodeToDataNodeRequestType.CLEAR_CACHE, dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(clientHandler);
@@ -749,8 +749,8 @@ public class NodeManager {
       targetDataNodes.putAll(dataNodeLocationMap);
     }
     if (!targetDataNodes.isEmpty()) {
-      AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
-          new AsyncDataNodeRequestContext<>(
+      DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
+          new DataNodeAsyncRequestContext<>(
               ConfigNodeToDataNodeRequestType.SET_CONFIGURATION, req, dataNodeLocationMap);
       ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
           .sendAsyncRequestWithRetry(clientHandler);
@@ -788,8 +788,8 @@ public class NodeManager {
   public List<TSStatus> startRpairData() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(
+    DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
             ConfigNodeToDataNodeRequestType.START_REPAIR_DATA, dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(clientHandler);
@@ -799,8 +799,8 @@ public class NodeManager {
   public List<TSStatus> stopRepairData() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(
+    DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
             ConfigNodeToDataNodeRequestType.STOP_REPAIR_DATA, dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(clientHandler);
@@ -810,8 +810,8 @@ public class NodeManager {
   public List<TSStatus> loadConfiguration() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(
+    DataNodeAsyncRequestContext<Object, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
             ConfigNodeToDataNodeRequestType.LOAD_CONFIGURATION, dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(clientHandler);
@@ -854,8 +854,8 @@ public class NodeManager {
   public List<TSStatus> setSystemStatus(String status) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    AsyncDataNodeRequestContext<String, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(
+    DataNodeAsyncRequestContext<String, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
             ConfigNodeToDataNodeRequestType.SET_SYSTEM_STATUS, status, dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(clientHandler);
@@ -889,8 +889,8 @@ public class NodeManager {
   private TSStatus killAllQueries() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    AsyncDataNodeRequestContext<String, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(
+    DataNodeAsyncRequestContext<String, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
             ConfigNodeToDataNodeRequestType.KILL_QUERY_INSTANCE, dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(clientHandler);

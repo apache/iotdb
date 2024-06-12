@@ -31,10 +31,10 @@ import java.util.Map;
  * @param <Q> ClassName of RPC request
  * @param <R> ClassName of RPC response
  */
-public class AsyncConfigNodeRequestContext<Q, R>
+public class ConfigNodeAsyncRequestContext<Q, R>
     extends AsyncRequestContext<Q, R, ConfigNodeToConfigNodeRequestType, TConfigNodeLocation> {
 
-  public AsyncConfigNodeRequestContext(
+  public ConfigNodeAsyncRequestContext(
       ConfigNodeToConfigNodeRequestType configNodeRequestType,
       Q q,
       Map<Integer, TConfigNodeLocation> integerTConfigNodeLocationMap) {

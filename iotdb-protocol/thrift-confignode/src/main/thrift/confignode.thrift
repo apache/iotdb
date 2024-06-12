@@ -1382,7 +1382,7 @@ service IConfigNodeRPCService {
   common.TTestConnectionResp submitTestConnectionTaskToLeader()
 
   /** Empty rpc, only for connection test */
-  common.TSStatus testConnection()
+  common.TSStatus testConnectionEmptyRPC()
 
   /**
    * Show the matched cluster Regions' information

@@ -661,5 +661,5 @@ service IClientRPCService {
   TSConnectionInfoResp fetchAllConnectionsInfo();
 
   /** For other node's call */
-  common.TSStatus testConnection()
+  common.TSStatus testConnectionEmptyRPC()
 }
