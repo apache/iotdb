@@ -31,14 +31,14 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 public class PipeConsensusServerMetrics implements IMetricSet {
   private final PipeConsensusServerImpl impl;
-  private final PipeConsensusSyncLagManager syncLagManager =
-      PipeConsensusSyncLagManager.getInstance();
+  private final PipeConsensusSyncLagManager syncLagManager;
 
   private Timer getStateMachineLockTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer writeStateMachineTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   public PipeConsensusServerMetrics(PipeConsensusServerImpl impl) {
     this.impl = impl;
+    this.syncLagManager = PipeConsensusSyncLagManager.getInstance(impl.getConsensusGroupId());
   }
 
   private static final String IMPL = "PipeConsensusServerImpl";

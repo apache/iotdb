@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.Pip
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.response.PipeConsensusTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.consensus.pipe.PipeConsensusServerImpl;
@@ -109,6 +110,7 @@ public class PipeConsensusReceiver {
     this.consensusGroupId = consensusGroupId;
     this.pipeConsensusReceiverMetric = new PipeConsensusReceiverMetric(this);
     this.requestExecutor = new RequestExecutor(pipeConsensusReceiverMetric);
+    MetricService.getInstance().addMetricSet(pipeConsensusReceiverMetric);
 
     // Each pipeConsensusReceiver has its own base directories. for example, a default dir path is
     // data/datanode/system/pipe/consensus/receiver/__consensus{consensusGroupId}_{leaderDataNodeId}_{followerDataNodeId}
@@ -935,6 +937,9 @@ public class PipeConsensusReceiver {
             consensusGroupId.getId());
       }
     }
+
+    // remove metric
+    MetricService.getInstance().removeMetricSet(pipeConsensusReceiverMetric);
 
     LOGGER.info(
         "PipeConsensus-ConsensusGroupId-{}: Receiver exit: Receiver exited.",

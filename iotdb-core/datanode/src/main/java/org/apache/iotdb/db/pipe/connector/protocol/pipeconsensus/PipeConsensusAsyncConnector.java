@@ -144,7 +144,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     // initialize metric components
     pipeConsensusConnectorMetric = new PipeConsensusConnectorMetric(this);
-    PipeConsensusSyncLagManager.getInstance().addConsensusPipeConnector(this);
+    PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
+        .addConsensusPipeConnector(this);
     MetricService.getInstance().addMetricSet(this.pipeConsensusConnectorMetric);
   }
 
@@ -540,6 +541,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();
     }
+
+    MetricService.getInstance().removeMetricSet(this.pipeConsensusConnectorMetric);
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

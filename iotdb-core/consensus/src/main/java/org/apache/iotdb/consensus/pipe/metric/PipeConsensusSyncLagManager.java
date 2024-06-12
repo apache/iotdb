@@ -22,6 +22,8 @@ package org.apache.iotdb.consensus.pipe.metric;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeConnector;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -34,9 +36,10 @@ public class PipeConsensusSyncLagManager {
   List<ConsensusPipeConnector> consensusPipeConnectorList = new CopyOnWriteArrayList<>();
 
   private void updateReplicateProgress() {
-    // if there isn't a consensus pipe task, replicate progress is 0.
+    // if there isn't a consensus pipe task, replicate progress is Long.MAX_VALUE.
     if (consensusPipeConnectorList.isEmpty()) {
-      minReplicateProgress = 0;
+      minReplicateProgress = Long.MAX_VALUE;
+      return;
     }
     // else we find the minimum progress in all consensus pipe task.
     consensusPipeConnectorList.forEach(
@@ -48,9 +51,10 @@ public class PipeConsensusSyncLagManager {
   }
 
   private void updateUserWriteProgress() {
-    // if there isn't a consensus pipe task, user write progress is Long.MAX_VALUE.
+    // if there isn't a consensus pipe task, user write progress is 0.
     if (consensusPipeConnectorList.isEmpty()) {
-      userWriteProgress = Long.MAX_VALUE;
+      userWriteProgress = 0;
+      return;
     }
     // since the user write progress of different consensus pipes on the same DataRegion is the
     // same, we only need to take out one Connector to calculate
@@ -84,21 +88,22 @@ public class PipeConsensusSyncLagManager {
 
   /** singleton */
   private static class PipeConsensusSyncLagManagerHolder {
-    private static PipeConsensusSyncLagManager INSTANCE;
+    private static Map<String, PipeConsensusSyncLagManager> INSTANCE_MAP;
 
     private PipeConsensusSyncLagManagerHolder() {
       // empty constructor
     }
 
-    public static void build() {
-      if (INSTANCE == null) {
-        INSTANCE = new PipeConsensusSyncLagManager();
+    private static void build() {
+      if (INSTANCE_MAP == null) {
+        INSTANCE_MAP = new ConcurrentHashMap<>();
       }
     }
   }
 
-  public static PipeConsensusSyncLagManager getInstance() {
-    return PipeConsensusSyncLagManagerHolder.INSTANCE;
+  public static PipeConsensusSyncLagManager getInstance(String groupId) {
+    return PipeConsensusSyncLagManagerHolder.INSTANCE_MAP.computeIfAbsent(
+        groupId, key -> new PipeConsensusSyncLagManager());
   }
 
   // Only when consensus protocol is PipeConsensus, this method will be called once when construct

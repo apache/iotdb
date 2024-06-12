@@ -161,7 +161,7 @@ public class PipeConsensusServerImpl {
       // do not roll back, because it will stop anyway
       LOGGER.warn("{} cannot stop all consensus pipes", thisNode);
     }
-
+    MetricService.getInstance().removeMetricSet(this.pipeConsensusServerMetrics);
     stateMachine.stop();
     isStarted.set(false);
   }
