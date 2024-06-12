@@ -73,7 +73,7 @@ public class IoTDBConfig {
 
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
-  public static final String CONFIG_NAME = "iotdb-datanode.properties";
+  public static final String CONFIG_NAME = "iotdb-system.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.storageengine.rescon.disk.strategy.";

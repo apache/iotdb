@@ -42,17 +42,6 @@ import java.util.List;
 public class TypeInferenceUtils {
 
   private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
-  private static final TSDataType booleanStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType();
-
-  private static final TSDataType integerStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
-
-  private static final TSDataType floatingStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
-
-  private static final TSDataType nanStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
 
   private TypeInferenceUtils() {}
 
