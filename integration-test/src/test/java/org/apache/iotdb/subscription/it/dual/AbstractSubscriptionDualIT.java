@@ -37,8 +37,10 @@ abstract class AbstractSubscriptionDualIT {
 
   @Before
   public void setUp() {
-    // set thread names
+    // set thread name
     Thread.currentThread().setName(String.format("%s - main", testName.getMethodName()));
+
+    // set thread pools core size
     SubscriptionExecutorServiceManager.setControlFlowExecutorCorePoolSize(1);
     SubscriptionExecutorServiceManager.setUpstreamDataFlowExecutorCorePoolSize(1);
     SubscriptionExecutorServiceManager.setDownstreamDataFlowExecutorCorePoolSize(1);
