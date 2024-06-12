@@ -30,7 +30,7 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT2;
+import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
@@ -61,7 +61,7 @@ import java.util.concurrent.locks.LockSupport;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT2.class})
+@Category({ClusterIT.class})
 public class IoTDBSubscriptionRestartIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionRestartIT.class);
