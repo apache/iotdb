@@ -44,7 +44,6 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -411,9 +410,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                         // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
                         !resource.isClosed()
                             || mayTsFileContainUnprocessedData(resource)
-                                && mayTsFileResourceOverlappedWithPattern(resource)
                                 && isTsFileResourceOverlappedWithTimeRange(resource)
-                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
+                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                                && mayTsFileResourceOverlappedWithPattern(resource))
                 .collect(Collectors.toList());
         resourceList.addAll(sequenceTsFileResources);
 
@@ -425,9 +424,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                         // PIPE_MIN_FLUSH_INTERVAL_IN_MS. We simply ignore them.
                         !resource.isClosed()
                             || mayTsFileContainUnprocessedData(resource)
-                                && mayTsFileResourceOverlappedWithPattern(resource)
                                 && isTsFileResourceOverlappedWithTimeRange(resource)
-                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
+                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                                && mayTsFileResourceOverlappedWithPattern(resource))
                 .collect(Collectors.toList());
         resourceList.addAll(unsequenceTsFileResources);
 
@@ -490,28 +489,32 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
-    // TODO: use IDeviceID
-    return getTsFileDevice(resource).stream()
-        .anyMatch(
-            deviceID -> pipePattern.mayOverlapWithDevice(((PlainDeviceID) deviceID).toStringID()));
-  }
+    if (!sloppyPattern) {
+      return true;
+    }
 
-  private Set<IDeviceID> getTsFileDevice(final TsFileResource resource) {
+    final Set<IDeviceID> deviceSet;
     try {
       final Map<IDeviceID, Boolean> deviceIsAlignedMap =
           PipeResourceManager.tsfile()
               .getDeviceIsAlignedMapFromCache(
                   PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()));
-      return Objects.nonNull(deviceIsAlignedMap)
-          ? deviceIsAlignedMap.keySet()
-          : resource.getDevices();
+      deviceSet =
+          Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
     } catch (final IOException e) {
-      throw new PipeException(
-          String.format(
-              "Failed to get devices of %s when trying to filter it by the devices and pattern",
-              resource.getTsFile()),
+      LOGGER.warn(
+          "Pipe {}@{}: failed to get devices from TsFile {}, extract it anyway",
+          pipeName,
+          dataRegionId,
+          resource.getTsFilePath(),
           e);
+      return true;
     }
+
+    return deviceSet.stream()
+        .anyMatch(
+            // TODO: use IDeviceID
+            deviceID -> pipePattern.mayOverlapWithDevice(((PlainDeviceID) deviceID).toStringID()));
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {
