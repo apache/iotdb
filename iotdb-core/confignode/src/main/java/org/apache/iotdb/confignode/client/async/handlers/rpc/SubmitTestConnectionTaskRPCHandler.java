@@ -52,10 +52,8 @@ public class SubmitTestConnectionTaskRPCHandler
     countDownLatch.countDown();
   }
 
-  // TODO: 什么情况下会error？
   @Override
   public void onError(Exception e) {
-    LOGGER.error("gg", e);
     responseMap.put(requestId, new TTestConnectionResp());
     nodeLocationMap.remove(requestId);
     countDownLatch.countDown();

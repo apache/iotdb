@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-// TODO: ConfigNodeRequestType可抽
 public abstract class AsyncConfigNodeRequestRPCHandler<Response>
     extends AsyncRequestRPCHandler<Response, DataNodeToConfigNodeRequestType, TConfigNodeLocation> {
 

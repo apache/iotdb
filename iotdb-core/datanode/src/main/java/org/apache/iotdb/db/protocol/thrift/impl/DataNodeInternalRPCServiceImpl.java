@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
+import org.apache.commons.collections4.ListUtils;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -266,6 +267,7 @@ import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -279,7 +281,9 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static org.apache.iotdb.commons.client.request.Utils.testConnectionsImpl;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.service.RegionMigrateService.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
@@ -1429,62 +1433,32 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations)
       throws TException {
-    List<TTestConnectionResult> configNodeResult =
-        testAllConfigNodeConnection(nodeLocations.getConfigNodeLocations());
-    List<TTestConnectionResult> dataNodeResult =
-        testAllDataNodeInternalServiceConnection(nodeLocations.getDataNodeLocations());
-    List<TTestConnectionResult> mppResult =
-        testAllDataNodeMPPServiceConnection(nodeLocations.getDataNodeLocations());
-    List<TTestConnectionResult> clientResult =
-        testAllDataNodeExternalServiceConnection(nodeLocations.getDataNodeLocations());
-    configNodeResult.addAll(dataNodeResult);
-    configNodeResult.addAll(mppResult);
-    configNodeResult.addAll(clientResult);
-    return new TTestConnectionResp(configNodeResult);
+    return new TTestConnectionResp(Stream.of(
+              testAllConfigNodeConnection(nodeLocations.getConfigNodeLocations()),
+              testAllDataNodeInternalServiceConnection(nodeLocations.getDataNodeLocations()),
+              testAllDataNodeMPPServiceConnection(nodeLocations.getDataNodeLocations()),
+              testAllDataNodeExternalServiceConnection(nodeLocations.getDataNodeLocations())
+        ).flatMap(Collection::stream).collect(Collectors.toList())
+    );
   }
 
-  private <Location, RequestType> List<TTestConnectionResult> testAllConnections(
+  private static <Location, RequestType> List<TTestConnectionResult> testConnections(
       List<Location> nodeLocations,
       Function<Location, Integer> getId,
       Function<Location, TEndPoint> getEndPoint,
       TServiceType serviceType,
       RequestType requestType,
       Consumer<AsyncRequestContext<Object, TSStatus, RequestType, Location>> sendRequest) {
-    final TSender sender =
-        new TSender()
-            .setDataNodeLocation(
-                IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation());
-    Map<Integer, Location> nodeLocationMap =
-        nodeLocations.stream().collect(Collectors.toMap(getId, location -> location));
-    AsyncRequestContext<Object, TSStatus, RequestType, Location> requestContext =
-        new AsyncRequestContext<>(requestType, new Object(), nodeLocationMap);
-    sendRequest.accept(requestContext);
-    Map<Integer, Location> anotherNodeLocationMap =
-        nodeLocations.stream().collect(Collectors.toMap(getId, location -> location));
-    List<TTestConnectionResult> results = new ArrayList<>();
-    requestContext
-        .getResponseMap()
-        .forEach(
-            (nodeId, status) -> {
-              TEndPoint endPoint = getEndPoint.apply(anotherNodeLocationMap.get(nodeId));
-              TServiceProvider serviceProvider = new TServiceProvider(endPoint, serviceType);
-              TTestConnectionResult result = new TTestConnectionResult();
-              result.setSender(sender);
-              result.setServiceProvider(serviceProvider);
-              if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                result.setSuccess(true);
-              } else {
-                result.setSuccess(false);
-                result.setReason(status.getMessage());
-              }
-              results.add(result);
-            });
-    return results;
+    TSender sender =
+            new TSender()
+                    .setDataNodeLocation(
+                            IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation());
+    return testConnectionsImpl(nodeLocations, sender, getId, getEndPoint, serviceType, requestType, sendRequest);
   }
 
   private List<TTestConnectionResult> testAllConfigNodeConnection(
       List<TConfigNodeLocation> configNodeLocations) {
-    return testAllConnections(
+    return testConnections(
         configNodeLocations,
         TConfigNodeLocation::getConfigNodeId,
         TConfigNodeLocation::getInternalEndPoint,
@@ -1498,7 +1472,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private List<TTestConnectionResult> testAllDataNodeInternalServiceConnection(
       List<TDataNodeLocation> dataNodeLocations) {
-    return testAllConnections(
+    return testConnections(
         dataNodeLocations,
         TDataNodeLocation::getDataNodeId,
         TDataNodeLocation::getInternalEndPoint,
@@ -1512,7 +1486,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private List<TTestConnectionResult> testAllDataNodeMPPServiceConnection(
       List<TDataNodeLocation> dataNodeLocations) {
-    return testAllConnections(
+    return testConnections(
         dataNodeLocations,
         TDataNodeLocation::getDataNodeId,
         TDataNodeLocation::getMPPDataExchangeEndPoint,
@@ -1525,7 +1499,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private List<TTestConnectionResult> testAllDataNodeExternalServiceConnection(
       List<TDataNodeLocation> dataNodeLocations) {
-    return testAllConnections(
+    return testConnections(
         dataNodeLocations,
         TDataNodeLocation::getDataNodeId,
         TDataNodeLocation::getClientRpcEndPoint,

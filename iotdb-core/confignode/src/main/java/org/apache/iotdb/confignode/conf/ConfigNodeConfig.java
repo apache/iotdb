@@ -1198,7 +1198,7 @@ public class ConfigNodeConfig {
     this.dataRegionRatisPeriodicSnapshotInterval = dataRegionRatisPeriodicSnapshotInterval;
   }
 
-  public TConfigNodeLocation generateLocalConfigNodeLocation(int configNodeId) {
+  public TConfigNodeLocation generateLocalConfigNodeLocationWithSpecifiedNodeId(int configNodeId) {
     return new TConfigNodeLocation(
         configNodeId,
         new TEndPoint(getInternalAddress(), getInternalPort()),

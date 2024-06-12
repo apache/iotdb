@@ -186,7 +186,7 @@ public class ConfigNode implements ConfigNodeMBean {
         configManager
             .getNodeManager()
             .applyConfigNode(
-                CONF.generateLocalConfigNodeLocation(SEED_CONFIG_NODE_ID),
+                CONF.generateLocalConfigNodeLocationWithSpecifiedNodeId(SEED_CONFIG_NODE_ID),
                 new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
@@ -323,7 +323,7 @@ public class ConfigNode implements ConfigNodeMBean {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
             configManager.getClusterParameters(),
-            CONF.generateLocalConfigNodeLocation(INIT_NON_SEED_CONFIG_NODE_ID));
+            CONF.generateLocalConfigNodeLocationWithSpecifiedNodeId(INIT_NON_SEED_CONFIG_NODE_ID));
 
     req.setVersionInfo(new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
 
