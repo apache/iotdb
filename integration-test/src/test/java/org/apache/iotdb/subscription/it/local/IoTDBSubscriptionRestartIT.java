@@ -37,7 +37,7 @@ import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
-import org.apache.iotdb.subscription.it.SkipOnSetupFailure;
+import org.apache.iotdb.subscription.it.SkipOnSetUpFailure;
 
 import org.awaitility.Awaitility;
 import org.junit.After;
@@ -66,7 +66,9 @@ public class IoTDBSubscriptionRestartIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionRestartIT.class);
 
-  @Rule public final TestRule skipOnSetupFailure = new SkipOnSetupFailure();
+  @Rule
+  public final TestRule skipOnSetupFailure =
+      new SkipOnSetUpFailure("setUp", IoTDBSubscriptionRestartIT.class.getName());
 
   @Before
   public void setUp() throws Exception {
@@ -214,6 +216,8 @@ public class IoTDBSubscriptionRestartIT {
       isClosed.set(true);
       thread.join();
     }
+
+    throw new Exception("tmp");
   }
 
   @Test
