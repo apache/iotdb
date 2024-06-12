@@ -345,11 +345,7 @@ public class TsFileProcessor {
     long[] memIncrements;
 
     long memControlStartTime = System.nanoTime();
-    if (insertRowsNode.isAligned()) {
-      memIncrements = checkAlignedMemCostAndAddToTspInfoForRows(insertRowsNode);
-    } else {
-      memIncrements = checkMemCostAndAddToTspInfoForRows(insertRowsNode);
-    }
+    memIncrements = checkMemCostAndAddToTspInfoForRows(insertRowsNode);
     // recordScheduleMemoryBlockCost
     costsForMetrics[1] += System.nanoTime() - memControlStartTime;
 
@@ -561,55 +557,163 @@ public class TsFileProcessor {
     return new long[] {memTableIncrement, textDataIncrement, chunkMetadataIncrement};
   }
 
-  @SuppressWarnings("squid:S3776") // High Cognitive Complexity
   private long[] checkMemCostAndAddToTspInfoForRows(InsertRowsNode insertRowsNode)
       throws WriteProcessException {
-    // Memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
-    long memTableIncrement = 0L;
-    long textDataIncrement = 0L;
-    long chunkMetadataIncrement = 0L;
+
+    long[] memIncrements = new long[3];
     // device -> measurement -> adding TVList size
-    Map<IDeviceID, Map<String, Integer>> increasingMemTableInfo = new HashMap<>();
+    Map<IDeviceID, Map<String, Integer>> increasingMemTableInfoForNonAligned = new HashMap<>();
+    // device -> (measurements -> datatype, adding aligned TVList size)
+    Map<IDeviceID, Pair<Map<String, TSDataType>, Integer>> increasingMemTableInfoForAligned =
+        new HashMap<>();
     for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
-      IDeviceID deviceId = insertRowNode.getDeviceID();
-      TSDataType[] dataTypes = insertRowNode.getDataTypes();
-      Object[] values = insertRowNode.getValues();
-      String[] measurements = insertRowNode.getMeasurements();
+      if (insertRowNode.isAligned()) {
+        handleAlignedData(insertRowNode, memIncrements, increasingMemTableInfoForAligned);
+      } else {
+        handleUnalignedData(insertRowNode, memIncrements, increasingMemTableInfoForNonAligned);
+      }
+    }
+    updateMemoryInfo(memIncrements[0], memIncrements[2], memIncrements[1]);
+    return memIncrements;
+  }
+
+  @SuppressWarnings("squid:S3776") // High Cognitive Complexity
+  private void handleAlignedData(
+      InsertRowNode insertRowNode,
+      long[] memIncrements,
+      Map<IDeviceID, Pair<Map<String, TSDataType>, Integer>> increasingMemTableInfoForAligned) {
+    long memTableIncrement = memIncrements[0];
+    long textDataIncrement = memIncrements[1];
+    long chunkMetadataIncrement = memIncrements[2];
+
+    IDeviceID deviceId = insertRowNode.getDeviceID();
+    TSDataType[] dataTypes = insertRowNode.getDataTypes();
+    Object[] values = insertRowNode.getValues();
+    String[] measurements = insertRowNode.getMeasurements();
+
+    if (workMemTable.checkIfChunkDoesNotExist(deviceId, AlignedPath.VECTOR_PLACEHOLDER)
+        && !increasingMemTableInfoForAligned.containsKey(deviceId)) {
+      // For new device of this mem table
+      // ChunkMetadataIncrement
+      chunkMetadataIncrement +=
+          ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
+              * dataTypes.length;
+      memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypes);
       for (int i = 0; i < dataTypes.length; i++) {
         // Skip failed Measurements
         if (dataTypes[i] == null || measurements[i] == null) {
           continue;
         }
-        if (workMemTable.checkIfChunkDoesNotExist(deviceId, measurements[i])
-            && (!increasingMemTableInfo.containsKey(deviceId)
-                || !increasingMemTableInfo.get(deviceId).containsKey(measurements[i]))) {
-          // ChunkMetadataIncrement
-          chunkMetadataIncrement += ChunkMetadata.calculateRamSize(measurements[i], dataTypes[i]);
-          memTableIncrement += TVList.tvListArrayMemCost(dataTypes[i]);
-          increasingMemTableInfo
-              .computeIfAbsent(deviceId, k -> new HashMap<>())
-              .putIfAbsent(measurements[i], 1);
-        } else {
-          // here currentChunkPointNum >= 1
-          long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurements[i]);
-          int addingPointNum =
-              increasingMemTableInfo
-                  .computeIfAbsent(deviceId, k -> new HashMap<>())
-                  .computeIfAbsent(measurements[i], k -> 0);
-          memTableIncrement +=
-              ((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0
-                  ? TVList.tvListArrayMemCost(dataTypes[i])
-                  : 0;
-          increasingMemTableInfo.get(deviceId).computeIfPresent(measurements[i], (k, v) -> v + 1);
-        }
+        increasingMemTableInfoForAligned
+            .computeIfAbsent(deviceId, k -> new Pair<>(new HashMap<>(), 1))
+            .left
+            .put(measurements[i], dataTypes[i]);
         // TEXT data mem size
-        if (dataTypes[i].isBinary() && values[i] != null) {
+        if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
           textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
         }
       }
+
+    } else {
+      // For existed device of this mem table
+      AlignedWritableMemChunkGroup memChunkGroup =
+          (AlignedWritableMemChunkGroup) workMemTable.getMemTableMap().get(deviceId);
+      AlignedWritableMemChunk alignedMemChunk =
+          memChunkGroup == null ? null : memChunkGroup.getAlignedMemChunk();
+      long currentChunkPointNum = alignedMemChunk == null ? 0 : alignedMemChunk.alignedListSize();
+      List<TSDataType> dataTypesInTVList = new ArrayList<>();
+      Pair<Map<String, TSDataType>, Integer> addingPointNumInfo =
+          increasingMemTableInfoForAligned.computeIfAbsent(
+              deviceId, k -> new Pair<>(new HashMap<>(), 0));
+      for (int i = 0; i < dataTypes.length; i++) {
+        // Skip failed Measurements
+        if (dataTypes[i] == null || measurements[i] == null) {
+          continue;
+        }
+
+        int addingPointNum = addingPointNumInfo.getRight();
+        // Extending the column of aligned mem chunk
+        if ((alignedMemChunk != null && !alignedMemChunk.containsMeasurement(measurements[i]))
+            && !increasingMemTableInfoForAligned.get(deviceId).left.containsKey(measurements[i])) {
+          memTableIncrement +=
+              ((currentChunkPointNum + addingPointNum) / PrimitiveArrayManager.ARRAY_SIZE + 1)
+                  * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
+          increasingMemTableInfoForAligned.get(deviceId).left.put(measurements[i], dataTypes[i]);
+        }
+        // TEXT data mem size
+        if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
+          textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
+        }
+      }
+      int addingPointNum = increasingMemTableInfoForAligned.get(deviceId).getRight();
+      // Here currentChunkPointNum + addingPointNum >= 1
+      if (((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
+        if (alignedMemChunk != null) {
+          dataTypesInTVList.addAll(((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
+        }
+        dataTypesInTVList.addAll(increasingMemTableInfoForAligned.get(deviceId).getLeft().values());
+        memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
+      }
+      increasingMemTableInfoForAligned.get(deviceId).setRight(addingPointNum + 1);
     }
-    updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
-    return new long[] {memTableIncrement, textDataIncrement, chunkMetadataIncrement};
+
+    memIncrements[0] = memTableIncrement;
+    memIncrements[1] = textDataIncrement;
+    memIncrements[2] = chunkMetadataIncrement;
+  }
+
+  @SuppressWarnings("squid:S3776") // High Cognitive Complexity
+  private void handleUnalignedData(
+      InsertRowNode insertRowNode,
+      long[] memIncrements,
+      Map<IDeviceID, Map<String, Integer>> increasingMemTableInfoForNonAligned) {
+
+    long memTableIncrement = memIncrements[0];
+    long textDataIncrement = memIncrements[1];
+    long chunkMetadataIncrement = memIncrements[2];
+
+    IDeviceID deviceId = insertRowNode.getDeviceID();
+    TSDataType[] dataTypes = insertRowNode.getDataTypes();
+    Object[] values = insertRowNode.getValues();
+    String[] measurements = insertRowNode.getMeasurements();
+
+    for (int i = 0; i < dataTypes.length; i++) {
+      // Skip failed Measurements
+      if (dataTypes[i] == null || measurements[i] == null) {
+        continue;
+      }
+      if (workMemTable.checkIfChunkDoesNotExist(deviceId, measurements[i])
+          && (!increasingMemTableInfoForNonAligned.containsKey(deviceId)
+              || !increasingMemTableInfoForNonAligned.get(deviceId).containsKey(measurements[i]))) {
+        // ChunkMetadataIncrement
+        chunkMetadataIncrement += ChunkMetadata.calculateRamSize(measurements[i], dataTypes[i]);
+        memTableIncrement += TVList.tvListArrayMemCost(dataTypes[i]);
+        increasingMemTableInfoForNonAligned
+            .computeIfAbsent(deviceId, k -> new HashMap<>())
+            .putIfAbsent(measurements[i], 1);
+      } else {
+        // here currentChunkPointNum >= 1
+        long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurements[i]);
+        int addingPointNum =
+            increasingMemTableInfoForNonAligned
+                .computeIfAbsent(deviceId, k -> new HashMap<>())
+                .computeIfAbsent(measurements[i], k -> 0);
+        memTableIncrement +=
+            ((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0
+                ? TVList.tvListArrayMemCost(dataTypes[i])
+                : 0;
+        increasingMemTableInfoForNonAligned
+            .get(deviceId)
+            .computeIfPresent(measurements[i], (k, v) -> v + 1);
+      }
+      // TEXT data mem size
+      if (dataTypes[i].isBinary() && values[i] != null) {
+        textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
+      }
+    }
+    memIncrements[0] = memTableIncrement;
+    memIncrements[1] = textDataIncrement;
+    memIncrements[2] = chunkMetadataIncrement;
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
@@ -666,90 +770,6 @@ public class TsFileProcessor {
       if ((alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
         dataTypesInTVList.addAll(((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
         memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
-      }
-    }
-    updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
-    return new long[] {memTableIncrement, textDataIncrement, chunkMetadataIncrement};
-  }
-
-  @SuppressWarnings("squid:S3776") // high Cognitive Complexity
-  private long[] checkAlignedMemCostAndAddToTspInfoForRows(InsertRowsNode insertRowsNode)
-      throws WriteProcessException {
-    // Memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
-    long memTableIncrement = 0L;
-    long textDataIncrement = 0L;
-    long chunkMetadataIncrement = 0L;
-    // device -> (measurements -> datatype, adding aligned TVList size)
-    Map<IDeviceID, Pair<Map<String, TSDataType>, Integer>> increasingMemTableInfo = new HashMap<>();
-    for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
-      IDeviceID deviceId = insertRowNode.getDeviceID();
-      TSDataType[] dataTypes = insertRowNode.getDataTypes();
-      Object[] values = insertRowNode.getValues();
-      String[] measurements = insertRowNode.getMeasurements();
-      if (workMemTable.checkIfChunkDoesNotExist(deviceId, AlignedPath.VECTOR_PLACEHOLDER)
-          && !increasingMemTableInfo.containsKey(deviceId)) {
-        // For new device of this mem table
-        // ChunkMetadataIncrement
-        chunkMetadataIncrement +=
-            ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
-                * dataTypes.length;
-        memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypes);
-        for (int i = 0; i < dataTypes.length; i++) {
-          // Skip failed Measurements
-          if (dataTypes[i] == null || measurements[i] == null) {
-            continue;
-          }
-          increasingMemTableInfo
-              .computeIfAbsent(deviceId, k -> new Pair<>(new HashMap<>(), 1))
-              .left
-              .put(measurements[i], dataTypes[i]);
-          // TEXT data mem size
-          if (dataTypes[i].isBinary() && values[i] != null) {
-            textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
-          }
-        }
-
-      } else {
-        // For existed device of this mem table
-        AlignedWritableMemChunkGroup memChunkGroup =
-            (AlignedWritableMemChunkGroup) workMemTable.getMemTableMap().get(deviceId);
-        AlignedWritableMemChunk alignedMemChunk =
-            memChunkGroup == null ? null : memChunkGroup.getAlignedMemChunk();
-        long currentChunkPointNum = alignedMemChunk == null ? 0 : alignedMemChunk.alignedListSize();
-        List<TSDataType> dataTypesInTVList = new ArrayList<>();
-        Pair<Map<String, TSDataType>, Integer> addingPointNumInfo =
-            increasingMemTableInfo.computeIfAbsent(deviceId, k -> new Pair<>(new HashMap<>(), 0));
-        for (int i = 0; i < dataTypes.length; i++) {
-          // Skip failed Measurements
-          if (dataTypes[i] == null || measurements[i] == null) {
-            continue;
-          }
-
-          int addingPointNum = addingPointNumInfo.getRight();
-          // Extending the column of aligned mem chunk
-          if ((alignedMemChunk != null && !alignedMemChunk.containsMeasurement(measurements[i]))
-              && !increasingMemTableInfo.get(deviceId).left.containsKey(measurements[i])) {
-            memTableIncrement +=
-                ((currentChunkPointNum + addingPointNum) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                    * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
-            increasingMemTableInfo.get(deviceId).left.put(measurements[i], dataTypes[i]);
-          }
-          // TEXT data mem size
-          if (dataTypes[i].isBinary() && values[i] != null) {
-            textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
-          }
-        }
-        int addingPointNum = increasingMemTableInfo.get(deviceId).getRight();
-        // Here currentChunkPointNum + addingPointNum >= 1
-        if (((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
-          if (alignedMemChunk != null) {
-            dataTypesInTVList.addAll(
-                ((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
-          }
-          dataTypesInTVList.addAll(increasingMemTableInfo.get(deviceId).getLeft().values());
-          memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
-        }
-        increasingMemTableInfo.get(deviceId).setRight(addingPointNum + 1);
       }
     }
     updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
