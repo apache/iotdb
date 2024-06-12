@@ -216,8 +216,6 @@ public class IoTDBSubscriptionRestartIT {
       isClosed.set(true);
       thread.join();
     }
-
-    throw new Exception("tmp");
   }
 
   @Test
