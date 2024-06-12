@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.it.local;
+package org.apache.iotdb.subscription.it.cluster;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
@@ -36,17 +36,14 @@ import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
-import org.apache.iotdb.subscription.it.SkipOnSetUpFailure;
 
-import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,22 +51,22 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBSubscriptionRestartIT {
+public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionRestartIT.class);
 
-  @Rule public final TestRule skipOnSetUpFailure = new SkipOnSetUpFailure("setUp");
-
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
+    super.setUp();
+
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -83,7 +80,9 @@ public class IoTDBSubscriptionRestartIT {
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
+    super.tearDown();
+
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -201,12 +200,7 @@ public class IoTDBSubscriptionRestartIT {
     // Check timestamps size
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(100, timestamps.size()));
+      AWAIT.untilAsserted(() -> Assert.assertEquals(100, timestamps.size()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -343,12 +337,7 @@ public class IoTDBSubscriptionRestartIT {
     // Check timestamps size
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(200, timestamps.size()));
+      AWAIT.untilAsserted(() -> Assert.assertEquals(200, timestamps.size()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -486,12 +475,7 @@ public class IoTDBSubscriptionRestartIT {
     // Check timestamps size
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(200, timestamps.size()));
+      AWAIT.untilAsserted(() -> Assert.assertEquals(200, timestamps.size()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

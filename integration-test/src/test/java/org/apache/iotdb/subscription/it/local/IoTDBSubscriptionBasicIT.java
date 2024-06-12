@@ -40,10 +40,7 @@ import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
-import org.awaitility.Awaitility;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -57,30 +54,20 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
-public class IoTDBSubscriptionBasicIT {
+public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionBasicIT.class);
-
-  @Before
-  public void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
-  }
 
   @Test
   public void testBasicSubscribeTablets() throws Exception {
@@ -152,12 +139,7 @@ public class IoTDBSubscriptionBasicIT {
     // Check row count
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
+      AWAIT.untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -248,12 +230,7 @@ public class IoTDBSubscriptionBasicIT {
     // Check row count
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
+      AWAIT.untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -385,12 +362,7 @@ public class IoTDBSubscriptionBasicIT {
     // Check row count
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
+      AWAIT.untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
       Assert.assertTrue(commitSuccessCount.get() > lastCommitSuccessCount.get());
       Assert.assertEquals(0, commitFailureCount.get());
     } catch (final Exception e) {
@@ -416,12 +388,7 @@ public class IoTDBSubscriptionBasicIT {
     // Check row count
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(200, rowCount.get()));
+      AWAIT.untilAsserted(() -> Assert.assertEquals(200, rowCount.get()));
       Assert.assertTrue(commitSuccessCount.get() > lastCommitSuccessCount.get());
       Assert.assertEquals(0, commitFailureCount.get());
     } catch (final Exception e) {
@@ -486,16 +453,11 @@ public class IoTDBSubscriptionBasicIT {
       consumer.subscribe(topicName);
 
       // The push consumer should automatically poll 10 rows of data by 1 onReceive()
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(
-              () -> {
-                Assert.assertEquals(10, rowCount.get());
-                Assert.assertTrue(onReceiveCount.get() > lastOnReceiveCount.get());
-              });
+      AWAIT.untilAsserted(
+          () -> {
+            Assert.assertEquals(10, rowCount.get());
+            Assert.assertTrue(onReceiveCount.get() > lastOnReceiveCount.get());
+          });
 
       lastOnReceiveCount.set(onReceiveCount.get());
 
@@ -508,16 +470,11 @@ public class IoTDBSubscriptionBasicIT {
         session.executeNonQueryStatement("flush");
       }
 
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(
-              () -> {
-                Assert.assertEquals(20, rowCount.get());
-                Assert.assertTrue(onReceiveCount.get() > lastOnReceiveCount.get());
-              });
+      AWAIT.untilAsserted(
+          () -> {
+            Assert.assertEquals(20, rowCount.get());
+            Assert.assertTrue(onReceiveCount.get() > lastOnReceiveCount.get());
+          });
 
       lastOnReceiveCount.set(onReceiveCount.get());
 
@@ -529,16 +486,11 @@ public class IoTDBSubscriptionBasicIT {
         session.executeNonQueryStatement("flush");
       }
 
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(
-              () -> {
-                Assert.assertEquals(30, rowCount.get());
-                Assert.assertTrue(onReceiveCount.get() > lastOnReceiveCount.get());
-              });
+      AWAIT.untilAsserted(
+          () -> {
+            Assert.assertEquals(30, rowCount.get());
+            Assert.assertTrue(onReceiveCount.get() > lastOnReceiveCount.get());
+          });
 
       consumer.unsubscribe(topicName);
     } catch (final Exception e) {
@@ -630,16 +582,11 @@ public class IoTDBSubscriptionBasicIT {
     // Check row count
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(
-              () -> {
-                Assert.assertEquals(100, rowCount.get());
-                Assert.assertEquals((100 + 199) * 100 / 2, timestampSum.get());
-              });
+      AWAIT.untilAsserted(
+          () -> {
+            Assert.assertEquals(100, rowCount.get());
+            Assert.assertEquals((100 + 199) * 100 / 2, timestampSum.get());
+          });
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
