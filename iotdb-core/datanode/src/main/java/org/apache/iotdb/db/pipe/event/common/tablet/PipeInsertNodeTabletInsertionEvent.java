@@ -68,11 +68,11 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   private ProgressIndex progressIndex;
 
   public PipeInsertNodeTabletInsertionEvent(
-      WALEntryHandler walEntryHandler,
-      PartialPath devicePath,
-      ProgressIndex progressIndex,
-      boolean isAligned,
-      boolean isGeneratedByPipe) {
+      final WALEntryHandler walEntryHandler,
+      final PartialPath devicePath,
+      final ProgressIndex progressIndex,
+      final boolean isAligned,
+      final boolean isGeneratedByPipe) {
     this(
         walEntryHandler,
         devicePath,
@@ -87,16 +87,16 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   private PipeInsertNodeTabletInsertionEvent(
-      WALEntryHandler walEntryHandler,
-      PartialPath devicePath,
-      ProgressIndex progressIndex,
-      boolean isAligned,
-      boolean isGeneratedByPipe,
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime) {
+      final WALEntryHandler walEntryHandler,
+      final PartialPath devicePath,
+      final ProgressIndex progressIndex,
+      final boolean isAligned,
+      final boolean isGeneratedByPipe,
+      final String pipeName,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime) {
     super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
     this.walEntryHandler = walEntryHandler;
     // Record device path here so there's no need to get it from InsertNode cache later.
@@ -129,11 +129,11 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override
-  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
       PipeResourceManager.wal().pin(walEntryHandler);
       return true;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           String.format(
               "Increase reference count for memtable %d error. Holder Message: %s",
@@ -144,7 +144,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
       PipeResourceManager.wal().unpin(walEntryHandler);
       // Release the containers' memory.
@@ -153,7 +153,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         dataContainers = null;
       }
       return true;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           String.format(
               "Decrease reference count for memtable %d error. Holder Message: %s",
@@ -164,7 +164,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   @Override
-  public void bindProgressIndex(ProgressIndex progressIndex) {
+  public void bindProgressIndex(final ProgressIndex progressIndex) {
     this.progressIndex = progressIndex;
   }
 
@@ -175,11 +175,11 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public PipeInsertNodeTabletInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime) {
+      final String pipeName,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime) {
     return new PipeInsertNodeTabletInsertionEvent(
         walEntryHandler,
         devicePath,
@@ -224,7 +224,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
         throw new UnSupportedDataTypeException(
             String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Exception occurred when determining the event time of PipeInsertNodeTabletInsertionEvent({}) overlaps with the time range: [{}, {}]. Returning true to ensure data integrity.",
           this,
@@ -238,7 +238,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override
-  public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processRowByRow(
+      final BiConsumer<Row, RowCollector> consumer) {
     return initDataContainers().stream()
         .map(tabletInsertionDataContainer -> tabletInsertionDataContainer.processRowByRow(consumer))
         .flatMap(Collection::stream)
@@ -246,7 +247,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   @Override
-  public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processTablet(
+      final BiConsumer<Tablet, RowCollector> consumer) {
     return initDataContainers().stream()
         .map(tabletInsertionDataContainer -> tabletInsertionDataContainer.processTablet(consumer))
         .flatMap(Collection::stream)
@@ -297,7 +299,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       }
 
       return dataContainers;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new PipeException("Initialize data container error.", e);
     }
   }
