@@ -341,7 +341,7 @@ public class Analysis implements IAnalysis {
   public List<TRegionReplicaSet> getPartitionInfoByDevice(
       PartialPath devicePath, Filter timefilter) {
     return dataPartition.getDataRegionReplicaSetWithTimeFilter(
-        devicePath.getIDeviceID(), timefilter);
+        devicePath.getIDeviceIDAsFullDevice(), timefilter);
   }
 
   public TRegionReplicaSet getPartitionInfo(

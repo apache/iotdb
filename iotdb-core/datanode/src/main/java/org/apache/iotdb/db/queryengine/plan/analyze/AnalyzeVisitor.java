@@ -2636,7 +2636,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (realStatement instanceof InsertTabletStatement) {
       InsertTabletStatement realInsertTabletStatement = (InsertTabletStatement) realStatement;
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDeviceID(realInsertTabletStatement.getDevicePath().getIDeviceID());
+      dataPartitionQueryParam.setDeviceID(
+          realInsertTabletStatement.getDevicePath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(
           realInsertTabletStatement.getTimePartitionSlots());
 
@@ -2667,7 +2668,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (realInsertStatement instanceof InsertRowStatement) {
       InsertRowStatement realInsertRowStatement = (InsertRowStatement) realInsertStatement;
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDeviceID(realInsertRowStatement.getDevicePath().getIDeviceID());
+      dataPartitionQueryParam.setDeviceID(
+          realInsertRowStatement.getDevicePath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(
           Collections.singletonList(realInsertRowStatement.getTimePartitionSlot()));
 
@@ -2687,7 +2689,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (InsertRowStatement insertRowStatement : insertRowsStatement.getInsertRowStatementList()) {
       Set<TTimePartitionSlot> timePartitionSlotSet =
           dataPartitionQueryParamMap.computeIfAbsent(
-              insertRowStatement.getDevicePath().getIDeviceID(), k -> new HashSet<>());
+              insertRowStatement.getDevicePath().getIDeviceIDAsFullDevice(), k -> new HashSet<>());
       timePartitionSlotSet.add(insertRowStatement.getTimePartitionSlot());
     }
 
@@ -2728,7 +2730,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         insertMultiTabletsStatement.getInsertTabletStatementList()) {
       Set<TTimePartitionSlot> timePartitionSlotSet =
           dataPartitionQueryParamMap.computeIfAbsent(
-              insertTabletStatement.getDevicePath().getIDeviceID(), k -> new HashSet<>());
+              insertTabletStatement.getDevicePath().getIDeviceIDAsFullDevice(),
+              k -> new HashSet<>());
       timePartitionSlotSet.addAll(insertTabletStatement.getTimePartitionSlots());
     }
 
@@ -2780,7 +2783,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       InsertRowsOfOneDeviceStatement realStatement =
           (InsertRowsOfOneDeviceStatement) realInsertStatement;
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDeviceID(realStatement.getDevicePath().getIDeviceID());
+      dataPartitionQueryParam.setDeviceID(realStatement.getDevicePath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(realStatement.getTimePartitionSlots());
 
       return getAnalysisForWriting(
@@ -2903,7 +2906,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfoList) {
       boolean isAligned = deviceSchemaInfo.isAligned();
       PartialPath devicePath = deviceSchemaInfo.getDevicePath();
-      deviceSet.add(devicePath.getIDeviceID());
+      deviceSet.add(devicePath.getIDeviceIDAsFullDevice());
       if (isAligned) {
         List<String> measurementList = new ArrayList<>();
         List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -3061,7 +3064,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     DataPartition dataPartition =
         fetchDataPartitionByDevices(
             devicePathsToAlignedStatus.keySet().stream()
-                .map(PartialPath::getIDeviceID)
+                .map(PartialPath::getIDeviceIDAsFullDevice)
                 .collect(Collectors.toSet()),
             schemaTree,
             context);
@@ -3321,7 +3324,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             .getMatchedDevices(devicePattern)
             .forEach(
                 deviceSchemaInfo ->
-                    deduplicatedDeviceIDs.add(deviceSchemaInfo.getDevicePath().getIDeviceID()));
+                    deduplicatedDeviceIDs.add(
+                        deviceSchemaInfo.getDevicePath().getIDeviceIDAsFullDevice()));
       }
     }
     analysis.setSchemaTree(schemaTree);

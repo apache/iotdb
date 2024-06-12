@@ -168,7 +168,8 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()
-              .getDataRegionReplicaSetForWriting(devicePath.getIDeviceID(), timePartitionSlot);
+              .getDataRegionReplicaSetForWriting(
+                  devicePath.getIDeviceIDAsFullDevice(), timePartitionSlot);
       Map<TTimePartitionSlot, List<InsertRowNode>> tmpMap =
           splitMap.computeIfAbsent(dataRegionReplicaSet, k -> new HashMap<>());
       Map<TTimePartitionSlot, List<Integer>> tmpIndexMap =

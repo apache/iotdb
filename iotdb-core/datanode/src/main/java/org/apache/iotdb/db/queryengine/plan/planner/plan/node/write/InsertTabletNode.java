@@ -227,7 +227,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     List<TRegionReplicaSet> dataRegionReplicaSets =
         analysis
             .getDataPartitionInfo()
-            .getDataRegionReplicaSetForWriting(devicePath.getIDeviceID(), timePartitionSlots);
+            .getDataRegionReplicaSetForWriting(
+                devicePath.getIDeviceIDAsFullDevice(), timePartitionSlots);
 
     // collect redirectInfo
     analysis.addEndPointToRedirectNodeList(

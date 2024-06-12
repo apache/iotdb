@@ -325,7 +325,8 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
       // regionId is null when data region of devicePath not existed
       dataPartition
           .getDataRegionReplicaSetWithTimeFilter(
-              devicePath.getIDeviceID(), TimeFilterApi.between(deleteStartTime, deleteEndTime))
+              devicePath.getIDeviceIDAsFullDevice(),
+              TimeFilterApi.between(deleteStartTime, deleteEndTime))
           .stream()
           .filter(regionReplicaSet -> regionReplicaSet.getRegionId() != null)
           .forEach(

@@ -553,8 +553,8 @@ public class ClusterSchemaTree implements ISchemaTree {
   }
 
   @Override
-  public String getBelongedDatabase(PartialPath path) {
-    return getBelongedDatabase(path.getIDeviceID());
+  public String getBelongedDatabase(PartialPath devicePath) {
+    return getBelongedDatabase(devicePath.getIDeviceIDAsFullDevice());
   }
 
   @Override

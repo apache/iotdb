@@ -381,7 +381,7 @@ public class TemplatedAnalyze {
     // TemplatedDevice has no views, so there is no need to use outputDeviceToQueriedDevicesMap
     Set<IDeviceID> deviceSet =
         analysis.getDeviceList().stream()
-            .map(PartialPath::getIDeviceID)
+            .map(PartialPath::getIDeviceIDAsFullDevice)
             .collect(Collectors.toSet());
     DataPartition dataPartition =
         fetchDataPartitionByDevices(deviceSet, schemaTree, globalTimeFilter, partitionFetcher);

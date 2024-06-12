@@ -236,7 +236,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
       TRegionReplicaSet regionReplicaSet =
           analysis
               .getSchemaPartitionInfo()
-              .getSchemaRegionReplicaSet(entry.getKey().getIDeviceID());
+              .getSchemaRegionReplicaSet(entry.getKey().getIDeviceIDAsFullDevice());
       splitMap
           .computeIfAbsent(regionReplicaSet, k -> new HashMap<>())
           .put(entry.getKey(), entry.getValue());
