@@ -65,6 +65,10 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_OTHERS_RETRY_MAX_TIME_SECONDS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_OTHERS_RETRY_MAX_TIME_SECONDS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TABLET_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TS_FILE_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_HOST_KEY;
@@ -83,6 +87,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_OTHERS_RETRY_MAX_TIME_SECONDS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_HOST_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_IP_KEY;
@@ -113,6 +118,7 @@ public abstract class IoTDBConnector implements PipeConnector {
   private static final GlobalRateLimiter GLOBAL_RATE_LIMITER = new GlobalRateLimiter();
 
   protected boolean isTabletBatchModeEnabled = true;
+  protected boolean isUsingTsFileBatch = false;
 
   protected PipeReceiverStatusHandler receiverStatusHandler;
 
@@ -229,6 +235,15 @@ public abstract class IoTDBConnector implements PipeConnector {
                 CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_DEFAULT_VALUE)
             .trim()
             .toLowerCase());
+
+    validator.validateAttributeValueRange(
+        validator.getParameters().hasAttribute(CONNECTOR_FORMAT_KEY)
+            ? CONNECTOR_FORMAT_KEY
+            : SINK_FORMAT_KEY,
+        true,
+        CONNECTOR_FORMAT_TABLET_VALUE,
+        CONNECTOR_FORMAT_HYBRID_VALUE,
+        CONNECTOR_FORMAT_TS_FILE_VALUE);
   }
 
   @Override
@@ -243,7 +258,17 @@ public abstract class IoTDBConnector implements PipeConnector {
         parameters.getBooleanOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY, SINK_IOTDB_BATCH_MODE_ENABLE_KEY),
             CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
-    LOGGER.info("IoTDBConnector isTabletBatchModeEnabled: {}", isTabletBatchModeEnabled);
+    if (parameters
+        .getStringOrDefault(
+            Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY), CONNECTOR_FORMAT_HYBRID_VALUE)
+        .equals(CONNECTOR_FORMAT_TS_FILE_VALUE)) {
+      isTabletBatchModeEnabled = true;
+      isUsingTsFileBatch = true;
+    }
+    LOGGER.info(
+        "IoTDBConnector isTabletBatchModeEnabled: {}, isUsingTsFileBatch: {}",
+        isTabletBatchModeEnabled,
+        isUsingTsFileBatch);
 
     receiverStatusHandler =
         new PipeReceiverStatusHandler(

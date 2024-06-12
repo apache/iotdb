@@ -191,6 +191,12 @@ public class PipeConnectorConstant {
   public static final String SINK_RATE_LIMIT_KEY = "sink.rate-limit-bytes-per-second";
   public static final double CONNECTOR_RATE_LIMIT_DEFAULT_VALUE = -1;
 
+  public static final String CONNECTOR_FORMAT_KEY = "connector.format";
+  public static final String SINK_FORMAT_KEY = "sink.format";
+  public static final String CONNECTOR_FORMAT_TABLET_VALUE = "tablet";
+  public static final String CONNECTOR_FORMAT_TS_FILE_VALUE = "tsfile";
+  public static final String CONNECTOR_FORMAT_HYBRID_VALUE = "hybrid";
+
   public static final String SINK_TOPIC_KEY = "sink.topic";
   public static final String SINK_CONSUMER_GROUP_KEY = "sink.consumer-group";
 
