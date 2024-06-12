@@ -889,6 +889,26 @@ public class MTreeBelowSGCachedImpl {
     return schemaTree;
   }
 
+  public ClusterSchemaTree fetchDeviceSchema(
+      PathPatternTree patternTree, PathPatternTree authorityScope) throws MetadataException {
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    for (PartialPath pattern : patternTree.getAllPathPatterns()) {
+      try (EntityCollector<Void, ICachedMNode> collector =
+          new EntityCollector<Void, ICachedMNode>(rootNode, pattern, store, false, authorityScope) {
+            @Override
+            protected Void collectEntity(IDeviceMNode<ICachedMNode> node) {
+              if (node.isAlignedNullable() != null) {
+                schemaTree.appendDevice(node.getPartialPath(), node.isAligned());
+              }
+              return null;
+            }
+          }) {
+        collector.traverse();
+      }
+    }
+    return schemaTree;
+  }
+
   // endregion
 
   // region Interfaces and Implementation for MNode Query

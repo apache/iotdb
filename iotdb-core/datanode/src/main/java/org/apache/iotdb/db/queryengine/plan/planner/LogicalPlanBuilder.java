@@ -42,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DeviceSchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
@@ -52,9 +53,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Node
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.PathsUsingTemplateScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SeriesSchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
@@ -1084,7 +1085,7 @@ public class LogicalPlanBuilder {
   }
 
   @SuppressWarnings({"checkstyle:Indentation", "checkstyle:CommentsIndentation"})
-  public LogicalPlanBuilder planSchemaFetchSource(
+  public LogicalPlanBuilder planSeriesSchemaFetchSource(
       List<String> storageGroupList,
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
@@ -1102,13 +1103,41 @@ public class LogicalPlanBuilder {
           overlappedPatternTree.appendFullPath(pathPattern);
         }
         this.root.addChild(
-            new SchemaFetchScanNode(
+            new SeriesSchemaFetchScanNode(
                 context.getQueryId().genPlanNodeId(),
                 storageGroupPath,
                 overlappedPatternTree,
                 templateMap,
                 withTags,
                 withTemplate));
+      } catch (IllegalPathException e) {
+        // definitely won't happen
+        throw new RuntimeException(e);
+      }
+    }
+    return this;
+  }
+
+  @SuppressWarnings({"checkstyle:Indentation", "checkstyle:CommentsIndentation"})
+  public LogicalPlanBuilder planDeviceSchemaFetchSource(
+      List<String> storageGroupList, PathPatternTree patternTree, PathPatternTree authorityScope) {
+    PartialPath storageGroupPath;
+    for (String storageGroup : storageGroupList) {
+      try {
+        storageGroupPath = new PartialPath(storageGroup);
+        PathPatternTree overlappedPatternTree = new PathPatternTree();
+        for (PartialPath pathPattern :
+            patternTree.getOverlappedPathPatterns(
+                storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
+          // pathPattern has been deduplicated, no need to deduplicate again
+          overlappedPatternTree.appendFullPath(pathPattern);
+        }
+        this.root.addChild(
+            new DeviceSchemaFetchScanNode(
+                context.getQueryId().genPlanNodeId(),
+                storageGroupPath,
+                overlappedPatternTree,
+                authorityScope));
       } catch (IllegalPathException e) {
         // definitely won't happen
         throw new RuntimeException(e);

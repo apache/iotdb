@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -40,6 +41,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -53,7 +55,9 @@ public class SchemaFetchScanOperator implements SourceOperator {
   private final ISchemaRegion schemaRegion;
   private final boolean withTags;
   private final boolean withTemplate;
+  private final boolean fetchDevice;
   private boolean isFinished = false;
+  private final PathPatternTree authorityScope;
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
@@ -61,7 +65,29 @@ public class SchemaFetchScanOperator implements SourceOperator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(SchemaFetchScanOperator.class);
 
-  public SchemaFetchScanOperator(
+  public static SchemaFetchScanOperator ofSeries(
+      PlanNodeId planNodeId,
+      OperatorContext context,
+      PathPatternTree patternTree,
+      Map<Integer, Template> templateMap,
+      ISchemaRegion schemaRegion,
+      boolean withTags,
+      boolean withTemplate) {
+    return new SchemaFetchScanOperator(
+        planNodeId, context, patternTree, templateMap, schemaRegion, withTags, withTemplate);
+  }
+
+  public static SchemaFetchScanOperator ofDevice(
+      PlanNodeId planNodeId,
+      OperatorContext context,
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      ISchemaRegion schemaRegion) {
+    return new SchemaFetchScanOperator(
+        planNodeId, context, patternTree, authorityScope, schemaRegion);
+  }
+
+  private SchemaFetchScanOperator(
       PlanNodeId planNodeId,
       OperatorContext context,
       PathPatternTree patternTree,
@@ -76,6 +102,25 @@ public class SchemaFetchScanOperator implements SourceOperator {
     this.templateMap = templateMap;
     this.withTags = withTags;
     this.withTemplate = withTemplate;
+    this.fetchDevice = false;
+    this.authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
+  }
+
+  private SchemaFetchScanOperator(
+      PlanNodeId planNodeId,
+      OperatorContext context,
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      ISchemaRegion schemaRegion) {
+    this.sourceId = planNodeId;
+    this.operatorContext = context;
+    this.patternTree = patternTree;
+    this.schemaRegion = schemaRegion;
+    this.templateMap = Collections.emptyMap();
+    this.withTags = false;
+    this.withTemplate = false;
+    this.fetchDevice = true;
+    this.authorityScope = authorityScope;
   }
 
   @Override
@@ -118,7 +163,9 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   private TsBlock fetchSchema() throws MetadataException {
     ClusterSchemaTree schemaTree =
-        schemaRegion.fetchSchema(patternTree, templateMap, withTags, withTemplate);
+        fetchDevice
+            ? schemaRegion.fetchDeviceSchema(patternTree, authorityScope)
+            : schemaRegion.fetchSeriesSchema(patternTree, templateMap, withTags, withTemplate);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {

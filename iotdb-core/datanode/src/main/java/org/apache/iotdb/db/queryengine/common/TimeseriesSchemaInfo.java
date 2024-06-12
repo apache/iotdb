@@ -39,7 +39,7 @@ public class TimeseriesSchemaInfo {
   private final String tags;
   private final String alias;
 
-  // TODO: Currently we can't get attributes from fetchSchema in query
+  // TODO: Currently we can't get attributes from fetchSeriesSchema in query
   // private final String attributes;
 
   private final String deadband;

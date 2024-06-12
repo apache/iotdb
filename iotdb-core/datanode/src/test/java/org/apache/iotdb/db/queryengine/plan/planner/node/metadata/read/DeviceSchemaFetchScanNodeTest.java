@@ -24,36 +24,32 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DeviceSchemaFetchScanNode;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.util.Collections;
 
-public class SchemaFetchScanNodeTest {
+public class DeviceSchemaFetchScanNodeTest {
 
   @Test
   public void testSerialization() throws IllegalPathException {
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.sg.**.*"));
-    SchemaFetchScanNode schemaFetchScanNode =
-        new SchemaFetchScanNode(
-            new PlanNodeId("0"),
-            new PartialPath("root.sg"),
-            patternTree,
-            Collections.emptyMap(),
-            true,
-            true);
+    DeviceSchemaFetchScanNode deviceSchemaFetchScanNodeTest =
+        new DeviceSchemaFetchScanNode(
+            new PlanNodeId("0"), new PartialPath("root.sg"), patternTree, patternTree);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
-    schemaFetchScanNode.serialize(byteBuffer);
+    deviceSchemaFetchScanNodeTest.serialize(byteBuffer);
     byteBuffer.flip();
-    SchemaFetchScanNode recoveredNode = (SchemaFetchScanNode) PlanNodeType.deserialize(byteBuffer);
+    DeviceSchemaFetchScanNode recoveredNode =
+        (DeviceSchemaFetchScanNode) PlanNodeType.deserialize(byteBuffer);
     Assert.assertEquals("root.sg", recoveredNode.getStorageGroup().getFullPath());
     Assert.assertEquals(
         "root.sg.**.*", recoveredNode.getPatternTree().getAllPathPatterns().get(0).getFullPath());
-    Assert.assertTrue(recoveredNode.isWithTags());
-    Assert.assertTrue(recoveredNode.isWithTemplate());
+    Assert.assertEquals(
+        "root.sg.**.*",
+        recoveredNode.getAuthorityScope().getAllPathPatterns().get(0).getFullPath());
   }
 }

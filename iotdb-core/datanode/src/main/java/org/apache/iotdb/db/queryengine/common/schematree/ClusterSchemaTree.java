@@ -314,6 +314,39 @@ public class ClusterSchemaTree implements ISchemaTree {
     templateMap.putIfAbsent(templateId, template);
   }
 
+  /**
+   * Append a template device to the schema tree.
+   *
+   * @param devicePath device path
+   * @param isAligned whether the device is aligned
+   */
+  public void appendDevice(PartialPath devicePath, Boolean isAligned) {
+    String[] nodes = devicePath.getNodes();
+    SchemaNode cur = root;
+    SchemaNode child;
+    for (int i = 1; i < nodes.length - 1; i++) {
+      child = cur.getChild(nodes[i]);
+      if (child == null) {
+        child = new SchemaInternalNode(nodes[i]);
+        cur.addChild(nodes[i], child);
+      }
+      cur = child;
+    }
+    String deviceName = nodes[nodes.length - 1];
+    child = cur.getChild(deviceName);
+    if (child == null) {
+      SchemaEntityNode entityNode = new SchemaEntityNode(deviceName);
+      entityNode.setAligned(isAligned);
+      cur.addChild(deviceName, entityNode);
+    } else if (child.isEntity()) {
+      child.getAsEntityNode().setAligned(isAligned);
+    } else {
+      SchemaEntityNode entityNode = new SchemaEntityNode(deviceName);
+      entityNode.setAligned(isAligned);
+      cur.replaceChild(deviceName, entityNode);
+    }
+  }
+
   public void appendMeasurementPaths(List<MeasurementPath> measurementPathList) {
     for (MeasurementPath measurementPath : measurementPathList) {
       appendSingleMeasurementPath(measurementPath);

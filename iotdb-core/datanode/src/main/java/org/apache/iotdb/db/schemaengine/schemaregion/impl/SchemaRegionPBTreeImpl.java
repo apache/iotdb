@@ -1027,7 +1027,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public ClusterSchemaTree fetchSchema(
+  public ClusterSchemaTree fetchSeriesSchema(
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       boolean withTags,
@@ -1042,6 +1042,12 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     } else {
       return mtree.fetchSchemaWithoutWildcard(patternTree, templateMap, withTags, withTemplate);
     }
+  }
+
+  @Override
+  public ClusterSchemaTree fetchDeviceSchema(
+      PathPatternTree patternTree, PathPatternTree authorityScope) throws MetadataException {
+    return mtree.fetchDeviceSchema(patternTree, authorityScope);
   }
 
   // endregion

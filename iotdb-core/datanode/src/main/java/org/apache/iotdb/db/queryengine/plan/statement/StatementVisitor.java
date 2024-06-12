@@ -28,10 +28,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.DeviceSchemaFetchStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.internal.SchemaFetchStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
@@ -356,8 +357,14 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(countStatement, context);
   }
 
-  public R visitSchemaFetch(SchemaFetchStatement schemaFetchStatement, C context) {
-    return visitStatement(schemaFetchStatement, context);
+  public R visitSeriesSchemaFetch(
+      SeriesSchemaFetchStatement seriesSchemaFetchStatement, C context) {
+    return visitStatement(seriesSchemaFetchStatement, context);
+  }
+
+  public R visitDeviceSchemaFetch(
+      DeviceSchemaFetchStatement deviceSchemaFetchStatement, C context) {
+    return visitStatement(deviceSchemaFetchStatement, context);
   }
 
   public R visitShowChildPaths(ShowChildPathsStatement showChildPathsStatement, C context) {

@@ -56,7 +56,6 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.MeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
@@ -108,10 +107,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.DeviceSchemaFetchStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.internal.SchemaFetchStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
@@ -2863,8 +2863,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       throws IllegalPathException {
     analyzeGlobalTimeConditionInShowMetaData(timeCondition, analysis);
     context.generateGlobalTimeFilter(analysis);
-
-    ISchemaTree schemaTree = schemaFetcher.fetchSchemaWithTags(PathPatternTreeUtils.intersectWithFullPathPrefixTree(patternTree, authorityScope), false, context);
+    patternTree.constructTree();
+    ISchemaTree schemaTree =
+        schemaFetcher.fetchSchemaWithTags(
+            PathPatternTreeUtils.intersectWithFullPathPrefixTree(patternTree, authorityScope),
+            false,
+            context);
 
     if (schemaTree.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
@@ -2876,46 +2880,71 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Map<PartialPath, Boolean> deviceToAlignedMap = new HashMap<>();
     Map<PartialPath, List<IMeasurementSchema>> deviceToMeasurementSchemaMap = new HashMap<>();
     Map<PartialPath, List<TimeseriesSchemaInfo>> deviceToTimeseriesSchemaMap = new HashMap<>();
-    for(PartialPath pattern: patternTree.getAllPathPatterns()) {
-      List<MeasurementPath> measurementPathList =  schemaTree.searchMeasurementPaths(pattern).left;
+    for (PartialPath pattern : patternTree.getAllPathPatterns()) {
+      List<MeasurementPath> measurementPathList = schemaTree.searchMeasurementPaths(pattern).left;
       for (MeasurementPath measurementPath : measurementPathList) {
         boolean isAligned = measurementPath.isUnderAlignedEntity();
         PartialPath devicePath = measurementPath.getDevicePath();
         deviceToAlignedMap.put(devicePath, isAligned);
         deviceToMeasurementMap
-                .computeIfAbsent(devicePath, k -> new ArrayList<>()).add(measurementPath.getMeasurement());
+            .computeIfAbsent(devicePath, k -> new ArrayList<>())
+            .add(measurementPath.getMeasurement());
         deviceToMeasurementSchemaMap
-                .computeIfAbsent(devicePath, k -> new ArrayList<>())
-                .add(measurementPath.getMeasurementSchema());
-        deviceToTimeseriesSchemaMap.computeIfAbsent(devicePath, k -> new ArrayList<>())
-                .add(new TimeseriesSchemaInfo(new MeasurementSchemaInfo(measurementPath.getMeasurement(), measurementPath.getMeasurementSchema(), measurementPath.getMeasurementAlias(), measurementPath.getTagMap())));
+            .computeIfAbsent(devicePath, k -> new ArrayList<>())
+            .add(measurementPath.getMeasurementSchema());
+        deviceToTimeseriesSchemaMap
+            .computeIfAbsent(devicePath, k -> new ArrayList<>())
+            .add(
+                new TimeseriesSchemaInfo(
+                    new MeasurementSchemaInfo(
+                        measurementPath.getMeasurement(),
+                        measurementPath.getMeasurementSchema(),
+                        measurementPath.getMeasurementAlias(),
+                        measurementPath.getTagMap())));
       }
     }
 
     Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemaInfo =
-            new HashMap<>();
-    for(PartialPath devicePath: deviceToAlignedMap.keySet()){
-      if(deviceToAlignedMap.get(devicePath)) {
+        new HashMap<>();
+    for (PartialPath devicePath : deviceToAlignedMap.keySet()) {
+      if (deviceToAlignedMap.get(devicePath)) {
         List<String> measurementList = deviceToMeasurementMap.get(devicePath);
         List<IMeasurementSchema> schemaList = deviceToMeasurementSchemaMap.get(devicePath);
-        List<TimeseriesSchemaInfo> timeseriesSchemaInfoList = deviceToTimeseriesSchemaMap.get(devicePath);
-        AlignedPath alignedPath = new AlignedPath(devicePath.getNodes(), measurementList, schemaList);
+        List<TimeseriesSchemaInfo> timeseriesSchemaInfoList =
+            deviceToTimeseriesSchemaMap.get(devicePath);
+        AlignedPath alignedPath =
+            new AlignedPath(devicePath.getNodes(), measurementList, schemaList);
         deviceToTimeseriesSchemaInfo
-                .computeIfAbsent(devicePath, k -> new HashMap<>())
-                .put(alignedPath, timeseriesSchemaInfoList);
-      }else{
-        for(String measurement: deviceToMeasurementMap.get(devicePath)){
-          MeasurementPath measurementPath = new MeasurementPath(devicePath.concatNode(measurement).getNodes());
+            .computeIfAbsent(devicePath, k -> new HashMap<>())
+            .put(alignedPath, timeseriesSchemaInfoList);
+      } else {
+        for (String measurement : deviceToMeasurementMap.get(devicePath)) {
+          MeasurementPath measurementPath =
+              new MeasurementPath(devicePath.concatNode(measurement).getNodes());
           deviceToTimeseriesSchemaInfo
-                  .computeIfAbsent(devicePath, k -> new HashMap<>())
-                  .put(measurementPath, Collections.singletonList(new TimeseriesSchemaInfo(new MeasurementSchemaInfo(measurement, deviceToMeasurementSchemaMap.get(devicePath).get(0), null, null))));
+              .computeIfAbsent(devicePath, k -> new HashMap<>())
+              .put(
+                  measurementPath,
+                  Collections.singletonList(
+                      new TimeseriesSchemaInfo(
+                          new MeasurementSchemaInfo(
+                              measurement,
+                              deviceToMeasurementSchemaMap.get(devicePath).get(0),
+                              null,
+                              null))));
         }
       }
     }
 
     analysis.setDeviceToTimeseriesSchemas(deviceToTimeseriesSchemaInfo);
     // fetch Data partition
-    DataPartition dataPartition = fetchDataPartitionByDevices(deviceToAlignedMap.keySet().stream().map(PartialPath::getFullPath).collect(Collectors.toSet()), schemaTree, context);
+    DataPartition dataPartition =
+        fetchDataPartitionByDevices(
+            deviceToAlignedMap.keySet().stream()
+                .map(PartialPath::getFullPath)
+                .collect(Collectors.toSet()),
+            schemaTree,
+            context);
     analysis.setDataPartitionInfo(dataPartition);
     return true;
   }
@@ -2934,7 +2963,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         // If there is time condition in SHOW TIMESERIES, we need to scan the raw data
         boolean hasSchema =
             analyzeTimeseriesRegionScan(
-                showTimeSeriesStatement.getTimeCondition(), patternTree, analysis, context, showTimeSeriesStatement.getAuthorityScope());
+                showTimeSeriesStatement.getTimeCondition(),
+                patternTree,
+                analysis,
+                context,
+                showTimeSeriesStatement.getAuthorityScope());
         if (!hasSchema) {
           analysis.setRespDatasetHeader(DatasetHeaderFactory.getShowTimeSeriesHeader());
           return analysis;
@@ -3018,14 +3051,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private void analyzeDeviceRegionScan(
       WhereCondition timeCondition,
-      PathPatternTree patternTree,
+      PartialPath pattern,
+      PathPatternTree authorityScope,
       Analysis analysis,
       MPPQueryContext context) {
     // If there is time condition in SHOW DEVICES, we need to scan the raw data
     analyzeGlobalTimeConditionInShowMetaData(timeCondition, analysis);
     context.generateGlobalTimeFilter(analysis);
-
-    ISchemaTree schemaTree = schemaFetcher.fetchSchemaInDeviceLevel(patternTree, context);
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(pattern);
+    ISchemaTree schemaTree =
+        schemaFetcher.fetchSchemaInDeviceLevel(patternTree, authorityScope, context);
     if (schemaTree.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
       return;
@@ -3054,14 +3090,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setStatement(showDevicesStatement);
 
-    PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(
-        showDevicesStatement.getPathPattern().concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
-
     if (showDevicesStatement.hasTimeCondition()) {
       analyzeDeviceRegionScan(
-          showDevicesStatement.getTimeCondition(), patternTree, analysis, context);
+          showDevicesStatement.getTimeCondition(),
+          showDevicesStatement.getPathPattern(),
+          showDevicesStatement.getAuthorityScope(),
+          analysis,
+          context);
     } else {
+      PathPatternTree patternTree = new PathPatternTree();
+      patternTree.appendPathPattern(
+          showDevicesStatement.getPathPattern().concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
       SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
     }
@@ -3095,13 +3134,34 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitSchemaFetch(
-      SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
+  public Analysis visitSeriesSchemaFetch(
+      SeriesSchemaFetchStatement seriesSchemaFetchStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    analysis.setStatement(schemaFetchStatement);
+    analysis.setStatement(seriesSchemaFetchStatement);
 
     SchemaPartition schemaPartition =
-        partitionFetcher.getSchemaPartition(schemaFetchStatement.getPatternTree());
+        partitionFetcher.getSchemaPartition(seriesSchemaFetchStatement.getPatternTree());
+    analysis.setSchemaPartitionInfo(schemaPartition);
+
+    if (schemaPartition.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+    }
+
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitDeviceSchemaFetch(
+      DeviceSchemaFetchStatement deviceSchemaFetchStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+    analysis.setStatement(deviceSchemaFetchStatement);
+
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath path : deviceSchemaFetchStatement.getPaths()) {
+      patternTree.appendPathPattern(path);
+    }
+    patternTree.constructTree();
+    SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
     analysis.setSchemaPartitionInfo(schemaPartition);
 
     if (schemaPartition.isEmpty()) {
@@ -3117,13 +3177,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setStatement(countDevicesStatement);
 
-    PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(
-        countDevicesStatement.getPathPattern().concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     if (countDevicesStatement.hasTimeCondition()) {
       analyzeDeviceRegionScan(
-          countDevicesStatement.getTimeCondition(), patternTree, analysis, context);
+          countDevicesStatement.getTimeCondition(),
+          countDevicesStatement.getPathPattern(),
+          countDevicesStatement.getAuthorityScope(),
+          analysis,
+          context);
     } else {
+      PathPatternTree patternTree = new PathPatternTree();
+      patternTree.appendPathPattern(
+          countDevicesStatement.getPathPattern().concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
       SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
     }
@@ -3145,7 +3209,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       try {
         boolean hasSchema =
             analyzeTimeseriesRegionScan(
-                countTimeSeriesStatement.getTimeCondition(), patternTree, analysis, context, countTimeSeriesStatement.getAuthorityScope());
+                countTimeSeriesStatement.getTimeCondition(),
+                patternTree,
+                analysis,
+                context,
+                countTimeSeriesStatement.getAuthorityScope());
         if (!hasSchema) {
           analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountTimeSeriesHeader());
           return analysis;

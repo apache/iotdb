@@ -103,11 +103,11 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
       }
     }
     patternTree.constructTree();
-    schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false, true);
+    schemaRegion.fetchSeriesSchema(patternTree, Collections.EMPTY_MAP, false, true);
     long startTime;
     startTime = System.currentTimeMillis();
     for (int i = 0; i < 10; i++) {
-      schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false, true);
+      schemaRegion.fetchSeriesSchema(patternTree, Collections.EMPTY_MAP, false, true);
     }
     System.out.println("cost time: " + (System.currentTimeMillis() - startTime));
   }
@@ -153,7 +153,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     patternTree.constructTree();
     ;
     ClusterSchemaTree schemas =
-        schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, true, true);
+        schemaRegion.fetchSeriesSchema(patternTree, Collections.EMPTY_MAP, true, true);
     List<MeasurementPath> measurementPaths =
         schemas.searchMeasurementPaths(new PartialPath("root.sg.wf01.wt01.*")).left;
     Assert.assertEquals(measurementPaths.size(), 2);
@@ -182,7 +182,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.sg.wf01.wt01.temp"));
     patternTree.constructTree();
-    schemas = schemaRegion.fetchSchema(patternTree, Collections.EMPTY_MAP, false, true);
+    schemas = schemaRegion.fetchSeriesSchema(patternTree, Collections.EMPTY_MAP, false, true);
     measurementPaths =
         schemas.searchMeasurementPaths(new PartialPath("root.sg.wf01.wt01.temp")).left;
     Assert.assertEquals(measurementPaths.size(), 1);
@@ -368,7 +368,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
     schemaRegion.deleteTimeseriesInBlackList(patternTree);
     List<MeasurementPath> schemas =
         schemaRegion
-            .fetchSchema(ALL_MATCH_SCOPE, Collections.EMPTY_MAP, false, true)
+            .fetchSeriesSchema(ALL_MATCH_SCOPE, Collections.EMPTY_MAP, false, true)
             .searchMeasurementPaths(ALL_MATCH_PATTERN)
             .left;
     Assert.assertEquals(1, schemas.size());
