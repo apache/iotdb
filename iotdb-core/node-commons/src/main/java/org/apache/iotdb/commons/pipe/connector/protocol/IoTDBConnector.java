@@ -71,6 +71,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TS_FILE_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_HOST_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
@@ -89,6 +91,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_OTHERS_RETRY_MAX_TIME_SECONDS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_MODE_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_SIZE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_HOST_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_IP_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_NODE_URLS_KEY;
@@ -118,7 +121,6 @@ public abstract class IoTDBConnector implements PipeConnector {
   private static final GlobalRateLimiter GLOBAL_RATE_LIMITER = new GlobalRateLimiter();
 
   protected boolean isTabletBatchModeEnabled = true;
-  protected boolean isUsingTsFileBatch = false;
 
   protected PipeReceiverStatusHandler receiverStatusHandler;
 
@@ -148,6 +150,18 @@ public abstract class IoTDBConnector implements PipeConnector {
         parameters.hasAttribute(SINK_IOTDB_IP_KEY),
         parameters.hasAttribute(SINK_IOTDB_HOST_KEY),
         parameters.hasAttribute(SINK_IOTDB_PORT_KEY));
+
+    validator.validate(
+        requestMaxBatchSizeInBytes -> (long) requestMaxBatchSizeInBytes > 0,
+        String.format(
+            "%s must be > 0, but got %s",
+            SINK_IOTDB_BATCH_SIZE_KEY,
+            parameters.getLongOrDefault(
+                Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
+                CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE)),
+        parameters.getLongOrDefault(
+            Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
+            CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE));
 
     loadBalanceStrategy =
         parameters
@@ -256,19 +270,16 @@ public abstract class IoTDBConnector implements PipeConnector {
 
     isTabletBatchModeEnabled =
         parameters.getBooleanOrDefault(
-            Arrays.asList(CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY, SINK_IOTDB_BATCH_MODE_ENABLE_KEY),
-            CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE);
-    if (parameters
-        .getStringOrDefault(
-            Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY), CONNECTOR_FORMAT_HYBRID_VALUE)
-        .equals(CONNECTOR_FORMAT_TS_FILE_VALUE)) {
-      isTabletBatchModeEnabled = true;
-      isUsingTsFileBatch = true;
-    }
-    LOGGER.info(
-        "IoTDBConnector isTabletBatchModeEnabled: {}, isUsingTsFileBatch: {}",
-        isTabletBatchModeEnabled,
-        isUsingTsFileBatch);
+                Arrays.asList(
+                    CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY, SINK_IOTDB_BATCH_MODE_ENABLE_KEY),
+                CONNECTOR_IOTDB_BATCH_MODE_ENABLE_DEFAULT_VALUE)
+            || parameters
+                .getStringOrDefault(
+                    Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY),
+                    CONNECTOR_FORMAT_HYBRID_VALUE)
+                .equals(CONNECTOR_FORMAT_TS_FILE_VALUE);
+
+    LOGGER.info("IoTDBConnector isTabletBatchModeEnabled: {}", isTabletBatchModeEnabled);
 
     receiverStatusHandler =
         new PipeReceiverStatusHandler(

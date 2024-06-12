@@ -81,7 +81,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   protected abstract void constructBatch(final TabletInsertionEvent event)
       throws WALPipeException, IOException, WriteProcessException;
 
-  public synchronized void onSuccess() throws IOException {
+  public synchronized void onSuccess() {
     events.clear();
     requestCommitIds.clear();
     firstEventProcessingTime = Long.MIN_VALUE;

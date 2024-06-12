@@ -73,8 +73,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     }
   }
 
-  PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes)
-      throws IOException {
+  PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
     super(maxDelayInMs);
     this.maxSizeInBytes = requestMaxBatchSizeInBytes;
 
@@ -152,8 +151,13 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       fileWriter = new TsFileWriter(new File(batchFileDirWithIdSuffix.get(), TS_FILE_NAME));
     }
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
-      for (final Tablet tablet : ((PipeInsertNodeTabletInsertionEvent) event).convertToTablets()) {
-        if (((PipeInsertNodeTabletInsertionEvent) event).isAligned()) {
+      final List<Tablet> tablets = ((PipeInsertNodeTabletInsertionEvent) event).convertToTablets();
+      for (int i = 0; i < tablets.size(); ++i) {
+        final Tablet tablet = tablets.get(i);
+        if (tablet.rowSize == 0) {
+          continue;
+        }
+        if (((PipeInsertNodeTabletInsertionEvent) event).isAligned(i)) {
           fileWriter.writeAligned(tablet);
         } else {
           fileWriter.write(tablet);
@@ -174,9 +178,14 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   }
 
   @Override
-  public synchronized void onSuccess() throws IOException {
+  public synchronized void onSuccess() {
     super.onSuccess();
-    FileUtils.delete(fileWriter.getIOWriter().getFile());
+    try {
+      FileUtils.delete(fileWriter.getIOWriter().getFile());
+    } catch (final IOException e) {
+      throw new PipeException(
+          String.format("Failed to delete tsFile %s,", fileWriter.getIOWriter().getFile()), e);
+    }
     fileWriter = null;
   }
 

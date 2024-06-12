@@ -42,12 +42,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_HYBRID_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TS_FILE_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_DELAY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_BATCH_SIZE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LEADER_CACHE_ENABLE_KEY;
@@ -63,29 +67,40 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
 
   // If the leader cache is disabled (or unable to find the endpoint of event in the leader cache),
   // the event will be stored in the default batch.
-  private final PipeTabletEventPlainBatch defaultBatch;
+  private final PipeTabletEventBatch defaultBatch;
   // If the leader cache is enabled, the batch will be divided by the leader endpoint,
   // each endpoint has a batch.
+  // This is only used in plain batch since tsfile does not return redirection info.
   private final Map<TEndPoint, PipeTabletEventPlainBatch> endPointToBatch = new HashMap<>();
 
-  public PipeTransferBatchReqBuilder(final PipeParameters parameters) {
+  public PipeTransferBatchReqBuilder(final PipeParameters parameters) throws IOException {
+    final boolean usingTsFileBatch =
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(CONNECTOR_FORMAT_KEY, SINK_FORMAT_KEY), CONNECTOR_FORMAT_HYBRID_VALUE)
+            .equals(CONNECTOR_FORMAT_TS_FILE_VALUE);
+
     useLeaderCache =
         parameters.getBooleanOrDefault(
-            Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
-            CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE);
+                Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
+                CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE)
+            && !usingTsFileBatch;
 
-    requestMaxDelayInMs =
+    final int requestMaxDelayInSeconds =
         parameters.getIntOrDefault(
-                Arrays.asList(CONNECTOR_IOTDB_BATCH_DELAY_KEY, SINK_IOTDB_BATCH_DELAY_KEY),
-                CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE)
-            * 1000;
+            Arrays.asList(CONNECTOR_IOTDB_BATCH_DELAY_KEY, SINK_IOTDB_BATCH_DELAY_KEY),
+            CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE);
+    this.requestMaxDelayInMs =
+        requestMaxDelayInSeconds < 0 ? Integer.MAX_VALUE : requestMaxDelayInSeconds * 1000;
     requestMaxBatchSizeInBytes =
         parameters.getLongOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_BATCH_SIZE_KEY, SINK_IOTDB_BATCH_SIZE_KEY),
             CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE);
 
     this.defaultBatch =
-        new PipeTabletEventPlainBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes);
+        usingTsFileBatch
+            ? new PipeTabletEventTsFileBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes)
+            : new PipeTabletEventPlainBatch(requestMaxDelayInMs, requestMaxBatchSizeInBytes);
   }
 
   /**
@@ -97,7 +112,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
    *     {@link PipeTabletEventPlainBatch} can be transferred. the first element is the leader
    *     endpoint to transfer to (might be null), the second element is the batch to be transferred.
    */
-  public synchronized Pair<TEndPoint, PipeTabletEventPlainBatch> onEvent(
+  public synchronized Pair<TEndPoint, PipeTabletEventBatch> onEvent(
       final TabletInsertionEvent event)
       throws IOException, WALPipeException, WriteProcessException {
     if (!(event instanceof EnrichedEvent)) {
@@ -135,8 +150,8 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   }
 
   /** Get all batches that have at least 1 event. */
-  public synchronized List<Pair<TEndPoint, PipeTabletEventPlainBatch>> getAllNonEmptyBatches() {
-    final List<Pair<TEndPoint, PipeTabletEventPlainBatch>> nonEmptyBatches = new ArrayList<>();
+  public synchronized List<Pair<TEndPoint, PipeTabletEventBatch>> getAllNonEmptyBatches() {
+    final List<Pair<TEndPoint, PipeTabletEventBatch>> nonEmptyBatches = new ArrayList<>();
     if (!defaultBatch.isEmpty()) {
       nonEmptyBatches.add(new Pair<>(null, defaultBatch));
     }

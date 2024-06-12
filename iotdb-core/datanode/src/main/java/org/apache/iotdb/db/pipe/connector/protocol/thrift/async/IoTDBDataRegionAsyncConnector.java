@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTabletEventBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
@@ -163,13 +164,19 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   private void transferWithoutCheck(final TabletInsertionEvent tabletInsertionEvent)
       throws Exception {
     if (isTabletBatchModeEnabled) {
-      final Pair<TEndPoint, PipeTabletEventPlainBatch> endPointAndBatch =
+      final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch =
           tabletBatchBuilder.onEvent(tabletInsertionEvent);
-      if (Objects.nonNull(endPointAndBatch)) {
+      if (Objects.isNull(endPointAndBatch)) {
+        return;
+      }
+      if (endPointAndBatch.getRight() instanceof PipeTabletEventPlainBatch) {
         transfer(
             endPointAndBatch.getLeft(),
-            new PipeTransferTabletBatchEventHandler(endPointAndBatch.getRight(), this));
+            new PipeTransferTabletBatchEventHandler(
+                (PipeTabletEventPlainBatch) endPointAndBatch.getRight(), this));
         endPointAndBatch.getRight().onSuccess();
+      } else {
+
       }
     } else {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
@@ -409,12 +416,15 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       return;
     }
 
-    for (final Pair<TEndPoint, PipeTabletEventPlainBatch> endPointAndBatch :
+    for (final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch :
         tabletBatchBuilder.getAllNonEmptyBatches()) {
-      transfer(
-          endPointAndBatch.getLeft(),
-          new PipeTransferTabletBatchEventHandler(endPointAndBatch.getRight(), this));
-      endPointAndBatch.getRight().onSuccess();
+      if (endPointAndBatch.getRight() instanceof PipeTabletEventPlainBatch) {
+        transfer(
+            endPointAndBatch.getLeft(),
+            new PipeTransferTabletBatchEventHandler(
+                (PipeTabletEventPlainBatch) endPointAndBatch.getRight(), this));
+        endPointAndBatch.getRight().onSuccess();
+      }
     }
   }
 

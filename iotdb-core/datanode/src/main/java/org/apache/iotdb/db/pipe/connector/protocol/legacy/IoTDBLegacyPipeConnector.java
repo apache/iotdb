@@ -65,6 +65,7 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -325,11 +326,16 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
   private void doTransfer(final PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
       throws IoTDBConnectionException, StatementExecutionException {
-    for (final Tablet tablet : pipeInsertNodeInsertionEvent.convertToTablets()) {
-      if (pipeInsertNodeInsertionEvent.isAligned()) {
-        sessionPool.insertAlignedTablet(tablet);
+
+    final List<Tablet> tablets = pipeInsertNodeInsertionEvent.convertToTablets();
+    for (int i = 0; i < tablets.size(); ++i) {
+      if (tablets.get(i).rowSize == 0) {
+        continue;
+      }
+      if (pipeInsertNodeInsertionEvent.isAligned(i)) {
+        sessionPool.insertAlignedTablet(tablets.get(i));
       } else {
-        sessionPool.insertTablet(tablet);
+        sessionPool.insertTablet(tablets.get(i));
       }
     }
   }
