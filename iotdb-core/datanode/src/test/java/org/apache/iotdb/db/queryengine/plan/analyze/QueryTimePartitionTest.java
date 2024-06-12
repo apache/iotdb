@@ -356,7 +356,7 @@ public class QueryTimePartitionTest {
 
   @Test
   public void testGetTimePartitionSlotList() {
-    MPPQueryContext context = new MPPQueryContext(new QueryId("time-partition-test"));
+    MPPQueryContext context = new MPPQueryContext(new QueryId("time_partition_test"));
     // time >= 10 and time <= 9
     Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
         getTimePartitionSlotList(

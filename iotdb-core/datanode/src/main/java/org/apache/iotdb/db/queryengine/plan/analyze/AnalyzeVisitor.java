@@ -2112,6 +2112,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private static void reserveMemoryForTimePartitionSlot(
       long maxTime, long minTime, MPPQueryContext context) {
+    if (maxTime == Long.MAX_VALUE || minTime == Long.MIN_VALUE) {
+      return;
+    }
     long size = TimePartitionUtils.getEstimateTimePartitionSize(minTime, maxTime);
     context.reserveMemoryForFrontEnd(
         RamUsageEstimator.shallowSizeOfInstance(TTimePartitionSlot.class) * size);
