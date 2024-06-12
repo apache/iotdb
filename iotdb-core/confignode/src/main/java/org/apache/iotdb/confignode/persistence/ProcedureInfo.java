@@ -135,7 +135,7 @@ public class ProcedureInfo implements SnapshotProcessor {
   public TSStatus updateProcedure(UpdateProcedurePlan updateProcedurePlan) {
     Procedure<ConfigNodeProcedureEnv> procedure = updateProcedurePlan.getProcedure();
     procedureMap.put(procedure.getProcId(), procedure);
-    lastProcId.set(Math.max(lastProcId.get(), procedure.getProcId()));
+    lastProcId.updateAndGet(id -> Math.max(id, procedure.getProcId()));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

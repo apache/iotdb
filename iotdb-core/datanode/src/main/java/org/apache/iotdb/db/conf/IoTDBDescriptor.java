@@ -20,7 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.ConfigFileAutoUpdateTool;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -101,13 +101,13 @@ public class IoTDBDescriptor {
   private static final double MIN_DIR_USE_PROPORTION = 0.5;
 
   static {
-    ConfigFileAutoUpdateTool updateTool = new ConfigFileAutoUpdateTool();
     URL systemConfigUrl = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     URL configNodeUrl = getPropsUrl(CommonConfig.OLD_CONFIG_NODE_CONFIG_NAME);
     URL dataNodeUrl = getPropsUrl(CommonConfig.OLD_DATA_NODE_CONFIG_NAME);
     URL commonConfigUrl = getPropsUrl(CommonConfig.OLD_COMMON_CONFIG_NAME);
     try {
-      updateTool.checkAndMayUpdate(systemConfigUrl, configNodeUrl, dataNodeUrl, commonConfigUrl);
+      ConfigurationFileUtils.checkAndMayUpdate(
+          systemConfigUrl, configNodeUrl, dataNodeUrl, commonConfigUrl);
     } catch (Exception e) {
       LOGGER.error("Failed to update config file", e);
     }
@@ -895,32 +895,6 @@ public class IoTDBDescriptor {
       conf.setIntoOperationExecutionThreadCount(2);
     }
 
-    conf.setMaxAllocateMemoryRatioForLoad(
-        Double.parseDouble(
-            properties.getProperty(
-                "max_allocate_memory_ratio_for_load",
-                String.valueOf(conf.getMaxAllocateMemoryRatioForLoad()))));
-    conf.setLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber(
-        Integer.parseInt(
-            properties.getProperty(
-                "load_tsfile_analyze_schema_batch_flush_time_series_number",
-                String.valueOf(conf.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber()))));
-    conf.setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
-        Long.parseLong(
-            properties.getProperty(
-                "load_tsfile_analyze_schema_memory_size_in_bytes",
-                String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
-    conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
-        Long.parseLong(
-            properties.getProperty(
-                "load_clean_up_task_execution_delay_time_seconds",
-                String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
-    conf.setLoadWriteThroughputBytesPerSecond(
-        Double.parseDouble(
-            properties.getProperty(
-                "load_write_throughput_bytes_per_second",
-                String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
-
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
     // At the same time, set TSFileConfig
@@ -1022,6 +996,9 @@ public class IoTDBDescriptor {
 
     // CQ
     loadCQProps(properties);
+
+    // Load TsFile
+    loadLoadTsFileProps(properties);
 
     // Pipe
     loadPipeProps(properties);
@@ -1824,6 +1801,9 @@ public class IoTDBDescriptor {
 
       // update Consensus config
       reloadConsensusProps(properties);
+
+      // update retry config
+      commonDescriptor.loadRetryProperties(properties);
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
@@ -1846,8 +1826,11 @@ public class IoTDBDescriptor {
       throw new QueryProcessException(
           String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
-    ReloadLevel reloadLevel =
-        MetricConfigDescriptor.getInstance().loadHotProps(commonProperties, false);
+    reloadMetricProperties(commonProperties);
+  }
+
+  public void reloadMetricProperties(Properties properties) {
+    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps(properties, false);
     LOGGER.info("Reload metric service in level {}", reloadLevel);
     if (reloadLevel == ReloadLevel.RESTART_INTERNAL_REPORTER) {
       IoTDBInternalReporter internalReporter;
@@ -2084,6 +2067,34 @@ public class IoTDBDescriptor {
     conf.setAllocateMemoryForPartitionCache(
         schemaMemoryTotal * conf.getSchemaMemoryProportion()[2] / proportionSum);
     LOGGER.info("allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
+  }
+
+  private void loadLoadTsFileProps(Properties properties) {
+    conf.setMaxAllocateMemoryRatioForLoad(
+        Double.parseDouble(
+            properties.getProperty(
+                "max_allocate_memory_ratio_for_load",
+                String.valueOf(conf.getMaxAllocateMemoryRatioForLoad()))));
+    conf.setLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_analyze_schema_batch_flush_time_series_number",
+                String.valueOf(conf.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber()))));
+    conf.setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_tsfile_analyze_schema_memory_size_in_bytes",
+                String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
+    conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_clean_up_task_execution_delay_time_seconds",
+                String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
+    conf.setLoadWriteThroughputBytesPerSecond(
+        Double.parseDouble(
+            properties.getProperty(
+                "load_write_throughput_bytes_per_second",
+                String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

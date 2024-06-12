@@ -21,34 +21,48 @@ package org.apache.iotdb.subscription.it.dual;
 
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.session.subscription.consumer.SubscriptionExecutorServiceManager;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
+import org.junit.rules.TestName;
 
 abstract class AbstractSubscriptionDualIT {
 
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;
 
+  @Rule public TestName testName = new TestName();
+
   @Before
   public void setUp() {
+    // set thread name
+    Thread.currentThread().setName(String.format("%s - main", testName.getMethodName()));
+
+    // set thread pools core size
+    SubscriptionExecutorServiceManager.setControlFlowExecutorCorePoolSize(1);
+    SubscriptionExecutorServiceManager.setUpstreamDataFlowExecutorCorePoolSize(1);
+    SubscriptionExecutorServiceManager.setDownstreamDataFlowExecutorCorePoolSize(1);
+
     MultiEnvFactory.createEnv(2);
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
+    setUpConfig();
+
+    senderEnv.initClusterEnvironment();
+    receiverEnv.initClusterEnvironment();
+  }
+
+  void setUpConfig() {
     // enable auto create schema
     senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
     receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
 
-    // for IoTDBSubscriptionConsumerGroupIT
-    receiverEnv.getConfig().getCommonConfig().setPipeAirGapReceiverEnabled(true);
-
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
     receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
   }
 
   @After

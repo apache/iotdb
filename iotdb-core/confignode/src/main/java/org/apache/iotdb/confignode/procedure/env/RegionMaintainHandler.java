@@ -140,11 +140,12 @@ public class RegionMaintainHandler {
     for (TDataNodeConfiguration node : otherOnlineDataNodes) {
       TDisableDataNodeReq disableReq = new TDisableDataNodeReq(disabledDataNode);
       TSStatus status =
-          SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNodeWithRetry(
-                  node.getLocation().getInternalEndPoint(),
-                  disableReq,
-                  DataNodeRequestType.DISABLE_DATA_NODE);
+          (TSStatus)
+              SyncDataNodeClientPool.getInstance()
+                  .sendSyncRequestToDataNodeWithRetry(
+                      node.getLocation().getInternalEndPoint(),
+                      disableReq,
+                      DataNodeRequestType.DISABLE_DATA_NODE);
       if (!isSucceed(status)) {
         LOGGER.error(
             "{}, BroadcastDisableDataNode meets error, disabledDataNode: {}, error: {}",
@@ -224,11 +225,12 @@ public class RegionMaintainHandler {
     TCreatePeerReq req = new TCreatePeerReq(regionId, currentPeerNodes, storageGroup);
 
     status =
-        SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNodeWithRetry(
-                destDataNode.getInternalEndPoint(),
-                req,
-                DataNodeRequestType.CREATE_NEW_REGION_PEER);
+        (TSStatus)
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(
+                    destDataNode.getInternalEndPoint(),
+                    req,
+                    DataNodeRequestType.CREATE_NEW_REGION_PEER);
 
     if (isSucceed(status)) {
       LOGGER.info(
@@ -269,11 +271,12 @@ public class RegionMaintainHandler {
     // destDataNode is where the new RegionReplica is created
     TMaintainPeerReq maintainPeerReq = new TMaintainPeerReq(regionId, destDataNode, procedureId);
     status =
-        SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNodeWithRetry(
-                coordinator.getInternalEndPoint(),
-                maintainPeerReq,
-                DataNodeRequestType.ADD_REGION_PEER);
+        (TSStatus)
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(
+                    coordinator.getInternalEndPoint(),
+                    maintainPeerReq,
+                    DataNodeRequestType.ADD_REGION_PEER);
     LOGGER.info(
         "{}, Send action addRegionPeer finished, regionId: {}, rpcDataNode: {},  destDataNode: {}, status: {}",
         REGION_MIGRATE_PROCESS,
@@ -305,11 +308,12 @@ public class RegionMaintainHandler {
     TMaintainPeerReq maintainPeerReq =
         new TMaintainPeerReq(regionId, originalDataNode, procedureId);
     status =
-        SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNodeWithRetry(
-                coordinator.getInternalEndPoint(),
-                maintainPeerReq,
-                DataNodeRequestType.REMOVE_REGION_PEER);
+        (TSStatus)
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(
+                    coordinator.getInternalEndPoint(),
+                    maintainPeerReq,
+                    DataNodeRequestType.REMOVE_REGION_PEER);
     LOGGER.info(
         "{}, Send action removeRegionPeer finished, regionId: {}, rpcDataNode: {}",
         REGION_MIGRATE_PROCESS,
@@ -338,17 +342,19 @@ public class RegionMaintainHandler {
     status =
         configManager.getLoadManager().getNodeStatus(originalDataNode.getDataNodeId())
                 == NodeStatus.Unknown
-            ? SyncDataNodeClientPool.getInstance()
-                .sendSyncRequestToDataNodeWithGivenRetry(
-                    originalDataNode.getInternalEndPoint(),
-                    maintainPeerReq,
-                    DataNodeRequestType.DELETE_OLD_REGION_PEER,
-                    1)
-            : SyncDataNodeClientPool.getInstance()
-                .sendSyncRequestToDataNodeWithRetry(
-                    originalDataNode.getInternalEndPoint(),
-                    maintainPeerReq,
-                    DataNodeRequestType.DELETE_OLD_REGION_PEER);
+            ? (TSStatus)
+                SyncDataNodeClientPool.getInstance()
+                    .sendSyncRequestToDataNodeWithGivenRetry(
+                        originalDataNode.getInternalEndPoint(),
+                        maintainPeerReq,
+                        DataNodeRequestType.DELETE_OLD_REGION_PEER,
+                        1)
+            : (TSStatus)
+                SyncDataNodeClientPool.getInstance()
+                    .sendSyncRequestToDataNodeWithRetry(
+                        originalDataNode.getInternalEndPoint(),
+                        maintainPeerReq,
+                        DataNodeRequestType.DELETE_OLD_REGION_PEER);
     LOGGER.info(
         "{}, Send action deleteOldRegionPeer finished, regionId: {}, dataNodeId: {}",
         REGION_MIGRATE_PROCESS,
@@ -380,6 +386,7 @@ public class RegionMaintainHandler {
       try (SyncDataNodeInternalServiceClient dataNodeClient =
           dataNodeClientManager.borrowClient(dataNodeLocation.getInternalEndPoint())) {
         TRegionMigrateResult report = dataNodeClient.getRegionMaintainResult(taskId);
+        lastReportTime = System.nanoTime();
         if (report.getTaskStatus() != TRegionMaintainTaskStatus.PROCESSING) {
           return report;
         }
@@ -498,9 +505,13 @@ public class RegionMaintainHandler {
         REMOVE_DATANODE_PROCESS,
         dataNode);
     TSStatus status =
-        SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNodeWithGivenRetry(
-                dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.STOP_DATA_NODE, 2);
+        (TSStatus)
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithGivenRetry(
+                    dataNode.getInternalEndPoint(),
+                    dataNode,
+                    DataNodeRequestType.STOP_DATA_NODE,
+                    2);
     configManager.getLoadManager().removeNodeCache(dataNode.getDataNodeId());
     LOGGER.info(
         "{}, Stop Data Node result: {}, stoppedDataNode: {}",

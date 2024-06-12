@@ -82,7 +82,7 @@ dclStatement
     ;
 
 utilityStatement
-    : flush | clearCache | settle | startRepairData | stopRepairData | explain
+    : flush | clearCache | setConfiguration | settle | startRepairData | stopRepairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
@@ -971,6 +971,15 @@ flush
 // Clear Cache
 clearCache
     : CLEAR CACHE (ON (LOCAL | CLUSTER))?
+    ;
+
+// Set Configuration
+setConfiguration
+    : SET CONFIGURATION setConfigurationEntry+ (ON INTEGER_LITERAL)?
+    ;
+
+setConfigurationEntry
+    : STRING_LITERAL OPERATOR_SEQ STRING_LITERAL
     ;
 
 // Settle

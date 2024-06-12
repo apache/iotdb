@@ -39,6 +39,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySour
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.TreeModelTimePredicate;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.FillDescriptor;
@@ -375,6 +377,7 @@ public class Analysis implements IAnalysis {
     this.statement = statement;
   }
 
+  @Override
   public DataPartition getDataPartitionInfo() {
     return dataPartition;
   }
@@ -383,6 +386,7 @@ public class Analysis implements IAnalysis {
     this.dataPartition = dataPartition;
   }
 
+  @Override
   public SchemaPartition getSchemaPartitionInfo() {
     return schemaPartition;
   }
@@ -403,10 +407,12 @@ public class Analysis implements IAnalysis {
     return redirectNodeList;
   }
 
+  @Override
   public void setRedirectNodeList(List<TEndPoint> redirectNodeList) {
     this.redirectNodeList = redirectNodeList;
   }
 
+  @Override
   public void addEndPointToRedirectNodeList(TEndPoint endPoint) {
     if (redirectNodeList == null) {
       redirectNodeList = new ArrayList<>();
@@ -420,6 +426,11 @@ public class Analysis implements IAnalysis {
 
   public void setGlobalTimePredicate(Expression timeFilter) {
     this.globalTimePredicate = timeFilter;
+  }
+
+  @Override
+  public TimePredicate getCovertedTimePredicate() {
+    return globalTimePredicate == null ? null : new TreeModelTimePredicate(globalTimePredicate);
   }
 
   @Override

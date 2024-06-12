@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,28 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.task;
+package org.apache.iotdb.commons.pipe.connector.compressor;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+public class PipeCompressorConfig {
 
-public class DecoratingLock {
-  private final AtomicBoolean isDecorating = new AtomicBoolean(false);
+  private final String name;
+  private final int zstdCompressionLevel;
 
-  public void waitForDecorated() {
-    while (isDecorating.get()) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-    }
+  public PipeCompressorConfig(String name, int zstdCompressionLevel) {
+    this.name = name;
+    this.zstdCompressionLevel = zstdCompressionLevel;
   }
 
-  public void markAsDecorating() {
-    isDecorating.set(true);
+  public String getName() {
+    return name;
   }
 
-  public void markAsDecorated() {
-    isDecorating.set(false);
+  public int getZstdCompressionLevel() {
+    return zstdCompressionLevel;
   }
 }

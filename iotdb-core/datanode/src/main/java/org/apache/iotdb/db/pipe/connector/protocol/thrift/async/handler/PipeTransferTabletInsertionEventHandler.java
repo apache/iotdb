@@ -97,15 +97,17 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
 
   @Override
   public void onError(Exception exception) {
-    LOGGER.warn(
-        "Failed to transfer TabletInsertionEvent {} (committer key={}, commit id={}).",
-        event instanceof EnrichedEvent
-            ? ((EnrichedEvent) event).coreReportMessage()
-            : event.toString(),
-        event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitterKey() : null,
-        event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitId() : null,
-        exception);
-
-    connector.addFailureEventToRetryQueue(event);
+    try {
+      LOGGER.warn(
+          "Failed to transfer TabletInsertionEvent {} (committer key={}, commit id={}).",
+          event instanceof EnrichedEvent
+              ? ((EnrichedEvent) event).coreReportMessage()
+              : event.toString(),
+          event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitterKey() : null,
+          event instanceof EnrichedEvent ? ((EnrichedEvent) event).getCommitId() : null,
+          exception);
+    } finally {
+      connector.addFailureEventToRetryQueue(event);
+    }
   }
 }

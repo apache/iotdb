@@ -181,18 +181,20 @@ public class ConfigNodeProcedureEnv {
       if (nodeStatus == NodeStatus.Running) {
         // Always invalidate PartitionCache first
         final TSStatus invalidatePartitionStatus =
-            SyncDataNodeClientPool.getInstance()
-                .sendSyncRequestToDataNodeWithRetry(
-                    dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                    invalidateCacheReq,
-                    DataNodeRequestType.INVALIDATE_PARTITION_CACHE);
+            (TSStatus)
+                SyncDataNodeClientPool.getInstance()
+                    .sendSyncRequestToDataNodeWithRetry(
+                        dataNodeConfiguration.getLocation().getInternalEndPoint(),
+                        invalidateCacheReq,
+                        DataNodeRequestType.INVALIDATE_PARTITION_CACHE);
 
         final TSStatus invalidateSchemaStatus =
-            SyncDataNodeClientPool.getInstance()
-                .sendSyncRequestToDataNodeWithRetry(
-                    dataNodeConfiguration.getLocation().getInternalEndPoint(),
-                    invalidateCacheReq,
-                    DataNodeRequestType.INVALIDATE_SCHEMA_CACHE);
+            (TSStatus)
+                SyncDataNodeClientPool.getInstance()
+                    .sendSyncRequestToDataNodeWithRetry(
+                        dataNodeConfiguration.getLocation().getInternalEndPoint(),
+                        invalidateCacheReq,
+                        DataNodeRequestType.INVALIDATE_SCHEMA_CACHE);
 
         if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
           LOG.error(
