@@ -1277,7 +1277,7 @@ public class PartitionManager {
                           }
 
                           ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-                              .sendAsyncRequestToNodeWithRetry(createSchemaRegionHandler);
+                              .sendAsyncRequestWithRetry(createSchemaRegionHandler);
 
                           for (Map.Entry<Integer, TSStatus> entry :
                               createSchemaRegionHandler.getResponseMap().entrySet()) {
@@ -1313,7 +1313,7 @@ public class PartitionManager {
                           }
 
                           ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-                              .sendAsyncRequestToNodeWithRetry(createDataRegionHandler);
+                              .sendAsyncRequestWithRetry(createDataRegionHandler);
 
                           for (Map.Entry<Integer, TSStatus> entry :
                               createDataRegionHandler.getResponseMap().entrySet()) {
@@ -1350,7 +1350,7 @@ public class PartitionManager {
 
                       long startTime = System.currentTimeMillis();
                       ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-                          .sendAsyncRequestToNodeWithRetry(deleteRegionHandler);
+                          .sendAsyncRequestWithRetry(deleteRegionHandler);
 
                       LOGGER.info(
                           "Deleting regions costs {}ms", (System.currentTimeMillis() - startTime));

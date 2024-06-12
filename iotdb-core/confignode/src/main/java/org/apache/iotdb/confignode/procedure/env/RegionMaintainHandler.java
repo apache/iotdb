@@ -373,7 +373,7 @@ public class RegionMaintainHandler {
             new TResetPeerListReq(regionId, correctDataNodeLocations),
             dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNodeWithRetry(clientHandler);
+        .sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseMap();
   }
 

@@ -161,7 +161,7 @@ public class UnsetTemplateProcedure
             invalidateTemplateSetInfoReq,
             dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNodeWithRetry(clientHandler);
+        .sendAsyncRequestWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related template cache
@@ -259,7 +259,7 @@ public class UnsetTemplateProcedure
             rollbackTemplateSetInfoReq,
             dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNodeWithRetry(clientHandler);
+        .sendAsyncRequestWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related template cache

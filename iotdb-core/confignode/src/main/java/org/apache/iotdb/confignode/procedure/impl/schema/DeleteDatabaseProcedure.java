@@ -172,7 +172,7 @@ public class DeleteDatabaseProcedure
           }
           if (!schemaRegionDeleteTaskMap.isEmpty()) {
             ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestToNodeWithRetry(asyncClientHandler);
+                .sendAsyncRequestWithRetry(asyncClientHandler);
             for (Map.Entry<Integer, TSStatus> entry :
                 asyncClientHandler.getResponseMap().entrySet()) {
               if (entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

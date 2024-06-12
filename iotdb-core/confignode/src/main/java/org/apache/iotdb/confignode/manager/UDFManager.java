@@ -131,7 +131,7 @@ public class UDFManager {
         new AsyncDataNodeRequestContext<>(
             ConfigNodeToDataNodeRequestType.CREATE_FUNCTION, req, dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNodeWithRetry(clientHandler);
+        .sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -166,7 +166,7 @@ public class UDFManager {
         new AsyncDataNodeRequestContext<>(
             ConfigNodeToDataNodeRequestType.DROP_FUNCTION, request, dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNodeWithRetry(clientHandler);
+        .sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 

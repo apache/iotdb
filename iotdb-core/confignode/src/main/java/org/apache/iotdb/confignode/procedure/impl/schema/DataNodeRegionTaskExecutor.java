@@ -89,7 +89,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
       AsyncDataNodeRequestContext<Q, R> clientHandler =
           prepareRequestHandler(dataNodeConsensusGroupIdMap);
       ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-          .sendAsyncRequestToNodeWithRetry(clientHandler);
+          .sendAsyncRequestWithRetry(clientHandler);
       Map<TDataNodeLocation, List<TConsensusGroupId>> currentFailedDataNodeMap =
           checkDataNodeExecutionResult(clientHandler.getResponseMap(), dataNodeConsensusGroupIdMap);
 

@@ -226,7 +226,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     if (requestId.get() > 0) {
       // Don't retry ChangeLeader request
       ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-          .sendAsyncRequestToNode(clientHandler);
+          .sendAsyncRequest(clientHandler);
       for (int i = 0; i < requestId.get(); i++) {
         if (clientHandler.getResponseMap().get(i).getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -314,7 +314,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
             new TRegionRouteReq(broadcastTime, tmpPriorityMap),
             dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNodeWithRetry(clientHandler);
+        .sendAsyncRequestWithRetry(clientHandler);
   }
 
   private void recordRegionPriorityMap(

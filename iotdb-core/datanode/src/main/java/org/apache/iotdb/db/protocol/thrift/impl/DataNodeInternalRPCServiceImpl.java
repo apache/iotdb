@@ -1493,7 +1493,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         (AsyncRequestContext<Object, TSStatus, DataNodeToConfigNodeRequestType, TConfigNodeLocation>
                 handler) ->
             DataNodeToConfigNodeInternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestToNodeWithRetry(handler));
+                .sendAsyncRequestWithRetry(handler));
   }
 
   private List<TTestConnectionResult> testAllDataNodeInternalServiceConnection(
@@ -1507,7 +1507,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         (AsyncRequestContext<Object, TSStatus, DataNodeToDataNodeRequestType, TDataNodeLocation>
                 handler) ->
             DataNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestToNodeWithRetry(handler));
+                .sendAsyncRequestWithRetry(handler));
   }
 
   private List<TTestConnectionResult> testAllDataNodeMPPServiceConnection(
@@ -1521,7 +1521,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         (AsyncRequestContext<Object, TSStatus, DataNodeToDataNodeRequestType, TDataNodeLocation>
                 handler) ->
             DataNodeMPPServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestToNodeWithRetry(handler));
+                .sendAsyncRequestWithRetry(handler));
   }
 
   private List<TTestConnectionResult> testAllDataNodeExternalServiceConnection(
@@ -1535,7 +1535,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         (AsyncRequestContext<Object, TSStatus, DataNodeToDataNodeRequestType, TDataNodeLocation>
                 handler) ->
             DataNodeExternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestToNodeWithRetry(handler));
+                .sendAsyncRequestWithRetry(handler));
   }
 
   @Override

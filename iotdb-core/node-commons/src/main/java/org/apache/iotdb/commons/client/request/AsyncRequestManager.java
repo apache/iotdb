@@ -83,20 +83,20 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
    *
    * @param requestContext <RequestType, ResponseType> which will also contain the result
    */
-  public final void sendAsyncRequestToNodeWithRetry(
+  public final void sendAsyncRequestWithRetry(
       AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext) {
     sendAsyncRequest(requestContext, MAX_RETRY_NUM, null);
   }
 
-  public final void sendAsyncRequestToNode(
+  public final void sendAsyncRequest(
       AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext) {
     sendAsyncRequest(requestContext, 1, null);
   }
 
-  private final void sendAsyncRequest(
-      AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
-      int retryNum,
-      Long timeoutInMs) {
+  private void sendAsyncRequest(
+          AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
+          int retryNum,
+          Long timeoutInMs) {
     if (requestContext.getRequestIndices().isEmpty()) {
       return;
     }
@@ -109,7 +109,7 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
       // Send requests to all targetNodes
       for (int requestId : requestContext.getRequestIndices()) {
         NodeLocation targetNode = requestContext.getNodeLocation(requestId);
-        sendAsyncRequestToNode(requestContext, requestId, targetNode, retry);
+        sendAsyncRequest(requestContext, requestId, targetNode, retry);
       }
 
       // Wait for this batch of asynchronous RPC requests finish
@@ -143,7 +143,7 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
     }
   }
 
-  protected void sendAsyncRequestToNode(
+  protected void sendAsyncRequest(
       AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
       int requestId,
       NodeLocation targetNode,

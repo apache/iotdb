@@ -122,7 +122,7 @@ public class ClusterManager {
             nodeLocations,
             configNodeLocationMap);
     ConfigNodeToConfigNodeInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNode(configNodeClientHandler);
+        .sendAsyncRequest(configNodeClientHandler);
     Map<Integer, TConfigNodeLocation> anotherConfigNodeLocationMap =
         configManager.getNodeManager().getRegisteredConfigNodes().stream()
             .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
@@ -149,7 +149,7 @@ public class ClusterManager {
             nodeLocations,
             dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNode(dataNodeClientHandler);
+        .sendAsyncRequest(dataNodeClientHandler);
     Map<Integer, TDataNodeLocation> anotherDataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodes().stream()
             .map(TDataNodeConfiguration::getLocation)
@@ -193,7 +193,7 @@ public class ClusterManager {
         new AsyncConfigNodeRequestContext<>(
             ConfigNodeToConfigNodeRequestType.TEST_CONNECTION, new Object(), configNodeLocationMap);
     ConfigNodeToConfigNodeInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNodeWithRetry(requestContext);
+        .sendAsyncRequestWithRetry(requestContext);
     Map<Integer, TConfigNodeLocation> anotherConfigNodeLocationMap =
         configNodeLocations.stream()
             .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
@@ -230,7 +230,7 @@ public class ClusterManager {
         new AsyncDataNodeRequestContext<>(
             ConfigNodeToDataNodeRequestType.TEST_CONNECTION, new Object(), dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNodeWithRetry(requestContext);
+        .sendAsyncRequestWithRetry(requestContext);
     Map<Integer, TDataNodeLocation> anotherDataNodeLocationMap =
         dataNodeLocations.stream()
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));

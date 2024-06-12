@@ -91,7 +91,7 @@ public class ClusterQuotaManager {
             new AsyncDataNodeRequestContext<>(
                 ConfigNodeToDataNodeRequestType.SET_SPACE_QUOTA, req, dataNodeLocationMap);
         ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-            .sendAsyncRequestToNodeWithRetry(clientHandler);
+            .sendAsyncRequestWithRetry(clientHandler);
         return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
       }
       return response;
@@ -198,7 +198,7 @@ public class ClusterQuotaManager {
             new AsyncDataNodeRequestContext<>(
                 ConfigNodeToDataNodeRequestType.SET_THROTTLE_QUOTA, req, dataNodeLocationMap);
         ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-            .sendAsyncRequestToNodeWithRetry(clientHandler);
+            .sendAsyncRequestWithRetry(clientHandler);
         return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
       }
       return response;

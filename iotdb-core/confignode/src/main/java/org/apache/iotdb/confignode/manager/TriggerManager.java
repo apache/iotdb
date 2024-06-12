@@ -252,7 +252,7 @@ public class TriggerManager {
         new AsyncDataNodeRequestContext<>(
             ConfigNodeToDataNodeRequestType.UPDATE_TRIGGER_LOCATION, request, dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNodeWithRetry(clientHandler);
+        .sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 }
