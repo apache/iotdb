@@ -55,6 +55,7 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
 
   protected AsyncRequestManager() {
     initClientManager();
+    actionMapBuilder = ImmutableMap.builder();
     initActionMapBuilder();
     this.actionMap = this.actionMapBuilder.build();
   }
