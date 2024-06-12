@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.Map;
 
 public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementPath> {
@@ -128,7 +130,7 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
     result.setTagMap(nextMatchedNode.getAsMeasurementNode().getTagMap());
     result.setUnderAlignedEntity(getParentOfNextMatchedNode().getAsEntityNode().isAligned());
     String alias = nextMatchedNode.getAsMeasurementNode().getAlias();
-    if (tailNode.equals(alias)) {
+    if (alias != null && !StringUtils.isEmpty(alias)) {
       result.setMeasurementAlias(alias);
     }
 

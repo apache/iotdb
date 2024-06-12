@@ -143,13 +143,15 @@ public class TimeseriesContext {
       return false;
     }
     TimeseriesContext that = (TimeseriesContext) obj;
-    return Objects.equals(dataType, that.dataType)
-        && Objects.equals(alias, that.alias)
-        && encoding.equals(that.encoding)
-        && Objects.equals(compression, that.compression)
-        && Objects.equals(tags, that.tags)
-        && Objects.equals(deadband, that.deadband)
-        && Objects.equals(deadbandParameters, that.deadbandParameters);
+    boolean res =
+        Objects.equals(dataType, that.dataType)
+            && Objects.equals(alias, that.alias)
+            && encoding.equals(that.encoding)
+            && Objects.equals(compression, that.compression)
+            && Objects.equals(tags, that.tags)
+            && Objects.equals(deadband, that.deadband)
+            && Objects.equals(deadbandParameters, that.deadbandParameters);
+    return res;
   }
 
   @Override

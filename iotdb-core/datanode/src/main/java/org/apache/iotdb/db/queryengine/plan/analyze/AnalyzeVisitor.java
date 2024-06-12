@@ -2900,7 +2900,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                     new MeasurementSchemaInfo(
                         measurementPath.getMeasurement(),
                         measurementPath.getMeasurementSchema(),
-                        measurementPath.getMeasurementAlias(),
+                        measurementPath.isMeasurementAliasExists()
+                            ? measurementPath.getMeasurementAlias()
+                            : null,
                         measurementPath.getTagMap())));
       }
     }
@@ -2918,20 +2920,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             .computeIfAbsent(devicePath, k -> new HashMap<>())
             .put(alignedPath, timeseriesContextList);
       } else {
-        for (String measurement : deviceToMeasurementMap.get(devicePath)) {
+        List<String> measurementList = deviceToMeasurementMap.get(devicePath);
+        List<TimeseriesContext> timeseriesContextList = deviceToTimeseriesSchemaMap.get(devicePath);
+        for (int i = 0; i < measurementList.size(); i++) {
           MeasurementPath measurementPath =
-              new MeasurementPath(devicePath.concatNode(measurement).getNodes());
+              new MeasurementPath(devicePath.concatNode(measurementList.get(i)).getNodes());
           deviceToTimeseriesSchemaInfo
               .computeIfAbsent(devicePath, k -> new HashMap<>())
-              .put(
-                  measurementPath,
-                  Collections.singletonList(
-                      new TimeseriesContext(
-                          new MeasurementSchemaInfo(
-                              measurement,
-                              deviceToMeasurementSchemaMap.get(devicePath).get(0),
-                              null,
-                              null))));
+              .put(measurementPath, Collections.singletonList(timeseriesContextList.get(i)));
         }
       }
     }
