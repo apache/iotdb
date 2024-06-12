@@ -61,6 +61,7 @@ public class SkipOnSetUpFailure implements TestRule {
                       description.getClassName(), description.getMethodName()));
             }
           }
+
           // Re-throw the exception (which means the test has failed).
           throw e;
 
