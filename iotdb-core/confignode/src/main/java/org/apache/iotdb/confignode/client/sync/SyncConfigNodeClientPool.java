@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.client.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
@@ -91,6 +92,10 @@ public class SyncConfigNodeClientPool {
             return client.stopConfigNode((TConfigNodeLocation) req);
           case SET_CONFIGURATION:
             return client.setConfiguration((TSetConfigurationReq) req);
+          case SUBMIT_TEST_CONNECTION_TASK:
+            return client.submitTestConnectionTask((TNodeLocations) req);
+          case TEST_CONNECTION:
+            return client.testConnectionEmptyRPC();
           default:
             return RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);

@@ -115,20 +115,21 @@ public class ClusterManager {
         configManager.getNodeManager().getRegisteredDataNodes().stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList()));
+    // For ConfigNode
     Map<Integer, TConfigNodeLocation> configNodeLocationMap =
         configManager.getNodeManager().getRegisteredConfigNodes().stream()
             .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
-    ConfigNodeAsyncRequestContext<TNodeLocations, TTestConnectionResp> configNodeClientHandler =
+    ConfigNodeAsyncRequestContext<TNodeLocations, TTestConnectionResp> configNodeAsyncRequestContext =
         new ConfigNodeAsyncRequestContext<>(
             ConfigNodeToConfigNodeRequestType.SUBMIT_TEST_CONNECTION_TASK,
             nodeLocations,
             configNodeLocationMap);
     ConfigNodeToConfigNodeInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequest(configNodeClientHandler);
+        .sendAsyncRequest(configNodeAsyncRequestContext);
     Map<Integer, TConfigNodeLocation> anotherConfigNodeLocationMap =
         configManager.getNodeManager().getRegisteredConfigNodes().stream()
             .collect(Collectors.toMap(TConfigNodeLocation::getConfigNodeId, location -> location));
-    configNodeClientHandler
+    configNodeAsyncRequestContext
         .getResponseMap()
         .forEach(
             (nodeId, configNodeResp) -> {
@@ -141,23 +142,23 @@ public class ClusterManager {
                             anotherConfigNodeLocationMap.get(nodeId), nodeLocations));
               }
             });
+    // For DataNode
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodes().stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
-    DataNodeAsyncRequestContext<TNodeLocations, TTestConnectionResp> dataNodeClientHandler =
+    DataNodeAsyncRequestContext<TNodeLocations, TTestConnectionResp> dataNodeAsyncRequestContext =
         new DataNodeAsyncRequestContext<>(
             ConfigNodeToDataNodeRequestType.SUBMIT_TEST_CONNECTION_TASK,
             nodeLocations,
             dataNodeLocationMap);
     ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequest(dataNodeClientHandler);
+        .sendAsyncRequest(dataNodeAsyncRequestContext);
     Map<Integer, TDataNodeLocation> anotherDataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodes().stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
-    ;
-    dataNodeClientHandler
+    dataNodeAsyncRequestContext
         .getResponseMap()
         .forEach(
             (nodeId, dataNodeResp) -> {
