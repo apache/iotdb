@@ -3257,8 +3257,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         Integer.parseInt(ctx.INTEGER_LITERAL() == null ? "-1" : ctx.INTEGER_LITERAL().getText());
     Map<String, String> configItems = new HashMap<>();
     for (IoTDBSqlParser.SetConfigurationEntryContext entry : ctx.setConfigurationEntry()) {
-      String key = entry.DQUOTA_STRING(0).getText().replace("\"", "");
-      String value = entry.DQUOTA_STRING(1).getText().replace("\"", "");
+      String key = entry.STRING_LITERAL(0).getText().replace("\"", "").replace("'", "").trim();
+      String value = entry.STRING_LITERAL(1).getText().replace("\"", "").replace("'", "").trim();
       configItems.put(key, value);
     }
     setConfigurationStatement.setNodeId(nodeId);
