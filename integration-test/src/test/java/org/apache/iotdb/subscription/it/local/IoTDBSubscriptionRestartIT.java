@@ -66,9 +66,7 @@ public class IoTDBSubscriptionRestartIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionRestartIT.class);
 
-  @Rule
-  public final TestRule skipOnSetUpFailure =
-      new SkipOnSetUpFailure("setUp", IoTDBSubscriptionRestartIT.class.getName());
+  @Rule public final TestRule skipOnSetUpFailure = new SkipOnSetUpFailure("setUp");
 
   @Before
   public void setUp() throws Exception {

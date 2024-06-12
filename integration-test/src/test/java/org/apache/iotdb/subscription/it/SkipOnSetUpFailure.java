@@ -25,19 +25,17 @@ import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
+import java.lang.reflect.Method;
+
 public class SkipOnSetUpFailure implements TestRule {
 
   private final String setUpMethodName;
-  private final String declaringClassName;
 
   /**
    * @param setUpMethodName Should be exactly the same as the method name decorated with @Before.
-   * @param declaringClassName The name of the test class.
    */
-  public SkipOnSetUpFailure(
-      @NonNull final String setUpMethodName, @NonNull final String declaringClassName) {
+  public SkipOnSetUpFailure(@NonNull final String setUpMethodName) {
     this.setUpMethodName = setUpMethodName;
-    this.declaringClassName = declaringClassName;
   }
 
   @Override
@@ -52,7 +50,8 @@ public class SkipOnSetUpFailure implements TestRule {
           // setUp phase.
           for (final StackTraceElement stackTraceElement : e.getStackTrace()) {
             if (setUpMethodName.equals(stackTraceElement.getMethodName())
-                && declaringClassName.equals(stackTraceElement.getClassName())) {
+                && description.getClassName().equals(stackTraceElement.getClassName())
+                && isMethodAnnotationWithBefore(stackTraceElement.getMethodName())) {
               e.printStackTrace();
               // Skip this test.
               throw new AssumptionViolatedException(
@@ -67,6 +66,15 @@ public class SkipOnSetUpFailure implements TestRule {
 
           // Regardless of the circumstances, the method decorated with @After will always be
           // executed.
+        }
+      }
+
+      private boolean isMethodAnnotationWithBefore(final String methodName) {
+        try {
+          final Method method = description.getTestClass().getDeclaredMethod(methodName);
+          return method.isAnnotationPresent(org.junit.Before.class);
+        } catch (final Throwable ignored) {
+          return false;
         }
       }
     };
