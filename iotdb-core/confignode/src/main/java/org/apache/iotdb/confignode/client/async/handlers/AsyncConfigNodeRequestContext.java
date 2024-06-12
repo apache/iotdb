@@ -34,16 +34,6 @@ import java.util.Map;
 public class AsyncConfigNodeRequestContext<Q, R>
     extends AsyncRequestContext<Q, R, ConfigNodeToConfigNodeRequestType, TConfigNodeLocation> {
 
-  public AsyncConfigNodeRequestContext(ConfigNodeToConfigNodeRequestType configNodeRequestType) {
-    super(configNodeRequestType);
-  }
-
-  public AsyncConfigNodeRequestContext(
-      ConfigNodeToConfigNodeRequestType configNodeRequestType,
-      Map<Integer, TConfigNodeLocation> integerTConfigNodeLocationMap) {
-    super(configNodeRequestType, integerTConfigNodeLocationMap);
-  }
-
   public AsyncConfigNodeRequestContext(
       ConfigNodeToConfigNodeRequestType configNodeRequestType,
       Q q,
