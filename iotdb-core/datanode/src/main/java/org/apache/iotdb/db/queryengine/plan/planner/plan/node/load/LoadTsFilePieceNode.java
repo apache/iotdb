@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.load;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -147,7 +147,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(Analysis analysis) {
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     throw new NotImplementedException("split load piece TsFile is not implemented");
   }
 

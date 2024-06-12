@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
@@ -125,6 +126,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean onCluster);
 
   SettableFuture<ConfigTaskResult> clearCache(boolean onCluster);
+
+  SettableFuture<ConfigTaskResult> setConfiguration(TSetConfigurationReq tSetConfigurationReq);
 
   SettableFuture<ConfigTaskResult> loadConfiguration(boolean onCluster);
 

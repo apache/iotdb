@@ -46,9 +46,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-public class FragmentInstanceGenerator {
+public class TableModelQueryFragmentPlanner {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceGenerator.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(TableModelQueryFragmentPlanner.class);
 
   private final SubPlan subPlan;
 
@@ -67,7 +68,7 @@ public class FragmentInstanceGenerator {
   // Record FragmentInstances dispatched to same DataNode
   private final Map<TDataNodeLocation, List<FragmentInstance>> dataNodeFIMap = new HashMap<>();
 
-  FragmentInstanceGenerator(SubPlan subPlan, Analysis analysis, MPPQueryContext queryContext) {
+  TableModelQueryFragmentPlanner(SubPlan subPlan, Analysis analysis, MPPQueryContext queryContext) {
     this.subPlan = subPlan;
     this.analysis = analysis;
     this.queryContext = queryContext;
