@@ -45,6 +45,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MonitorInfo;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
+import java.lang.reflect.Field;
 import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -675,4 +676,24 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   public abstract String getSystemPropertiesPath();
 
   protected abstract MppJVMConfig initVMConfig();
+
+  public long getPid() {
+    return getPidOfProcess(this.instance);
+  }
+
+  public static synchronized long getPidOfProcess(final Process p) {
+    long pid = -1;
+    try {
+      if (p.getClass().getName().equals("java.lang.UNIXProcess")
+          || p.getClass().getName().equals("java.lang.ProcessImpl")) {
+        final Field f = p.getClass().getDeclaredField("pid");
+        f.setAccessible(true);
+        pid = f.getLong(p);
+        f.setAccessible(false);
+      }
+    } catch (final Exception e) {
+      pid = -1;
+    }
+    return pid;
+  }
 }

@@ -50,6 +50,8 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -1010,6 +1012,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
 
     // Check data on receiver
+    final long[] currentTime = {System.currentTimeMillis()};
     try {
       try (final Connection connection = receiverEnv.getConnection();
           final Statement statement = connection.createStatement()) {
@@ -1019,6 +1022,31 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
               if (receiverCrashed.get()) {
                 LOGGER.info("detect receiver crashed, skipping this test...");
                 return;
+              }
+              // potential stuck
+              if (System.currentTimeMillis() - currentTime[0] > 60_000L) {
+                currentTime[0] = System.currentTimeMillis();
+                for (final DataNodeWrapper wrapper : senderEnv.getDataNodeWrapperList()) {
+                  final long pid = wrapper.getPid();
+                  if (pid == -1) {
+                    LOGGER.warn("Failed to get pid for {}", wrapper.getId());
+                    continue;
+                  }
+                  final String command = "jstack -l " + pid;
+                  LOGGER.info("Executing command {} for {}", command, wrapper.getId());
+                  final Process process = Runtime.getRuntime().exec(command);
+                  final StringBuilder output = new StringBuilder();
+                  try (final BufferedReader reader =
+                      new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                      output.append(line).append(System.lineSeparator());
+                    }
+                  }
+                  final int exitCode = process.waitFor();
+                  LOGGER.info("Command {} exited with code {}", command, exitCode);
+                  LOGGER.info(output.toString());
+                }
               }
               TestUtils.assertSingleResultSetEqual(
                   TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
