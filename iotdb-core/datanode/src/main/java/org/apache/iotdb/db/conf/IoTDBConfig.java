@@ -310,8 +310,9 @@ public class IoTDBConfig {
     {IoTDBConstant.DN_DEFAULT_DATA_DIR + File.separator + IoTDBConstant.DATA_FOLDER_NAME}
   };
 
-  private String loadTsFileDir =
-      tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
+  private String[] loadTsFileDirs = {
+    tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME
+  };
 
   /** Strategy of multiple directories. */
   private String multiDirStrategyClassName = null;
@@ -1276,7 +1277,6 @@ public class IoTDBConfig {
   private void formulateFolders() {
     systemDir = addDataHomeDir(systemDir);
     schemaDir = addDataHomeDir(schemaDir);
-    loadTsFileDir = addDataHomeDir(loadTsFileDir);
     consensusDir = addDataHomeDir(consensusDir);
     dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
     ratisDataRegionSnapshotDir = addDataHomeDir(ratisDataRegionSnapshotDir);
@@ -1324,6 +1324,7 @@ public class IoTDBConfig {
         }
       }
     }
+    formulateLoadTsFileDirs(tierDataDirs);
   }
 
   void reloadDataDirs(String[][] tierDataDirs) throws LoadConfigurationException {
@@ -1427,7 +1428,6 @@ public class IoTDBConfig {
     // TODO(szywilliam): rewrite the logic here when ratis supports complete snapshot semantic
     setRatisDataRegionSnapshotDir(
         tierDataDirs[0][0] + File.separator + IoTDBConstant.SNAPSHOT_FOLDER_NAME);
-    setLoadTsFileDir(tierDataDirs[0][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME);
   }
 
   public String getRpcAddress() {
@@ -1462,12 +1462,21 @@ public class IoTDBConfig {
     this.systemDir = systemDir;
   }
 
-  public String getLoadTsFileDir() {
-    return loadTsFileDir;
+  public String[] getLoadTsFileDirs() {
+    return this.loadTsFileDirs;
   }
 
-  public void setLoadTsFileDir(String loadTsFileDir) {
-    this.loadTsFileDir = loadTsFileDir;
+  public void formulateLoadTsFileDirs(String[][] tierDataDirs) {
+    final String[] newLoadTsFileDirs = new String[tierDataDirs.length];
+    for (int i = 0; i < tierDataDirs.length; i++) {
+      newLoadTsFileDirs[i] =
+          tierDataDirs[i][0] + File.separator + IoTDBConstant.LOAD_TSFILE_FOLDER_NAME;
+    }
+
+    // Update loadTsFileDirs after all newLoadTsFileDirs are generated,
+    // or the newLoadTsFileDirs will be used in the middle of the process
+    // and cause the undefined behavior.
+    this.loadTsFileDirs = newLoadTsFileDirs;
   }
 
   public String getSchemaDir() {

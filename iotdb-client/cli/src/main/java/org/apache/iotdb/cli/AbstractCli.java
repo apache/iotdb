@@ -601,7 +601,6 @@ public abstract class AbstractCli {
         ctx.getPrinter().println("Msg: " + SUCCESS_MESSAGE);
       }
     } catch (Exception e) {
-      e.printStackTrace();
       ctx.getPrinter().println("Msg: " + e);
       executeStatus = CODE_ERROR;
     } finally {
