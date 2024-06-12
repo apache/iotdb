@@ -431,49 +431,37 @@ public class IoTDBRestServiceIT {
       insertTablet_right_json_list.add(
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
               + isAligned
-              + "\",\"deviceId\":\"root.sg21"
-              + i
-              + "\"}");
-      insertTablet_right_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
-              + isAligned
-              + "\",\"deviceId\":\"root.sg22"
+              + "\",\"deviceId\":\"root.sg"
               + i
               + "\"}");
       insertTablet_right_json_list.add(
           "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
               + isAligned
-              + "\",\"deviceId\":\"root.`sg23"
-              + i
-              + "`\"}");
-      insertTablet_right_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[11,2],[1635000012345555,1635000012345556],[1.41,null],[null,false],[null,3.5555]],\"isAligned\":\""
-              + isAligned
-              + "\",\"deviceId\":\"root.`sg24"
+              + "\",\"deviceId\":\"root.`sg"
               + i
               + "`\"}");
       insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"s3\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.5]],\"isAligned\":"
               + isAligned
-              + ",\"deviceId\":\"root.sg25"
+              + ",\"deviceId\":\"root.sg"
               + i
               + "\"}");
       insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`s3`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[1,2],[16.2,15],[1.41,null],[null,false],[null,3.5]],\"isAligned\":"
               + isAligned
-              + ",\"deviceId\":\"root.sg36"
+              + ",\"deviceId\":\"root.sg"
               + i
               + "\"}");
       insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"a123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"a123123\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[1,2],[16,15],[1.41,null],[null,333],[null,3.5]],\"isAligned\":"
               + isAligned
-              + ",\"deviceId\":\"root.`sg46"
+              + ",\"deviceId\":\"root.`sg"
               + i
               + "`\"}");
       insertTablet_error_json_list.add(
-          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`1231231`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[111111112312312442352545452323123,2],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
+          "{\"timestamps\":[1635232143960,1635232153960],\"measurements\":[\"`1231231`\",\"s4\",\"s5\",\"s6\",\"s7\",\"s8\"],\"dataTypes\":[\"TEXT\",\"INT32\",\"INT64\",\"FLOAT\",\"BOOLEAN\",\"DOUBLE\"],\"values\":[[\"2aa\",\"\"],[1,1635232153960],[16,15],[1.41,null],[null,false],[null,3.55555555555555555555555555555555555555555555312234235345123127318927461482308478123645555555555555555555555555555555555555555555531223423534512312731892746148230847812364]],\"isAligned\":"
               + isAligned
-              + ",\"deviceId\":\"root.`3333a"
+              + ",\"deviceId\":\"root.`sg"
               + i
               + "`\"}");
 
@@ -884,12 +872,12 @@ public class IoTDBRestServiceIT {
       ObjectMapper mapper = new ObjectMapper();
       Map map = mapper.readValue(message, Map.class);
       List<Long> timestampsResult = (List<Long>) map.get("timestamps");
-      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<String> expressionsResult = (List<String>) map.get("expressions");
       List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
       Assert.assertFalse(map.isEmpty());
-      Assert.assertTrue(timestampsResult.size() == 10);
-      Assert.assertTrue(valuesResult.size() == 1);
-      Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
+      assertEquals(10, timestampsResult.size());
+      assertEquals(1, valuesResult.size());
+      assertEquals("count(root.sg25.s4)", expressionsResult.get(0));
     } catch (IOException e) {
       fail(e.getMessage());
     } finally {
@@ -1467,8 +1455,8 @@ public class IoTDBRestServiceIT {
       List<Object> values3 =
           new ArrayList<Object>() {
             {
-              add(1635000012345555l);
-              add(1635000012345556l);
+              add(1635000012345555L);
+              add(1635000012345556L);
             }
           };
 
@@ -1528,12 +1516,12 @@ public class IoTDBRestServiceIT {
       ObjectMapper mapper = new ObjectMapper();
       Map map = mapper.readValue(message, Map.class);
       List<Long> timestampsResult = (List<Long>) map.get("timestamps");
-      List<Long> expressionsResult = (List<Long>) map.get("expressions");
+      List<String> expressionsResult = (List<String>) map.get("expressions");
       List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
       Assert.assertFalse(map.isEmpty());
-      Assert.assertTrue(timestampsResult.size() == 10);
-      Assert.assertTrue(valuesResult.size() == 1);
-      Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
+      assertEquals(10, timestampsResult.size());
+      assertEquals(1, valuesResult.size());
+      assertEquals("count(root.sg25.s4)", expressionsResult.get(0));
     } catch (IOException e) {
       fail(e.getMessage());
     } finally {
@@ -1765,9 +1753,9 @@ public class IoTDBRestServiceIT {
         };
 
     Assert.assertEquals(columnNames, columnNamesResult);
-    //    Assert.assertEquals(values1, valuesResult.get(0));
-    //    Assert.assertEquals(values2, valuesResult.get(1));
-    //    Assert.assertEquals(values3, valuesResult.get(2));
+    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertEquals(values2, valuesResult.get(1));
+    Assert.assertEquals(values3, valuesResult.get(2));
   }
 
   public void showLastTimeseriesV2(CloseableHttpClient httpClient) {
