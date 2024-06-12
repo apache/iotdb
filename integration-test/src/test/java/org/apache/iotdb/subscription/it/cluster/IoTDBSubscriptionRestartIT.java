@@ -196,7 +196,8 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            });
+            },
+            String.format("%s - %s", testName.getMethodName(), consumer));
     thread.start();
 
     // Check timestamps size
@@ -308,7 +309,8 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            });
+            },
+            String.format("%s - %s", testName.getMethodName(), consumer));
     thread.start();
 
     // Start DN 1 & DN 2
@@ -434,7 +436,8 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            });
+            },
+            String.format("%s - %s", testName.getMethodName(), consumer));
     thread.start();
 
     // Shutdown leader CN
