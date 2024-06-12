@@ -19,32 +19,62 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
 
-import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
+import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.write.TsFileWriter;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventTsFileBatch.class);
+  private static final String TS_FILE_NAME = "sender_batch.tsfile";
   protected final AtomicReference<File> batchFileDirWithIdSuffix = new AtomicReference<>();
 
   // Used to generate transfer id, which is used to identify a tsfile batch instance
   private static final AtomicLong BATCH_ID_GENERATOR = new AtomicLong(0);
   protected final AtomicLong batchId = new AtomicLong(0);
+  private static final List<String> BATCH_FILE_BASE_DIRS =
+      Arrays.stream(IoTDBDescriptor.getInstance().getConfig().getPipeReceiverFileDirs())
+          .map(fileDir -> fileDir + File.separator + ".batch")
+          .collect(Collectors.toList());
+  private static FolderManager folderManager = null;
 
   private final long maxSizeInBytes;
+  private TsFileWriter fileWriter;
 
-  PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
+  static {
+    try {
+      folderManager =
+          new FolderManager(BATCH_FILE_BASE_DIRS, DirectoryStrategyType.SEQUENCE_STRATEGY);
+    } catch (final DiskSpaceInsufficientException e) {
+      LOGGER.error(
+          "Fail to create pipe receiver file folders allocation strategy because all disks of folders are full.",
+          e);
+    }
+  }
+
+  PipeTabletEventTsFileBatch(final int maxDelayInMs, final long requestMaxBatchSizeInBytes)
+      throws IOException {
     super(maxDelayInMs);
     this.maxSizeInBytes = requestMaxBatchSizeInBytes;
 
@@ -89,7 +119,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
             "Batch id = %s: Failed to init pipe batch file folder manager because all disks of folders are full.",
             batchId.get());
     try {
-      batchFileBaseDir = getbatchFileBaseDir();
+      batchFileBaseDir = Objects.isNull(folderManager) ? null : folderManager.getNextFolder();
       if (Objects.isNull(batchFileBaseDir)) {
         throw new PipeException(errorMsg);
       }
@@ -117,16 +147,42 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   @Override
   protected void constructBatch(final TabletInsertionEvent event)
-      throws WALPipeException, IOException {}
+      throws IOException, WriteProcessException {
+    if (Objects.isNull(fileWriter)) {
+      fileWriter = new TsFileWriter(new File(batchFileDirWithIdSuffix.get(), TS_FILE_NAME));
+    }
+    if (event instanceof PipeInsertNodeTabletInsertionEvent) {
+      for (final Tablet tablet : ((PipeInsertNodeTabletInsertionEvent) event).convertToTablets()) {
+        if (((PipeInsertNodeTabletInsertionEvent) event).isAligned()) {
+          fileWriter.writeAligned(tablet);
+        } else {
+          fileWriter.write(tablet);
+        }
+      }
+    } else if (event instanceof PipeRawTabletInsertionEvent) {
+      if (((PipeRawTabletInsertionEvent) event).isAligned()) {
+        fileWriter.writeAligned(((PipeRawTabletInsertionEvent) event).convertToTablet());
+      } else {
+        fileWriter.write(((PipeRawTabletInsertionEvent) event).convertToTablet());
+      }
+    }
+  }
+
+  public File getTsFile() throws IOException {
+    fileWriter.close();
+    return fileWriter.getIOWriter().getFile();
+  }
 
   @Override
-  public synchronized void onSuccess() {
+  public synchronized void onSuccess() throws IOException {
     super.onSuccess();
+    FileUtils.delete(fileWriter.getIOWriter().getFile());
+    fileWriter = null;
   }
 
   @Override
   protected long getTotalSize() {
-    return 0;
+    return fileWriter.getIOWriter().getFile().length();
   }
 
   @Override
