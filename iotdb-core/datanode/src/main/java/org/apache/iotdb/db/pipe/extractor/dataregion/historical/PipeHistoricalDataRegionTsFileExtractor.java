@@ -71,6 +71,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_TIME_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
@@ -142,11 +144,12 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             .collect(Collectors.toSet());
     // Avoid empty string
     sloppyOptionSet.remove("");
-    sloppyTimeRange = sloppyOptionSet.remove("time");
-    sloppyPattern = sloppyOptionSet.remove("path");
+    sloppyTimeRange = sloppyOptionSet.remove(EXTRACTOR_HISTORY_LOOSE_RANGE_TIME_VALUE);
+    sloppyPattern = sloppyOptionSet.remove(EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE);
     if (!sloppyOptionSet.isEmpty()) {
       throw new PipeParameterNotValidException(
-          String.format("%s is not allowed in 'history.loose-range'", sloppyOptionSet));
+          String.format(
+              "Parameters in set %s are not allowed in 'history.loose-range'", sloppyOptionSet));
     }
 
     if (parameters.hasAnyAttributes(
