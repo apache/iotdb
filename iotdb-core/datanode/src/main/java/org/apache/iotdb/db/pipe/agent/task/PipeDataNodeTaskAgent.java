@@ -555,11 +555,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     dataRegionPipeTasks.parallelStream().forEach(PipeTask::drop);
 
     // Stop schema region tasks
-    pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta()).values().parallelStream()
+    pipeTaskManager
+        .getPipeTasks(pipeMeta.getStaticMeta())
+        .values()
+        .parallelStream()
         .forEach(PipeTask::stop);
 
     // Re-create data region tasks
-    dataRegionPipeTasks.parallelStream()
+    dataRegionPipeTasks
+        .parallelStream()
         .forEach(
             pipeTask -> {
               final PipeTask newPipeTask =
@@ -611,6 +615,11 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   ///////////////////////// Pipe Consensus /////////////////////////
+
+  public PipeStaticMeta getPipeStaticMeta(final String pipeName) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    return pipeMeta == null ? null : pipeMeta.getStaticMeta();
+  }
 
   public ProgressIndex getPipeTaskProgressIndex(String pipeName, int consensusGroupId) {
     if (!tryReadLockWithTimeOut(10)) {

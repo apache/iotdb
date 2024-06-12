@@ -53,6 +53,10 @@ public enum Metric {
   // consensus related
   STAGE("stage"),
   IOT_CONSENSUS("iot_consensus"),
+  PIPE_CONSENSUS("pipe_consensus"),
+  PIPE_SEND_EVENT("pipe_send_event"),
+  PIPE_RETRY_SEND_EVENT("pipe_retry_send_event"),
+  PIPE_RECEIVE_EVENT("pipe_receive_event"),
   IOT_SEND_LOG("iot_send_log"),
   IOT_RECEIVE_LOG("iot_receive_log"),
   RATIS_CONSENSUS_WRITE("ratis_consensus_write"),

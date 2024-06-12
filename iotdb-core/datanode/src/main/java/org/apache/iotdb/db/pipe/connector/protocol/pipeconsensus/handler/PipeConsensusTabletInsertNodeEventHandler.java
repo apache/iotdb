@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.PipeConsensusAsyncConnector;
+import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetric;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 
 import org.apache.thrift.TException;
@@ -31,10 +32,11 @@ public class PipeConsensusTabletInsertNodeEventHandler
     extends PipeConsensusTabletInsertionEventHandler<TPipeConsensusTransferResp> {
 
   public PipeConsensusTabletInsertNodeEventHandler(
-      PipeInsertNodeTabletInsertionEvent event,
-      TPipeConsensusTransferReq req,
-      PipeConsensusAsyncConnector connector) {
-    super(event, req, connector);
+          PipeInsertNodeTabletInsertionEvent event,
+          TPipeConsensusTransferReq req,
+          PipeConsensusAsyncConnector connector,
+          PipeConsensusConnectorMetric metric) {
+    super(event, req, connector, metric);
   }
 
   @Override

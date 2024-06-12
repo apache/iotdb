@@ -1,0 +1,109 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.consensus.pipe.metric;
+
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeConnector;
+
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+/**
+ * This class is used to aggregate the write progress of all Connectors to calculate the minimum
+ * synchronization progress of all follower copies, thereby calculating syncLag.
+ */
+public class PipeConsensusSyncLagManager {
+  long userWriteProgress = 0;
+  long minReplicateProgress = Long.MAX_VALUE;
+  List<ConsensusPipeConnector> consensusPipeConnectorList = new CopyOnWriteArrayList<>();
+
+  private void updateReplicateProgress() {
+    // if there isn't a consensus pipe task, replicate progress is 0.
+    if (consensusPipeConnectorList.isEmpty()) {
+      minReplicateProgress = 0;
+    }
+    // else we find the minimum progress in all consensus pipe task.
+    consensusPipeConnectorList.forEach(
+        consensusPipeConnector -> {
+          minReplicateProgress =
+              Math.min(
+                  minReplicateProgress, consensusPipeConnector.getCurrentPipeReplicateProgress());
+        });
+  }
+
+  private void updateUserWriteProgress() {
+    // if there isn't a consensus pipe task, user write progress is Long.MAX_VALUE.
+    if (consensusPipeConnectorList.isEmpty()) {
+      userWriteProgress = Long.MAX_VALUE;
+    }
+    // since the user write progress of different consensus pipes on the same DataRegion is the
+    // same, we only need to take out one Connector to calculate
+    ConsensusPipeConnector connector = consensusPipeConnectorList.get(0);
+    userWriteProgress = connector.getLocalUserWriteProgress();
+  }
+
+  public void addConsensusPipeConnector(ConsensusPipeConnector consensusPipeConnector) {
+    consensusPipeConnectorList.add(consensusPipeConnector);
+  }
+
+  /**
+   * SyncLag represents the difference between the current replica users' write progress and the
+   * minimum synchronization progress of all other replicas. The semantics is how much data the
+   * leader has left to synchronize.
+   */
+  public long calculateSyncLag() {
+    updateUserWriteProgress();
+    updateReplicateProgress();
+    // if there isn't a consensus pipe task, the syncLag is userWriteProgress - 0
+    if (minReplicateProgress == Long.MAX_VALUE) {
+      return userWriteProgress;
+    } else {
+      return userWriteProgress - minReplicateProgress;
+    }
+  }
+
+  private PipeConsensusSyncLagManager() {
+    // do nothing
+  }
+
+  /** singleton */
+  private static class PipeConsensusSyncLagManagerHolder {
+    private static PipeConsensusSyncLagManager INSTANCE;
+
+    private PipeConsensusSyncLagManagerHolder() {
+      // empty constructor
+    }
+
+    public static void build() {
+      if (INSTANCE == null) {
+        INSTANCE = new PipeConsensusSyncLagManager();
+      }
+    }
+  }
+
+  public static PipeConsensusSyncLagManager getInstance() {
+    return PipeConsensusSyncLagManagerHolder.INSTANCE;
+  }
+
+  // Only when consensus protocol is PipeConsensus, this method will be called once when construct
+  // consensus class.
+  public static void build() {
+    PipeConsensusSyncLagManagerHolder.build();
+  }
+}
