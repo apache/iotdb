@@ -152,6 +152,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1993,7 +1994,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     long startTime = System.nanoTime();
     try {
       Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-          getTimePartitionSlotList(context.getGlobalTimeFilter());
+          getTimePartitionSlotList(context.getGlobalTimeFilter(), context);
       // there is no satisfied time range
       if (res.left.isEmpty() && Boolean.FALSE.equals(res.right.left)) {
         return new DataPartition(
@@ -2030,7 +2031,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> getTimePartitionSlotList(
-      Filter timeFilter) {
+      Filter timeFilter, MPPQueryContext context) {
     if (timeFilter == null) {
       // (-oo, +oo)
       return new Pair<>(Collections.emptyList(), new Pair<>(true, true));
@@ -2052,6 +2053,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     TTimePartitionSlot timePartitionSlot;
     int index = 0;
     int size = timeRangeList.size();
+
+    context.reserveMemoryForFrontEnd(
+        timeRangeList.size() * RamUsageEstimator.shallowSizeOfInstance(TTimePartitionSlot.class));
 
     if (timeRangeList.get(0).getMin() == Long.MIN_VALUE) {
       needLeftAll = true;
