@@ -2072,7 +2072,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     List<TTimePartitionSlot> result = new ArrayList<>();
-    reserveMemoryForTimePartitionSlot(timeRangeList.get(index).getMax(), context);
+    TimeRange currentTimeRange = timeRangeList.get(index);
+    reserveMemoryForTimePartitionSlot(
+        currentTimeRange.getMax(), currentTimeRange.getMin(), context);
     while (index < size) {
       long curLeft = timeRangeList.get(index).getMin();
       long curRight = timeRangeList.get(index).getMax();
@@ -2089,7 +2091,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       } else {
         index++;
         if (index < size) {
-          reserveMemoryForTimePartitionSlot(timeRangeList.get(index).getMax(), context);
+          currentTimeRange = timeRangeList.get(index);
+          reserveMemoryForTimePartitionSlot(
+              currentTimeRange.getMax(), currentTimeRange.getMin(), context);
         }
       }
     }
@@ -2106,8 +2110,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return new Pair<>(result, new Pair<>(needLeftAll, needRightAll));
   }
 
-  private static void reserveMemoryForTimePartitionSlot(long maxTime, MPPQueryContext context) {
-    long size = TimePartitionUtils.getTimePartitionSize(maxTime);
+  private static void reserveMemoryForTimePartitionSlot(
+      long maxTime, long minTime, MPPQueryContext context) {
+    long size = TimePartitionUtils.getEstimateTimePartitionSize(minTime, maxTime);
     context.reserveMemoryForFrontEnd(
         RamUsageEstimator.shallowSizeOfInstance(TTimePartitionSlot.class) * size);
   }
