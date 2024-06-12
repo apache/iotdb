@@ -35,42 +35,44 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class Utils {
-    public static <ServiceProviderLocation, RequestType> List<TTestConnectionResult> testConnectionsImpl(
-            List<ServiceProviderLocation> nodeLocations,
-            TSender sender,
-            Function<ServiceProviderLocation, Integer> getId,
-            Function<ServiceProviderLocation, TEndPoint> getEndPoint,
-            TServiceType serviceType,
-            RequestType requestType,
-            Consumer<AsyncRequestContext<Object, TSStatus, RequestType, ServiceProviderLocation>> sendRequest) {
-        // prepare request context
-        Map<Integer, ServiceProviderLocation> nodeLocationMap =
-                nodeLocations.stream().collect(Collectors.toMap(getId, location -> location));
-        AsyncRequestContext<Object, TSStatus, RequestType, ServiceProviderLocation> requestContext =
-                new AsyncRequestContext<>(requestType, new Object(), nodeLocationMap);
-        // do the test
-        sendRequest.accept(requestContext);
-        // collect result
-        Map<Integer, ServiceProviderLocation> anotherNodeLocationMap =
-                nodeLocations.stream().collect(Collectors.toMap(getId, location -> location));
-        List<TTestConnectionResult> results = new ArrayList<>();
-        requestContext
-                .getResponseMap()
-                .forEach(
-                        (nodeId, status) -> {
-                            TEndPoint endPoint = getEndPoint.apply(anotherNodeLocationMap.get(nodeId));
-                            TServiceProvider serviceProvider = new TServiceProvider(endPoint, serviceType);
-                            TTestConnectionResult result = new TTestConnectionResult();
-                            result.setSender(sender);
-                            result.setServiceProvider(serviceProvider);
-                            if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                                result.setSuccess(true);
-                            } else {
-                                result.setSuccess(false);
-                                result.setReason(status.getMessage());
-                            }
-                            results.add(result);
-                        });
-        return results;
-    }
+  public static <ServiceProviderLocation, RequestType>
+      List<TTestConnectionResult> testConnectionsImpl(
+          List<ServiceProviderLocation> nodeLocations,
+          TSender sender,
+          Function<ServiceProviderLocation, Integer> getId,
+          Function<ServiceProviderLocation, TEndPoint> getEndPoint,
+          TServiceType serviceType,
+          RequestType requestType,
+          Consumer<AsyncRequestContext<Object, TSStatus, RequestType, ServiceProviderLocation>>
+              sendRequest) {
+    // prepare request context
+    Map<Integer, ServiceProviderLocation> nodeLocationMap =
+        nodeLocations.stream().collect(Collectors.toMap(getId, location -> location));
+    AsyncRequestContext<Object, TSStatus, RequestType, ServiceProviderLocation> requestContext =
+        new AsyncRequestContext<>(requestType, new Object(), nodeLocationMap);
+    // do the test
+    sendRequest.accept(requestContext);
+    // collect result
+    Map<Integer, ServiceProviderLocation> anotherNodeLocationMap =
+        nodeLocations.stream().collect(Collectors.toMap(getId, location -> location));
+    List<TTestConnectionResult> results = new ArrayList<>();
+    requestContext
+        .getResponseMap()
+        .forEach(
+            (nodeId, status) -> {
+              TEndPoint endPoint = getEndPoint.apply(anotherNodeLocationMap.get(nodeId));
+              TServiceProvider serviceProvider = new TServiceProvider(endPoint, serviceType);
+              TTestConnectionResult result = new TTestConnectionResult();
+              result.setSender(sender);
+              result.setServiceProvider(serviceProvider);
+              if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                result.setSuccess(true);
+              } else {
+                result.setSuccess(false);
+                result.setReason(status.getMessage());
+              }
+              results.add(result);
+            });
+    return results;
+  }
 }

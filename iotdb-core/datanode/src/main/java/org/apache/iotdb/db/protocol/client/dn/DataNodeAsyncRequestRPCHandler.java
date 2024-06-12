@@ -30,11 +30,12 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public abstract class AsyncDataNodeRPCHandler<Response>
+public abstract class DataNodeAsyncRequestRPCHandler<Response>
     extends AsyncRequestRPCHandler<Response, DataNodeToDataNodeRequestType, TDataNodeLocation> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncDataNodeRPCHandler.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(DataNodeAsyncRequestRPCHandler.class);
 
-  protected AsyncDataNodeRPCHandler(
+  protected DataNodeAsyncRequestRPCHandler(
       DataNodeToDataNodeRequestType dataNodeToDataNodeRequestType,
       int requestId,
       TDataNodeLocation targetNode,
@@ -59,7 +60,7 @@ public abstract class AsyncDataNodeRPCHandler<Response>
         + "}";
   }
 
-  public static AsyncDataNodeRPCHandler<?> createAsyncRPCHandler(
+  public static DataNodeAsyncRequestRPCHandler<?> createAsyncRPCHandler(
       AsyncRequestContext<?, ?, DataNodeToDataNodeRequestType, TDataNodeLocation> context,
       int requestId,
       TDataNodeLocation targetDataNode) {

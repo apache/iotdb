@@ -911,7 +911,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   /** Call by every other nodes */
   @Override
-  public TSStatus testConnection() throws TException {
+  public TSStatus testConnectionEmptyRPC() throws TException {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

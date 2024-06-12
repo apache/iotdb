@@ -53,7 +53,7 @@ public class DataNodeMPPServiceAsyncRequestManager
   protected void initActionMapBuilder() {
     actionMapBuilder.put(
         DataNodeToDataNodeRequestType.TEST_CONNECTION,
-        (req, client, handler) -> client.testConnection((AsyncTSStatusRPCHandler) handler));
+        (req, client, handler) -> client.testConnectionEmptyRPC((AsyncTSStatusRPCHandler) handler));
   }
 
   @Override
@@ -68,7 +68,8 @@ public class DataNodeMPPServiceAsyncRequestManager
               requestContext,
           int requestId,
           TDataNodeLocation targetNode) {
-    return AsyncDataNodeRPCHandler.createAsyncRPCHandler(requestContext, requestId, targetNode);
+    return DataNodeAsyncRequestRPCHandler.createAsyncRPCHandler(
+        requestContext, requestId, targetNode);
   }
 
   private static class ClientPoolHolder {

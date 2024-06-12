@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
-import org.apache.commons.collections4.ListUtils;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -28,7 +27,6 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSender;
-import org.apache.iotdb.common.rpc.thrift.TServiceProvider;
 import org.apache.iotdb.common.rpc.thrift.TServiceType;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
@@ -1433,13 +1431,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations)
       throws TException {
-    return new TTestConnectionResp(Stream.of(
-              testAllConfigNodeConnection(nodeLocations.getConfigNodeLocations()),
-              testAllDataNodeInternalServiceConnection(nodeLocations.getDataNodeLocations()),
-              testAllDataNodeMPPServiceConnection(nodeLocations.getDataNodeLocations()),
-              testAllDataNodeExternalServiceConnection(nodeLocations.getDataNodeLocations())
-        ).flatMap(Collection::stream).collect(Collectors.toList())
-    );
+    return new TTestConnectionResp(
+        Stream.of(
+                testAllConfigNodeConnection(nodeLocations.getConfigNodeLocations()),
+                testAllDataNodeInternalServiceConnection(nodeLocations.getDataNodeLocations()),
+                testAllDataNodeMPPServiceConnection(nodeLocations.getDataNodeLocations()),
+                testAllDataNodeExternalServiceConnection(nodeLocations.getDataNodeLocations()))
+            .flatMap(Collection::stream)
+            .collect(Collectors.toList()));
   }
 
   private static <Location, RequestType> List<TTestConnectionResult> testConnections(
@@ -1450,10 +1449,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       RequestType requestType,
       Consumer<AsyncRequestContext<Object, TSStatus, RequestType, Location>> sendRequest) {
     TSender sender =
-            new TSender()
-                    .setDataNodeLocation(
-                            IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation());
-    return testConnectionsImpl(nodeLocations, sender, getId, getEndPoint, serviceType, requestType, sendRequest);
+        new TSender()
+            .setDataNodeLocation(
+                IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation());
+    return testConnectionsImpl(
+        nodeLocations, sender, getId, getEndPoint, serviceType, requestType, sendRequest);
   }
 
   private List<TTestConnectionResult> testAllConfigNodeConnection(
@@ -1512,7 +1512,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus testConnection() throws TException {
+  public TSStatus testConnectionEmptyRPC() throws TException {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

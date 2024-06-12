@@ -2671,7 +2671,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
-  public TSStatus testConnection() throws TException {
+  public TSStatus testConnectionEmptyRPC() throws TException {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

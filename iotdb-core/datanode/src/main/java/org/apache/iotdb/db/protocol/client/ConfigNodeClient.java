@@ -744,9 +744,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus testConnection() throws TException {
+  public TSStatus testConnectionEmptyRPC() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.testConnection(), resp -> !updateConfigNodeLeader(resp));
+        () -> client.testConnectionEmptyRPC(), resp -> !updateConfigNodeLeader(resp));
   }
 
   @Override

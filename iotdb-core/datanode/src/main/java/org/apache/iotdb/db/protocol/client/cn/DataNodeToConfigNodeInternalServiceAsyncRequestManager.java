@@ -38,7 +38,7 @@ public class DataNodeToConfigNodeInternalServiceAsyncRequestManager
     actionMapBuilder.put(
         DataNodeToConfigNodeRequestType.TEST_CONNECTION,
         (req, client, handler) ->
-            client.testConnection((AsyncConfigNodeTSStatusRPCHandler) handler));
+            client.testConnectionEmptyRPC((AsyncConfigNodeTSStatusRPCHandler) handler));
   }
 
   @Override
@@ -48,7 +48,7 @@ public class DataNodeToConfigNodeInternalServiceAsyncRequestManager
               requestContext,
           int requestId,
           TConfigNodeLocation targetNode) {
-    return AsyncConfigNodeRequestRPCHandler.buildHandler(requestContext, requestId, targetNode);
+    return ConfigNodeAsyncRequestRPCHandler.buildHandler(requestContext, requestId, targetNode);
   }
 
   private static class ClientPoolHolder {

@@ -348,7 +348,8 @@ public class ConfigNodeToDataNodeInternalServiceAsyncRequestManager
                 (TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler));
     actionMapBuilder.put(
         ConfigNodeToDataNodeRequestType.TEST_CONNECTION,
-        (req, client, handler) -> client.testConnection((DataNodeTSStatusRPCHandler) handler));
+        (req, client, handler) ->
+            client.testConnectionEmptyRPC((DataNodeTSStatusRPCHandler) handler));
   }
 
   @Override
