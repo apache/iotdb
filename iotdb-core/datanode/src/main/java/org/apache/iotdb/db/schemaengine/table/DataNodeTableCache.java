@@ -193,8 +193,18 @@ public class DataNodeTableCache implements ITableCache {
       String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
     readWriteLock.writeLock().lock();
     try {
-      TsTable table = databaseTableMap.get(database).get(tableName);
-      columnSchemaList.forEach(o -> table.removeColumnSchema(o.getColumnName()));
+      preAddColumnMap.compute(
+          database,
+          (k, v) -> {
+            if (v == null) {
+              throw new IllegalStateException();
+            }
+            v.remove(tableName);
+            if (v.isEmpty()) {
+              return null;
+            }
+            return v;
+          });
     } finally {
       readWriteLock.writeLock().unlock();
     }
