@@ -63,6 +63,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionRestartIT.class);
 
+  @Override
   @Before
   public void setUp() {
     super.setUp();
@@ -79,6 +80,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
     EnvFactory.getEnv().initClusterEnvironment(3, 3);
   }
 
+  @Override
   @After
   public void tearDown() {
     super.tearDown();

@@ -31,6 +31,7 @@ abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT {
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;
 
+  @Override
   @Before
   public void setUp() {
     super.setUp();
@@ -55,6 +56,7 @@ abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT {
     receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
   }
 
+  @Override
   @After
   public void tearDown() {
     super.tearDown();
