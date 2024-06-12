@@ -82,6 +82,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -177,6 +178,13 @@ public class LoadTsfileAnalyzer {
             String.format("TsFile %s is empty or incomplete.", tsFile.getPath()));
       } catch (AuthException e) {
         return createFailAnalysisForAuthException(e);
+      } catch (BufferUnderflowException e) {
+        LOGGER.warn(
+            "The file {} is not a valid tsfile. Please check the input file.", tsFile.getPath(), e);
+        throw new SemanticException(
+            String.format(
+                "The file %s is not a valid tsfile. Please check the input file.",
+                tsFile.getPath()));
       } catch (Exception e) {
         LOGGER.warn("Parse file {} to resource error.", tsFile.getPath(), e);
         throw new SemanticException(

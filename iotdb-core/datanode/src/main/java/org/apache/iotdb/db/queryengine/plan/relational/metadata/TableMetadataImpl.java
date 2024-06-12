@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -273,6 +274,18 @@ public class TableMetadataImpl implements Metadata {
     result.add(new DeviceEntry(deviceID1, Arrays.asList("old", "low")));
     result.add(new DeviceEntry(deviceID2, Arrays.asList("new", "high")));
     return result;
+  }
+
+  @Override
+  public TableSchema validateTableHeaderSchema(
+      String database, TableSchema tableSchema, MPPQueryContext context) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void validateDeviceSchema(
+      ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context) {
+    throw new UnsupportedOperationException();
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

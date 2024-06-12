@@ -26,6 +26,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
+import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
@@ -33,9 +35,11 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -727,6 +731,54 @@ public class NodeManager {
     return clientHandler.getResponseList();
   }
 
+  public List<TSStatus> setConfiguration(TSetConfigurationReq req) {
+    List<TSStatus> responseList = new ArrayList<>();
+
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    Map<Integer, TDataNodeLocation> targetDataNodes = new HashMap<>();
+    int nodeId = req.getNodeId();
+    // send to datanode
+    if (dataNodeLocationMap.containsKey(nodeId)) {
+      targetDataNodes.put(nodeId, dataNodeLocationMap.get(nodeId));
+    } else if (nodeId < 0) {
+      targetDataNodes.putAll(dataNodeLocationMap);
+    }
+    if (!targetDataNodes.isEmpty()) {
+      AsyncClientHandler<Object, TSStatus> clientHandler =
+          new AsyncClientHandler<>(DataNodeRequestType.SET_CONFIGURATION, req, dataNodeLocationMap);
+      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+      responseList.addAll(clientHandler.getResponseList());
+    }
+
+    // send to config node
+    List<TConfigNodeLocation> configNodes = getRegisteredConfigNodes();
+    for (TConfigNodeLocation configNode : configNodes) {
+      if (configNode.getConfigNodeId() == CONF.getConfigNodeId()) {
+        continue;
+      }
+      if (nodeId >= 0 && nodeId != configNode.getConfigNodeId()) {
+        continue;
+      }
+      TSStatus status = null;
+      try {
+        status =
+            (TSStatus)
+                SyncConfigNodeClientPool.getInstance()
+                    .sendSyncRequestToConfigNodeWithRetry(
+                        configNode.getInternalEndPoint(),
+                        new TSetConfigurationReq(req.getConfigs(), configNode.getConfigNodeId()),
+                        ConfigNodeRequestType.SET_CONFIGURATION);
+      } catch (Exception e) {
+        status =
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), e.getMessage());
+      }
+      responseList.add(status);
+    }
+    return responseList;
+  }
+
   public List<TSStatus> startRpairData() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
@@ -754,6 +806,39 @@ public class NodeManager {
     return clientHandler.getResponseList();
   }
 
+  public TShowConfigurationResp showConfiguration(int nodeId) {
+    TShowConfigurationResp resp = new TShowConfigurationResp();
+
+    // data node
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    if (dataNodeLocationMap.containsKey(nodeId)) {
+      TDataNodeLocation dataNodeLocation = dataNodeLocationMap.get(nodeId);
+      return (TShowConfigurationResp)
+          SyncDataNodeClientPool.getInstance()
+              .sendSyncRequestToDataNodeWithRetry(
+                  dataNodeLocation.getInternalEndPoint(),
+                  null,
+                  DataNodeRequestType.SHOW_CONFIGURATION);
+    }
+
+    // other config node
+    for (TConfigNodeLocation registeredConfigNode : getRegisteredConfigNodes()) {
+      if (registeredConfigNode.getConfigNodeId() != nodeId) {
+        continue;
+      }
+      resp =
+          (TShowConfigurationResp)
+              SyncConfigNodeClientPool.getInstance()
+                  .sendSyncRequestToConfigNodeWithRetry(
+                      registeredConfigNode.getInternalEndPoint(),
+                      nodeId,
+                      ConfigNodeRequestType.SHOW_CONFIGURATION);
+      return resp;
+    }
+    return resp;
+  }
+
   public List<TSStatus> setSystemStatus(String status) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
@@ -765,11 +850,12 @@ public class NodeManager {
   }
 
   public TSStatus setDataNodeStatus(TSetDataNodeStatusReq setDataNodeStatusReq) {
-    return SyncDataNodeClientPool.getInstance()
-        .sendSyncRequestToDataNodeWithRetry(
-            setDataNodeStatusReq.getTargetDataNode().getInternalEndPoint(),
-            setDataNodeStatusReq.getStatus(),
-            DataNodeRequestType.SET_SYSTEM_STATUS);
+    return (TSStatus)
+        SyncDataNodeClientPool.getInstance()
+            .sendSyncRequestToDataNodeWithRetry(
+                setDataNodeStatusReq.getTargetDataNode().getInternalEndPoint(),
+                setDataNodeStatusReq.getStatus(),
+                DataNodeRequestType.SET_SYSTEM_STATUS);
   }
 
   /**
@@ -802,11 +888,12 @@ public class NodeManager {
           .setMessage(
               "The target DataNode is not existed, please ensure your input <queryId> is correct");
     } else {
-      return SyncDataNodeClientPool.getInstance()
-          .sendSyncRequestToDataNodeWithRetry(
-              dataNodeLocation.getInternalEndPoint(),
-              queryId,
-              DataNodeRequestType.KILL_QUERY_INSTANCE);
+      return (TSStatus)
+          SyncDataNodeClientPool.getInstance()
+              .sendSyncRequestToDataNodeWithRetry(
+                  dataNodeLocation.getInternalEndPoint(),
+                  queryId,
+                  DataNodeRequestType.KILL_QUERY_INSTANCE);
     }
   }
 

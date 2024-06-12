@@ -22,10 +22,20 @@
 set current_dir=%~dp0
 set superior_dir=%current_dir%\..\
 
-IF EXIST "%superior%\conf\iotdb-system.properties" (
+IF EXIST "%superior_dir%\conf\iotdb-system.properties" (
   set config_file="%superior_dir%\conf\iotdb-system.properties"
 ) ELSE (
-  set config_file="%superior_dir%\conf\iotdb-datanode.properties"
+  IF EXIST "%superior_dir%\conf\iotdb-datanode.properties" (
+    set config_file=%superior_dir%\conf\iotdb-datanode.properties
+  ) ELSE (
+    echo No configuration file found. Exiting.
+    exit /b 1
+  )
+)
+
+if not defined config_file (
+  echo No configuration file found. Exiting.
+  exit /b 1
 )
 
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
@@ -33,11 +43,21 @@ for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_rpc_port"
   set dn_rpc_port=%%i
 )
 
+if not defined dn_rpc_port (
+  echo dn_rpc_port not found in the configuration file. Exiting.
+  exit /b 1
+)
+
 echo Check whether the rpc_port is used..., port is %dn_rpc_port%
 
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "dn_rpc_address"
 "%config_file%"') do (
   set dn_rpc_address=%%i
+)
+
+if not defined dn_rpc_address (
+  echo dn_rpc_address not found in the configuration file. Exiting.
+  exit /b 1
 )
 
 for /f "tokens=5" %%a in ('netstat /ano ^| findstr %dn_rpc_address%:%dn_rpc_port%') do (

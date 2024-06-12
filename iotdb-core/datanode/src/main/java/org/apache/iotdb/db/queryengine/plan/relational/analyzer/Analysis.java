@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySource;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -657,6 +660,31 @@ public class Analysis implements IAnalysis {
   @Override
   public String getStatementType() {
     return null;
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartitionInfo() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public DataPartition getDataPartitionInfo() {
+    return dataPartition;
+  }
+
+  @Override
+  public void setRedirectNodeList(List<TEndPoint> redirectNodeList) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void addEndPointToRedirectNodeList(TEndPoint endPoint) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public TimePredicate getCovertedTimePredicate() {
+    throw new UnsupportedOperationException();
   }
 
   public static final class AccessControlInfo {

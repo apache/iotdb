@@ -74,6 +74,35 @@ public interface Metadata {
       List<String> attributeColumns);
 
   /**
+   * This method is used for table column validation and should be invoked before device validation.
+   *
+   * <p>This method return all the existing column schemas in the target table.
+   *
+   * <p>When table or column is missing, this method will execute auto creation.
+   *
+   * <p>When using SQL, the columnSchemaList could be null and there won't be any validation.
+   *
+   * <p>When the input dataType or category of one column is null, the column cannot be auto
+   * created.
+   *
+   * <p>If validation failed, a SemanticException will be thrown.
+   */
+  TableSchema validateTableHeaderSchema(
+      String database, TableSchema tableSchema, MPPQueryContext context);
+
+  /**
+   * This method is used for table device validation and should be invoked after column validation.
+   *
+   * <p>When device id is missing, this method will execute auto creation.
+   *
+   * <p>When device attribute is missing or different from that stored in IoTDB, the attribute will
+   * be auto upsert.
+   *
+   * <p>If validation failed, a SemanticException will be thrown.
+   */
+  void validateDeviceSchema(ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context);
+
+  /**
    * Fetch and compute the schema of target timeseries, with device and measurement defined in given
    * schemaComputationWithAutoCreation. The computation defined in given
    * schemaComputationWithAutoCreation will be executed during scanning the fetched schema. If some
