@@ -26,20 +26,17 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeExternalServiceClient;
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
 import org.apache.iotdb.commons.client.gg.AsyncRequestManager;
+import org.apache.iotdb.commons.client.gg.AsyncRequestRPCHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class AsyncDataNodeExternalServiceRequestManager
+public class DataNodeExternalServiceAsyncRequestManager
     extends AsyncRequestManager<
         DataNodeToDataNodeRequestType, TDataNodeLocation, AsyncDataNodeExternalServiceClient> {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(AsyncDataNodeExternalServiceRequestManager.class);
-
-  public AsyncDataNodeExternalServiceRequestManager() {
-    super();
-  }
+      LoggerFactory.getLogger(DataNodeExternalServiceAsyncRequestManager.class);
 
   @Override
   protected void initClientManager() {
@@ -50,54 +47,38 @@ public class AsyncDataNodeExternalServiceRequestManager
   }
 
   @Override
+  protected void initActionMapBuilder() {
+    actionMapBuilder.put(
+        DataNodeToDataNodeRequestType.TEST_CONNECTION,
+        (req, client, handler) -> client.testConnection((AsyncTSStatusRPCHandler) handler));
+  }
+
+  @Override
   protected TEndPoint nodeLocationToEndPoint(TDataNodeLocation dataNodeLocation) {
     return dataNodeLocation.getClientRpcEndPoint();
   }
 
   @Override
-  protected void sendAsyncRequestToNode(
-      AsyncRequestContext<?, ?, DataNodeToDataNodeRequestType, TDataNodeLocation> requestContext,
-      int requestId,
-      TDataNodeLocation targetNode,
-      int retryCount) {
-    try {
-      AsyncDataNodeExternalServiceClient client =
-          clientManager.borrowClient(targetNode.getClientRpcEndPoint());
-      Object req = requestContext.getRequest(requestId);
-      AsyncDataNodeRPCHandler<?> handler =
-          AsyncDataNodeRPCHandler.createAsyncRPCHandler(requestContext, requestId, targetNode);
-      AsyncTSStatusRPCHandler defaultHandler = (AsyncTSStatusRPCHandler) handler;
-
-      switch (requestContext.getRequestType()) {
-        case TEST_CONNECTION:
-          client.testConnection(defaultHandler);
-          break;
-        default:
-          LOGGER.error(
-              "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",
-              requestContext.getRequestType());
-      }
-    } catch (Exception e) {
-      LOGGER.warn(
-          "{} failed on DataNode {}, because {}, retrying {}...",
-          requestContext.getRequestType(),
-          targetNode.getClientRpcEndPoint(),
-          e.getMessage(),
-          retryCount);
-    }
+  protected AsyncRequestRPCHandler<?, DataNodeToDataNodeRequestType, TDataNodeLocation>
+      buildHandler(
+          AsyncRequestContext<?, ?, DataNodeToDataNodeRequestType, TDataNodeLocation>
+              requestContext,
+          int requestId,
+          TDataNodeLocation targetNode) {
+    return AsyncDataNodeRPCHandler.createAsyncRPCHandler(requestContext, requestId, targetNode);
   }
 
   private static class ClientPoolHolder {
 
-    private static final AsyncDataNodeExternalServiceRequestManager INSTANCE =
-        new AsyncDataNodeExternalServiceRequestManager();
+    private static final DataNodeExternalServiceAsyncRequestManager INSTANCE =
+        new DataNodeExternalServiceAsyncRequestManager();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static AsyncDataNodeExternalServiceRequestManager getInstance() {
-    return AsyncDataNodeExternalServiceRequestManager.ClientPoolHolder.INSTANCE;
+  public static DataNodeExternalServiceAsyncRequestManager getInstance() {
+    return DataNodeExternalServiceAsyncRequestManager.ClientPoolHolder.INSTANCE;
   }
 }

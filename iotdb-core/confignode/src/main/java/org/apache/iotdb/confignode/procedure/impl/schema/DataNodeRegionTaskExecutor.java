@@ -22,8 +22,8 @@ package org.apache.iotdb.confignode.procedure.impl.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestManager;
+import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -45,7 +45,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
   protected final Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup;
   protected final boolean executeOnAllReplicaset;
 
-  protected final DataNodeRequestType dataNodeRequestType;
+  protected final ConfigNodeToDataNodeRequestType dataNodeRequestType;
   protected final BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q>
       dataNodeRequestGenerator;
 
@@ -55,7 +55,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
       ConfigManager configManager,
       Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
       boolean executeOnAllReplicaset,
-      DataNodeRequestType dataNodeRequestType,
+      ConfigNodeToDataNodeRequestType dataNodeRequestType,
       BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
     this.configManager = configManager;
     this.targetSchemaRegionGroup = targetSchemaRegionGroup;
@@ -68,7 +68,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
       ConfigNodeProcedureEnv env,
       Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
       boolean executeOnAllReplicaset,
-      DataNodeRequestType dataNodeRequestType,
+      ConfigNodeToDataNodeRequestType dataNodeRequestType,
       BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
     this.configManager = env.getConfigManager();
     this.targetSchemaRegionGroup = targetSchemaRegionGroup;
@@ -88,7 +88,7 @@ public abstract class DataNodeRegionTaskExecutor<Q, R> {
     while (!dataNodeConsensusGroupIdMap.isEmpty()) {
       AsyncDataNodeRequestContext<Q, R> clientHandler =
           prepareRequestHandler(dataNodeConsensusGroupIdMap);
-      AsyncDataNodeInternalServiceRequestManager.getInstance()
+      ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
           .sendAsyncRequestToNodeWithRetry(clientHandler);
       Map<TDataNodeLocation, List<TConsensusGroupId>> currentFailedDataNodeMap =
           checkDataNodeExecutionResult(clientHandler.getResponseMap(), dataNodeConsensusGroupIdMap);

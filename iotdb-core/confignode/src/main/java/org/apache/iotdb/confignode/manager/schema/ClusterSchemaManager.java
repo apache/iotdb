@@ -31,8 +31,8 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestManager;
+import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -439,7 +439,7 @@ public class ClusterSchemaManager {
     }
 
     AsyncDataNodeRequestContext<TSetTTLReq, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(DataNodeRequestType.SET_TTL);
+        new AsyncDataNodeRequestContext<>(ConfigNodeToDataNodeRequestType.SET_TTL);
     dnlToSgMap
         .keySet()
         .forEach(
@@ -450,7 +450,7 @@ public class ClusterSchemaManager {
               clientHandler.putNodeLocation(dataNodeId, dataNodeLocationMap.get(dataNodeId));
             });
     // TODO: Check response
-    AsyncDataNodeInternalServiceRequestManager.getInstance()
+    ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetry(clientHandler);
 
     try {
@@ -1102,8 +1102,10 @@ public class ClusterSchemaManager {
 
     AsyncDataNodeRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
         new AsyncDataNodeRequestContext<>(
-            DataNodeRequestType.UPDATE_TEMPLATE, updateTemplateReq, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestManager.getInstance()
+            ConfigNodeToDataNodeRequestType.UPDATE_TEMPLATE,
+            updateTemplateReq,
+            dataNodeLocationMap);
+    ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {

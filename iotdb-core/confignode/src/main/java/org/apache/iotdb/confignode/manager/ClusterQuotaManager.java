@@ -26,8 +26,8 @@ import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestManager;
+import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
@@ -89,8 +89,8 @@ public class ClusterQuotaManager {
             configManager.getNodeManager().getRegisteredDataNodeLocations();
         AsyncDataNodeRequestContext<TSetSpaceQuotaReq, TSStatus> clientHandler =
             new AsyncDataNodeRequestContext<>(
-                DataNodeRequestType.SET_SPACE_QUOTA, req, dataNodeLocationMap);
-        AsyncDataNodeInternalServiceRequestManager.getInstance()
+                ConfigNodeToDataNodeRequestType.SET_SPACE_QUOTA, req, dataNodeLocationMap);
+        ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
             .sendAsyncRequestToNodeWithRetry(clientHandler);
         return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
       }
@@ -196,8 +196,8 @@ public class ClusterQuotaManager {
             configManager.getNodeManager().getRegisteredDataNodeLocations();
         AsyncDataNodeRequestContext<TSetThrottleQuotaReq, TSStatus> clientHandler =
             new AsyncDataNodeRequestContext<>(
-                DataNodeRequestType.SET_THROTTLE_QUOTA, req, dataNodeLocationMap);
-        AsyncDataNodeInternalServiceRequestManager.getInstance()
+                ConfigNodeToDataNodeRequestType.SET_THROTTLE_QUOTA, req, dataNodeLocationMap);
+        ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
             .sendAsyncRequestToNodeWithRetry(clientHandler);
         return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
       }

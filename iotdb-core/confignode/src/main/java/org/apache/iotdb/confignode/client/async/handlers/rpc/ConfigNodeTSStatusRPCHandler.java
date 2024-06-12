@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.ConfigNodeToConfigNodeRequestType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -37,7 +37,7 @@ public class ConfigNodeTSStatusRPCHandler extends ConfigNodeAsyncRequestRPCHandl
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeTSStatusRPCHandler.class);
 
   public ConfigNodeTSStatusRPCHandler(
-      ConfigNodeRequestType requestType,
+      ConfigNodeToConfigNodeRequestType requestType,
       int requestId,
       TConfigNodeLocation targetConfigNode,
       Map<Integer, TConfigNodeLocation> configNodeLocationMap,

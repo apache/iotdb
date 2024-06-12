@@ -22,10 +22,14 @@ package org.apache.iotdb.commons.client.gg;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.utils.function.CheckedTriConsumer;
 
+import com.google.common.collect.ImmutableMap;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /** Asynchronously send RPC requests to Nodes. See queryengine.thrift for more details. */
@@ -35,13 +39,29 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
 
   protected IClientManager<TEndPoint, Client> clientManager;
 
+  protected ImmutableMap<
+          RequestType,
+          CheckedTriConsumer<
+              Object, Client, AsyncRequestRPCHandler<?, RequestType, NodeLocation>, TException>>
+      actionMap;
+
+  protected ImmutableMap.Builder<
+          RequestType,
+          CheckedTriConsumer<
+              Object, Client, AsyncRequestRPCHandler<?, RequestType, NodeLocation>, TException>>
+      actionMapBuilder;
+
   private static final int MAX_RETRY_NUM = 6;
 
   protected AsyncRequestManager() {
     initClientManager();
+    initActionMapBuilder();
+    this.actionMap = this.actionMapBuilder.build();
   }
 
   protected abstract void initClientManager();
+
+  protected abstract void initActionMapBuilder();
 
   /**
    * Send asynchronous requests to the specified Nodes with default retry num
@@ -123,13 +143,38 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
     }
   }
 
-  protected abstract TEndPoint nodeLocationToEndPoint(NodeLocation location);
-
-  protected abstract void sendAsyncRequestToNode(
+  protected void sendAsyncRequestToNode(
       AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
       int requestId,
       NodeLocation targetNode,
-      int retryCount);
+      int retryCount) {
+    try {
+      if (!actionMap.containsKey(requestContext.getRequestType())) {
+        throw new UnsupportedOperationException(
+            "unsupported request type: " + requestContext.getRequestType());
+      }
+      Client client = clientManager.borrowClient(nodeLocationToEndPoint(targetNode));
+      Object req = requestContext.getRequest(requestId);
+      AsyncRequestRPCHandler<?, RequestType, NodeLocation> handler =
+          buildHandler(requestContext, requestId, targetNode);
+      Objects.requireNonNull(actionMap.get(requestContext.getRequestType()))
+          .accept(req, client, handler);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "{} failed on Node {}, because {}, retrying {}...",
+          requestContext.getRequestType(),
+          nodeLocationToEndPoint(targetNode),
+          e.getMessage(),
+          retryCount);
+    }
+  }
+
+  protected abstract TEndPoint nodeLocationToEndPoint(NodeLocation location);
+
+  protected abstract AsyncRequestRPCHandler<?, RequestType, NodeLocation> buildHandler(
+      AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
+      int requestId,
+      NodeLocation targetNode);
 
   /**
    * Always call this interface when a Node is restarted or removed.

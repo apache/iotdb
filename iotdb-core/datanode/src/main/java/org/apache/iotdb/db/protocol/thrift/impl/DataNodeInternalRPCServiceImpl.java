@@ -74,13 +74,11 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
-import org.apache.iotdb.db.protocol.client.cn.AsyncConfigNodeInternalServiceRequestManager;
-import org.apache.iotdb.db.protocol.client.cn.AsyncConfigNodeRequestContext;
+import org.apache.iotdb.db.protocol.client.cn.DataNodeToConfigNodeInternalServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.cn.DataNodeToConfigNodeRequestType;
-import org.apache.iotdb.db.protocol.client.dn.AsyncDataNodeExternalServiceRequestManager;
-import org.apache.iotdb.db.protocol.client.dn.AsyncDataNodeInternalServiceRequestManager;
-import org.apache.iotdb.db.protocol.client.dn.AsyncDataNodeMPPServiceRequestManager;
-import org.apache.iotdb.db.protocol.client.dn.AsyncDataNodeRequestContext;
+import org.apache.iotdb.db.protocol.client.dn.DataNodeExternalServiceAsyncRequestManager;
+import org.apache.iotdb.db.protocol.client.dn.DataNodeMPPServiceAsyncRequestManager;
+import org.apache.iotdb.db.protocol.client.dn.DataNodeToDataNodeInternalServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.dn.DataNodeToDataNodeRequestType;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
@@ -1443,100 +1441,99 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return new TTestConnectionResp(configNodeResult);
   }
 
-  private <Location,RequestType> List<TTestConnectionResult> testAllConnections(
-          List<Location> nodeLocations,
-          Function<Location, Integer> getId,
-          Function<Location, TEndPoint> getEndPoint,
-          TServiceType serviceType,
-          RequestType requestType,
-          Consumer<AsyncRequestContext<Object,TSStatus,RequestType,Location>> sendRequest
-  ) {
+  private <Location, RequestType> List<TTestConnectionResult> testAllConnections(
+      List<Location> nodeLocations,
+      Function<Location, Integer> getId,
+      Function<Location, TEndPoint> getEndPoint,
+      TServiceType serviceType,
+      RequestType requestType,
+      Consumer<AsyncRequestContext<Object, TSStatus, RequestType, Location>> sendRequest) {
     final TSender sender =
-            new TSender()
-                    .setDataNodeLocation(
-                            IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation());
+        new TSender()
+            .setDataNodeLocation(
+                IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation());
     Map<Integer, Location> nodeLocationMap =
-            nodeLocations.stream()
-                    .collect(Collectors.toMap(getId, location -> location));
-    AsyncRequestContext<Object, TSStatus,RequestType,Location> requestContext =
-            new AsyncRequestContext<>(
-                    requestType, new Object(), nodeLocationMap);
+        nodeLocations.stream().collect(Collectors.toMap(getId, location -> location));
+    AsyncRequestContext<Object, TSStatus, RequestType, Location> requestContext =
+        new AsyncRequestContext<>(requestType, new Object(), nodeLocationMap);
     sendRequest.accept(requestContext);
     Map<Integer, Location> anotherNodeLocationMap =
-            nodeLocations.stream()
-                    .collect(Collectors.toMap(getId, location -> location));
+        nodeLocations.stream().collect(Collectors.toMap(getId, location -> location));
     List<TTestConnectionResult> results = new ArrayList<>();
     requestContext
-            .getResponseMap()
-            .forEach(
-                    (nodeId, status) -> {
-                      TEndPoint endPoint = getEndPoint.apply(anotherNodeLocationMap.get(nodeId));
-                      TServiceProvider serviceProvider =
-                              new TServiceProvider(endPoint, serviceType);
-                      TTestConnectionResult result = new TTestConnectionResult();
-                      result.setSender(sender);
-                      result.setServiceProvider(serviceProvider);
-                      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                        result.setSuccess(true);
-                      } else {
-                        result.setSuccess(false);
-                        result.setReason(status.getMessage());
-                      }
-                      results.add(result);
-                    });
+        .getResponseMap()
+        .forEach(
+            (nodeId, status) -> {
+              TEndPoint endPoint = getEndPoint.apply(anotherNodeLocationMap.get(nodeId));
+              TServiceProvider serviceProvider = new TServiceProvider(endPoint, serviceType);
+              TTestConnectionResult result = new TTestConnectionResult();
+              result.setSender(sender);
+              result.setServiceProvider(serviceProvider);
+              if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                result.setSuccess(true);
+              } else {
+                result.setSuccess(false);
+                result.setReason(status.getMessage());
+              }
+              results.add(result);
+            });
     return results;
   }
 
   private List<TTestConnectionResult> testAllConfigNodeConnection(
-          List<TConfigNodeLocation> configNodeLocations) {
+      List<TConfigNodeLocation> configNodeLocations) {
     return testAllConnections(
-            configNodeLocations,
-            TConfigNodeLocation::getConfigNodeId,
-            TConfigNodeLocation::getInternalEndPoint,
-            TServiceType.ConfigNodeInternalService,
-            DataNodeToConfigNodeRequestType.TEST_CONNECTION,
-            (AsyncRequestContext<Object, TSStatus, DataNodeToConfigNodeRequestType, TConfigNodeLocation> handler) -> AsyncConfigNodeInternalServiceRequestManager.getInstance()
-                    .sendAsyncRequestToNodeWithRetry(handler)
-    );
+        configNodeLocations,
+        TConfigNodeLocation::getConfigNodeId,
+        TConfigNodeLocation::getInternalEndPoint,
+        TServiceType.ConfigNodeInternalService,
+        DataNodeToConfigNodeRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DataNodeToConfigNodeRequestType, TConfigNodeLocation>
+                handler) ->
+            DataNodeToConfigNodeInternalServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequestToNodeWithRetry(handler));
   }
 
   private List<TTestConnectionResult> testAllDataNodeInternalServiceConnection(
-          List<TDataNodeLocation> dataNodeLocations) {
+      List<TDataNodeLocation> dataNodeLocations) {
     return testAllConnections(
-            dataNodeLocations,
-            TDataNodeLocation::getDataNodeId,
-            TDataNodeLocation::getInternalEndPoint,
-            TServiceType.DataNodeInternalService,
-            DataNodeToDataNodeRequestType.TEST_CONNECTION,
-            (AsyncRequestContext<Object, TSStatus, DataNodeToDataNodeRequestType, TDataNodeLocation> handler) -> AsyncDataNodeInternalServiceRequestManager.getInstance()
-                    .sendAsyncRequestToNodeWithRetry(handler)
-    );
+        dataNodeLocations,
+        TDataNodeLocation::getDataNodeId,
+        TDataNodeLocation::getInternalEndPoint,
+        TServiceType.DataNodeInternalService,
+        DataNodeToDataNodeRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DataNodeToDataNodeRequestType, TDataNodeLocation>
+                handler) ->
+            DataNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequestToNodeWithRetry(handler));
   }
 
   private List<TTestConnectionResult> testAllDataNodeMPPServiceConnection(
-          List<TDataNodeLocation> dataNodeLocations) {
+      List<TDataNodeLocation> dataNodeLocations) {
     return testAllConnections(
-            dataNodeLocations,
-            TDataNodeLocation::getDataNodeId,
-            TDataNodeLocation::getMPPDataExchangeEndPoint,
-            TServiceType.DataNodeMPPService,
-            DataNodeToDataNodeRequestType.TEST_CONNECTION,
-            (AsyncRequestContext<Object, TSStatus, DataNodeToDataNodeRequestType, TDataNodeLocation> handler) -> AsyncDataNodeInternalServiceRequestManager.getInstance()
-                    .sendAsyncRequestToNodeWithRetry(handler)
-    );
+        dataNodeLocations,
+        TDataNodeLocation::getDataNodeId,
+        TDataNodeLocation::getMPPDataExchangeEndPoint,
+        TServiceType.DataNodeMPPService,
+        DataNodeToDataNodeRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DataNodeToDataNodeRequestType, TDataNodeLocation>
+                handler) ->
+            DataNodeMPPServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequestToNodeWithRetry(handler));
   }
 
   private List<TTestConnectionResult> testAllDataNodeExternalServiceConnection(
-          List<TDataNodeLocation> dataNodeLocations) {
+      List<TDataNodeLocation> dataNodeLocations) {
     return testAllConnections(
-            dataNodeLocations,
-            TDataNodeLocation::getDataNodeId,
-            TDataNodeLocation::getClientRpcEndPoint,
-            TServiceType.DataNodeExternalService,
-            DataNodeToDataNodeRequestType.TEST_CONNECTION,
-            (AsyncRequestContext<Object, TSStatus, DataNodeToDataNodeRequestType, TDataNodeLocation> handler) -> AsyncDataNodeInternalServiceRequestManager.getInstance()
-                    .sendAsyncRequestToNodeWithRetry(handler)
-    );
+        dataNodeLocations,
+        TDataNodeLocation::getDataNodeId,
+        TDataNodeLocation::getClientRpcEndPoint,
+        TServiceType.DataNodeExternalService,
+        DataNodeToDataNodeRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DataNodeToDataNodeRequestType, TDataNodeLocation>
+                handler) ->
+            DataNodeExternalServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequestToNodeWithRetry(handler));
   }
 
   @Override

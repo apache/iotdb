@@ -28,8 +28,8 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestManager;
+import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
@@ -212,8 +212,8 @@ public class SetTemplateProcedure
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     AsyncDataNodeRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
         new AsyncDataNodeRequestContext<>(
-            DataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestManager.getInstance()
+            ConfigNodeToDataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
+    ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
@@ -283,7 +283,7 @@ public class SetTemplateProcedure
                 env,
                 relatedSchemaRegionGroup,
                 false,
-                DataNodeRequestType.CHECK_TIMESERIES_EXISTENCE,
+                ConfigNodeToDataNodeRequestType.CHECK_TIMESERIES_EXISTENCE,
                 ((dataNodeLocation, consensusGroupIdList) ->
                     new TCheckTimeSeriesExistenceReq(patternTreeBytes, consensusGroupIdList))) {
 
@@ -386,8 +386,8 @@ public class SetTemplateProcedure
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     AsyncDataNodeRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
         new AsyncDataNodeRequestContext<>(
-            DataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestManager.getInstance()
+            ConfigNodeToDataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
+    ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
@@ -492,8 +492,10 @@ public class SetTemplateProcedure
 
     AsyncDataNodeRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
         new AsyncDataNodeRequestContext<>(
-            DataNodeRequestType.UPDATE_TEMPLATE, invalidateTemplateSetInfoReq, dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestManager.getInstance()
+            ConfigNodeToDataNodeRequestType.UPDATE_TEMPLATE,
+            invalidateTemplateSetInfoReq,
+            dataNodeLocationMap);
+    ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {

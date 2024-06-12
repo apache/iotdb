@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -37,7 +37,7 @@ public class TransferLeaderRPCHandler
   private static final Logger LOGGER = LoggerFactory.getLogger(TransferLeaderRPCHandler.class);
 
   public TransferLeaderRPCHandler(
-      DataNodeRequestType requestType,
+      ConfigNodeToDataNodeRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,

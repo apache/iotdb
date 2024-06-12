@@ -37,7 +37,7 @@ import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.cpu.CpuUsageMetrics;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.ConfigNodeToConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
@@ -338,7 +338,7 @@ public class ConfigNode implements ConfigNodeMBean {
       Object obj =
           SyncConfigNodeClientPool.getInstance()
               .sendSyncRequestToConfigNodeWithRetry(
-                  seedConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
+                  seedConfigNode, req, ConfigNodeToConfigNodeRequestType.REGISTER_CONFIG_NODE);
 
       if (obj instanceof TConfigNodeRegisterResp) {
         resp = (TConfigNodeRegisterResp) obj;

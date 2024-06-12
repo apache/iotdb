@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.client.async.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
-import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.ConfigNodeToConfigNodeRequestType;
 
 import java.util.Map;
 
@@ -32,20 +32,20 @@ import java.util.Map;
  * @param <R> ClassName of RPC response
  */
 public class AsyncConfigNodeRequestContext<Q, R>
-    extends AsyncRequestContext<Q, R, ConfigNodeRequestType, TConfigNodeLocation> {
+    extends AsyncRequestContext<Q, R, ConfigNodeToConfigNodeRequestType, TConfigNodeLocation> {
 
-  public AsyncConfigNodeRequestContext(ConfigNodeRequestType configNodeRequestType) {
+  public AsyncConfigNodeRequestContext(ConfigNodeToConfigNodeRequestType configNodeRequestType) {
     super(configNodeRequestType);
   }
 
   public AsyncConfigNodeRequestContext(
-      ConfigNodeRequestType configNodeRequestType,
+      ConfigNodeToConfigNodeRequestType configNodeRequestType,
       Map<Integer, TConfigNodeLocation> integerTConfigNodeLocationMap) {
     super(configNodeRequestType, integerTConfigNodeLocationMap);
   }
 
   public AsyncConfigNodeRequestContext(
-      ConfigNodeRequestType configNodeRequestType,
+      ConfigNodeToConfigNodeRequestType configNodeRequestType,
       Q q,
       Map<Integer, TConfigNodeLocation> integerTConfigNodeLocationMap) {
     super(configNodeRequestType, q, integerTConfigNodeLocationMap);

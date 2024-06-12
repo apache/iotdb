@@ -25,7 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
-import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.ConfigNodeToConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -112,7 +112,7 @@ public class ConfigNodeRemoveCheck {
                   .sendSyncRequestToConfigNodeWithRetry(
                       configNodeLocation.getInternalEndPoint(),
                       removedNode,
-                      ConfigNodeRequestType.REMOVE_CONFIG_NODE);
+                      ConfigNodeToConfigNodeRequestType.REMOVE_CONFIG_NODE);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         break;
       }

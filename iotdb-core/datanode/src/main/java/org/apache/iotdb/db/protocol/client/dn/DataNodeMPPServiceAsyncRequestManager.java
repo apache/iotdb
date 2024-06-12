@@ -26,21 +26,20 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeMPPDataExchangeServiceClient;
 import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
 import org.apache.iotdb.commons.client.gg.AsyncRequestManager;
+import org.apache.iotdb.commons.client.gg.AsyncRequestRPCHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.iotdb.db.protocol.client.dn.DataNodeToDataNodeRequestType.TEST_CONNECTION;
-
-public class AsyncDataNodeMPPServiceRequestManager
+public class DataNodeMPPServiceAsyncRequestManager
     extends AsyncRequestManager<
         DataNodeToDataNodeRequestType,
         TDataNodeLocation,
         AsyncDataNodeMPPDataExchangeServiceClient> {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(AsyncDataNodeMPPServiceRequestManager.class);
+      LoggerFactory.getLogger(DataNodeMPPServiceAsyncRequestManager.class);
 
-  public AsyncDataNodeMPPServiceRequestManager() {}
+  public DataNodeMPPServiceAsyncRequestManager() {}
 
   @Override
   protected void initClientManager() {
@@ -51,53 +50,38 @@ public class AsyncDataNodeMPPServiceRequestManager
   }
 
   @Override
+  protected void initActionMapBuilder() {
+    actionMapBuilder.put(
+        DataNodeToDataNodeRequestType.TEST_CONNECTION,
+        (req, client, handler) -> client.testConnection((AsyncTSStatusRPCHandler) handler));
+  }
+
+  @Override
   protected TEndPoint nodeLocationToEndPoint(TDataNodeLocation dataNodeLocation) {
     return null;
   }
 
   @Override
-  protected void sendAsyncRequestToNode(
-      AsyncRequestContext<?, ?, DataNodeToDataNodeRequestType, TDataNodeLocation> requestContext,
-      int requestId,
-      TDataNodeLocation targetNode,
-      int retryCount) {
-    try {
-      AsyncDataNodeMPPDataExchangeServiceClient client;
-      client = clientManager.borrowClient(targetNode.getInternalEndPoint());
-      Object req = requestContext.getRequest(requestId);
-      AsyncDataNodeRPCHandler<?> handler =
-          AsyncDataNodeRPCHandler.createAsyncRPCHandler(requestContext, requestId, targetNode);
-      AsyncTSStatusRPCHandler defaultHandler = (AsyncTSStatusRPCHandler) handler;
-
-      switch (requestContext.getRequestType()) {
-        case TEST_CONNECTION:
-          client.testConnection(defaultHandler);
-          break;
-        default:
-          throw new UnsupportedOperationException(
-              "unsupported request type: " + requestContext.getRequestType());
-      }
-    } catch (Exception e) {
-      LOGGER.warn(
-          "{} failed on DataNode {}, because {}, retrying {}...",
-          requestContext.getRequestType(),
-          targetNode.getInternalEndPoint(),
-          e.getMessage(),
-          retryCount);
-    }
+  protected AsyncRequestRPCHandler<?, DataNodeToDataNodeRequestType, TDataNodeLocation>
+      buildHandler(
+          AsyncRequestContext<?, ?, DataNodeToDataNodeRequestType, TDataNodeLocation>
+              requestContext,
+          int requestId,
+          TDataNodeLocation targetNode) {
+    return AsyncDataNodeRPCHandler.createAsyncRPCHandler(requestContext, requestId, targetNode);
   }
 
   private static class ClientPoolHolder {
 
-    private static final AsyncDataNodeMPPServiceRequestManager INSTANCE =
-        new AsyncDataNodeMPPServiceRequestManager();
+    private static final DataNodeMPPServiceAsyncRequestManager INSTANCE =
+        new DataNodeMPPServiceAsyncRequestManager();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static AsyncDataNodeMPPServiceRequestManager getInstance() {
+  public static DataNodeMPPServiceAsyncRequestManager getInstance() {
     return ClientPoolHolder.INSTANCE;
   }
 }

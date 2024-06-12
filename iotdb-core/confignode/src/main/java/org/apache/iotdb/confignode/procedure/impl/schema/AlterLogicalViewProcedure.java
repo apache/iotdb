@@ -30,8 +30,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeInternalServiceRequestManager;
+import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -122,10 +122,10 @@ public class AlterLogicalViewProcedure
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     AsyncDataNodeRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
         new AsyncDataNodeRequestContext<>(
-            DataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
+            ConfigNodeToDataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
             new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
             dataNodeLocationMap);
-    AsyncDataNodeInternalServiceRequestManager.getInstance()
+    ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestToNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
@@ -156,7 +156,7 @@ public class AlterLogicalViewProcedure
             "Alter view",
             env,
             targetSchemaRegionGroup,
-            DataNodeRequestType.ALTER_VIEW,
+            ConfigNodeToDataNodeRequestType.ALTER_VIEW,
             (dataNodeLocation, consensusGroupIdList) -> {
               TAlterViewReq req = new TAlterViewReq().setIsGeneratedByPipe(isGeneratedByPipe);
               req.setSchemaRegionIdList(consensusGroupIdList);
@@ -324,7 +324,7 @@ public class AlterLogicalViewProcedure
         String taskName,
         ConfigNodeProcedureEnv env,
         Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
-        DataNodeRequestType dataNodeRequestType,
+        ConfigNodeToDataNodeRequestType dataNodeRequestType,
         BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(env, targetSchemaRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
       this.taskName = taskName;
