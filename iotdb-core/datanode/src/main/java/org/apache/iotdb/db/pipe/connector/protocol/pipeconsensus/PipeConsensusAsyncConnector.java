@@ -148,7 +148,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     MetricService.getInstance().addMetricSet(this.pipeConsensusConnectorMetric);
   }
 
-  /** Add an event to transferBuffer, whose events will be asynchronizedly transfer to receiver. */
+  /** Add an event to transferBuffer, whose events will be asynchronously transfer to receiver. */
   private boolean addEvent2Buffer(EnrichedEvent event) {
     try {
       if (LOGGER.isDebugEnabled()) {
@@ -215,13 +215,12 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    syncTransferQueuedEventsIfNecessary();
+
     boolean enqueueResult = addEvent2Buffer((EnrichedEvent) tabletInsertionEvent);
     if (!enqueueResult) {
       throw new PipeException(ENQUEUE_EXCEPTION_MSG);
     }
-
-    syncTransferQueuedEventsIfNecessary();
-
     // batch transfer tablets.
     if (isTabletBatchModeEnabled) {
       if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
@@ -302,11 +301,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    boolean enqueueResult = addEvent2Buffer((EnrichedEvent) tsFileInsertionEvent);
-    if (!enqueueResult) {
-      throw new PipeException(ENQUEUE_EXCEPTION_MSG);
-    }
-
     syncTransferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
 
@@ -317,6 +311,10 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       return;
     }
 
+    boolean enqueueResult = addEvent2Buffer((EnrichedEvent) tsFileInsertionEvent);
+    if (!enqueueResult) {
+      throw new PipeException(ENQUEUE_EXCEPTION_MSG);
+    }
     final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     TCommitId tCommitId =
@@ -404,7 +402,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
    *     retry the {@link Event} and mark the {@link Event} as failure and stop the pipe if the
    *     retry times exceeds the threshold.
    */
-  private synchronized void syncTransferQueuedEventsIfNecessary() throws Exception {
+  private void syncTransferQueuedEventsIfNecessary() throws Exception {
     while (!retryEventQueue.isEmpty()) {
       synchronized (this) {
         if (isClosed.get() || retryEventQueue.isEmpty()) {
@@ -502,6 +500,13 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     }
   }
 
+  public synchronized void clearTransferBufferReferenceCount() {
+    while (!transferBuffer.isEmpty()) {
+      final EnrichedEvent event = transferBuffer.poll();
+      event.clearReferenceCount(PipeConsensusAsyncConnector.class.getName());
+    }
+  }
+
   private void logOnClientException(
       final AsyncPipeConsensusServiceClient client, final Exception e) {
     if (client == null) {
@@ -530,6 +535,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     retryConnector.close();
     clearRetryEventsReferenceCount();
+    clearTransferBufferReferenceCount();
 
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();

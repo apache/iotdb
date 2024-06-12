@@ -99,7 +99,7 @@ public class PipeConsensusReceiver {
       new PipeConsensusTsFileWriterPool();
   private final AtomicReference<File> receiverFileDirWithIdSuffix = new AtomicReference<>();
   private final PipeConsensusReceiverMetric pipeConsensusReceiverMetric;
-  private FolderManager folderManager;
+  private final FolderManager folderManager;
 
   public PipeConsensusReceiver(
       PipeConsensus pipeConsensus,
@@ -1233,7 +1233,7 @@ public class PipeConsensusReceiver {
             // when the last seal req is applied, we can discard this event.
             if (resp != null
                 && resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              onSuccess(onSyncedCommitIndex + 1, isTransferTsFilePiece);
+              onSuccess(onSyncedCommitIndex + 1, isTransferTsFileSeal);
             }
             return resp;
           }
