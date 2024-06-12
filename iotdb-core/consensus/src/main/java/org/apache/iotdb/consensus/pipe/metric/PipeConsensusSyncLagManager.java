@@ -29,6 +29,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /**
  * This class is used to aggregate the write progress of all Connectors to calculate the minimum
  * synchronization progress of all follower copies, thereby calculating syncLag.
+ *
+ * <p>Note: every consensusGroup/dataRegion has and only has 1 instance of this class.
  */
 public class PipeConsensusSyncLagManager {
   long userWriteProgress = 0;
@@ -86,23 +88,22 @@ public class PipeConsensusSyncLagManager {
     // do nothing
   }
 
-  /** singleton */
   private static class PipeConsensusSyncLagManagerHolder {
-    private static Map<String, PipeConsensusSyncLagManager> INSTANCE_MAP;
+    private static Map<String, PipeConsensusSyncLagManager> CONSENSU_GROUP_ID_2_INSTANCE_MAP;
 
     private PipeConsensusSyncLagManagerHolder() {
       // empty constructor
     }
 
     private static void build() {
-      if (INSTANCE_MAP == null) {
-        INSTANCE_MAP = new ConcurrentHashMap<>();
+      if (CONSENSU_GROUP_ID_2_INSTANCE_MAP == null) {
+        CONSENSU_GROUP_ID_2_INSTANCE_MAP = new ConcurrentHashMap<>();
       }
     }
   }
 
   public static PipeConsensusSyncLagManager getInstance(String groupId) {
-    return PipeConsensusSyncLagManagerHolder.INSTANCE_MAP.computeIfAbsent(
+    return PipeConsensusSyncLagManagerHolder.CONSENSU_GROUP_ID_2_INSTANCE_MAP.computeIfAbsent(
         groupId, key -> new PipeConsensusSyncLagManager());
   }
 
