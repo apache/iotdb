@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.load;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -88,13 +89,13 @@ public class LoadTsFileNode extends WritePlanNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(Analysis analysis) {
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     List<WritePlanNode> res = new ArrayList<>();
     LoadTsFileStatement statement =
-        analysis.getStatement() instanceof PipeEnrichedStatement
+        ((Analysis) analysis).getStatement() instanceof PipeEnrichedStatement
             ? (LoadTsFileStatement)
-                ((PipeEnrichedStatement) analysis.getStatement()).getInnerStatement()
-            : (LoadTsFileStatement) analysis.getStatement();
+                ((PipeEnrichedStatement) ((Analysis) analysis).getStatement()).getInnerStatement()
+            : (LoadTsFileStatement) ((Analysis) analysis).getStatement();
 
     for (int i = 0; i < resources.size(); i++) {
       res.add(

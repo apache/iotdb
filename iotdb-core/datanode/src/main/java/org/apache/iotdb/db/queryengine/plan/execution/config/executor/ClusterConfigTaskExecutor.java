@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
@@ -30,6 +31,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -469,7 +471,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           }
         } catch (IOException | URISyntaxException e) {
           LOGGER.warn(
-              "Failed to get executable for UDF({}) using URI: {}, the cause is: {}",
+              "Failed to get executable for UDF({}) using URI: {}.",
               createFunctionStatement.getUdfName(),
               createFunctionStatement.getUriString(),
               e);
@@ -505,14 +507,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           | InvocationTargetException
           | ClassCastException e) {
         LOGGER.warn(
-            "Failed to create function when try to create UDF({}) instance first, the cause is: {}",
+            "Failed to create function when try to create UDF({}) instance first.",
             createFunctionStatement.getUdfName(),
             e);
         future.setException(
             new IoTDBException(
                 "Failed to load class '"
                     + createFunctionStatement.getClassName()
-                    + "', because it's not found in jar file: "
+                    + "', because it's not found in jar file or is invalid: "
                     + createFunctionStatement.getUriString(),
                 TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()));
         return future;
@@ -642,7 +644,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           }
         } catch (IOException | URISyntaxException e) {
           LOGGER.warn(
-              "Failed to get executable for Trigger({}) using URI: {}, the cause is: {}",
+              "Failed to get executable for Trigger({}) using URI: {}.",
               createTriggerStatement.getTriggerName(),
               createTriggerStatement.getUriString(),
               e);
@@ -679,14 +681,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           | InvocationTargetException
           | ClassCastException e) {
         LOGGER.warn(
-            "Failed to create trigger when try to create trigger({}) instance first, the cause is: {}",
+            "Failed to create trigger when try to create trigger({}) instance first.",
             createTriggerStatement.getTriggerName(),
             e);
         future.setException(
             new IoTDBException(
                 "Failed to load class '"
                     + createTriggerStatement.getClassName()
-                    + "', because it's not found in jar file: "
+                    + "', because it's not found in jar file or is invalid: "
                     + createTriggerStatement.getUriString(),
                 TSStatusCode.TRIGGER_LOAD_CLASS_ERROR.getStatusCode()));
         return future;
@@ -752,7 +754,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createPipePlugin(
-      CreatePipePluginStatement createPipePluginStatement) {
+      final CreatePipePluginStatement createPipePluginStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     final String pluginName = createPipePluginStatement.getPluginName();
     final String className = createPipePluginStatement.getClassName();
@@ -768,13 +770,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      String libRoot;
-      ByteBuffer jarFile;
-      String jarMd5;
+      final String libRoot;
+      final ByteBuffer jarFile;
+      final String jarMd5;
 
       final String jarFileName = new File(uriString).getName();
       try {
-        URI uri = new URI(uriString);
+        final URI uri = new URI(uriString);
         if (uri.getScheme() == null) {
           future.setException(
               new IoTDBException(
@@ -784,10 +786,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         }
         if (!uri.getScheme().equals("file")) {
           // Download executable
-          ExecutableResource resource =
+          final ExecutableResource resource =
               PipePluginExecutableManager.getInstance()
                   .request(Collections.singletonList(uriString));
-          String jarFilePathUnderTempDir =
+          final String jarFilePathUnderTempDir =
               PipePluginExecutableManager.getInstance()
                       .getDirStringUnderTempRootByRequestId(resource.getRequestId())
                   + File.separator
@@ -805,9 +807,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           // Set md5 of the jar file
           jarMd5 = DigestUtils.md5Hex(Files.newInputStream(Paths.get(libRoot)));
         }
-      } catch (IOException | URISyntaxException e) {
+      } catch (final IOException | URISyntaxException e) {
         LOGGER.warn(
-            "Failed to get executable for PipePlugin({}) using URI: {}, the cause is: {}",
+            "Failed to get executable for PipePlugin({}) using URI: {}.",
             createPipePluginStatement.getPluginName(),
             createPipePluginStatement.getUriString(),
             e);
@@ -821,25 +823,26 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
 
       // try to create instance, this request will fail if creation is not successful
-      try (PipePluginClassLoader classLoader = new PipePluginClassLoader(libRoot)) {
+      try (final PipePluginClassLoader classLoader = new PipePluginClassLoader(libRoot)) {
         // ensure that jar file contains the class and the class is a pipe plugin
-        Class<?> clazz = Class.forName(createPipePluginStatement.getClassName(), true, classLoader);
-        PipePlugin ignored = (PipePlugin) clazz.getDeclaredConstructor().newInstance();
-      } catch (ClassNotFoundException
+        final Class<?> clazz =
+            Class.forName(createPipePluginStatement.getClassName(), true, classLoader);
+        final PipePlugin ignored = (PipePlugin) clazz.getDeclaredConstructor().newInstance();
+      } catch (final ClassNotFoundException
           | NoSuchMethodException
           | InstantiationException
           | IllegalAccessException
           | InvocationTargetException
           | ClassCastException e) {
         LOGGER.warn(
-            "Failed to create function when try to create PipePlugin({}) instance first, the cause is: {}",
+            "Failed to create function when try to create PipePlugin({}) instance first.",
             createPipePluginStatement.getPluginName(),
             e);
         future.setException(
             new IoTDBException(
                 "Failed to load class '"
                     + createPipePluginStatement.getClassName()
-                    + "', because it's not found in jar file: "
+                    + "', because it's not found in jar file or is invalid: "
                     + createPipePluginStatement.getUriString(),
                 TSStatusCode.PIPE_PLUGIN_LOAD_CLASS_ERROR.getStatusCode()));
         return future;
@@ -868,7 +871,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException | IOException e) {
+    } catch (final ClientManagerException | TException | IOException e) {
       future.setException(e);
     }
     return future;
@@ -1015,6 +1018,46 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } catch (Exception e) {
         tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
+    }
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setConfiguration(TSetConfigurationReq req) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    List<String> ignoredConfigItems =
+        ConfigurationFileUtils.filterImmutableConfigItems(req.getConfigs());
+    TSStatus warningTsStatus = null;
+    if (!ignoredConfigItems.isEmpty()) {
+      warningTsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      warningTsStatus.setMessage("ignored config items: " + ignoredConfigItems);
+      if (req.getConfigs().isEmpty()) {
+        future.setException(new IoTDBException(warningTsStatus.message, warningTsStatus.code));
+        return future;
+      }
+    }
+
+    boolean onLocal = IoTDBDescriptor.getInstance().getConfig().getDataNodeId() == req.getNodeId();
+    if (onLocal) {
+      tsStatus = StorageEngine.getInstance().setConfiguration(req);
+    } else {
+      try (ConfigNodeClient client =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        // Send request to some API server
+        tsStatus = client.setConfiguration(req);
+      } catch (ClientManagerException | TException e) {
+        future.setException(e);
+      }
+    }
+    if (warningTsStatus != null) {
+      tsStatus = warningTsStatus;
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));

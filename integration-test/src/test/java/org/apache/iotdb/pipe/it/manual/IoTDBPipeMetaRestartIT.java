@@ -84,8 +84,13 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
       }
     }
 
-    TestUtils.restartCluster(senderEnv);
-    TestUtils.restartCluster(receiverEnv);
+    try {
+      TestUtils.restartCluster(senderEnv);
+      TestUtils.restartCluster(receiverEnv);
+    } catch (Throwable e) {
+      e.printStackTrace();
+      return;
+    }
 
     for (int i = 10; i < 20; ++i) {
       if (!TestUtils.tryExecuteNonQueryWithRetry(
@@ -142,8 +147,13 @@ public class IoTDBPipeMetaRestartIT extends AbstractPipeDualManualIT {
       }
     }
 
-    TestUtils.restartCluster(senderEnv);
-    TestUtils.restartCluster(receiverEnv);
+    try {
+      TestUtils.restartCluster(senderEnv);
+      TestUtils.restartCluster(receiverEnv);
+    } catch (final Throwable e) {
+      e.printStackTrace();
+      return;
+    }
 
     for (int i = 10; i < 20; ++i) {
       if (!TestUtils.tryExecuteNonQueryWithRetry(

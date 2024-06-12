@@ -41,6 +41,7 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
     implements WrappedThreadPoolExecutorMBean {
   private static final Logger logger = LoggerFactory.getLogger(WrappedThreadPoolExecutor.class);
   private final String mbeanName;
+  private volatile boolean disableErrorLog = false;
 
   public WrappedThreadPoolExecutor(
       int corePoolSize,
@@ -125,8 +126,12 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
         Thread.currentThread().interrupt();
       }
     }
-    if (t != null) {
+    if (t != null && !disableErrorLog) {
       logger.error("Exception in thread pool {}", mbeanName, t);
     }
+  }
+
+  public void disableErrorLog() {
+    disableErrorLog = true;
   }
 }

@@ -76,6 +76,12 @@ public class SubscriptionEvent {
     }
   }
 
+  public void clearReferenceCount() {
+    for (final EnrichedEvent enrichedEvent : enrichedEvents) {
+      enrichedEvent.clearReferenceCount(this.getClass().getName());
+    }
+  }
+
   //////////////////////////// pollable ////////////////////////////
 
   public void recordLastPolledTimestamp() {
