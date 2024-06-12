@@ -1520,8 +1520,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         DataNodeToDataNodeRequestType.TEST_CONNECTION,
         (AsyncRequestContext<Object, TSStatus, DataNodeToDataNodeRequestType, TDataNodeLocation>
                 handler) ->
-            DataNodeMPPServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestWithRetry(handler));
+            DataNodeMPPServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(handler));
   }
 
   private List<TTestConnectionResult> testAllDataNodeExternalServiceConnection(

@@ -94,9 +94,9 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
   }
 
   private void sendAsyncRequest(
-          AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
-          int retryNum,
-          Long timeoutInMs) {
+      AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
+      int retryNum,
+      Long timeoutInMs) {
     if (requestContext.getRequestIndices().isEmpty()) {
       return;
     }
