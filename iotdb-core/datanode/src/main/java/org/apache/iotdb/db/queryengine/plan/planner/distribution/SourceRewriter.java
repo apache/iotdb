@@ -39,7 +39,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SeriesSchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
@@ -895,8 +894,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
       for (TRegionReplicaSet schemaRegion :
           storageGroupSchemaRegionMap.get(
               ((SchemaFetchScanNode) child).getStorageGroup().getFullPath())) {
-        SchemaFetchScanNode schemaFetchScanNode =
-            (SchemaFetchScanNode) child.clone();
+        SchemaFetchScanNode schemaFetchScanNode = (SchemaFetchScanNode) child.clone();
         schemaFetchScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
         schemaFetchScanNode.setRegionReplicaSet(schemaRegion);
         root.addChild(schemaFetchScanNode);

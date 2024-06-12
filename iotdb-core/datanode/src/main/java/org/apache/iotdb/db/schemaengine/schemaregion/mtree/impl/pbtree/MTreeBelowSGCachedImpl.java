@@ -898,7 +898,8 @@ public class MTreeBelowSGCachedImpl {
             @Override
             protected Void collectEntity(IDeviceMNode<ICachedMNode> node) {
               if (node.isAlignedNullable() != null) {
-                schemaTree.appendDevice(node.getPartialPath(), node.isAligned());
+                schemaTree.appendTemplateDevice(
+                    node.getPartialPath(), node.isAligned(), node.getSchemaTemplateId(), null);
               }
               return null;
             }

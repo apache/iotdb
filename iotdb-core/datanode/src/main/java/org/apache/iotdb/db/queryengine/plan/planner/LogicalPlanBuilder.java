@@ -28,8 +28,9 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
+import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
@@ -1376,15 +1377,15 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planDeviceRegionScan(
-      Map<PartialPath, Boolean> devicePathToAlignedStatus, boolean outputCount) {
+      Map<PartialPath, DeviceContext> devicePathToContextMap, boolean outputCount) {
     this.root =
         new DeviceRegionScanNode(
-            context.getQueryId().genPlanNodeId(), devicePathToAlignedStatus, outputCount, null);
+            context.getQueryId().genPlanNodeId(), devicePathToContextMap, outputCount, null);
     return this;
   }
 
   public LogicalPlanBuilder planTimeseriesRegionScan(
-      Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemaInfo,
+      Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesSchemaInfo,
       boolean outputCount) {
     TimeseriesRegionScanNode timeseriesRegionScanNode =
         new TimeseriesRegionScanNode(context.getQueryId().genPlanNodeId(), outputCount, null);

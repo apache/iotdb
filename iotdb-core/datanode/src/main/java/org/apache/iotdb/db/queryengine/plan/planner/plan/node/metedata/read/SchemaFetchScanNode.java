@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -27,66 +26,63 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 
+import com.google.common.collect.ImmutableList;
+
 import java.util.Collections;
 import java.util.List;
 
-public abstract class SchemaFetchScanNode  extends SourceNode {
-    protected final PartialPath storageGroup;
-    protected final PathPatternTree patternTree;
-    protected TRegionReplicaSet schemaRegionReplicaSet;
+public abstract class SchemaFetchScanNode extends SourceNode {
+  protected final PartialPath storageGroup;
+  protected final PathPatternTree patternTree;
+  protected TRegionReplicaSet schemaRegionReplicaSet;
 
-    protected SchemaFetchScanNode(
-            PlanNodeId id,
-            PartialPath storageGroup,
-            PathPatternTree patternTree){
-        super(id);
-        this.storageGroup = storageGroup;
-        this.patternTree = patternTree;
-        this.patternTree.constructTree();
-    }
+  protected SchemaFetchScanNode(
+      PlanNodeId id, PartialPath storageGroup, PathPatternTree patternTree) {
+    super(id);
+    this.storageGroup = storageGroup;
+    this.patternTree = patternTree;
+    this.patternTree.constructTree();
+  }
 
+  public PartialPath getStorageGroup() {
+    return storageGroup;
+  }
 
-    public PartialPath getStorageGroup() {
-        return storageGroup;
-    }
+  public PathPatternTree getPatternTree() {
+    return patternTree;
+  }
 
-    public PathPatternTree getPatternTree() {
-        return patternTree;
-    }
+  @Override
+  public List<PlanNode> getChildren() {
+    return Collections.emptyList();
+  }
 
-    @Override
-    public List<PlanNode> getChildren() {
-        return Collections.emptyList();
-    }
+  @Override
+  public void addChild(PlanNode child) {}
 
-    @Override
-    public void addChild(PlanNode child) {}
+  @Override
+  public int allowedChildCount() {
+    return 0;
+  }
 
-    @Override
-    public int allowedChildCount() {
-        return 0;
-    }
+  @Override
+  public List<String> getOutputColumnNames() {
+    return ImmutableList.of();
+  }
 
-    @Override
-    public List<String> getOutputColumnNames() {
-        return ImmutableList.of();
-    }
+  @Override
+  public void open() throws Exception {}
 
+  @Override
+  public TRegionReplicaSet getRegionReplicaSet() {
+    return schemaRegionReplicaSet;
+  }
 
-    @Override
-    public void open() throws Exception {}
+  @Override
+  public void setRegionReplicaSet(TRegionReplicaSet schemaRegionReplicaSet) {
+    this.schemaRegionReplicaSet = schemaRegionReplicaSet;
+  }
 
-    @Override
-    public TRegionReplicaSet getRegionReplicaSet() {
-        return schemaRegionReplicaSet;
-    }
-
-    @Override
-    public void setRegionReplicaSet(TRegionReplicaSet schemaRegionReplicaSet) {
-        this.schemaRegionReplicaSet = schemaRegionReplicaSet;
-    }
-
-        @Override
-        public void close() throws Exception {}
-
+  @Override
+  public void close() throws Exception {}
 }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -28,15 +27,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
-
-import com.google.common.collect.ImmutableList;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
 
 public class DeviceSchemaFetchScanNode extends SchemaFetchScanNode {
 
@@ -51,7 +45,6 @@ public class DeviceSchemaFetchScanNode extends SchemaFetchScanNode {
     this.authorityScope = authorityScope;
     this.authorityScope.constructTree();
   }
-
 
   public PathPatternTree getAuthorityScope() {
     return authorityScope;

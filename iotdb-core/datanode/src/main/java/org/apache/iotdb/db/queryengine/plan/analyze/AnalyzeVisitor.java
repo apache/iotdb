@@ -49,8 +49,9 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
+import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -2879,7 +2880,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Map<PartialPath, List<String>> deviceToMeasurementMap = new HashMap<>();
     Map<PartialPath, Boolean> deviceToAlignedMap = new HashMap<>();
     Map<PartialPath, List<IMeasurementSchema>> deviceToMeasurementSchemaMap = new HashMap<>();
-    Map<PartialPath, List<TimeseriesSchemaInfo>> deviceToTimeseriesSchemaMap = new HashMap<>();
+    Map<PartialPath, List<TimeseriesContext>> deviceToTimeseriesSchemaMap = new HashMap<>();
     for (PartialPath pattern : patternTree.getAllPathPatterns()) {
       List<MeasurementPath> measurementPathList = schemaTree.searchMeasurementPaths(pattern).left;
       for (MeasurementPath measurementPath : measurementPathList) {
@@ -2895,7 +2896,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         deviceToTimeseriesSchemaMap
             .computeIfAbsent(devicePath, k -> new ArrayList<>())
             .add(
-                new TimeseriesSchemaInfo(
+                new TimeseriesContext(
                     new MeasurementSchemaInfo(
                         measurementPath.getMeasurement(),
                         measurementPath.getMeasurementSchema(),
@@ -2904,19 +2905,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
 
-    Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemaInfo =
+    Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesSchemaInfo =
         new HashMap<>();
     for (PartialPath devicePath : deviceToAlignedMap.keySet()) {
       if (deviceToAlignedMap.get(devicePath)) {
         List<String> measurementList = deviceToMeasurementMap.get(devicePath);
         List<IMeasurementSchema> schemaList = deviceToMeasurementSchemaMap.get(devicePath);
-        List<TimeseriesSchemaInfo> timeseriesSchemaInfoList =
-            deviceToTimeseriesSchemaMap.get(devicePath);
+        List<TimeseriesContext> timeseriesContextList = deviceToTimeseriesSchemaMap.get(devicePath);
         AlignedPath alignedPath =
             new AlignedPath(devicePath.getNodes(), measurementList, schemaList);
         deviceToTimeseriesSchemaInfo
             .computeIfAbsent(devicePath, k -> new HashMap<>())
-            .put(alignedPath, timeseriesSchemaInfoList);
+            .put(alignedPath, timeseriesContextList);
       } else {
         for (String measurement : deviceToMeasurementMap.get(devicePath)) {
           MeasurementPath measurementPath =
@@ -2926,7 +2926,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               .put(
                   measurementPath,
                   Collections.singletonList(
-                      new TimeseriesSchemaInfo(
+                      new TimeseriesContext(
                           new MeasurementSchemaInfo(
                               measurement,
                               deviceToMeasurementSchemaMap.get(devicePath).get(0),
@@ -3068,15 +3068,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     // fetch Data partition
-    List<DeviceSchemaInfo> deviceSchemaInfoList = schemaTree.getMatchedDevices(ALL_MATCH_PATTERN);
-    Map<PartialPath, Boolean> devicePathsToAlignedStatus = new HashMap<>();
-    for (DeviceSchemaInfo deviceSchema : deviceSchemaInfoList) {
-      devicePathsToAlignedStatus.put(deviceSchema.getDevicePath(), deviceSchema.isAligned());
-    }
-    analysis.setDevicePathToAlignedStatus(devicePathsToAlignedStatus);
+
+    Map<PartialPath, DeviceContext> devicePathsToInfoMap =
+        schemaTree.getMatchedDevices(pattern).stream()
+            .collect(Collectors.toMap(DeviceSchemaInfo::getDevicePath, DeviceContext::new));
+    analysis.setDevicePathToContextMap(devicePathsToInfoMap);
     DataPartition dataPartition =
         fetchDataPartitionByDevices(
-            devicePathsToAlignedStatus.keySet().stream()
+            devicePathsToInfoMap.keySet().stream()
                 .map(PartialPath::getFullPath)
                 .collect(Collectors.toSet()),
             schemaTree,

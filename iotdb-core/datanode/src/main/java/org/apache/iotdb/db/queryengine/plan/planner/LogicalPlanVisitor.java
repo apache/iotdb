@@ -579,7 +579,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     if (showDevicesStatement.hasTimeCondition()) {
       planBuilder =
           planBuilder
-              .planDeviceRegionScan(analysis.getDevicePathToAlignedStatus(), false)
+              .planDeviceRegionScan(analysis.getDevicePathToContextMap(), false)
               .planLimit(showDevicesStatement.getLimit())
               .planOffset(showDevicesStatement.getOffset());
       return planBuilder.getRoot();
@@ -625,7 +625,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
     if (countDevicesStatement.hasTimeCondition()) {
-      planBuilder = planBuilder.planDeviceRegionScan(analysis.getDevicePathToAlignedStatus(), true);
+      planBuilder = planBuilder.planDeviceRegionScan(analysis.getDevicePathToContextMap(), true);
       return planBuilder.getRoot();
     }
 

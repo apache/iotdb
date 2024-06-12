@@ -32,7 +32,7 @@ import java.util.Objects;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TimeSeriesSchemaSource.mapToString;
 
-public class TimeseriesSchemaInfo {
+public class TimeseriesContext {
   private final String dataType;
   private final String encoding;
   private final String compression;
@@ -45,7 +45,7 @@ public class TimeseriesSchemaInfo {
   private final String deadband;
   private final String deadbandParameters;
 
-  public TimeseriesSchemaInfo(IMeasurementSchemaInfo schemaInfo) {
+  public TimeseriesContext(IMeasurementSchemaInfo schemaInfo) {
     this.dataType = schemaInfo.getSchema().getType().toString();
     this.encoding = schemaInfo.getSchema().getEncodingType().toString();
     this.compression = schemaInfo.getSchema().getCompressor().toString();
@@ -85,7 +85,7 @@ public class TimeseriesSchemaInfo {
     return deadband;
   }
 
-  public TimeseriesSchemaInfo(
+  public TimeseriesContext(
       String dataType,
       String alias,
       String encoding,
@@ -122,7 +122,7 @@ public class TimeseriesSchemaInfo {
     ReadWriteIOUtils.write(deadbandParameters, stream);
   }
 
-  public static TimeseriesSchemaInfo deserialize(ByteBuffer buffer) {
+  public static TimeseriesContext deserialize(ByteBuffer buffer) {
     String dataType = ReadWriteIOUtils.readString(buffer);
     String alias = ReadWriteIOUtils.readString(buffer);
     String encoding = ReadWriteIOUtils.readString(buffer);
@@ -130,7 +130,7 @@ public class TimeseriesSchemaInfo {
     String tags = ReadWriteIOUtils.readString(buffer);
     String deadband = ReadWriteIOUtils.readString(buffer);
     String deadbandParameters = ReadWriteIOUtils.readString(buffer);
-    return new TimeseriesSchemaInfo(
+    return new TimeseriesContext(
         dataType, alias, encoding, compression, tags, deadband, deadbandParameters);
   }
 
@@ -142,7 +142,7 @@ public class TimeseriesSchemaInfo {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    TimeseriesSchemaInfo that = (TimeseriesSchemaInfo) obj;
+    TimeseriesContext that = (TimeseriesContext) obj;
     return Objects.equals(dataType, that.dataType)
         && Objects.equals(alias, that.alias)
         && encoding.equals(that.encoding)
