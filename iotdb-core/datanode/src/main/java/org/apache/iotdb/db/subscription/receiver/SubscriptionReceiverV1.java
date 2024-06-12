@@ -31,7 +31,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
-import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -72,6 +71,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
@@ -247,7 +247,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private TPipeSubscribeResp handlePipeSubscribeSubscribe(final PipeSubscribeSubscribeReq req) {
     try {
       return handlePipeSubscribeSubscribeInternal(req);
-    } catch (final SubscriptionException e) {
+    } catch (final SubscriptionException | IOException e) {
       final String exceptionMessage =
           String.format(
               "Subscription: something unexpected happened when subscribing: %s, req: %s", e, req);
@@ -258,7 +258,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private TPipeSubscribeResp handlePipeSubscribeSubscribeInternal(
-      final PipeSubscribeSubscribeReq req) {
+      final PipeSubscribeSubscribeReq req) throws IOException {
     // check consumer config thread local
     final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
@@ -268,18 +268,21 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     // subscribe topics
-    Set<String> topicNames = req.getTopicNames();
-    topicNames = topicNames.stream().map(ASTVisitor::parseIdentifier).collect(Collectors.toSet());
+    final Set<String> topicNames = req.getTopicNames();
     subscribe(consumerConfig, topicNames);
 
     LOGGER.info("Subscription: consumer {} subscribe {} successfully", consumerConfig, topicNames);
-    return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
+    return PipeSubscribeSubscribeResp.toTPipeSubscribeResp(
+        RpcUtils.SUCCESS_STATUS,
+        SubscriptionAgent.consumer()
+            .getTopicsSubscribedByConsumer(
+                consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()));
   }
 
   private TPipeSubscribeResp handlePipeSubscribeUnsubscribe(final PipeSubscribeUnsubscribeReq req) {
     try {
       return handlePipeSubscribeUnsubscribeInternal(req);
-    } catch (final SubscriptionException e) {
+    } catch (final SubscriptionException | IOException e) {
       final String exceptionMessage =
           String.format(
               "Subscription: something unexpected happened when unsubscribing: %s, req: %s",
@@ -291,7 +294,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private TPipeSubscribeResp handlePipeSubscribeUnsubscribeInternal(
-      final PipeSubscribeUnsubscribeReq req) {
+      final PipeSubscribeUnsubscribeReq req) throws IOException {
     // check consumer config thread local
     final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
@@ -302,13 +305,16 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     // unsubscribe topics
-    Set<String> topicNames = req.getTopicNames();
-    topicNames = topicNames.stream().map(ASTVisitor::parseIdentifier).collect(Collectors.toSet());
+    final Set<String> topicNames = req.getTopicNames();
     unsubscribe(consumerConfig, topicNames);
 
     LOGGER.info(
         "Subscription: consumer {} unsubscribe {} successfully", consumerConfig, topicNames);
-    return PipeSubscribeUnsubscribeResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
+    return PipeSubscribeUnsubscribeResp.toTPipeSubscribeResp(
+        RpcUtils.SUCCESS_STATUS,
+        SubscriptionAgent.consumer()
+            .getTopicsSubscribedByConsumer(
+                consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId()));
   }
 
   private TPipeSubscribeResp handlePipeSubscribePoll(final PipeSubscribePollReq req) {
@@ -403,15 +409,11 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         SubscriptionAgent.consumer()
             .getTopicsSubscribedByConsumer(
                 consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
-    final Set<String> topicNames;
-    if (messagePayload.getTopicNames().isEmpty()) {
+    Set<String> topicNames = messagePayload.getTopicNames();
+    if (topicNames.isEmpty()) {
       // poll all subscribed topics
       topicNames = subscribedTopicNames;
     } else {
-      topicNames =
-          messagePayload.getTopicNames().stream()
-              .map(ASTVisitor::parseIdentifier)
-              .collect(Collectors.toSet());
       // filter unsubscribed topics
       topicNames.removeIf((topicName) -> !subscribedTopicNames.contains(topicName));
     }

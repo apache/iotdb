@@ -24,12 +24,16 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
+import org.apache.iotdb.db.subscription.event.SubscriptionTsFileEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,6 +50,9 @@ public abstract class SubscriptionPrefetchingQueue {
   protected final Map<SubscriptionCommitContext, SubscriptionEvent> uncommittedEvents;
   private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
 
+  private volatile boolean isCompleted = false;
+  private volatile boolean isClosed = false;
+
   public SubscriptionPrefetchingQueue(
       final String brokerId,
       final String topicName,
@@ -61,11 +68,16 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public abstract void executePrefetch();
 
-  /** clean up uncommitted events */
   public void cleanup() {
+    // clean up uncommitted events
     for (final SubscriptionEvent event : uncommittedEvents.values()) {
+      event.clearReferenceCount();
       SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, true);
     }
+    uncommittedEvents.clear();
+
+    // no need to clean up events in inputPendingQueue, see
+    // org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask.close
   }
 
   /////////////////////////////// commit ///////////////////////////////
@@ -149,5 +161,23 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public long getCurrentCommitId() {
     return subscriptionCommitIdGenerator.get();
+  }
+
+  /////////////////////////////// termination ///////////////////////////////
+
+  public boolean isClosed() {
+    return isClosed;
+  }
+
+  public void markClosed() {
+    isClosed = true;
+  }
+
+  public boolean isCompleted() {
+    return isCompleted;
+  }
+
+  public void markCompleted() {
+    isCompleted = true;
   }
 }

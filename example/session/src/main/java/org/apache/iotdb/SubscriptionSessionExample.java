@@ -25,14 +25,23 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
+import org.apache.iotdb.session.subscription.consumer.AckStrategy;
+import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
+import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 
 import org.apache.tsfile.read.TsFileReader;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.expression.QueryExpression;
+import org.apache.tsfile.read.query.dataset.QueryDataSet;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
@@ -46,11 +55,14 @@ public class SubscriptionSessionExample {
   private static final int PORT = 6667;
 
   private static final String TOPIC_1 = "topic1";
-  private static final String TOPIC_2 = "`topic2`";
+  private static final String TOPIC_2 = "`'topic2'`";
+  private static final String TOPIC_3 = "`\"topic3\"`";
+  private static final String TOPIC_4 = "`\"top \\.i.c4\"`";
 
-  public static final long SLEEP_NS = 1_000_000_000L;
-  public static final long POLL_TIMEOUT_MS = 10_000L;
+  private static final long SLEEP_NS = 1_000_000_000L;
+  private static final long POLL_TIMEOUT_MS = 10_000L;
   private static final int MAX_RETRY_TIMES = 3;
+  private static final int PARALLELISM = 8;
 
   private static void prepareData() throws Exception {
     // Open session
@@ -66,13 +78,13 @@ public class SubscriptionSessionExample {
 
     // Insert some historical data
     final long currentTime = System.currentTimeMillis();
-    for (int i = 0; i < 10000; ++i) {
+    for (int i = 0; i < 100; ++i) {
       session.executeNonQueryStatement(
           String.format("insert into root.db.d1(time, s1, s2) values (%s, 1, 2)", i));
       session.executeNonQueryStatement(
-          String.format("insert into root.db.d2(time, s3, s4) values (%s, 3, 4)", currentTime + i));
+          String.format("insert into root.db.d2(time, s1, s2) values (%s, 3, 4)", currentTime + i));
       session.executeNonQueryStatement(
-          String.format("insert into root.sg.d3(time, s5) values (%s, 5)", currentTime + 2 * i));
+          String.format("insert into root.sg.d3(time, s1) values (%s, 5)", currentTime + 2 * i));
     }
     session.executeNonQueryStatement("flush");
 
@@ -104,11 +116,16 @@ public class SubscriptionSessionExample {
     session = null;
   }
 
-  private static void subscriptionExample1() throws Exception {
+  /** single pull consumer subscribe topic with path and time range */
+  private static void dataSubscription1() throws Exception {
     // Create topics
     try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
       subscriptionSession.open();
-      subscriptionSession.createTopic(TOPIC_1);
+      final Properties config = new Properties();
+      config.put(TopicConstant.PATH_KEY, "root.db.d1.s1");
+      config.put(TopicConstant.START_TIME_KEY, 25);
+      config.put(TopicConstant.END_TIME_KEY, 75);
+      subscriptionSession.createTopic(TOPIC_1, config);
     }
 
     int retryCount = 0;
@@ -151,7 +168,8 @@ public class SubscriptionSessionExample {
     consumer1.close();
   }
 
-  private static void subscriptionExample2() throws Exception {
+  /** multi pull consumer subscribe topic with tsfile format */
+  private static void dataSubscription2() throws Exception {
     try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
@@ -160,7 +178,7 @@ public class SubscriptionSessionExample {
     }
 
     final List<Thread> threads = new ArrayList<>();
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < PARALLELISM; ++i) {
       final int idx = i;
       final Thread thread =
           new Thread(
@@ -187,7 +205,16 @@ public class SubscriptionSessionExample {
                     }
                     for (final SubscriptionMessage message : messages) {
                       try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
-                        // do something...
+                        final QueryDataSet dataSet =
+                            reader.query(
+                                QueryExpression.create(
+                                    Arrays.asList(
+                                        new Path("root.db.d2", "s2", true),
+                                        new Path("root.db.d3", "s1", true)),
+                                    null));
+                        while (dataSet.hasNext()) {
+                          System.out.println(dataSet.next());
+                        }
                       }
                     }
                     consumer2.commitSync(messages);
@@ -208,8 +235,8 @@ public class SubscriptionSessionExample {
 
   public static void main(final String[] args) throws Exception {
     prepareData();
-    dataQuery();
-    subscriptionExample1();
-    subscriptionExample2();
+    // dataQuery();
+    // dataSubscription1();
+    dataSubscription2();
   }
 }

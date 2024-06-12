@@ -17,43 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.it.dual;
+package org.apache.iotdb.subscription.it.local;
 
-import org.apache.iotdb.it.env.MultiEnvFactory;
-import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 
 import org.junit.After;
 import org.junit.Before;
 
-abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT {
-
-  protected BaseEnv senderEnv;
-  protected BaseEnv receiverEnv;
+abstract class AbstractSubscriptionLocalIT extends AbstractSubscriptionIT {
 
   @Override
   @Before
   public void setUp() {
     super.setUp();
 
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
-
-    setUpConfig();
-
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
-  }
-
-  protected void setUpConfig() {
-    // enable auto create schema
-    senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @Override
@@ -61,7 +40,6 @@ abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT {
   public void tearDown() {
     super.tearDown();
 
-    senderEnv.cleanClusterEnvironment();
-    receiverEnv.cleanClusterEnvironment();
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }
