@@ -78,17 +78,18 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
   private boolean shouldParsePattern = false;
 
   public TsFileInsertionDataContainer(
-      File tsFile, PipePattern pattern, long startTime, long endTime) throws IOException {
+      final File tsFile, final PipePattern pattern, final long startTime, final long endTime)
+      throws IOException {
     this(tsFile, pattern, startTime, endTime, null, null);
   }
 
   public TsFileInsertionDataContainer(
-      File tsFile,
-      PipePattern pattern,
-      long startTime,
-      long endTime,
-      PipeTaskMeta pipeTaskMeta,
-      EnrichedEvent sourceEvent)
+      final File tsFile,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent)
       throws IOException {
     this.pattern = pattern;
     timeFilterExpression =
@@ -135,16 +136,17 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
       // No longer need this. Help GC.
       tsFileSequenceReader.clearCachedDeviceMetadata();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       close();
       throw e;
     }
   }
 
   private Map<IDeviceID, List<String>> filterDeviceMeasurementsMapByPattern(
-      Map<IDeviceID, List<String>> originalDeviceMeasurementsMap) {
+      final Map<IDeviceID, List<String>> originalDeviceMeasurementsMap) {
     final Map<IDeviceID, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
-    for (Map.Entry<IDeviceID, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
+    for (final Map.Entry<IDeviceID, List<String>> entry :
+        originalDeviceMeasurementsMap.entrySet()) {
       final String deviceId = ((PlainDeviceID) entry.getKey()).toStringID();
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
@@ -223,7 +225,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
                         ((PlainDeviceID) entry.getKey()).toStringID(),
                         entry.getValue(),
                         timeFilterExpression);
-              } catch (IOException e) {
+              } catch (final IOException e) {
                 close();
                 throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);
               }
@@ -279,7 +281,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       if (tsFileReader != null) {
         tsFileReader.close();
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.warn("Failed to close TsFileReader", e);
     }
 
@@ -287,7 +289,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
       if (tsFileSequenceReader != null) {
         tsFileSequenceReader.close();
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.warn("Failed to close TsFileSequenceReader", e);
     }
 

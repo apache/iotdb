@@ -61,6 +61,7 @@ import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
@@ -195,8 +196,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                 pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
 
         transfer(
-            Objects.nonNull(insertNode) ? insertNode.getDevicePath().getFullPath() : null,
-            pipeTransferInsertNodeReqHandler);
+            // getDeviceId() may return null for InsertRowsNode
+            pipeInsertNodeTabletInsertionEvent.getDeviceId(), pipeTransferInsertNodeReqHandler);
       } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
         final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
             (PipeRawTabletInsertionEvent) tabletInsertionEvent;
@@ -487,7 +488,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   @Override
   // synchronized to avoid close connector when transfer event
-  public synchronized void close() throws Exception {
+  public synchronized void close() {
     isClosed.set(true);
 
     retryConnector.close();
@@ -496,11 +497,34 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();
     }
+
+    super.close();
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public int getRetryEventQueueSize() {
     return retryEventQueue.size();
+  }
+
+  // For performance, this will not acquire lock and does not guarantee the correct
+  // result. However, this shall not cause any exceptions when concurrently read & written.
+  public int getRetryEventCount(final String pipeName) {
+    final AtomicInteger count = new AtomicInteger(0);
+    try {
+      retryEventQueue.forEach(
+          event -> {
+            if (event instanceof EnrichedEvent
+                && pipeName.equals(((EnrichedEvent) event).getPipeName())) {
+              count.incrementAndGet();
+            }
+          });
+      return count.get();
+    } catch (Exception e) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Failed to get retry event count for pipe {}.", pipeName, e);
+      }
+      return count.get();
+    }
   }
 }

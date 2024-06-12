@@ -84,6 +84,8 @@ public class IoTDBVarianceIT {
 
   @Test
   public void testAllVarianceWithUnsupportedTypes() {
+    String errorMsg =
+        "Aggregate functions [AVG, SUM, EXTREME, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
@@ -92,11 +94,7 @@ public class IoTDBVarianceIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage(),
-            e.getMessage()
-                .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(errorMsg));
       }
       try {
         try (ResultSet resultSet = statement.executeQuery("SELECT stddev(s6) FROM root.db.d1")) {
@@ -104,11 +102,7 @@ public class IoTDBVarianceIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage(),
-            e.getMessage()
-                .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(errorMsg));
       }
       try {
         try (ResultSet resultSet =
@@ -117,11 +111,7 @@ public class IoTDBVarianceIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage(),
-            e.getMessage()
-                .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(errorMsg));
       }
       try {
         try (ResultSet resultSet =
@@ -130,11 +120,7 @@ public class IoTDBVarianceIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage(),
-            e.getMessage()
-                .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(errorMsg));
       }
       try {
         try (ResultSet resultSet =
@@ -143,11 +129,7 @@ public class IoTDBVarianceIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage(),
-            e.getMessage()
-                .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(errorMsg));
       }
       try {
         try (ResultSet resultSet =
@@ -156,11 +138,7 @@ public class IoTDBVarianceIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage(),
-            e.getMessage()
-                .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(errorMsg));
       }
       try {
         try (ResultSet resultSet = statement.executeQuery("SELECT variance(s3) FROM root.db.d1")) {
@@ -168,11 +146,7 @@ public class IoTDBVarianceIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage(),
-            e.getMessage()
-                .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(errorMsg));
       }
       try {
         try (ResultSet resultSet = statement.executeQuery("SELECT variance(s6) FROM root.db.d1")) {
@@ -180,11 +154,7 @@ public class IoTDBVarianceIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage(),
-            e.getMessage()
-                .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(errorMsg));
       }
       try {
         try (ResultSet resultSet = statement.executeQuery("SELECT var_pop(s3) FROM root.db.d1")) {
@@ -192,11 +162,7 @@ public class IoTDBVarianceIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage(),
-            e.getMessage()
-                .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(errorMsg));
       }
       try {
         try (ResultSet resultSet = statement.executeQuery("SELECT var_pop(s6) FROM root.db.d1")) {
@@ -204,11 +170,7 @@ public class IoTDBVarianceIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage(),
-            e.getMessage()
-                .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(errorMsg));
       }
       try {
         try (ResultSet resultSet = statement.executeQuery("SELECT var_samp(s3) FROM root.db.d1")) {
@@ -216,11 +178,7 @@ public class IoTDBVarianceIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage(),
-            e.getMessage()
-                .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(errorMsg));
       }
       try {
         try (ResultSet resultSet = statement.executeQuery("SELECT var_samp(s6) FROM root.db.d1")) {
@@ -228,11 +186,7 @@ public class IoTDBVarianceIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertTrue(
-            e.getMessage(),
-            e.getMessage()
-                .contains(
-                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE, STDDEV, STDDEV_POP, STDDEV_SAMP, VARIANCE, VAR_POP, VAR_SAMP] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains(errorMsg));
       }
     } catch (Exception e) {
       e.printStackTrace();

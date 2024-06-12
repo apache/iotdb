@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.process;
 
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -175,18 +176,21 @@ public class DeviceViewNode extends MultiChildProcessNode {
 
   public static DeviceViewNode deserialize(ByteBuffer byteBuffer) {
     OrderByParameter mergeOrderParameter = OrderByParameter.deserialize(byteBuffer);
+
     int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> outputColumnNames = new ArrayList<>();
     while (columnSize > 0) {
       outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
       columnSize--;
     }
+
     int devicesSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> devices = new ArrayList<>();
     while (devicesSize > 0) {
       devices.add(ReadWriteIOUtils.readString(byteBuffer));
       devicesSize--;
     }
+
     int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>(mapSize);
     while (mapSize > 0) {
@@ -203,6 +207,43 @@ public class DeviceViewNode extends MultiChildProcessNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new DeviceViewNode(
         planNodeId, mergeOrderParameter, outputColumnNames, devices, deviceToMeasurementIndexesMap);
+  }
+
+  @Override
+  public void serializeUseTemplate(DataOutputStream stream, TypeProvider typeProvider)
+      throws IOException {
+    PlanNodeType.DEVICE_VIEW.serialize(stream);
+    id.serialize(stream);
+    mergeOrderParameter.serializeAttributes(stream);
+    ReadWriteIOUtils.write(devices.size(), stream);
+    for (String deviceName : devices) {
+      ReadWriteIOUtils.write(deviceName, stream);
+    }
+
+    ReadWriteIOUtils.write(getChildren().size(), stream);
+    for (PlanNode planNode : getChildren()) {
+      planNode.serializeUseTemplate(stream, typeProvider);
+    }
+  }
+
+  public static DeviceViewNode deserializeUseTemplate(
+      ByteBuffer byteBuffer, TypeProvider typeProvider) {
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    OrderByParameter mergeOrderParameter = OrderByParameter.deserialize(byteBuffer);
+
+    int devicesSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> devices = new ArrayList<>(devicesSize);
+    while (devicesSize > 0) {
+      devices.add(ReadWriteIOUtils.readString(byteBuffer));
+      devicesSize--;
+    }
+
+    return new DeviceViewNode(
+        planNodeId,
+        mergeOrderParameter,
+        typeProvider.getTemplatedInfo().getDeviceViewOutputNames(),
+        devices,
+        null);
   }
 
   @Override

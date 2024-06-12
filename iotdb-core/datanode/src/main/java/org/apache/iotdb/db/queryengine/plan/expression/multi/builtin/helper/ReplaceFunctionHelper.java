@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelper;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.queryengine.transformation.api.LayerReader;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ReplaceFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
@@ -40,11 +40,11 @@ public class ReplaceFunctionHelper implements BuiltInScalarFunctionHelper {
   @Override
   public void checkBuiltInScalarFunctionInputDataType(TSDataType tsDataType)
       throws SemanticException {
-    if (tsDataType.equals(TSDataType.TEXT)) {
+    if (TSDataType.TEXT.equals(tsDataType) || TSDataType.STRING.equals(tsDataType)) {
       return;
     }
     throw new SemanticException(
-        "Input series of Scalar function [REPLACE] only support text data type.");
+        String.format("Unsupported data type %s for function REPLACE.", tsDataType));
   }
 
   @Override
@@ -65,10 +65,10 @@ public class ReplaceFunctionHelper implements BuiltInScalarFunctionHelper {
 
   @Override
   public Transformer getBuiltInScalarFunctionTransformer(
-      FunctionExpression expression, LayerPointReader layerPointReader) {
+      FunctionExpression expression, LayerReader layerReader) {
     checkFromAndToAttributes(expression);
     return new ReplaceFunctionTransformer(
-        layerPointReader,
+        layerReader,
         expression.getFunctionAttributes().get(REPLACE_FROM),
         expression.getFunctionAttributes().get(REPLACE_TO));
   }

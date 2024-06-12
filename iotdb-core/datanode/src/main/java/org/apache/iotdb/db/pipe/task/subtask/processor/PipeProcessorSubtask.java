@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.processor;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -80,7 +82,11 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
-    PipeProcessorMetrics.getInstance().register(this);
+
+    // Only register dataRegions
+    if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
+      PipeProcessorMetrics.getInstance().register(this);
+    }
   }
 
   @Override
@@ -116,15 +122,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // Record the last event for retry when exception occurs
     setLastEvent(event);
 
-    if (
-    // Though there is no event to process, there may still be some buffered events
-    // in the outputEventCollector. Return true if there are still buffered events,
-    // false otherwise.
-    event == null
-        // If there are still buffered events, process them first, the newly supplied
-        // event will be processed in the next round.
-        || !outputEventCollector.isBufferQueueEmpty()) {
-      return outputEventCollector.tryCollectBufferedEvents();
+    if (Objects.isNull(event)) {
+      return false;
     }
 
     outputEventCollector.resetCollectInvocationCount();
@@ -208,8 +207,6 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
           ErrorHandlingUtils.getRootCause(e).getMessage(),
           e);
     } finally {
-      outputEventCollector.close();
-
       // should be called after pipeProcessor.close()
       super.close();
     }
@@ -245,18 +242,6 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   public int getRegionId() {
     return regionId;
-  }
-
-  public int getTabletInsertionEventCount() {
-    return outputEventCollector.getTabletInsertionEventCount();
-  }
-
-  public int getTsFileInsertionEventCount() {
-    return outputEventCollector.getTsFileInsertionEventCount();
-  }
-
-  public int getPipeHeartbeatEventCount() {
-    return outputEventCollector.getPipeHeartbeatEventCount();
   }
 
   //////////////////////////// Error report ////////////////////////////

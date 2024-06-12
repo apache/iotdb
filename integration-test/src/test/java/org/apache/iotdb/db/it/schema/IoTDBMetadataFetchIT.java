@@ -227,6 +227,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   public void showDevicesWithSgTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      statement.execute("set ttl to root.ln.wf01.wt02 8888");
       String[] sqls =
           new String[] {
             "show devices root.ln.** with database", "show devices root.ln.wf01.wt01.temperature",
@@ -235,8 +236,8 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           new Set[] {
             new HashSet<>(
                 Arrays.asList(
-                    "root.ln.wf01.wt01,root.ln.wf01.wt01,false,null,",
-                    "root.ln.wf01.wt02,root.ln.wf01.wt02,true,null,")),
+                    "root.ln.wf01.wt01,root.ln.wf01.wt01,false,null,INF,",
+                    "root.ln.wf01.wt02,root.ln.wf01.wt02,true,null,8888,")),
             new HashSet<>(),
           };
 
@@ -288,8 +289,10 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           new Set[] {
             new HashSet<>(
                 Arrays.asList(
-                    "root.sg1.d2,true,t2,", "root.sg2.d1,false,t1,", "root.sg2.d2,true,t2,")),
-            new HashSet<>(Arrays.asList("root.sg2.d2,root.sg2,true,t2,")),
+                    "root.sg1.d2,true,t2,INF,",
+                    "root.sg2.d1,false,t1,INF,",
+                    "root.sg2.d2,true,t2,INF,")),
+            new HashSet<>(Arrays.asList("root.sg2.d2,root.sg2,true,t2,INF,")),
           };
 
       for (int n = 0; n < sqls.length; n++) {
@@ -319,6 +322,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   public void showDevicesTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      statement.execute("set ttl to root.ln.wf01.wt02 8888");
       String[] sqls =
           new String[] {
             "show devices root.ln.**",
@@ -328,9 +332,10 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
       Set<String>[] standards =
           new Set[] {
             new HashSet<>(
-                Arrays.asList("root.ln.wf01.wt01,false,null,", "root.ln.wf01.wt02,true,null,")),
+                Arrays.asList(
+                    "root.ln.wf01.wt01,false,null,INF,", "root.ln.wf01.wt02,true,null,8888,")),
             new HashSet<>(),
-            new HashSet<>(Arrays.asList("root.ln.wf01.wt02,true,null,")),
+            new HashSet<>(Arrays.asList("root.ln.wf01.wt02,true,null,8888,")),
           };
 
       for (int n = 0; n < sqls.length; n++) {
@@ -360,6 +365,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
   public void showDevicesWithWildcardTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      statement.execute("set ttl to root.ln.wf01.wt02 8888");
       String[] sqls =
           new String[] {
             "show devices root.l*.wf01.w*",
@@ -370,17 +376,18 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           new Set[] {
             new HashSet<>(
                 Arrays.asList(
-                    "root.ln.wf01.wt01,false,null,",
-                    "root.ln.wf01.wt02,true,null,",
-                    "root.ln1.wf01.wt01,false,null,",
-                    "root.ln2.wf01.wt01,false,null,")),
-            new HashSet<>(
-                Arrays.asList("root.ln.wf01.wt01,false,null,", "root.ln.wf01.wt02,true,null,")),
+                    "root.ln.wf01.wt01,false,null,INF,",
+                    "root.ln.wf01.wt02,true,null,8888,",
+                    "root.ln1.wf01.wt01,false,null,INF,",
+                    "root.ln2.wf01.wt01,false,null,INF,")),
             new HashSet<>(
                 Arrays.asList(
-                    "root.ln.wf01.wt01,false,null,",
-                    "root.ln1.wf01.wt01,false,null,",
-                    "root.ln2.wf01.wt01,false,null,"))
+                    "root.ln.wf01.wt01,false,null,INF,", "root.ln.wf01.wt02,true,null,8888,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01.wt01,false,null,INF,",
+                    "root.ln1.wf01.wt01,false,null,INF,",
+                    "root.ln2.wf01.wt01,false,null,INF,"))
           };
 
       for (int n = 0; n < sqls.length; n++) {

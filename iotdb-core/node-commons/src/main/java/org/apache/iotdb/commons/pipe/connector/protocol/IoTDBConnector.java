@@ -22,7 +22,10 @@ package org.apache.iotdb.commons.pipe.connector.protocol;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
+import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorConfig;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorFactory;
+import org.apache.iotdb.commons.pipe.connector.limiter.GlobalRateLimiter;
+import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -40,12 +43,18 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_SET;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_ZSTD_LEVEL_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_ZSTD_LEVEL_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_DEFAULT_VALUE;
@@ -65,7 +74,10 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_SET;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_RATE_LIMIT_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_RATE_LIMIT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_COMPRESSOR_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_COMPRESSOR_ZSTD_LEVEL_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RECORD_IGNORED_DATA_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RESOLVE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_EXCEPTION_CONFLICT_RETRY_MAX_TIME_SECONDS_KEY;
@@ -77,6 +89,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LOAD_BALANCE_STRATEGY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_RATE_LIMIT_KEY;
 
 public abstract class IoTDBConnector implements PipeConnector {
 
@@ -91,15 +104,20 @@ public abstract class IoTDBConnector implements PipeConnector {
 
   protected String loadBalanceStrategy;
 
-  protected boolean isRpcCompressionEnabled;
-  protected final List<PipeCompressor> compressors = new ArrayList<>();
+  private boolean isRpcCompressionEnabled;
+  private final List<PipeCompressor> compressors = new ArrayList<>();
+
+  private static final Map<String, PipeEndPointRateLimiter> PIPE_END_POINT_RATE_LIMITER_MAP =
+      new ConcurrentHashMap<>();
+  private double endPointRateLimitBytesPerSecond = -1;
+  private static final GlobalRateLimiter GLOBAL_RATE_LIMITER = new GlobalRateLimiter();
 
   protected boolean isTabletBatchModeEnabled = true;
 
   protected PipeReceiverStatusHandler receiverStatusHandler;
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     final PipeParameters parameters = validator.getParameters();
 
     validator.validate(
@@ -139,6 +157,21 @@ public abstract class IoTDBConnector implements PipeConnector {
             CONNECTOR_LOAD_BALANCE_STRATEGY_SET, loadBalanceStrategy),
         loadBalanceStrategy);
 
+    final int zstdCompressionLevel =
+        parameters.getIntOrDefault(
+            Arrays.asList(CONNECTOR_COMPRESSOR_ZSTD_LEVEL_KEY, SINK_COMPRESSOR_ZSTD_LEVEL_KEY),
+            CONNECTOR_COMPRESSOR_ZSTD_LEVEL_DEFAULT_VALUE);
+    validator.validate(
+        arg ->
+            (int) arg >= CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE
+                && (int) arg <= CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE,
+        String.format(
+            "Zstd compression level should be in the range [%d, %d], but got %d.",
+            CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE,
+            CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE,
+            zstdCompressionLevel),
+        zstdCompressionLevel);
+
     final String compressionTypes =
         parameters
             .getStringOrDefault(
@@ -158,7 +191,9 @@ public abstract class IoTDBConnector implements PipeConnector {
                 "Compressor should be one of %s, but got %s.",
                 CONNECTOR_COMPRESSOR_SET, trimmedCompressionType),
             trimmedCompressionType);
-        compressors.add(PipeCompressorFactory.getCompressor(trimmedCompressionType));
+        compressors.add(
+            PipeCompressorFactory.getCompressor(
+                new PipeCompressorConfig(trimmedCompressionType, zstdCompressionLevel)));
       }
     }
     validator.validate(
@@ -168,6 +203,17 @@ public abstract class IoTDBConnector implements PipeConnector {
             Byte.MAX_VALUE, compressors.size()),
         compressors.size());
     isRpcCompressionEnabled = !compressors.isEmpty();
+
+    endPointRateLimitBytesPerSecond =
+        parameters.getDoubleOrDefault(
+            Arrays.asList(CONNECTOR_RATE_LIMIT_KEY, SINK_RATE_LIMIT_KEY),
+            CONNECTOR_RATE_LIMIT_DEFAULT_VALUE);
+    validator.validate(
+        arg -> endPointRateLimitBytesPerSecond <= Double.MAX_VALUE,
+        String.format(
+            "Rate limit should be in the range (0, %f], but got %f.",
+            Double.MAX_VALUE, endPointRateLimitBytesPerSecond),
+        endPointRateLimitBytesPerSecond);
 
     validator.validate(
         arg -> arg.equals("retry") || arg.equals("ignore"),
@@ -186,7 +232,8 @@ public abstract class IoTDBConnector implements PipeConnector {
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     nodeUrls.clear();
     nodeUrls.addAll(parseNodeUrls(parameters));
@@ -230,7 +277,7 @@ public abstract class IoTDBConnector implements PipeConnector {
                 CONNECTOR_EXCEPTION_OTHERS_RECORD_IGNORED_DATA_DEFAULT_VALUE));
   }
 
-  protected LinkedHashSet<TEndPoint> parseNodeUrls(PipeParameters parameters)
+  protected LinkedHashSet<TEndPoint> parseNodeUrls(final PipeParameters parameters)
       throws PipeParameterNotValidException {
     final LinkedHashSet<TEndPoint> givenNodeUrls = new LinkedHashSet<>(nodeUrls);
 
@@ -271,15 +318,22 @@ public abstract class IoTDBConnector implements PipeConnector {
         givenNodeUrls.addAll(
             NodeUrlUtils.parseTEndPointUrls(
                 Arrays.asList(
-                    parameters.getStringByKeys(CONNECTOR_IOTDB_NODE_URLS_KEY).split(","))));
+                    parameters
+                        .getStringByKeys(CONNECTOR_IOTDB_NODE_URLS_KEY)
+                        .replace(" ", "")
+                        .split(","))));
       }
 
       if (parameters.hasAttribute(SINK_IOTDB_NODE_URLS_KEY)) {
         givenNodeUrls.addAll(
             NodeUrlUtils.parseTEndPointUrls(
-                Arrays.asList(parameters.getStringByKeys(SINK_IOTDB_NODE_URLS_KEY).split(","))));
+                Arrays.asList(
+                    parameters
+                        .getStringByKeys(SINK_IOTDB_NODE_URLS_KEY)
+                        .replace(" ", "")
+                        .split(","))));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(PARSE_URL_ERROR_FORMATTER, e.toString());
       throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
     }
@@ -289,8 +343,8 @@ public abstract class IoTDBConnector implements PipeConnector {
     return givenNodeUrls;
   }
 
-  private void checkNodeUrls(Set<TEndPoint> nodeUrls) throws PipeParameterNotValidException {
-    for (TEndPoint nodeUrl : nodeUrls) {
+  private void checkNodeUrls(final Set<TEndPoint> nodeUrls) throws PipeParameterNotValidException {
+    for (final TEndPoint nodeUrl : nodeUrls) {
       if (Objects.isNull(nodeUrl.ip) || nodeUrl.ip.isEmpty()) {
         LOGGER.warn(PARSE_URL_ERROR_FORMATTER, "host cannot be empty");
         throw new PipeParameterNotValidException(PARSE_URL_ERROR_MESSAGE);
@@ -302,13 +356,19 @@ public abstract class IoTDBConnector implements PipeConnector {
     }
   }
 
-  protected TPipeTransferReq compressIfNeeded(TPipeTransferReq req) throws IOException {
+  @Override
+  public void close() {
+    // TODO: Not all the limiters should be closed here, but it's fine for now.
+    PIPE_END_POINT_RATE_LIMITER_MAP.clear();
+  }
+
+  protected TPipeTransferReq compressIfNeeded(final TPipeTransferReq req) throws IOException {
     return isRpcCompressionEnabled
         ? PipeTransferCompressedReq.toTPipeTransferReq(req, compressors)
         : req;
   }
 
-  protected byte[] compressIfNeeded(byte[] reqInBytes) throws IOException {
+  protected byte[] compressIfNeeded(final byte[] reqInBytes) throws IOException {
     return isRpcCompressionEnabled
         ? PipeTransferCompressedReq.toTPipeTransferReqBytes(reqInBytes, compressors)
         : reqInBytes;
@@ -320,6 +380,18 @@ public abstract class IoTDBConnector implements PipeConnector {
 
   public List<PipeCompressor> getCompressors() {
     return compressors;
+  }
+
+  public void rateLimitIfNeeded(
+      final String pipeName, final TEndPoint endPoint, final long bytesLength) {
+    if (pipeName != null && endPointRateLimitBytesPerSecond > 0) {
+      PIPE_END_POINT_RATE_LIMITER_MAP
+          .computeIfAbsent(
+              pipeName, endpoint -> new PipeEndPointRateLimiter(endPointRateLimitBytesPerSecond))
+          .acquire(endPoint, bytesLength);
+    }
+
+    GLOBAL_RATE_LIMITER.acquire(bytesLength);
   }
 
   public PipeReceiverStatusHandler statusHandler() {

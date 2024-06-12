@@ -85,7 +85,11 @@ choose_unit() {
     echo "$unit"
 }
 
-properties_file="$IOTDB_HOME/conf/iotdb-datanode.properties"
+if [ -f "$IOTDB_HOME/conf/iotdb-system.properties" ]; then
+  properties_file="$IOTDB_HOME/conf/iotdb-system.properties"
+else
+  properties_file="$IOTDB_HOME/conf/iotdb-datanode.properties"
+fi
 data_dir_key="dn_data_dirs"
 value=$(get_property_value "$properties_file" "$data_dir_key")
 if [ -n "$value" ]; then

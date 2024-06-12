@@ -73,9 +73,11 @@ public class MemPageReader implements IPageReader {
                 tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getBoolean(i));
             break;
           case INT32:
+          case DATE:
             batchData.putInt(tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getInt(i));
             break;
           case INT64:
+          case TIMESTAMP:
             batchData.putLong(tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getLong(i));
             break;
           case DOUBLE:
@@ -87,6 +89,8 @@ public class MemPageReader implements IPageReader {
                 tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getFloat(i));
             break;
           case TEXT:
+          case STRING:
+          case BLOB:
             batchData.putBinary(
                 tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getBinary(i));
             break;

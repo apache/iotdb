@@ -19,24 +19,23 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.queryengine.transformation.api.YieldableState;
 import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFExecutor;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.iterator.TVListForwardIterator;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
 
-import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.block.column.Column;
 
 import java.io.IOException;
 
 public abstract class UniversalUDFQueryTransformer extends UDFQueryTransformer {
-
-  protected final LayerPointReader layerPointReader;
-  protected final boolean isLayerPointReaderConstant;
+  protected final ElasticSerializableTVList outputStorage;
+  protected final TVListForwardIterator outputLayerIterator;
 
   protected UniversalUDFQueryTransformer(UDTFExecutor executor) {
     super(executor);
-    layerPointReader = executor.getCollector().constructPointReaderUsingTrivialEvictionStrategy();
-    isLayerPointReaderConstant = layerPointReader.isConstantPointReader();
+    outputStorage = executor.getOutputStorage();
+    outputLayerIterator = outputStorage.constructIterator();
   }
 
   @Override
@@ -53,57 +52,25 @@ public abstract class UniversalUDFQueryTransformer extends UDFQueryTransformer {
     return YieldableState.YIELDABLE;
   }
 
-  @Override
-  protected final boolean cacheValue() throws QueryProcessException, IOException {
-    while (!cacheValueFromUDFOutput()) {
-      if (!executeUDFOnce() && !terminate()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   protected abstract YieldableState tryExecuteUDFOnce() throws Exception;
 
-  protected abstract boolean executeUDFOnce() throws QueryProcessException, IOException;
-
-  protected final boolean cacheValueFromUDFOutput() throws QueryProcessException, IOException {
-    if (!layerPointReader.next()) {
+  protected final boolean cacheValueFromUDFOutput() throws IOException {
+    if (!outputLayerIterator.hasNext()) {
       return false;
     }
-    cachedTime = layerPointReader.currentTime();
-    if (layerPointReader.isCurrentNull()) {
-      currentNull = true;
-    } else {
-      switch (tsDataType) {
-        case INT32:
-          cachedInt = layerPointReader.currentInt();
-          break;
-        case INT64:
-          cachedLong = layerPointReader.currentLong();
-          break;
-        case FLOAT:
-          cachedFloat = layerPointReader.currentFloat();
-          break;
-        case DOUBLE:
-          cachedDouble = layerPointReader.currentDouble();
-          break;
-        case BOOLEAN:
-          cachedBoolean = layerPointReader.currentBoolean();
-          break;
-        case TEXT:
-          cachedBinary = layerPointReader.currentBinary();
-          break;
-        default:
-          throw new UnSupportedDataTypeException(tsDataType.toString());
-      }
-    }
-    layerPointReader.readyForNext();
+    outputLayerIterator.next();
+
+    Column values = outputLayerIterator.currentValues();
+    Column times = outputLayerIterator.currentTimes();
+    cachedColumns = new Column[] {values, times};
+
+    outputStorage.setEvictionUpperBound(outputLayerIterator.getEndPointIndex());
+
     return true;
   }
 
   @Override
   public final boolean isConstantPointReader() {
-    return isLayerPointReaderConstant;
+    return false;
   }
 }

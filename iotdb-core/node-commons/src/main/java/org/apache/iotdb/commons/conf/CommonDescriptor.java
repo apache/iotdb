@@ -103,6 +103,13 @@ public class CommonDescriptor {
     }
     config.setTierTTLInMs(tierTTL);
 
+    int ttlRuleCapacity =
+        Integer.parseInt(
+            properties.getProperty(
+                "ttl_rule_capacity", String.valueOf(config.getTTlRuleCapacity())));
+    ttlRuleCapacity = ttlRuleCapacity < 0 ? Integer.MAX_VALUE : ttlRuleCapacity;
+    config.setTTlRuleCapacity(ttlRuleCapacity);
+
     config.setSyncDir(properties.getProperty("dn_sync_dir", config.getSyncDir()).trim());
 
     config.setWalDirs(
@@ -239,6 +246,8 @@ public class CommonDescriptor {
             properties.getProperty(
                 "cluster_device_limit_threshold",
                 String.valueOf(config.getDeviceLimitThreshold()))));
+
+    loadRetryProperties(properties);
   }
 
   private void loadPipeProps(Properties properties) {
@@ -354,13 +363,6 @@ public class CommonDescriptor {
                     properties.getProperty(
                         "pipe_connector_retry_interval_ms",
                         String.valueOf(config.getPipeConnectorRetryIntervalMs())))));
-    config.setPipeConnectorPendingQueueSize(
-        Integer.parseInt(
-            Optional.ofNullable(properties.getProperty("pipe_sink_pending_queue_size"))
-                .orElse(
-                    properties.getProperty(
-                        "pipe_connector_pending_queue_size",
-                        String.valueOf(config.getPipeConnectorPendingQueueSize())))));
     config.setPipeConnectorRPCThriftCompressionEnabled(
         Boolean.parseBoolean(
             Optional.ofNullable(properties.getProperty("pipe_sink_rpc_thrift_compression_enabled"))
@@ -383,6 +385,12 @@ public class CommonDescriptor {
                     properties.getProperty(
                         "pipe_async_connector_max_client_number",
                         String.valueOf(config.getPipeAsyncConnectorMaxClientNumber())))));
+
+    config.setPipeAllSinksRateLimitBytesPerSecond(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_all_sinks_rate_limit_bytes_per_second",
+                String.valueOf(config.getPipeAllSinksRateLimitBytesPerSecond()))));
 
     config.setSeperatedPipeHeartbeatEnabled(
         Boolean.parseBoolean(
@@ -533,6 +541,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_snapshot_execution_max_batch_size",
                 String.valueOf(config.getPipeSnapshotExecutionMaxBatchSize()))));
+    config.setPipeRemainingTimeCommitRateSmoothingFactor(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_remaining_time_commit_rate_smoothing_factor",
+                String.valueOf(config.getPipeRemainingTimeCommitRateSmoothingFactor()))));
 
     config.setTwoStageAggregateMaxCombinerLiveTimeInMs(
         Long.parseLong(
@@ -552,6 +565,11 @@ public class CommonDescriptor {
   }
 
   private void loadSubscriptionProps(Properties properties) {
+    config.setSubscriptionCacheMemoryUsagePercentage(
+        Float.parseFloat(
+            properties.getProperty(
+                "subscription_cache_memory_usage_percentage",
+                String.valueOf(config.getSubscriptionCacheMemoryUsagePercentage()))));
     config.setSubscriptionSubtaskExecutorMaxThreadNum(
         Integer.parseInt(
             properties.getProperty(
@@ -565,6 +583,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_max_tablets_per_prefetching",
                 String.valueOf(config.getSubscriptionMaxTabletsPerPrefetching()))));
+    config.setSubscriptionMaxTabletsSizeInBytesPerPrefetching(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_max_tablets_size_in_bytes_per_prefetching",
+                String.valueOf(config.getSubscriptionMaxTabletsSizeInBytesPerPrefetching()))));
     config.setSubscriptionPollMaxBlockingTimeMs(
         Integer.parseInt(
             properties.getProperty(
@@ -585,16 +608,25 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_recycle_uncommitted_event_interval_ms",
                 String.valueOf(config.getSubscriptionRecycleUncommittedEventIntervalMs()))));
-    config.setSubscriptionDefaultPollTimeoutMs(
+    config.setSubscriptionReadFileBufferSize(
         Integer.parseInt(
             properties.getProperty(
-                "subscription_default_poll_timeout_ms",
-                String.valueOf(config.getSubscriptionDefaultPollTimeoutMs()))));
-    config.setSubscriptionMinPollTimeoutMs(
-        Integer.parseInt(
+                "subscription_read_file_buffer_size",
+                String.valueOf(config.getSubscriptionReadFileBufferSize()))));
+  }
+
+  public void loadRetryProperties(Properties properties) {
+    config.setRemoteWriteMaxRetryDurationInMs(
+        Long.parseLong(
             properties.getProperty(
-                "subscription_min_poll_timeout_ms",
-                String.valueOf(config.getSubscriptionMinPollTimeoutMs()))));
+                "write_request_remote_dispatch_max_retry_duration_in_ms",
+                String.valueOf(config.getRemoteWriteMaxRetryDurationInMs()))));
+
+    config.setRetryForUnknownErrors(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_retry_for_unknown_error",
+                String.valueOf(config.isRetryForUnknownErrors()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

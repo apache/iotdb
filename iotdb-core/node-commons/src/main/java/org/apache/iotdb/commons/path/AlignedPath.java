@@ -115,10 +115,11 @@ public class AlignedPath extends PartialPath {
     schemaList = new ArrayList<>();
   }
 
-  public AlignedPath(String[] nodes, List<String> measurementList) {
+  public AlignedPath(
+      String[] nodes, List<String> measurementList, List<IMeasurementSchema> schemaList) {
     super(nodes);
     this.measurementList = measurementList;
-    this.schemaList = new ArrayList<>();
+    this.schemaList = schemaList;
   }
 
   /**

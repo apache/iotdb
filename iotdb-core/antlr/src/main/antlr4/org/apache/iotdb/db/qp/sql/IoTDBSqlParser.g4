@@ -47,7 +47,7 @@ ddlStatement
     | setSchemaTemplate | unsetSchemaTemplate
     | alterSchemaTemplate
     // TTL
-    | setTTL | unsetTTL | showTTL | showAllTTL
+    | setTTL | unsetTTL | showAllTTL
     // Function
     | createFunction | dropFunction | showFunctions
     // Trigger
@@ -82,7 +82,7 @@ dclStatement
     ;
 
 utilityStatement
-    : flush | clearCache | settle | startRepairData | stopRepairData | explain
+    : flush | clearCache | setConfiguration | settle | startRepairData | stopRepairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
@@ -317,17 +317,12 @@ alterSchemaTemplate
 // TTL =============================================================================================
 // ---- Set TTL
 setTTL
-    : SET TTL TO path=prefixPath time=INTEGER_LITERAL
+    : SET TTL TO path=prefixPath time=(INTEGER_LITERAL | INF)
     ;
 
 // ---- Unset TTL
 unsetTTL
     : UNSET TTL TO path=prefixPath
-    ;
-
-// ---- Show TTL
-showTTL
-    : SHOW TTL ON prefixPath (COMMA prefixPath)*
     ;
 
 // ---- Show All TTL
@@ -982,6 +977,15 @@ clearCache
     : CLEAR CACHE (ON (LOCAL | CLUSTER))?
     ;
 
+// Set Configuration
+setConfiguration
+    : SET CONFIGURATION setConfigurationEntry+ (ON INTEGER_LITERAL)?
+    ;
+
+setConfigurationEntry
+    : STRING_LITERAL OPERATOR_SEQ STRING_LITERAL
+    ;
+
 // Settle
 settle
     : SETTLE (prefixPath|tsFilePath=STRING_LITERAL)
@@ -1155,6 +1159,7 @@ constant
     | (MINUS|PLUS|DIV)? realLiteral
     | (MINUS|PLUS|DIV)? INTEGER_LITERAL
     | STRING_LITERAL
+    | BINARY_LITERAL
     | boolean_literal
     | null_literal
     | nan_literal
@@ -1314,6 +1319,7 @@ attributeKey
 attributeValue
     : identifier
     | constant
+    | TIMESTAMP
     ;
 
 alias

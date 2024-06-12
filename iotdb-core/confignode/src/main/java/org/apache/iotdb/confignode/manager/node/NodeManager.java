@@ -26,6 +26,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
+import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
@@ -33,9 +35,11 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.confignode.client.ConfigNodeToConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncDataNodeRequestContext;
+import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -52,6 +56,7 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterR
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.IManager;
+import org.apache.iotdb.confignode.manager.TTLManager;
 import org.apache.iotdb.confignode.manager.TriggerManager;
 import org.apache.iotdb.confignode.manager.UDFManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
@@ -241,7 +246,7 @@ public class NodeManager {
       runtimeConfiguration.setAllPipeInformation(
           getPipeManager().getPipePluginCoordinator().getPipePluginTable().getAllPipePluginMeta());
       runtimeConfiguration.setAllTTLInformation(
-          DataNodeRegisterResp.convertAllTTLInformation(getClusterSchemaManager().getAllTTLInfo()));
+          DataNodeRegisterResp.convertAllTTLInformation(getTTLManager().getAllTTL()));
       return runtimeConfiguration;
     } finally {
       getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
@@ -730,6 +735,56 @@ public class NodeManager {
     return clientHandler.getResponseList();
   }
 
+  public List<TSStatus> setConfiguration(TSetConfigurationReq req) {
+    List<TSStatus> responseList = new ArrayList<>();
+
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    Map<Integer, TDataNodeLocation> targetDataNodes = new HashMap<>();
+    int nodeId = req.getNodeId();
+    // send to datanode
+    if (dataNodeLocationMap.containsKey(nodeId)) {
+      targetDataNodes.put(nodeId, dataNodeLocationMap.get(nodeId));
+    } else if (nodeId < 0) {
+      targetDataNodes.putAll(dataNodeLocationMap);
+    }
+    if (!targetDataNodes.isEmpty()) {
+      AsyncDataNodeRequestContext<Object, TSStatus> clientHandler =
+          new AsyncDataNodeRequestContext<>(
+              ConfigNodeToDataNodeRequestType.SET_CONFIGURATION, req, dataNodeLocationMap);
+      ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
+          .sendAsyncRequestToNodeWithRetry(clientHandler);
+      responseList.addAll(clientHandler.getResponseList());
+    }
+
+    // send to config node
+    List<TConfigNodeLocation> configNodes = getRegisteredConfigNodes();
+    for (TConfigNodeLocation configNode : configNodes) {
+      if (configNode.getConfigNodeId() == CONF.getConfigNodeId()) {
+        continue;
+      }
+      if (nodeId >= 0 && nodeId != configNode.getConfigNodeId()) {
+        continue;
+      }
+      TSStatus status = null;
+      try {
+        status =
+            (TSStatus)
+                SyncConfigNodeClientPool.getInstance()
+                    .sendSyncRequestToConfigNodeWithRetry(
+                        configNode.getInternalEndPoint(),
+                        new TSetConfigurationReq(req.getConfigs(), configNode.getConfigNodeId()),
+                        ConfigNodeToConfigNodeRequestType.SET_CONFIGURATION);
+      } catch (Exception e) {
+        status =
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(), e.getMessage());
+      }
+      responseList.add(status);
+    }
+    return responseList;
+  }
+
   public List<TSStatus> startRpairData() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
@@ -763,6 +818,39 @@ public class NodeManager {
     return clientHandler.getResponseList();
   }
 
+  public TShowConfigurationResp showConfiguration(int nodeId) {
+    TShowConfigurationResp resp = new TShowConfigurationResp();
+
+    // data node
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    if (dataNodeLocationMap.containsKey(nodeId)) {
+      TDataNodeLocation dataNodeLocation = dataNodeLocationMap.get(nodeId);
+      return (TShowConfigurationResp)
+          SyncDataNodeClientPool.getInstance()
+              .sendSyncRequestToDataNodeWithRetry(
+                  dataNodeLocation.getInternalEndPoint(),
+                  null,
+                  ConfigNodeToDataNodeRequestType.SHOW_CONFIGURATION);
+    }
+
+    // other config node
+    for (TConfigNodeLocation registeredConfigNode : getRegisteredConfigNodes()) {
+      if (registeredConfigNode.getConfigNodeId() != nodeId) {
+        continue;
+      }
+      resp =
+          (TShowConfigurationResp)
+              SyncConfigNodeClientPool.getInstance()
+                  .sendSyncRequestToConfigNodeWithRetry(
+                      registeredConfigNode.getInternalEndPoint(),
+                      nodeId,
+                      ConfigNodeToConfigNodeRequestType.SHOW_CONFIGURATION);
+      return resp;
+    }
+    return resp;
+  }
+
   public List<TSStatus> setSystemStatus(String status) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
@@ -775,11 +863,12 @@ public class NodeManager {
   }
 
   public TSStatus setDataNodeStatus(TSetDataNodeStatusReq setDataNodeStatusReq) {
-    return SyncDataNodeClientPool.getInstance()
-        .sendSyncRequestToDataNodeWithRetry(
-            setDataNodeStatusReq.getTargetDataNode().getInternalEndPoint(),
-            setDataNodeStatusReq.getStatus(),
-            ConfigNodeToDataNodeRequestType.SET_SYSTEM_STATUS);
+    return (TSStatus)
+        SyncDataNodeClientPool.getInstance()
+            .sendSyncRequestToDataNodeWithRetry(
+                setDataNodeStatusReq.getTargetDataNode().getInternalEndPoint(),
+                setDataNodeStatusReq.getStatus(),
+                ConfigNodeToDataNodeRequestType.SET_SYSTEM_STATUS);
   }
 
   /**
@@ -814,11 +903,12 @@ public class NodeManager {
           .setMessage(
               "The target DataNode is not existed, please ensure your input <queryId> is correct");
     } else {
-      return SyncDataNodeClientPool.getInstance()
-          .sendSyncRequestToDataNodeWithRetry(
-              dataNodeLocation.getInternalEndPoint(),
-              queryId,
-              ConfigNodeToDataNodeRequestType.KILL_QUERY_INSTANCE);
+      return (TSStatus)
+          SyncDataNodeClientPool.getInstance()
+              .sendSyncRequestToDataNodeWithRetry(
+                  dataNodeLocation.getInternalEndPoint(),
+                  queryId,
+                  ConfigNodeToDataNodeRequestType.KILL_QUERY_INSTANCE);
     }
   }
 
@@ -892,5 +982,9 @@ public class NodeManager {
 
   private UDFManager getUDFManager() {
     return configManager.getUDFManager();
+  }
+
+  private TTLManager getTTLManager() {
+    return configManager.getTTLManager();
   }
 }

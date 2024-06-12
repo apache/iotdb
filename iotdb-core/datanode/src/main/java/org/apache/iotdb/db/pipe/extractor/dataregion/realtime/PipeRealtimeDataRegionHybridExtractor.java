@@ -29,7 +29,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
-import org.apache.iotdb.db.pipe.metric.PipeExtractorMetrics;
+import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -40,15 +40,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegionExtractor {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeRealtimeDataRegionHybridExtractor.class);
-
-  private final AtomicInteger processorEventCollectorQueueTsFileSize = new AtomicInteger(0);
-  private final AtomicInteger connectorInputPendingQueueTsFileSize = new AtomicInteger(0);
 
   @Override
   protected void doExtract(final PipeRealtimeEvent event) {
@@ -232,7 +228,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
 
   private boolean isHistoricalTsFileEventCountExceededLimit() {
     final IoTDBDataRegionExtractor extractor =
-        PipeExtractorMetrics.getInstance().getExtractorMap().get(getTaskID());
+        PipeDataRegionExtractorMetrics.getInstance().getExtractorMap().get(getTaskID());
     return Objects.nonNull(extractor)
         && extractor.getHistoricalTsFileInsertionEventCount()
             >= PipeConfig.getInstance().getPipeMaxAllowedHistoricalTsFilePerDataRegion();
@@ -240,22 +236,12 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
 
   private boolean isRealtimeTsFileEventCountExceededLimit() {
     return pendingQueue.getTsFileInsertionEventCount()
-            + processorEventCollectorQueueTsFileSize.get()
-            + connectorInputPendingQueueTsFileSize.get()
         >= PipeConfig.getInstance().getPipeMaxAllowedPendingTsFileEpochPerDataRegion();
   }
 
   private boolean mayTsFileLinkedCountReachDangerousThreshold() {
     return PipeResourceManager.tsfile().getLinkedTsfileCount()
         >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
-  }
-
-  public void informProcessorEventCollectorQueueTsFileSize(final int queueSize) {
-    processorEventCollectorQueueTsFileSize.set(queueSize);
-  }
-
-  public void informConnectorInputPendingQueueTsFileSize(final int queueSize) {
-    connectorInputPendingQueueTsFileSize.set(queueSize);
   }
 
   @Override

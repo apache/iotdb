@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.agent.runtime;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
+import org.apache.iotdb.db.pipe.metric.PipeSchemaRegionListenerMetrics;
 
 import java.util.Map;
 import java.util.Set;
@@ -31,47 +32,47 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeSchemaRegionListenerManager {
 
-  private final Map<SchemaRegionId, PipeSchemaRegionListener> id2StatusMap =
+  private final Map<SchemaRegionId, PipeSchemaRegionListener> id2ListenerMap =
       new ConcurrentHashMap<>();
 
   public synchronized Set<SchemaRegionId> regionIds() {
-    return id2StatusMap.keySet();
+    return id2ListenerMap.keySet();
   }
 
-  public synchronized SchemaRegionListeningQueue listener(SchemaRegionId schemaRegionId) {
-    return id2StatusMap.computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
+  public synchronized SchemaRegionListeningQueue listener(final SchemaRegionId schemaRegionId) {
+    return id2ListenerMap.computeIfAbsent(schemaRegionId, PipeSchemaRegionListener::new)
         .listeningQueue;
   }
 
-  public synchronized int increaseAndGetReferenceCount(SchemaRegionId schemaRegionId) {
-    return id2StatusMap
-        .computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
+  public synchronized int increaseAndGetReferenceCount(final SchemaRegionId schemaRegionId) {
+    return id2ListenerMap
+        .computeIfAbsent(schemaRegionId, PipeSchemaRegionListener::new)
         .listeningQueueReferenceCount
         .incrementAndGet();
   }
 
-  public synchronized int decreaseAndGetReferenceCount(SchemaRegionId schemaRegionId) {
-    return id2StatusMap
-        .computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
+  public synchronized int decreaseAndGetReferenceCount(final SchemaRegionId schemaRegionId) {
+    return id2ListenerMap
+        .computeIfAbsent(schemaRegionId, PipeSchemaRegionListener::new)
         .listeningQueueReferenceCount
         .updateAndGet(v -> v > 0 ? v - 1 : 0);
   }
 
-  public synchronized void notifyLeaderReady(SchemaRegionId schemaRegionId) {
-    id2StatusMap
-        .computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
+  public synchronized void notifyLeaderReady(final SchemaRegionId schemaRegionId) {
+    id2ListenerMap
+        .computeIfAbsent(schemaRegionId, PipeSchemaRegionListener::new)
         .notifyLeaderReady();
   }
 
-  public synchronized void notifyLeaderUnavailable(SchemaRegionId schemaRegionId) {
-    id2StatusMap
-        .computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
+  public synchronized void notifyLeaderUnavailable(final SchemaRegionId schemaRegionId) {
+    id2ListenerMap
+        .computeIfAbsent(schemaRegionId, PipeSchemaRegionListener::new)
         .notifyLeaderUnavailable();
   }
 
-  public synchronized boolean isLeaderReady(SchemaRegionId schemaRegionId) {
-    return id2StatusMap
-        .computeIfAbsent(schemaRegionId, k -> new PipeSchemaRegionListener())
+  public synchronized boolean isLeaderReady(final SchemaRegionId schemaRegionId) {
+    return id2ListenerMap
+        .computeIfAbsent(schemaRegionId, PipeSchemaRegionListener::new)
         .isLeaderReady();
   }
 
@@ -81,6 +82,11 @@ public class PipeSchemaRegionListenerManager {
     private final AtomicInteger listeningQueueReferenceCount = new AtomicInteger(0);
 
     private final AtomicBoolean isLeaderReady = new AtomicBoolean(false);
+
+    protected PipeSchemaRegionListener(final SchemaRegionId schemaRegionId) {
+      PipeSchemaRegionListenerMetrics.getInstance()
+          .register(listeningQueue, schemaRegionId.getId());
+    }
 
     /**
      * Get leader ready state, DO NOT use consensus layer's leader ready flag because

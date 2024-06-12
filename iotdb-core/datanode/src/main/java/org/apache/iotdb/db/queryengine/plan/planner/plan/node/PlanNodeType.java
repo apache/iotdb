@@ -61,6 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedI
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
@@ -79,7 +80,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RegionMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleDeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
@@ -461,7 +461,7 @@ public enum PlanNodeType {
       case 94:
         return TimeseriesRegionScanNode.deserialize(buffer);
       case 95:
-        return RegionMergeNode.deserialize(buffer);
+        return ActiveRegionScanMergeNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -470,14 +470,18 @@ public enum PlanNodeType {
   public static PlanNode deserializeWithTemplate(ByteBuffer buffer, TypeProvider typeProvider) {
     short nodeType = buffer.getShort();
     switch (nodeType) {
+      case 1:
+        return DeviceViewNode.deserializeUseTemplate(buffer, typeProvider);
       case 3:
         return FilterNode.deserializeUseTemplate(buffer, typeProvider);
-      case 33:
-        return AlignedSeriesScanNode.deserializeUseTemplate(buffer, typeProvider);
-      case 65:
-        return SingleDeviceViewNode.deserializeUseTemplate(buffer, typeProvider);
       case 32:
         return ProjectNode.deserializeUseTemplate(buffer, typeProvider);
+      case 33:
+        return AlignedSeriesScanNode.deserializeUseTemplate(buffer, typeProvider);
+      case 34:
+        return AlignedSeriesAggregationScanNode.deserializeUseTemplate(buffer, typeProvider);
+      case 65:
+        return SingleDeviceViewNode.deserializeUseTemplate(buffer, typeProvider);
       default:
         return deserialize(buffer, nodeType);
     }

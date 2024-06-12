@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.execution;
 
+import org.apache.iotdb.db.pipe.consensus.PipeConsensusSubtaskExecutor;
 import org.apache.iotdb.db.subscription.execution.executor.SubscriptionSubtaskExecutor;
 
 /**
@@ -29,6 +30,7 @@ public class PipeSubtaskExecutorManager {
   private final PipeProcessorSubtaskExecutor processorExecutor;
   private final PipeConnectorSubtaskExecutor connectorExecutor;
   private final SubscriptionSubtaskExecutor subscriptionExecutor;
+  private final PipeConsensusSubtaskExecutor consensusExecutor;
 
   public PipeProcessorSubtaskExecutor getProcessorExecutor() {
     return processorExecutor;
@@ -42,12 +44,17 @@ public class PipeSubtaskExecutorManager {
     return subscriptionExecutor;
   }
 
+  public PipeConsensusSubtaskExecutor getConsensusExecutor() {
+    return consensusExecutor;
+  }
+
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
   private PipeSubtaskExecutorManager() {
     processorExecutor = new PipeProcessorSubtaskExecutor();
     connectorExecutor = new PipeConnectorSubtaskExecutor();
     subscriptionExecutor = new SubscriptionSubtaskExecutor();
+    consensusExecutor = new PipeConsensusSubtaskExecutor();
   }
 
   private static class PipeTaskExecutorHolder {

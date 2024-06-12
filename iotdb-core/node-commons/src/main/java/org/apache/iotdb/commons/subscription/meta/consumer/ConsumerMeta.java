@@ -128,7 +128,7 @@ public class ConsumerMeta {
   @Override
   public String toString() {
     return "ConsumerMeta{"
-        + "consumerID='"
+        + "consumerId='"
         + consumerId
         + "', creationTime="
         + creationTime

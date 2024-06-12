@@ -466,7 +466,7 @@ public class PartitionManager {
       return getConsensusManager().write(plan);
     } catch (ConsensusException e) {
       // The allocation might fail due to consensus error
-      LOGGER.error("Write DataPartition allocation result failed because: {}", status);
+      LOGGER.error("Write partition allocation result failed because: {}", status);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;
@@ -1305,9 +1305,8 @@ public class PartitionManager {
                             createDataRegionHandler.putRequest(
                                 dataRegionCreateTask.getRegionId().getId(),
                                 new TCreateDataRegionReq(
-                                        dataRegionCreateTask.getRegionReplicaSet(),
-                                        dataRegionCreateTask.getStorageGroup())
-                                    .setTtl(dataRegionCreateTask.getTTL()));
+                                    dataRegionCreateTask.getRegionReplicaSet(),
+                                    dataRegionCreateTask.getStorageGroup()));
                             createDataRegionHandler.putNodeLocation(
                                 dataRegionCreateTask.getRegionId().getId(),
                                 dataRegionCreateTask.getTargetDataNode());

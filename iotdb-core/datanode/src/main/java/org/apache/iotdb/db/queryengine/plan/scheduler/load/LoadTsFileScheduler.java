@@ -434,7 +434,21 @@ public class LoadTsFileScheduler implements IScheduler {
                       databaseName,
                       Tag.REGION.toString(),
                       dataRegion.getDataRegionId());
+              if (!node.isGeneratedByRemoteConsensusLeader()) {
+                MetricService.getInstance()
+                    .count(
+                        node.getWritePointCount(),
+                        Metric.LEADER_QUANTITY.toString(),
+                        MetricLevel.CORE,
+                        Tag.NAME.toString(),
+                        Metric.POINTS_IN.toString(),
+                        Tag.DATABASE.toString(),
+                        databaseName,
+                        Tag.REGION.toString(),
+                        dataRegion.getDataRegionId());
+              }
             });
+
     return true;
   }
 

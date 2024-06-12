@@ -47,6 +47,7 @@ import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.time.ZoneId;
 import java.util.BitSet;
 import java.util.Calendar;
 import java.util.List;
@@ -78,7 +79,8 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
       long sessionId,
       long timeout,
       List<String> sgColumns,
-      BitSet aliasColumnMap)
+      BitSet aliasColumnMap,
+      ZoneId zoneId)
       throws SQLException {
     this.ioTDBRpcDataSet =
         new IoTDBJDBCDataSet(
@@ -95,7 +97,8 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
             statement.getFetchSize(),
             timeout,
             sgColumns,
-            aliasColumnMap);
+            aliasColumnMap,
+            zoneId);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
     this.aliasColumnMap = aliasColumnMap;
@@ -113,7 +116,8 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
       long queryId,
       long sessionId,
       long timeout,
-      boolean isRpcFetchResult)
+      boolean isRpcFetchResult,
+      ZoneId zoneId)
       throws SQLException {
     this.ioTDBRpcDataSet =
         new IoTDBJDBCDataSet(
@@ -128,7 +132,8 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
             sessionId,
             null,
             statement.getFetchSize(),
-            timeout);
+            timeout,
+            zoneId);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
     this.isRpcFetchResult = isRpcFetchResult;

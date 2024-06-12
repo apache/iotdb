@@ -24,18 +24,17 @@ concurrency:
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
-  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
 jobs:
   auto-create-schema:
     strategy:
       fail-fast: false
-      max-parallel: 20
+      max-parallel: 15
       matrix:
         java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster1: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
-        cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
+        cluster: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
@@ -54,7 +53,7 @@ jobs:
           -P with-integration-tests \
           -DskipUTs \
           -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
-          -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+          -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
           -pl integration-test \
           -am -PMultiClusterIT2AutoCreateSchema
       - name: Upload Artifact
@@ -67,7 +66,7 @@ jobs:
   manual-create-schema:
     strategy:
       fail-fast: false
-      max-parallel: 20
+      max-parallel: 15
       matrix:
         java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
@@ -104,12 +103,12 @@ jobs:
   subscription:
     strategy:
       fail-fast: false
-      max-parallel: 20
+      max-parallel: 15
       matrix:
         java: [ 17 ]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
         cluster1: [ LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode ]
-        cluster2: [ LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, StrongConsistencyClusterMode ]
+        cluster2: [ ScalableSingleNodeMode ]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:

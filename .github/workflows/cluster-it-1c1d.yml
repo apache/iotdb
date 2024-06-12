@@ -26,25 +26,24 @@ concurrency:
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
-  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
 jobs:
   Simple:
     strategy:
       fail-fast: false
-      max-parallel: 20
+      max-parallel: 15
       matrix:
-        java: [11]
         os: [ ubuntu-latest, windows-latest ]
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK ${{ matrix.java }}
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: liberica
-          java-version: ${{ matrix.java }}
+          java-version: 17
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:

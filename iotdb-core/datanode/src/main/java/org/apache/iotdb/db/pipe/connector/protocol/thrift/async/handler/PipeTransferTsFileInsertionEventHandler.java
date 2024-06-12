@@ -122,12 +122,22 @@ public class PipeTransferTsFileInsertionEventHandler
         transfer(clientManager, client);
       } else if (currentFile == tsFile) {
         isSealSignalSent.set(true);
-        client.pipeTransfer(
+
+        final TPipeTransferReq uncompressedReq =
             transferMod
                 ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
                     modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length())
-                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()),
-            this);
+                : PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
+        final TPipeTransferReq req =
+            connector.isRpcCompressionEnabled()
+                ? PipeTransferCompressedReq.toTPipeTransferReq(
+                    uncompressedReq, connector.getCompressors())
+                : uncompressedReq;
+
+        connector.rateLimitIfNeeded(
+            event.getPipeName(), client.getEndPoint(), req.getBody().length);
+
+        client.pipeTransfer(req, this);
       }
       return;
     }
@@ -137,19 +147,21 @@ public class PipeTransferTsFileInsertionEventHandler
             ? readBuffer
             : Arrays.copyOfRange(readBuffer, 0, readLength);
     final TPipeTransferReq uncompressedReq =
-        PipeTransferCompressedReq.toTPipeTransferReq(
-            transferMod
-                ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
-                    currentFile.getName(), position, payload)
-                : PipeTransferTsFilePieceReq.toTPipeTransferReq(
-                    currentFile.getName(), position, payload),
-            connector.getCompressors());
-    client.pipeTransfer(
+        transferMod
+            ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
+                currentFile.getName(), position, payload)
+            : PipeTransferTsFilePieceReq.toTPipeTransferReq(
+                currentFile.getName(), position, payload);
+    final TPipeTransferReq req =
         connector.isRpcCompressionEnabled()
             ? PipeTransferCompressedReq.toTPipeTransferReq(
                 uncompressedReq, connector.getCompressors())
-            : uncompressedReq,
-        this);
+            : uncompressedReq;
+
+    connector.rateLimitIfNeeded(event.getPipeName(), client.getEndPoint(), req.getBody().length);
+
+    client.pipeTransfer(req, this);
+
     position += readLength;
   }
 
@@ -229,18 +241,22 @@ public class PipeTransferTsFileInsertionEventHandler
 
   @Override
   public void onError(final Exception exception) {
-    LOGGER.warn(
-        "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
-        tsFile,
-        event.getCommitterKey(),
-        event.getCommitId(),
-        exception);
+    try {
+      LOGGER.warn(
+          "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
+          tsFile,
+          event.getCommitterKey(),
+          event.getCommitId(),
+          exception);
+    } catch (final Exception e) {
+      LOGGER.warn("Failed to log error when failed to transfer file.", e);
+    }
 
     try {
       if (Objects.nonNull(clientManager)) {
         clientManager.adjustTimeoutIfNecessary(exception);
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn("Failed to adjust timeout when failed to transfer file.", e);
     }
 

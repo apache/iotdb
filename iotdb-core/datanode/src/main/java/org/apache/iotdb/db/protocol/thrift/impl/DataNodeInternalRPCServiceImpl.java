@@ -29,16 +29,19 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSender;
 import org.apache.iotdb.common.rpc.thrift.TServiceProvider;
 import org.apache.iotdb.common.rpc.thrift.TServiceType;
+import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSettleReq;
+import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -258,6 +261,7 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -440,7 +444,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return createTLoadResp(
           new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
     }
-
     TSStatus resultStatus =
         StorageEngine.getInstance()
             .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, req.uuid);
@@ -486,8 +489,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus createDataRegion(TCreateDataRegionReq req) {
-    return regionManager.createDataRegion(
-        req.getRegionReplicaSet(), req.getStorageGroup(), req.getTtl());
+    return regionManager.createDataRegion(req.getRegionReplicaSet(), req.getStorageGroup());
   }
 
   @Override
@@ -1844,6 +1846,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus setConfiguration(TSetConfigurationReq req) {
+    return StorageEngine.getInstance().setConfiguration(req);
+  }
+
+  @Override
   public TSStatus settle(TSettleReq req) throws TException {
     return SettleRequestHandler.getInstance().handleSettleRequest(req);
   }
@@ -1856,6 +1863,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TShowConfigurationResp showConfiguration() {
+    TShowConfigurationResp resp =
+        new TShowConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), "");
+    try {
+      URL propsUrl = IoTDBDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
+      resp.setContent(ConfigurationFileUtils.readConfigFileContent(propsUrl));
+    } catch (Exception e) {
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
+    }
+    return resp;
   }
 
   @Override
@@ -1892,7 +1912,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
-    return storageEngine.setTTL(req);
+    try {
+      return storageEngine.setTTL(req);
+    } catch (IllegalPathException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
   }
 
   @Override
@@ -2037,7 +2061,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                         location.getDataNodeId(),
                         getConsensusEndPoint(location, regionId)))
             .collect(Collectors.toList());
-    TSStatus status = createNewRegion(regionId, req.getStorageGroup(), req.getTtl());
+    TSStatus status = createNewRegion(regionId, req.getStorageGroup());
     if (!isSucceed(status)) {
       return status;
     }
@@ -2109,8 +2133,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return RegionMigrateService.getInstance().getRegionMaintainResult(taskId);
   }
 
-  private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup, long ttl) {
-    return regionManager.createNewRegion(regionId, storageGroup, ttl);
+  private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup) {
+    return regionManager.createNewRegion(regionId, storageGroup);
   }
 
   @Override

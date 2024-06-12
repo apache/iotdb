@@ -22,13 +22,14 @@ package org.apache.iotdb.confignode.manager.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
@@ -48,7 +49,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSche
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -168,6 +168,10 @@ public class ClusterSchemaManager {
                   isGeneratedByPipe
                       ? new PipeEnrichedPlan(databaseSchemaPlan)
                       : databaseSchemaPlan);
+      // set ttl
+      if (databaseSchemaPlan.getSchema().isSetTTL()) {
+        result = configManager.getTTLManager().setTTL(databaseSchemaPlan, isGeneratedByPipe);
+      }
       // Bind Database metrics
       PartitionMetrics.bindDatabaseRelatedMetricsWhenUpdate(
           MetricService.getInstance(),
@@ -357,7 +361,6 @@ public class ClusterSchemaManager {
       String database = databaseSchema.getName();
       TDatabaseInfo databaseInfo = new TDatabaseInfo();
       databaseInfo.setName(database);
-      databaseInfo.setTTL(databaseSchema.getTTL());
       databaseInfo.setSchemaReplicationFactor(databaseSchema.getSchemaReplicationFactor());
       databaseInfo.setDataReplicationFactor(databaseSchema.getDataReplicationFactor());
       databaseInfo.setTimePartitionInterval(databaseSchema.getTimePartitionInterval());
@@ -389,79 +392,25 @@ public class ClusterSchemaManager {
     return new TShowDatabaseResp().setDatabaseInfoMap(infoMap).setStatus(StatusUtils.OK);
   }
 
-  public Map<String, Long> getAllTTLInfo() {
+  public Map<String, Long> getTTLInfoForUpgrading() {
     List<String> databases = getDatabaseNames();
     Map<String, Long> infoMap = new ConcurrentHashMap<>();
     for (String database : databases) {
       try {
-        infoMap.put(database, getTTL(database));
+        long ttl = getDatabaseSchemaByName(database).getTTL();
+        if (ttl <= 0 || ttl == CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs()) {
+          continue;
+        }
+        ttl =
+            CommonDateTimeUtils.convertMilliTimeWithPrecision(
+                ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+        ttl = ttl <= 0 ? Long.MAX_VALUE : ttl;
+        infoMap.put(database, ttl);
       } catch (DatabaseNotExistsException e) {
         LOGGER.warn("Database: {} doesn't exist", databases, e);
       }
     }
     return infoMap;
-  }
-
-  /**
-   * Update TTL for the specific Database or all databases in a path
-   *
-   * @param setTTLPlan setTTLPlan
-   * @return {@link TSStatusCode#SUCCESS_STATUS} if successfully update the TTL, {@link
-   *     TSStatusCode#DATABASE_NOT_EXIST} if the path doesn't exist
-   */
-  public TSStatus setTTL(SetTTLPlan setTTLPlan, boolean isGeneratedByPipe) {
-
-    Map<String, TDatabaseSchema> storageSchemaMap =
-        clusterSchemaInfo.getMatchedDatabaseSchemasByOneName(setTTLPlan.getDatabasePathPattern());
-
-    if (storageSchemaMap.isEmpty()) {
-      return RpcUtils.getStatus(
-          TSStatusCode.DATABASE_NOT_EXIST,
-          "Path [" + new PartialPath(setTTLPlan.getDatabasePathPattern()) + "] does not exist");
-    }
-
-    // Map<DataNodeId, TDataNodeLocation>
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-    // Map<DataNodeId, DatabasePatterns>
-    Map<Integer, List<String>> dnlToSgMap = new ConcurrentHashMap<>();
-    for (String database : storageSchemaMap.keySet()) {
-      // Get related DataNodes
-      Set<TDataNodeLocation> dataNodeLocations =
-          getPartitionManager()
-              .getDatabaseRelatedDataNodes(database, TConsensusGroupType.DataRegion);
-
-      for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
-        dataNodeLocationMap.putIfAbsent(dataNodeLocation.getDataNodeId(), dataNodeLocation);
-        dnlToSgMap
-            .computeIfAbsent(dataNodeLocation.getDataNodeId(), empty -> new ArrayList<>())
-            .add(database);
-      }
-    }
-
-    AsyncDataNodeRequestContext<TSetTTLReq, TSStatus> clientHandler =
-        new AsyncDataNodeRequestContext<>(ConfigNodeToDataNodeRequestType.SET_TTL);
-    dnlToSgMap
-        .keySet()
-        .forEach(
-            dataNodeId -> {
-              TSetTTLReq setTTLReq =
-                  new TSetTTLReq(dnlToSgMap.get(dataNodeId), setTTLPlan.getTTL());
-              clientHandler.putRequest(dataNodeId, setTTLReq);
-              clientHandler.putNodeLocation(dataNodeId, dataNodeLocationMap.get(dataNodeId));
-            });
-    // TODO: Check response
-    ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestToNodeWithRetry(clientHandler);
-
-    try {
-      return getConsensusManager()
-          .write(isGeneratedByPipe ? new PipeEnrichedPlan(setTTLPlan) : setTTLPlan);
-    } catch (ConsensusException e) {
-      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
-      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      result.setMessage(e.getMessage());
-      return result;
-    }
   }
 
   public TSStatus setSchemaReplicationFactor(
@@ -706,16 +655,6 @@ public class ClusterSchemaManager {
               }
             });
     return result;
-  }
-
-  /**
-   * Only leader use this interface. Get the TTL of specified Database
-   *
-   * @param database DatabaseName
-   * @throws DatabaseNotExistsException When the specified Database doesn't exist
-   */
-  public long getTTL(String database) throws DatabaseNotExistsException {
-    return getDatabaseSchemaByName(database).getTTL();
   }
 
   /**

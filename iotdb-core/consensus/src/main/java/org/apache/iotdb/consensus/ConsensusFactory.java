@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.consensus;
 
+import org.apache.iotdb.commons.client.container.PipeConsensusClientMgrContainer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.config.PipeConsensusConfig.ReplicateMode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 public class ConsensusFactory {
@@ -35,6 +39,17 @@ public class ConsensusFactory {
   public static final String SIMPLE_CONSENSUS = "org.apache.iotdb.consensus.simple.SimpleConsensus";
   public static final String RATIS_CONSENSUS = "org.apache.iotdb.consensus.ratis.RatisConsensus";
   public static final String IOT_CONSENSUS = "org.apache.iotdb.consensus.iot.IoTConsensus";
+  public static final String REAL_PIPE_CONSENSUS = "org.apache.iotdb.consensus.pipe.PipeConsensus";
+  // Corresponding to streamConsensus
+  public static final String IOTV2_CONSENSUS = "org.apache.iotdb.consensus.iot.IoTV2Consensus";
+  // Corresponding to batchConsensus
+  public static final String FAST_IOT_CONSENSUS = "org.apache.iotdb.consensus.iot.FastIoTConsensus";
+  private static final Map<String, ReplicateMode> PIPE_CONSENSUS_MODE_MAP = new HashMap<>();
+
+  static {
+    PIPE_CONSENSUS_MODE_MAP.put(IOTV2_CONSENSUS, ReplicateMode.STREAM);
+    PIPE_CONSENSUS_MODE_MAP.put(FAST_IOT_CONSENSUS, ReplicateMode.BATCH);
+  }
 
   private static final Logger logger = LoggerFactory.getLogger(ConsensusFactory.class);
 
@@ -45,6 +60,13 @@ public class ConsensusFactory {
   public static Optional<IConsensus> getConsensusImpl(
       String className, ConsensusConfig config, IStateMachine.Registry registry) {
     try {
+      // special judge for PipeConsensus
+      if (className.equals(IOTV2_CONSENSUS) || className.equals(FAST_IOT_CONSENSUS)) {
+        config.getPipeConsensusConfig().setReplicateMode(PIPE_CONSENSUS_MODE_MAP.get(className));
+        className = REAL_PIPE_CONSENSUS;
+        // initialize pipeConsensus' thrift component
+        PipeConsensusClientMgrContainer.build();
+      }
       Class<?> executor = Class.forName(className);
       Constructor<?> executorConstructor =
           executor.getDeclaredConstructor(ConsensusConfig.class, IStateMachine.Registry.class);

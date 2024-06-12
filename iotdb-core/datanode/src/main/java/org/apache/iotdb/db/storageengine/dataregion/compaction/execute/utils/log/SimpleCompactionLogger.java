@@ -51,4 +51,8 @@ public class SimpleCompactionLogger extends CompactionLogger {
   public void logEmptyTargetFile(TsFileResource emptyTargetFile) throws IOException {
     logFile(emptyTargetFile, STR_DELETED_TARGET_FILES);
   }
+
+  public void logEmptyTargetFiles(List<TsFileResource> emptyTargetFiles) throws IOException {
+    logFiles(emptyTargetFiles, STR_DELETED_TARGET_FILES);
+  }
 }

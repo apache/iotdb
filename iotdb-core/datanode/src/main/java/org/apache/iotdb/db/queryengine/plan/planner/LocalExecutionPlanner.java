@@ -32,13 +32,16 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.utils.SetThreadName;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Used to plan a fragment instance. One fragment instance could be split into multiple pipelines so
@@ -94,6 +97,9 @@ public class LocalExecutionPlanner {
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
 
     instanceContext.setSourcePaths(collectSourcePaths(context));
+    instanceContext.setDevicePathsToAligned(collectDevicePathsToAligned(context));
+    instanceContext.setQueryDataSourceType(
+        getQueryDataSourceType((DataDriverContext) context.getDriverContext()));
 
     context.getTimePartitions().ifPresent(instanceContext::setTimePartitions);
 
@@ -180,6 +186,17 @@ public class LocalExecutionPlanner {
     return estimatedMemorySize;
   }
 
+  private QueryDataSourceType getQueryDataSourceType(DataDriverContext dataDriverContext) {
+    return dataDriverContext.getQueryDataSourceType().orElse(QueryDataSourceType.SERIES_SCAN);
+  }
+
+  private Map<IDeviceID, Boolean> collectDevicePathsToAligned(LocalExecutionPlanContext context) {
+    DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
+    Map<IDeviceID, Boolean> deviceToAlignedMap = dataDriverContext.getDeviceIDToAligned();
+    dataDriverContext.clearDeviceIDToAligned();
+    return deviceToAlignedMap;
+  }
+
   private List<PartialPath> collectSourcePaths(LocalExecutionPlanContext context) {
     List<PartialPath> sourcePaths = new ArrayList<>();
     context
@@ -213,7 +230,27 @@ public class LocalExecutionPlanner {
     }
   }
 
-  public synchronized void releaseToFreeMemoryForOperators(long memoryInBytes) {
+  public synchronized void reserveMemoryForQueryFrontEnd(
+      final long memoryInBytes, final long reservedBytes, final String queryId) {
+    if (memoryInBytes > freeMemoryForOperators) {
+      throw new MemoryNotEnoughException(
+          String.format(
+              "There is not enough memory for planning-stage of Query %s, "
+                  + "current remaining free memory is %dB, "
+                  + "estimated memory usage is %dB, reserved memory for FE of this query in total is %dB",
+              queryId, freeMemoryForOperators, memoryInBytes, reservedBytes));
+    } else {
+      freeMemoryForOperators -= memoryInBytes;
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "[ConsumeMemory] consume: {}, current remaining memory: {}",
+            memoryInBytes,
+            freeMemoryForOperators);
+      }
+    }
+  }
+
+  public synchronized void releaseToFreeMemoryForOperators(final long memoryInBytes) {
     freeMemoryForOperators += memoryInBytes;
   }
 

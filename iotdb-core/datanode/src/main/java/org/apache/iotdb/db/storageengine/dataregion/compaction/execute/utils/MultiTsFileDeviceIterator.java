@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
@@ -34,6 +38,8 @@ import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -329,13 +335,12 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * return MultiTsFileNonAlignedMeasurementMetadataListIterator, who iterates the measurements of
    * not aligned device
    *
-   * @param device the device to be iterated
    * @return measurement iterator of not aligned device
    * @throws IOException if io errors occurred
    */
   public MultiTsFileNonAlignedMeasurementMetadataListIterator
-      iterateNotAlignedSeriesAndChunkMetadataList(IDeviceID device) throws IOException {
-    return new MultiTsFileNonAlignedMeasurementMetadataListIterator(readerMap, device);
+      iterateNotAlignedSeriesAndChunkMetadataListOfCurrentDevice() throws IOException {
+    return new MultiTsFileNonAlignedMeasurementMetadataListIterator();
   }
 
   /**
@@ -367,9 +372,12 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       if (!currentDevice.equals(iterator.current())) {
         continue;
       }
+      MetadataIndexNode firstMeasurementNodeOfCurrentDevice =
+          iterator.getFirstMeasurementNodeOfCurrentDevice();
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
       List<AlignedChunkMetadata> alignedChunkMetadataList =
-          reader.getAlignedChunkMetadata(currentDevice.left);
+          reader.getAlignedChunkMetadataByMetadataIndexNode(
+              currentDevice.left, firstMeasurementNodeOfCurrentDevice);
       applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
       readerAndChunkMetadataList.add(new Pair<>(reader, alignedChunkMetadataList));
     }
@@ -390,13 +398,36 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       // all the value chunks is empty chunk
       return;
     }
-    ModificationFile modificationFile = ModificationFile.getNormalMods(tsFileResource);
-    if (!modificationFile.exists()) {
-      return;
-    }
+
     List<Modification> modifications =
         modificationCache.computeIfAbsent(
-            tsFileResource, r -> new ArrayList<>(modificationFile.getModifications()));
+            tsFileResource,
+            r -> {
+              List<Modification> list =
+                  new LinkedList<>(ModificationFile.getNormalMods(r).getModifications());
+              // add outdated device mods by ttl
+              try {
+                for (IDeviceID device : r.getDevices()) {
+                  // TODO: remove deviceId conversion
+                  long timeLowerBound =
+                      CommonDateTimeUtils.currentTime()
+                          - DataNodeTTLCache.getInstance()
+                              .getTTL(((PlainDeviceID) device).toStringID());
+                  if (r.getStartTime(device) < timeLowerBound) {
+                    list.add(
+                        new Deletion(
+                            CompactionPathUtils.getPath(device)
+                                .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
+                            Long.MAX_VALUE,
+                            Long.MIN_VALUE,
+                            timeLowerBound));
+                  }
+                }
+              } catch (IllegalPathException e) {
+                throw new RuntimeException(e);
+              }
+              return list;
+            });
 
     // construct the input params List<List<Modification>> for QueryUtils.modifyAlignedChunkMetaData
     AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
@@ -437,8 +468,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   NonAligned measurement iterator.
    */
   public class MultiTsFileNonAlignedMeasurementMetadataListIterator {
-    private final Map<TsFileResource, TsFileSequenceReader> readerMap;
-    private final IDeviceID device;
     private final LinkedList<String> seriesInThisIteration = new LinkedList<>();
     // tsfile sequence reader -> series -> list<ChunkMetadata>
     private final Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
@@ -451,14 +480,31 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
         chunkMetadataMetadataListOfCurrentCompactingSeries;
 
-    private MultiTsFileNonAlignedMeasurementMetadataListIterator(
-        Map<TsFileResource, TsFileSequenceReader> readerMap, IDeviceID device) throws IOException {
-      this.readerMap = readerMap;
-      this.device = device;
+    private MultiTsFileNonAlignedMeasurementMetadataListIterator() throws IOException {
+      IDeviceID device = currentDevice.getLeft();
       for (TsFileResource resource : tsFileResourcesSortedByAsc) {
+        TsFileDeviceIterator deviceIterator = deviceIteratorMap.get(resource);
         TsFileSequenceReader reader = readerMap.get(resource);
-        chunkMetadataIteratorMap.put(
-            resource, reader.getMeasurementChunkMetadataListMapIterator(device));
+        if (deviceIterator == null || !device.equals(deviceIterator.current().getLeft())) {
+          chunkMetadataIteratorMap.put(
+              resource,
+              new Iterator<Map<String, List<ChunkMetadata>>>() {
+                @Override
+                public boolean hasNext() {
+                  return false;
+                }
+
+                @Override
+                public Map<String, List<ChunkMetadata>> next() {
+                  return Collections.emptyMap();
+                }
+              });
+        } else {
+          chunkMetadataIteratorMap.put(
+              resource,
+              reader.getMeasurementChunkMetadataListMapIterator(
+                  deviceIterator.getFirstMeasurementNodeOfCurrentDevice()));
+        }
         chunkMetadataCacheMap.put(reader, new TreeMap<>());
       }
     }
@@ -582,7 +628,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
           readerAndChunkMetadataForThisSeries = new LinkedList<>();
-      PartialPath path = CompactionPathUtils.getPath(device, currentCompactingSeries);
+      PartialPath path =
+          CompactionPathUtils.getPath(currentDevice.getLeft(), currentCompactingSeries);
 
       for (TsFileResource resource : tsFileResourcesSortedByAsc) {
         TsFileSequenceReader reader = readerMap.get(resource);
@@ -597,7 +644,32 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           List<Modification> modificationsInThisResource =
               modificationCache.computeIfAbsent(
                   resource,
-                  r -> new LinkedList<>(ModificationFile.getNormalMods(r).getModifications()));
+                  r -> {
+                    List<Modification> list =
+                        new LinkedList<>(ModificationFile.getNormalMods(r).getModifications());
+                    // add outdated device mods by ttl
+                    try {
+                      for (IDeviceID device : r.getDevices()) {
+                        // TODO: remove deviceId conversion
+                        long timeLowerBound =
+                            CommonDateTimeUtils.currentTime()
+                                - DataNodeTTLCache.getInstance()
+                                    .getTTL(((PlainDeviceID) device).toStringID());
+                        if (r.getStartTime(device) < timeLowerBound) {
+                          list.add(
+                              new Deletion(
+                                  CompactionPathUtils.getPath(device)
+                                      .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD),
+                                  Long.MAX_VALUE,
+                                  Long.MIN_VALUE,
+                                  timeLowerBound));
+                        }
+                      }
+                    } catch (IllegalPathException e) {
+                      throw new RuntimeException(e);
+                    }
+                    return list;
+                  });
           LinkedList<Modification> modificationForCurrentSeries = new LinkedList<>();
           // collect the modifications for current series
           for (Modification modification : modificationsInThisResource) {

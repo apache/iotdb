@@ -168,6 +168,10 @@ public class CrossSeriesAggregationDescriptor extends AggregationDescriptor {
     return groupedInputExpressions.stream().map(this::getInputString).collect(Collectors.toList());
   }
 
+  public List<List<Expression>> getGroupedInputExpressions() {
+    return groupedInputExpressions;
+  }
+
   public StringBuilder getOutputExpressionsAsBuilder() {
     StringBuilder builder = new StringBuilder(outputExpressions.get(0).getExpressionString());
     for (int i = 1; i < outputExpressions.size(); i++) {

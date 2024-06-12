@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.pipe.config.constant;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
+import com.github.luben.zstd.Zstd;
+
 import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
@@ -52,6 +54,10 @@ public class PipeConnectorConstant {
   public static final String SINK_IOTDB_PARALLEL_TASKS_KEY = "sink.parallel.tasks";
   public static final int CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE =
       PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum();
+
+  public static final String CONNECTOR_REALTIME_FIRST_KEY = "connector.realtime-first";
+  public static final String SINK_REALTIME_FIRST_KEY = "sink.realtime-first";
+  public static final boolean CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE = true;
 
   public static final String CONNECTOR_IOTDB_BATCH_MODE_ENABLE_KEY = "connector.batch.enable";
   public static final String SINK_IOTDB_BATCH_MODE_ENABLE_KEY = "sink.batch.enable";
@@ -173,8 +179,22 @@ public class PipeConnectorConstant {
                   CONNECTOR_COMPRESSOR_ZSTD,
                   CONNECTOR_COMPRESSOR_LZMA2)));
 
+  public static final String CONNECTOR_COMPRESSOR_ZSTD_LEVEL_KEY =
+      "connector.compressor.zstd.level";
+  public static final String SINK_COMPRESSOR_ZSTD_LEVEL_KEY = "sink.compressor.zstd.level";
+  public static final int CONNECTOR_COMPRESSOR_ZSTD_LEVEL_DEFAULT_VALUE =
+      Zstd.defaultCompressionLevel();
+  public static final int CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MIN_VALUE = Zstd.minCompressionLevel();
+  public static final int CONNECTOR_COMPRESSOR_ZSTD_LEVEL_MAX_VALUE = Zstd.maxCompressionLevel();
+
+  public static final String CONNECTOR_RATE_LIMIT_KEY = "connector.rate-limit-bytes-per-second";
+  public static final String SINK_RATE_LIMIT_KEY = "sink.rate-limit-bytes-per-second";
+  public static final double CONNECTOR_RATE_LIMIT_DEFAULT_VALUE = -1;
+
   public static final String SINK_TOPIC_KEY = "sink.topic";
   public static final String SINK_CONSUMER_GROUP_KEY = "sink.consumer-group";
+
+  public static final String CONNECTOR_CONSENSUS_GROUP_ID_KEY = "connector.consensus.group-id";
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");

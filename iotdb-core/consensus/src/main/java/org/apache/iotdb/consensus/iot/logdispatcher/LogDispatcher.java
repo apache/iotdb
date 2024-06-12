@@ -46,12 +46,9 @@ import java.util.Objects;
 import java.util.OptionalLong;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -101,7 +98,7 @@ public class LogDispatcher {
 
   public synchronized void start() {
     if (!threads.isEmpty()) {
-      threads.forEach(thread -> thread.setFuture(executorService.submit(thread)));
+      threads.forEach(executorService::submit);
     }
   }
 
@@ -133,7 +130,7 @@ public class LogDispatcher {
     if (this.executorService == null) {
       initLogSyncThreadPool();
     }
-    thread.setFuture(executorService.submit(thread));
+    executorService.submit(thread);
   }
 
   public synchronized void removeLogDispatcherThread(Peer peer) throws IOException {
@@ -231,7 +228,7 @@ public class LogDispatcher {
 
     private final LogDispatcherThreadMetrics logDispatcherThreadMetrics;
 
-    private Future<?> future;
+    private Semaphore threadSemaphore = new Semaphore(0);
 
     public LogDispatcherThread(Peer peer, IoTConsensusConfig config, long initialSyncIndex) {
       this.peer = peer;
@@ -255,10 +252,6 @@ public class LogDispatcher {
 
     public long getCurrentSyncIndex() {
       return controller.getCurrentIndex();
-    }
-
-    public void setFuture(Future<?> future) {
-      this.future = future;
     }
 
     public long getLastFlushedSyncIndex() {
@@ -308,16 +301,12 @@ public class LogDispatcher {
 
     public void stop() {
       stopped = true;
-      if (!future.cancel(true)) {
-        logger.warn("LogDispatcherThread Future for {} is not stopped", peer);
-      }
       try {
-        future.get(30, TimeUnit.SECONDS);
-      } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        if (!threadSemaphore.tryAcquire(30, TimeUnit.SECONDS)) {
+          logger.error("{}: Dispatcher for {} didn't stop after 30s.", impl.getThisNode(), peer);
+        }
+      } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.warn("LogDispatcherThread Future for {} is not stopped", peer, e);
-      } catch (CancellationException ignored) {
-        // ignore because it is expected
       }
       long requestSize = 0;
       for (IndexedConsensusRequest indexedConsensusRequest : pendingEntries) {
@@ -351,7 +340,7 @@ public class LogDispatcher {
       logger.info("{}: Dispatcher for {} starts", impl.getThisNode(), peer);
       try {
         Batch batch;
-        while (!Thread.interrupted()) {
+        while (!Thread.interrupted() && !stopped) {
           long startTime = System.nanoTime();
           while ((batch = getBatch()).isEmpty()) {
             // we may block here if there is no requests in the queue
@@ -366,12 +355,12 @@ public class LogDispatcher {
               }
             }
             // Immediately check for interrupts after poll and sleep
-            if (Thread.interrupted()) {
+            if (Thread.interrupted() || stopped) {
               throw new InterruptedException("Interrupted after polling and sleeping");
             }
           }
           // Immediately check for interrupts after a time-consuming getBatch() operation
-          if (Thread.interrupted()) {
+          if (Thread.interrupted() || stopped) {
             throw new InterruptedException("Interrupted after getting a batch");
           }
           logDispatcherThreadMetrics.recordConstructBatchTime(System.nanoTime() - startTime);
@@ -388,6 +377,7 @@ public class LogDispatcher {
       } catch (Exception e) {
         logger.error("Unexpected error in logDispatcher for peer {}", peer, e);
       }
+      threadSemaphore.release();
       logger.info("{}: Dispatcher for {} exits", impl.getThisNode(), peer);
     }
 

@@ -149,7 +149,8 @@ public class HorizontallyConcatOperatorTest {
               aggregators,
               initTimeRangeIterator(groupByTimeParameter, true, true),
               groupByTimeParameter,
-              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+              true);
       seriesAggregationScanOperator1.initQueryDataSource(
           new QueryDataSource(seqResources, unSeqResources));
       seriesAggregationScanOperator1
@@ -169,7 +170,8 @@ public class HorizontallyConcatOperatorTest {
               aggregators,
               initTimeRangeIterator(groupByTimeParameter, true, true),
               groupByTimeParameter,
-              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+              true);
       seriesAggregationScanOperator2.initQueryDataSource(
           new QueryDataSource(seqResources, unSeqResources));
       seriesAggregationScanOperator2

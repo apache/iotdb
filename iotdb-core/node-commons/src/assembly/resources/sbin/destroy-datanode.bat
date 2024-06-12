@@ -34,14 +34,18 @@ if not "%CLEAN_SERVICE%"=="y" if not "%CLEAN_SERVICE%"=="Y" (
 start cmd /c "%IOTDB_HOME%\\sbin\\stop-datanode.bat -f"
 timeout /t 3 > nul
 rmdir /s /q "%IOTDB_HOME%\data\datanode\" 2>nul
-set IOTDB_DATANODE_CONFIG="%IOTDB_HOME%\conf\iotdb-datanode.properties"
+if exist "%IOTDB_HOME%\conf\iotdb-system.properties" (
+  set IOTDB_DATANODE_CONFIG="%IOTDB_HOME%\conf\iotdb-system.properties"
+) ELSE (
+  set IOTDB_DATANODE_CONFIG="%IOTDB_HOME%\conf\iotdb-datanode.properties"
+)
 set "delimiter=,;"
 for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^dn_system_dir"
   %IOTDB_DATANODE_CONFIG%') do (
   set dn_system_dir=%%i
 )
 if "%dn_system_dir%"=="" (
-    set "dn_system_dir=data\confignode\system"
+    set "dn_system_dir=data\\datanode\\system"
 )
 setlocal enabledelayedexpansion
 set "dn_system_dir=!dn_system_dir:%delimiter%= !"
@@ -158,16 +162,36 @@ for %%i in (%dn_sync_dir%) do (
     )
 )
 
-for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^pipe_receiver_file_dir"
+for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^pipe_receiver_file_dirs"
   %IOTDB_DATANODE_CONFIG%') do (
-  set pipe_receiver_file_dir=%%i
+  set pipe_receiver_file_dirs=%%i
 )
-if "%pipe_receiver_file_dir%"=="" (
-    set "pipe_receiver_file_dir=data\\datanode\\system\\pipe\\receiver"
+if "%pipe_receiver_file_dirs%"=="" (
+    set "pipe_receiver_file_dirs=data\\datanode\\system\\pipe\\receiver"
 )
 
-set "pipe_receiver_file_dir=!pipe_receiver_file_dir:%delimiter%= !"
-for %%i in (%pipe_receiver_file_dir%) do (
+set "pipe_receiver_file_dirs=!pipe_receiver_file_dirs:%delimiter%= !"
+for %%i in (%pipe_receiver_file_dirs%) do (
+  set "var=%%i"
+    if "!var:~0,2!"=="\\" (
+      rmdir /s /q "%%i" 2>nul
+    ) else if "!var:~1,3!"==":\\" (
+      rmdir /s /q "%%i" 2>nul
+    ) else (
+      rmdir /s /q "%IOTDB_HOME%\%%i" 2>nul
+    )
+)
+
+for /f  "eol=# tokens=2 delims==" %%i in ('findstr /i "^pipe_consensus_receiver_file_dirs"
+  %IOTDB_DATANODE_CONFIG%') do (
+  set pipe_consensus_receiver_file_dirs=%%i
+)
+if "%pipe_consensus_receiver_file_dirs%"=="" (
+    set "pipe_consensus_receiver_file_dirs=data\\datanode\\system\\pipe\\consensus\\receiver"
+)
+
+set "pipe_consensus_receiver_file_dirs=!pipe_consensus_receiver_file_dirs:%delimiter%= !"
+for %%i in (%pipe_consensus_receiver_file_dirs%) do (
   set "var=%%i"
     if "!var:~0,2!"=="\\" (
       rmdir /s /q "%%i" 2>nul

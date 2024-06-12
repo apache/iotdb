@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
+import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
@@ -227,6 +228,11 @@ public class ConfigNodeToDataNodeInternalServiceAsyncRequestManager
         ConfigNodeToDataNodeRequestType.SET_SYSTEM_STATUS,
         (req, client, handler) ->
             client.setSystemStatus((String) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        ConfigNodeToDataNodeRequestType.SET_CONFIGURATION,
+        (req, client, handler) ->
+            client.setConfiguration(
+                (TSetConfigurationReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         ConfigNodeToDataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
         (req, client, handler) ->

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -70,7 +72,8 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
   public NonAlignedSeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-      Map<TsFileResource, List<Modification>> modificationCacheMap,
+      Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+          modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
       IDeviceID deviceId,
       int subTaskId,
