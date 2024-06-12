@@ -90,9 +90,13 @@ public class AddTableColumnProcedure
           LOGGER.info("Add column to table {}.{}", database, tableName);
           addColumn(env);
           break;
-        case UPDATE_CACHE:
-          LOGGER.info("Update cache of table {}.{} when adding column", database, tableName);
-          updateCache(env);
+        case PRE_RELEASE:
+          LOGGER.info("Pre release info of table {}.{} when adding column", database, tableName);
+          preRelease(env);
+          break;
+        case COMMIT_RELEASE:
+          LOGGER.info("Commit release info of table {}.{} when adding column", database, tableName);
+          commitRelease(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized AddTableColumnState " + state));
@@ -120,16 +124,16 @@ public class AddTableColumnProcedure
       return;
     }
     actualAddedColumnList = result.getRight();
-    setNextState(AddTableColumnState.UPDATE_CACHE);
+    setNextState(AddTableColumnState.PRE_RELEASE);
   }
 
-  private void updateCache(ConfigNodeProcedureEnv env) {
+  private void preRelease(ConfigNodeProcedureEnv env) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
 
     TUpdateTableReq req =
         new TUpdateTableReq(
-            TsTableInternalRPCType.ADD_COLUMN.getOperationType(), getCacheRequestInfo());
+            TsTableInternalRPCType.PRE_ADD_COLUMN.getOperationType(), getCacheRequestInfo());
 
     AsyncClientHandler<TUpdateTableReq, TSStatus> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
@@ -138,8 +142,34 @@ public class AddTableColumnProcedure
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schema cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to update cache of table {}.{}", database, tableName);
-        setFailure(new ProcedureException(new MetadataException("Update table cache failed")));
+        LOGGER.warn(
+            "Failed to pre-release column extension info of table {}.{}", database, tableName);
+        setFailure(
+            new ProcedureException(
+                new MetadataException("Pre-release table column extension info failed")));
+        return;
+      }
+    }
+    setNextState(AddTableColumnState.COMMIT_RELEASE);
+  }
+
+  private void commitRelease(ConfigNodeProcedureEnv env) {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+
+    TUpdateTableReq req =
+        new TUpdateTableReq(
+            TsTableInternalRPCType.COMMIT_ADD_COLUMN.getOperationType(), getCacheRequestInfo());
+
+    AsyncClientHandler<TUpdateTableReq, TSStatus> clientHandler =
+        new AsyncClientHandler<>(DataNodeRequestType.UPDATE_TABLE, req, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+    for (TSStatus status : statusMap.values()) {
+      // all dataNodes must clear the related schema cache
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn("Failed to commit column extension info of table {}.{}", database, tableName);
+        // todo async retry until success
         return;
       }
     }
@@ -154,7 +184,7 @@ public class AddTableColumnProcedure
         case ADD_COLUMN:
           rollbackAddColumn(env);
           break;
-        case UPDATE_CACHE:
+        case PRE_RELEASE:
           rollbackUpdateCache(env);
           break;
       }
@@ -192,7 +222,7 @@ public class AddTableColumnProcedure
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schema cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to rollback cache of table {}.{}", database, tableName);
+        LOGGER.warn("Failed to rollback cache of table {}.{}", database, tableName);
         setFailure(new ProcedureException(new MetadataException("Rollback table cache failed")));
         return;
       }
@@ -246,6 +276,7 @@ public class AddTableColumnProcedure
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.ADD_TABLE_COLUMN_PROCEDURE.getTypeCode());
+    super.serialize(stream);
 
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(tableName, stream);

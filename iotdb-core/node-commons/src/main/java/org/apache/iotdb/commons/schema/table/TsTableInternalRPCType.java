@@ -30,8 +30,9 @@ public enum TsTableInternalRPCType {
   ROLLBACK_CREATE((byte) 1),
   COMMIT_CREATE((byte) 2),
 
-  ADD_COLUMN((byte) 6),
-  ROLLBACK_ADD_COLUMN((byte) 7);
+  PRE_ADD_COLUMN((byte) 6),
+  COMMIT_ADD_COLUMN((byte) 7),
+  ROLLBACK_ADD_COLUMN((byte) 8);
 
   private final byte operationType;
 
@@ -61,8 +62,10 @@ public enum TsTableInternalRPCType {
       case 2:
         return COMMIT_CREATE;
       case 6:
-        return ADD_COLUMN;
+        return PRE_ADD_COLUMN;
       case 7:
+        return COMMIT_ADD_COLUMN;
+      case 8:
         return ROLLBACK_ADD_COLUMN;
       default:
         throw new IllegalArgumentException("Unknown table update operation type" + type);

@@ -34,7 +34,10 @@ public interface ITableCache {
 
   void commitCreateTable(String database, String tableName);
 
-  void addTableColumn(
+  void preAddTableColumn(
+      String database, String tableName, List<TsTableColumnSchema> columnSchemaList);
+
+  void commitAddTableColumn(
       String database, String tableName, List<TsTableColumnSchema> columnSchemaList);
 
   void rollbackAddColumn(

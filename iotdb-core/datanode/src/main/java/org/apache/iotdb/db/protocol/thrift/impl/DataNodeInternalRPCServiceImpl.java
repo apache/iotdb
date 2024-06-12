@@ -1444,9 +1444,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo));
         break;
-      case ADD_COLUMN:
+      case PRE_ADD_COLUMN:
         DataNodeTableCache.getInstance()
-            .addTableColumn(
+            .preAddTableColumn(
+                ReadWriteIOUtils.readString(req.tableInfo),
+                ReadWriteIOUtils.readString(req.tableInfo),
+                TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.tableInfo));
+        break;
+      case COMMIT_ADD_COLUMN:
+        DataNodeTableCache.getInstance()
+            .commitAddTableColumn(
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo),
                 TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.tableInfo));
