@@ -58,7 +58,7 @@ public class DataNodeMPPServiceAsyncRequestManager
 
   @Override
   protected TEndPoint nodeLocationToEndPoint(TDataNodeLocation dataNodeLocation) {
-    return null;
+    return dataNodeLocation.getMPPDataExchangeEndPoint();
   }
 
   @Override
