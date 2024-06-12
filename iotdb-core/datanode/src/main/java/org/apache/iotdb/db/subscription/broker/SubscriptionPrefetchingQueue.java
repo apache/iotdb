@@ -46,6 +46,9 @@ public abstract class SubscriptionPrefetchingQueue {
   protected final Map<SubscriptionCommitContext, SubscriptionEvent> uncommittedEvents;
   private final AtomicLong subscriptionCommitIdGenerator = new AtomicLong(0);
 
+  private volatile boolean isCompleted = false;
+  private volatile boolean isClosed = false;
+
   public SubscriptionPrefetchingQueue(
       final String brokerId,
       final String topicName,
@@ -61,11 +64,16 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public abstract void executePrefetch();
 
-  /** clean up uncommitted events */
   public void cleanup() {
+    // clean up uncommitted events
     for (final SubscriptionEvent event : uncommittedEvents.values()) {
+      event.clearReferenceCount();
       SubscriptionEventBinaryCache.getInstance().resetByteBuffer(event, true);
     }
+    uncommittedEvents.clear();
+
+    // no need to clean up events in inputPendingQueue, see
+    // org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask.close
   }
 
   /////////////////////////////// commit ///////////////////////////////
@@ -149,5 +157,23 @@ public abstract class SubscriptionPrefetchingQueue {
 
   public long getCurrentCommitId() {
     return subscriptionCommitIdGenerator.get();
+  }
+
+  /////////////////////////////// termination ///////////////////////////////
+
+  public boolean isClosed() {
+    return isClosed;
+  }
+
+  public void markClosed() {
+    isClosed = true;
+  }
+
+  public boolean isCompleted() {
+    return isCompleted;
+  }
+
+  public void markCompleted() {
+    isCompleted = true;
   }
 }
