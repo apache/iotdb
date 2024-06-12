@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -71,7 +72,9 @@ public class PipeEventCollector implements EventCollector {
         parseAndCollectEvent((PipeRawTabletInsertionEvent) event);
       } else if (event instanceof PipeTsFileInsertionEvent) {
         parseAndCollectEvent((PipeTsFileInsertionEvent) event);
-      } else if (event instanceof PipeSchemaRegionWritePlanEvent) {
+      } else if (event instanceof PipeSchemaRegionWritePlanEvent
+          && ((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType()
+              == PlanNodeType.DELETE_DATA) {
         parseAndCollectEvent((PipeSchemaRegionWritePlanEvent) event);
       } else if (!(event instanceof ProgressReportEvent)) {
         collectEvent(event);
@@ -128,6 +131,8 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void parseAndCollectEvent(final PipeSchemaRegionWritePlanEvent deleteDataEvent) {
+    // No need to bind progress index here since delete data event does not have progress index
+    // currently
     IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
         .process(deleteDataEvent.getPlanNode(), (IoTDBPipePattern) deleteDataEvent.getPipePattern())
         .map(
