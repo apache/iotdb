@@ -21,8 +21,8 @@ package org.apache.iotdb.db.protocol.client.dn;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
-import org.apache.iotdb.commons.client.gg.AsyncRequestRPCHandler;
+import org.apache.iotdb.commons.client.request.AsyncRequestContext;
+import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -22,8 +22,8 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
-import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
-import org.apache.iotdb.commons.client.gg.AsyncRequestRPCHandler;
+import org.apache.iotdb.commons.client.request.AsyncRequestContext;
+import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
 import org.apache.iotdb.confignode.client.ConfigNodeToConfigNodeRequestType;
 
 import java.util.Map;

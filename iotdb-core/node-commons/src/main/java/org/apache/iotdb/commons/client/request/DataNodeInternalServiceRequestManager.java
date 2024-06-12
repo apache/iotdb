@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client.gg;
+package org.apache.iotdb.commons.client.request;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;

@@ -21,8 +21,8 @@ package org.apache.iotdb.db.protocol.client.cn;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
-import org.apache.iotdb.commons.client.gg.AsyncRequestRPCHandler;
+import org.apache.iotdb.commons.client.request.AsyncRequestContext;
+import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
 
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;

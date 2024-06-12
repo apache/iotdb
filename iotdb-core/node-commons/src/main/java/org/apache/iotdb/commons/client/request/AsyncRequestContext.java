@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.client.gg;
+package org.apache.iotdb.commons.client.request;
 
 import java.util.ArrayList;
 import java.util.List;

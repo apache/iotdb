@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.client.async.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.commons.client.gg.AsyncRequestContext;
+import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
 
 import java.util.Map;
