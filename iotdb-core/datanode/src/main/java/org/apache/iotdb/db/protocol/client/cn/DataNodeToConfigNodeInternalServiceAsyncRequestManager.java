@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.client.request.ConfigNodeInternalServiceAsyncReq
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Asynchronously send RPC requests to ConfigNodes. See queryengine.thrift for more details. */
 public class DataNodeToConfigNodeInternalServiceAsyncRequestManager
     extends ConfigNodeInternalServiceAsyncRequestManager<DataNodeToConfigNodeRequestType> {
 

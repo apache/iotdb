@@ -32,7 +32,6 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectio
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Asynchronously send RPC requests to ConfigNodes. See queryengine.thrift for more details. */
 public class ConfigNodeToConfigNodeInternalServiceAsyncRequestManager
     extends ConfigNodeInternalServiceAsyncRequestManager<ConfigNodeToConfigNodeRequestType> {
 
