@@ -34,7 +34,6 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
@@ -91,12 +90,8 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
         DeviceContext deviceContext = deviceContextMap.get(deviceID);
         int templateId = deviceContext.getTemplateId();
         // TODO: use IDeviceID interface to get ttl
-        long ttl;
-        try {
-          ttl = DataNodeTTLCache.getInstance().getTTL(((PlainDeviceID) deviceID).toStringID());
-        } catch (IllegalPathException e) {
-          ttl = Long.MAX_VALUE;
-        }
+        long ttl = DataNodeTTLCache.getInstance().getTTL(deviceID);
+
         // TODO: make it more readable, like "30 days" or "10 hours"
         String ttlStr = ttl == Long.MAX_VALUE ? IoTDBConstant.TTL_INFINITE : String.valueOf(ttl);
 
