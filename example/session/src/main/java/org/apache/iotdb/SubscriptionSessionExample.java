@@ -25,13 +25,9 @@ import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
-import org.apache.iotdb.session.subscription.consumer.AckStrategy;
-import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
-import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
@@ -39,7 +35,6 @@ import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -56,8 +51,6 @@ public class SubscriptionSessionExample {
 
   private static final String TOPIC_1 = "topic1";
   private static final String TOPIC_2 = "`'topic2'`";
-  private static final String TOPIC_3 = "`\"topic3\"`";
-  private static final String TOPIC_4 = "`\"top \\.i.c4\"`";
 
   private static final long SLEEP_NS = 1_000_000_000L;
   private static final long POLL_TIMEOUT_MS = 10_000L;

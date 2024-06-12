@@ -24,16 +24,12 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
-import org.apache.iotdb.db.subscription.event.SubscriptionTsFileEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
