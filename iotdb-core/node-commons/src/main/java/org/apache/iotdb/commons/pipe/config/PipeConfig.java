@@ -140,8 +140,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeSnapshotExecutionMaxBatchSize();
   }
 
-  public double getPipeRemainingTimeCommitRateSmoothingFactor() {
-    return COMMON_CONFIG.getPipeRemainingTimeCommitRateSmoothingFactor();
+  public long getPipeRemainingTimeCommitAutoSwitchSeconds() {
+    return COMMON_CONFIG.getPipeRemainingTimeCommitRateAutoSwitchSeconds();
   }
 
   public PipeRemainingTimeRateAverageTime getPipeRemainingTimeCommitRateAverageTime() {
@@ -333,8 +333,8 @@ public class PipeConfig {
         getPipeListeningQueueTransferSnapshotThreshold());
     LOGGER.info("PipeSnapshotExecutionMaxBatchSize: {}", getPipeSnapshotExecutionMaxBatchSize());
     LOGGER.info(
-        "PipeRemainingTimeCommitRateSmoothingFactor: {}",
-        getPipeRemainingTimeCommitRateSmoothingFactor());
+        "PipeRemainingTimeCommitAutoSwitchSeconds: {}",
+        getPipeRemainingTimeCommitAutoSwitchSeconds());
     LOGGER.info(
         "PipeRemainingTimeCommitRateAverageTime: {}", getPipeRemainingTimeCommitRateAverageTime());
 

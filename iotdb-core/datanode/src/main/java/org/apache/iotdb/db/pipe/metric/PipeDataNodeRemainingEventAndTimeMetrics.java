@@ -151,6 +151,26 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
+  public void thawRate(final String pipeID) {
+    if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
+      LOGGER.warn(
+          "Failed to deregister pipe remaining event and time metrics, RemainingEventAndTimeOperator({}) does not exist",
+          pipeID);
+      return;
+    }
+    remainingEventAndTimeOperatorMap.get(pipeID).thawRate();
+  }
+
+  public void freezeRate(final String pipeID) {
+    if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
+      LOGGER.warn(
+          "Failed to deregister pipe remaining event and time metrics, RemainingEventAndTimeOperator({}) does not exist",
+          pipeID);
+      return;
+    }
+    remainingEventAndTimeOperatorMap.get(pipeID).freezeRate();
+  }
+
   public void deregister(final String pipeID) {
     if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
       LOGGER.warn(

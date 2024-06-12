@@ -238,6 +238,21 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
+  protected void startPipe(final String pipeName, final long creationTime) {
+    super.startPipe(pipeName, creationTime);
+
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().thawRate(pipeName + "_" + creationTime);
+  }
+
+  @Override
+  protected void stopPipe(final String pipeName, final long creationTime) {
+    super.stopPipe(pipeName, creationTime);
+
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+        .freezeRate(pipeName + "_" + creationTime);
+  }
+
+  @Override
   protected void dropPipe(final String pipeName, final long creationTime) {
     super.dropPipe(pipeName, creationTime);
 
@@ -612,7 +627,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   ///////////////////////// Pipe Consensus /////////////////////////
 
-  public ProgressIndex getPipeTaskProgressIndex(String pipeName, int consensusGroupId) {
+  public ProgressIndex getPipeTaskProgressIndex(final String pipeName, final int consensusGroupId) {
     if (!tryReadLockWithTimeOut(10)) {
       throw new PipeException(
           String.format(

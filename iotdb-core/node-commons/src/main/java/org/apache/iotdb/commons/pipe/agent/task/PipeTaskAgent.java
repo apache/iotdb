@@ -103,7 +103,7 @@ public abstract class PipeTaskAgent {
     pipeMetaKeeper.acquireWriteLock();
   }
 
-  protected boolean tryWriteLockWithTimeOut(long timeOutInSeconds) {
+  protected boolean tryWriteLockWithTimeOut(final long timeOutInSeconds) {
     try {
       return pipeMetaKeeper.tryWriteLock(timeOutInSeconds);
     } catch (final InterruptedException e) {
@@ -531,7 +531,7 @@ public abstract class PipeTaskAgent {
     pipeMetaKeeper.removePipeMeta(pipeName);
   }
 
-  private void startPipe(final String pipeName, final long creationTime) {
+  protected void startPipe(final String pipeName, final long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
     if (!checkBeforeStartPipe(existedPipeMeta, pipeName, creationTime)) {

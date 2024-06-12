@@ -236,7 +236,7 @@ public class CommonConfig {
   private float pipeLeaderCacheMemoryUsagePercentage = 0.1F;
   private long pipeListeningQueueTransferSnapshotThreshold = 1000;
   private int pipeSnapshotExecutionMaxBatchSize = 1000;
-  private double pipeRemainingTimeCommitRateSmoothingFactor = 1.0;
+  private long pipeRemainingTimeCommitRateAutoSwitchSeconds = 30;
   private PipeRemainingTimeRateAverageTime pipeRemainingTimeCommitRateAverageTime =
       PipeRemainingTimeRateAverageTime.MEAN;
 
@@ -1023,13 +1023,14 @@ public class CommonConfig {
     this.pipeSnapshotExecutionMaxBatchSize = pipeSnapshotExecutionMaxBatchSize;
   }
 
-  public double getPipeRemainingTimeCommitRateSmoothingFactor() {
-    return pipeRemainingTimeCommitRateSmoothingFactor;
+  public long getPipeRemainingTimeCommitRateAutoSwitchSeconds() {
+    return pipeRemainingTimeCommitRateAutoSwitchSeconds;
   }
 
-  public void setPipeRemainingTimeCommitRateSmoothingFactor(
-      double pipeRemainingTimeCommitRateSmoothingFactor) {
-    this.pipeRemainingTimeCommitRateSmoothingFactor = pipeRemainingTimeCommitRateSmoothingFactor;
+  public void setPipeRemainingTimeCommitRateAutoSwitchSeconds(
+      long pipeRemainingTimeCommitRateAutoSwitchSeconds) {
+    this.pipeRemainingTimeCommitRateAutoSwitchSeconds =
+        pipeRemainingTimeCommitRateAutoSwitchSeconds;
   }
 
   public PipeRemainingTimeRateAverageTime getPipeRemainingTimeCommitRateAverageTime() {
