@@ -30,6 +30,16 @@ import java.util.Collections;
 import java.util.List;
 
 public class TestConnectionStatement extends Statement implements IConfigStatement {
+  private boolean needDetails;
+
+  public TestConnectionStatement(boolean needDetails) {
+    this.needDetails = needDetails;
+  }
+
+  public boolean needDetails() {
+    return needDetails;
+  }
+
   @Override
   public QueryType getQueryType() {
     return QueryType.READ;

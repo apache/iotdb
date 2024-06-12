@@ -4016,7 +4016,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitVerifyConnection(IoTDBSqlParser.VerifyConnectionContext ctx) {
-    return new TestConnectionStatement();
+    return new TestConnectionStatement(ctx.DETAILS() != null);
   }
 
   // Quota

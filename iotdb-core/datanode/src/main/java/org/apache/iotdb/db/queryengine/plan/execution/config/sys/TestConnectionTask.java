@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.sys;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSender;
 import org.apache.iotdb.common.rpc.thrift.TServiceProvider;
+import org.apache.iotdb.common.rpc.thrift.TServiceType;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -38,29 +40,70 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class TestConnectionTask implements IConfigTask {
 
+  private final boolean needDetails;
+
+  public TestConnectionTask(boolean needDetails) {
+    this.needDetails = needDetails;
+  }
+
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.testConnection();
+    return configTaskExecutor.testConnection(needDetails);
   }
 
   public static void buildTSBlock(
       TTestConnectionResp resp,
       int configNodeNum,
       int dataNodeNum,
+      boolean needDetails,
       SettableFuture<ConfigTaskResult> future) {
+    sortTestConnectionResp(resp);
+    if (!needDetails) {
+      Map<TServiceType, Integer> expectedNumMap =
+          calculateExpectedResultNum(configNodeNum, dataNodeNum);
+      List<TTestConnectionResult> newResultList = new ArrayList<>();
+      for (int i = 0; i < resp.getResultListSize(); ) {
+        TTestConnectionResult result = resp.getResultList().get(i);
+        final int expectNum = expectedNumMap.get(result.getServiceProvider().getServiceType());
+        final boolean allSameServiceProviderAllUp =
+            resp.getResultList().stream()
+                .skip(i)
+                .limit(expectNum)
+                .allMatch(
+                    result1 ->
+                        result.getServiceProvider().equals(result1.serviceProvider)
+                            && result1.isSuccess());
+        if (allSameServiceProviderAllUp) {
+          TTestConnectionResult allUpResult = new TTestConnectionResult(result);
+          allUpResult.setSender(new TSender());
+          newResultList.add(allUpResult);
+        } else {
+          newResultList.addAll(
+              resp.getResultList().stream()
+                  .skip(i)
+                  .limit(expectNum)
+                  .filter(result1 -> !result1.isSuccess())
+                  .collect(Collectors.toList()));
+        }
+        i += expectNum;
+      }
+      resp.setResultList(newResultList);
+    }
     List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.testConnectionColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    sortTestConnectionResp(resp);
     int maxLen = calculateServiceProviderMaxLen(resp);
     for (TTestConnectionResult result : resp.getResultList()) {
       // ServiceProvider column
@@ -79,10 +122,12 @@ public class TestConnectionTask implements IConfigTask {
         senderStr =
             endPointToString(result.getSender().getConfigNodeLocation().getInternalEndPoint());
         senderStr += " (ConfigNode)";
-      } else {
+      } else if (result.getSender().isSetDataNodeLocation()) {
         senderStr =
             endPointToString(result.getSender().getDataNodeLocation().getInternalEndPoint());
         senderStr += " (DataNode)";
+      } else {
+        senderStr = "All";
       }
       builder.getColumnBuilder(1).writeBinary(new Binary(senderStr, TSFileConfig.STRING_CHARSET));
       // Connection column
@@ -104,6 +149,16 @@ public class TestConnectionTask implements IConfigTask {
             TSStatusCode.SUCCESS_STATUS,
             builder.build(),
             DatasetHeaderFactory.getTestConnectionHeader()));
+  }
+
+  private static Map<TServiceType, Integer> calculateExpectedResultNum(
+      int configNodeNum, int dataNodeNum) {
+    Map<TServiceType, Integer> result = new HashMap<>();
+    result.put(TServiceType.ConfigNodeInternalService, configNodeNum + dataNodeNum);
+    result.put(TServiceType.DataNodeInternalService, configNodeNum + dataNodeNum);
+    result.put(TServiceType.DataNodeMPPService, dataNodeNum);
+    result.put(TServiceType.DataNodeExternalService, dataNodeNum);
+    return result;
   }
 
   private static String serviceProviderToString(TServiceProvider provider) {

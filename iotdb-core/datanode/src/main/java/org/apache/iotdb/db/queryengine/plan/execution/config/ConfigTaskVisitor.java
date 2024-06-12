@@ -245,7 +245,7 @@ public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryCon
   @Override
   public IConfigTask visitTestConnection(
       TestConnectionStatement testConnectionStatement, MPPQueryContext context) {
-    return new TestConnectionTask();
+    return new TestConnectionTask(testConnectionStatement.needDetails());
   }
 
   @Override

@@ -135,7 +135,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showClusterId();
 
-  SettableFuture<ConfigTaskResult> testConnection();
+  SettableFuture<ConfigTaskResult> testConnection(boolean needDetails);
 
   SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement);
 

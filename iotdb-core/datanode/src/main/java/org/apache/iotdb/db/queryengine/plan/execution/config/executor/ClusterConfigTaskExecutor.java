@@ -1291,15 +1291,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> testConnection() {
+  public SettableFuture<ConfigTaskResult> testConnection(boolean needDetails) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      // TODO: now sync, maybe async in future
       TTestConnectionResp result = client.submitTestConnectionTaskToLeader();
-      int configNodeNum = client.showConfigNodes().getConfigNodesInfoListSize();
-      int dataNodeNum = client.showDataNodes().getDataNodesInfoListSize();
-      TestConnectionTask.buildTSBlock(result, configNodeNum, dataNodeNum, future);
+      int configNodeNum = 0, dataNodeNum = 0;
+      if (!needDetails) {
+        configNodeNum = client.showConfigNodes().getConfigNodesInfoListSize();
+        dataNodeNum = client.showDataNodes().getDataNodesInfoListSize();
+      }
+      TestConnectionTask.buildTSBlock(result, configNodeNum, dataNodeNum, needDetails, future);
     } catch (Exception e) {
       future.setException(e);
     }

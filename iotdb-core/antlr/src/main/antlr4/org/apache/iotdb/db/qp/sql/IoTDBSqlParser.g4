@@ -525,7 +525,7 @@ migrateRegion
     ;
 
 verifyConnection
-    : VERIFY CONNECTION
+    : VERIFY CONNECTION (DETAILS)?
     ;
 
 // Pipe Task =========================================================================================
