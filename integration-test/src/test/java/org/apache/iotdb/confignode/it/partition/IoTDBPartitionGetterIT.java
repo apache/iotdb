@@ -62,6 +62,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -431,7 +432,7 @@ public class IoTDBPartitionGetterIT {
 
       TGetRegionIdReq deviceReq = new TGetRegionIdReq(TConsensusGroupType.DataRegion);
       for (String device : devices) {
-        deviceReq.setDevice(device);
+        deviceReq.setDevice(device.getBytes(StandardCharsets.UTF_8));
         TGetRegionIdResp resp = client.getRegionId(deviceReq);
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());

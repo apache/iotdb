@@ -47,7 +47,7 @@ public class GetRegionIdStatement extends Statement implements IConfigStatement 
 
   private String database;
 
-  private String device;
+  private byte[] device;
   private final TConsensusGroupType partitionType;
   private long startTimeStamp;
 
@@ -84,7 +84,7 @@ public class GetRegionIdStatement extends Statement implements IConfigStatement 
     return partitionType;
   }
 
-  public String getDevice() {
+  public byte[] getDevice() {
     return device;
   }
 
@@ -92,7 +92,7 @@ public class GetRegionIdStatement extends Statement implements IConfigStatement 
     this.database = database;
   }
 
-  public void setDevice(String device) {
+  public void setDevice(byte[] device) {
     this.device = device;
   }
 

@@ -37,7 +37,7 @@ public class CountTimeSlotListStatement extends Statement implements IConfigStat
 
   private String database;
 
-  private String device;
+  private byte[] device;
 
   private long regionId = -1;
 
@@ -75,11 +75,11 @@ public class CountTimeSlotListStatement extends Statement implements IConfigStat
     this.endTime = endTime;
   }
 
-  public void setDevice(String device) {
+  public void setDevice(byte[] device) {
     this.device = device;
   }
 
-  public String getDevice() {
+  public byte[] getDevice() {
     return this.device;
   }
 

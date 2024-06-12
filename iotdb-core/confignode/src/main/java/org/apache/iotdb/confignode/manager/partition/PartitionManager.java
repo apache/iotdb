@@ -91,10 +91,12 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1087,7 +1089,7 @@ public class PartitionManager {
       plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
       plan.setSeriesSlotId(
           executor.getSeriesPartitionSlot(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(req.getDevice())));
+              Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(ByteBuffer.wrap(req.getDevice()))));
     }
     if (Objects.equals(plan.getDatabase(), "")) {
       // Return empty result if Database not specified
@@ -1124,7 +1126,7 @@ public class PartitionManager {
       plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
       plan.setSeriesSlotId(
           executor.getSeriesPartitionSlot(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(req.getDevice())));
+              Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(ByteBuffer.wrap(req.getDevice()))));
       if (Objects.equals(plan.getDatabase(), "")) {
         // Return empty result if Database not specified
         return new GetTimeSlotListResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
@@ -1153,7 +1155,7 @@ public class PartitionManager {
       plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
       plan.setSeriesSlotId(
           executor.getSeriesPartitionSlot(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(req.getDevice())));
+              Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(ByteBuffer.wrap(req.getDevice()))));
       if (Objects.equals(plan.getDatabase(), "")) {
         // Return empty result if Database not specified
         return new CountTimeSlotListResp(RpcUtils.SUCCESS_STATUS, 0);

@@ -95,6 +95,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -614,6 +615,16 @@ public class ClusterSchemaManager {
     List<String> databases = getDatabaseNames();
     for (String database : databases) {
       if (PathUtils.isStartWith(devicePath, database)) {
+        return database;
+      }
+    }
+    return "";
+  }
+
+  public String getDatabaseNameByDevice(byte[] devicePath) {
+    List<String> databases = getDatabaseNames();
+    for (String database : databases) {
+      if (PathUtils.isStartWith(Arrays.toString(devicePath), database)) {
         return database;
       }
     }

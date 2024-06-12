@@ -46,7 +46,7 @@ public class GetTimeSlotListStatement extends Statement implements IConfigStatem
 
   private String database;
 
-  private String device;
+  private byte[] device;
 
   private long regionId = -1;
 
@@ -84,11 +84,11 @@ public class GetTimeSlotListStatement extends Statement implements IConfigStatem
     this.endTime = endTime;
   }
 
-  public void setDevice(String device) {
+  public void setDevice(byte[] device) {
     this.device = device;
   }
 
-  public String getDevice() {
+  public byte[] getDevice() {
     return this.device;
   }
 
