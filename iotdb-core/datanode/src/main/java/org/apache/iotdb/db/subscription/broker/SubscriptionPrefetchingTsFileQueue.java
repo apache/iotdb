@@ -112,7 +112,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
       }
 
       if (!(event instanceof PipeTsFileInsertionEvent)) {
-        LOGGER.warn(
+        LOGGER.info(
             "Subscription: SubscriptionPrefetchingTsFileQueue {} only support poll PipeTsFileInsertionEvent. Ignore {}.",
             this,
             event);

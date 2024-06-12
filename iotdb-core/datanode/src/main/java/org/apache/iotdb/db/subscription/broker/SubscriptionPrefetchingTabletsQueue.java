@@ -170,7 +170,7 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
         //  - PipeHeartbeatEvent: ignored? (may affect pipe metrics)
         //  - UserDefinedEnrichedEvent: ignored?
         //  - Others: events related to meta sync, safe to ignore
-        LOGGER.warn(
+        LOGGER.info(
             "Subscription: SubscriptionPrefetchingTabletsQueue {} ignore EnrichedEvent {} when prefetching.",
             this,
             event);
