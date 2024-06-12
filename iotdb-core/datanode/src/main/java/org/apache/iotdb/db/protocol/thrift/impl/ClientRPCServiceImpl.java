@@ -177,6 +177,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -673,7 +674,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private List<TsBlock> executeGroupByQueryInternal(
       SessionInfo sessionInfo,
-      String device,
+      IDeviceID deviceID,
       String measurement,
       TSDataType dataType,
       boolean isAligned,
@@ -736,7 +737,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     if (isAligned) {
       path =
           new AlignedFullPath(
-              Factory.DEFAULT_FACTORY.create(device),
+              deviceID,
               Collections.singletonList(measurement),
               Collections.singletonList(measurementSchema));
       operator =
@@ -754,7 +755,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   || (!TAggregationType.LAST_VALUE.equals(aggregationType)
                       && !TAggregationType.FIRST_VALUE.equals(aggregationType)));
     } else {
-      path = new NonAlignedFullPath(Factory.DEFAULT_FACTORY.create(device), measurementSchema);
+      path = new NonAlignedFullPath(deviceID, measurementSchema);
       operator =
           new SeriesAggregationScanOperator(
               planNodeId,
@@ -827,28 +828,30 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     Throwable t = null;
     try {
       String db;
-      String deviceId;
+      String device;
       PartialPath devicePath;
 
       queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
 
       if (req.isLegalPathNodes()) {
         db = req.db;
-        deviceId = req.deviceId;
-        devicePath = new PartialPath(deviceId.split("\\."));
+        device = req.deviceId;
+        devicePath = new PartialPath(device.split("\\."));
       } else {
         db = new PartialPath(req.db).getFullPath();
         devicePath = new PartialPath(req.deviceId);
-        deviceId = devicePath.getFullPath();
+        device = devicePath.getFullPath();
       }
 
+      IDeviceID deviceID = Factory.DEFAULT_FACTORY.create(device);
+
       DataPartitionQueryParam queryParam =
-          new DataPartitionQueryParam(deviceId, Collections.emptyList(), true, true);
+          new DataPartitionQueryParam(deviceID, Collections.emptyList(), true, true);
       DataPartition dataPartition =
           partitionFetcher.getDataPartitionWithUnclosedTimeRange(
               Collections.singletonMap(db, Collections.singletonList(queryParam)));
       List<TRegionReplicaSet> regionReplicaSets =
-          dataPartition.getDataRegionReplicaSetWithTimeFilter(deviceId, null);
+          dataPartition.getDataRegionReplicaSetWithTimeFilter(deviceID, null);
 
       // no valid DataRegion
       if (regionReplicaSets.isEmpty()
@@ -1041,7 +1044,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         String[] splits = Strings.split(req.getDevice(), "\\.");
         database = String.format("%s.%s", splits[0], splits[1]);
       }
-      String deviceId = req.getDevice();
+      IDeviceID deviceId = Factory.DEFAULT_FACTORY.create(req.getDevice());
       String measurementId = req.getMeasurement();
       TSDataType dataType = TSDataType.getTsDataType((byte) req.getDataType());
 

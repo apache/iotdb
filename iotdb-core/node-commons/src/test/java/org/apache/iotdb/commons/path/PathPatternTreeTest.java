@@ -251,7 +251,7 @@ public class PathPatternTreeTest {
 
     Assert.assertEquals(
         compressedDevicePaths.stream()
-            .map(PartialPath::getFullPath)
+            .map(PartialPath::getIDeviceID)
             .sorted()
             .collect(Collectors.toList()),
         patternTree.getAllDevicePatterns().stream().sorted().collect(Collectors.toList()));

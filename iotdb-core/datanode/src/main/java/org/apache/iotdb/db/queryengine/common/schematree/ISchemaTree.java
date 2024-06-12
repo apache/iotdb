@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.List;
@@ -68,6 +69,8 @@ public interface ISchemaTree {
    * @return database in the given path
    */
   String getBelongedDatabase(String pathName);
+
+  String getBelongedDatabase(IDeviceID pathName);
 
   String getBelongedDatabase(PartialPath path);
 

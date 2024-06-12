@@ -22,6 +22,9 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,9 +44,9 @@ public class DeviceGroupHashExecutorManualTest {
   private static final String chars =
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-";
 
-  private List<String> genBatchDevices() {
+  private List<IDeviceID> genBatchDevices() {
     Random random = new Random();
-    List<String> devices = new ArrayList<>();
+    List<IDeviceID> devices = new ArrayList<>();
     int fatherLength = random.nextInt(10) + 10;
     int deviceLength = random.nextInt(5) + 5;
 
@@ -56,7 +59,7 @@ public class DeviceGroupHashExecutorManualTest {
       for (int k = 0; k < deviceLength; k++) {
         curDevice.append(chars.charAt(random.nextInt(chars.length())));
       }
-      devices.add(curDevice.toString());
+      devices.add(Factory.DEFAULT_FACTORY.create(curDevice.toString()));
     }
     return devices;
   }
@@ -68,9 +71,9 @@ public class DeviceGroupHashExecutorManualTest {
 
     long totalTime = 0;
     for (int i = 0; i < batchCount; i++) {
-      List<String> devices = genBatchDevices();
+      List<IDeviceID> devices = genBatchDevices();
       totalTime -= System.currentTimeMillis();
-      for (String device : devices) {
+      for (IDeviceID device : devices) {
         bucket[manager.getSeriesPartitionSlot(device).getSlotId()] += 1;
       }
       totalTime += System.currentTimeMillis();

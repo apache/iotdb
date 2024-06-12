@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.PathParseException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.parser.PathNodesGenerator;
 import org.apache.tsfile.read.common.parser.PathVisitor;
 
@@ -182,6 +183,12 @@ public class PathUtils {
   }
 
   public static boolean isStartWith(String deviceName, String storageGroup) {
+    return deviceName.equals(storageGroup) || deviceName.startsWith(storageGroup + ".");
+  }
+
+  public static boolean isStartWith(IDeviceID deviceID, String storageGroup) {
+    // TODO: use correct judgement without converting to string
+    String deviceName = deviceID.toString();
     return deviceName.equals(storageGroup) || deviceName.startsWith(storageGroup + ".");
   }
 

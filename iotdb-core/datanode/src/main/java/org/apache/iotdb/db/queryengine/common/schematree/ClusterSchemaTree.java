@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -549,6 +550,16 @@ public class ClusterSchemaTree implements ISchemaTree {
       }
     }
     throw new SemanticException("No matched database. Please check the path " + pathName);
+  }
+
+  @Override
+  public String getBelongedDatabase(IDeviceID deviceID) {
+    for (String database : databases) {
+      if (PathUtils.isStartWith(deviceID, database)) {
+        return database;
+      }
+    }
+    throw new SemanticException("No matched database. Please check the path " + deviceID);
   }
 
   @Override

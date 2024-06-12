@@ -1005,11 +1005,11 @@ public class PartitionManager {
   /**
    * Get TSeriesPartitionSlot.
    *
-   * @param devicePath Full path ending with device name
+   * @param deviceID
    * @return SeriesPartitionSlot
    */
-  public TSeriesPartitionSlot getSeriesPartitionSlot(String devicePath) {
-    return executor.getSeriesPartitionSlot(IDeviceID.Factory.DEFAULT_FACTORY.create(devicePath));
+  public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {
+    return executor.getSeriesPartitionSlot(deviceID);
   }
 
   public RegionInfoListResp getRegionInfoList(GetRegionInfoListPlan req) {

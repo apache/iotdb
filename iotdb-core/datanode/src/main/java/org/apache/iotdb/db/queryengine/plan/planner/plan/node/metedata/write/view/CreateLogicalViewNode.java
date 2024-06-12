@@ -229,7 +229,7 @@ public class CreateLogicalViewNode extends WritePlanNode implements ICreateLogic
       TRegionReplicaSet regionReplicaSet =
           analysis
               .getSchemaPartitionInfo()
-              .getSchemaRegionReplicaSet(entry.getKey().getIDeviceID().toString());
+              .getSchemaRegionReplicaSet(entry.getKey().getIDeviceID());
 
       // create a map if the key(regionReplicaSet) is not exists,
       // then put this entry into this map(from regionReplicaSet to this entry)

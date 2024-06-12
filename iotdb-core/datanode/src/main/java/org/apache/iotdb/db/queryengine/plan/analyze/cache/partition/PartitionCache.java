@@ -76,6 +76,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class PartitionCache {
+
   private static final Logger logger = LoggerFactory.getLogger(PartitionCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
@@ -135,12 +136,12 @@ public class PartitionCache {
    * @param isAutoCreate whether auto create database when cache miss
    * @param userName
    */
-  public Map<String, List<String>> getStorageGroupToDevice(
-      List<String> devicePaths, boolean tryToFetch, boolean isAutoCreate, String userName) {
-    StorageGroupCacheResult<List<String>> result =
-        new StorageGroupCacheResult<List<String>>() {
+  public Map<String, List<IDeviceID>> getStorageGroupToDevice(
+      List<IDeviceID> devicePaths, boolean tryToFetch, boolean isAutoCreate, String userName) {
+    StorageGroupCacheResult<String, List<IDeviceID>> result =
+        new StorageGroupCacheResult<String, List<IDeviceID>>() {
           @Override
-          public void put(String device, String storageGroupName) {
+          public void put(IDeviceID device, String storageGroupName) {
             map.computeIfAbsent(storageGroupName, k -> new ArrayList<>());
             map.get(storageGroupName).add(device);
           }
@@ -152,34 +153,34 @@ public class PartitionCache {
   /**
    * get device to database map
    *
-   * @param devicePaths the devices that need to hit
+   * @param deviceIDS the devices that need to hit
    * @param tryToFetch whether try to get all database from config node
    * @param isAutoCreate whether auto create database when cache miss
    * @param userName
    */
-  public Map<String, String> getDeviceToStorageGroup(
-      List<String> devicePaths, boolean tryToFetch, boolean isAutoCreate, String userName) {
-    StorageGroupCacheResult<String> result =
-        new StorageGroupCacheResult<String>() {
+  public Map<IDeviceID, String> getDeviceToStorageGroup(
+      List<IDeviceID> deviceIDS, boolean tryToFetch, boolean isAutoCreate, String userName) {
+    StorageGroupCacheResult<IDeviceID, String> result =
+        new StorageGroupCacheResult<IDeviceID, String>() {
           @Override
-          public void put(String device, String storageGroupName) {
+          public void put(IDeviceID device, String storageGroupName) {
             map.put(device, storageGroupName);
           }
         };
-    getStorageGroupCacheResult(result, devicePaths, tryToFetch, isAutoCreate, userName);
+    getStorageGroupCacheResult(result, deviceIDS, tryToFetch, isAutoCreate, userName);
     return result.getMap();
   }
 
   /**
    * get database of device
    *
-   * @param devicePath the path of device
+   * @param deviceID the path of device
    * @return database name, return null if cache miss
    */
-  private String getStorageGroupName(String devicePath) {
+  private String getStorageGroupName(IDeviceID deviceID) {
     synchronized (storageGroupCache) {
       for (String storageGroupName : storageGroupCache) {
-        if (PathUtils.isStartWith(devicePath, storageGroupName)) {
+        if (PathUtils.isStartWith(deviceID, storageGroupName)) {
           return storageGroupName;
         }
       }
@@ -191,16 +192,16 @@ public class PartitionCache {
    * get all database from confignode and update database cache
    *
    * @param result the result of get database cache
-   * @param devicePaths the devices that need to hit
+   * @param deviceIDs the devices that need to hit
    */
   private void fetchStorageGroupAndUpdateCache(
-      StorageGroupCacheResult<?> result, List<String> devicePaths)
+      StorageGroupCacheResult<?, ?> result, List<IDeviceID> deviceIDs)
       throws ClientManagerException, TException {
     storageGroupCacheLock.writeLock().lock();
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       result.reset();
-      getStorageGroupMap(result, devicePaths, true);
+      getStorageGroupMap(result, deviceIDs, true);
       if (!result.isSuccess()) {
         TGetDatabaseReq req = new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY);
         TDatabaseSchemaResp storageGroupSchemaResp = client.getMatchedDatabaseSchemas(req);
@@ -209,7 +210,7 @@ public class PartitionCache {
           Set<String> storageGroupNames = storageGroupSchemaResp.getDatabaseSchemaMap().keySet();
           // update all database into cache
           updateStorageCache(storageGroupNames);
-          getStorageGroupMap(result, devicePaths, true);
+          getStorageGroupMap(result, deviceIDs, true);
         }
       }
     } finally {
@@ -221,12 +222,12 @@ public class PartitionCache {
    * create not existed database and update database cache
    *
    * @param result the result of get database cache
-   * @param devicePaths the devices that need to hit
+   * @param deviceIDs the devices that need to hit
    * @param userName
    * @throws RuntimeException if failed to create database
    */
   private void createStorageGroupAndUpdateCache(
-      StorageGroupCacheResult<?> result, List<String> devicePaths, String userName)
+      StorageGroupCacheResult<?, ?> result, List<IDeviceID> deviceIDs, String userName)
       throws ClientManagerException, MetadataException, TException {
     storageGroupCacheLock.writeLock().lock();
     try (ConfigNodeClient client =
@@ -234,14 +235,14 @@ public class PartitionCache {
       // Try to check whether database need to be created
       result.reset();
       // Try to hit database with all missed devices
-      getStorageGroupMap(result, devicePaths, false);
+      getStorageGroupMap(result, deviceIDs, false);
       if (!result.isSuccess()) {
         // Try to get database needed to be created from missed device
         Set<String> storageGroupNamesNeedCreated = new HashSet<>();
-        for (String devicePath : result.getMissedDevices()) {
+        for (IDeviceID deviceID : result.getMissedDevices()) {
           PartialPath storageGroupNameNeedCreated =
               MetaUtils.getStorageGroupPathByLevel(
-                  new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
+                  new PartialPath(deviceID), config.getDefaultStorageGroupLevel());
           storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
         }
 
@@ -281,7 +282,7 @@ public class PartitionCache {
         }
         // Try to update database cache when all databases has already been created
         updateStorageCache(storageGroupNamesNeedCreated);
-        getStorageGroupMap(result, devicePaths, false);
+        getStorageGroupMap(result, deviceIDs, false);
       }
     } finally {
       storageGroupCacheLock.writeLock().unlock();
@@ -292,17 +293,17 @@ public class PartitionCache {
    * get database map in one try
    *
    * @param result contains result(boolean), failed devices and the map
-   * @param devicePaths the devices that need to hit
+   * @param deviceIDs the devices that need to hit
    * @param failFast if true, return when failed. if false, return when all devices hit
    */
   private void getStorageGroupMap(
-      StorageGroupCacheResult<?> result, List<String> devicePaths, boolean failFast) {
+      StorageGroupCacheResult<?, ?> result, List<IDeviceID> deviceIDs, boolean failFast) {
     try {
       storageGroupCacheLock.readLock().lock();
       // reset result before try
       result.reset();
       boolean status = true;
-      for (String devicePath : devicePaths) {
+      for (IDeviceID devicePath : deviceIDs) {
         String storageGroupName = getStorageGroupName(devicePath);
         if (null == storageGroupName) {
           logger.debug(
@@ -324,9 +325,7 @@ public class PartitionCache {
         result.setFailed();
       }
       logger.debug(
-          "[{} Cache] hit when search device {}",
-          CacheMetrics.STORAGE_GROUP_CACHE_NAME,
-          devicePaths);
+          "[{} Cache] hit when search device {}", CacheMetrics.STORAGE_GROUP_CACHE_NAME, deviceIDs);
       cacheMetrics.record(status, CacheMetrics.STORAGE_GROUP_CACHE_NAME);
     } finally {
       storageGroupCacheLock.readLock().unlock();
@@ -343,16 +342,18 @@ public class PartitionCache {
    * @param userName
    */
   private void getStorageGroupCacheResult(
-      StorageGroupCacheResult<?> result,
-      List<String> devicePaths,
+      StorageGroupCacheResult<?, ?> result,
+      List<IDeviceID> devicePaths,
       boolean tryToFetch,
       boolean isAutoCreate,
       String userName) {
     if (!isAutoCreate) {
-      // miss when devicePath contains *
-      for (String devicePath : devicePaths) {
-        if (devicePath.contains("*")) {
-          return;
+      // miss when deviceId contains *
+      for (IDeviceID deviceID : devicePaths) {
+        for (int i = 0; i < deviceID.segmentNum(); i++) {
+          if (((String) deviceID.segment(i)).contains("*")) {
+            return;
+          }
         }
       }
     }
@@ -419,6 +420,7 @@ public class PartitionCache {
   // endregion
 
   // region replicaSet cache
+
   /**
    * get regionReplicaSet from local and confignode
    *
@@ -511,7 +513,7 @@ public class PartitionCache {
    * @param storageGroupToDeviceMap database to devices map
    * @return SchemaPartition of storageGroupToDeviceMap
    */
-  public SchemaPartition getSchemaPartition(Map<String, List<String>> storageGroupToDeviceMap) {
+  public SchemaPartition getSchemaPartition(Map<String, List<IDeviceID>> storageGroupToDeviceMap) {
     schemaPartitionCacheLock.readLock().lock();
     try {
       if (storageGroupToDeviceMap.size() == 0) {
@@ -521,7 +523,7 @@ public class PartitionCache {
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
           new HashMap<>();
       // check cache for each database
-      for (Map.Entry<String, List<String>> entry : storageGroupToDeviceMap.entrySet()) {
+      for (Map.Entry<String, List<IDeviceID>> entry : storageGroupToDeviceMap.entrySet()) {
         String storageGroupName = entry.getKey();
         Map<TSeriesPartitionSlot, TRegionReplicaSet> regionReplicaSetMap =
             schemaPartitionMap.computeIfAbsent(storageGroupName, k -> new HashMap<>());
@@ -539,10 +541,9 @@ public class PartitionCache {
         Map<TSeriesPartitionSlot, TConsensusGroupId> map =
             schemaPartitionTable.getSchemaPartitionMap();
         // check cache for each device
-        for (String device : entry.getValue()) {
+        for (IDeviceID device : entry.getValue()) {
           TSeriesPartitionSlot seriesPartitionSlot =
-              partitionExecutor.getSeriesPartitionSlot(
-                  IDeviceID.Factory.DEFAULT_FACTORY.create(device));
+              partitionExecutor.getSeriesPartitionSlot(device);
           if (!map.containsKey(seriesPartitionSlot)) {
             // if one device not find, then return cache miss.
             logger.debug(
@@ -706,10 +707,9 @@ public class PartitionCache {
       DataPartitionQueryParam dataPartitionQueryParam,
       Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedStorageGroupPartitionMap) {
     TSeriesPartitionSlot seriesPartitionSlot;
-    if (null != dataPartitionQueryParam.getDevicePath()) {
+    if (null != dataPartitionQueryParam.getDeviceID()) {
       seriesPartitionSlot =
-          partitionExecutor.getSeriesPartitionSlot(
-              IDeviceID.Factory.DEFAULT_FACTORY.create(dataPartitionQueryParam.getDevicePath()));
+          partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDeviceID());
     } else {
       return false;
     }
@@ -720,7 +720,7 @@ public class PartitionCache {
         logger.debug(
             "[{} Cache] miss when search device {}",
             CacheMetrics.DATA_PARTITION_CACHE_NAME,
-            dataPartitionQueryParam.getDevicePath());
+            dataPartitionQueryParam.getDeviceID());
       }
       return false;
     }

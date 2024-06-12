@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PathPatternNode.VoidSerializer;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
@@ -37,6 +39,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PathPatternTree {
 
@@ -169,11 +172,12 @@ public class PathPatternTree {
         && (pathPatternList == null || pathPatternList.isEmpty());
   }
 
-  public List<String> getAllDevicePatterns() {
+  public List<IDeviceID> getAllDevicePatterns() {
     List<String> nodes = new ArrayList<>();
     Set<String> results = new HashSet<>();
     searchDevicePattern(root, nodes, results);
-    return new ArrayList<>(results);
+    // TODO avoid unnecessary conversion
+    return results.stream().map(Factory.DEFAULT_FACTORY::create).collect(Collectors.toList());
   }
 
   public List<PartialPath> getAllDevicePaths() {

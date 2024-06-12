@@ -63,13 +63,12 @@ public class SchemaPartition extends Partition {
     this.schemaPartitionMap = schemaPartitionMap;
   }
 
-  public TRegionReplicaSet getSchemaRegionReplicaSet(String deviceName) {
+  public TRegionReplicaSet getSchemaRegionReplicaSet(IDeviceID deviceID) {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
-    String storageGroup = getStorageGroupByDevice(deviceName);
-    TSeriesPartitionSlot seriesPartitionSlot =
-        calculateDeviceGroupId(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceName));
+    String storageGroup = getStorageGroupByDevice(deviceID);
+    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
     if (schemaPartitionMap.get(storageGroup) == null) {
       throw new RuntimeException(
           new IoTDBException("Path does not exist. ", TSStatusCode.PATH_NOT_EXIST.getStatusCode()));
@@ -77,9 +76,9 @@ public class SchemaPartition extends Partition {
     return schemaPartitionMap.get(storageGroup).get(seriesPartitionSlot);
   }
 
-  private String getStorageGroupByDevice(String deviceName) {
+  private String getStorageGroupByDevice(IDeviceID deviceID) {
     for (String storageGroup : schemaPartitionMap.keySet()) {
-      if (PathUtils.isStartWith(deviceName, storageGroup)) {
+      if (PathUtils.isStartWith(deviceID, storageGroup)) {
         return storageGroup;
       }
     }

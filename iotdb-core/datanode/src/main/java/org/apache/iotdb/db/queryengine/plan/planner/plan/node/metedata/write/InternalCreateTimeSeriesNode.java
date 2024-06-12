@@ -138,7 +138,7 @@ public class InternalCreateTimeSeriesNode extends WritePlanNode {
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     TRegionReplicaSet regionReplicaSet =
-        analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(devicePath.getFullPath());
+        analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(devicePath.getIDeviceID());
     setRegionReplicaSet(regionReplicaSet);
     return ImmutableList.of(this);
   }
