@@ -83,7 +83,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
               && ConsensusFactory.FAST_IOT_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
           || (CONF.isEnableAutoLeaderBalanceForIoTConsensus()
-              && ConsensusFactory.IOTV2_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
+              && ConsensusFactory.IOT_CONSENSUS_V2.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
           // The simple consensus protocol will always automatically designate itself as the leader
           || ConsensusFactory.SIMPLE_CONSENSUS.equals(DATA_REGION_CONSENSUS_PROTOCOL_CLASS);
   private static final boolean IS_ENABLE_AUTO_LEADER_BALANCE_FOR_SCHEMA_REGION =
@@ -185,7 +185,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
                 newLeaderId);
             switch (consensusProtocolClass) {
               case ConsensusFactory.FAST_IOT_CONSENSUS:
-              case ConsensusFactory.IOTV2_CONSENSUS:
+              case ConsensusFactory.IOT_CONSENSUS_V2:
               case ConsensusFactory.IOT_CONSENSUS:
               case ConsensusFactory.SIMPLE_CONSENSUS:
                 // For IoTConsensus or SimpleConsensus or PipeConsensus protocol, change
