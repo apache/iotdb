@@ -214,7 +214,14 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       }
       dataBuffer.clear();
 
-      compressedBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
+      if (Objects.isNull(compressedBuffer)
+          || compressedBuffer.capacity() < segmentInfo.dataInDiskSize
+          || compressedBuffer.capacity() > segmentInfo.dataInDiskSize * 2) {
+        compressedBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
+      }
+      compressedBuffer.clear();
+      // limit the buffer to prevent it from reading too much byte than expected
+      compressedBuffer.limit(segmentInfo.dataInDiskSize);
       if (channel.read(compressedBuffer) != segmentInfo.dataInDiskSize) {
         throw new IOException("Unexpected end of file");
       }
@@ -224,8 +231,14 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       unCompressor.uncompress(compressedBuffer, dataBuffer);
     } else {
       // An uncompressed segment
-      // TODO: reuse the buffer, and make the buffer read the correct bytes
-      dataBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
+      if (Objects.isNull(dataBuffer)
+          || dataBuffer.capacity() < segmentInfo.dataInDiskSize
+          || dataBuffer.capacity() > segmentInfo.dataInDiskSize * 2) {
+        dataBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
+      }
+      dataBuffer.clear();
+      // limit the buffer to prevent it from reading too much byte than expected
+      dataBuffer.limit(segmentInfo.dataInDiskSize);
 
       if (channel.read(dataBuffer) != segmentInfo.dataInDiskSize) {
         throw new IOException("Unexpected end of file");
