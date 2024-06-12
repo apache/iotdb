@@ -78,29 +78,6 @@ public class PipeSubscribeUnsubscribeResp extends TPipeSubscribeResp {
     return resp;
   }
 
-  /**
-   * Serialize the incoming parameters into `PipeSubscribeUnsubscribeResp`, called by the
-   * subscription server.
-   */
-  public static PipeSubscribeUnsubscribeResp toTPipeSubscribeResp(
-      final TSStatus status, final Set<String> topicNames) throws IOException {
-    final PipeSubscribeUnsubscribeResp resp = new PipeSubscribeUnsubscribeResp();
-
-    resp.status = status;
-    resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
-    resp.type = PipeSubscribeResponseType.ACK.getType();
-
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.writeObjectSet(topicNames, outputStream);
-      resp.body =
-          Collections.singletonList(
-              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
-    }
-
-    return resp;
-  }
-
   /** Deserialize `TPipeSubscribeResp` to obtain parameters, called by the subscription client. */
   public static PipeSubscribeUnsubscribeResp fromTPipeSubscribeResp(
       final TPipeSubscribeResp unsubscribeResp) {
