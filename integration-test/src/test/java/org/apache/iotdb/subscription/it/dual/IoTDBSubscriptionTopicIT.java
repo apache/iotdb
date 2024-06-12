@@ -735,9 +735,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       thread.start();
     }
 
-    AWAIT
-        // The expected SubscriptionRuntimeCriticalException was not thrown if result is false
-        .untilTrue(result);
+    // The expected SubscriptionRuntimeCriticalException was not thrown if result is false
+    AWAIT.untilTrue(result);
 
     for (final Thread thread : threads) {
       thread.join();
