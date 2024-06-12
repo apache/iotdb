@@ -1005,7 +1005,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                   LOGGER.info("consumer {} exiting...", consumers.get(index));
                 }
               },
-              consumers.get(index).toString());
+              String.format("%s - %s", testName.getMethodName(), consumers.get(index).toString()));
       t.start();
       threads.add(t);
     }
@@ -1016,6 +1016,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
           final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
         Awaitility.await()
+            .pollInSameThread()
             .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
             .pollInterval(
                 IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
