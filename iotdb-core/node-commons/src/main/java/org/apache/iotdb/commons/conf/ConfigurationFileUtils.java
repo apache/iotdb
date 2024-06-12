@@ -82,6 +82,7 @@ public class ConfigurationFileUtils {
               "dn_data_region_consensus_port",
               "dn_seed_config_node",
               "dn_session_timeout_threshold",
+              "cluster_name",
               "config_node_consensus_protocol_class",
               "schema_replication_factor",
               "data_replication_factor",
@@ -94,7 +95,8 @@ public class ConfigurationFileUtils {
               "tag_attribute_total_size",
               "timestamp_precision",
               "iotdb_server_encrypt_decrypt_provider",
-              "iotdb_server_encrypt_decrypt_provider_parameter"));
+              "iotdb_server_encrypt_decrypt_provider_parameter",
+              "pipe_lib_dir"));
 
   public static void checkAndMayUpdate(
       URL systemUrl, URL configNodeUrl, URL dataNodeUrl, URL commonUrl)
@@ -158,7 +160,7 @@ public class ConfigurationFileUtils {
         BufferedReader reader = new BufferedReader(isr)) {
       String line;
       while ((line = reader.readLine()) != null) {
-        content.append(line).append(System.lineSeparator());
+        content.append(line).append("\n");
       }
     } catch (IOException e) {
       logger.warn("Failed to read configuration template", e);
@@ -192,7 +194,7 @@ public class ConfigurationFileUtils {
     StringBuilder contentsOfNewConfigurationFile = new StringBuilder();
     for (String currentLine : lines) {
       if (currentLine.trim().isEmpty() || currentLine.trim().startsWith("#")) {
-        contentsOfNewConfigurationFile.append(currentLine).append(System.lineSeparator());
+        contentsOfNewConfigurationFile.append(currentLine).append("\n");
         continue;
       }
       int equalsIndex = currentLine.indexOf('=');
@@ -201,17 +203,14 @@ public class ConfigurationFileUtils {
         String key = currentLine.substring(0, equalsIndex).trim();
         String value = currentLine.substring(equalsIndex + 1).trim();
         if (!newConfigItems.containsKey(key)) {
-          contentsOfNewConfigurationFile.append(currentLine).append(System.lineSeparator());
+          contentsOfNewConfigurationFile.append(currentLine).append("\n");
           continue;
         }
         if (newConfigItems.getProperty(key).equals(value)) {
-          contentsOfNewConfigurationFile.append(currentLine).append(System.lineSeparator());
+          contentsOfNewConfigurationFile.append(currentLine).append("\n");
           newConfigItems.remove(key);
         } else {
-          contentsOfNewConfigurationFile
-              .append("#")
-              .append(currentLine)
-              .append(System.lineSeparator());
+          contentsOfNewConfigurationFile.append("#").append(currentLine).append("\n");
         }
       }
     }

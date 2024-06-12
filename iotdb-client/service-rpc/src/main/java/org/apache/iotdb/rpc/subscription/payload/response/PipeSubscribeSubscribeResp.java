@@ -49,10 +49,31 @@ public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
    */
   public static PipeSubscribeSubscribeResp toTPipeSubscribeResp(final TSStatus status) {
     final PipeSubscribeSubscribeResp resp = new PipeSubscribeSubscribeResp();
+    resp.status = status;
+    resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
+    resp.type = PipeSubscribeResponseType.ACK.getType();
+    return resp;
+  }
+
+  /**
+   * Serialize the incoming parameters into `PipeSubscribeSubscribeResp`, called by the subscription
+   * server.
+   */
+  public static PipeSubscribeSubscribeResp toTPipeSubscribeResp(
+      final TSStatus status, final Set<String> topicNames) throws IOException {
+    final PipeSubscribeSubscribeResp resp = new PipeSubscribeSubscribeResp();
 
     resp.status = status;
     resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
     resp.type = PipeSubscribeResponseType.ACK.getType();
+
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.writeObjectSet(topicNames, outputStream);
+      resp.body =
+          Collections.singletonList(
+              ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
+    }
 
     return resp;
   }
@@ -98,7 +119,6 @@ public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
     resp.version = subscribeResp.version;
     resp.type = subscribeResp.type;
     resp.body = subscribeResp.body;
-
     return resp;
   }
 
