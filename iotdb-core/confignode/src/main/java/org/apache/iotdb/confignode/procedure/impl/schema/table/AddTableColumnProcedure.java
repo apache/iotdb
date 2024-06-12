@@ -86,9 +86,9 @@ public class AddTableColumnProcedure
     long startTime = System.currentTimeMillis();
     try {
       switch (state) {
-        case ADD_COLUMN:
-          LOGGER.info("Add column to table {}.{}", database, tableName);
-          addColumn(env);
+        case COLUMN_CHECK:
+          LOGGER.info("Column check for table {}.{} when adding column", database, tableName);
+          columnCheck(env);
           break;
         case PRE_RELEASE:
           LOGGER.info("Pre release info of table {}.{} when adding column", database, tableName);
@@ -97,6 +97,10 @@ public class AddTableColumnProcedure
         case COMMIT_RELEASE:
           LOGGER.info("Commit release info of table {}.{} when adding column", database, tableName);
           commitRelease(env);
+          break;
+        case ADD_COLUMN:
+          LOGGER.info("Add column to table {}.{}", database, tableName);
+          addColumn(env);
           return Flow.NO_MORE_STATE;
         default:
           setFailure(new ProcedureException("Unrecognized AddTableColumnState " + state));
@@ -113,11 +117,11 @@ public class AddTableColumnProcedure
     }
   }
 
-  private void addColumn(ConfigNodeProcedureEnv env) {
+  private void columnCheck(ConfigNodeProcedureEnv env) {
     Pair<TSStatus, List<TsTableColumnSchema>> result =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .addTableColumn(database, tableName, inputColumnList);
+            .tableColumnCheckForColumnExtension(database, tableName, inputColumnList);
     TSStatus status = result.getLeft();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
@@ -172,6 +176,17 @@ public class AddTableColumnProcedure
         // todo async retry until success
         return;
       }
+    }
+    setNextState(AddTableColumnState.ADD_COLUMN);
+  }
+
+  private void addColumn(ConfigNodeProcedureEnv env) {
+    TSStatus status =
+        env.getConfigManager()
+            .getClusterSchemaManager()
+            .addTableColumn(database, tableName, inputColumnList);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
     }
   }
 

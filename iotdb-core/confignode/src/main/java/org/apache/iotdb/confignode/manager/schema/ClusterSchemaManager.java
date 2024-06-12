@@ -1117,7 +1117,7 @@ public class ClusterSchemaManager {
     return clusterSchemaInfo.getTsTable(database, tableName);
   }
 
-  public synchronized Pair<TSStatus, List<TsTableColumnSchema>> addTableColumn(
+  public synchronized Pair<TSStatus, List<TsTableColumnSchema>> tableColumnCheckForColumnExtension(
       String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
     Map<String, List<TsTable>> currentUsingTable = clusterSchemaInfo.getAllUsingTables();
     TsTable targetTable = null;
@@ -1142,15 +1142,18 @@ public class ClusterSchemaManager {
         copiedList.add(columnSchema);
       }
     }
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, copiedList);
+  }
 
+  public synchronized TSStatus addTableColumn(
+      String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
     AddTableColumnPlan addTableColumnPlan =
-        new AddTableColumnPlan(database, tableName, copiedList, false);
+        new AddTableColumnPlan(database, tableName, columnSchemaList, false);
     try {
-      return new Pair<>(getConsensusManager().write(addTableColumnPlan), copiedList);
+      return getConsensusManager().write(addTableColumnPlan);
     } catch (ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
-      return new Pair<>(
-          RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()), null);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
   }
 
