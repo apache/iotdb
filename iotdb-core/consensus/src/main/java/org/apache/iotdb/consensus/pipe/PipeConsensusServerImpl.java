@@ -306,7 +306,7 @@ public class PipeConsensusServerImpl {
       long writeToStateMachineEndTime = System.nanoTime();
       PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(writeToStateMachineEndTime - startWriteTime);
       // statistic the time of writing request into stateMachine
-      pipeConsensusServerMetrics.recordWriteStateMachineTime(
+      pipeConsensusServerMetrics.recordUserWriteStateMachineTime(
           writeToStateMachineEndTime - writeToStateMachineStartTime);
       return result;
     } finally {
@@ -330,7 +330,7 @@ public class PipeConsensusServerImpl {
       PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(
           writeToStateMachineEndTime - writeToStateMachineStartTime);
       // statistic the time of writing request into stateMachine
-      pipeConsensusServerMetrics.recordWriteStateMachineTime(
+      pipeConsensusServerMetrics.recordReplicaWriteStateMachineTime(
           writeToStateMachineEndTime - writeToStateMachineStartTime);
       return result;
     } finally {

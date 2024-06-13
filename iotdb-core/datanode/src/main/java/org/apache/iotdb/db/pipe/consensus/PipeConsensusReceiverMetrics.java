@@ -231,7 +231,7 @@ public class PipeConsensusReceiverMetrics implements IMetricSet {
             RECEIVER,
             Tag.REGION.toString(),
             pipeConsensusReceiver.getConsensusGroupIdStr(),
-            Tag.STAGE.toString(),
+            Tag.TYPE.toString(),
             "receiveWALEvent");
     receiveTsFileTimer =
         metricService.getOrCreateTimer(
@@ -241,7 +241,7 @@ public class PipeConsensusReceiverMetrics implements IMetricSet {
             RECEIVER,
             Tag.REGION.toString(),
             pipeConsensusReceiver.getConsensusGroupIdStr(),
-            Tag.STAGE.toString(),
+            Tag.TYPE.toString(),
             "receiveTsFileEvent");
   }
 

@@ -34,7 +34,8 @@ public class PipeConsensusServerMetrics implements IMetricSet {
   private final PipeConsensusSyncLagManager syncLagManager;
 
   private Timer getStateMachineLockTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-  private Timer writeStateMachineTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer userWriteStateMachineTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer replicaWriteStateMachineTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   public PipeConsensusServerMetrics(PipeConsensusServerImpl impl) {
     this.impl = impl;
@@ -47,8 +48,12 @@ public class PipeConsensusServerMetrics implements IMetricSet {
     getStateMachineLockTimer.updateNanos(costTimeInNanos);
   }
 
-  public void recordWriteStateMachineTime(long costTimeInNanos) {
-    writeStateMachineTimer.updateNanos(costTimeInNanos);
+  public void recordUserWriteStateMachineTime(long costTimeInNanos) {
+    userWriteStateMachineTimer.updateNanos(costTimeInNanos);
+  }
+
+  public void recordReplicaWriteStateMachineTime(long costTimeInNanos) {
+    replicaWriteStateMachineTimer.updateNanos(costTimeInNanos);
   }
 
   @Override
@@ -127,21 +132,32 @@ public class PipeConsensusServerMetrics implements IMetricSet {
             "getStateMachineLock",
             Tag.REGION.toString(),
             impl.getConsensusGroupId());
-    writeStateMachineTimer =
+    userWriteStateMachineTimer =
         metricService.getOrCreateTimer(
             Metric.STAGE.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             Metric.PIPE_CONSENSUS.toString(),
             Tag.TYPE.toString(),
-            "writeStateMachine",
+            "userWriteStateMachine",
+            Tag.REGION.toString(),
+            impl.getConsensusGroupId());
+    replicaWriteStateMachineTimer =
+        metricService.getOrCreateTimer(
+            Metric.PIPE_RECEIVE_EVENT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            Metric.PIPE_CONSENSUS.toString(),
+            Tag.TYPE.toString(),
+            "replicaWriteStateMachine",
             Tag.REGION.toString(),
             impl.getConsensusGroupId());
   }
 
   public void unbindStageTimer(AbstractMetricService metricService) {
     getStateMachineLockTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
-    writeStateMachineTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    userWriteStateMachineTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    replicaWriteStateMachineTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
     metricService.remove(
         MetricType.TIMER,
@@ -159,6 +175,15 @@ public class PipeConsensusServerMetrics implements IMetricSet {
         Metric.PIPE_CONSENSUS.toString(),
         Tag.TYPE.toString(),
         "writeStateMachine",
+        Tag.REGION.toString(),
+        impl.getConsensusGroupId());
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.PIPE_RECEIVE_EVENT.toString(),
+        Tag.NAME.toString(),
+        Metric.PIPE_CONSENSUS.toString(),
+        Tag.TYPE.toString(),
+        "replicaWriteStateMachine",
         Tag.REGION.toString(),
         impl.getConsensusGroupId());
   }
