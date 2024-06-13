@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Objects;
@@ -70,7 +71,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     try {
       final TSInsertTabletReq request = new TSInsertTabletReq();
 
-      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+      for (final IMeasurementSchema measurementSchema : tablet.getSchemas()) {
         request.addToMeasurements(measurementSchema.getMeasurementId());
         request.addToTypes(measurementSchema.getType().ordinal());
       }
@@ -84,13 +85,13 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
           PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
 
       return StatementGenerator.createStatement(request);
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.warn("Generate Statement from tablet {} error.", tablet, e);
       return null;
     }
   }
 
-  private static boolean checkSorted(Tablet tablet) {
+  private static boolean checkSorted(final Tablet tablet) {
     for (int i = 1; i < tablet.rowSize; i++) {
       if (tablet.timestamps[i] < tablet.timestamps[i - 1]) {
         return false;
@@ -99,13 +100,13 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return true;
   }
 
-  private static void sortTablet(Tablet tablet) {
+  private static void sortTablet(final Tablet tablet) {
     /*
      * following part of code sort the batch data by time,
      * so we can insert continuous data in value list to get a better performance
      */
     // sort to get index, and use index to sort value list
-    Integer[] index = new Integer[tablet.rowSize];
+    final Integer[] index = new Integer[tablet.rowSize];
     for (int i = 0; i < tablet.rowSize; i++) {
       index[i] = i;
     }
@@ -113,7 +114,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     Arrays.sort(tablet.timestamps, 0, tablet.rowSize);
     int columnIndex = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
-      IMeasurementSchema schema = tablet.getSchemas().get(i);
+      final IMeasurementSchema schema = tablet.getSchemas().get(i);
       if (schema != null) {
         tablet.values[columnIndex] = sortList(tablet.values[columnIndex], schema.getType(), index);
         if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
@@ -133,46 +134,57 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
    * @return sorted list
    * @throws UnSupportedDataTypeException if dataType is illegal
    */
-  private static Object sortList(Object valueList, TSDataType dataType, Integer[] index) {
+  private static Object sortList(
+      final Object valueList, final TSDataType dataType, final Integer[] index) {
     switch (dataType) {
       case BOOLEAN:
-        boolean[] boolValues = (boolean[]) valueList;
-        boolean[] sortedValues = new boolean[boolValues.length];
+        final boolean[] boolValues = (boolean[]) valueList;
+        final boolean[] sortedValues = new boolean[boolValues.length];
         for (int i = 0; i < index.length; i++) {
           sortedValues[i] = boolValues[index[i]];
         }
         return sortedValues;
       case INT32:
-        int[] intValues = (int[]) valueList;
-        int[] sortedIntValues = new int[intValues.length];
+        final int[] intValues = (int[]) valueList;
+        final int[] sortedIntValues = new int[intValues.length];
         for (int i = 0; i < index.length; i++) {
           sortedIntValues[i] = intValues[index[i]];
         }
         return sortedIntValues;
+      case DATE:
+        final LocalDate[] dateValues = (LocalDate[]) valueList;
+        final LocalDate[] sortedDateValues = new LocalDate[dateValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedDateValues[i] = dateValues[index[i]];
+        }
+        return sortedDateValues;
       case INT64:
-        long[] longValues = (long[]) valueList;
-        long[] sortedLongValues = new long[longValues.length];
+      case TIMESTAMP:
+        final long[] longValues = (long[]) valueList;
+        final long[] sortedLongValues = new long[longValues.length];
         for (int i = 0; i < index.length; i++) {
           sortedLongValues[i] = longValues[index[i]];
         }
         return sortedLongValues;
       case FLOAT:
-        float[] floatValues = (float[]) valueList;
-        float[] sortedFloatValues = new float[floatValues.length];
+        final float[] floatValues = (float[]) valueList;
+        final float[] sortedFloatValues = new float[floatValues.length];
         for (int i = 0; i < index.length; i++) {
           sortedFloatValues[i] = floatValues[index[i]];
         }
         return sortedFloatValues;
       case DOUBLE:
-        double[] doubleValues = (double[]) valueList;
-        double[] sortedDoubleValues = new double[doubleValues.length];
+        final double[] doubleValues = (double[]) valueList;
+        final double[] sortedDoubleValues = new double[doubleValues.length];
         for (int i = 0; i < index.length; i++) {
           sortedDoubleValues[i] = doubleValues[index[i]];
         }
         return sortedDoubleValues;
       case TEXT:
-        Binary[] binaryValues = (Binary[]) valueList;
-        Binary[] sortedBinaryValues = new Binary[binaryValues.length];
+      case BLOB:
+      case STRING:
+        final Binary[] binaryValues = (Binary[]) valueList;
+        final Binary[] sortedBinaryValues = new Binary[binaryValues.length];
         for (int i = 0; i < index.length; i++) {
           sortedBinaryValues[i] = binaryValues[index[i]];
         }
@@ -190,8 +202,8 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
    * @param index index
    * @return sorted bitMap
    */
-  private static BitMap sortBitMap(BitMap bitMap, Integer[] index) {
-    BitMap sortedBitMap = new BitMap(bitMap.getSize());
+  private static BitMap sortBitMap(final BitMap bitMap, final Integer[] index) {
+    final BitMap sortedBitMap = new BitMap(bitMap.getSize());
     for (int i = 0; i < index.length; i++) {
       if (bitMap.isMarked(index[i])) {
         sortedBitMap.mark(i);
@@ -202,7 +214,8 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   /////////////////////////////// WriteBack & Batch ///////////////////////////////
 
-  public static PipeTransferTabletRawReq toTPipeTransferRawReq(Tablet tablet, boolean isAligned) {
+  public static PipeTransferTabletRawReq toTPipeTransferRawReq(
+      final Tablet tablet, final boolean isAligned) {
     final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
 
     tabletReq.tablet = tablet;
@@ -213,8 +226,8 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferTabletRawReq toTPipeTransferReq(Tablet tablet, boolean isAligned)
-      throws IOException {
+  public static PipeTransferTabletRawReq toTPipeTransferReq(
+      final Tablet tablet, final boolean isAligned) throws IOException {
     final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
 
     tabletReq.tablet = tablet;
@@ -233,7 +246,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return tabletReq;
   }
 
-  public static PipeTransferTabletRawReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+  public static PipeTransferTabletRawReq fromTPipeTransferReq(final TPipeTransferReq transferReq) {
     final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
 
     tabletReq.tablet = Tablet.deserialize(transferReq.body);
@@ -248,7 +261,8 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferBytes(Tablet tablet, boolean isAligned) throws IOException {
+  public static byte[] toTPipeTransferBytes(final Tablet tablet, final boolean isAligned)
+      throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
@@ -262,14 +276,14 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferTabletRawReq that = (PipeTransferTabletRawReq) obj;
+    final PipeTransferTabletRawReq that = (PipeTransferTabletRawReq) obj;
     return Objects.equals(tablet, that.tablet)
         && isAligned == that.isAligned
         && version == that.version
