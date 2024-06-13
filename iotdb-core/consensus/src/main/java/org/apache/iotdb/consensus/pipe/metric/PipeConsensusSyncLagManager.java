@@ -38,9 +38,9 @@ public class PipeConsensusSyncLagManager {
   List<ConsensusPipeConnector> consensusPipeConnectorList = new CopyOnWriteArrayList<>();
 
   private void updateReplicateProgress() {
+    minReplicateProgress = Long.MAX_VALUE;
     // if there isn't a consensus pipe task, replicate progress is Long.MAX_VALUE.
     if (consensusPipeConnectorList.isEmpty()) {
-      minReplicateProgress = Long.MAX_VALUE;
       return;
     }
     // else we find the minimum progress in all consensus pipe task.
