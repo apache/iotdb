@@ -149,7 +149,7 @@ public class PipeConsensusReceiverMetrics implements IMetricSet {
             Tag.REGION.toString(),
             pipeConsensusReceiver.getConsensusGroupIdStr(),
             Tag.TYPE.toString(),
-            "tsPieceWrite");
+            "tsFilePieceWrite");
     tsFilePiecePreCheckTimer =
         metricService.getOrCreateTimer(
             Metric.STAGE.toString(),
@@ -291,7 +291,7 @@ public class PipeConsensusReceiverMetrics implements IMetricSet {
         Tag.REGION.toString(),
         pipeConsensusReceiver.getConsensusGroupIdStr(),
         Tag.TYPE.toString(),
-        "tsPieceWrite");
+        "tsFilePieceWrite");
     metricService.remove(
         MetricType.TIMER,
         Metric.STAGE.toString(),
@@ -349,19 +349,10 @@ public class PipeConsensusReceiverMetrics implements IMetricSet {
   }
 
   public void unbindReceiveTimer(AbstractMetricService metricService) {
-    receiveEventTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     receiveWALTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     receiveTsFileTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    receiveEventTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
-    metricService.remove(
-        MetricType.TIMER,
-        Metric.PIPE_RECEIVE_EVENT.toString(),
-        Tag.NAME.toString(),
-        RECEIVER,
-        Tag.REGION.toString(),
-        pipeConsensusReceiver.getConsensusGroupIdStr(),
-        Tag.TYPE.toString(),
-        "receiveEvent");
     metricService.remove(
         MetricType.TIMER,
         Metric.PIPE_RECEIVE_EVENT.toString(),
@@ -380,5 +371,14 @@ public class PipeConsensusReceiverMetrics implements IMetricSet {
         pipeConsensusReceiver.getConsensusGroupIdStr(),
         Tag.TYPE.toString(),
         "receiveTsFileEvent");
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.PIPE_RECEIVE_EVENT.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.REGION.toString(),
+        pipeConsensusReceiver.getConsensusGroupIdStr(),
+        Tag.TYPE.toString(),
+        "receiveEvent");
   }
 }

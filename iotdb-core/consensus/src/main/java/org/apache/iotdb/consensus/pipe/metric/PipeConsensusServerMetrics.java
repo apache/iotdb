@@ -53,16 +53,16 @@ public class PipeConsensusServerMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    bindTimer(metricService);
     bindAutoGauge(metricService);
     bindGauge(metricService);
+    bindStageTimer(metricService);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    unbindTimer(metricService);
     unbindAutoGauge(metricService);
     unbindGauge(metricService);
+    unbindStageTimer(metricService);
   }
 
   public void bindGauge(AbstractMetricService metricService) {
@@ -113,7 +113,7 @@ public class PipeConsensusServerMetrics implements IMetricSet {
         "syncLag");
   }
 
-  public void bindTimer(AbstractMetricService metricService) {
+  public void bindStageTimer(AbstractMetricService metricService) {
     getStateMachineLockTimer =
         metricService.getOrCreateTimer(
             Metric.STAGE.toString(),
@@ -136,7 +136,7 @@ public class PipeConsensusServerMetrics implements IMetricSet {
             impl.getConsensusGroupId());
   }
 
-  public void unbindTimer(AbstractMetricService metricService) {
+  public void unbindStageTimer(AbstractMetricService metricService) {
     getStateMachineLockTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     writeStateMachineTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
