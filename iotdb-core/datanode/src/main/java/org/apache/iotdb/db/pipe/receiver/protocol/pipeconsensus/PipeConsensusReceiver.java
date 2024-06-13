@@ -1122,7 +1122,7 @@ public class PipeConsensusReceiver {
     private final Lock lock;
     private final Condition condition;
     private final PipeConsensusReceiverMetrics metric;
-    private long onSyncedCommitIndex = -1;
+    private long onSyncedCommitIndex = 0;
     private int connectorRebootTimes = 0;
     private int walEventCount = 0;
     private int tsFileEventCount = 0;
