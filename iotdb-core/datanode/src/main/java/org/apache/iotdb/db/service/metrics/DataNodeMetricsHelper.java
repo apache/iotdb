@@ -34,6 +34,7 @@ import org.apache.iotdb.db.pipe.metric.PipeDataNodeMetrics;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
+import org.apache.iotdb.db.queryengine.metric.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.queryengine.metric.LoadTsFileMemMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
@@ -93,6 +94,9 @@ public class DataNodeMetricsHelper {
 
     // bind subscription related metrics
     MetricService.getInstance().addMetricSet(SubscriptionMetrics.getInstance());
+
+    // bind load related metrics
+    MetricService.getInstance().addMetricSet(LoadTsFileCostMetricsSet.getInstance());
   }
 
   private static void initSystemMetrics() {

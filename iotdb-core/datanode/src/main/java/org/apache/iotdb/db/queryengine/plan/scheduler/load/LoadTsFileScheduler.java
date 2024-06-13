@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
 import org.apache.iotdb.db.queryengine.load.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.queryengine.load.LoadTsFileMemoryManager;
+import org.apache.iotdb.db.queryengine.metric.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -112,6 +113,8 @@ public class LoadTsFileScheduler implements IScheduler {
       IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() >> 2;
   private static final int TRANSMIT_LIMIT =
       CommonDescriptor.getInstance().getConfig().getTTimePartitionSlotTransmitLimit();
+  private static final LoadTsFileCostMetricsSet LOAD_TSFILE_COST_METRICS_SET =
+      LoadTsFileCostMetricsSet.getInstance();
 
   private static final Set<String> LOADING_FILE_SET = new HashSet<>();
 
@@ -230,6 +233,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
   private boolean firstPhase(LoadSingleTsFileNode node) {
     final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node, block);
+    long startTime = System.nanoTime();
     try {
       new TsFileSplitter(
               node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData)
@@ -253,6 +257,9 @@ public class LoadTsFileScheduler implements IScheduler {
       return false;
     } finally {
       tsFileDataManager.clear();
+
+      LOAD_TSFILE_COST_METRICS_SET.recordCost(
+          LoadTsFileCostMetricsSet.SPLIT, System.nanoTime() - startTime);
     }
     return true;
   }
@@ -384,6 +391,7 @@ public class LoadTsFileScheduler implements IScheduler {
       throw new LoadReadOnlyException();
     }
 
+    long startTime = System.nanoTime();
     try {
       FragmentInstance instance =
           new FragmentInstance(
@@ -405,6 +413,9 @@ public class LoadTsFileScheduler implements IScheduler {
               e.getFailureStatus().getMessage()));
       stateMachine.transitionToFailed(e.getFailureStatus());
       return false;
+    } finally {
+      LOAD_TSFILE_COST_METRICS_SET.recordCost(
+          LoadTsFileCostMetricsSet.WRITE, System.nanoTime() - startTime);
     }
 
     // add metrics
