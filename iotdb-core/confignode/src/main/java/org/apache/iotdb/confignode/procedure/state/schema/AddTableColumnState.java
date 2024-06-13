@@ -17,29 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.table;
+package org.apache.iotdb.confignode.procedure.state.schema;
 
-import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
-
-import java.util.List;
-
-public interface ITableCache {
-
-  void init(byte[] tableInitializationBytes);
-
-  void preCreateTable(String database, TsTable table);
-
-  void rollbackCreateTable(String database, String tableName);
-
-  void commitCreateTable(String database, String tableName);
-
-  void preAddTableColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList);
-
-  void commitAddTableColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList);
-
-  void rollbackAddColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList);
+public enum AddTableColumnState {
+  COLUMN_CHECK,
+  PRE_RELEASE,
+  COMMIT_RELEASE,
+  ADD_COLUMN
 }
