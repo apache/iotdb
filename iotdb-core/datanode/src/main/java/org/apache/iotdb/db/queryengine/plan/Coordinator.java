@@ -340,7 +340,6 @@ public class Coordinator {
     return new QueryExecution(relationalModelPlanner, queryContext, executor);
   }
 
-
   public IQueryExecution getQueryExecution(Long queryId) {
     return queryExecutionMap.get(queryId);
   }

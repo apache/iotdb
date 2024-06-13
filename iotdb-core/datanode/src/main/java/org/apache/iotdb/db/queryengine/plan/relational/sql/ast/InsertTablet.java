@@ -19,26 +19,25 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputationWithAutoCreation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
-public class InsertTablet extends WrappedInsertStatement {
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-  private InsertTabletStatement insertTabletStatement;
+public class InsertTablet extends WrappedInsertStatement {
 
   public InsertTablet(InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
     super(insertTabletStatement, context);
-    this.insertTabletStatement = insertTabletStatement;
   }
 
   @Override
@@ -48,11 +47,12 @@ public class InsertTablet extends WrappedInsertStatement {
 
   @Override
   public InsertTabletStatement getInnerTreeStatement() {
-    return insertTabletStatement;
+    return ((InsertTabletStatement) super.getInnerTreeStatement());
   }
 
   @Override
   public List<ISchemaComputationWithAutoCreation> getSchemaValidationList() {
+    InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
     Map<IDeviceID, ISchemaComputationWithAutoCreation> map = new HashMap<>();
     for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
       map.computeIfAbsent(insertTabletStatement.getTableDeviceID(i), this::getSchemaComputation);
@@ -62,7 +62,7 @@ public class InsertTablet extends WrappedInsertStatement {
 
   @Override
   public void updateAfterSchemaValidation(MPPQueryContext context) throws QueryProcessException {
-    insertTabletStatement.updateAfterSchemaValidation(context);
+    getInnerTreeStatement().updateAfterSchemaValidation(context);
   }
 
   @Override
@@ -78,38 +78,38 @@ public class InsertTablet extends WrappedInsertStatement {
 
     @Override
     public void computeMeasurement(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
-      insertTabletStatement.computeMeasurement(index, measurementSchemaInfo);
+      getInnerTreeStatement().computeMeasurement(index, measurementSchemaInfo);
     }
 
     @Override
     public boolean hasLogicalViewNeedProcess() {
-      return insertTabletStatement.hasLogicalViewNeedProcess();
+      return getInnerTreeStatement().hasLogicalViewNeedProcess();
     }
 
     @Override
     public List<LogicalViewSchema> getLogicalViewSchemaList() {
-      return insertTabletStatement.getLogicalViewSchemaList();
+      return getInnerTreeStatement().getLogicalViewSchemaList();
     }
 
     @Override
     public List<Integer> getIndexListOfLogicalViewPaths() {
-      return insertTabletStatement.getIndexListOfLogicalViewPaths();
+      return getInnerTreeStatement().getIndexListOfLogicalViewPaths();
     }
 
     @Override
     public void recordRangeOfLogicalViewSchemaListNow() {
-      insertTabletStatement.recordRangeOfLogicalViewSchemaListNow();
+      getInnerTreeStatement().recordRangeOfLogicalViewSchemaListNow();
     }
 
     @Override
     public Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded() {
-      return insertTabletStatement.getRangeOfLogicalViewSchemaListRecorded();
+      return getInnerTreeStatement().getRangeOfLogicalViewSchemaListRecorded();
     }
 
     @Override
-    public void computeMeasurementOfView(int index, IMeasurementSchemaInfo measurementSchemaInfo,
-        boolean isAligned) {
-      insertTabletStatement.computeMeasurementOfView(index, measurementSchemaInfo, isAligned);
+    public void computeMeasurementOfView(
+        int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned) {
+      getInnerTreeStatement().computeMeasurementOfView(index, measurementSchemaInfo, isAligned);
     }
   }
 }

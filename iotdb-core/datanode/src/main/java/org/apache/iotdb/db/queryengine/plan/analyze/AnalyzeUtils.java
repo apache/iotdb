@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
@@ -40,8 +33,17 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class AnalyzeUtils {
 
@@ -53,16 +55,21 @@ public class AnalyzeUtils {
     // util class
   }
 
-  public static void analyzeInsert(MPPQueryContext context,
-      InsertBaseStatement insertBaseStatement, Runnable schemaValidation,
-      DataPartitionQueryFunc partitionFetcher, IAnalysis analysis) {
+  public static InsertBaseStatement analyzeInsert(
+      MPPQueryContext context,
+      InsertBaseStatement insertBaseStatement,
+      Runnable schemaValidation,
+      DataPartitionQueryFunc partitionFetcher,
+      IAnalysis analysis,
+      boolean removeLogicalView) {
     context.setQueryType(QueryType.WRITE);
     insertBaseStatement.semanticCheck();
-    validateSchema(analysis, insertBaseStatement,
-        schemaValidation);
-    InsertBaseStatement realStatement = removeLogicalView(analysis, insertBaseStatement);
+    validateSchema(analysis, insertBaseStatement, schemaValidation);
+
+    InsertBaseStatement realStatement =
+        removeLogicalView ? removeLogicalView(analysis, insertBaseStatement) : insertBaseStatement;
     if (analysis.isFinishQueryAfterAnalyze()) {
-      return;
+      return realStatement;
     }
     analysis.setRealStatement(realStatement);
 
@@ -77,18 +84,20 @@ public class AnalyzeUtils {
       getAnalysisForWriting(
           analysis,
           Collections.singletonList(dataPartitionQueryParam),
-          context.getSession().getUserName(), partitionFetcher);
+          context.getSession().getUserName(),
+          partitionFetcher);
     } else {
       computeAnalysisForMultiTablets(
           analysis,
           (InsertMultiTabletsStatement) realStatement,
-          context.getSession().getUserName(), partitionFetcher);
+          context.getSession().getUserName(),
+          partitionFetcher);
     }
+    return realStatement;
   }
 
   public static void validateSchema(
-      IAnalysis analysis, InsertBaseStatement insertStatement,
-      Runnable schemaValidation) {
+      IAnalysis analysis, InsertBaseStatement insertStatement, Runnable schemaValidation) {
     final long startTime = System.nanoTime();
     try {
       schemaValidation.run();
@@ -136,7 +145,9 @@ public class AnalyzeUtils {
 
   /** get analysis according to statement and params */
   public static void getAnalysisForWriting(
-      IAnalysis analysis, List<DataPartitionQueryParam> dataPartitionQueryParams, String userName,
+      IAnalysis analysis,
+      List<DataPartitionQueryParam> dataPartitionQueryParams,
+      String userName,
       DataPartitionQueryFunc partitionQueryFunc) {
 
     DataPartition dataPartition =
@@ -153,7 +164,9 @@ public class AnalyzeUtils {
   }
 
   public static void computeAnalysisForInsertRows(
-      IAnalysis analysis, InsertRowsStatement insertRowsStatement, String userName,
+      IAnalysis analysis,
+      InsertRowsStatement insertRowsStatement,
+      String userName,
       DataPartitionQueryFunc partitionFetcher) {
     Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
     for (InsertRowStatement insertRowStatement : insertRowsStatement.getInsertRowStatementList()) {
@@ -175,8 +188,10 @@ public class AnalyzeUtils {
   }
 
   public static void computeAnalysisForMultiTablets(
-      IAnalysis analysis, InsertMultiTabletsStatement insertMultiTabletsStatement, String userName
-      , DataPartitionQueryFunc partitionFetcher) {
+      IAnalysis analysis,
+      InsertMultiTabletsStatement insertMultiTabletsStatement,
+      String userName,
+      DataPartitionQueryFunc partitionFetcher) {
     Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
     for (InsertTabletStatement insertTabletStatement :
         insertMultiTabletsStatement.getInsertTabletStatementList()) {
@@ -198,7 +213,8 @@ public class AnalyzeUtils {
   }
 
   public interface DataPartitionQueryFunc {
-    DataPartition queryDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams,
-        String userName);
+
+    DataPartition queryDataPartition(
+        List<DataPartitionQueryParam> dataPartitionQueryParams, String userName);
   }
 }

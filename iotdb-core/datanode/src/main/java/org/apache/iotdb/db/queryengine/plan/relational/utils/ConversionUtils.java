@@ -17,31 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze.schema;
+package org.apache.iotdb.db.queryengine.plan.relational.utils;
 
-import org.apache.iotdb.commons.path.PartialPath;
-
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
-import org.apache.tsfile.file.metadata.enums.TSEncoding;
-
-/**
- * This interface defines the required info provided for schema auto creation, which is executed
- * schema fetcher.
- */
-public interface ISchemaAutoCreation {
-
-  PartialPath getDevicePath();
-
-  String[] getMeasurements();
-
-  boolean isAligned();
-
-  TSDataType getDataType(int index);
-
-  // TODO: Check necessity because all implementations return null
-  TSEncoding getEncoding(int index);
-
-  // TODO: Check necessity because all implementations return null
-  CompressionType getCompressionType(int index);
+public class ConversionUtils {
+  private ConversionUtils() {
+    // util class
+  }
 }

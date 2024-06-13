@@ -26,8 +26,8 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
-
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+
 import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.util.List;

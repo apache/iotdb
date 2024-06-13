@@ -60,14 +60,15 @@ public class SchemaValidator {
   public static void validate(
       Metadata metadata, WrappedInsertStatement insertStatement, MPPQueryContext context) {
     try {
-      metadata.fetchAndComputeSchemaWithAutoCreate(insertStatement.getSchemaValidationList(),
-          context);
+      String databaseName = context.getSession().getDatabaseName().get();
+      //      metadata.validateTableHeaderSchema(databaseName);
+      //      metadata.fetchAndComputeSchemaWithAutoCreate(
+      //          insertStatement.getSchemaValidationList(), context);
       insertStatement.updateAfterSchemaValidation(context);
     } catch (QueryProcessException e) {
       throw new SemanticException(e.getMessage());
     }
   }
-
 
   public static ISchemaTree validate(
       ISchemaFetcher schemaFetcher,

@@ -29,7 +29,6 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition.ColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -38,7 +37,6 @@ import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
@@ -66,8 +64,6 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   private BitMap[] bitMaps;
   private Object[] columns;
 
-  private ColumnCategory[] columnCategories;
-  private List<Integer> idColumnIndices;
   private IDeviceID[] deviceIDs;
 
   private int rowCount = 0;
@@ -77,6 +73,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
    * views.
    */
   private boolean[] measurementIsAligned;
+
   private boolean writeToTable = false;
 
   public InsertTabletStatement() {
@@ -423,25 +420,6 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   @Override
   public Statement toRelationalStatement(MPPQueryContext context) {
     return super.toRelationalStatement(context);
-  }
-
-  public ColumnCategory[] getColumnCategories() {
-    return columnCategories;
-  }
-
-  public void setColumnCategories(
-      ColumnCategory[] columnCategories) {
-    this.columnCategories = columnCategories;
-    idColumnIndices = new ArrayList<>();
-    for (int i = 0; i < columnCategories.length; i++) {
-      if (columnCategories[i].equals(ColumnCategory.ID)) {
-        idColumnIndices.add(i);
-      }
-    }
-  }
-
-  public List<Integer> getIdColumnIndices() {
-    return idColumnIndices;
   }
 
   public IDeviceID getTableDeviceID(int rowIdx) {

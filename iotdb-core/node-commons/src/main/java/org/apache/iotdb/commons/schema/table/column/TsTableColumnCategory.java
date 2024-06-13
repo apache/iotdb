@@ -60,7 +60,7 @@ public enum TsTableColumnCategory {
     return deserialize(category);
   }
 
-  private static TsTableColumnCategory deserialize(byte category) {
+  public static TsTableColumnCategory deserialize(byte category) {
     switch (category) {
       case 0:
         return ID;

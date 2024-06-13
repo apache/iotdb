@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -67,6 +68,9 @@ public abstract class InsertBaseStatement extends Statement {
 
   /** index of failed measurements -> info including measurement, data type and value */
   protected Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info;
+
+  protected TsTableColumnCategory[] columnCategories;
+  protected List<Integer> idColumnIndices;
 
   // region params used by analyzing logical views.
 
@@ -236,6 +240,24 @@ public abstract class InsertBaseStatement extends Statement {
       }
     }
     return false;
+  }
+
+  public TsTableColumnCategory[] getColumnCategories() {
+    return columnCategories;
+  }
+
+  public void setColumnCategories(TsTableColumnCategory[] columnCategories) {
+    this.columnCategories = columnCategories;
+    idColumnIndices = new ArrayList<>();
+    for (int i = 0; i < columnCategories.length; i++) {
+      if (columnCategories[i].equals(TsTableColumnCategory.ID)) {
+        idColumnIndices.add(i);
+      }
+    }
+  }
+
+  public List<Integer> getIdColumnIndices() {
+    return idColumnIndices;
   }
 
   public boolean hasFailedMeasurements() {

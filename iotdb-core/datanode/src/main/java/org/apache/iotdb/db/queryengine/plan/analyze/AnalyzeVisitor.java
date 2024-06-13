@@ -2618,9 +2618,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitInsertTablet(
       InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
-    AnalyzeUtils.analyzeInsert(context, insertTabletStatement,
+    AnalyzeUtils.analyzeInsert(
+        context,
+        insertTabletStatement,
         () -> SchemaValidator.validate(schemaFetcher, insertTabletStatement, context),
-        partitionFetcher::getOrCreateDataPartition, analysis);
+        partitionFetcher::getOrCreateDataPartition,
+        analysis,
+        true);
     return analysis;
   }
 
@@ -2629,7 +2633,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     insertRowStatement.semanticCheck();
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertRowStatement,
+    validateSchema(
+        analysis,
+        insertRowStatement,
         () -> SchemaValidator.validate(schemaFetcher, insertRowStatement, context));
     InsertBaseStatement realInsertStatement = removeLogicalView(analysis, insertRowStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
@@ -2647,11 +2653,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       getAnalysisForWriting(
           analysis,
           Collections.singletonList(dataPartitionQueryParam),
-          context.getSession().getUserName(), partitionFetcher::getOrCreateDataPartition);
+          context.getSession().getUserName(),
+          partitionFetcher::getOrCreateDataPartition);
     } else {
       computeAnalysisForInsertRows(
-          analysis, (InsertRowsStatement) realInsertStatement, context.getSession().getUserName()
-          , partitionFetcher::getOrCreateDataPartition);
+          analysis,
+          (InsertRowsStatement) realInsertStatement,
+          context.getSession().getUserName(),
+          partitionFetcher::getOrCreateDataPartition);
     }
     return analysis;
   }
@@ -2662,7 +2671,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     insertRowsStatement.semanticCheck();
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertRowsStatement,
+    validateSchema(
+        analysis,
+        insertRowsStatement,
         () -> SchemaValidator.validate(schemaFetcher, insertRowsStatement, context));
     InsertRowsStatement realInsertRowsStatement =
         (InsertRowsStatement) removeLogicalView(analysis, insertRowsStatement);
@@ -2672,7 +2683,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRealStatement(realInsertRowsStatement);
 
     computeAnalysisForInsertRows(
-        analysis, realInsertRowsStatement, context.getSession().getUserName(), partitionFetcher::getOrCreateDataPartition);
+        analysis,
+        realInsertRowsStatement,
+        context.getSession().getUserName(),
+        partitionFetcher::getOrCreateDataPartition);
     return analysis;
   }
 
@@ -2682,7 +2696,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     insertMultiTabletsStatement.semanticCheck();
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertMultiTabletsStatement,
+    validateSchema(
+        analysis,
+        insertMultiTabletsStatement,
         () -> SchemaValidator.validate(schemaFetcher, insertMultiTabletsStatement, context));
     InsertMultiTabletsStatement realStatement =
         (InsertMultiTabletsStatement) removeLogicalView(analysis, insertMultiTabletsStatement);
@@ -2692,7 +2708,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRealStatement(realStatement);
 
     computeAnalysisForMultiTablets(
-        analysis, realStatement, context.getSession().getUserName(), partitionFetcher::getOrCreateDataPartition);
+        analysis,
+        realStatement,
+        context.getSession().getUserName(),
+        partitionFetcher::getOrCreateDataPartition);
     return analysis;
   }
 
@@ -2702,7 +2721,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     insertRowsOfOneDeviceStatement.semanticCheck();
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertRowsOfOneDeviceStatement,
+    validateSchema(
+        analysis,
+        insertRowsOfOneDeviceStatement,
         () -> SchemaValidator.validate(schemaFetcher, insertRowsOfOneDeviceStatement, context));
     InsertBaseStatement realInsertStatement =
         removeLogicalView(analysis, insertRowsOfOneDeviceStatement);
@@ -2725,8 +2746,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           partitionFetcher::getOrCreateDataPartition);
     } else {
       computeAnalysisForInsertRows(
-          analysis, (InsertRowsStatement) realInsertStatement, context.getSession().getUserName()
-          , partitionFetcher::getOrCreateDataPartition);
+          analysis,
+          (InsertRowsStatement) realInsertStatement,
+          context.getSession().getUserName(),
+          partitionFetcher::getOrCreateDataPartition);
     }
     return analysis;
   }
