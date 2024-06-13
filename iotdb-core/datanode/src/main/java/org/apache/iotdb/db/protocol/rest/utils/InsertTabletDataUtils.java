@@ -88,15 +88,15 @@ public class InsertTabletDataUtils {
         case BOOLEAN:
           boolean[] booleanValues = new boolean[rowSize];
           for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
-            Object object = rawData.get(columnIndex).get(rowIndex);
-            if (object == null) {
+            Object val = rawData.get(columnIndex).get(rowIndex);
+            if (val == null) {
               bitMaps[columnIndex].mark(rowIndex);
-            } else if (object instanceof Boolean) {
-              booleanValues[rowIndex] = (Boolean) object;
+            } else if (val instanceof Boolean) {
+              booleanValues[rowIndex] = (Boolean) val;
             } else {
-              if ("1".equals(object.toString())) {
+              if ("1".equals(val.toString())) {
                 booleanValues[rowIndex] = true;
-              } else if ("0".equals(object.toString())) {
+              } else if ("0".equals(val.toString())) {
                 booleanValues[rowIndex] = false;
               } else {
                 throw new DataTypeMismatchException(
@@ -104,7 +104,7 @@ public class InsertTabletDataUtils {
                     measurements[columnIndex],
                     dataTypes[columnIndex],
                     times[rowIndex],
-                    object);
+                    val);
               }
             }
           }
@@ -114,18 +114,14 @@ public class InsertTabletDataUtils {
         case DATE:
           int[] intValues = new int[rowSize];
           for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
-            Object object = rawData.get(columnIndex).get(rowIndex);
-            if (object == null) {
+            Object val = rawData.get(columnIndex).get(rowIndex);
+            if (val == null) {
               bitMaps[columnIndex].mark(rowIndex);
-            } else if (object instanceof Integer) {
-              intValues[rowIndex] = (Integer) object;
+            } else if (val instanceof Integer) {
+              intValues[rowIndex] = (Integer) val;
             } else {
               throw new DataTypeMismatchException(
-                  device,
-                  measurements[columnIndex],
-                  dataTypes[columnIndex],
-                  times[rowIndex],
-                  object);
+                  device, measurements[columnIndex], dataTypes[columnIndex], times[rowIndex], val);
             }
           }
           columns[columnIndex] = intValues;
@@ -134,18 +130,14 @@ public class InsertTabletDataUtils {
         case TIMESTAMP:
           long[] longValues = new long[rowSize];
           for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
-            Object object = rawData.get(columnIndex).get(rowIndex);
-            if (object == null) {
+            Object val = rawData.get(columnIndex).get(rowIndex);
+            if (val == null) {
               bitMaps[columnIndex].mark(rowIndex);
-            } else if (object instanceof Integer || object instanceof Long) {
-              longValues[rowIndex] = ((Number) object).longValue();
+            } else if (val instanceof Integer || val instanceof Long) {
+              longValues[rowIndex] = ((Number) val).longValue();
             } else {
               throw new DataTypeMismatchException(
-                  device,
-                  measurements[columnIndex],
-                  dataTypes[columnIndex],
-                  times[rowIndex],
-                  object);
+                  device, measurements[columnIndex], dataTypes[columnIndex], times[rowIndex], val);
             }
           }
           columns[columnIndex] = longValues;
@@ -153,11 +145,14 @@ public class InsertTabletDataUtils {
         case FLOAT:
           float[] floatValues = new float[rowSize];
           for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
-            Object data = rawData.get(columnIndex).get(rowIndex);
-            if (data == null) {
+            Object val = rawData.get(columnIndex).get(rowIndex);
+            if (val == null) {
               bitMaps[columnIndex].mark(rowIndex);
+            } else if (val instanceof Number) {
+              floatValues[rowIndex] = ((Number) val).floatValue();
             } else {
-              floatValues[rowIndex] = Float.parseFloat(String.valueOf(data));
+              throw new DataTypeMismatchException(
+                  device, measurements[columnIndex], dataTypes[columnIndex], times[rowIndex], val);
             }
           }
           columns[columnIndex] = floatValues;
@@ -165,11 +160,14 @@ public class InsertTabletDataUtils {
         case DOUBLE:
           double[] doubleValues = new double[rowSize];
           for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
-            if (rawData.get(columnIndex).get(rowIndex) == null) {
+            Object val = rawData.get(columnIndex).get(rowIndex);
+            if (val == null) {
               bitMaps[columnIndex].mark(rowIndex);
+            } else if (val instanceof Number) {
+              doubleValues[rowIndex] = ((Number) val).doubleValue();
             } else {
-              doubleValues[rowIndex] =
-                  Double.parseDouble(String.valueOf(rawData.get(columnIndex).get(rowIndex)));
+              throw new DataTypeMismatchException(
+                  device, measurements[columnIndex], dataTypes[columnIndex], times[rowIndex], val);
             }
           }
           columns[columnIndex] = doubleValues;
@@ -179,17 +177,12 @@ public class InsertTabletDataUtils {
         case STRING:
           Binary[] binaryValues = new Binary[rowSize];
           for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
-            if (rawData.get(columnIndex).get(rowIndex) == null) {
+            Object val = rawData.get(columnIndex).get(rowIndex);
+            if (val == null) {
               bitMaps[columnIndex].mark(rowIndex);
-              binaryValues[rowIndex] = new Binary("".getBytes(StandardCharsets.UTF_8));
+              binaryValues[rowIndex] = Binary.EMPTY_VALUE;
             } else {
-              binaryValues[rowIndex] =
-                  new Binary(
-                      rawData
-                          .get(columnIndex)
-                          .get(rowIndex)
-                          .toString()
-                          .getBytes(StandardCharsets.UTF_8));
+              binaryValues[rowIndex] = new Binary(val.toString().getBytes(StandardCharsets.UTF_8));
             }
           }
           columns[columnIndex] = binaryValues;

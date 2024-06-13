@@ -25,7 +25,6 @@ import org.apache.tsfile.utils.Binary;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 
 import static org.apache.iotdb.session.Session.MSG_UNSUPPORTED_DATA_TYPE;
 
@@ -69,8 +68,8 @@ public class InsertRowDataUtils {
     return valuesList.isEmpty();
   }
 
-  public static List<Object> reGenValues(
-      List<TSDataType> types, List<Object> values, Map<Integer, Object> mismatchedInfo)
+  public static List<Object> genRowValues(
+      List<TSDataType> types, List<Object> values, List<Integer> mismatchedInfo)
       throws IoTDBConnectionException {
     for (int i = 0; i < values.size(); i++) {
       if (values.get(i) == null) {
@@ -80,15 +79,15 @@ public class InsertRowDataUtils {
       switch (types.get(i)) {
         case BOOLEAN:
           if (!(val instanceof Boolean)) {
-            mismatchedInfo.put(i, val);
+            mismatchedInfo.add(i);
           }
           break;
         case INT32:
         case DATE:
-          if (val instanceof Number) {
+          if (val instanceof Integer) {
             values.set(i, ((Number) val).intValue());
           } else {
-            mismatchedInfo.put(i, val);
+            mismatchedInfo.add(i);
           }
           break;
         case INT64:
@@ -96,21 +95,21 @@ public class InsertRowDataUtils {
           if (val instanceof Number) {
             values.set(i, ((Number) val).longValue());
           } else {
-            mismatchedInfo.put(i, val);
+            mismatchedInfo.add(i);
           }
           break;
         case FLOAT:
           if (val instanceof Number) {
             values.set(i, ((Number) val).floatValue());
           } else {
-            mismatchedInfo.put(i, val);
+            mismatchedInfo.add(i);
           }
           break;
         case DOUBLE:
           if (val instanceof Number) {
             values.set(i, ((Number) val).doubleValue());
           } else {
-            mismatchedInfo.put(i, val);
+            mismatchedInfo.add(i);
           }
           break;
         case TEXT:

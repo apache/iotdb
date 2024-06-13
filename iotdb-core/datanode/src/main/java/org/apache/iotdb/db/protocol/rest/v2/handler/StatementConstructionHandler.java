@@ -35,10 +35,8 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.BitMap;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 public class StatementConstructionHandler {
   private StatementConstructionHandler() {}
@@ -124,9 +122,9 @@ public class StatementConstructionHandler {
       TimestampPrecisionUtils.checkTimestampPrecision(insertRecordsRequest.getTimestamps().get(i));
       statement.setTime(insertRecordsRequest.getTimestamps().get(i));
       statement.setDataTypes(dataTypesList.get(i).toArray(new TSDataType[0]));
-      Map<Integer, Object> dataTypeMismatchInfo = new HashMap<>();
+      List<Integer> dataTypeMismatchInfo = new ArrayList<>();
       List<Object> values =
-          InsertRowDataUtils.reGenValues(
+          InsertRowDataUtils.genRowValues(
               dataTypesList.get(i),
               insertRecordsRequest.getValuesList().get(i),
               dataTypeMismatchInfo);
@@ -137,8 +135,7 @@ public class StatementConstructionHandler {
         continue;
       }
       if (!dataTypeMismatchInfo.isEmpty()) {
-        for (Map.Entry<Integer, Object> entry : dataTypeMismatchInfo.entrySet()) {
-          int index = entry.getKey();
+        for (int index : dataTypeMismatchInfo) {
           String measurement = statement.getMeasurements()[index];
           TSDataType dataType = statement.getDataTypes()[index];
           statement.markFailedMeasurement(
@@ -148,7 +145,7 @@ public class StatementConstructionHandler {
                   statement.getMeasurements()[index],
                   statement.getDataTypes()[index],
                   statement.getTime(),
-                  entry.getValue()));
+                  insertRecordsRequest.getValuesList().get(i).get(index)));
           // markFailedMeasurement will set datatype and measurements null
           // setting them back in order to pass the schema validation
           statement.getDataTypes()[index] = dataType;
