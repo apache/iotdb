@@ -80,8 +80,8 @@ import org.apache.iotdb.db.protocol.client.cn.DataNodeToConfigNodeInternalServic
 import org.apache.iotdb.db.protocol.client.cn.DataNodeToConfigNodeRequestType;
 import org.apache.iotdb.db.protocol.client.dn.DataNodeExternalServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.dn.DataNodeMPPServiceAsyncRequestManager;
-import org.apache.iotdb.db.protocol.client.dn.DataNodeToDataNodeInternalServiceAsyncRequestManager;
-import org.apache.iotdb.db.protocol.client.dn.DataNodeToDataNodeRequestType;
+import org.apache.iotdb.db.protocol.client.dn.DnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.db.protocol.client.dn.DnToDnRequestType;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -1477,10 +1477,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TDataNodeLocation::getDataNodeId,
         TDataNodeLocation::getInternalEndPoint,
         TServiceType.DataNodeInternalService,
-        DataNodeToDataNodeRequestType.TEST_CONNECTION,
-        (AsyncRequestContext<Object, TSStatus, DataNodeToDataNodeRequestType, TDataNodeLocation>
+        DnToDnRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation>
                 handler) ->
-            DataNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
+            DnToDnInternalServiceAsyncRequestManager.getInstance()
                 .sendAsyncRequestWithRetry(handler));
   }
 
@@ -1491,8 +1491,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TDataNodeLocation::getDataNodeId,
         TDataNodeLocation::getMPPDataExchangeEndPoint,
         TServiceType.DataNodeMPPService,
-        DataNodeToDataNodeRequestType.TEST_CONNECTION,
-        (AsyncRequestContext<Object, TSStatus, DataNodeToDataNodeRequestType, TDataNodeLocation>
+        DnToDnRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation>
                 handler) ->
             DataNodeMPPServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(handler));
   }
@@ -1504,8 +1504,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TDataNodeLocation::getDataNodeId,
         TDataNodeLocation::getClientRpcEndPoint,
         TServiceType.DataNodeExternalService,
-        DataNodeToDataNodeRequestType.TEST_CONNECTION,
-        (AsyncRequestContext<Object, TSStatus, DataNodeToDataNodeRequestType, TDataNodeLocation>
+        DnToDnRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation>
                 handler) ->
             DataNodeExternalServiceAsyncRequestManager.getInstance()
                 .sendAsyncRequestWithRetry(handler));

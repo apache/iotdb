@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 public class DataNodeMPPServiceAsyncRequestManager
     extends AsyncRequestManager<
-        DataNodeToDataNodeRequestType,
+        DnToDnRequestType,
         TDataNodeLocation,
         AsyncDataNodeMPPDataExchangeServiceClient> {
   private static final Logger LOGGER =
@@ -52,7 +52,7 @@ public class DataNodeMPPServiceAsyncRequestManager
   @Override
   protected void initActionMapBuilder() {
     actionMapBuilder.put(
-        DataNodeToDataNodeRequestType.TEST_CONNECTION,
+        DnToDnRequestType.TEST_CONNECTION,
         (req, client, handler) -> client.testConnectionEmptyRPC((AsyncTSStatusRPCHandler) handler));
   }
 
@@ -62,9 +62,9 @@ public class DataNodeMPPServiceAsyncRequestManager
   }
 
   @Override
-  protected AsyncRequestRPCHandler<?, DataNodeToDataNodeRequestType, TDataNodeLocation>
+  protected AsyncRequestRPCHandler<?, DnToDnRequestType, TDataNodeLocation>
       buildHandler(
-          AsyncRequestContext<?, ?, DataNodeToDataNodeRequestType, TDataNodeLocation>
+          AsyncRequestContext<?, ?, DnToDnRequestType, TDataNodeLocation>
               requestContext,
           int requestId,
           TDataNodeLocation targetNode) {

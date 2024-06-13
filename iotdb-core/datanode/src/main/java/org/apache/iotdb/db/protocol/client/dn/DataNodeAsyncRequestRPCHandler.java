@@ -31,12 +31,12 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public abstract class DataNodeAsyncRequestRPCHandler<Response>
-    extends AsyncRequestRPCHandler<Response, DataNodeToDataNodeRequestType, TDataNodeLocation> {
+    extends AsyncRequestRPCHandler<Response, DnToDnRequestType, TDataNodeLocation> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DataNodeAsyncRequestRPCHandler.class);
 
   protected DataNodeAsyncRequestRPCHandler(
-      DataNodeToDataNodeRequestType dataNodeToDataNodeRequestType,
+      DnToDnRequestType dataNodeToDataNodeRequestType,
       int requestId,
       TDataNodeLocation targetNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
@@ -61,10 +61,10 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
   }
 
   public static DataNodeAsyncRequestRPCHandler<?> createAsyncRPCHandler(
-      AsyncRequestContext<?, ?, DataNodeToDataNodeRequestType, TDataNodeLocation> context,
+      AsyncRequestContext<?, ?, DnToDnRequestType, TDataNodeLocation> context,
       int requestId,
       TDataNodeLocation targetDataNode) {
-    DataNodeToDataNodeRequestType requestType = context.getRequestType();
+    DnToDnRequestType requestType = context.getRequestType();
     Map<Integer, TDataNodeLocation> nodeLocationMap = context.getNodeLocationMap();
     Map<Integer, ?> responseMap = context.getResponseMap();
     CountDownLatch countDownLatch = context.getCountDownLatch();

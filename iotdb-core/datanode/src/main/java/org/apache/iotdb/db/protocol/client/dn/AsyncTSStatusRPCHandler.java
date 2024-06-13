@@ -36,7 +36,7 @@ public class AsyncTSStatusRPCHandler extends DataNodeAsyncRequestRPCHandler<TSSt
   private static final Logger LOGGER = LoggerFactory.getLogger(AsyncTSStatusRPCHandler.class);
 
   public AsyncTSStatusRPCHandler(
-      DataNodeToDataNodeRequestType requestType,
+      DnToDnRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,

@@ -27,22 +27,22 @@ import org.apache.iotdb.commons.client.request.DataNodeInternalServiceRequestMan
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DataNodeToDataNodeInternalServiceAsyncRequestManager
-    extends DataNodeInternalServiceRequestManager<DataNodeToDataNodeRequestType> {
+public class DnToDnInternalServiceAsyncRequestManager
+    extends DataNodeInternalServiceRequestManager<DnToDnRequestType> {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(DataNodeToDataNodeInternalServiceAsyncRequestManager.class);
+      LoggerFactory.getLogger(DnToDnInternalServiceAsyncRequestManager.class);
 
   @Override
   protected void initActionMapBuilder() {
     actionMapBuilder.put(
-        DataNodeToDataNodeRequestType.TEST_CONNECTION,
+        DnToDnRequestType.TEST_CONNECTION,
         (req, client, handler) -> client.testConnectionEmptyRPC((AsyncTSStatusRPCHandler) handler));
   }
 
   @Override
-  protected AsyncRequestRPCHandler<?, DataNodeToDataNodeRequestType, TDataNodeLocation>
+  protected AsyncRequestRPCHandler<?, DnToDnRequestType, TDataNodeLocation>
       buildHandler(
-          AsyncRequestContext<?, ?, DataNodeToDataNodeRequestType, TDataNodeLocation>
+          AsyncRequestContext<?, ?, DnToDnRequestType, TDataNodeLocation>
               requestContext,
           int requestId,
           TDataNodeLocation targetNode) {
@@ -52,15 +52,15 @@ public class DataNodeToDataNodeInternalServiceAsyncRequestManager
 
   private static class ClientPoolHolder {
 
-    private static final DataNodeToDataNodeInternalServiceAsyncRequestManager INSTANCE =
-        new DataNodeToDataNodeInternalServiceAsyncRequestManager();
+    private static final DnToDnInternalServiceAsyncRequestManager INSTANCE =
+        new DnToDnInternalServiceAsyncRequestManager();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static DataNodeToDataNodeInternalServiceAsyncRequestManager getInstance() {
+  public static DnToDnInternalServiceAsyncRequestManager getInstance() {
     return ClientPoolHolder.INSTANCE;
   }
 }

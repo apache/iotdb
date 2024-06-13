@@ -19,6 +19,6 @@
 
 package org.apache.iotdb.db.protocol.client.dn;
 
-public enum DataNodeToDataNodeRequestType {
+public enum DnToDnRequestType {
   TEST_CONNECTION,
 }

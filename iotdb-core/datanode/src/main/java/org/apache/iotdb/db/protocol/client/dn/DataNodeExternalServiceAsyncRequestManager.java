@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 public class DataNodeExternalServiceAsyncRequestManager
     extends AsyncRequestManager<
-        DataNodeToDataNodeRequestType, TDataNodeLocation, AsyncDataNodeExternalServiceClient> {
+        DnToDnRequestType, TDataNodeLocation, AsyncDataNodeExternalServiceClient> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DataNodeExternalServiceAsyncRequestManager.class);
@@ -49,7 +49,7 @@ public class DataNodeExternalServiceAsyncRequestManager
   @Override
   protected void initActionMapBuilder() {
     actionMapBuilder.put(
-        DataNodeToDataNodeRequestType.TEST_CONNECTION,
+        DnToDnRequestType.TEST_CONNECTION,
         (req, client, handler) -> client.testConnectionEmptyRPC((AsyncTSStatusRPCHandler) handler));
   }
 
@@ -59,9 +59,9 @@ public class DataNodeExternalServiceAsyncRequestManager
   }
 
   @Override
-  protected AsyncRequestRPCHandler<?, DataNodeToDataNodeRequestType, TDataNodeLocation>
+  protected AsyncRequestRPCHandler<?, DnToDnRequestType, TDataNodeLocation>
       buildHandler(
-          AsyncRequestContext<?, ?, DataNodeToDataNodeRequestType, TDataNodeLocation>
+          AsyncRequestContext<?, ?, DnToDnRequestType, TDataNodeLocation>
               requestContext,
           int requestId,
           TDataNodeLocation targetNode) {
