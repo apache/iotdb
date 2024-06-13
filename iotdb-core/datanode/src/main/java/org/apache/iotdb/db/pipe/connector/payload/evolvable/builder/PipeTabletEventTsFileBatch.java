@@ -38,7 +38,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -61,6 +63,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   private final long maxSizeInBytes;
   private TsFileWriter fileWriter;
+  private Map<String, Double> pipeName2WeightMap = new HashMap<>();
 
   static {
     try {
@@ -162,6 +165,9 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         } else {
           fileWriter.write(tablet);
         }
+        pipeName2WeightMap.compute(
+            ((PipeInsertNodeTabletInsertionEvent) event).getPipeName(),
+            (pipeName, weight) -> Objects.nonNull(weight) ? ++weight : 1);
       }
     } else if (event instanceof PipeRawTabletInsertionEvent) {
       if (((PipeRawTabletInsertionEvent) event).isAligned()) {
@@ -169,7 +175,17 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       } else {
         fileWriter.write(((PipeRawTabletInsertionEvent) event).convertToTablet());
       }
+      pipeName2WeightMap.compute(
+          ((PipeRawTabletInsertionEvent) event).getPipeName(),
+          (pipeName, weight) -> Objects.nonNull(weight) ? ++weight : 1);
     }
+  }
+
+  public Map<String, Double> deepCopyPipeName2WeightMap() {
+    final double sum =
+        pipeName2WeightMap.values().stream().reduce(Double::sum).orElse(Double.MIN_VALUE);
+    pipeName2WeightMap.entrySet().forEach(entry -> entry.setValue(entry.getValue() / sum));
+    return new HashMap<>(pipeName2WeightMap);
   }
 
   public File getTsFile() throws IOException {
@@ -182,6 +198,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     super.onSuccess();
     try {
       FileUtils.delete(fileWriter.getIOWriter().getFile());
+      pipeName2WeightMap.clear();
     } catch (final IOException e) {
       throw new PipeException(
           String.format("Failed to delete tsFile %s,", fileWriter.getIOWriter().getFile()), e);

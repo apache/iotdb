@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTabletEventBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTabletEventPlainBatch;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
@@ -33,7 +34,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletBatchEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletInsertNodeEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletRawEventHandler;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileInsertionEventHandler;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBDataRegionSyncConnector;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
@@ -57,6 +58,7 @@ import org.slf4j.LoggerFactory;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
@@ -176,7 +178,16 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                 (PipeTabletEventPlainBatch) endPointAndBatch.getRight(), this));
         endPointAndBatch.getRight().onSuccess();
       } else {
-
+        final PipeTabletEventTsFileBatch batch =
+            (PipeTabletEventTsFileBatch) endPointAndBatch.getRight();
+        transfer(
+            new PipeTransferTsFileHandler(
+                batch.deepCopyPipeName2WeightMap(),
+                batch.deepCopyEvents(),
+                batch.getTsFile(),
+                null,
+                false,
+                this));
       }
     } else {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
@@ -302,11 +313,17 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         throw new FileNotFoundException(pipeTsFileInsertionEvent.getTsFile().getAbsolutePath());
       }
 
-      final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
-          new PipeTransferTsFileInsertionEventHandler(pipeTsFileInsertionEvent, this);
+      final PipeTransferTsFileHandler pipeTransferTsFileHandler =
+          new PipeTransferTsFileHandler(
+              Collections.singletonMap(pipeTsFileInsertionEvent.getPipeName(), 1.0),
+              Collections.singletonList(pipeTsFileInsertionEvent),
+              pipeTsFileInsertionEvent.getTsFile(),
+              pipeTsFileInsertionEvent.getModFile(),
+              pipeTsFileInsertionEvent.isWithMod() && supportModsIfIsDataNodeReceiver(),
+              this);
 
-      transfer(pipeTransferTsFileInsertionEventHandler);
-    } catch (Exception e) {
+      transfer(pipeTransferTsFileHandler);
+    } catch (final Exception e) {
       // Just in case. To avoid the case that exception occurred when constructing the handler.
       pipeTsFileInsertionEvent.decreaseReferenceCount(
           IoTDBDataRegionAsyncConnector.class.getName(), false);
@@ -314,15 +331,14 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
     }
   }
 
-  private void transfer(
-      final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler) {
+  private void transfer(final PipeTransferTsFileHandler pipeTransferTsFileHandler) {
     AsyncPipeDataTransferServiceClient client = null;
     try {
       client = clientManager.borrowClient();
-      pipeTransferTsFileInsertionEventHandler.transfer(clientManager, client);
+      pipeTransferTsFileHandler.transfer(clientManager, client);
     } catch (final Exception ex) {
       logOnClientException(client, ex);
-      pipeTransferTsFileInsertionEventHandler.onError(ex);
+      pipeTransferTsFileHandler.onError(ex);
     }
   }
 
@@ -424,14 +440,25 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             new PipeTransferTabletBatchEventHandler(
                 (PipeTabletEventPlainBatch) endPointAndBatch.getRight(), this));
         endPointAndBatch.getRight().onSuccess();
+      } else {
+        final PipeTabletEventTsFileBatch batch =
+            (PipeTabletEventTsFileBatch) endPointAndBatch.getRight();
+        transfer(
+            new PipeTransferTsFileHandler(
+                batch.deepCopyPipeName2WeightMap(),
+                batch.deepCopyEvents(),
+                batch.getTsFile(),
+                null,
+                false,
+                this));
       }
     }
   }
 
   /**
-   * Add failure event to retry queue.
+   * Add failure {@link Event} to retry queue.
    *
-   * @param event event to retry
+   * @param event {@link Event} to retry
    */
   public void addFailureEventToRetryQueue(final Event event) {
     if (isClosed.get()) {
@@ -454,14 +481,12 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   }
 
   /**
-   * Add failure events to retry queue.
+   * Add failure {@link EnrichedEvent}s to retry queue.
    *
-   * @param events events to retry
+   * @param events {@link EnrichedEvent}s to retry
    */
-  public void addFailureEventsToRetryQueue(final Iterable<Event> events) {
-    for (final Event event : events) {
-      addFailureEventToRetryQueue(event);
-    }
+  public void addFailureEventsToRetryQueue(final Iterable<EnrichedEvent> events) {
+    events.forEach(this::addFailureEventToRetryQueue);
   }
 
   public synchronized void clearRetryEventsReferenceCount() {

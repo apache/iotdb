@@ -24,13 +24,13 @@ import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -45,18 +45,18 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
-public class PipeTransferTsFileInsertionEventHandler
-    implements AsyncMethodCallback<TPipeTransferResp> {
-
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeTransferTsFileInsertionEventHandler.class);
-
-  private final PipeTsFileInsertionEvent event;
+public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTransferResp> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTsFileHandler.class);
+  private final List<EnrichedEvent> events;
   private final IoTDBDataRegionAsyncConnector connector;
 
+  private final Map<String, Double> pipeName2WeightMap;
   private final File tsFile;
   private final File modFile;
   private File currentFile;
@@ -74,15 +74,21 @@ public class PipeTransferTsFileInsertionEventHandler
   private IoTDBDataNodeAsyncClientManager clientManager;
   private AsyncPipeDataTransferServiceClient client;
 
-  public PipeTransferTsFileInsertionEventHandler(
-      final PipeTsFileInsertionEvent event, final IoTDBDataRegionAsyncConnector connector)
+  public PipeTransferTsFileHandler(
+      final Map<String, Double> pipeName2WeightMap,
+      final List<EnrichedEvent> events,
+      final File tsFile,
+      final File modFile,
+      final boolean transferMod,
+      final IoTDBDataRegionAsyncConnector connector)
       throws FileNotFoundException {
-    this.event = event;
+    this.pipeName2WeightMap = pipeName2WeightMap;
+    this.events = events;
     this.connector = connector;
 
-    tsFile = event.getTsFile();
-    modFile = event.getModFile();
-    transferMod = event.isWithMod() && connector.supportModsIfIsDataNodeReceiver();
+    this.tsFile = tsFile;
+    this.modFile = modFile;
+    this.transferMod = transferMod;
     currentFile = transferMod ? modFile : tsFile;
 
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
@@ -98,7 +104,7 @@ public class PipeTransferTsFileInsertionEventHandler
   }
 
   public void transfer(
-      IoTDBDataNodeAsyncClientManager clientManager,
+      final IoTDBDataNodeAsyncClientManager clientManager,
       final AsyncPipeDataTransferServiceClient client)
       throws TException, IOException {
     this.clientManager = clientManager;
@@ -134,8 +140,10 @@ public class PipeTransferTsFileInsertionEventHandler
                     uncompressedReq, connector.getCompressors())
                 : uncompressedReq;
 
-        connector.rateLimitIfNeeded(
-            event.getPipeName(), client.getEndPoint(), req.getBody().length);
+        pipeName2WeightMap.forEach(
+            (pipeName, weight) ->
+                connector.rateLimitIfNeeded(
+                    pipeName, client.getEndPoint(), (long) (req.getBody().length * weight)));
 
         client.pipeTransfer(req, this);
       }
@@ -158,7 +166,10 @@ public class PipeTransferTsFileInsertionEventHandler
                 uncompressedReq, connector.getCompressors())
             : uncompressedReq;
 
-    connector.rateLimitIfNeeded(event.getPipeName(), client.getEndPoint(), req.getBody().length);
+    pipeName2WeightMap.forEach(
+        (pipeName, weight) ->
+            connector.rateLimitIfNeeded(
+                pipeName, client.getEndPoint(), (long) (req.getBody().length * weight)));
 
     client.pipeTransfer(req, this);
 
@@ -193,13 +204,14 @@ public class PipeTransferTsFileInsertionEventHandler
       } catch (final IOException e) {
         LOGGER.warn("Failed to close file reader when successfully transferred file.", e);
       } finally {
-        event.decreaseReferenceCount(PipeTransferTsFileInsertionEventHandler.class.getName(), true);
+        events.forEach(
+            event -> event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
 
         LOGGER.info(
             "Successfully transferred file {} (committer key={}, commit id={}).",
             tsFile,
-            event.getCommitterKey(),
-            event.getCommitId());
+            events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
+            events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()));
 
         if (client != null) {
           client.setShouldReturnSelf(true);
@@ -245,8 +257,8 @@ public class PipeTransferTsFileInsertionEventHandler
       LOGGER.warn(
           "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
           tsFile,
-          event.getCommitterKey(),
-          event.getCommitId(),
+          events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
+          events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
           exception);
     } catch (final Exception e) {
       LOGGER.warn("Failed to log error when failed to transfer file.", e);
@@ -273,7 +285,7 @@ public class PipeTransferTsFileInsertionEventHandler
           client.returnSelf();
         }
       } finally {
-        connector.addFailureEventToRetryQueue(event);
+        connector.addFailureEventsToRetryQueue(events);
       }
     }
   }

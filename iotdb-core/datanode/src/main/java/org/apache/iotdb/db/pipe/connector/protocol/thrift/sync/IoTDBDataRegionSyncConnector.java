@@ -24,7 +24,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTabletEventBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTabletEventPlainBatch;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
@@ -57,6 +59,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 
@@ -105,7 +108,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
     try {
       if (isTabletBatchModeEnabled) {
-        final Pair<TEndPoint, PipeTabletEventPlainBatch> endPointAndBatch =
+        final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch =
             tabletBatchBuilder.onEvent(tabletInsertionEvent);
         if (Objects.nonNull(endPointAndBatch)) {
           doTransfer(endPointAndBatch);
@@ -171,10 +174,22 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     }
   }
 
-  private void doTransfer(Pair<TEndPoint, PipeTabletEventPlainBatch> endPointAndBatch) {
-    final Pair<IoTDBSyncClient, Boolean> clientAndStatus =
-        clientManager.getClient(endPointAndBatch.getLeft());
-    final PipeTabletEventPlainBatch batchToTransfer = endPointAndBatch.getRight();
+  private void doTransfer(final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch)
+      throws IOException {
+    if (endPointAndBatch.getRight() instanceof PipeTabletEventPlainBatch) {
+      doTransfer(
+          endPointAndBatch.getLeft(), (PipeTabletEventPlainBatch) endPointAndBatch.getRight());
+    } else {
+      doTransfer(
+          ((PipeTabletEventTsFileBatch) endPointAndBatch.getRight()).deepCopyPipeName2WeightMap(),
+          ((PipeTabletEventTsFileBatch) endPointAndBatch.getRight()).getTsFile(),
+          null);
+    }
+  }
+
+  private void doTransfer(
+      final TEndPoint endPoint, final PipeTabletEventPlainBatch batchToTransfer) {
+    final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient(endPoint);
 
     final TPipeTransferResp resp;
     try {
@@ -222,8 +237,11 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     batchToTransfer.onSuccess();
   }
 
-  private void doTransfer() {
-    tabletBatchBuilder.getAllNonEmptyBatches().forEach(this::doTransfer);
+  private void doTransfer() throws IOException {
+    for (final Pair<TEndPoint, PipeTabletEventBatch> nonEmptyBatch :
+        tabletBatchBuilder.getAllNonEmptyBatches()) {
+      doTransfer(nonEmptyBatch);
+    }
   }
 
   private void doTransferWrapper(
@@ -369,26 +387,34 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
-    final String pipeName = pipeTsFileInsertionEvent.getPipeName();
-    final File tsFile = pipeTsFileInsertionEvent.getTsFile();
-    final File modFile = pipeTsFileInsertionEvent.getModFile();
+    doTransfer(
+        Collections.singletonMap(pipeTsFileInsertionEvent.getPipeName(), 1.0),
+        pipeTsFileInsertionEvent.getTsFile(),
+        pipeTsFileInsertionEvent.isWithMod() ? pipeTsFileInsertionEvent.getModFile() : null);
+  }
+
+  private void doTransfer(
+      final Map<String, Double> pipeName2WeightMap, final File tsFile, final File modFile)
+      throws PipeException, IOException {
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
     final TPipeTransferResp resp;
 
     // 1. Transfer tsFile, and mod file if exists and receiver's version >= 2
-    if (pipeTsFileInsertionEvent.isWithMod() && clientManager.supportModsIfIsDataNodeReceiver()) {
-      transferFilePieces(pipeName, modFile, clientAndStatus, true);
-      transferFilePieces(pipeName, tsFile, clientAndStatus, true);
+    if (Objects.nonNull(modFile) && clientManager.supportModsIfIsDataNodeReceiver()) {
+      transferFilePieces(pipeName2WeightMap, modFile, clientAndStatus, true);
+      transferFilePieces(pipeName2WeightMap, tsFile, clientAndStatus, true);
       // 2. Transfer file seal signal with mod, which means the file is transferred completely
       try {
         final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
                     modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length()));
-        rateLimitIfNeeded(
-            pipeTsFileInsertionEvent.getPipeName(),
-            clientAndStatus.getLeft().getEndPoint(),
-            req.getBody().length);
+        pipeName2WeightMap.forEach(
+            (pipeName, weight) ->
+                rateLimitIfNeeded(
+                    pipeName,
+                    clientAndStatus.getLeft().getEndPoint(),
+                    (long) (req.getBody().length * weight)));
         resp = clientAndStatus.getLeft().pipeTransfer(req);
       } catch (final Exception e) {
         clientAndStatus.setRight(false);
@@ -398,16 +424,18 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
             e);
       }
     } else {
-      transferFilePieces(pipeName, tsFile, clientAndStatus, false);
+      transferFilePieces(pipeName2WeightMap, tsFile, clientAndStatus, false);
       // 2. Transfer file seal signal without mod, which means the file is transferred completely
       try {
         final TPipeTransferReq req =
             compressIfNeeded(
                 PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
-        rateLimitIfNeeded(
-            pipeTsFileInsertionEvent.getPipeName(),
-            clientAndStatus.getLeft().getEndPoint(),
-            req.getBody().length);
+        pipeName2WeightMap.forEach(
+            (pipeName, weight) ->
+                rateLimitIfNeeded(
+                    pipeName,
+                    clientAndStatus.getLeft().getEndPoint(),
+                    (long) (req.getBody().length * weight)));
         resp = clientAndStatus.getLeft().pipeTransfer(req);
       } catch (final Exception e) {
         clientAndStatus.setRight(false);

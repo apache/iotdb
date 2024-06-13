@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.pipe.connector.util.LeaderCacheUtils;
-import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -48,9 +47,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeTransferTabletBatchEventHandler.class);
-
-  private final List<Long> requestCommitIds;
-  private final List<Event> events;
+  private final List<EnrichedEvent> events;
   private final Map<String, Long> pipeName2BytesAccumulated;
 
   private final TPipeTransferReq req;
@@ -61,8 +58,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
   public PipeTransferTabletBatchEventHandler(
       final PipeTabletEventPlainBatch batch, final IoTDBDataRegionAsyncConnector connector)
       throws IOException {
-    // Deep copy to keep Ids' and events' reference
-    requestCommitIds = batch.deepCopyRequestCommitIds();
+    // Deep copy to keep events' reference
     events = batch.deepCopyEvents();
     pipeName2BytesAccumulated = batch.deepCopyPipeName2BytesAccumulated();
 
@@ -108,12 +104,10 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
         connector.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
       }
 
-      for (final Event event : events) {
-        if (event instanceof EnrichedEvent) {
-          ((EnrichedEvent) event)
-              .decreaseReferenceCount(PipeTransferTabletBatchEventHandler.class.getName(), true);
-        }
-      }
+      events.forEach(
+          event ->
+              event.decreaseReferenceCount(
+                  PipeTransferTabletBatchEventHandler.class.getName(), true));
     } catch (final Exception e) {
       onError(e);
     }
@@ -124,14 +118,8 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
     try {
       LOGGER.warn(
           "Failed to transfer TabletInsertionEvent batch {} (request commit ids={}).",
-          events.stream()
-              .map(
-                  event ->
-                      event instanceof EnrichedEvent
-                          ? ((EnrichedEvent) event).coreReportMessage()
-                          : event.toString())
-              .collect(Collectors.toList()),
-          requestCommitIds,
+          events.stream().map(EnrichedEvent::coreReportMessage).collect(Collectors.toList()),
+          events.stream().map(EnrichedEvent::getCommitId).collect(Collectors.toList()),
           exception);
     } finally {
       connector.addFailureEventsToRetryQueue(events);

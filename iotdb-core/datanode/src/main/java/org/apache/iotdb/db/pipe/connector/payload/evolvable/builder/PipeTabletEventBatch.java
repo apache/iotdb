@@ -31,8 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class PipeTabletEventBatch implements AutoCloseable {
-  private final List<Event> events = new ArrayList<>();
-  private final List<Long> requestCommitIds = new ArrayList<>();
+  private final List<EnrichedEvent> events = new ArrayList<>();
   private final int maxDelayInMs;
   private long firstEventProcessingTime = Long.MIN_VALUE;
 
@@ -52,17 +51,13 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       return false;
     }
 
-    final long requestCommitId = ((EnrichedEvent) event).getCommitId();
-
     // The deduplication logic here is to avoid the accumulation of the same event in a batch when
     // retrying.
     if ((events.isEmpty() || !events.get(events.size() - 1).equals(event))) {
       // We increase the reference count for this event to determine if the event may be released.
       if (((EnrichedEvent) event)
           .increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName())) {
-        events.add(event);
-        requestCommitIds.add(requestCommitId);
-
+        events.add((EnrichedEvent) event);
         constructBatch(event);
 
         if (firstEventProcessingTime == Long.MIN_VALUE) {
@@ -83,7 +78,6 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
   public synchronized void onSuccess() {
     events.clear();
-    requestCommitIds.clear();
     firstEventProcessingTime = Long.MIN_VALUE;
   }
 
@@ -91,12 +85,8 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     return events.isEmpty();
   }
 
-  public List<Event> deepCopyEvents() {
+  public List<EnrichedEvent> deepCopyEvents() {
     return new ArrayList<>(events);
-  }
-
-  public List<Long> deepCopyRequestCommitIds() {
-    return new ArrayList<>(requestCommitIds);
   }
 
   protected abstract long getTotalSize();
@@ -109,18 +99,10 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   }
 
   public void decreaseEventsReferenceCount(final String holderMessage, final boolean shouldReport) {
-    for (final Event event : events) {
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).decreaseReferenceCount(holderMessage, shouldReport);
-      }
-    }
+    events.forEach(event -> event.decreaseReferenceCount(holderMessage, shouldReport));
   }
 
   private void clearEventsReferenceCount(final String holderMessage) {
-    for (final Event event : events) {
-      if (event instanceof EnrichedEvent) {
-        ((EnrichedEvent) event).clearReferenceCount(holderMessage);
-      }
-    }
+    events.forEach(event -> event.clearReferenceCount(holderMessage));
   }
 }
