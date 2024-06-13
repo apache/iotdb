@@ -120,7 +120,7 @@ public class TemplatedAggregationAnalyze {
     context.generateGlobalTimeFilter(analysis);
 
     // fetch partition information
-    analyzeDataPartition(analysis, schemaTree, partitionFetcher, context.getGlobalTimeFilter());
+    analyzeDataPartition(analysis, schemaTree, partitionFetcher, context);
     return true;
   }
 
