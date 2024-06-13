@@ -92,6 +92,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -613,10 +614,10 @@ public class ClusterSchemaManager {
    *
    * @return The DatabaseName of the specified Device. Empty String if not exists.
    */
-  public String getDatabaseNameByDevice(String devicePath) {
+  public String getDatabaseNameByDevice(IDeviceID deviceID) {
     List<String> databases = getDatabaseNames();
     for (String database : databases) {
-      if (PathUtils.isStartWith(devicePath, database)) {
+      if (PathUtils.isStartWith(deviceID, database)) {
         return database;
       }
     }

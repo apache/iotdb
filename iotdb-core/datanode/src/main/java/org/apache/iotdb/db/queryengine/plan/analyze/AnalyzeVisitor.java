@@ -151,6 +151,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
@@ -1338,8 +1340,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       String deviceName = entry.getKey();
       Set<Expression> sourceExpressionsUnderDevice = entry.getValue();
       Set<String> queriedDevices = new HashSet<>();
+      // TODO: Change outputDeviceToQueriedDevicesMap to Map<IDeviceID, IDeviceID> to remove
+      // conversion
       for (Expression expression : sourceExpressionsUnderDevice) {
-        queriedDevices.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
+        queriedDevices.add(
+            ExpressionAnalyzer.getDeviceNameInSourceExpression(expression).toString());
       }
       if (queriedDevices.size() > 1) {
         throw new SemanticException(
@@ -1978,9 +1983,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
       MPPQueryContext context) {
-    Set<String> deviceSet = new HashSet<>();
+    Set<IDeviceID> deviceSet = new HashSet<>();
     if (queryStatement.isAlignByDevice()) {
-      deviceSet = new HashSet<>(analysis.getOutputDeviceToQueriedDevicesMap().values());
+      // TODO: change OutputDeviceToQueriedDevicesMap to Map<IDeviceID, IDeviceID> to remove
+      // conversion
+      deviceSet =
+          analysis.getOutputDeviceToQueriedDevicesMap().values().stream()
+              .map(Factory.DEFAULT_FACTORY::create)
+              .collect(Collectors.toSet());
     } else {
       for (Expression expression : analysis.getSourceExpressions()) {
         deviceSet.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
@@ -1991,7 +2001,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private DataPartition fetchDataPartitionByDevices(
-      Set<String> deviceSet, ISchemaTree schemaTree, MPPQueryContext context) {
+      Set<IDeviceID> deviceSet, ISchemaTree schemaTree, MPPQueryContext context) {
     long startTime = System.nanoTime();
     try {
       Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
@@ -2004,11 +2014,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             CONFIG.getSeriesPartitionSlotNum());
       }
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      for (String devicePath : deviceSet) {
+      for (IDeviceID deviceID : deviceSet) {
         DataPartitionQueryParam queryParam =
-            new DataPartitionQueryParam(devicePath, res.left, res.right.left, res.right.right);
+            new DataPartitionQueryParam(deviceID, res.left, res.right.left, res.right.right);
         sgNameToQueryParamsMap
-            .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
+            .computeIfAbsent(schemaTree.getBelongedDatabase(deviceID), key -> new ArrayList<>())
             .add(queryParam);
       }
 
@@ -2626,8 +2636,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (realStatement instanceof InsertTabletStatement) {
       InsertTabletStatement realInsertTabletStatement = (InsertTabletStatement) realStatement;
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(
-          realInsertTabletStatement.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setDeviceID(
+          realInsertTabletStatement.getDevicePath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(
           realInsertTabletStatement.getTimePartitionSlots());
 
@@ -2658,7 +2668,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (realInsertStatement instanceof InsertRowStatement) {
       InsertRowStatement realInsertRowStatement = (InsertRowStatement) realInsertStatement;
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(realInsertRowStatement.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setDeviceID(
+          realInsertRowStatement.getDevicePath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(
           Collections.singletonList(realInsertRowStatement.getTimePartitionSlot()));
 
@@ -2674,18 +2685,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private Analysis computeAnalysisForInsertRows(
       Analysis analysis, InsertRowsStatement insertRowsStatement, String userName) {
-    Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
+    Map<IDeviceID, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
     for (InsertRowStatement insertRowStatement : insertRowsStatement.getInsertRowStatementList()) {
       Set<TTimePartitionSlot> timePartitionSlotSet =
           dataPartitionQueryParamMap.computeIfAbsent(
-              insertRowStatement.getDevicePath().getFullPath(), k -> new HashSet<>());
+              insertRowStatement.getDevicePath().getIDeviceIDAsFullDevice(), k -> new HashSet<>());
       timePartitionSlotSet.add(insertRowStatement.getTimePartitionSlot());
     }
 
     List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
-    for (Map.Entry<String, Set<TTimePartitionSlot>> entry : dataPartitionQueryParamMap.entrySet()) {
+    for (Map.Entry<IDeviceID, Set<TTimePartitionSlot>> entry :
+        dataPartitionQueryParamMap.entrySet()) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(entry.getKey());
+      dataPartitionQueryParam.setDeviceID(entry.getKey());
       dataPartitionQueryParam.setTimePartitionSlotList(new ArrayList<>(entry.getValue()));
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
@@ -2713,19 +2725,21 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private Analysis computeAnalysisForMultiTablets(
       Analysis analysis, InsertMultiTabletsStatement insertMultiTabletsStatement, String userName) {
-    Map<String, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
+    Map<IDeviceID, Set<TTimePartitionSlot>> dataPartitionQueryParamMap = new HashMap<>();
     for (InsertTabletStatement insertTabletStatement :
         insertMultiTabletsStatement.getInsertTabletStatementList()) {
       Set<TTimePartitionSlot> timePartitionSlotSet =
           dataPartitionQueryParamMap.computeIfAbsent(
-              insertTabletStatement.getDevicePath().getFullPath(), k -> new HashSet<>());
+              insertTabletStatement.getDevicePath().getIDeviceIDAsFullDevice(),
+              k -> new HashSet<>());
       timePartitionSlotSet.addAll(insertTabletStatement.getTimePartitionSlots());
     }
 
     List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
-    for (Map.Entry<String, Set<TTimePartitionSlot>> entry : dataPartitionQueryParamMap.entrySet()) {
+    for (Map.Entry<IDeviceID, Set<TTimePartitionSlot>> entry :
+        dataPartitionQueryParamMap.entrySet()) {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(entry.getKey());
+      dataPartitionQueryParam.setDeviceID(entry.getKey());
       dataPartitionQueryParam.setTimePartitionSlotList(new ArrayList<>(entry.getValue()));
       dataPartitionQueryParams.add(dataPartitionQueryParam);
     }
@@ -2769,7 +2783,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       InsertRowsOfOneDeviceStatement realStatement =
           (InsertRowsOfOneDeviceStatement) realInsertStatement;
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(realStatement.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setDeviceID(realStatement.getDevicePath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(realStatement.getTimePartitionSlots());
 
       return getAnalysisForWriting(
@@ -2888,11 +2902,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemaInfo =
         new HashMap<>();
     List<DeviceSchemaInfo> deviceSchemaInfoList = schemaTree.getMatchedDevices(ALL_MATCH_PATTERN);
-    Set<String> deviceSet = new HashSet<>();
+    Set<IDeviceID> deviceSet = new HashSet<>();
     for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfoList) {
       boolean isAligned = deviceSchemaInfo.isAligned();
       PartialPath devicePath = deviceSchemaInfo.getDevicePath();
-      deviceSet.add(devicePath.getFullPath());
+      deviceSet.add(devicePath.getIDeviceIDAsFullDevice());
       if (isAligned) {
         List<String> measurementList = new ArrayList<>();
         List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -3050,7 +3064,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     DataPartition dataPartition =
         fetchDataPartitionByDevices(
             devicePathsToAlignedStatus.keySet().stream()
-                .map(PartialPath::getFullPath)
+                .map(PartialPath::getIDeviceIDAsFullDevice)
                 .collect(Collectors.toSet()),
             schemaTree,
             context);
@@ -3279,7 +3293,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     deleteDataStatement.getPathList().forEach(patternTree::appendPathPattern);
 
     ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, true, context);
-    Set<String> deduplicatedDevicePaths = new HashSet<>();
+    Set<IDeviceID> deduplicatedDeviceIDs = new HashSet<>();
 
     if (schemaTree.hasLogicalViewMeasurement()) {
       updateSchemaTreeByViews(analysis, schemaTree, context);
@@ -3296,11 +3310,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           if (logicalViewSchema.isWritable()) {
             sourcePathOfAliasSeries = logicalViewSchema.getSourcePathIfWritable();
             deletePatternSet.add(sourcePathOfAliasSeries);
-            deduplicatedDevicePaths.add(sourcePathOfAliasSeries.getIDeviceID().toString());
+            deduplicatedDeviceIDs.add(sourcePathOfAliasSeries.getIDeviceID());
           }
           deletePatternSet.remove(measurementPath);
         } else {
-          deduplicatedDevicePaths.add(measurementPath.getIDeviceID().toString());
+          deduplicatedDeviceIDs.add(measurementPath.getIDeviceID());
         }
       }
       deleteDataStatement.setPathList(new ArrayList<>(deletePatternSet));
@@ -3310,19 +3324,20 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             .getMatchedDevices(devicePattern)
             .forEach(
                 deviceSchemaInfo ->
-                    deduplicatedDevicePaths.add(deviceSchemaInfo.getDevicePath().getFullPath()));
+                    deduplicatedDeviceIDs.add(
+                        deviceSchemaInfo.getDevicePath().getIDeviceIDAsFullDevice()));
       }
     }
     analysis.setSchemaTree(schemaTree);
 
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
 
-    deduplicatedDevicePaths.forEach(
-        devicePath -> {
+    deduplicatedDeviceIDs.forEach(
+        deviceID -> {
           DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
-          queryParam.setDevicePath(devicePath);
+          queryParam.setDeviceID(deviceID);
           sgNameToQueryParamsMap
-              .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
+              .computeIfAbsent(schemaTree.getBelongedDatabase(deviceID), key -> new ArrayList<>())
               .add(queryParam);
         });
 

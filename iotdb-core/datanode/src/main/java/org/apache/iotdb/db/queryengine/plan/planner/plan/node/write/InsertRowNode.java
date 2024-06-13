@@ -112,7 +112,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     this.dataRegionReplicaSet =
         analysis
             .getDataPartitionInfo()
-            .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlot);
+            .getDataRegionReplicaSetForWriting(
+                devicePath.getIDeviceIDAsFullDevice(), timePartitionSlot);
     // collect redirectInfo
     analysis.setRedirectNodeList(
         Collections.singletonList(

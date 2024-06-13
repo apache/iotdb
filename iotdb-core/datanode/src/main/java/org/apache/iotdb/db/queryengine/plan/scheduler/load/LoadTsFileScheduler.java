@@ -625,10 +625,7 @@ public class LoadTsFileScheduler implements IScheduler {
             fetcher.getOrCreateDataPartition(toQueryParam(subSlotList), userName);
         replicaSets.addAll(
             subSlotList.stream()
-                .map(
-                    pair ->
-                        dataPartition.getDataRegionReplicaSetForWriting(
-                            pair.left.toString(), pair.right))
+                .map(pair -> dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right))
                 .collect(Collectors.toList()));
       }
       return replicaSets;
@@ -644,8 +641,7 @@ public class LoadTsFileScheduler implements IScheduler {
           .stream()
           .map(
               entry ->
-                  new DataPartitionQueryParam(
-                      entry.getKey().toString(), new ArrayList<>(entry.getValue())))
+                  new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue())))
           .collect(Collectors.toList());
     }
   }

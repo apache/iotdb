@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -533,27 +534,27 @@ public class ClusterSchemaTree implements ISchemaTree {
   }
 
   /**
-   * Get database name by path
+   * Get database name by device path
    *
-   * <p>e.g., root.sg1 is a database and path = root.sg1.d1, return root.sg1
+   * <p>e.g., root.sg1 is a database and device path = root.sg1.d1, return root.sg1
    *
-   * @param pathName only full path, cannot be path pattern
+   * @param deviceID only full device path, cannot be path pattern
    * @return database in the given path
    * @throws SemanticException no matched database
    */
   @Override
-  public String getBelongedDatabase(String pathName) {
+  public String getBelongedDatabase(IDeviceID deviceID) {
     for (String database : databases) {
-      if (PathUtils.isStartWith(pathName, database)) {
+      if (PathUtils.isStartWith(deviceID, database)) {
         return database;
       }
     }
-    throw new SemanticException("No matched database. Please check the path " + pathName);
+    throw new SemanticException("No matched database. Please check the path " + deviceID);
   }
 
   @Override
-  public String getBelongedDatabase(PartialPath path) {
-    return getBelongedDatabase(path.getFullPath());
+  public String getBelongedDatabase(PartialPath devicePath) {
+    return getBelongedDatabase(devicePath.getIDeviceIDAsFullDevice());
   }
 
   @Override

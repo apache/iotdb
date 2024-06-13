@@ -2376,7 +2376,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TGetRegionIdReq tGetRegionIdReq =
           new TGetRegionIdReq(getRegionIdStatement.getPartitionType());
       if (getRegionIdStatement.getDevice() != null) {
-        tGetRegionIdReq.setDevice(getRegionIdStatement.getDevice());
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        getRegionIdStatement.getDevice().serialize(baos);
+        tGetRegionIdReq.setDevice(baos.toByteArray());
       } else {
         tGetRegionIdReq.setDatabase(getRegionIdStatement.getDatabase());
       }
@@ -2430,7 +2432,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (getTimeSlotListStatement.getDatabase() != null) {
         tGetTimeSlotListReq.setDatabase(getTimeSlotListStatement.getDatabase());
       } else if (getTimeSlotListStatement.getDevice() != null) {
-        tGetTimeSlotListReq.setDevice(getTimeSlotListStatement.getDevice());
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        getTimeSlotListStatement.getDevice().serialize(baos);
+        tGetTimeSlotListReq.setDevice(baos.toByteArray());
       } else if (getTimeSlotListStatement.getRegionId() != -1) {
         tGetTimeSlotListReq.setRegionId(getTimeSlotListStatement.getRegionId());
       }
@@ -2463,7 +2467,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (countTimeSlotListStatement.getDatabase() != null) {
         tCountTimeSlotListReq.setDatabase(countTimeSlotListStatement.getDatabase());
       } else if (countTimeSlotListStatement.getDevice() != null) {
-        tCountTimeSlotListReq.setDevice(countTimeSlotListStatement.getDevice());
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        countTimeSlotListStatement.getDevice().serialize(baos);
+        tCountTimeSlotListReq.setDevice(baos.toByteArray());
       } else if (countTimeSlotListStatement.getRegionId() != -1) {
         tCountTimeSlotListReq.setRegionId(countTimeSlotListStatement.getRegionId());
       }

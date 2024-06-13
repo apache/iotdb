@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -378,15 +379,17 @@ public class TemplatedAnalyze {
       IPartitionFetcher partitionFetcher,
       Filter globalTimeFilter) {
     // TemplatedDevice has no views, so there is no need to use outputDeviceToQueriedDevicesMap
-    Set<String> deviceSet =
-        analysis.getDeviceList().stream().map(PartialPath::getFullPath).collect(Collectors.toSet());
+    Set<IDeviceID> deviceSet =
+        analysis.getDeviceList().stream()
+            .map(PartialPath::getIDeviceIDAsFullDevice)
+            .collect(Collectors.toSet());
     DataPartition dataPartition =
         fetchDataPartitionByDevices(deviceSet, schemaTree, globalTimeFilter, partitionFetcher);
     analysis.setDataPartitionInfo(dataPartition);
   }
 
   private static DataPartition fetchDataPartitionByDevices(
-      Set<String> deviceSet,
+      Set<IDeviceID> deviceSet,
       ISchemaTree schemaTree,
       Filter globalTimeFilter,
       IPartitionFetcher partitionFetcher) {
@@ -402,11 +405,11 @@ public class TemplatedAnalyze {
             CONFIG.getSeriesPartitionSlotNum());
       }
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      for (String devicePath : deviceSet) {
+      for (IDeviceID deviceID : deviceSet) {
         DataPartitionQueryParam queryParam =
-            new DataPartitionQueryParam(devicePath, res.left, res.right.left, res.right.right);
+            new DataPartitionQueryParam(deviceID, res.left, res.right.left, res.right.right);
         sgNameToQueryParamsMap
-            .computeIfAbsent(schemaTree.getBelongedDatabase(devicePath), key -> new ArrayList<>())
+            .computeIfAbsent(schemaTree.getBelongedDatabase(deviceID), key -> new ArrayList<>())
             .add(queryParam);
       }
 

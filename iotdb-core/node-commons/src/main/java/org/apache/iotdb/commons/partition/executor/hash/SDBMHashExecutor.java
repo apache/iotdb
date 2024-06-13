@@ -21,6 +21,10 @@ package org.apache.iotdb.commons.partition.executor.hash;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
+
 public class SDBMHashExecutor extends SeriesPartitionExecutor {
 
   public SDBMHashExecutor(int deviceGroupCount) {
@@ -33,6 +37,25 @@ public class SDBMHashExecutor extends SeriesPartitionExecutor {
 
     for (int i = 0; i < device.length(); i++) {
       hash = ((int) device.charAt(i) + (hash << 6) + (hash << 16) - hash);
+    }
+    hash &= Integer.MAX_VALUE;
+
+    return new TSeriesPartitionSlot(hash % seriesPartitionSlotNum);
+  }
+
+  @Override
+  public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {
+    int hash = 0;
+    int segmentNum = deviceID.segmentNum();
+
+    for (int segmentID = 0; segmentID < segmentNum; segmentID++) {
+      String segment = (String) deviceID.segment(segmentID);
+      for (int i = 0; i < segment.length(); i++) {
+        hash = ((int) segment.charAt(i) + (hash << 6) + (hash << 16) - hash);
+      }
+      if (segmentID < segmentNum - 1) {
+        hash = ((int) PATH_SEPARATOR + (hash << 6) + (hash << 16) - hash);
+      }
     }
     hash &= Integer.MAX_VALUE;
 
