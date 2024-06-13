@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Objects;
 
 public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
@@ -95,9 +96,11 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
     final TPipeTransferResp resp;
 
     // 1. Transfer mTreeSnapshotFile, and tLog file if exists
-    transferFilePieces(pipeName, mTreeSnapshotFile, clientAndStatus, true);
+    transferFilePieces(
+        Collections.singletonMap(pipeName, 1.0), mTreeSnapshotFile, clientAndStatus, true);
     if (Objects.nonNull(tagLogSnapshotFile)) {
-      transferFilePieces(pipeName, tagLogSnapshotFile, clientAndStatus, true);
+      transferFilePieces(
+          Collections.singletonMap(pipeName, 1.0), tagLogSnapshotFile, clientAndStatus, true);
     }
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     try {
