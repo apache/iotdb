@@ -134,7 +134,7 @@ public class PipeConsensusConnectorMetrics implements IMetricSet {
             Tag.NAME.toString(),
             CONNECTOR,
             Tag.TYPE.toString(),
-            "connectorEnqueueTimer",
+            "connectorEnqueue",
             Tag.REGION.toString(),
             pipeConsensusAsyncConnector.getConsensusGroupIdStr());
     connectorTsFilePieceTransferTimer =
@@ -144,7 +144,7 @@ public class PipeConsensusConnectorMetrics implements IMetricSet {
             Tag.NAME.toString(),
             CONNECTOR,
             Tag.TYPE.toString(),
-            "connectorTsFilePieceTransferTimer",
+            "connectorTsFilePieceTransfer",
             Tag.REGION.toString(),
             pipeConsensusAsyncConnector.getConsensusGroupIdStr());
     connectorTsFileTransferTimer =
@@ -154,7 +154,7 @@ public class PipeConsensusConnectorMetrics implements IMetricSet {
             Tag.NAME.toString(),
             CONNECTOR,
             Tag.TYPE.toString(),
-            "connectorTsFileTransferTimer",
+            "connectorTsFileTransfer",
             Tag.REGION.toString(),
             pipeConsensusAsyncConnector.getConsensusGroupIdStr());
     connectorWALTransferTimer =
@@ -164,7 +164,7 @@ public class PipeConsensusConnectorMetrics implements IMetricSet {
             Tag.NAME.toString(),
             CONNECTOR,
             Tag.TYPE.toString(),
-            "connectorWALTransferTimer",
+            "connectorWALTransfer",
             Tag.REGION.toString(),
             pipeConsensusAsyncConnector.getConsensusGroupIdStr());
     retryWALTransferTimer =
@@ -174,7 +174,7 @@ public class PipeConsensusConnectorMetrics implements IMetricSet {
             Tag.NAME.toString(),
             CONNECTOR,
             Tag.TYPE.toString(),
-            "retryWALTransferTimer",
+            "retryWALTransfer",
             Tag.REGION.toString(),
             pipeConsensusAsyncConnector.getConsensusGroupIdStr());
     retryTsFileTransferTimer =
@@ -184,7 +184,7 @@ public class PipeConsensusConnectorMetrics implements IMetricSet {
             Tag.NAME.toString(),
             CONNECTOR,
             Tag.TYPE.toString(),
-            "retryTsFileTransferTimer",
+            "retryTsFileTransfer",
             Tag.REGION.toString(),
             pipeConsensusAsyncConnector.getConsensusGroupIdStr());
   }
@@ -238,7 +238,7 @@ public class PipeConsensusConnectorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.TYPE.toString(),
-        "connectorTsFileTransferTimer",
+        "connectorTsFileTransfer",
         Tag.REGION.toString(),
         pipeConsensusAsyncConnector.getConsensusGroupIdStr());
     metricService.remove(
@@ -247,7 +247,7 @@ public class PipeConsensusConnectorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.TYPE.toString(),
-        "connectorTsFilePieceTransferTimer",
+        "connectorTsFilePieceTransfer",
         Tag.REGION.toString(),
         pipeConsensusAsyncConnector.getConsensusGroupIdStr());
     metricService.remove(
@@ -256,7 +256,7 @@ public class PipeConsensusConnectorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.TYPE.toString(),
-        "connectorTsFileTransferTimer",
+        "connectorTsFileTransfer",
         Tag.REGION.toString(),
         pipeConsensusAsyncConnector.getConsensusGroupIdStr());
     metricService.remove(
@@ -265,7 +265,7 @@ public class PipeConsensusConnectorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.TYPE.toString(),
-        "connectorWALTransferTimer",
+        "connectorWALTransfer",
         Tag.REGION.toString(),
         pipeConsensusAsyncConnector.getConsensusGroupIdStr());
     metricService.remove(
@@ -274,7 +274,7 @@ public class PipeConsensusConnectorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.TYPE.toString(),
-        "retryWALTransferTimer",
+        "retryWALTransfer",
         Tag.REGION.toString(),
         pipeConsensusAsyncConnector.getConsensusGroupIdStr());
     metricService.remove(
@@ -283,7 +283,7 @@ public class PipeConsensusConnectorMetrics implements IMetricSet {
         Tag.NAME.toString(),
         CONNECTOR,
         Tag.TYPE.toString(),
-        "retryTsFileTransferTimer",
+        "retryTsFileTransfer",
         Tag.REGION.toString(),
         pipeConsensusAsyncConnector.getConsensusGroupIdStr());
   }

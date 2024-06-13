@@ -590,6 +590,6 @@ public class PipeConsensusServerImpl {
   }
 
   public long getReplicateMode() {
-    return (replicateMode == ReplicateMode.BATCH) ? 0 : 1;
+    return (replicateMode == ReplicateMode.BATCH) ? 2 : 1;
   }
 }
