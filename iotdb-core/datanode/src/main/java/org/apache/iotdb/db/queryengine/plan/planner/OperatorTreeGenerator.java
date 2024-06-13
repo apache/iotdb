@@ -328,8 +328,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(node, context);
     scanOptionsBuilder.withAllSensors(
         context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()));
-    scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
-    scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
 
     Expression pushDownPredicate = node.getPushDownPredicate();
     boolean predicateCanPushIntoScan = canPushIntoScan(pushDownPredicate);
@@ -340,6 +338,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               Collections.singletonList(node.getSeriesPath().getMeasurement()),
               context.getTypeProvider().getTemplatedInfo() != null,
               context.getTypeProvider()));
+    }
+    if (pushDownPredicate == null || predicateCanPushIntoScan) {
+      scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
+      scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
     }
 
     OperatorContext operatorContext =
@@ -364,17 +366,43 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     if (!predicateCanPushIntoScan) {
       checkState(!context.isBuildPlanUseTemplate(), "Push down predicate is not supported yet");
-      return constructFilterOperator(
-          pushDownPredicate,
-          seriesScanOperator,
-          Collections.singletonList(ExpressionFactory.timeSeries(node.getSeriesPath()))
-              .toArray(new Expression[0]),
-          Collections.singletonList(node.getSeriesPath().getSeriesType()),
-          makeLayout(Collections.singletonList(node)),
-          false,
-          node.getPlanNodeId(),
-          node.getScanOrder(),
-          context);
+      Operator rootOperator =
+          constructFilterOperator(
+              pushDownPredicate,
+              seriesScanOperator,
+              Collections.singletonList(ExpressionFactory.timeSeries(node.getSeriesPath()))
+                  .toArray(new Expression[0]),
+              Collections.singletonList(node.getSeriesPath().getSeriesType()),
+              makeLayout(Collections.singletonList(node)),
+              false,
+              node.getPlanNodeId(),
+              node.getScanOrder(),
+              context);
+      if (node.getPushDownOffset() > 0) {
+        rootOperator =
+            new OffsetOperator(
+                context
+                    .getDriverContext()
+                    .addOperatorContext(
+                        context.getNextOperatorId(),
+                        node.getPlanNodeId(),
+                        OffsetOperator.class.getSimpleName()),
+                node.getPushDownOffset(),
+                rootOperator);
+      }
+      if (node.getPushDownLimit() > 0) {
+        rootOperator =
+            new LimitOperator(
+                context
+                    .getDriverContext()
+                    .addOperatorContext(
+                        context.getNextOperatorId(),
+                        node.getPlanNodeId(),
+                        LimitOperator.class.getSimpleName()),
+                node.getPushDownLimit(),
+                rootOperator);
+      }
+      return rootOperator;
     }
     return seriesScanOperator;
   }
@@ -385,8 +413,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     AlignedPath seriesPath = node.getAlignedPath();
 
     SeriesScanOptions.Builder scanOptionsBuilder = getSeriesScanOptionsBuilder(node, context);
-    scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
-    scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
     scanOptionsBuilder.withAllSensors(
         new HashSet<>(
             context.isBuildPlanUseTemplate()
@@ -402,6 +428,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               node.getAlignedPath().getMeasurementList(),
               context.getTypeProvider().getTemplatedInfo() != null,
               context.getTypeProvider()));
+    }
+    if (pushDownPredicate == null || predicateCanPushIntoScan) {
+      scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
+      scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
     }
 
     OperatorContext operatorContext =
@@ -460,16 +490,43 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         dataTypes.add(alignedPath.getSubMeasurementDataType(i));
       }
 
-      return constructFilterOperator(
-          pushDownPredicate,
-          seriesScanOperator,
-          expressions.toArray(new Expression[0]),
-          dataTypes,
-          makeLayout(Collections.singletonList(node)),
-          false,
-          node.getPlanNodeId(),
-          node.getScanOrder(),
-          context);
+      Operator rootOperator =
+          constructFilterOperator(
+              pushDownPredicate,
+              seriesScanOperator,
+              expressions.toArray(new Expression[0]),
+              dataTypes,
+              makeLayout(Collections.singletonList(node)),
+              false,
+              node.getPlanNodeId(),
+              node.getScanOrder(),
+              context);
+
+      if (node.getPushDownOffset() > 0) {
+        rootOperator =
+            new OffsetOperator(
+                context
+                    .getDriverContext()
+                    .addOperatorContext(
+                        context.getNextOperatorId(),
+                        node.getPlanNodeId(),
+                        OffsetOperator.class.getSimpleName()),
+                node.getPushDownOffset(),
+                rootOperator);
+      }
+      if (node.getPushDownLimit() > 0) {
+        rootOperator =
+            new LimitOperator(
+                context
+                    .getDriverContext()
+                    .addOperatorContext(
+                        context.getNextOperatorId(),
+                        node.getPlanNodeId(),
+                        LimitOperator.class.getSimpleName()),
+                node.getPushDownLimit(),
+                rootOperator);
+      }
+      return rootOperator;
     }
     return seriesScanOperator;
   }
