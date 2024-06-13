@@ -216,7 +216,7 @@ struct TTestConnectionResult {
 }
 
 struct TTestConnectionResp {
-  1: optional TSStatus status
+  1: required TSStatus status
   2: required list<TTestConnectionResult> resultList
 }
 

@@ -1432,6 +1432,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations)
       throws TException {
     return new TTestConnectionResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         Stream.of(
                 testAllConfigNodeConnection(nodeLocations.getConfigNodeLocations()),
                 testAllDataNodeInternalServiceConnection(nodeLocations.getDataNodeLocations()),

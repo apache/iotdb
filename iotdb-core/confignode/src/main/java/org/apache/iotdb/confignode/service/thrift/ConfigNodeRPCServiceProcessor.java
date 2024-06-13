@@ -900,6 +900,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations)
       throws TException {
     return new TTestConnectionResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         configManager.getClusterManager().doConnectionTest(nodeLocations));
   }
 

@@ -49,7 +49,7 @@ public class Utils {
     Map<Integer, ServiceProviderLocation> nodeLocationMap =
         nodeLocations.stream().collect(Collectors.toMap(getId, location -> location));
     AsyncRequestContext<Object, TSStatus, RequestType, ServiceProviderLocation> requestContext =
-        new AsyncRequestContext<>(requestType, null, nodeLocationMap);
+        new AsyncRequestContext<>(requestType, new Object(), nodeLocationMap);
     // do the test
     sendRequest.accept(requestContext);
     // collect result
