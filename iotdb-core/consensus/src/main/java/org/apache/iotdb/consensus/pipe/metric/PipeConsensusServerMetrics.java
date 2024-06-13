@@ -68,7 +68,7 @@ public class PipeConsensusServerMetrics implements IMetricSet {
   public void bindGauge(AbstractMetricService metricService) {
     metricService
         .getOrCreateGauge(
-            Metric.PIPE_CONSENSUS.toString(),
+            Metric.PIPE_CONSENSUS_MODE.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             IMPL,
@@ -80,7 +80,7 @@ public class PipeConsensusServerMetrics implements IMetricSet {
   public void unbindGauge(AbstractMetricService metricService) {
     metricService.remove(
         MetricType.GAUGE,
-        Metric.PIPE_CONSENSUS.toString(),
+        Metric.PIPE_CONSENSUS_MODE.toString(),
         Tag.NAME.toString(),
         IMPL,
         Tag.TYPE.toString(),

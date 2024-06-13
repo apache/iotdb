@@ -56,6 +56,7 @@ public enum Metric {
   IOT_SEND_LOG("iot_send_log"),
   IOT_RECEIVE_LOG("iot_receive_log"),
   PIPE_CONSENSUS("pipe_consensus"),
+  PIPE_CONSENSUS_MODE("pipe_consensus_mode"),
   PIPE_SEND_EVENT("pipe_send_event"),
   PIPE_RETRY_SEND_EVENT("pipe_retry_send_event"),
   PIPE_RECEIVE_EVENT("pipe_receive_event"),
