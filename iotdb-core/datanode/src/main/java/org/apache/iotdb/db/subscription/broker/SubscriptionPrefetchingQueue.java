@@ -24,8 +24,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
-import org.apache.iotdb.db.subscription.event.SubscriptionTsFileEvent;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
@@ -129,7 +129,7 @@ public abstract class SubscriptionPrefetchingQueue {
         subscriptionCommitIdGenerator.getAndIncrement());
   }
 
-  protected SubscriptionCommitContext generateInvalidSubscriptionCommitContext() {
+  private SubscriptionCommitContext generateInvalidSubscriptionCommitContext() {
     return new SubscriptionCommitContext(
         IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
         PipeAgent.runtime().getRebootTimes(),
@@ -182,12 +182,22 @@ public abstract class SubscriptionPrefetchingQueue {
     isCompleted = true;
   }
 
-  public SubscriptionTsFileEvent generateSubscriptionPollTerminationResponse() {
-    return new SubscriptionTsFileEvent(
+  public SubscriptionEvent generateSubscriptionPollTerminationResponse() {
+    return new SubscriptionEvent(
         Collections.emptyList(),
         new SubscriptionPollResponse(
             SubscriptionPollResponseType.TERMINATION.getType(),
             new TerminationPayload(),
+            generateInvalidSubscriptionCommitContext()));
+  }
+
+  public SubscriptionEvent generateSubscriptionPollErrorResponse(
+      final String errorMessage, final boolean critical) {
+    return new SubscriptionEvent(
+        Collections.emptyList(),
+        new SubscriptionPollResponse(
+            SubscriptionPollResponseType.ERROR.getType(),
+            new ErrorPayload(errorMessage, critical),
             generateInvalidSubscriptionCommitContext()));
   }
 }

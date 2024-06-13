@@ -24,11 +24,11 @@ import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQue
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEventBinaryCache;
 import org.apache.iotdb.db.subscription.event.SubscriptionTsFileEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
@@ -43,7 +43,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -81,7 +80,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   }
 
   @Override
-  public SubscriptionTsFileEvent poll(final String consumerId) {
+  public SubscriptionEvent poll(final String consumerId) {
     if (hasUnPollableOnTheFlySubscriptionTsFileEvent(consumerId)) {
       return null;
     }
@@ -148,7 +147,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     return null;
   }
 
-  public synchronized @NonNull SubscriptionTsFileEvent pollTsFile(
+  public synchronized @NonNull SubscriptionEvent pollTsFile(
       final String consumerId, final String fileName, final long writingOffset) {
     // 1. Extract current event and check it
     final SubscriptionTsFileEvent event = consumerIdToCurrentEventMap.get(consumerId);
@@ -293,7 +292,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     return pollTsFile(consumerId, writingOffset, event);
   }
 
-  private synchronized @NonNull SubscriptionTsFileEvent pollTsFile(
+  private synchronized @NonNull SubscriptionEvent pollTsFile(
       final String consumerId, final long writingOffset, final SubscriptionTsFileEvent event) {
     Pair<SubscriptionTsFileEvent, Boolean> newEventWithCommittable =
         event.matchOrResetNext(writingOffset);
@@ -396,18 +395,8 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     return null;
   }
 
-  private SubscriptionTsFileEvent generateSubscriptionPollErrorResponse(
-      final String errorMessage, final boolean critical) {
-    return new SubscriptionTsFileEvent(
-        Collections.emptyList(),
-        new SubscriptionPollResponse(
-            SubscriptionPollResponseType.ERROR.getType(),
-            new ErrorPayload(errorMessage, critical),
-            super.generateInvalidSubscriptionCommitContext()));
-  }
-
-  private SubscriptionTsFileEvent generateSubscriptionPollErrorResponse(final String errorMessage) {
+  private SubscriptionEvent generateSubscriptionPollErrorResponse(final String errorMessage) {
     // consider non-critical by default, meaning the client can retry
-    return generateSubscriptionPollErrorResponse(errorMessage, false);
+    return super.generateSubscriptionPollErrorResponse(errorMessage, false);
   }
 }
