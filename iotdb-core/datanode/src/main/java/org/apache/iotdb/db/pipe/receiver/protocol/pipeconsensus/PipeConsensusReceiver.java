@@ -156,7 +156,7 @@ public class PipeConsensusReceiver {
           break;
         case TRANSFER_TS_FILE_SEAL:
         case TRANSFER_TS_FILE_SEAL_WITH_MOD:
-          // TODO: check memory when logging wal(in further version)
+          // TODO: check memory when logging WAL(in further version)
           resp = requestExecutor.onRequest(req, false, true);
           break;
         case TRANSFER_TABLET_BINARY:
@@ -1124,7 +1124,7 @@ public class PipeConsensusReceiver {
     private final PipeConsensusReceiverMetrics metric;
     private long onSyncedCommitIndex = 0;
     private int connectorRebootTimes = 0;
-    private int walEventCount = 0;
+    private int WALEventCount = 0;
     private int tsFileEventCount = 0;
 
     public RequestExecutor(PipeConsensusReceiverMetrics metric) {
@@ -1149,7 +1149,7 @@ public class PipeConsensusReceiver {
         tsFileEventCount--;
         metric.recordReceiveTsFileTimer(System.nanoTime() - curMeta.getStartApplyNanos());
       } else {
-        walEventCount--;
+        WALEventCount--;
         metric.recordReceiveWALTimer(System.nanoTime() - curMeta.getStartApplyNanos());
       }
     }
@@ -1195,13 +1195,15 @@ public class PipeConsensusReceiver {
         if (tCommitId.getRebootTimes() > connectorRebootTimes) {
           resetWithNewestRebootTime(tCommitId.getRebootTimes());
         }
-        reqExecutionOrderBuffer.add(requestMeta);
         // update metric
-        if (isTransferTsFilePiece) {
+        if (isTransferTsFilePiece && !reqExecutionOrderBuffer.contains(requestMeta)) {
+          // only update tsFileEventCount when tsFileEvent is first enqueue.
           tsFileEventCount++;
-        } else if (!isTransferTsFileSeal) {
-          walEventCount++;
         }
+        if (!isTransferTsFileSeal && !isTransferTsFilePiece) {
+          WALEventCount++;
+        }
+        reqExecutionOrderBuffer.add(requestMeta);
 
         // TsFilePieceTransferEvent will not enter further procedure, it just holds a place in
         // buffer. Only after the corresponding sealing event is processed, this event can be
@@ -1361,6 +1363,11 @@ public class PipeConsensusReceiver {
       RequestMeta that = (RequestMeta) o;
       return commitId.equals(that.commitId);
     }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(commitId);
+    }
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
@@ -1370,7 +1377,7 @@ public class PipeConsensusReceiver {
   }
 
   public int getWALEventCount() {
-    return this.requestExecutor.walEventCount;
+    return this.requestExecutor.WALEventCount;
   }
 
   public int getTsFileEventCount() {

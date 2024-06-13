@@ -239,7 +239,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     if (isTabletBatchModeEnabled) {
       if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
         final PipeConsensusTabletBatchEventHandler pipeConsensusTabletBatchEventHandler =
-            new PipeConsensusTabletBatchEventHandler(tabletBatchBuilder, this);
+            new PipeConsensusTabletBatchEventHandler(
+                tabletBatchBuilder, this, pipeConsensusConnectorMetrics);
 
         transfer(pipeConsensusTabletBatchEventHandler);
 
@@ -404,8 +405,9 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       return;
     }
 
-    transfer(new PipeConsensusTabletBatchEventHandler(tabletBatchBuilder, this));
-
+    transfer(
+        new PipeConsensusTabletBatchEventHandler(
+            tabletBatchBuilder, this, pipeConsensusConnectorMetrics));
     tabletBatchBuilder.onSuccess();
   }
 
@@ -501,7 +503,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
   public void addFailureEventsToRetryQueue(final Iterable<Event> events) {
     for (final Event event : events) {
       addFailureEventToRetryQueue(event);
-      pipeConsensusConnectorMetrics.recordRetryCounter();
     }
   }
 

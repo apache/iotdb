@@ -125,7 +125,7 @@ public class PipeConsensusReceiverMetrics implements IMetricSet {
         Tag.REGION.toString(),
         pipeConsensusReceiver.getConsensusGroupIdStr(),
         Tag.TYPE.toString(),
-        "walEventCount");
+        "WALEventCount");
     metricService.createAutoGauge(
         Metric.PIPE_RECEIVE_EVENT.toString(),
         MetricLevel.IMPORTANT,
@@ -263,7 +263,7 @@ public class PipeConsensusReceiverMetrics implements IMetricSet {
         Tag.REGION.toString(),
         pipeConsensusReceiver.getConsensusGroupIdStr(),
         Tag.TYPE.toString(),
-        "walEventCount");
+        "WALEventCount");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.PIPE_RECEIVE_EVENT.toString(),
