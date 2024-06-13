@@ -737,7 +737,7 @@ public class StorageEngine implements IService {
                 .equals(ConsensusFactory.FAST_IOT_CONSENSUS)
             || CONFIG
                 .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.IOTV2_CONSENSUS)) {
+                .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
           // delete wal
           WALManager.getInstance()
               .deleteWALNode(
