@@ -17,47 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.type;
+package org.apache.iotdb.rpc.subscription.exception;
 
-public enum Type {
-  /* BOOLEAN */
-  BOOLEAN((byte) 0),
+import java.util.Objects;
 
-  /* INT32 */
-  INT32((byte) 1),
+public class SubscriptionIdentifierSemanticException extends SubscriptionException {
 
-  /* INT64 */
-  INT64((byte) 2),
-
-  /* FLOAT */
-  FLOAT((byte) 3),
-
-  /* DOUBLE */
-  DOUBLE((byte) 4),
-
-  /* TEXT */
-  TEXT((byte) 5),
-
-  /* TsDataType.Vector and TsDataType.UNKNOWN are inner types of TsFile-module, which should not be supported in UDF APIs. To be consistent with TsDataType, the next value starts with 8 */
-  /* TIMESTAMP */
-  TIMESTAMP((byte) 8),
-
-  /* DATE */
-  DATE((byte) 9),
-
-  /* BLOB */
-  BLOB((byte) 10),
-
-  /* STRING */
-  STRING((byte) 11);
-
-  private final byte dataType;
-
-  Type(byte type) {
-    this.dataType = type;
+  public SubscriptionIdentifierSemanticException(final String message) {
+    super(message);
   }
 
-  public byte getType() {
-    return dataType;
+  public SubscriptionIdentifierSemanticException(final String message, final Throwable cause) {
+    super(message, cause);
+  }
+
+  @Override
+  public boolean equals(final Object obj) {
+    return obj instanceof SubscriptionIdentifierSemanticException
+        && Objects.equals(
+            getMessage(), ((SubscriptionIdentifierSemanticException) obj).getMessage())
+        && Objects.equals(
+            getTimeStamp(), ((SubscriptionIdentifierSemanticException) obj).getTimeStamp());
   }
 }

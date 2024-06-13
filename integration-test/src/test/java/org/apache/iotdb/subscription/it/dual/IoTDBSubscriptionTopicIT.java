@@ -34,7 +34,6 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.write.record.Tablet;
-import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -51,11 +50,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -136,7 +135,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            });
+            },
+            String.format("%s - consumer", testName.getMethodName()));
     thread.start();
 
     // Check data on receiver
@@ -144,21 +144,16 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       try (final Connection connection = receiverEnv.getConnection();
           final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
-        Awaitility.await()
-            .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-            .pollInterval(
-                IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-            .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertSingleResultSetEqual(
-                        TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
-                        new HashMap<String, String>() {
-                          {
-                            put("count(root.db.d1.s)", "100");
-                            put("count(root.db.d2.s)", "100");
-                          }
-                        }));
+        AWAIT.untilAsserted(
+            () ->
+                TestUtils.assertSingleResultSetEqual(
+                    TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                    new HashMap<String, String>() {
+                      {
+                        put("count(root.db.d1.s)", "100");
+                        put("count(root.db.d2.s)", "100");
+                      }
+                    }));
       }
     } catch (final Exception e) {
       e.printStackTrace();
@@ -238,7 +233,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            });
+            },
+            String.format("%s - consumer", testName.getMethodName()));
     thread.start();
 
     // Check data on receiver
@@ -246,20 +242,15 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       try (final Connection connection = receiverEnv.getConnection();
           final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
-        Awaitility.await()
-            .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-            .pollInterval(
-                IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-            .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertSingleResultSetEqual(
-                        TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
-                        new HashMap<String, String>() {
-                          {
-                            put("count(root.db.d2.s)", "100");
-                          }
-                        }));
+        AWAIT.untilAsserted(
+            () ->
+                TestUtils.assertSingleResultSetEqual(
+                    TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                    new HashMap<String, String>() {
+                      {
+                        put("count(root.db.d2.s)", "100");
+                      }
+                    }));
       }
     } catch (final Exception e) {
       e.printStackTrace();
@@ -336,7 +327,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            });
+            },
+            String.format("%s - consumer", testName.getMethodName()));
     thread.start();
 
     // Check data on receiver
@@ -348,17 +340,12 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       try (final Connection connection = receiverEnv.getConnection();
           final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
-        Awaitility.await()
-            .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-            .pollInterval(
-                IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-            .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertResultSetEqual(
-                        TestUtils.executeQueryWithRetry(statement, "select * from root.**"),
-                        "Time,root.db.d1.at1,",
-                        expectedResSet));
+        AWAIT.untilAsserted(
+            () ->
+                TestUtils.assertResultSetEqual(
+                    TestUtils.executeQueryWithRetry(statement, "select * from root.**"),
+                    "Time,root.db.d1.at1,",
+                    expectedResSet));
       }
     } catch (final Exception e) {
       e.printStackTrace();
@@ -392,9 +379,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
 
     // Create topic on sender
-    final String topic1 = "`topic1`";
-    final String topic2 = "`'topic2'`";
-    final String topic3 = "`\"topic3\"`";
+    final String topic1 = "`topic4`";
+    final String topic2 = "`'topic5'`";
+    final String topic3 = "`\"topic6\"`";
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
@@ -464,7 +451,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            });
+            },
+            String.format("%s - consumer", testName.getMethodName()));
     thread.start();
 
     // Check data on receiver
@@ -472,20 +460,15 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       try (final Connection connection = receiverEnv.getConnection();
           final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
-        Awaitility.await()
-            .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-            .pollInterval(
-                IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-            .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertSingleResultSetEqual(
-                        TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
-                        new HashMap<String, String>() {
-                          {
-                            put("count(root.db.d1.s)", "300");
-                          }
-                        }));
+        AWAIT.untilAsserted(
+            () ->
+                TestUtils.assertSingleResultSetEqual(
+                    TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                    new HashMap<String, String>() {
+                      {
+                        put("count(root.db.d1.s)", "300");
+                      }
+                    }));
       }
     } catch (final Exception e) {
       e.printStackTrace();
@@ -507,7 +490,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       final Properties properties = new Properties();
       properties.put(TopicConstant.START_TIME_KEY, "2024-01-32");
       properties.put(TopicConstant.END_TIME_KEY, TopicConstant.NOW_TIME_VALUE);
-      session.createTopic("topic1", properties);
+      session.createTopic("topic7", properties);
       fail();
     } catch (final Exception ignored) {
     }
@@ -519,7 +502,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       final Properties properties = new Properties();
       properties.put(TopicConstant.START_TIME_KEY, "2001.01.01T08:00:00");
       properties.put(TopicConstant.END_TIME_KEY, "2000.01.01T08:00:00");
-      session.createTopic("topic2", properties);
+      session.createTopic("topic8", properties);
       fail();
     } catch (final Exception ignored) {
     }
@@ -532,7 +515,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     final Properties config = new Properties();
     config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
     config.put(TopicConstant.PATH_KEY, "root.db.*.s");
-    testTopicInvalidRuntimeConfigTemplate("topic3", config);
+    testTopicInvalidRuntimeConfigTemplate("topic9", config);
   }
 
   @Test
@@ -543,7 +526,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     config.put("processor", "tumbling-time-sampling-processor");
     config.put("processor.tumbling-time.interval-seconds", "1");
     config.put("processor.down-sampling.split-file", "true");
-    testTopicInvalidRuntimeConfigTemplate("topic4", config);
+    testTopicInvalidRuntimeConfigTemplate("topic10", config);
   }
 
   private void testTopicInvalidRuntimeConfigTemplate(
@@ -600,7 +583,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            }));
+            },
+            String.format("%s - consumer", testName.getMethodName())));
 
     // Insert some realtime data on sender
     threads.add(
@@ -628,18 +612,15 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 fail(e.getMessage());
               }
               dataPrepared.set(true);
-            }));
+            },
+            String.format("%s - data inserter", testName.getMethodName())));
 
     for (final Thread thread : threads) {
       thread.start();
     }
 
-    Awaitility.await()
-        .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-        .pollInterval(IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-        .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-        // The expected SubscriptionRuntimeCriticalException was not thrown if result is false
-        .untilTrue(result);
+    // The expected SubscriptionRuntimeCriticalException was not thrown if result is false
+    AWAIT.untilTrue(result);
 
     for (final Thread thread : threads) {
       thread.join();
