@@ -182,10 +182,6 @@ public class PathUtils {
     return PathVisitor.isRealNumber(str);
   }
 
-  public static boolean isStartWith(String deviceName, String storageGroup) {
-    return deviceName.equals(storageGroup) || deviceName.startsWith(storageGroup + ".");
-  }
-
   public static boolean isStartWith(IDeviceID deviceID, String storageGroup) {
     // TODO: use correct judgement without converting to string
     String deviceName = deviceID.toString();
