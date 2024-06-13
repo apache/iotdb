@@ -51,6 +51,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -1442,6 +1443,27 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             .commitCreateTable(
                 ReadWriteIOUtils.readString(req.tableInfo),
                 ReadWriteIOUtils.readString(req.tableInfo));
+        break;
+      case PRE_ADD_COLUMN:
+        DataNodeTableCache.getInstance()
+            .preAddTableColumn(
+                ReadWriteIOUtils.readString(req.tableInfo),
+                ReadWriteIOUtils.readString(req.tableInfo),
+                TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.tableInfo));
+        break;
+      case COMMIT_ADD_COLUMN:
+        DataNodeTableCache.getInstance()
+            .commitAddTableColumn(
+                ReadWriteIOUtils.readString(req.tableInfo),
+                ReadWriteIOUtils.readString(req.tableInfo),
+                TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.tableInfo));
+        break;
+      case ROLLBACK_ADD_COLUMN:
+        DataNodeTableCache.getInstance()
+            .rollbackAddColumn(
+                ReadWriteIOUtils.readString(req.tableInfo),
+                ReadWriteIOUtils.readString(req.tableInfo),
+                TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.tableInfo));
         break;
       default:
         LOGGER.warn("Unsupported type {} when updating table", req.type);

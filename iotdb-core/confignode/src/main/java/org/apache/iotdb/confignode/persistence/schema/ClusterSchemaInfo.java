@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDataba
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
@@ -1088,6 +1089,41 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       throw new RuntimeException(e);
     } finally {
       databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public TsTable getTsTable(String database, String tableName) {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      return mTree.getTable(new PartialPath(new String[] {ROOT, database}), tableName);
+    } catch (MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      throw new RuntimeException(e);
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public TSStatus addTableColumn(AddTableColumnPlan plan) {
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      if (plan.isRollback()) {
+        mTree.rollbackAddTableColumn(
+            new PartialPath(new String[] {ROOT, plan.getDatabase()}),
+            plan.getTableName(),
+            plan.getColumnSchemaList());
+      } else {
+        mTree.addTableColumn(
+            new PartialPath(new String[] {ROOT, plan.getDatabase()}),
+            plan.getTableName(),
+            plan.getColumnSchemaList());
+      }
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
     }
   }
 
