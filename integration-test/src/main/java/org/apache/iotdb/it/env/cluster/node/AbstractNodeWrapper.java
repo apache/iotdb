@@ -688,12 +688,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     }
     final String command = "jstack -l " + pid;
     logger.info("Executing command {} for {}", command, this.getId());
-    final String fileName = getLogDirPath()
-        + File.separator
-        + testCaseName
-        + "_"
-        + getId()
-        + "-threads.jstack";
+    final String fileName =
+        getLogDirPath() + File.separator + testCaseName + "_" + getId() + "-threads.jstack";
     try {
       final Process process = Runtime.getRuntime().exec(command);
       try (final PrintWriter output = new PrintWriter(fileName);
