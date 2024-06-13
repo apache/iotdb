@@ -348,6 +348,7 @@ public class PartitionCache {
       boolean isAutoCreate,
       String userName) {
     if (!isAutoCreate) {
+      // TODO: avoid IDeviceID contains "*"
       // miss when deviceId contains *
       for (IDeviceID deviceID : devicePaths) {
         for (int i = 0; i < deviceID.segmentNum(); i++) {

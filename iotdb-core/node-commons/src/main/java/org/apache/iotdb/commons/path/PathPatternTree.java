@@ -39,7 +39,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class PathPatternTree {
 
@@ -174,10 +173,15 @@ public class PathPatternTree {
 
   public List<IDeviceID> getAllDevicePatterns() {
     List<String> nodes = new ArrayList<>();
-    Set<String> results = new HashSet<>();
-    searchDevicePattern(root, nodes, results);
-    // TODO avoid unnecessary conversion
-    return results.stream().map(Factory.DEFAULT_FACTORY::create).collect(Collectors.toList());
+    Set<List<String>> resultNodesSet = new HashSet<>();
+    searchDevicePath(root, nodes, resultNodesSet);
+
+    Set<IDeviceID> resultPaths = new HashSet<>();
+    for (List<String> resultNodes : resultNodesSet) {
+      resultPaths.add(Factory.DEFAULT_FACTORY.create(resultNodes.toArray(new String[0])));
+    }
+
+    return new ArrayList<>(resultPaths);
   }
 
   public List<PartialPath> getAllDevicePaths() {
