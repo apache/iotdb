@@ -23,8 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.udf.UDFInformation;
-import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
@@ -129,8 +129,8 @@ public class UDFManager {
         new TCreateFunctionInstanceReq(udfInformation.serialize()).setJarFile(jarFile);
     DataNodeAsyncRequestContext<TCreateFunctionInstanceReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            ConfigNodeToDataNodeRequestType.CREATE_FUNCTION, req, dataNodeLocationMap);
-    ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
+            CnToDnRequestType.CREATE_FUNCTION, req, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
@@ -164,8 +164,8 @@ public class UDFManager {
 
     DataNodeAsyncRequestContext<TDropFunctionInstanceReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            ConfigNodeToDataNodeRequestType.DROP_FUNCTION, request, dataNodeLocationMap);
-    ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
+            CnToDnRequestType.DROP_FUNCTION, request, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }

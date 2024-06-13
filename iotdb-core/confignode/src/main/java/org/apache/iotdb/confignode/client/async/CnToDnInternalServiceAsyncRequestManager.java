@@ -30,7 +30,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
 import org.apache.iotdb.commons.client.request.DataNodeInternalServiceRequestManager;
-import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExistenceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
@@ -89,273 +89,273 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Asynchronously send RPC requests to DataNodes. See queryengine.thrift for more details. */
-public class ConfigNodeToDataNodeInternalServiceAsyncRequestManager
-    extends DataNodeInternalServiceRequestManager<ConfigNodeToDataNodeRequestType> {
+public class CnToDnInternalServiceAsyncRequestManager
+    extends DataNodeInternalServiceRequestManager<CnToDnRequestType> {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(ConfigNodeToDataNodeInternalServiceAsyncRequestManager.class);
+      LoggerFactory.getLogger(CnToDnInternalServiceAsyncRequestManager.class);
 
   @Override
   protected void initActionMapBuilder() {
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.SET_TTL,
+        CnToDnRequestType.SET_TTL,
         (req, client, handler) ->
             client.setTTL((TSetTTLReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.CREATE_DATA_REGION,
+        CnToDnRequestType.CREATE_DATA_REGION,
         (req, client, handler) ->
             client.createDataRegion(
                 (TCreateDataRegionReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.DELETE_REGION,
+        CnToDnRequestType.DELETE_REGION,
         (req, client, handler) ->
             client.deleteRegion((TConsensusGroupId) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.CREATE_SCHEMA_REGION,
+        CnToDnRequestType.CREATE_SCHEMA_REGION,
         (req, client, handler) ->
             client.createSchemaRegion(
                 (TCreateSchemaRegionReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.CREATE_FUNCTION,
+        CnToDnRequestType.CREATE_FUNCTION,
         (req, client, handler) ->
             client.createFunction(
                 (TCreateFunctionInstanceReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.DROP_FUNCTION,
+        CnToDnRequestType.DROP_FUNCTION,
         (req, client, handler) ->
             client.dropFunction(
                 (TDropFunctionInstanceReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.CREATE_TRIGGER_INSTANCE,
+        CnToDnRequestType.CREATE_TRIGGER_INSTANCE,
         (req, client, handler) ->
             client.createTriggerInstance(
                 (TCreateTriggerInstanceReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.DROP_TRIGGER_INSTANCE,
+        CnToDnRequestType.DROP_TRIGGER_INSTANCE,
         (req, client, handler) ->
             client.dropTriggerInstance(
                 (TDropTriggerInstanceReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.ACTIVE_TRIGGER_INSTANCE,
+        CnToDnRequestType.ACTIVE_TRIGGER_INSTANCE,
         (req, client, handler) ->
             client.activeTriggerInstance(
                 (TActiveTriggerInstanceReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.INACTIVE_TRIGGER_INSTANCE,
+        CnToDnRequestType.INACTIVE_TRIGGER_INSTANCE,
         (req, client, handler) ->
             client.inactiveTriggerInstance(
                 (TInactiveTriggerInstanceReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.UPDATE_TRIGGER_LOCATION,
+        CnToDnRequestType.UPDATE_TRIGGER_LOCATION,
         (req, client, handler) ->
             client.updateTriggerLocation(
                 (TUpdateTriggerLocationReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.CREATE_PIPE_PLUGIN,
+        CnToDnRequestType.CREATE_PIPE_PLUGIN,
         (req, client, handler) ->
             client.createPipePlugin(
                 (TCreatePipePluginInstanceReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.DROP_PIPE_PLUGIN,
+        CnToDnRequestType.DROP_PIPE_PLUGIN,
         (req, client, handler) ->
             client.dropPipePlugin(
                 (TDropPipePluginInstanceReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.PIPE_PUSH_ALL_META,
+        CnToDnRequestType.PIPE_PUSH_ALL_META,
         (req, client, handler) ->
             client.pushPipeMeta((TPushPipeMetaReq) req, (PipePushMetaRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.PIPE_PUSH_SINGLE_META,
+        CnToDnRequestType.PIPE_PUSH_SINGLE_META,
         (req, client, handler) ->
             client.pushSinglePipeMeta(
                 (TPushSinglePipeMetaReq) req, (PipePushMetaRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.PIPE_PUSH_MULTI_META,
+        CnToDnRequestType.PIPE_PUSH_MULTI_META,
         (req, client, handler) ->
             client.pushMultiPipeMeta(
                 (TPushMultiPipeMetaReq) req, (PipePushMetaRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.TOPIC_PUSH_ALL_META,
+        CnToDnRequestType.TOPIC_PUSH_ALL_META,
         (req, client, handler) ->
             client.pushTopicMeta((TPushTopicMetaReq) req, (TopicPushMetaRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.TOPIC_PUSH_SINGLE_META,
+        CnToDnRequestType.TOPIC_PUSH_SINGLE_META,
         (req, client, handler) ->
             client.pushSingleTopicMeta(
                 (TPushSingleTopicMetaReq) req, (TopicPushMetaRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.TOPIC_PUSH_MULTI_META,
+        CnToDnRequestType.TOPIC_PUSH_MULTI_META,
         (req, client, handler) ->
             client.pushMultiTopicMeta(
                 (TPushMultiTopicMetaReq) req, (TopicPushMetaRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.CONSUMER_GROUP_PUSH_ALL_META,
+        CnToDnRequestType.CONSUMER_GROUP_PUSH_ALL_META,
         (req, client, handler) ->
             client.pushConsumerGroupMeta(
                 (TPushConsumerGroupMetaReq) req, (ConsumerGroupPushMetaRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.CONSUMER_GROUP_PUSH_SINGLE_META,
+        CnToDnRequestType.CONSUMER_GROUP_PUSH_SINGLE_META,
         (req, client, handler) ->
             client.pushSingleConsumerGroupMeta(
                 (TPushSingleConsumerGroupMetaReq) req, (ConsumerGroupPushMetaRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.PIPE_HEARTBEAT,
+        CnToDnRequestType.PIPE_HEARTBEAT,
         (req, client, handler) ->
             client.pipeHeartbeat((TPipeHeartbeatReq) req, (PipeHeartbeatRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.MERGE,
+        CnToDnRequestType.MERGE,
         (req, client, handler) -> client.merge((DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.FULL_MERGE,
+        CnToDnRequestType.FULL_MERGE,
         (req, client, handler) -> client.merge((DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.FLUSH,
+        CnToDnRequestType.FLUSH,
         (req, client, handler) ->
             client.flush((TFlushReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.CLEAR_CACHE,
+        CnToDnRequestType.CLEAR_CACHE,
         (req, client, handler) -> client.clearCache((DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.START_REPAIR_DATA,
+        CnToDnRequestType.START_REPAIR_DATA,
         (req, client, handler) -> client.startRepairData((DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.STOP_REPAIR_DATA,
+        CnToDnRequestType.STOP_REPAIR_DATA,
         (req, client, handler) -> client.stopRepairData((DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.LOAD_CONFIGURATION,
+        CnToDnRequestType.LOAD_CONFIGURATION,
         (req, client, handler) -> client.loadConfiguration((DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.SET_SYSTEM_STATUS,
+        CnToDnRequestType.SET_SYSTEM_STATUS,
         (req, client, handler) ->
             client.setSystemStatus((String) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.SET_CONFIGURATION,
+        CnToDnRequestType.SET_CONFIGURATION,
         (req, client, handler) ->
             client.setConfiguration(
                 (TSetConfigurationReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
+        CnToDnRequestType.UPDATE_REGION_ROUTE_MAP,
         (req, client, handler) ->
             client.updateRegionCache((TRegionRouteReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.CHANGE_REGION_LEADER,
+        CnToDnRequestType.CHANGE_REGION_LEADER,
         (req, client, handler) ->
             client.changeRegionLeader(
                 (TRegionLeaderChangeReq) req, (TransferLeaderRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
+        CnToDnRequestType.CONSTRUCT_SCHEMA_BLACK_LIST,
         (req, client, handler) ->
             client.constructSchemaBlackList(
                 (TConstructSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
+        CnToDnRequestType.ROLLBACK_SCHEMA_BLACK_LIST,
         (req, client, handler) ->
             client.rollbackSchemaBlackList(
                 (TRollbackSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.FETCH_SCHEMA_BLACK_LIST,
+        CnToDnRequestType.FETCH_SCHEMA_BLACK_LIST,
         (req, client, handler) ->
             client.fetchSchemaBlackList(
                 (TFetchSchemaBlackListReq) req, (FetchSchemaBlackListRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
+        CnToDnRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
         (req, client, handler) ->
             client.invalidateMatchedSchemaCache(
                 (TInvalidateMatchedSchemaCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
+        CnToDnRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
         (req, client, handler) ->
             client.deleteDataForDeleteSchema(
                 (TDeleteDataForDeleteSchemaReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.DELETE_TIMESERIES,
+        CnToDnRequestType.DELETE_TIMESERIES,
         (req, client, handler) ->
             client.deleteTimeSeries((TDeleteTimeSeriesReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
+        CnToDnRequestType.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
         (req, client, handler) ->
             client.constructSchemaBlackListWithTemplate(
                 (TConstructSchemaBlackListWithTemplateReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
+        CnToDnRequestType.ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
         (req, client, handler) ->
             client.rollbackSchemaBlackListWithTemplate(
                 (TRollbackSchemaBlackListWithTemplateReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.DEACTIVATE_TEMPLATE,
+        CnToDnRequestType.DEACTIVATE_TEMPLATE,
         (req, client, handler) ->
             client.deactivateTemplate(
                 (TDeactivateTemplateReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.UPDATE_TEMPLATE,
+        CnToDnRequestType.UPDATE_TEMPLATE,
         (req, client, handler) ->
             client.updateTemplate((TUpdateTemplateReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.COUNT_PATHS_USING_TEMPLATE,
+        CnToDnRequestType.COUNT_PATHS_USING_TEMPLATE,
         (req, client, handler) ->
             client.countPathsUsingTemplate(
                 (TCountPathsUsingTemplateReq) req, (CountPathsUsingTemplateRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.CHECK_SCHEMA_REGION_USING_TEMPLATE,
+        CnToDnRequestType.CHECK_SCHEMA_REGION_USING_TEMPLATE,
         (req, client, handler) ->
             client.checkSchemaRegionUsingTemplate(
                 (TCheckSchemaRegionUsingTemplateReq) req,
                 (CheckSchemaRegionUsingTemplateRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.CHECK_TIMESERIES_EXISTENCE,
+        CnToDnRequestType.CHECK_TIMESERIES_EXISTENCE,
         (req, client, handler) ->
             client.checkTimeSeriesExistence(
                 (TCheckTimeSeriesExistenceReq) req, (CheckTimeSeriesExistenceRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.CONSTRUCT_VIEW_SCHEMA_BLACK_LIST,
+        CnToDnRequestType.CONSTRUCT_VIEW_SCHEMA_BLACK_LIST,
         (req, client, handler) ->
             client.constructViewSchemaBlackList(
                 (TConstructViewSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.ROLLBACK_VIEW_SCHEMA_BLACK_LIST,
+        CnToDnRequestType.ROLLBACK_VIEW_SCHEMA_BLACK_LIST,
         (req, client, handler) ->
             client.rollbackViewSchemaBlackList(
                 (TRollbackViewSchemaBlackListReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.DELETE_VIEW,
+        CnToDnRequestType.DELETE_VIEW,
         (req, client, handler) ->
             client.deleteViewSchema((TDeleteViewSchemaReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.ALTER_VIEW,
+        CnToDnRequestType.ALTER_VIEW,
         (req, client, handler) ->
             client.alterView((TAlterViewReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.KILL_QUERY_INSTANCE,
+        CnToDnRequestType.KILL_QUERY_INSTANCE,
         (req, client, handler) ->
             client.killQueryInstance((String) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.SET_SPACE_QUOTA,
+        CnToDnRequestType.SET_SPACE_QUOTA,
         (req, client, handler) ->
             client.setSpaceQuota((TSetSpaceQuotaReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.SET_THROTTLE_QUOTA,
+        CnToDnRequestType.SET_THROTTLE_QUOTA,
         (req, client, handler) ->
             client.setThrottleQuota(
                 (TSetThrottleQuotaReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.RESET_PEER_LIST,
+        CnToDnRequestType.RESET_PEER_LIST,
         (req, client, handler) ->
             client.resetPeerList((TResetPeerListReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.SUBMIT_TEST_CONNECTION_TASK,
+        CnToDnRequestType.SUBMIT_TEST_CONNECTION_TASK,
         (req, client, handler) ->
             client.submitTestConnectionTask(
                 (TNodeLocations) req, (SubmitTestConnectionTaskRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToDataNodeRequestType.TEST_CONNECTION,
+        CnToDnRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((DataNodeTSStatusRPCHandler) handler));
   }
 
   @Override
-  protected AsyncRequestRPCHandler<?, ConfigNodeToDataNodeRequestType, TDataNodeLocation>
+  protected AsyncRequestRPCHandler<?, CnToDnRequestType, TDataNodeLocation>
       buildHandler(
-          AsyncRequestContext<?, ?, ConfigNodeToDataNodeRequestType, TDataNodeLocation>
+          AsyncRequestContext<?, ?, CnToDnRequestType, TDataNodeLocation>
               requestContext,
           int requestId,
           TDataNodeLocation targetNode) {
@@ -364,15 +364,15 @@ public class ConfigNodeToDataNodeInternalServiceAsyncRequestManager
 
   private static class ClientPoolHolder {
 
-    private static final ConfigNodeToDataNodeInternalServiceAsyncRequestManager INSTANCE =
-        new ConfigNodeToDataNodeInternalServiceAsyncRequestManager();
+    private static final CnToDnInternalServiceAsyncRequestManager INSTANCE =
+        new CnToDnInternalServiceAsyncRequestManager();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static ConfigNodeToDataNodeInternalServiceAsyncRequestManager getInstance() {
+  public static CnToDnInternalServiceAsyncRequestManager getInstance() {
     return ClientPoolHolder.INSTANCE;
   }
 }

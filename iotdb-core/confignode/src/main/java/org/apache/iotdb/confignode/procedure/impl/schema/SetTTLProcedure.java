@@ -24,8 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
@@ -110,13 +110,13 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
     DataNodeAsyncRequestContext<TSetTTLReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            ConfigNodeToDataNodeRequestType.SET_TTL,
+            CnToDnRequestType.SET_TTL,
             new TSetTTLReq(
                 Collections.singletonList(String.join(".", plan.getPathPattern())),
                 plan.getTTL(),
                 plan.isDataBase()),
             dataNodeLocationMap);
-    ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {

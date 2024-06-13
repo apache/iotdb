@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
-import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +36,7 @@ public class SubmitTestConnectionTaskRPCHandler
       LoggerFactory.getLogger(SubmitTestConnectionTaskRPCHandler.class);
 
   public SubmitTestConnectionTaskRPCHandler(
-      ConfigNodeToDataNodeRequestType requestType,
+      CnToDnRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,

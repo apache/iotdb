@@ -27,8 +27,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
-import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
@@ -156,7 +156,7 @@ public class DeleteDatabaseProcedure
 
           // try sync delete schemaengine region
           DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> asyncClientHandler =
-              new DataNodeAsyncRequestContext<>(ConfigNodeToDataNodeRequestType.DELETE_REGION);
+              new DataNodeAsyncRequestContext<>(CnToDnRequestType.DELETE_REGION);
           Map<Integer, RegionDeleteTask> schemaRegionDeleteTaskMap = new HashMap<>();
           int requestIndex = 0;
           for (TRegionReplicaSet schemaRegionReplicaSet : schemaRegionReplicaSets) {
@@ -171,7 +171,7 @@ public class DeleteDatabaseProcedure
             }
           }
           if (!schemaRegionDeleteTaskMap.isEmpty()) {
-            ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
+            CnToDnInternalServiceAsyncRequestManager.getInstance()
                 .sendAsyncRequestWithRetry(asyncClientHandler);
             for (Map.Entry<Integer, TSStatus> entry :
                 asyncClientHandler.getResponseMap().entrySet()) {

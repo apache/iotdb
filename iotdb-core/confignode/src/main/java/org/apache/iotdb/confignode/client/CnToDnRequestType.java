@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.client;
 
-public enum ConfigNodeToDataNodeRequestType {
+public enum CnToDnRequestType {
 
   // Node Maintenance
   DISABLE_DATA_NODE,

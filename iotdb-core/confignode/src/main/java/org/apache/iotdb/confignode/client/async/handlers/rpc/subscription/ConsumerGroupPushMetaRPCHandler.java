@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -38,7 +38,7 @@ public class ConsumerGroupPushMetaRPCHandler
       LoggerFactory.getLogger(ConsumerGroupPushMetaRPCHandler.class);
 
   public ConsumerGroupPushMetaRPCHandler(
-      ConfigNodeToDataNodeRequestType requestType,
+      CnToDnRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,

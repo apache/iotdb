@@ -34,8 +34,8 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -1258,7 +1258,7 @@ public class PartitionManager {
                           DataNodeAsyncRequestContext<TCreateSchemaRegionReq, TSStatus>
                               createSchemaRegionHandler =
                                   new DataNodeAsyncRequestContext<>(
-                                      ConfigNodeToDataNodeRequestType.CREATE_SCHEMA_REGION);
+                                      CnToDnRequestType.CREATE_SCHEMA_REGION);
                           for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                             RegionCreateTask schemaRegionCreateTask =
                                 (RegionCreateTask) regionMaintainTask;
@@ -1276,7 +1276,7 @@ public class PartitionManager {
                                 schemaRegionCreateTask.getTargetDataNode());
                           }
 
-                          ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
+                          CnToDnInternalServiceAsyncRequestManager.getInstance()
                               .sendAsyncRequestWithRetry(createSchemaRegionHandler);
 
                           for (Map.Entry<Integer, TSStatus> entry :
@@ -1294,7 +1294,7 @@ public class PartitionManager {
                           DataNodeAsyncRequestContext<TCreateDataRegionReq, TSStatus>
                               createDataRegionHandler =
                                   new DataNodeAsyncRequestContext<>(
-                                      ConfigNodeToDataNodeRequestType.CREATE_DATA_REGION);
+                                      CnToDnRequestType.CREATE_DATA_REGION);
                           for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                             RegionCreateTask dataRegionCreateTask =
                                 (RegionCreateTask) regionMaintainTask;
@@ -1312,7 +1312,7 @@ public class PartitionManager {
                                 dataRegionCreateTask.getTargetDataNode());
                           }
 
-                          ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
+                          CnToDnInternalServiceAsyncRequestManager.getInstance()
                               .sendAsyncRequestWithRetry(createDataRegionHandler);
 
                           for (Map.Entry<Integer, TSStatus> entry :
@@ -1331,7 +1331,7 @@ public class PartitionManager {
                       // delete region
                       DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> deleteRegionHandler =
                           new DataNodeAsyncRequestContext<>(
-                              ConfigNodeToDataNodeRequestType.DELETE_REGION);
+                              CnToDnRequestType.DELETE_REGION);
                       Map<Integer, TConsensusGroupId> regionIdMap = new HashMap<>();
                       for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                         RegionDeleteTask regionDeleteTask = (RegionDeleteTask) regionMaintainTask;
@@ -1349,7 +1349,7 @@ public class PartitionManager {
                       }
 
                       long startTime = System.currentTimeMillis();
-                      ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
+                      CnToDnInternalServiceAsyncRequestManager.getInstance()
                           .sendAsyncRequestWithRetry(deleteRegionHandler);
 
                       LOGGER.info(

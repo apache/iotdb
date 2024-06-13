@@ -25,8 +25,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -168,7 +168,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     long currentTime = System.nanoTime();
     AtomicInteger requestId = new AtomicInteger(0);
     DataNodeAsyncRequestContext<TRegionLeaderChangeReq, TRegionLeaderChangeResp> clientHandler =
-        new DataNodeAsyncRequestContext<>(ConfigNodeToDataNodeRequestType.CHANGE_REGION_LEADER);
+        new DataNodeAsyncRequestContext<>(CnToDnRequestType.CHANGE_REGION_LEADER);
     Map<TConsensusGroupId, ConsensusGroupHeartbeatSample> successTransferMap = new TreeMap<>();
     optimalLeaderMap.forEach(
         (regionGroupId, newLeaderId) -> {
@@ -225,7 +225,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
         });
     if (requestId.get() > 0) {
       // Don't retry ChangeLeader request
-      ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
+      CnToDnInternalServiceAsyncRequestManager.getInstance()
           .sendAsyncRequest(clientHandler);
       for (int i = 0; i < requestId.get(); i++) {
         if (clientHandler.getResponseMap().get(i).getStatus().getCode()
@@ -310,10 +310,10 @@ public class RouteBalancer implements IClusterStatusSubscriber {
     Map<TConsensusGroupId, TRegionReplicaSet> tmpPriorityMap = getRegionPriorityMap();
     DataNodeAsyncRequestContext<TRegionRouteReq, TSStatus> clientHandler =
         new DataNodeAsyncRequestContext<>(
-            ConfigNodeToDataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
+            CnToDnRequestType.UPDATE_REGION_ROUTE_MAP,
             new TRegionRouteReq(broadcastTime, tmpPriorityMap),
             dataNodeLocationMap);
-    ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequestWithRetry(clientHandler);
   }
 

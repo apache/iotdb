@@ -33,9 +33,9 @@ import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.Utils;
 import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
-import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.confignode.client.async.CnToCnInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -150,10 +150,10 @@ public class ClusterManager {
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
     DataNodeAsyncRequestContext<TNodeLocations, TTestConnectionResp> dataNodeAsyncRequestContext =
         new DataNodeAsyncRequestContext<>(
-            ConfigNodeToDataNodeRequestType.SUBMIT_TEST_CONNECTION_TASK,
+            CnToDnRequestType.SUBMIT_TEST_CONNECTION_TASK,
             nodeLocations,
             dataNodeLocationMap);
-    ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequest(dataNodeAsyncRequestContext);
     Map<Integer, TDataNodeLocation> anotherDataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodes().stream()
@@ -222,10 +222,10 @@ public class ClusterManager {
         TDataNodeLocation::getDataNodeId,
         TDataNodeLocation::getInternalEndPoint,
         TServiceType.DataNodeInternalService,
-        ConfigNodeToDataNodeRequestType.TEST_CONNECTION,
-        (AsyncRequestContext<Object, TSStatus, ConfigNodeToDataNodeRequestType, TDataNodeLocation>
+        CnToDnRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, CnToDnRequestType, TDataNodeLocation>
                 handler) ->
-            ConfigNodeToDataNodeInternalServiceAsyncRequestManager.getInstance()
+            CnToDnInternalServiceAsyncRequestManager.getInstance()
                 .sendAsyncRequestWithRetry(handler));
   }
 

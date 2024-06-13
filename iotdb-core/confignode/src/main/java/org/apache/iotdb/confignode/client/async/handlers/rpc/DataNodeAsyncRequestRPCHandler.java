@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
-import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.CheckSchemaRegionUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.ConsumerGroupPushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
@@ -42,10 +42,10 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public abstract class DataNodeAsyncRequestRPCHandler<Response>
-    extends AsyncRequestRPCHandler<Response, ConfigNodeToDataNodeRequestType, TDataNodeLocation> {
+    extends AsyncRequestRPCHandler<Response, CnToDnRequestType, TDataNodeLocation> {
 
   protected DataNodeAsyncRequestRPCHandler(
-      ConfigNodeToDataNodeRequestType requestType,
+      CnToDnRequestType requestType,
       int requestId,
       TDataNodeLocation targetNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
@@ -70,10 +70,10 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
   }
 
   public static DataNodeAsyncRequestRPCHandler<?> buildHandler(
-      AsyncRequestContext<?, ?, ConfigNodeToDataNodeRequestType, TDataNodeLocation> context,
+      AsyncRequestContext<?, ?, CnToDnRequestType, TDataNodeLocation> context,
       int requestId,
       TDataNodeLocation targetDataNode) {
-    ConfigNodeToDataNodeRequestType requestType = context.getRequestType();
+    CnToDnRequestType requestType = context.getRequestType();
     Map<Integer, TDataNodeLocation> dataNodeLocationMap = context.getNodeLocationMap();
     Map<Integer, ?> responseMap = context.getResponseMap();
     CountDownLatch countDownLatch = context.getCountDownLatch();
