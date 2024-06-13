@@ -27,24 +27,24 @@ import org.apache.iotdb.commons.client.request.ConfigNodeInternalServiceAsyncReq
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DataNodeToConfigNodeInternalServiceAsyncRequestManager
-    extends ConfigNodeInternalServiceAsyncRequestManager<DataNodeToConfigNodeRequestType> {
+public class DnToCnInternalServiceAsyncRequestManager
+    extends ConfigNodeInternalServiceAsyncRequestManager<DnToCnRequestType> {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(DataNodeToConfigNodeInternalServiceAsyncRequestManager.class);
+      LoggerFactory.getLogger(DnToCnInternalServiceAsyncRequestManager.class);
 
   @Override
   protected void initActionMapBuilder() {
     actionMapBuilder.put(
-        DataNodeToConfigNodeRequestType.TEST_CONNECTION,
+        DnToCnRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((AsyncConfigNodeTSStatusRPCHandler) handler));
   }
 
   @Override
-  protected AsyncRequestRPCHandler<?, DataNodeToConfigNodeRequestType, TConfigNodeLocation>
+  protected AsyncRequestRPCHandler<?, DnToCnRequestType, TConfigNodeLocation>
       buildHandler(
-          AsyncRequestContext<?, ?, DataNodeToConfigNodeRequestType, TConfigNodeLocation>
+          AsyncRequestContext<?, ?, DnToCnRequestType, TConfigNodeLocation>
               requestContext,
           int requestId,
           TConfigNodeLocation targetNode) {
@@ -52,15 +52,15 @@ public class DataNodeToConfigNodeInternalServiceAsyncRequestManager
   }
 
   private static class ClientPoolHolder {
-    private static final DataNodeToConfigNodeInternalServiceAsyncRequestManager INSTANCE =
-        new DataNodeToConfigNodeInternalServiceAsyncRequestManager();
+    private static final DnToCnInternalServiceAsyncRequestManager INSTANCE =
+        new DnToCnInternalServiceAsyncRequestManager();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static DataNodeToConfigNodeInternalServiceAsyncRequestManager getInstance() {
+  public static DnToCnInternalServiceAsyncRequestManager getInstance() {
     return ClientPoolHolder.INSTANCE;
   }
 }

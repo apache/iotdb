@@ -76,8 +76,8 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
-import org.apache.iotdb.db.protocol.client.cn.DataNodeToConfigNodeInternalServiceAsyncRequestManager;
-import org.apache.iotdb.db.protocol.client.cn.DataNodeToConfigNodeRequestType;
+import org.apache.iotdb.db.protocol.client.cn.DnToCnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.db.protocol.client.cn.DnToCnRequestType;
 import org.apache.iotdb.db.protocol.client.dn.DataNodeExternalServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.dn.DataNodeMPPServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.dn.DnToDnInternalServiceAsyncRequestManager;
@@ -1463,10 +1463,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TConfigNodeLocation::getConfigNodeId,
         TConfigNodeLocation::getInternalEndPoint,
         TServiceType.ConfigNodeInternalService,
-        DataNodeToConfigNodeRequestType.TEST_CONNECTION,
-        (AsyncRequestContext<Object, TSStatus, DataNodeToConfigNodeRequestType, TConfigNodeLocation>
+        DnToCnRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DnToCnRequestType, TConfigNodeLocation>
                 handler) ->
-            DataNodeToConfigNodeInternalServiceAsyncRequestManager.getInstance()
+            DnToCnInternalServiceAsyncRequestManager.getInstance()
                 .sendAsyncRequestWithRetry(handler));
   }
 

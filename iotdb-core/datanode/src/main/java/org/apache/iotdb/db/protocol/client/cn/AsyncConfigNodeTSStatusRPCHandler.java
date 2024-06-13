@@ -37,7 +37,7 @@ public class AsyncConfigNodeTSStatusRPCHandler extends ConfigNodeAsyncRequestRPC
       LoggerFactory.getLogger(AsyncConfigNodeTSStatusRPCHandler.class);
 
   public AsyncConfigNodeTSStatusRPCHandler(
-      DataNodeToConfigNodeRequestType requestType,
+      DnToCnRequestType requestType,
       int requestId,
       TConfigNodeLocation targetConfigNode,
       Map<Integer, TConfigNodeLocation> configNodeLocationMap,
