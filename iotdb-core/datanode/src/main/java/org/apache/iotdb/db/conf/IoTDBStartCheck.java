@@ -177,12 +177,6 @@ public class IoTDBStartCheck {
         System.exit(-1);
       }
 
-      // write properties to system.properties
-      try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
-        systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
-        properties.store(
-            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
-      }
       isFirstStart = true;
       return true;
     }
@@ -269,11 +263,7 @@ public class IoTDBStartCheck {
 
     if (isFirstStart) {
       // overwrite system.properties when first start
-      try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
-        systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
-        properties.store(
-            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
-      }
+      generateOrRewriteSystemPropertiesFile();
       if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
           && config.getWalMode().equals(WALMode.DISABLE)) {
         throw new ConfigurationException(
@@ -423,15 +413,19 @@ public class IoTDBStartCheck {
     }
 
     if (needsSerialize) {
-      try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
-        systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
-        properties.store(
-            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
-      }
+      generateOrRewriteSystemPropertiesFile();
     }
     long endTime = System.currentTimeMillis();
     logger.info(
         "Serialize mutable system properties successfully, which takes {} ms.",
         (endTime - startTime));
+  }
+
+  public void generateOrRewriteSystemPropertiesFile() throws IOException {
+    try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
+      systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
+      properties.store(
+          new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
+    }
   }
 }

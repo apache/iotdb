@@ -38,8 +38,8 @@ public class DataNodeRegisterResp implements DataSet {
   private TSStatus status;
   private List<TConfigNodeLocation> configNodeList;
   private Integer dataNodeId;
-
   private TRuntimeConfiguration runtimeConfiguration;
+  private Boolean preCheck;
 
   public DataNodeRegisterResp() {
     this.dataNodeId = null;
@@ -65,6 +65,10 @@ public class DataNodeRegisterResp implements DataSet {
     this.runtimeConfiguration = runtimeConfiguration;
   }
 
+  public void setPreCheck(Boolean preCheck) {
+    this.preCheck = preCheck;
+  }
+
   public static byte[] convertAllTTLInformation(Map<String, Long> allTTLInformation) {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
@@ -84,7 +88,7 @@ public class DataNodeRegisterResp implements DataSet {
     resp.setStatus(status);
     resp.setConfigNodeList(configNodeList);
 
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (!preCheck && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       resp.setDataNodeId(dataNodeId);
       resp.setRuntimeConfiguration(runtimeConfiguration);
     }

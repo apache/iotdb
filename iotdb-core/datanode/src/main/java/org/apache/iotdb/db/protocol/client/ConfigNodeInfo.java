@@ -126,6 +126,10 @@ public class ConfigNodeInfo {
    * @throws IOException if properties deserialization or configNode list serialization failed.
    */
   private void storeConfigNode() throws IOException {
+    if (!propertiesFile.exists()) {
+      logger.info("{} not exist, not necessary to store ConfigNode list", propertiesFile);
+      return;
+    }
     Properties properties = new Properties();
     try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
       properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
