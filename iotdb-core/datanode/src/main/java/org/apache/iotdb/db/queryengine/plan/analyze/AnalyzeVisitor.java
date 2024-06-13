@@ -2825,12 +2825,20 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   @Override
   public Analysis visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
-    LoadTsfileAnalyzer loadTsfileAnalyzer =
-        new LoadTsfileAnalyzer(loadTsFileStatement, context, partitionFetcher, schemaFetcher);
-    try {
+    try (final LoadTsfileAnalyzer loadTsfileAnalyzer =
+        new LoadTsfileAnalyzer(loadTsFileStatement, context, partitionFetcher, schemaFetcher)) {
       return loadTsfileAnalyzer.analyzeFileByFile();
-    } finally {
-      loadTsfileAnalyzer.close();
+    } catch (final Exception e) {
+      final String exceptionMessage =
+          String.format(
+              "Failed to execute load tsfile statement %s. Detail: %s",
+              loadTsFileStatement,
+              e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+      logger.warn(exceptionMessage, e);
+      final Analysis analysis = new Analysis();
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
+      return analysis;
     }
   }
 
