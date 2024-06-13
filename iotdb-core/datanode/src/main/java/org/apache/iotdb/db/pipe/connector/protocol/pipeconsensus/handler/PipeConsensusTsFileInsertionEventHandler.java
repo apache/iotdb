@@ -77,7 +77,7 @@ public class PipeConsensusTsFileInsertionEventHandler
 
   private final PipeConsensusConnectorMetrics metric;
 
-  private long createTime;
+  private final long createTime;
 
   private long startTransferPieceTime;
 

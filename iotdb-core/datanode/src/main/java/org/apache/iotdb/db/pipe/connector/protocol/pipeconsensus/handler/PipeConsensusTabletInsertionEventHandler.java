@@ -49,7 +49,7 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
 
   protected final PipeConsensusConnectorMetrics metric;
 
-  private long createTime;
+  private final long createTime;
 
   protected PipeConsensusTabletInsertionEventHandler(
       TabletInsertionEvent event,

@@ -478,7 +478,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       return;
     }
 
-    retryEventQueue.offer(event);
+    boolean ignore = retryEventQueue.offer(event);
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
           "PipeConsensus-ConsensusGroup-{}: Event {} transfer failed, will be added to retry queue.",

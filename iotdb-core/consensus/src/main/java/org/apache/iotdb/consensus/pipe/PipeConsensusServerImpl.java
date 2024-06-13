@@ -193,7 +193,11 @@ public class PipeConsensusServerImpl {
                 }
                 return true;
               } catch (Exception e) {
-                LOGGER.warn("{} cannot create consensus pipe between {} and {}", thisNode, peer, e);
+                LOGGER.warn(
+                    "{}: cannot create consensus pipe between {} and {}",
+                    e.getMessage(),
+                    thisNode,
+                    peer);
                 return false;
               }
             })
@@ -212,11 +216,11 @@ public class PipeConsensusServerImpl {
                 return true;
               } catch (Exception e) {
                 LOGGER.warn(
-                    "{} cannot update consensus pipe between {} and {} to status {}",
+                    "{}: cannot update consensus pipe between {} and {} to status {}",
+                    e.getMessage(),
                     thisNode,
                     peer,
-                    status,
-                    e);
+                    status);
                 return false;
               }
             })

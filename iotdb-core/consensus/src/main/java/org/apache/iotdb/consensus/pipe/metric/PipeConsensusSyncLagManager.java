@@ -45,11 +45,11 @@ public class PipeConsensusSyncLagManager {
     }
     // else we find the minimum progress in all consensus pipe task.
     consensusPipeConnectorList.forEach(
-        consensusPipeConnector -> {
-          minReplicateProgress =
-              Math.min(
-                  minReplicateProgress, consensusPipeConnector.getConsensusPipeReplicateProgress());
-        });
+        consensusPipeConnector ->
+            minReplicateProgress =
+                Math.min(
+                    minReplicateProgress,
+                    consensusPipeConnector.getConsensusPipeReplicateProgress()));
   }
 
   private void updateUserWriteProgress() {
