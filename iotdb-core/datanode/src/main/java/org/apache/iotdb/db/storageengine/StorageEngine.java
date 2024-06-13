@@ -690,6 +690,16 @@ public class StorageEngine implements IService {
               }
             }
           }
+        } else if (CONFIG
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.FAST_IOT_CONSENSUS)
+            || CONFIG
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.IOTV2_CONSENSUS)) {
+          // delete wal
+          WALManager.getInstance()
+              .deleteWALNode(
+                  region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
         }
       } catch (Exception e) {
         LOGGER.error(

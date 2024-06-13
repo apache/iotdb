@@ -838,7 +838,14 @@ public class PipeConsensusReceiver {
       }
       // Create a new receiver file dir
       final File newReceiverDir = new File(receiverFileBaseDir, consensusGroupId.toString());
-      if (!newReceiverDir.exists() && !newReceiverDir.mkdirs()) {
+      if (newReceiverDir.exists()) {
+        FileUtils.deleteDirectory(newReceiverDir);
+        LOGGER.info(
+            "PipeConsensus-ConsensusGroupId-{}: Origin receiver file dir {} was deleted.",
+            consensusGroupId,
+            newReceiverDir.getPath());
+      }
+      if (!newReceiverDir.mkdirs()) {
         LOGGER.warn(
             "PipeConsensus-ConsensusGroupId-{}: Failed to create receiver file dir {}.",
             newReceiverDir.getPath(),
