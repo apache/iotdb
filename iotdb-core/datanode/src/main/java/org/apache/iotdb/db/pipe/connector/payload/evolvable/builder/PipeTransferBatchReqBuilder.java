@@ -73,7 +73,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
   // This is only used in plain batch since tsfile does not return redirection info.
   private final Map<TEndPoint, PipeTabletEventPlainBatch> endPointToBatch = new HashMap<>();
 
-  public PipeTransferBatchReqBuilder(final PipeParameters parameters) throws IOException {
+  public PipeTransferBatchReqBuilder(final PipeParameters parameters) {
     final boolean usingTsFileBatch =
         parameters
             .getStringOrDefault(
