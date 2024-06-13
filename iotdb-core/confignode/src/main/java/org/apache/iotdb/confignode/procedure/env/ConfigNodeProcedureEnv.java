@@ -32,7 +32,7 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
-import org.apache.iotdb.confignode.client.ConfigNodeToConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -251,7 +251,7 @@ public class ConfigNodeProcedureEnv {
                 .sendSyncRequestToConfigNodeWithRetry(
                     tConfigNodeLocation.getInternalEndPoint(),
                     new TAddConsensusGroupReq(configNodeLocations),
-                    ConfigNodeToConfigNodeRequestType.ADD_CONSENSUS_GROUP);
+                    CnToCnNodeRequestType.ADD_CONSENSUS_GROUP);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new AddConsensusGroupException(tConfigNodeLocation);
     }
@@ -315,7 +315,7 @@ public class ConfigNodeProcedureEnv {
                 .sendSyncRequestToConfigNodeWithRetry(
                     removedConfigNode.getInternalEndPoint(),
                     removedConfigNode,
-                    ConfigNodeToConfigNodeRequestType.DELETE_CONFIG_NODE_PEER);
+                    CnToCnNodeRequestType.DELETE_CONFIG_NODE_PEER);
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new ProcedureException(tsStatus.getMessage());
     }
@@ -334,7 +334,7 @@ public class ConfigNodeProcedureEnv {
                 .sendSyncRequestToConfigNodeWithRetry(
                     tConfigNodeLocation.getInternalEndPoint(),
                     tConfigNodeLocation,
-                    ConfigNodeToConfigNodeRequestType.STOP_CONFIG_NODE);
+                    CnToCnNodeRequestType.STOP_CONFIG_NODE);
 
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new ProcedureException(tsStatus.getMessage());
@@ -364,7 +364,7 @@ public class ConfigNodeProcedureEnv {
         .sendSyncRequestToConfigNodeWithRetry(
             configNodeLocation.getInternalEndPoint(),
             null,
-            ConfigNodeToConfigNodeRequestType.NOTIFY_REGISTER_SUCCESS);
+            CnToCnNodeRequestType.NOTIFY_REGISTER_SUCCESS);
   }
 
   /**

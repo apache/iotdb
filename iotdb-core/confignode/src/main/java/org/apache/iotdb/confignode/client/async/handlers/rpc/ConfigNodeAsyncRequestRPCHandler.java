@@ -24,17 +24,17 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
-import org.apache.iotdb.confignode.client.ConfigNodeToConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public abstract class ConfigNodeAsyncRequestRPCHandler<Response>
     extends AsyncRequestRPCHandler<
-        Response, ConfigNodeToConfigNodeRequestType, TConfigNodeLocation> {
+        Response, CnToCnNodeRequestType, TConfigNodeLocation> {
 
   protected ConfigNodeAsyncRequestRPCHandler(
-      ConfigNodeToConfigNodeRequestType configNodeRequestType,
+      CnToCnNodeRequestType configNodeRequestType,
       int requestId,
       TConfigNodeLocation targetNode,
       Map<Integer, TConfigNodeLocation> integerTConfigNodeLocationMap,
@@ -59,10 +59,10 @@ public abstract class ConfigNodeAsyncRequestRPCHandler<Response>
   }
 
   public static ConfigNodeAsyncRequestRPCHandler<?> buildHandler(
-      AsyncRequestContext<?, ?, ConfigNodeToConfigNodeRequestType, TConfigNodeLocation> context,
+      AsyncRequestContext<?, ?, CnToCnNodeRequestType, TConfigNodeLocation> context,
       int requestId,
       TConfigNodeLocation targetConfigNode) {
-    ConfigNodeToConfigNodeRequestType requestType = context.getRequestType();
+    CnToCnNodeRequestType requestType = context.getRequestType();
     Map<Integer, TConfigNodeLocation> nodeLocationMap = context.getNodeLocationMap();
     Map<Integer, ?> responseMap = context.getResponseMap();
     CountDownLatch countDownLatch = context.getCountDownLatch();

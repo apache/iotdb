@@ -35,7 +35,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.confignode.client.ConfigNodeToConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -774,7 +774,7 @@ public class NodeManager {
                     .sendSyncRequestToConfigNodeWithRetry(
                         configNode.getInternalEndPoint(),
                         new TSetConfigurationReq(req.getConfigs(), configNode.getConfigNodeId()),
-                        ConfigNodeToConfigNodeRequestType.SET_CONFIGURATION);
+                        CnToCnNodeRequestType.SET_CONFIGURATION);
       } catch (Exception e) {
         status =
             RpcUtils.getStatus(
@@ -845,7 +845,7 @@ public class NodeManager {
                   .sendSyncRequestToConfigNodeWithRetry(
                       registeredConfigNode.getInternalEndPoint(),
                       nodeId,
-                      ConfigNodeToConfigNodeRequestType.SHOW_CONFIGURATION);
+                      CnToCnNodeRequestType.SHOW_CONFIGURATION);
       return resp;
     }
     return resp;

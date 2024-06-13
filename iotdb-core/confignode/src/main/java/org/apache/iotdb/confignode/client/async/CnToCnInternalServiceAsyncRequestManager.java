@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.AsyncRequestRPCHandler;
 import org.apache.iotdb.commons.client.request.ConfigNodeInternalServiceAsyncRequestManager;
-import org.apache.iotdb.confignode.client.ConfigNodeToConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.ConfigNodeAsyncRequestRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.ConfigNodeTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectionTaskToConfigNodeRPCHandler;
@@ -32,29 +32,29 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.SubmitTestConnectio
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ConfigNodeToConfigNodeInternalServiceAsyncRequestManager
-    extends ConfigNodeInternalServiceAsyncRequestManager<ConfigNodeToConfigNodeRequestType> {
+public class CnToCnInternalServiceAsyncRequestManager
+    extends ConfigNodeInternalServiceAsyncRequestManager<CnToCnNodeRequestType> {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(ConfigNodeToConfigNodeInternalServiceAsyncRequestManager.class);
+      LoggerFactory.getLogger(CnToCnInternalServiceAsyncRequestManager.class);
 
   @Override
   protected void initActionMapBuilder() {
     actionMapBuilder.put(
-        ConfigNodeToConfigNodeRequestType.SUBMIT_TEST_CONNECTION_TASK,
+        CnToCnNodeRequestType.SUBMIT_TEST_CONNECTION_TASK,
         (req, client, handler) ->
             client.submitTestConnectionTask(
                 (TNodeLocations) req, (SubmitTestConnectionTaskToConfigNodeRPCHandler) handler));
     actionMapBuilder.put(
-        ConfigNodeToConfigNodeRequestType.TEST_CONNECTION,
+        CnToCnNodeRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((ConfigNodeTSStatusRPCHandler) handler));
   }
 
   @Override
-  protected AsyncRequestRPCHandler<?, ConfigNodeToConfigNodeRequestType, TConfigNodeLocation>
+  protected AsyncRequestRPCHandler<?, CnToCnNodeRequestType, TConfigNodeLocation>
       buildHandler(
-          AsyncRequestContext<?, ?, ConfigNodeToConfigNodeRequestType, TConfigNodeLocation>
+          AsyncRequestContext<?, ?, CnToCnNodeRequestType, TConfigNodeLocation>
               requestContext,
           int requestId,
           TConfigNodeLocation targetNode) {
@@ -62,15 +62,15 @@ public class ConfigNodeToConfigNodeInternalServiceAsyncRequestManager
   }
 
   private static class ClientPoolHolder {
-    private static final ConfigNodeToConfigNodeInternalServiceAsyncRequestManager INSTANCE =
-        new ConfigNodeToConfigNodeInternalServiceAsyncRequestManager();
+    private static final CnToCnInternalServiceAsyncRequestManager INSTANCE =
+        new CnToCnInternalServiceAsyncRequestManager();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static ConfigNodeToConfigNodeInternalServiceAsyncRequestManager getInstance() {
+  public static CnToCnInternalServiceAsyncRequestManager getInstance() {
     return ClientPoolHolder.INSTANCE;
   }
 }

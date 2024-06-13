@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.confignode.client.ConfigNodeToConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -67,7 +67,7 @@ public class SyncConfigNodeClientPool {
   }
 
   public Object sendSyncRequestToConfigNodeWithRetry(
-      TEndPoint endPoint, Object req, ConfigNodeToConfigNodeRequestType requestType) {
+      TEndPoint endPoint, Object req, CnToCnNodeRequestType requestType) {
 
     Throwable lastException = null;
     for (int retry = 0; retry < MAX_RETRY_NUM; retry++) {

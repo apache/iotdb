@@ -32,9 +32,9 @@ import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
 import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.client.request.Utils;
-import org.apache.iotdb.confignode.client.ConfigNodeToConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToCnNodeRequestType;
 import org.apache.iotdb.confignode.client.ConfigNodeToDataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.ConfigNodeToConfigNodeInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.CnToCnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.ConfigNodeToDataNodeInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -122,10 +122,10 @@ public class ClusterManager {
     ConfigNodeAsyncRequestContext<TNodeLocations, TTestConnectionResp>
         configNodeAsyncRequestContext =
             new ConfigNodeAsyncRequestContext<>(
-                ConfigNodeToConfigNodeRequestType.SUBMIT_TEST_CONNECTION_TASK,
+                CnToCnNodeRequestType.SUBMIT_TEST_CONNECTION_TASK,
                 nodeLocations,
                 configNodeLocationMap);
-    ConfigNodeToConfigNodeInternalServiceAsyncRequestManager.getInstance()
+    CnToCnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequest(configNodeAsyncRequestContext);
     Map<Integer, TConfigNodeLocation> anotherConfigNodeLocationMap =
         configManager.getNodeManager().getRegisteredConfigNodes().stream()
@@ -196,11 +196,11 @@ public class ClusterManager {
         TConfigNodeLocation::getConfigNodeId,
         TConfigNodeLocation::getInternalEndPoint,
         TServiceType.ConfigNodeInternalService,
-        ConfigNodeToConfigNodeRequestType.TEST_CONNECTION,
+        CnToCnNodeRequestType.TEST_CONNECTION,
         (AsyncRequestContext<
-                    Object, TSStatus, ConfigNodeToConfigNodeRequestType, TConfigNodeLocation>
+                    Object, TSStatus, CnToCnNodeRequestType, TConfigNodeLocation>
                 handler) ->
-            ConfigNodeToConfigNodeInternalServiceAsyncRequestManager.getInstance()
+            CnToCnInternalServiceAsyncRequestManager.getInstance()
                 .sendAsyncRequestWithRetry(handler));
   }
 

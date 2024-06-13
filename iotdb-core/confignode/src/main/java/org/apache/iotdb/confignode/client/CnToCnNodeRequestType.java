@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.client;
 
-public enum ConfigNodeToConfigNodeRequestType {
+public enum CnToCnNodeRequestType {
   ADD_CONSENSUS_GROUP,
   NOTIFY_REGISTER_SUCCESS,
   REGISTER_CONFIG_NODE,
