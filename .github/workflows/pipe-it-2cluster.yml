@@ -34,7 +34,7 @@ jobs:
       matrix:
         java: [ 17 ]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster1: [ LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode ]
+        cluster1: [ LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode, LightWeightStandaloneMode ]
         cluster2: [ LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode ]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
