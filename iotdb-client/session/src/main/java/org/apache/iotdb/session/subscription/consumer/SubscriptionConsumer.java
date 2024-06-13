@@ -112,6 +112,10 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     return subscribedTopicNames;
   }
 
+  public boolean hasNoTopicsSubscribed() {
+    return subscribedTopicNames.isEmpty();
+  }
+
   /////////////////////////////// ctor ///////////////////////////////
 
   protected SubscriptionConsumer(final Builder builder) {

@@ -40,7 +40,7 @@ public class TopicConfig extends PipeParameters {
     super(attributes);
   }
 
-  private static final Map<String, String> LOOSE_RANGE_CONFIG =
+  private static final Map<String, String> LOOSE_RANGE_TIME_CONFIG =
       new HashMap<String, String>() {
         {
           put("history.loose-range", "time");
@@ -105,7 +105,7 @@ public class TopicConfig extends PipeParameters {
     // enable loose range when using tsfile format
     if (TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(
         attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))) {
-      attributesWithTimeRange.putAll(LOOSE_RANGE_CONFIG);
+      attributesWithTimeRange.putAll(LOOSE_RANGE_TIME_CONFIG);
     }
 
     return attributesWithTimeRange;
