@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -69,7 +70,8 @@ import java.util.stream.Collectors;
 public class PipeConsensusServerImpl {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusServerImpl.class);
   private static final long CHECK_TRANSMISSION_COMPLETION_INTERVAL_IN_MILLISECONDS = 2_000L;
-
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
   private final Peer thisNode;
   private final IStateMachine stateMachine;
   private final Lock stateMachineLock = new ReentrantLock();
@@ -288,13 +290,16 @@ public class PipeConsensusServerImpl {
       // statistic the time of acquiring stateMachine lock
       pipeConsensusServerMetrics.recordGetStateMachineLockTime(
           getStateMachineLockTime - consensusWriteStartTime);
+      long writeToStateMachineStartTime = System.nanoTime();
       if (request instanceof ComparableConsensusRequest) {
         ((ComparableConsensusRequest) request)
             .setProgressIndex(progressIndexManager.assignProgressIndex(thisNode.getGroupId()));
       }
 
-      long writeToStateMachineStartTime = System.nanoTime();
+      long startWriteTime = System.nanoTime();
       TSStatus result = stateMachine.write(request);
+      PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(System.nanoTime() - startWriteTime);
+
       long writeToStateMachineEndTime = System.nanoTime();
       // statistic the time of writing request into stateMachine
       pipeConsensusServerMetrics.recordWriteStateMachineTime(
@@ -317,6 +322,9 @@ public class PipeConsensusServerImpl {
       long writeToStateMachineStartTime = System.nanoTime();
       TSStatus result = stateMachine.write(request);
       long writeToStateMachineEndTime = System.nanoTime();
+
+      PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(
+          writeToStateMachineEndTime - writeToStateMachineStartTime);
       // statistic the time of writing request into stateMachine
       pipeConsensusServerMetrics.recordWriteStateMachineTime(
           writeToStateMachineEndTime - writeToStateMachineStartTime);

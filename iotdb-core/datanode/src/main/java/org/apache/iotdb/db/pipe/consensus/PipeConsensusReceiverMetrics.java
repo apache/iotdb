@@ -29,7 +29,7 @@ import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-public class PipeConsensusReceiverMetric implements IMetricSet {
+public class PipeConsensusReceiverMetrics implements IMetricSet {
   private final PipeConsensusReceiver pipeConsensusReceiver;
 
   private Timer tsFilePieceWriteTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -45,7 +45,7 @@ public class PipeConsensusReceiverMetric implements IMetricSet {
 
   private static final String RECEIVER = "pipeConsensusReceiver";
 
-  public PipeConsensusReceiverMetric(PipeConsensusReceiver pipeConsensusReceiver) {
+  public PipeConsensusReceiverMetrics(PipeConsensusReceiver pipeConsensusReceiver) {
     this.pipeConsensusReceiver = pipeConsensusReceiver;
   }
 

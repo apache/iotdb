@@ -48,7 +48,7 @@ public class PipeConsensusSyncLagManager {
         consensusPipeConnector -> {
           minReplicateProgress =
               Math.min(
-                  minReplicateProgress, consensusPipeConnector.getCurrentPipeReplicateProgress());
+                  minReplicateProgress, consensusPipeConnector.getConsensusPipeReplicateProgress());
         });
   }
 
@@ -61,7 +61,7 @@ public class PipeConsensusSyncLagManager {
     // since the user write progress of different consensus pipes on the same DataRegion is the
     // same, we only need to take out one Connector to calculate
     ConsensusPipeConnector connector = consensusPipeConnectorList.get(0);
-    userWriteProgress = connector.getLocalUserWriteProgress();
+    userWriteProgress = connector.getConsensusPipeCommitProgress();
   }
 
   public void addConsensusPipeConnector(ConsensusPipeConnector consensusPipeConnector) {

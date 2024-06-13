@@ -612,9 +612,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   ///////////////////////// Pipe Consensus /////////////////////////
 
-  public PipeStaticMeta getPipeStaticMeta(final String pipeName) {
+  public long getPipeCreationTime(final String pipeName) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    return pipeMeta == null ? null : pipeMeta.getStaticMeta();
+    return pipeMeta == null ? 0 : pipeMeta.getStaticMeta().getCreationTime();
   }
 
   public ProgressIndex getPipeTaskProgressIndex(String pipeName, int consensusGroupId) {

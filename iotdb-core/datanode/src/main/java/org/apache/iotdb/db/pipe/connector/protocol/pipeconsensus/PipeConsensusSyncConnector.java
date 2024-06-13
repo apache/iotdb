@@ -40,7 +40,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealWithModReq;
-import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetric;
+import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetrics;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -76,14 +76,14 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
   private final List<TEndPoint> peers;
   private final int thisDataNodeId;
   private final int consensusGroupId;
-  private final PipeConsensusConnectorMetric pipeConsensusConnectorMetric;
+  private final PipeConsensusConnectorMetrics pipeConsensusConnectorMetrics;
   private PipeConsensusSyncBatchReqBuilder tabletBatchBuilder;
 
   public PipeConsensusSyncConnector(
       List<TEndPoint> peers,
       int consensusGroupId,
       int thisDataNodeId,
-      PipeConsensusConnectorMetric pipeConsensusConnectorMetric) {
+      PipeConsensusConnectorMetrics pipeConsensusConnectorMetrics) {
     // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
     // `peers` here actually is a singletonList that contains one peer's TEndPoint. But here we
     // retain the implementation of list to cope with possible future expansion
@@ -92,7 +92,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     this.thisDataNodeId = thisDataNodeId;
     this.syncRetryClientManager =
         PipeConsensusClientMgrContainer.getInstance().getSyncClientManager();
-    this.pipeConsensusConnectorMetric = pipeConsensusConnectorMetric;
+    this.pipeConsensusConnectorMetrics = pipeConsensusConnectorMetrics;
   }
 
   @Override
@@ -136,7 +136,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
         long startTime = System.nanoTime();
         doTransferWrapper((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
         long duration = System.nanoTime() - startTime;
-        pipeConsensusConnectorMetric.recordRetryWALTransferTimer(duration);
+        pipeConsensusConnectorMetrics.recordRetryWALTransferTimer(duration);
       }
     } catch (Exception e) {
       throw new PipeConnectionException(
@@ -160,7 +160,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
       }
       doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
       long duration = System.nanoTime() - startTime;
-      pipeConsensusConnectorMetric.recordRetryTsFileTransferTimer(duration);
+      pipeConsensusConnectorMetrics.recordRetryTsFileTransferTimer(duration);
     } catch (Exception e) {
       throw new PipeConnectionException(
           String.format(

@@ -47,7 +47,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealWithModReq;
-import org.apache.iotdb.db.pipe.consensus.PipeConsensusReceiverMetric;
+import org.apache.iotdb.db.pipe.consensus.PipeConsensusReceiverMetrics;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -99,7 +99,7 @@ public class PipeConsensusReceiver {
   private final PipeConsensusTsFileWriterPool pipeConsensusTsFileWriterPool =
       new PipeConsensusTsFileWriterPool();
   private final AtomicReference<File> receiverFileDirWithIdSuffix = new AtomicReference<>();
-  private final PipeConsensusReceiverMetric pipeConsensusReceiverMetric;
+  private final PipeConsensusReceiverMetrics pipeConsensusReceiverMetrics;
   private final FolderManager folderManager;
 
   public PipeConsensusReceiver(
@@ -108,9 +108,9 @@ public class PipeConsensusReceiver {
       ConsensusPipeName consensusPipeName) {
     this.pipeConsensus = pipeConsensus;
     this.consensusGroupId = consensusGroupId;
-    this.pipeConsensusReceiverMetric = new PipeConsensusReceiverMetric(this);
-    this.requestExecutor = new RequestExecutor(pipeConsensusReceiverMetric);
-    MetricService.getInstance().addMetricSet(pipeConsensusReceiverMetric);
+    this.pipeConsensusReceiverMetrics = new PipeConsensusReceiverMetrics(this);
+    this.requestExecutor = new RequestExecutor(pipeConsensusReceiverMetrics);
+    MetricService.getInstance().addMetricSet(pipeConsensusReceiverMetrics);
 
     // Each pipeConsensusReceiver has its own base directories. for example, a default dir path is
     // data/datanode/system/pipe/consensus/receiver/__consensus{consensusGroupId}_{leaderDataNodeId}_{followerDataNodeId}
@@ -169,7 +169,7 @@ public class PipeConsensusReceiver {
       }
       // update receive an event's duration
       long durationNanos = System.nanoTime() - startNanos;
-      pipeConsensusReceiverMetric.recordReceiveEventTimer(durationNanos);
+      pipeConsensusReceiverMetrics.recordReceiveEventTimer(durationNanos);
       return resp;
     }
     // Unknown request type, which means the request can not be handled by this receiver,
@@ -306,7 +306,7 @@ public class PipeConsensusReceiver {
     PipeConsensusTsFileWriter tsFileWriter =
         pipeConsensusTsFileWriterPool.borrowCorrespondingWriter(req.getCommitId());
     long startPreCheckNanos = System.nanoTime();
-    pipeConsensusReceiverMetric.recordBorrowTsFileWriterTimer(
+    pipeConsensusReceiverMetrics.recordBorrowTsFileWriterTimer(
         startPreCheckNanos - startBorrowTsFileWriterNanos);
 
     try {
@@ -338,10 +338,10 @@ public class PipeConsensusReceiver {
       }
 
       long endPreCheckNanos = System.nanoTime();
-      pipeConsensusReceiverMetric.recordTsFilePiecePreCheckTime(
+      pipeConsensusReceiverMetrics.recordTsFilePiecePreCheckTime(
           endPreCheckNanos - startPreCheckNanos);
       writingFileWriter.write(req.getFilePiece());
-      pipeConsensusReceiverMetric.recordTsFilePieceWriteTime(System.nanoTime() - endPreCheckNanos);
+      pipeConsensusReceiverMetrics.recordTsFilePieceWriteTime(System.nanoTime() - endPreCheckNanos);
       return PipeConsensusTransferFilePieceResp.toTPipeConsensusTransferResp(
           RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
     } catch (Exception e) {
@@ -370,7 +370,7 @@ public class PipeConsensusReceiver {
     PipeConsensusTsFileWriter tsFileWriter =
         pipeConsensusTsFileWriterPool.borrowCorrespondingWriter(req.getCommitId());
     long startPreCheckNanos = System.nanoTime();
-    pipeConsensusReceiverMetric.recordBorrowTsFileWriterTimer(
+    pipeConsensusReceiverMetrics.recordBorrowTsFileWriterTimer(
         startPreCheckNanos - startBorrowTsFileWriterNanos);
     File writingFile = tsFileWriter.getWritingFile();
     RandomAccessFile writingFileWriter = tsFileWriter.getWritingFileWriter();
@@ -409,13 +409,13 @@ public class PipeConsensusReceiver {
       tsFileWriter.setWritingFile(null);
 
       long endPreCheckNanos = System.nanoTime();
-      pipeConsensusReceiverMetric.recordTsFileSealPreCheckTimer(
+      pipeConsensusReceiverMetrics.recordTsFileSealPreCheckTimer(
           endPreCheckNanos - startPreCheckNanos);
       final TSStatus status =
           loadFileToDataRegion(
               fileAbsolutePath,
               ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
-      pipeConsensusReceiverMetric.recordTsFileSealLoadTimer(System.nanoTime() - endPreCheckNanos);
+      pipeConsensusReceiverMetrics.recordTsFileSealLoadTimer(System.nanoTime() - endPreCheckNanos);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
         tsFileWriter.returnSelf();
@@ -471,7 +471,7 @@ public class PipeConsensusReceiver {
     PipeConsensusTsFileWriter tsFileWriter =
         pipeConsensusTsFileWriterPool.borrowCorrespondingWriter(req.getCommitId());
     long startPreCheckNanos = System.nanoTime();
-    pipeConsensusReceiverMetric.recordBorrowTsFileWriterTimer(
+    pipeConsensusReceiverMetrics.recordBorrowTsFileWriterTimer(
         startPreCheckNanos - startBorrowTsFileWriterNanos);
     File writingFile = tsFileWriter.getWritingFile();
     RandomAccessFile writingFileWriter = tsFileWriter.getWritingFileWriter();
@@ -527,13 +527,13 @@ public class PipeConsensusReceiver {
           files.stream().map(File::getAbsolutePath).collect(Collectors.toList());
 
       long endPreCheckNanos = System.nanoTime();
-      pipeConsensusReceiverMetric.recordTsFileSealPreCheckTimer(
+      pipeConsensusReceiverMetrics.recordTsFileSealPreCheckTimer(
           endPreCheckNanos - startPreCheckNanos);
       final TSStatus status =
           loadFileToDataRegion(
               fileAbsolutePaths.get(1),
               ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
-      pipeConsensusReceiverMetric.recordTsFileSealLoadTimer(System.nanoTime() - endPreCheckNanos);
+      pipeConsensusReceiverMetrics.recordTsFileSealLoadTimer(System.nanoTime() - endPreCheckNanos);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // if transfer success, disk buffer will be released.
         tsFileWriter.returnSelf();
@@ -939,7 +939,7 @@ public class PipeConsensusReceiver {
     }
 
     // remove metric
-    MetricService.getInstance().removeMetricSet(pipeConsensusReceiverMetric);
+    MetricService.getInstance().removeMetricSet(pipeConsensusReceiverMetrics);
 
     LOGGER.info(
         "PipeConsensus-ConsensusGroupId-{}: Receiver exit: Receiver exited.",
@@ -1121,13 +1121,13 @@ public class PipeConsensusReceiver {
     private final TreeSet<RequestMeta> reqExecutionOrderBuffer;
     private final Lock lock;
     private final Condition condition;
-    private final PipeConsensusReceiverMetric metric;
+    private final PipeConsensusReceiverMetrics metric;
     private long onSyncedCommitIndex = -1;
     private int connectorRebootTimes = 0;
     private int walEventCount = 0;
     private int tsFileEventCount = 0;
 
-    public RequestExecutor(PipeConsensusReceiverMetric metric) {
+    public RequestExecutor(PipeConsensusReceiverMetrics metric) {
       this.reqExecutionOrderBuffer =
           new TreeSet<>(
               Comparator.comparingInt(RequestMeta::getRebootTimes)

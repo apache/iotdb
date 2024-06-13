@@ -26,7 +26,7 @@ import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.PipeConsensusAsyncConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletInsertionEventHandler;
-import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetric;
+import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetrics;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -47,7 +47,7 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
 
   protected final PipeConsensusAsyncConnector connector;
 
-  protected final PipeConsensusConnectorMetric metric;
+  protected final PipeConsensusConnectorMetrics metric;
 
   private long createTime;
 
@@ -55,7 +55,7 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
       TabletInsertionEvent event,
       TPipeConsensusTransferReq req,
       PipeConsensusAsyncConnector connector,
-      PipeConsensusConnectorMetric metric) {
+      PipeConsensusConnectorMetrics metric) {
     this.event = event;
     this.req = req;
     this.connector = connector;

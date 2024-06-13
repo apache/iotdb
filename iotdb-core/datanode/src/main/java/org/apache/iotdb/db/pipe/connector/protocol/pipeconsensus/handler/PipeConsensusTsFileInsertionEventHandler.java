@@ -31,7 +31,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealWithModReq;
-import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetric;
+import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetrics;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -75,7 +75,7 @@ public class PipeConsensusTsFileInsertionEventHandler
 
   private AsyncPipeConsensusServiceClient client;
 
-  private final PipeConsensusConnectorMetric metric;
+  private final PipeConsensusConnectorMetrics metric;
 
   private long createTime;
 
@@ -87,7 +87,7 @@ public class PipeConsensusTsFileInsertionEventHandler
       final TCommitId commitId,
       final TConsensusGroupId consensusGroupId,
       final int thisDataNodeId,
-      final PipeConsensusConnectorMetric metric)
+      final PipeConsensusConnectorMetrics metric)
       throws FileNotFoundException {
     this.event = event;
     this.connector = connector;

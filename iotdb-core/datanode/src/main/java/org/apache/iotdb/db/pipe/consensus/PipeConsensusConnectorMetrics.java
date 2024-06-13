@@ -30,7 +30,7 @@ import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-public class PipeConsensusConnectorMetric implements IMetricSet {
+public class PipeConsensusConnectorMetrics implements IMetricSet {
   private final PipeConsensusAsyncConnector pipeConsensusAsyncConnector;
 
   private Timer connectorEnqueueTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -43,7 +43,7 @@ public class PipeConsensusConnectorMetric implements IMetricSet {
 
   private static final String CONNECTOR = "pipeConsensusAsyncConnector";
 
-  public PipeConsensusConnectorMetric(PipeConsensusAsyncConnector pipeConsensusAsyncConnector) {
+  public PipeConsensusConnectorMetrics(PipeConsensusAsyncConnector pipeConsensusAsyncConnector) {
     this.pipeConsensusAsyncConnector = pipeConsensusAsyncConnector;
   }
 
