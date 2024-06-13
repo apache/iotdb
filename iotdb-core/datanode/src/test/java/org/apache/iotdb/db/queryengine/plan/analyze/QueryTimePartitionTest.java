@@ -20,6 +20,8 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -354,16 +356,17 @@ public class QueryTimePartitionTest {
 
   @Test
   public void testGetTimePartitionSlotList() {
-
+    MPPQueryContext context = new MPPQueryContext(new QueryId("time_partition_test"));
     // time >= 10 and time <= 9
     Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-        getTimePartitionSlotList(FilterFactory.and(TimeFilterApi.gtEq(10), TimeFilterApi.ltEq(9)));
+        getTimePartitionSlotList(
+            FilterFactory.and(TimeFilterApi.gtEq(10), TimeFilterApi.ltEq(9)), context);
     assertTrue(res.left.isEmpty());
     assertFalse(res.right.left);
     assertFalse(res.right.right);
 
     // time >= 10
-    res = getTimePartitionSlotList(TimeFilterApi.gtEq(10));
+    res = getTimePartitionSlotList(TimeFilterApi.gtEq(10), context);
     assertEquals(1, res.left.size());
     List<TTimePartitionSlot> expected = Collections.singletonList(new TTimePartitionSlot(0));
     assertEquals(expected.size(), res.left.size());
@@ -374,7 +377,7 @@ public class QueryTimePartitionTest {
     assertTrue(res.right.right);
 
     // time < 20
-    res = getTimePartitionSlotList(TimeFilterApi.lt(20));
+    res = getTimePartitionSlotList(TimeFilterApi.lt(20), context);
     assertEquals(1, res.left.size());
     expected = Collections.singletonList(new TTimePartitionSlot(0));
     assertEquals(expected.size(), res.left.size());
@@ -385,7 +388,9 @@ public class QueryTimePartitionTest {
     assertFalse(res.right.right);
 
     // time > 10 and time <= 20
-    res = getTimePartitionSlotList(FilterFactory.and(TimeFilterApi.gt(10), TimeFilterApi.ltEq(20)));
+    res =
+        getTimePartitionSlotList(
+            FilterFactory.and(TimeFilterApi.gt(10), TimeFilterApi.ltEq(20)), context);
     expected = Collections.singletonList(new TTimePartitionSlot(0));
     assertEquals(expected.size(), res.left.size());
     for (int i = 0; i < expected.size(); i++) {
@@ -401,8 +406,8 @@ public class QueryTimePartitionTest {
             FilterFactory.and(
                 TimeFilterApi.gt(0),
                 TimeFilterApi.ltEq(
-                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3
-                        + 1)));
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 3 + 1)),
+            context);
     expected =
         Arrays.asList(
             new TTimePartitionSlot(0),
@@ -427,7 +432,8 @@ public class QueryTimePartitionTest {
                 TimeFilterApi.gtEq(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() - 1),
                 TimeFilterApi.lt(
-                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1)));
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1)),
+            context);
     expected =
         Arrays.asList(
             new TTimePartitionSlot(0),
@@ -446,7 +452,8 @@ public class QueryTimePartitionTest {
         getTimePartitionSlotList(
             TimeFilterApi.between(
                 CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() - 1,
-                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()));
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()),
+            context);
     expected =
         Arrays.asList(
             new TTimePartitionSlot(0),
@@ -467,7 +474,8 @@ public class QueryTimePartitionTest {
                 TimeFilterApi.gtEq(
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval()),
                 TimeFilterApi.ltEq(
-                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1)));
+                    CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1)),
+            context);
     expected =
         Collections.singletonList(
             new TTimePartitionSlot(
@@ -485,7 +493,8 @@ public class QueryTimePartitionTest {
         getTimePartitionSlotList(
             TimeFilterApi.between(
                 CommonDescriptor.getInstance().getConfig().getTimePartitionInterval(),
-                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1));
+                CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() + 1),
+            context);
     expected =
         Collections.singletonList(
             new TTimePartitionSlot(
@@ -547,7 +556,7 @@ public class QueryTimePartitionTest {
                     CommonDescriptor.getInstance().getConfig().getTimePartitionInterval() * 5
                         + 10)));
 
-    res = getTimePartitionSlotList(orFilter4);
+    res = getTimePartitionSlotList(orFilter4, context);
     expected =
         Arrays.asList(
             new TTimePartitionSlot(0),
