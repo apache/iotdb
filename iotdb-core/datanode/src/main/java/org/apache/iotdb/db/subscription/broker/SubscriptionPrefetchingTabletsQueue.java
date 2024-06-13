@@ -64,6 +64,15 @@ public class SubscriptionPrefetchingTabletsQueue extends SubscriptionPrefetching
   }
 
   @Override
+  public void cleanup() {
+    super.cleanup();
+
+    // no need to clean up events in prefetchingQueue, since all events in prefetchingQueue are also
+    // in uncommittedEvents
+    prefetchingQueue.clear();
+  }
+
+  @Override
   public SubscriptionEvent poll(final String consumerId) {
     if (prefetchingQueue.isEmpty()) {
       prefetchOnce();

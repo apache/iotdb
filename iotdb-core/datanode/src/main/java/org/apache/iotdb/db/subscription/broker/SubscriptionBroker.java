@@ -65,6 +65,10 @@ public class SubscriptionBroker {
       final String topicName = entry.getKey();
       final SubscriptionPrefetchingQueue prefetchingQueue = entry.getValue();
       if (topicNames.contains(topicName)) {
+        if (prefetchingQueue.isClosed()) {
+          LOGGER.warn("Subscription: prefetching queue bound to topic [{}] is closed", topicName);
+          continue;
+        }
         final SubscriptionEvent event = prefetchingQueue.poll(consumerId);
         if (Objects.nonNull(event)) {
           events.add(event);
@@ -95,6 +99,10 @@ public class SubscriptionBroker {
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
+    if (prefetchingQueue.isClosed()) {
+      LOGGER.warn("Subscription: prefetching queue bound to topic [{}] is closed", topicName);
+      return Collections.emptyList();
+    }
     final SubscriptionEvent event =
         ((SubscriptionPrefetchingTsFileQueue) prefetchingQueue)
             .pollTsFile(consumerId, fileName, writingOffset);
@@ -115,6 +123,10 @@ public class SubscriptionBroker {
       if (Objects.isNull(prefetchingQueue)) {
         LOGGER.warn(
             "Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
+        continue;
+      }
+      if (prefetchingQueue.isClosed()) {
+        LOGGER.warn("Subscription: prefetching queue bound to topic [{}] is closed", topicName);
         continue;
       }
       if (!nack) {
@@ -155,18 +167,25 @@ public class SubscriptionBroker {
     }
   }
 
-  public void unbindPrefetchingQueue(final String topicName) {
+  public void unbindPrefetchingQueue(final String topicName, final boolean doRemove) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
       LOGGER.warn("Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
       return;
     }
-    // clean up uncommitted events
+
+    // mark prefetching queue closed first
+    prefetchingQueue.markClosed();
+
+    // clean up events in prefetching queue, this operation is idempotent
     prefetchingQueue.cleanup();
-    topicNameToPrefetchingQueue.remove(topicName);
-    SubscriptionPrefetchingQueueMetrics.getInstance()
-        .deregister(prefetchingQueue.getPrefetchingQueueId());
+
+    if (doRemove) {
+      topicNameToPrefetchingQueue.remove(topicName);
+      SubscriptionPrefetchingQueueMetrics.getInstance()
+          .deregister(prefetchingQueue.getPrefetchingQueueId());
+    }
   }
 
   public void executePrefetch(final String topicName) {
@@ -174,6 +193,10 @@ public class SubscriptionBroker {
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
       LOGGER.warn("Subscription: prefetching queue bound to topic [{}] does not exist", topicName);
+      return;
+    }
+    if (prefetchingQueue.isClosed()) {
+      LOGGER.warn("Subscription: prefetching queue bound to topic [{}] is closed", topicName);
       return;
     }
     prefetchingQueue.executePrefetch();

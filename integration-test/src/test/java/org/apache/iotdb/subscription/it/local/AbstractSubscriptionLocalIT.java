@@ -16,17 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.pipe.consensus;
 
-import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.execution.PipeConnectorSubtaskExecutor;
+package org.apache.iotdb.subscription.it.local;
 
-public class PipeConsensusSubtaskExecutor extends PipeConnectorSubtaskExecutor {
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 
-  public PipeConsensusSubtaskExecutor() {
-    super(
-        PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
-        ThreadName.PIPE_CONSENSUS_EXECUTOR_POOL);
+import org.junit.After;
+import org.junit.Before;
+
+abstract class AbstractSubscriptionLocalIT extends AbstractSubscriptionIT {
+
+  @Override
+  @Before
+  public void setUp() {
+    super.setUp();
+
+    EnvFactory.getEnv().initClusterEnvironment();
+  }
+
+  @Override
+  @After
+  public void tearDown() {
+    super.tearDown();
+
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }
