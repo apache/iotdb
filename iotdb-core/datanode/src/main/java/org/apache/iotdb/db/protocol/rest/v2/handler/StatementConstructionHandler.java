@@ -138,18 +138,14 @@ public class StatementConstructionHandler {
         for (int index : dataTypeMismatchInfo) {
           String measurement = statement.getMeasurements()[index];
           TSDataType dataType = statement.getDataTypes()[index];
-          statement.markFailedMeasurement(
-              index,
-              new DataTypeMismatchException(
-                  insertRecordsRequest.getDevices().get(i),
-                  statement.getMeasurements()[index],
-                  statement.getDataTypes()[index],
-                  statement.getTime(),
-                  insertRecordsRequest.getValuesList().get(i).get(index)));
-          // markFailedMeasurement will set datatype and measurements null
-          // setting them back in order to pass the schema validation
-          statement.getDataTypes()[index] = dataType;
-          statement.getMeasurements()[index] = measurement;
+          // TODO: reimplement partial insert, the previous implementation will cause error when
+          // dispatch remotely
+          throw new DataTypeMismatchException(
+              insertRecordsRequest.getDevices().get(i),
+              measurement,
+              dataType,
+              statement.getTime(),
+              insertRecordsRequest.getValuesList().get(i).get(index));
         }
       }
       insertRowStatementList.add(statement);

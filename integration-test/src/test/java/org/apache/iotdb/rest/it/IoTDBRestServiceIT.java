@@ -300,7 +300,6 @@ public class IoTDBRestServiceIT {
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
-      System.out.println(result);
       assertEquals(expectedCode, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
       fail(e.getMessage());
