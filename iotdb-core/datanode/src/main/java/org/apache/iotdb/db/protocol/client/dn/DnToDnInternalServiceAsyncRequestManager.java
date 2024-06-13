@@ -40,12 +40,10 @@ public class DnToDnInternalServiceAsyncRequestManager
   }
 
   @Override
-  protected AsyncRequestRPCHandler<?, DnToDnRequestType, TDataNodeLocation>
-      buildHandler(
-          AsyncRequestContext<?, ?, DnToDnRequestType, TDataNodeLocation>
-              requestContext,
-          int requestId,
-          TDataNodeLocation targetNode) {
+  protected AsyncRequestRPCHandler<?, DnToDnRequestType, TDataNodeLocation> buildHandler(
+      AsyncRequestContext<?, ?, DnToDnRequestType, TDataNodeLocation> requestContext,
+      int requestId,
+      TDataNodeLocation targetNode) {
     return DataNodeAsyncRequestRPCHandler.createAsyncRPCHandler(
         requestContext, requestId, targetNode);
   }

@@ -52,12 +52,10 @@ public class CnToCnInternalServiceAsyncRequestManager
   }
 
   @Override
-  protected AsyncRequestRPCHandler<?, CnToCnNodeRequestType, TConfigNodeLocation>
-      buildHandler(
-          AsyncRequestContext<?, ?, CnToCnNodeRequestType, TConfigNodeLocation>
-              requestContext,
-          int requestId,
-          TConfigNodeLocation targetNode) {
+  protected AsyncRequestRPCHandler<?, CnToCnNodeRequestType, TConfigNodeLocation> buildHandler(
+      AsyncRequestContext<?, ?, CnToCnNodeRequestType, TConfigNodeLocation> requestContext,
+      int requestId,
+      TConfigNodeLocation targetNode) {
     return ConfigNodeAsyncRequestRPCHandler.buildHandler(requestContext, requestId, targetNode);
   }
 

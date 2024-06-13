@@ -33,9 +33,7 @@ import org.slf4j.LoggerFactory;
 
 public class DataNodeMPPServiceAsyncRequestManager
     extends AsyncRequestManager<
-        DnToDnRequestType,
-        TDataNodeLocation,
-        AsyncDataNodeMPPDataExchangeServiceClient> {
+        DnToDnRequestType, TDataNodeLocation, AsyncDataNodeMPPDataExchangeServiceClient> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DataNodeMPPServiceAsyncRequestManager.class);
 
@@ -62,12 +60,10 @@ public class DataNodeMPPServiceAsyncRequestManager
   }
 
   @Override
-  protected AsyncRequestRPCHandler<?, DnToDnRequestType, TDataNodeLocation>
-      buildHandler(
-          AsyncRequestContext<?, ?, DnToDnRequestType, TDataNodeLocation>
-              requestContext,
-          int requestId,
-          TDataNodeLocation targetNode) {
+  protected AsyncRequestRPCHandler<?, DnToDnRequestType, TDataNodeLocation> buildHandler(
+      AsyncRequestContext<?, ?, DnToDnRequestType, TDataNodeLocation> requestContext,
+      int requestId,
+      TDataNodeLocation targetNode) {
     return DataNodeAsyncRequestRPCHandler.createAsyncRPCHandler(
         requestContext, requestId, targetNode);
   }

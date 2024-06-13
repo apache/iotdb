@@ -42,12 +42,10 @@ public class DnToCnInternalServiceAsyncRequestManager
   }
 
   @Override
-  protected AsyncRequestRPCHandler<?, DnToCnRequestType, TConfigNodeLocation>
-      buildHandler(
-          AsyncRequestContext<?, ?, DnToCnRequestType, TConfigNodeLocation>
-              requestContext,
-          int requestId,
-          TConfigNodeLocation targetNode) {
+  protected AsyncRequestRPCHandler<?, DnToCnRequestType, TConfigNodeLocation> buildHandler(
+      AsyncRequestContext<?, ?, DnToCnRequestType, TConfigNodeLocation> requestContext,
+      int requestId,
+      TConfigNodeLocation targetNode) {
     return ConfigNodeAsyncRequestRPCHandler.buildHandler(requestContext, requestId, targetNode);
   }
 

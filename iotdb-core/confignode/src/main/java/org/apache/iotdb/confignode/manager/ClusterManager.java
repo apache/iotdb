@@ -150,9 +150,7 @@ public class ClusterManager {
             .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location));
     DataNodeAsyncRequestContext<TNodeLocations, TTestConnectionResp> dataNodeAsyncRequestContext =
         new DataNodeAsyncRequestContext<>(
-            CnToDnRequestType.SUBMIT_TEST_CONNECTION_TASK,
-            nodeLocations,
-            dataNodeLocationMap);
+            CnToDnRequestType.SUBMIT_TEST_CONNECTION_TASK, nodeLocations, dataNodeLocationMap);
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequest(dataNodeAsyncRequestContext);
     Map<Integer, TDataNodeLocation> anotherDataNodeLocationMap =
@@ -197,8 +195,7 @@ public class ClusterManager {
         TConfigNodeLocation::getInternalEndPoint,
         TServiceType.ConfigNodeInternalService,
         CnToCnNodeRequestType.TEST_CONNECTION,
-        (AsyncRequestContext<
-                    Object, TSStatus, CnToCnNodeRequestType, TConfigNodeLocation>
+        (AsyncRequestContext<Object, TSStatus, CnToCnNodeRequestType, TConfigNodeLocation>
                 handler) ->
             CnToCnInternalServiceAsyncRequestManager.getInstance()
                 .sendAsyncRequestWithRetry(handler));
@@ -223,8 +220,7 @@ public class ClusterManager {
         TDataNodeLocation::getInternalEndPoint,
         TServiceType.DataNodeInternalService,
         CnToDnRequestType.TEST_CONNECTION,
-        (AsyncRequestContext<Object, TSStatus, CnToDnRequestType, TDataNodeLocation>
-                handler) ->
+        (AsyncRequestContext<Object, TSStatus, CnToDnRequestType, TDataNodeLocation> handler) ->
             CnToDnInternalServiceAsyncRequestManager.getInstance()
                 .sendAsyncRequestWithRetry(handler));
   }

@@ -1464,8 +1464,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TConfigNodeLocation::getInternalEndPoint,
         TServiceType.ConfigNodeInternalService,
         DnToCnRequestType.TEST_CONNECTION,
-        (AsyncRequestContext<Object, TSStatus, DnToCnRequestType, TConfigNodeLocation>
-                handler) ->
+        (AsyncRequestContext<Object, TSStatus, DnToCnRequestType, TConfigNodeLocation> handler) ->
             DnToCnInternalServiceAsyncRequestManager.getInstance()
                 .sendAsyncRequestWithRetry(handler));
   }
@@ -1478,8 +1477,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TDataNodeLocation::getInternalEndPoint,
         TServiceType.DataNodeInternalService,
         DnToDnRequestType.TEST_CONNECTION,
-        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation>
-                handler) ->
+        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
             DnToDnInternalServiceAsyncRequestManager.getInstance()
                 .sendAsyncRequestWithRetry(handler));
   }
@@ -1492,8 +1490,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TDataNodeLocation::getMPPDataExchangeEndPoint,
         TServiceType.DataNodeMPPService,
         DnToDnRequestType.TEST_CONNECTION,
-        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation>
-                handler) ->
+        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
             DataNodeMPPServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(handler));
   }
 
@@ -1505,8 +1502,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         TDataNodeLocation::getClientRpcEndPoint,
         TServiceType.DataNodeExternalService,
         DnToDnRequestType.TEST_CONNECTION,
-        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation>
-                handler) ->
+        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
             DataNodeExternalServiceAsyncRequestManager.getInstance()
                 .sendAsyncRequestWithRetry(handler));
   }

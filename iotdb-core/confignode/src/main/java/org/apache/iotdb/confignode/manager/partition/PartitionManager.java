@@ -1330,8 +1330,7 @@ public class PartitionManager {
                     case DELETE:
                       // delete region
                       DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> deleteRegionHandler =
-                          new DataNodeAsyncRequestContext<>(
-                              CnToDnRequestType.DELETE_REGION);
+                          new DataNodeAsyncRequestContext<>(CnToDnRequestType.DELETE_REGION);
                       Map<Integer, TConsensusGroupId> regionIdMap = new HashMap<>();
                       for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                         RegionDeleteTask regionDeleteTask = (RegionDeleteTask) regionMaintainTask;

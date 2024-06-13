@@ -353,12 +353,10 @@ public class CnToDnInternalServiceAsyncRequestManager
   }
 
   @Override
-  protected AsyncRequestRPCHandler<?, CnToDnRequestType, TDataNodeLocation>
-      buildHandler(
-          AsyncRequestContext<?, ?, CnToDnRequestType, TDataNodeLocation>
-              requestContext,
-          int requestId,
-          TDataNodeLocation targetNode) {
+  protected AsyncRequestRPCHandler<?, CnToDnRequestType, TDataNodeLocation> buildHandler(
+      AsyncRequestContext<?, ?, CnToDnRequestType, TDataNodeLocation> requestContext,
+      int requestId,
+      TDataNodeLocation targetNode) {
     return DataNodeAsyncRequestRPCHandler.buildHandler(requestContext, requestId, targetNode);
   }
 

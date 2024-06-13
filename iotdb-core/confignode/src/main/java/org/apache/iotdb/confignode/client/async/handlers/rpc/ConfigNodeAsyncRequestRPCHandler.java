@@ -30,8 +30,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public abstract class ConfigNodeAsyncRequestRPCHandler<Response>
-    extends AsyncRequestRPCHandler<
-        Response, CnToCnNodeRequestType, TConfigNodeLocation> {
+    extends AsyncRequestRPCHandler<Response, CnToCnNodeRequestType, TConfigNodeLocation> {
 
   protected ConfigNodeAsyncRequestRPCHandler(
       CnToCnNodeRequestType configNodeRequestType,

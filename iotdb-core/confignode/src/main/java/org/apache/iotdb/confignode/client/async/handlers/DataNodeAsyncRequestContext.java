@@ -39,15 +39,12 @@ public class DataNodeAsyncRequestContext<Q, R>
   }
 
   public DataNodeAsyncRequestContext(
-      CnToDnRequestType requestType,
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+      CnToDnRequestType requestType, Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
     super(requestType, dataNodeLocationMap);
   }
 
   public DataNodeAsyncRequestContext(
-      CnToDnRequestType requestType,
-      Q q,
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+      CnToDnRequestType requestType, Q q, Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
     super(requestType, q, dataNodeLocationMap);
   }
 }

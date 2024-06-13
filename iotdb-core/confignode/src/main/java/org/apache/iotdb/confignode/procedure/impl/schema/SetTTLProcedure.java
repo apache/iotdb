@@ -116,8 +116,7 @@ public class SetTTLProcedure extends StateMachineProcedure<ConfigNodeProcedureEn
                 plan.getTTL(),
                 plan.isDataBase()),
             dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithRetry(clientHandler);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schemaengine cache

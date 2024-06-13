@@ -372,8 +372,7 @@ public class RegionMaintainHandler {
             CnToDnRequestType.RESET_PEER_LIST,
             new TResetPeerListReq(regionId, correctDataNodeLocations),
             dataNodeLocationMap);
-    CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequestWithRetry(clientHandler);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseMap();
   }
 
@@ -509,10 +508,7 @@ public class RegionMaintainHandler {
         (TSStatus)
             SyncDataNodeClientPool.getInstance()
                 .sendSyncRequestToDataNodeWithGivenRetry(
-                    dataNode.getInternalEndPoint(),
-                    dataNode,
-                    CnToDnRequestType.STOP_DATA_NODE,
-                    2);
+                    dataNode.getInternalEndPoint(), dataNode, CnToDnRequestType.STOP_DATA_NODE, 2);
     configManager.getLoadManager().removeNodeCache(dataNode.getDataNodeId());
     LOGGER.info(
         "{}, Stop Data Node result: {}, stoppedDataNode: {}",
