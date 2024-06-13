@@ -63,6 +63,9 @@ public class PipeConsensusServerMetrics implements IMetricSet {
     unbindAutoGauge(metricService);
     unbindGauge(metricService);
     unbindStageTimer(metricService);
+
+    // release corresponding resource
+    PipeConsensusSyncLagManager.release(impl.getConsensusGroupId());
   }
 
   public void bindGauge(AbstractMetricService metricService) {

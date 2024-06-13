@@ -177,6 +177,7 @@ public class PipeConsensusServerImpl {
       LOGGER.warn("{} cannot drop all consensus pipes", thisNode);
     }
 
+    MetricService.getInstance().removeMetricSet(this.pipeConsensusServerMetrics);
     peerManager.clear();
     stateMachine.stop();
     isStarted.set(false);
@@ -302,9 +303,8 @@ public class PipeConsensusServerImpl {
 
       long startWriteTime = System.nanoTime();
       TSStatus result = stateMachine.write(request);
-      PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(System.nanoTime() - startWriteTime);
-
       long writeToStateMachineEndTime = System.nanoTime();
+      PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(writeToStateMachineEndTime - startWriteTime);
       // statistic the time of writing request into stateMachine
       pipeConsensusServerMetrics.recordWriteStateMachineTime(
           writeToStateMachineEndTime - writeToStateMachineStartTime);

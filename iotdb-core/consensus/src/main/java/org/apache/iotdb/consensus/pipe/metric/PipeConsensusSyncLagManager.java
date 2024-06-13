@@ -60,8 +60,14 @@ public class PipeConsensusSyncLagManager {
     }
     // since the user write progress of different consensus pipes on the same DataRegion is the
     // same, we only need to take out one Connector to calculate
-    ConsensusPipeConnector connector = consensusPipeConnectorList.get(0);
-    userWriteProgress = connector.getConsensusPipeCommitProgress();
+    try {
+      ConsensusPipeConnector connector = consensusPipeConnectorList.get(0);
+      userWriteProgress = connector.getConsensusPipeCommitProgress();
+    } catch (Exception e) {
+      // if removing the last connector happens after empty check, we may encounter
+      // OutOfBoundsException, in this case, we set userWriteProgress to 0.
+      userWriteProgress = 0;
+    }
   }
 
   public void addConsensusPipeConnector(ConsensusPipeConnector consensusPipeConnector) {
@@ -86,10 +92,7 @@ public class PipeConsensusSyncLagManager {
     } else {
       // since we first update userWriteProgress then update replicateProgress, there may have some
       // cases that userWriteProgress is less than replicateProgress. In these cases, we return 0.
-      if (userWriteProgress < minReplicateProgress) {
-        return 0;
-      }
-      return userWriteProgress - minReplicateProgress;
+      return Math.max(userWriteProgress - minReplicateProgress, 0);
     }
   }
 
@@ -114,6 +117,10 @@ public class PipeConsensusSyncLagManager {
   public static PipeConsensusSyncLagManager getInstance(String groupId) {
     return PipeConsensusSyncLagManagerHolder.CONSENSU_GROUP_ID_2_INSTANCE_MAP.computeIfAbsent(
         groupId, key -> new PipeConsensusSyncLagManager());
+  }
+
+  public static void release(String groupId) {
+    PipeConsensusSyncLagManagerHolder.CONSENSU_GROUP_ID_2_INSTANCE_MAP.remove(groupId);
   }
 
   // Only when consensus protocol is PipeConsensus, this method will be called once when construct
