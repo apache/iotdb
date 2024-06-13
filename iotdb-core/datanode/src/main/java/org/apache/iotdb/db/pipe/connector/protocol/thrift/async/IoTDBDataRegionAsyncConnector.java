@@ -176,7 +176,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             endPointAndBatch.getLeft(),
             new PipeTransferTabletBatchEventHandler(
                 (PipeTabletEventPlainBatch) endPointAndBatch.getRight(), this));
-        endPointAndBatch.getRight().onSuccess();
       } else {
         final PipeTabletEventTsFileBatch batch =
             (PipeTabletEventTsFileBatch) endPointAndBatch.getRight();
@@ -189,6 +188,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                 false,
                 this));
       }
+      endPointAndBatch.getRight().onSuccess();
     } else {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
@@ -439,7 +439,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             endPointAndBatch.getLeft(),
             new PipeTransferTabletBatchEventHandler(
                 (PipeTabletEventPlainBatch) endPointAndBatch.getRight(), this));
-        endPointAndBatch.getRight().onSuccess();
       } else {
         final PipeTabletEventTsFileBatch batch =
             (PipeTabletEventTsFileBatch) endPointAndBatch.getRight();
@@ -452,6 +451,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                 false,
                 this));
       }
+      endPointAndBatch.getRight().onSuccess();
     }
   }
 

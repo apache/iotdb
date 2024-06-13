@@ -185,6 +185,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           ((PipeTabletEventTsFileBatch) endPointAndBatch.getRight()).getTsFile(),
           null);
     }
+    endPointAndBatch
+        .getRight()
+        .decreaseEventsReferenceCount(IoTDBDataRegionSyncConnector.class.getName(), true);
+    endPointAndBatch.getRight().onSuccess();
   }
 
   private void doTransfer(
@@ -231,10 +235,6 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         LeaderCacheUtils.parseRecommendedRedirections(status)) {
       clientManager.updateLeaderCache(redirectPair.getLeft(), redirectPair.getRight());
     }
-
-    batchToTransfer.decreaseEventsReferenceCount(
-        IoTDBDataRegionSyncConnector.class.getName(), true);
-    batchToTransfer.onSuccess();
   }
 
   private void doTransfer() throws IOException {
@@ -378,19 +378,14 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
           IoTDBDataRegionSyncConnector.class.getName())) {
         return;
       }
-      doTransfer(pipeTsFileInsertionEvent);
+      doTransfer(
+          Collections.singletonMap(pipeTsFileInsertionEvent.getPipeName(), 1.0),
+          pipeTsFileInsertionEvent.getTsFile(),
+          pipeTsFileInsertionEvent.isWithMod() ? pipeTsFileInsertionEvent.getModFile() : null);
     } finally {
       pipeTsFileInsertionEvent.decreaseReferenceCount(
           IoTDBDataRegionSyncConnector.class.getName(), false);
     }
-  }
-
-  private void doTransfer(final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
-      throws PipeException, IOException {
-    doTransfer(
-        Collections.singletonMap(pipeTsFileInsertionEvent.getPipeName(), 1.0),
-        pipeTsFileInsertionEvent.getTsFile(),
-        pipeTsFileInsertionEvent.isWithMod() ? pipeTsFileInsertionEvent.getModFile() : null);
   }
 
   private void doTransfer(
