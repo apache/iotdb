@@ -44,11 +44,13 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final Set<IoTDBSchemaRegionExtractor> schemaRegionExtractors =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
-  private final AtomicReference<Meter> dataRegionCommitMeter = new AtomicReference<>(null);
-  private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
+  private final AtomicReference<Meter> dataRegionCommitMeter =
+      new AtomicReference<>(new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
+  private final AtomicReference<Meter> schemaRegionCommitMeter =
+      new AtomicReference<>(new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
 
-  private double lastDataRegionCommitSmoothingValue = Long.MIN_VALUE;
-  private double lastSchemaRegionCommitSmoothingValue = Long.MIN_VALUE;
+  private double lastDataRegionCommitSmoothingValue = Long.MAX_VALUE;
+  private double lastSchemaRegionCommitSmoothingValue = Long.MAX_VALUE;
 
   //////////////////////////// Remaining event & time calculation ////////////////////////////
 

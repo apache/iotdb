@@ -39,9 +39,10 @@ class PipeConfigNodeRemainingTimeOperator extends PipeRemainingOperator {
 
   private final Set<IoTDBConfigRegionExtractor> configRegionExtractors =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
-  private final AtomicReference<Meter> configRegionCommitMeter = new AtomicReference<>(null);
+  private final AtomicReference<Meter> configRegionCommitMeter =
+      new AtomicReference<>(new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
 
-  private double lastConfigRegionCommitSmoothingValue = Long.MIN_VALUE;
+  private double lastConfigRegionCommitSmoothingValue = Long.MAX_VALUE;
 
   //////////////////////////// Remaining time calculation ////////////////////////////
 

@@ -72,8 +72,9 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
 
   @Override
   public void stopSubtask() throws PipeException {
-    PipeConfigNodeSubtaskExecutor.getInstance().stop(subtask.getTaskID());
+    // Freeze first to guarantee more precise result
     PipeConfigNodeRemainingTimeMetrics.getInstance().freezeRate(subtask.getTaskID());
+    PipeConfigNodeSubtaskExecutor.getInstance().stop(subtask.getTaskID());
   }
 
   @Override
