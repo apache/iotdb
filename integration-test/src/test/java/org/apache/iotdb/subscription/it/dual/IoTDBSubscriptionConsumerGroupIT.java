@@ -1023,10 +1023,11 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
               }
               // potential stuck
               if (System.currentTimeMillis() - currentTime[0] > 60_000L) {
-                currentTime[0] = System.currentTimeMillis();
                 for (final DataNodeWrapper wrapper : senderEnv.getDataNodeWrapperList()) {
-                  wrapper.executeJstack();
+                  wrapper.dumpJVMSnapshot(testName.getMethodName() + currentTime[0]);
+                  wrapper.executeJstack(testName.getMethodName() + currentTime[0]);
                 }
+                currentTime[0] = System.currentTimeMillis();
               }
               TestUtils.assertSingleResultSetEqual(
                   TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),

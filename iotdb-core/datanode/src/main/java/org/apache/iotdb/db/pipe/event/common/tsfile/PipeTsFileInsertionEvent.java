@@ -56,6 +56,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private final boolean isGeneratedByPipe;
 
   private final AtomicBoolean isClosed;
+  private final AtomicBoolean tmp = new AtomicBoolean(false);
   private TsFileInsertionDataContainer dataContainer;
 
   public PipeTsFileInsertionEvent(
@@ -134,27 +135,37 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
    *     otherwise.
    */
   public boolean waitForTsFileClose() throws InterruptedException {
-    if (!isClosed.get()) {
-      isClosed.set(resource.isClosed());
-
-      synchronized (isClosed) {
-        while (!isClosed.get()) {
-          isClosed.wait(100);
-
-          final boolean isClosedNow = resource.isClosed();
-          if (isClosedNow) {
-            isClosed.set(true);
-            isClosed.notifyAll();
-            break;
-          }
+    if (!tmp.get()) {
+      synchronized (tmp) {
+        while (!tmp.get()) {
+          tmp.wait();
         }
       }
     }
 
+    return true;
+
+    //    if (!isClosed.get()) {
+    //      isClosed.set(resource.isClosed());
+    //
+    //      synchronized (isClosed) {
+    //        while (!isClosed.get()) {
+    //          isClosed.wait(100);
+    //
+    //          final boolean isClosedNow = resource.isClosed();
+    //          if (isClosedNow) {
+    //            isClosed.set(true);
+    //            isClosed.notifyAll();
+    //            break;
+    //          }
+    //        }
+    //      }
+    //    }
+
     // From illustrations above we know If the status is "closed", then the tsFile is flushed
     // And here we guarantee that the isEmpty() is set before flushing if tsFile is empty
     // Then we know: "isClosed" --> tsFile flushed --> (isEmpty() <--> tsFile is empty)
-    return !resource.isEmpty();
+    // return !resource.isEmpty();
   }
 
   public File getTsFile() {

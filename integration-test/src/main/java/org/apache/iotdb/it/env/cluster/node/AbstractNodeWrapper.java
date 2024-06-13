@@ -679,7 +679,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   protected abstract MppJVMConfig initVMConfig();
 
-  public void executeJstack() throws Exception {
+  public void executeJstack(final String testCaseName) throws Exception {
     final long pid = getPidOfProcess(this.instance);
     if (pid == -1) {
       logger.warn("Failed to get pid for {} before executing jstack", this.getId());
@@ -688,17 +688,23 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     final String command = "jstack -l " + pid;
     logger.info("Executing command {} for {}", command, this.getId());
     final Process process = Runtime.getRuntime().exec(command);
-    final StringBuilder output = new StringBuilder();
-    try (final BufferedReader reader =
-        new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+    try (final PrintWriter output =
+            new PrintWriter(
+                getLogDirPath()
+                    + File.separator
+                    + testCaseName
+                    + "_"
+                    + getId()
+                    + "-threads.jstack");
+        final BufferedReader reader =
+            new BufferedReader(new InputStreamReader(process.getInputStream()))) {
       String line;
       while ((line = reader.readLine()) != null) {
         output.append(line).append(System.lineSeparator());
       }
+      final int exitCode = process.waitFor();
+      logger.info("Command {} exited with code {}", command, exitCode);
     }
-    final int exitCode = process.waitFor();
-    logger.info("Command {} exited with code {}", command, exitCode);
-    logger.info(output.toString());
   }
 
   /**
