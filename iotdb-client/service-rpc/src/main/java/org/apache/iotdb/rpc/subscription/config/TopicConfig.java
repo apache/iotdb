@@ -40,6 +40,24 @@ public class TopicConfig extends PipeParameters {
     super(attributes);
   }
 
+  private static final Map<String, String> LOOSE_RANGE_CONFIG =
+      new HashMap<String, String>() {
+        {
+          put("history.loose-range", "time");
+          put("realtime.loose-range", "time");
+        }
+      };
+
+  private static final Map<String, String> REALTIME_BATCH_MODE_CONFIG =
+      Collections.singletonMap("realtime.mode", "batch");
+  private static final Map<String, String> REALTIME_HYBRID_MODE_CONFIG =
+      Collections.singletonMap("realtime.mode", "hybrid");
+
+  private static final Map<String, String> QUERY_MODE_CONFIG =
+      Collections.singletonMap("mode", "query");
+  private static final Map<String, String> SUBSCRIBE_MODE_CONFIG =
+      Collections.singletonMap("mode", "subscribe");
+
   /////////////////////////////// de/ser ///////////////////////////////
 
   public void serialize(final DataOutputStream stream) throws IOException {
@@ -87,8 +105,7 @@ public class TopicConfig extends PipeParameters {
     // enable loose range when using tsfile format
     if (TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(
         attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))) {
-      attributesWithTimeRange.put("history.loose-range", "time");
-      attributesWithTimeRange.put("realtime.loose-range", "time");
+      attributesWithTimeRange.putAll(LOOSE_RANGE_CONFIG);
     }
 
     return attributesWithTimeRange;
@@ -97,15 +114,15 @@ public class TopicConfig extends PipeParameters {
   public Map<String, String> getAttributesWithRealtimeMode() {
     return TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(
             attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))
-        ? Collections.singletonMap("realtime.mode", "batch")
-        : Collections.singletonMap("realtime.mode", "hybrid");
+        ? REALTIME_BATCH_MODE_CONFIG
+        : REALTIME_HYBRID_MODE_CONFIG;
   }
 
   public Map<String, String> getAttributesWithSourceMode() {
     return TopicConstant.MODE_QUERY_VALUE.equals(
             attributes.getOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE))
-        ? Collections.singletonMap("mode", "query")
-        : Collections.singletonMap("mode", "subscribe");
+        ? QUERY_MODE_CONFIG
+        : SUBSCRIBE_MODE_CONFIG;
   }
 
   public Map<String, String> getAttributesWithProcessorPrefix() {
