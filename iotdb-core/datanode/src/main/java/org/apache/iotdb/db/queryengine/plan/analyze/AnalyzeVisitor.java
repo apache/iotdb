@@ -152,6 +152,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1993,7 +1994,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     long startTime = System.nanoTime();
     try {
       Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
-          getTimePartitionSlotList(context.getGlobalTimeFilter());
+          getTimePartitionSlotList(context.getGlobalTimeFilter(), context);
       // there is no satisfied time range
       if (res.left.isEmpty() && Boolean.FALSE.equals(res.right.left)) {
         return new DataPartition(
@@ -2030,7 +2031,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> getTimePartitionSlotList(
-      Filter timeFilter) {
+      Filter timeFilter, MPPQueryContext context) {
     if (timeFilter == null) {
       // (-oo, +oo)
       return new Pair<>(Collections.emptyList(), new Pair<>(true, true));
@@ -2071,6 +2072,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     List<TTimePartitionSlot> result = new ArrayList<>();
+    TimeRange currentTimeRange = timeRangeList.get(index);
+    reserveMemoryForTimePartitionSlot(
+        currentTimeRange.getMax(), currentTimeRange.getMin(), context);
     while (index < size) {
       long curLeft = timeRangeList.get(index).getMin();
       long curRight = timeRangeList.get(index).getMax();
@@ -2086,6 +2090,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         endTime = endTime + TimePartitionUtils.getTimePartitionInterval();
       } else {
         index++;
+        if (index < size) {
+          currentTimeRange = timeRangeList.get(index);
+          reserveMemoryForTimePartitionSlot(
+              currentTimeRange.getMax(), currentTimeRange.getMin(), context);
+        }
       }
     }
     result.add(timePartitionSlot);
@@ -2099,6 +2108,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
     return new Pair<>(result, new Pair<>(needLeftAll, needRightAll));
+  }
+
+  private static void reserveMemoryForTimePartitionSlot(
+      long maxTime, long minTime, MPPQueryContext context) {
+    if (maxTime == Long.MAX_VALUE || minTime == Long.MIN_VALUE) {
+      return;
+    }
+    long size = TimePartitionUtils.getEstimateTimePartitionSize(minTime, maxTime);
+    context.reserveMemoryForFrontEnd(
+        RamUsageEstimator.shallowSizeOfInstance(TTimePartitionSlot.class) * size);
   }
 
   private void analyzeInto(
