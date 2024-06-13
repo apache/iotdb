@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -110,7 +111,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     }
     TsTable table = new TsTable(node.getName().getSuffix());
     for (ColumnDefinition columnDefinition : node.getElements()) {
-      ColumnDefinition.ColumnCategory category = columnDefinition.getColumnCategory();
+      TsTableColumnCategory category = columnDefinition.getColumnCategory();
       String columnName = columnDefinition.getName().getValue();
       if (table.getColumnSchema(columnName) != null) {
         throw new SemanticException(
