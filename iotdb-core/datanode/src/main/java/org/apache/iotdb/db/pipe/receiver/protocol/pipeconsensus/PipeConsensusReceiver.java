@@ -122,11 +122,17 @@ public class PipeConsensusReceiver {
     try {
       this.folderManager =
           new FolderManager(receiverBaseDirsName, DirectoryStrategyType.SEQUENCE_STRATEGY);
-      initiateTsFileBufferFolder();
     } catch (Exception e) {
       LOGGER.error(
           "Fail to create pipeConsensus receiver file folders allocation strategy because all disks of folders are full.",
           e);
+      throw new RuntimeException(e);
+    }
+
+    try {
+      initiateTsFileBufferFolder();
+    } catch (Exception e) {
+      LOGGER.error("Fail to initiate file buffer folder, Error msg: {}", e.getMessage());
       throw new RuntimeException(e);
     }
   }
@@ -871,7 +877,7 @@ public class PipeConsensusReceiver {
       final String receiverFileBaseDir = getReceiverFileBaseDir();
       if (Objects.isNull(receiverFileBaseDir)) {
         LOGGER.warn(
-            "PipeConsensus-ConsensusGroupId-{}: Failed to init pipeConsensus receiver file folder manager because all disks of folders are full.",
+            "PipeConsensus-ConsensusGroupId-{}: Failed to get pipeConsensus receiver file base directory, because your folderManager is null. May because the disk is full.",
             consensusGroupId.getId());
         throw new DiskSpaceInsufficientException(receiverBaseDirsName);
       }
@@ -879,13 +885,13 @@ public class PipeConsensusReceiver {
       final File newReceiverDir = new File(receiverFileBaseDir, consensusGroupId.toString());
       if (!newReceiverDir.exists() && !newReceiverDir.mkdirs()) {
         LOGGER.warn(
-            "PipeConsensus-ConsensusGroupId-{}: Failed to create receiver file dir {}.",
-            newReceiverDir.getPath(),
-            consensusGroupId.getId());
+            "PipeConsensus-ConsensusGroupId-{}: Failed to create receiver file dir {}. May because authority or dir already exists etc.",
+            consensusGroupId.getId(),
+            newReceiverDir.getPath());
         throw new IOException(
             String.format(
-                "PipeConsensus-ConsensusGroupId-%s: Failed to create receiver file dir %s.",
-                newReceiverDir.getPath(), consensusGroupId.getId()));
+                "PipeConsensus-ConsensusGroupId-%s: Failed to create receiver file dir %s. May because authority or dir already exists etc.",
+                consensusGroupId.getId(), newReceiverDir.getPath()));
       }
       receiverFileDirWithIdSuffix.set(newReceiverDir);
 
