@@ -237,6 +237,7 @@ public class ClusterManager {
 
   private List<TTestConnectionResult> badNodeConnectionResult(
       TNodeLocations nodeLocations, TSender sender) {
+    final String errorMessage = "ConfigNode leader cannot connect to the sender";
     List<TTestConnectionResult> results = new ArrayList<>();
     nodeLocations
         .getConfigNodeLocations()
@@ -247,7 +248,7 @@ public class ClusterManager {
                   new TServiceProvider(endPoint, TServiceType.ConfigNodeInternalService);
               TTestConnectionResult result =
                   new TTestConnectionResult().setServiceProvider(serviceProvider).setSender(sender);
-              result.setSuccess(false).setReason("Cannot get verification result");
+              result.setSuccess(false).setReason(errorMessage);
               results.add(result);
             });
     nodeLocations
@@ -259,9 +260,39 @@ public class ClusterManager {
                   new TServiceProvider(endPoint, TServiceType.DataNodeInternalService);
               TTestConnectionResult result =
                   new TTestConnectionResult().setServiceProvider(serviceProvider).setSender(sender);
-              result.setSuccess(false).setReason("Cannot get verification result");
+              result.setSuccess(false).setReason(errorMessage);
               results.add(result);
             });
+    if (sender.isSetDataNodeLocation()) {
+      nodeLocations
+          .getDataNodeLocations()
+          .forEach(
+              location -> {
+                TEndPoint endPoint = location.getMPPDataExchangeEndPoint();
+                TServiceProvider serviceProvider =
+                    new TServiceProvider(endPoint, TServiceType.DataNodeMPPService);
+                TTestConnectionResult result =
+                    new TTestConnectionResult()
+                        .setServiceProvider(serviceProvider)
+                        .setSender(sender);
+                result.setSuccess(false).setReason(errorMessage);
+                results.add(result);
+              });
+      nodeLocations
+          .getDataNodeLocations()
+          .forEach(
+              location -> {
+                TEndPoint endPoint = location.getClientRpcEndPoint();
+                TServiceProvider serviceProvider =
+                    new TServiceProvider(endPoint, TServiceType.DataNodeExternalService);
+                TTestConnectionResult result =
+                    new TTestConnectionResult()
+                        .setServiceProvider(serviceProvider)
+                        .setSender(sender);
+                result.setSuccess(false).setReason(errorMessage);
+                results.add(result);
+              });
+    }
     return results;
   }
 }

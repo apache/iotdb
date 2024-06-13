@@ -41,7 +41,6 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -104,13 +103,14 @@ public class TestConnectionTask implements IConfigTask {
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    int maxLen = calculateServiceProviderMaxLen(resp);
+    int serviceProviderMaxLen = calculateServiceProviderMaxLen(resp);
+    int connectionMaxLen = calculateConnectionMaxLen(resp);
     for (TTestConnectionResult result : resp.getResultList()) {
       // ServiceProvider column
       builder.getTimeColumnBuilder().writeLong(0);
       StringBuilder serviceStr =
           new StringBuilder(serviceProviderToString(result.getServiceProvider()));
-      while (serviceStr.length() < maxLen) {
+      while (serviceStr.length() < serviceProviderMaxLen) {
         serviceStr.append(" ");
       }
       builder
@@ -131,16 +131,13 @@ public class TestConnectionTask implements IConfigTask {
       }
       builder.getColumnBuilder(1).writeBinary(new Binary(senderStr, TSFileConfig.STRING_CHARSET));
       // Connection column
-      String connectionStatus;
-      if (result.isSuccess()) {
-        connectionStatus = "up";
-      } else {
-        //        connectionStatus = addLineBreak("down" + " (" + result.getReason() + ")", 60);
-        connectionStatus = "down" + " (" + result.getReason() + ")";
+      StringBuilder connectionStatus = new StringBuilder(connectionResultToString(result));
+      while (connectionStatus.length() < connectionMaxLen) {
+        connectionStatus.append(" ");
       }
       builder
           .getColumnBuilder(2)
-          .writeBinary(new Binary(connectionStatus, TSFileConfig.STRING_CHARSET));
+          .writeBinary(new Binary(connectionStatus.toString(), TSFileConfig.STRING_CHARSET));
       builder.declarePosition();
     }
 
@@ -165,6 +162,13 @@ public class TestConnectionTask implements IConfigTask {
     String serviceStr = endPointToString(provider.getEndPoint());
     serviceStr += " (" + provider.getServiceType() + ")";
     return serviceStr;
+  }
+
+  private static String connectionResultToString(TTestConnectionResult result) {
+    if (result.isSuccess()) {
+      return "up";
+    }
+    return "down" + " (" + result.getReason() + ")";
   }
 
   private static String endPointToString(TEndPoint endPoint) {
@@ -194,13 +198,21 @@ public class TestConnectionTask implements IConfigTask {
             });
   }
 
-  private static int calculateServiceProviderMaxLen(TTestConnectionResp origin) {
-    return origin.getResultList().stream()
+  private static int calculateServiceProviderMaxLen(TTestConnectionResp resp) {
+    return resp.getResultList().stream()
         .map(TTestConnectionResult::getServiceProvider)
         .map(TestConnectionTask::serviceProviderToString)
-        .max(Comparator.comparingInt(String::length))
-        .get()
-        .length();
+        .mapToInt(String::length)
+        .max()
+        .getAsInt();
+  }
+
+  private static int calculateConnectionMaxLen(TTestConnectionResp resp) {
+    return resp.getResultList().stream()
+        .map(TestConnectionTask::connectionResultToString)
+        .mapToInt(String::length)
+        .max()
+        .getAsInt();
   }
 
   private static String addLineBreak(String origin, int interval) {
