@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.execution.executor;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -41,17 +42,22 @@ public abstract class PipeSubtaskExecutor {
   private static final ExecutorService subtaskCallbackListeningExecutor =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
           ThreadName.PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL.getName());
-  private final ListeningExecutorService subtaskWorkerThreadPoolExecutor;
+  protected final ListeningExecutorService subtaskWorkerThreadPoolExecutor;
 
   private final Map<String, PipeSubtask> registeredIdSubtaskMapper;
 
   private final int corePoolSize;
   private int runningSubtaskNumber;
 
-  protected PipeSubtaskExecutor(int corePoolSize, ThreadName threadName) {
-    subtaskWorkerThreadPoolExecutor =
-        MoreExecutors.listeningDecorator(
-            IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, threadName.getName()));
+  protected PipeSubtaskExecutor(
+      final int corePoolSize, final ThreadName threadName, final boolean disableLogInThreadPool) {
+    final WrappedThreadPoolExecutor executor =
+        (WrappedThreadPoolExecutor)
+            IoTDBThreadPoolFactory.newFixedThreadPool(corePoolSize, threadName.getName());
+    if (disableLogInThreadPool) {
+      executor.disableErrorLog();
+    }
+    subtaskWorkerThreadPoolExecutor = MoreExecutors.listeningDecorator(executor);
 
     registeredIdSubtaskMapper = new ConcurrentHashMap<>();
 
@@ -61,7 +67,7 @@ public abstract class PipeSubtaskExecutor {
 
   /////////////////////// Subtask management ///////////////////////
 
-  public final synchronized void register(PipeSubtask subtask) {
+  public final synchronized void register(final PipeSubtask subtask) {
     if (registeredIdSubtaskMapper.containsKey(subtask.getTaskID())) {
       LOGGER.warn("The subtask {} is already registered.", subtask.getTaskID());
       return;
@@ -74,7 +80,7 @@ public abstract class PipeSubtaskExecutor {
         new PipeSubtaskScheduler(this));
   }
 
-  public final synchronized void start(String subTaskID) {
+  public final synchronized void start(final String subTaskID) {
     if (!registeredIdSubtaskMapper.containsKey(subTaskID)) {
       LOGGER.warn("The subtask {} is not registered.", subTaskID);
       return;
@@ -93,7 +99,7 @@ public abstract class PipeSubtaskExecutor {
     }
   }
 
-  public final synchronized void stop(String subTaskID) {
+  public final synchronized void stop(final String subTaskID) {
     if (!registeredIdSubtaskMapper.containsKey(subTaskID)) {
       LOGGER.warn("The subtask {} is not registered.", subTaskID);
       return;
@@ -104,7 +110,7 @@ public abstract class PipeSubtaskExecutor {
     }
   }
 
-  public final synchronized void deregister(String subTaskID) {
+  public final synchronized void deregister(final String subTaskID) {
     stop(subTaskID);
 
     final PipeSubtask subtask = registeredIdSubtaskMapper.remove(subTaskID);
@@ -113,14 +119,14 @@ public abstract class PipeSubtaskExecutor {
       try {
         subtask.close();
         LOGGER.info("The subtask {} is closed successfully.", subTaskID);
-      } catch (Exception e) {
+      } catch (final Exception e) {
         LOGGER.error("Failed to close the subtask {}.", subTaskID, e);
       }
     }
   }
 
   @TestOnly
-  public final boolean isRegistered(String subTaskID) {
+  public final boolean isRegistered(final String subTaskID) {
     return registeredIdSubtaskMapper.containsKey(subTaskID);
   }
 
@@ -137,7 +143,7 @@ public abstract class PipeSubtaskExecutor {
     }
 
     // stop all subtasks before shutting down the executor
-    for (PipeSubtask subtask : registeredIdSubtaskMapper.values()) {
+    for (final PipeSubtask subtask : registeredIdSubtaskMapper.values()) {
       subtask.disallowSubmittingSelf();
     }
 

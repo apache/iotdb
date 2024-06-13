@@ -17,28 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.task;
+package org.apache.iotdb.rpc.subscription.exception;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Objects;
 
-public class DecoratingLock {
-  private final AtomicBoolean isDecorating = new AtomicBoolean(false);
+public class SubscriptionIdentifierSemanticException extends SubscriptionException {
 
-  public void waitForDecorated() {
-    while (isDecorating.get()) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-    }
+  public SubscriptionIdentifierSemanticException(final String message) {
+    super(message);
   }
 
-  public void markAsDecorating() {
-    isDecorating.set(true);
+  public SubscriptionIdentifierSemanticException(final String message, final Throwable cause) {
+    super(message, cause);
   }
 
-  public void markAsDecorated() {
-    isDecorating.set(false);
+  @Override
+  public boolean equals(final Object obj) {
+    return obj instanceof SubscriptionIdentifierSemanticException
+        && Objects.equals(
+            getMessage(), ((SubscriptionIdentifierSemanticException) obj).getMessage())
+        && Objects.equals(
+            getTimeStamp(), ((SubscriptionIdentifierSemanticException) obj).getTimeStamp());
   }
 }
