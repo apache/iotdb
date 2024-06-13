@@ -44,10 +44,8 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final Set<IoTDBSchemaRegionExtractor> schemaRegionExtractors =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
-  private final AtomicReference<Meter> dataRegionCommitMeter =
-      new AtomicReference<>(new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
-  private final AtomicReference<Meter> schemaRegionCommitMeter =
-      new AtomicReference<>(new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
+  private final AtomicReference<Meter> dataRegionCommitMeter = new AtomicReference<>(null);
+  private final AtomicReference<Meter> schemaRegionCommitMeter = new AtomicReference<>(null);
 
   private double lastDataRegionCommitSmoothingValue = Long.MAX_VALUE;
   private double lastSchemaRegionCommitSmoothingValue = Long.MAX_VALUE;
