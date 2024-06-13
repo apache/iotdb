@@ -46,4 +46,8 @@ public interface BaseNodeWrapper {
   String getIpAndPortString();
 
   void dumpJVMSnapshot(String testCaseName);
+
+  void executeJstack(String testCaseName);
+
+  long getPid();
 }

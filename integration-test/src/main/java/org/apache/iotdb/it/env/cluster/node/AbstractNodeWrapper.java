@@ -679,37 +679,46 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   protected abstract MppJVMConfig initVMConfig();
 
-  public void executeJstack(final String testCaseName) throws Exception {
+  @Override
+  public void executeJstack(final String testCaseName) {
     final long pid = this.getPid();
     if (pid == -1) {
-      logger.warn("Failed to get pid for {} before executing jstack", this.getId());
+      logger.warn("Failed to get pid for {} before executing Jstack", this.getId());
       return;
     }
     final String command = "jstack -l " + pid;
     logger.info("Executing command {} for {}", command, this.getId());
-    final Process process = Runtime.getRuntime().exec(command);
-    try (final PrintWriter output =
-            new PrintWriter(
-                getLogDirPath()
-                    + File.separator
-                    + testCaseName
-                    + "_"
-                    + getId()
-                    + "-threads.jstack");
-        final BufferedReader reader =
-            new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-      String line;
-      while ((line = reader.readLine()) != null) {
-        output.append(line).append(System.lineSeparator());
+    final String fileName = getLogDirPath()
+        + File.separator
+        + testCaseName
+        + "_"
+        + getId()
+        + "-threads.jstack";
+    try {
+      final Process process = Runtime.getRuntime().exec(command);
+      try (final PrintWriter output = new PrintWriter(fileName);
+          final BufferedReader reader =
+              new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          output.append(line).append(System.lineSeparator());
+        }
       }
       final int exitCode = process.waitFor();
       logger.info("Command {} exited with code {}", command, exitCode);
+      logger.info("Jstack execution output can be found at {}", fileName);
+    } catch (final IOException e) {
+      logger.warn("IOException occurred when executing Jstack for {}", this.getId(), e);
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.warn("InterruptedException occurred when executing Jstack for {}", this.getId(), e);
     }
   }
 
   /**
    * @return The native process ID of the process, -1 if failure.
    */
+  @Override
   public long getPid() {
     final JMXServiceURL url;
     try {
