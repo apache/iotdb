@@ -154,7 +154,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
   public void thawRate(final String pipeID) {
     if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
       LOGGER.warn(
-          "Failed to deregister pipe remaining event and time metrics, RemainingEventAndTimeOperator({}) does not exist",
+          "Failed to thaw pipe remaining time rate, RemainingEventAndTimeOperator({}) does not exist",
           pipeID);
       return;
     }
@@ -164,7 +164,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
   public void freezeRate(final String pipeID) {
     if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
       LOGGER.warn(
-          "Failed to deregister pipe remaining event and time metrics, RemainingEventAndTimeOperator({}) does not exist",
+          "Failed to freeze pipe remaining time rate, RemainingEventAndTimeOperator({}) does not exist",
           pipeID);
       return;
     }
