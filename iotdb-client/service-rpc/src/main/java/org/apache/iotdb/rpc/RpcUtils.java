@@ -158,7 +158,7 @@ public class RpcUtils {
           }
         }
       }
-      LOGGER.debug(errMsg.toString());
+      LOGGER.debug(errMsg.toString(), new Exception(errMsg.toString()));
     }
     return status;
   }
