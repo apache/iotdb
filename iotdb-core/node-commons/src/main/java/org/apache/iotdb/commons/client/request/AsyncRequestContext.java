@@ -85,7 +85,6 @@ public class AsyncRequestContext<Request, Response, RequestType, NodeLocation> {
   public AsyncRequestContext(RequestType requestType, Map<Integer, NodeLocation> nodeLocationMap) {
     this.requestType = requestType;
     this.nodeLocationMap = nodeLocationMap;
-
     this.requestMap = new ConcurrentHashMap<>();
     this.responseMap = new ConcurrentHashMap<>();
   }
