@@ -70,9 +70,15 @@ public abstract class ChunkLoader {
       return this.modifiedStatus;
     }
     ModifiedStatus pageModifiedStatus = ModifiedStatus.NONE_DELETED;
+    if (pageHeader.getStatistics() == null) {
+      return pageModifiedStatus;
+    }
     List<TimeRange> deleteIntervalList = chunkMetadata.getDeleteIntervalList();
     long startTime = pageHeader.getStartTime();
     long endTime = pageHeader.getEndTime();
+    if (startTime > endTime) {
+      return pageModifiedStatus;
+    }
     TimeRange pageTimeRange = new TimeRange(startTime, endTime);
     for (TimeRange timeRange : deleteIntervalList) {
       if (timeRange.contains(pageTimeRange)) {
