@@ -2846,7 +2846,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   @Override
   public Analysis visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
-    long startTime = System.currentTimeMillis();
+    long startTime = System.nanoTime();
     try (final LoadTsfileAnalyzer loadTsfileAnalyzer =
         new LoadTsfileAnalyzer(loadTsFileStatement, context, partitionFetcher, schemaFetcher)) {
       return loadTsfileAnalyzer.analyzeFileByFile();

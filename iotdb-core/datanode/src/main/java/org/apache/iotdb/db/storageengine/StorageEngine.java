@@ -875,7 +875,7 @@ public class StorageEngine implements IService {
       boolean isGeneratedByPipe,
       ProgressIndex progressIndex) {
     TSStatus status = new TSStatus();
-    long startTime = System.currentTimeMillis();
+    long startTime = System.nanoTime();
     try {
       switch (loadCommand) {
         case EXECUTE:
