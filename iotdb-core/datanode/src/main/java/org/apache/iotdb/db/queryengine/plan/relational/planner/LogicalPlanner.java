@@ -14,7 +14,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -34,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Pru
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RelationalPlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SimplifyExpressions;
+import org.apache.iotdb.db.relational.sql.tree.Explain;
 import org.apache.iotdb.db.relational.sql.tree.Query;
 import org.apache.iotdb.db.relational.sql.tree.Statement;
 import org.apache.iotdb.db.relational.sql.tree.Table;
@@ -84,7 +84,7 @@ public class LogicalPlanner {
             new IndexScan());
   }
 
-  public LogicalQueryPlan plan(Analysis analysis) throws IoTDBException {
+  public LogicalQueryPlan plan(Analysis analysis) {
     PlanNode planNode = planStatement(analysis, analysis.getStatement());
 
     relationalPlanOptimizers.forEach(
@@ -95,17 +95,19 @@ public class LogicalPlanner {
     return new LogicalQueryPlan(context, planNode);
   }
 
-  private PlanNode planStatement(Analysis analysis, Statement statement) throws IoTDBException {
+  private PlanNode planStatement(Analysis analysis, Statement statement) {
     return createOutputPlan(planStatementWithoutOutput(analysis, statement), analysis);
   }
 
-  private RelationPlan planStatementWithoutOutput(Analysis analysis, Statement statement)
-      throws IoTDBException {
+  private RelationPlan planStatementWithoutOutput(Analysis analysis, Statement statement) {
     if (statement instanceof Query) {
       return createRelationPlan(analysis, (Query) statement);
     }
-    throw new IoTDBException(
-        "Unsupported statement type " + statement.getClass().getSimpleName(), -1);
+    if (statement instanceof Explain) {
+      return createRelationPlan(analysis, (Query) ((Explain) statement).getStatement());
+    }
+    throw new IllegalStateException(
+        "Unsupported statement type: " + statement.getClass().getSimpleName());
   }
 
   private PlanNode createOutputPlan(RelationPlan plan, Analysis analysis) {

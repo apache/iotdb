@@ -25,6 +25,8 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySource;
+import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatementMemorySourceContext;
+import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatementMemorySourceVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -83,11 +85,10 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.db.queryengine.common.header.DatasetHeader.EMPTY_HEADER;
 
 public class Analysis implements IAnalysis {
 
-  @Nullable private final Statement root;
+  @Nullable private Statement root;
 
   private final Map<NodeRef<Parameter>, Expression> parameters;
 
@@ -264,6 +265,10 @@ public class Analysis implements IAnalysis {
 
   public Scope getRootScope() {
     return getScope(root);
+  }
+
+  public void setStatement(Statement statement) {
+    this.root = statement;
   }
 
   public void setScope(Node node, Scope scope) {
@@ -611,11 +616,12 @@ public class Analysis implements IAnalysis {
 
   @Override
   public TsBlock constructResultForMemorySource(MPPQueryContext context) {
-    StatementMemorySource source =
-        new StatementMemorySource(
-            new TsBlock(0), respDatasetHeader == null ? EMPTY_HEADER : respDatasetHeader);
-    setRespDatasetHeader(source.getDatasetHeader());
-    return source.getTsBlock();
+    requireNonNull(getStatement(), "root statement is analysis is null");
+    StatementMemorySource memorySource =
+        new TableModelStatementMemorySourceVisitor()
+            .process(getStatement(), new TableModelStatementMemorySourceContext(context, this));
+    setRespDatasetHeader(memorySource.getDatasetHeader());
+    return memorySource.getTsBlock();
   }
 
   @Override
