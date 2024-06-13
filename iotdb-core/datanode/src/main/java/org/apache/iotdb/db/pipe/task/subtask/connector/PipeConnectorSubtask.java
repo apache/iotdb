@@ -32,6 +32,7 @@ import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEve
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionConnectorMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeSchemaRegionConnectorMetrics;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -115,7 +116,12 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
         PipeDataRegionConnectorMetrics.getInstance().markTsFileEvent(taskID);
       } else if (event instanceof PipeSchemaRegionWritePlanEvent) {
         outputPipeConnector.transfer(event);
-        PipeSchemaRegionConnectorMetrics.getInstance().markSchemaEvent(taskID);
+        if (((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType()
+            != PlanNodeType.DELETE_DATA) {
+          // Only plan nodes in schema region will be marked, delete data node is currently not
+          // taken into account
+          PipeSchemaRegionConnectorMetrics.getInstance().markSchemaEvent(taskID);
+        }
       } else if (event instanceof PipeHeartbeatEvent) {
         transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else {
