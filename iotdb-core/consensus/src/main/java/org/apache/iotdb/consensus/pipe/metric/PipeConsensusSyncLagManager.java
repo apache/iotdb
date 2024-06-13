@@ -68,6 +68,10 @@ public class PipeConsensusSyncLagManager {
     consensusPipeConnectorList.add(consensusPipeConnector);
   }
 
+  public void removeConsensusPipeConnector(ConsensusPipeConnector connector) {
+    consensusPipeConnectorList.remove(connector);
+  }
+
   /**
    * SyncLag represents the difference between the current replica users' write progress and the
    * minimum synchronization progress of all other replicas. The semantics is how much data the
@@ -80,6 +84,11 @@ public class PipeConsensusSyncLagManager {
     if (minReplicateProgress == Long.MAX_VALUE) {
       return userWriteProgress;
     } else {
+      // since we first update userWriteProgress then update replicateProgress, there may have some
+      // cases that userWriteProgress is less than replicateProgress. In these cases, we return 0.
+      if (userWriteProgress < minReplicateProgress) {
+        return 0;
+      }
       return userWriteProgress - minReplicateProgress;
     }
   }

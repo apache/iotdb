@@ -556,6 +556,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       tabletBatchBuilder.close();
     }
 
+    PipeConsensusSyncLagManager.getInstance(getConsensusGroupIdStr())
+        .removeConsensusPipeConnector(this);
     MetricService.getInstance().removeMetricSet(this.pipeConsensusConnectorMetrics);
   }
 
