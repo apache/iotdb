@@ -56,6 +56,11 @@ public class SchemaTreeVisitorFactory {
     return new SchemaTreeMeasurementVisitor(root, pathPattern, false, scope);
   }
 
+  public static SchemaTreeTimeseriesContextVisitor createTimeseriesContextVisitor(
+      SchemaNode root, PartialPath pathPattern, PathPatternTree scope) {
+    return new SchemaTreeTimeseriesContextVisitor(root, pathPattern, false, scope);
+  }
+
   public static SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath>
       createSchemaTreeMeasurementVisitor(
           SchemaNode root,

@@ -33,12 +33,14 @@ import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaMeasurementN
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeDeviceUsingTemplateVisitor;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeDeviceVisitor;
+import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeTimeseriesContextVisitor;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorFactory;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -116,6 +118,16 @@ public class ClusterSchemaTree implements ISchemaTree {
   @Override
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern) {
     return searchMeasurementPaths(pathPattern, 0, 0, false);
+  }
+
+  @Override
+  public List<Triple<PartialPath, Boolean, MeasurementSchemaInfo>> searchMeasurementSchemaInfo(
+      PartialPath pathPattern) {
+    try (SchemaTreeTimeseriesContextVisitor visitor =
+        SchemaTreeVisitorFactory.createTimeseriesContextVisitor(
+            root, pathPattern, authorityScope)) {
+      return visitor.getAllResult();
+    }
   }
 
   public List<DeviceSchemaInfo> getAllDevices() {

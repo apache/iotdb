@@ -19,29 +19,28 @@
 
 package org.apache.iotdb.db.queryengine.common.schematree.visitor;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
+import org.apache.iotdb.db.queryengine.common.schematree.MeasurementSchemaInfo;
+import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
+
+import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.Map;
 
-public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementPath> {
-
-  private final String tailNode;
-
-  public SchemaTreeMeasurementVisitor(
+public class SchemaTreeTimeseriesContextVisitor
+    extends SchemaTreeVisitor<Triple<PartialPath, Boolean, MeasurementSchemaInfo>> {
+  public SchemaTreeTimeseriesContextVisitor(
       SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch) {
     super(root, pathPattern, isPrefixMatch);
-    tailNode = pathPattern.getTailNode();
   }
 
-  public SchemaTreeMeasurementVisitor(
+  public SchemaTreeTimeseriesContextVisitor(
       SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch, PathPatternTree scope) {
     super(root, pathPattern, isPrefixMatch, scope);
-    tailNode = pathPattern.getTailNode();
   }
 
   @Override
@@ -116,22 +115,22 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
 
   @Override
   protected boolean acceptFullMatchedNode(SchemaNode node) {
-    return node.isMeasurement();
+    return node.isMeasurement() && !node.getAsMeasurementNode().isLogicalView();
   }
 
   @Override
-  protected MeasurementPath generateResult(SchemaNode nextMatchedNode) {
-    MeasurementPath result =
-        new MeasurementPath(
-            getFullPathFromRootToNode(nextMatchedNode),
-            nextMatchedNode.getAsMeasurementNode().getSchema());
-    result.setTagMap(nextMatchedNode.getAsMeasurementNode().getTagMap());
-    result.setUnderAlignedEntity(getParentOfNextMatchedNode().getAsEntityNode().isAligned());
-    String alias = nextMatchedNode.getAsMeasurementNode().getAlias();
-    if (tailNode.equals(alias)) {
-      result.setMeasurementAlias(alias);
-    }
-
-    return result;
+  protected Triple<PartialPath, Boolean, MeasurementSchemaInfo> generateResult(
+      SchemaNode nextMatchedNode) {
+    SchemaMeasurementNode measurementNode = nextMatchedNode.getAsMeasurementNode();
+    MeasurementSchemaInfo measurementSchemaInfo =
+        new MeasurementSchemaInfo(
+            measurementNode.getName(),
+            measurementNode.getSchema(),
+            measurementNode.getAlias(),
+            measurementNode.getTagMap());
+    return Triple.of(
+        getPartialPathFromRootToNode(nextMatchedNode),
+        getParentOfNextMatchedNode().getAsEntityNode().isAligned(),
+        measurementSchemaInfo);
   }
 }

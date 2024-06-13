@@ -24,10 +24,12 @@ import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Objects;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TimeSeriesSchemaSource.mapToString;
@@ -53,6 +55,17 @@ public class TimeseriesContext {
     this.tags = mapToString(schemaInfo.getTagMap());
     Pair<String, String> deadbandInfo =
         MetaUtils.parseDeadbandInfo(schemaInfo.getSchema().getProps());
+    this.deadband = deadbandInfo.left;
+    this.deadbandParameters = deadbandInfo.right;
+  }
+
+  public TimeseriesContext(IMeasurementSchema schema, String alias, Map<String, String> tagMap) {
+    this.dataType = schema.getType().toString();
+    this.alias = alias;
+    this.encoding = schema.getEncodingType().toString();
+    this.compression = schema.getCompressor().toString();
+    this.tags = mapToString(tagMap);
+    Pair<String, String> deadbandInfo = MetaUtils.parseDeadbandInfo(schema.getProps());
     this.deadband = deadbandInfo.left;
     this.deadbandParameters = deadbandInfo.right;
   }

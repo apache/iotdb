@@ -150,6 +150,7 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.TimeRange;
@@ -2882,28 +2883,20 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Map<PartialPath, List<IMeasurementSchema>> deviceToMeasurementSchemaMap = new HashMap<>();
     Map<PartialPath, List<TimeseriesContext>> deviceToTimeseriesSchemaMap = new HashMap<>();
     for (PartialPath pattern : patternTree.getAllPathPatterns()) {
-      List<MeasurementPath> measurementPathList = schemaTree.searchMeasurementPaths(pattern).left;
-      for (MeasurementPath measurementPath : measurementPathList) {
-        boolean isAligned = measurementPath.isUnderAlignedEntity();
-        PartialPath devicePath = measurementPath.getDevicePath();
-        deviceToAlignedMap.put(devicePath, isAligned);
+      List<Triple<PartialPath, Boolean, MeasurementSchemaInfo>> contextList =
+          schemaTree.searchMeasurementSchemaInfo(pattern);
+      for (Triple<PartialPath, Boolean, MeasurementSchemaInfo> item : contextList) {
+        PartialPath devicePath = item.getLeft().getDevicePath();
+        deviceToAlignedMap.put(devicePath, item.getMiddle());
         deviceToMeasurementMap
             .computeIfAbsent(devicePath, k -> new ArrayList<>())
-            .add(measurementPath.getMeasurement());
+            .add(item.getLeft().getMeasurement());
         deviceToMeasurementSchemaMap
             .computeIfAbsent(devicePath, k -> new ArrayList<>())
-            .add(measurementPath.getMeasurementSchema());
+            .add(item.getRight().getSchema());
         deviceToTimeseriesSchemaMap
             .computeIfAbsent(devicePath, k -> new ArrayList<>())
-            .add(
-                new TimeseriesContext(
-                    new MeasurementSchemaInfo(
-                        measurementPath.getMeasurement(),
-                        measurementPath.getMeasurementSchema(),
-                        measurementPath.isMeasurementAliasExists()
-                            ? measurementPath.getMeasurementAlias()
-                            : null,
-                        measurementPath.getTagMap())));
+            .add(new TimeseriesContext(item.getRight()));
       }
     }
 
