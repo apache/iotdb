@@ -1024,8 +1024,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
               // potential stuck
               if (System.currentTimeMillis() - currentTime[0] > 60_000L) {
                 for (final DataNodeWrapper wrapper : senderEnv.getDataNodeWrapperList()) {
-                  // wrapper.dumpJVMSnapshot(String.format("%s_%s", testName.getMethodName(), currentTime[0]));
-                  wrapper.executeJstack(String.format("%s_%s", testName.getMethodName(), currentTime[0]));
+                  // wrapper.dumpJVMSnapshot(String.format("%s_%s", testName.getMethodName(),
+                  // currentTime[0]));
+                  wrapper.executeJstack(
+                      String.format("%s_%s", testName.getMethodName(), currentTime[0]));
                 }
                 currentTime[0] = System.currentTimeMillis();
               }
