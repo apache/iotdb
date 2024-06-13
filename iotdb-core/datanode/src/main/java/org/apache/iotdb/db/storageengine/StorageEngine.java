@@ -713,7 +713,13 @@ public class StorageEngine implements IService {
         region.abortCompaction();
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
-        if (CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+        if (CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+            || CONFIG
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.FAST_IOT_CONSENSUS)
+            || CONFIG
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
           // delete wal
           WALManager.getInstance()
               .deleteWALNode(
@@ -732,16 +738,6 @@ public class StorageEngine implements IService {
               }
             }
           }
-        } else if (CONFIG
-                .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.FAST_IOT_CONSENSUS)
-            || CONFIG
-                .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
-          // delete wal
-          WALManager.getInstance()
-              .deleteWALNode(
-                  region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
         }
       } catch (Exception e) {
         LOGGER.error(
