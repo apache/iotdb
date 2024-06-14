@@ -1130,8 +1130,8 @@ public class PipeConsensusReceiver {
     private final PipeConsensusReceiverMetrics metric;
     private long onSyncedCommitIndex = 0;
     private int connectorRebootTimes = 0;
-    private int WALEventCount = 0;
-    private int tsFileEventCount = 0;
+    private volatile int WALEventCount = 0;
+    private volatile int tsFileEventCount = 0;
 
     public RequestExecutor(PipeConsensusReceiverMetrics metric) {
       this.reqExecutionOrderBuffer =

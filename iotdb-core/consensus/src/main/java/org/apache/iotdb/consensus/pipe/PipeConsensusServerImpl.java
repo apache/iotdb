@@ -300,11 +300,10 @@ public class PipeConsensusServerImpl {
         ((ComparableConsensusRequest) request)
             .setProgressIndex(progressIndexManager.assignProgressIndex(thisNode.getGroupId()));
       }
-
-      long startWriteTime = System.nanoTime();
       TSStatus result = stateMachine.write(request);
       long writeToStateMachineEndTime = System.nanoTime();
-      PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(writeToStateMachineEndTime - startWriteTime);
+      PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(
+          writeToStateMachineEndTime - writeToStateMachineStartTime);
       // statistic the time of writing request into stateMachine
       pipeConsensusServerMetrics.recordUserWriteStateMachineTime(
           writeToStateMachineEndTime - writeToStateMachineStartTime);
