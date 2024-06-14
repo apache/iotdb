@@ -65,11 +65,13 @@ public class PipeConnectorConstant {
 
   public static final String CONNECTOR_IOTDB_BATCH_DELAY_KEY = "connector.batch.max-delay-seconds";
   public static final String SINK_IOTDB_BATCH_DELAY_KEY = "sink.batch.max-delay-seconds";
-  public static final int CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE = 1;
+  public static final int CONNECTOR_IOTDB_PLAIN_BATCH_DELAY_DEFAULT_VALUE = 1;
+  public static final int CONNECTOR_IOTDB_TS_FILE_BATCH_DELAY_DEFAULT_VALUE = 5;
 
   public static final String CONNECTOR_IOTDB_BATCH_SIZE_KEY = "connector.batch.size-bytes";
   public static final String SINK_IOTDB_BATCH_SIZE_KEY = "sink.batch.size-bytes";
-  public static final long CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE = 16 * MB;
+  public static final long CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE = 16 * MB;
+  public static final long CONNECTOR_IOTDB_TS_FILE_BATCH_SIZE_DEFAULT_VALUE = 80 * MB;
 
   public static final String CONNECTOR_IOTDB_USER_KEY = "connector.user";
   public static final String SINK_IOTDB_USER_KEY = "sink.user";
