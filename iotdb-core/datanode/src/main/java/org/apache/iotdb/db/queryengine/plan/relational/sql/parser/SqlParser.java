@@ -44,6 +44,7 @@ import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.misc.Pair;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -93,35 +94,43 @@ public class SqlParser {
     this.initializer = requireNonNull(initializer, "initializer is null");
   }
 
-  public Statement createStatement(String sql) {
-    return (Statement) invokeParser("statement", sql, RelationalSqlParser::singleStatement);
+  public Statement createStatement(String sql, ZoneId zoneId) {
+    return (Statement) invokeParser("statement", sql, RelationalSqlParser::singleStatement, zoneId);
   }
 
-  public Statement createStatement(String sql, NodeLocation location) {
+  public Statement createStatement(String sql, NodeLocation location, ZoneId zoneId) {
     return (Statement)
         invokeParser(
-            "statement", sql, Optional.ofNullable(location), RelationalSqlParser::singleStatement);
+            "statement",
+            sql,
+            Optional.ofNullable(location),
+            RelationalSqlParser::singleStatement,
+            zoneId);
   }
 
-  public Expression createExpression(String expression) {
+  public Expression createExpression(String expression, ZoneId zoneId) {
     return (Expression)
-        invokeParser("expression", expression, RelationalSqlParser::standaloneExpression);
+        invokeParser("expression", expression, RelationalSqlParser::standaloneExpression, zoneId);
   }
 
-  public DataType createType(String expression) {
-    return (DataType) invokeParser("type", expression, RelationalSqlParser::standaloneType);
+  public DataType createType(String expression, ZoneId zoneId) {
+    return (DataType) invokeParser("type", expression, RelationalSqlParser::standaloneType, zoneId);
   }
 
   private Node invokeParser(
-      String name, String sql, Function<RelationalSqlParser, ParserRuleContext> parseFunction) {
-    return invokeParser(name, sql, Optional.empty(), parseFunction);
+      String name,
+      String sql,
+      Function<RelationalSqlParser, ParserRuleContext> parseFunction,
+      ZoneId zoneId) {
+    return invokeParser(name, sql, Optional.empty(), parseFunction, zoneId);
   }
 
   private Node invokeParser(
       String name,
       String sql,
       Optional<NodeLocation> location,
-      Function<RelationalSqlParser, ParserRuleContext> parseFunction) {
+      Function<RelationalSqlParser, ParserRuleContext> parseFunction,
+      ZoneId zoneId) {
     try {
       RelationalSqlLexer lexer =
           new RelationalSqlLexer(new CaseInsensitiveStream(CharStreams.fromString(sql)));
@@ -178,7 +187,7 @@ public class SqlParser {
         throw e;
       }
 
-      return new AstBuilder(location.orElse(null)).visit(tree);
+      return new AstBuilder(location.orElse(null), zoneId).visit(tree);
     } catch (StackOverflowError e) {
       throw new ParsingException(name + " is too large (stack overflow while parsing)");
     }
@@ -215,15 +224,16 @@ public class SqlParser {
           token.getCharPositionInLine() + 1);
     }
 
-    @Override
-    public void exitDigitIdentifier(RelationalSqlParser.DigitIdentifierContext context) {
-      Token token = context.DIGIT_IDENTIFIER().getSymbol();
-      throw new ParsingException(
-          "identifiers must not start with a digit; surround the identifier with double quotes",
-          null,
-          token.getLine(),
-          token.getCharPositionInLine() + 1);
-    }
+    //    @Override
+    //    public void exitDigitIdentifier(RelationalSqlParser.DigitIdentifierContext context) {
+    //      Token token = context.DIGIT_IDENTIFIER().getSymbol();
+    //      throw new ParsingException(
+    //          "identifiers must not start with a digit; surround the identifier with double
+    // quotes",
+    //          null,
+    //          token.getLine(),
+    //          token.getCharPositionInLine() + 1);
+    //    }
 
     @Override
     public void exitNonReserved(RelationalSqlParser.NonReservedContext context) {

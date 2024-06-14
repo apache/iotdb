@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
@@ -56,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupByTime;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingElement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
@@ -110,6 +113,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeRange;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
@@ -123,15 +127,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import com.google.common.collect.ImmutableList;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.apache.tsfile.utils.TimeDuration;
 
 import javax.annotation.Nullable;
 
+import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -147,6 +154,7 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ID;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
+import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
@@ -157,8 +165,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Nullable private final NodeLocation baseLocation;
 
-  AstBuilder(@Nullable NodeLocation baseLocation) {
+  private final ZoneId zoneId;
+
+  AstBuilder(@Nullable NodeLocation baseLocation, ZoneId zoneId) {
     this.baseLocation = baseLocation;
+    this.zoneId = zoneId;
   }
 
   @Override
@@ -686,6 +697,116 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitTimenGrouping(RelationalSqlParser.TimenGroupingContext ctx) {
+    long startTime = 0;
+    long endTime = 0;
+    boolean leftCRightO = true;
+    if (ctx.timeRange() != null) {
+      TimeRange timeRange = (TimeRange) visit(ctx.timeRange());
+      startTime = timeRange.getStartTime();
+      endTime = timeRange.getEndTime();
+      leftCRightO = timeRange.isLeftCRightO();
+    }
+    // Parse time interval
+    TimeDuration interval = DateTimeUtils.constructTimeDuration(ctx.windowInterval.getText());
+    TimeDuration slidingStep = interval;
+    if (ctx.windowStep != null) {
+      slidingStep = DateTimeUtils.constructTimeDuration(ctx.windowStep.getText());
+    }
+
+    if (interval.monthDuration <= 0 && interval.nonMonthDuration <= 0) {
+      throw new SemanticException(
+          "The second parameter time interval should be a positive integer.");
+    }
+
+    if (slidingStep.monthDuration <= 0 && slidingStep.nonMonthDuration <= 0) {
+      throw new SemanticException(
+          "The third parameter time slidingStep should be a positive integer.");
+    }
+    return new GroupByTime(
+        getLocation(ctx), startTime, endTime, interval, slidingStep, leftCRightO);
+  }
+
+  @Override
+  public Node visitLeftClosedRightOpen(RelationalSqlParser.LeftClosedRightOpenContext ctx) {
+    return getTimeRange(ctx.timeValue(0), ctx.timeValue(1), true);
+  }
+
+  @Override
+  public Node visitLeftOpenRightClosed(RelationalSqlParser.LeftOpenRightClosedContext ctx) {
+    return getTimeRange(ctx.timeValue(0), ctx.timeValue(1), false);
+  }
+
+  private TimeRange getTimeRange(
+      RelationalSqlParser.TimeValueContext left,
+      RelationalSqlParser.TimeValueContext right,
+      boolean leftCRightO) {
+    long currentTime = CommonDateTimeUtils.currentTime();
+    long startTime = parseTimeValue(left, currentTime);
+    long endTime = parseTimeValue(right, currentTime);
+    if (startTime >= endTime) {
+      throw new SemanticException("Start time should be smaller than endTime in GroupBy");
+    }
+    return new TimeRange(startTime, endTime, leftCRightO);
+  }
+
+  private long parseTimeValue(RelationalSqlParser.TimeValueContext ctx, long currentTime) {
+    if (ctx.DECIMAL_INTEGER_LITERAL() != null) {
+      try {
+        if (ctx.MINUS() != null) {
+          return -Long.parseLong(ctx.DECIMAL_INTEGER_LITERAL().getText());
+        }
+        return Long.parseLong(ctx.DECIMAL_INTEGER_LITERAL().getText());
+      } catch (NumberFormatException e) {
+        throw new SemanticException(
+            String.format(
+                "Can not parse %s to long value", ctx.DECIMAL_INTEGER_LITERAL().getText()));
+      }
+    } else {
+      return parseDateExpression(ctx.dateExpression(), currentTime);
+    }
+  }
+
+  private Long parseDateExpression(
+      RelationalSqlParser.DateExpressionContext ctx, long currentTime) {
+    long time;
+    time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
+    for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
+      if ("+".equals(ctx.getChild(i).getText())) {
+        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+      } else {
+        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+      }
+    }
+    return time;
+  }
+
+  @Override
+  public Node visitVariationGrouping(RelationalSqlParser.VariationGroupingContext ctx) {
+    return super.visitVariationGrouping(ctx);
+  }
+
+  @Override
+  public Node visitConditionGrouping(RelationalSqlParser.ConditionGroupingContext ctx) {
+    return super.visitConditionGrouping(ctx);
+  }
+
+  @Override
+  public Node visitSessionGrouping(RelationalSqlParser.SessionGroupingContext ctx) {
+    return super.visitSessionGrouping(ctx);
+  }
+
+  @Override
+  public Node visitCountGrouping(RelationalSqlParser.CountGroupingContext ctx) {
+    return super.visitCountGrouping(ctx);
+  }
+
+  @Override
+  public Node visitKeepExpression(RelationalSqlParser.KeepExpressionContext ctx) {
+    return super.visitKeepExpression(ctx);
+  }
+
+  @Override
   public Node visitSingleGroupingSet(RelationalSqlParser.SingleGroupingSetContext ctx) {
     return new SimpleGroupBy(
         getLocation(ctx), visit(ctx.groupingSet().expression(), Expression.class));
@@ -793,61 +914,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     String identifier = token.substring(1, token.length() - 1).replace("\"\"", "\"");
 
     return new Identifier(getLocation(ctx), identifier, true);
-  }
-
-  @Override
-  public Node visitTimenGrouping(RelationalSqlParser.TimenGroupingContext ctx) {
-    return super.visitTimenGrouping(ctx);
-  }
-
-  @Override
-  public Node visitVariationGrouping(RelationalSqlParser.VariationGroupingContext ctx) {
-    return super.visitVariationGrouping(ctx);
-  }
-
-  @Override
-  public Node visitConditionGrouping(RelationalSqlParser.ConditionGroupingContext ctx) {
-    return super.visitConditionGrouping(ctx);
-  }
-
-  @Override
-  public Node visitSessionGrouping(RelationalSqlParser.SessionGroupingContext ctx) {
-    return super.visitSessionGrouping(ctx);
-  }
-
-  @Override
-  public Node visitCountGrouping(RelationalSqlParser.CountGroupingContext ctx) {
-    return super.visitCountGrouping(ctx);
-  }
-
-  @Override
-  public Node visitLeftClosedRightOpen(RelationalSqlParser.LeftClosedRightOpenContext ctx) {
-    return super.visitLeftClosedRightOpen(ctx);
-  }
-
-  @Override
-  public Node visitLeftOpenRightClosed(RelationalSqlParser.LeftOpenRightClosedContext ctx) {
-    return super.visitLeftOpenRightClosed(ctx);
-  }
-
-  @Override
-  public Node visitTimeValue(RelationalSqlParser.TimeValueContext ctx) {
-    return super.visitTimeValue(ctx);
-  }
-
-  @Override
-  public Node visitDateExpression(RelationalSqlParser.DateExpressionContext ctx) {
-    return super.visitDateExpression(ctx);
-  }
-
-  @Override
-  public Node visitDatetimeLiteral(RelationalSqlParser.DatetimeLiteralContext ctx) {
-    return super.visitDatetimeLiteral(ctx);
-  }
-
-  @Override
-  public Node visitKeepExpression(RelationalSqlParser.KeepExpressionContext ctx) {
-    return super.visitKeepExpression(ctx);
   }
 
   // ***************** boolean expressions ******************
@@ -1401,11 +1467,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitIntervalField(RelationalSqlParser.IntervalFieldContext ctx) {
     return super.visitIntervalField(ctx);
-  }
-
-  @Override
-  public Node visitTimeDuration(RelationalSqlParser.TimeDurationContext ctx) {
-    return super.visitTimeDuration(ctx);
   }
 
   // ***************** arguments *****************

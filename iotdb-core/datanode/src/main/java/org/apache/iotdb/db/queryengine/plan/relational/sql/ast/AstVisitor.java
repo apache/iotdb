@@ -391,6 +391,10 @@ public abstract class AstVisitor<R, C> {
     return visitNode(node, context);
   }
 
+  protected R visitGroupByTime(GroupByTime node, C context) {
+    return visitGroupingElement(node, context);
+  }
+
   protected R visitGroupingSets(GroupingSets node, C context) {
     return visitGroupingElement(node, context);
   }
