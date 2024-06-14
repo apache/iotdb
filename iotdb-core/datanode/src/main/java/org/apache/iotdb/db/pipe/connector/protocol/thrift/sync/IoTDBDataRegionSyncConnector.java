@@ -53,6 +53,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -176,19 +177,24 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransfer(final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch)
       throws IOException {
-    if (endPointAndBatch.getRight() instanceof PipeTabletEventPlainBatch) {
-      doTransfer(
-          endPointAndBatch.getLeft(), (PipeTabletEventPlainBatch) endPointAndBatch.getRight());
+    final PipeTabletEventBatch batch = endPointAndBatch.getRight();
+    if (batch instanceof PipeTabletEventPlainBatch) {
+      doTransfer(endPointAndBatch.getLeft(), (PipeTabletEventPlainBatch) batch);
     } else {
       doTransfer(
-          ((PipeTabletEventTsFileBatch) endPointAndBatch.getRight()).deepCopyPipeName2WeightMap(),
-          ((PipeTabletEventTsFileBatch) endPointAndBatch.getRight()).getTsFile(),
+          ((PipeTabletEventTsFileBatch) batch).deepCopyPipeName2WeightMap(),
+          ((PipeTabletEventTsFileBatch) batch).getTsFile(),
           null);
+      try {
+        FileUtils.delete(((PipeTabletEventTsFileBatch) batch).getTsFile());
+      } catch (final IOException e) {
+        LOGGER.warn(
+            "Failed to delete batch file {}, this file should be deleted manually later",
+            ((PipeTabletEventTsFileBatch) batch).getTsFile());
+      }
     }
-    endPointAndBatch
-        .getRight()
-        .decreaseEventsReferenceCount(IoTDBDataRegionSyncConnector.class.getName(), true);
-    endPointAndBatch.getRight().onSuccess();
+    batch.decreaseEventsReferenceCount(IoTDBDataRegionSyncConnector.class.getName(), true);
+    batch.onSuccess();
   }
 
   private void doTransfer(

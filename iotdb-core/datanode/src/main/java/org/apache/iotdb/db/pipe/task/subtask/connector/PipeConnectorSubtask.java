@@ -60,7 +60,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   // to trigger the general event transfer function, causing potentially such as
   // the random delay of the batch transmission. Therefore, here we inject cron events
   // when no event can be pulled.
-  private static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
+  public static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
       new PipeHeartbeatEvent("cron", false);
   private static final long CRON_HEARTBEAT_EVENT_INJECT_INTERVAL_MILLISECONDS =
       PipeConfig.getInstance().getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds() * 1000;

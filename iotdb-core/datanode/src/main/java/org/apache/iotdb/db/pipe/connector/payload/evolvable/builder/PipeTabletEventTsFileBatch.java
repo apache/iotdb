@@ -51,12 +51,13 @@ import java.util.stream.Collectors;
 public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventTsFileBatch.class);
-  private static final String TS_FILE_NAME = "sender_batch.tsfile";
+  private static final String TS_FILE_PREFIX = "sender_batch";
   protected final AtomicReference<File> batchFileDirWithIdSuffix = new AtomicReference<>();
 
   // Used to generate transfer id, which is used to identify a tsfile batch instance
   private static final AtomicLong BATCH_ID_GENERATOR = new AtomicLong(0);
   protected final AtomicLong batchId = new AtomicLong(0);
+  private final AtomicLong tsFileId = new AtomicLong(0);
   private static final List<String> BATCH_FILE_BASE_DIRS =
       Arrays.stream(IoTDBDescriptor.getInstance().getConfig().getPipeReceiverFileDirs())
           .map(fileDir -> fileDir + File.separator + ".batch")
@@ -65,7 +66,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
 
   private final long maxSizeInBytes;
   private TsFileWriter fileWriter;
-  private Map<String, Double> pipeName2WeightMap = new HashMap<>();
+  private final Map<String, Double> pipeName2WeightMap = new HashMap<>();
 
   static {
     try {
@@ -153,7 +154,11 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   protected void constructBatch(final TabletInsertionEvent event)
       throws IOException, WriteProcessException {
     if (Objects.isNull(fileWriter)) {
-      fileWriter = new TsFileWriter(new File(batchFileDirWithIdSuffix.get(), TS_FILE_NAME));
+      fileWriter =
+          new TsFileWriter(
+              new File(
+                  batchFileDirWithIdSuffix.get(),
+                  TS_FILE_PREFIX + "_" + tsFileId.getAndIncrement()));
     }
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final List<Tablet> tablets = ((PipeInsertNodeTabletInsertionEvent) event).convertToTablets();
@@ -175,6 +180,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     }
   }
 
+  // TODO: Change the logic in table model
   private void writeTablet(final Tablet tablet, final boolean isAligned, final String pipeName)
       throws IOException, WriteProcessException {
     if (isAligned) {
@@ -212,13 +218,8 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   @Override
   public synchronized void onSuccess() {
     super.onSuccess();
-    try {
-      FileUtils.delete(fileWriter.getIOWriter().getFile());
-      pipeName2WeightMap.clear();
-    } catch (final IOException e) {
-      throw new PipeException(
-          String.format("Failed to delete tsFile %s,", fileWriter.getIOWriter().getFile()), e);
-    }
+    // Delete file only after this file is transferred
+    pipeName2WeightMap.clear();
     fileWriter = null;
   }
 

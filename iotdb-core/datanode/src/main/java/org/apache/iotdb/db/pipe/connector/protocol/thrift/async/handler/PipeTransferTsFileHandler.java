@@ -25,12 +25,14 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -198,11 +200,16 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
       }
 
       try {
+        // Delete current file when using tsFile as batch
+        if (!(events.get(0) instanceof PipeTsFileInsertionEvent)) {
+          FileUtils.deleteFileIfExist(currentFile);
+        }
         if (reader != null) {
           reader.close();
         }
       } catch (final IOException e) {
-        LOGGER.warn("Failed to close file reader when successfully transferred file.", e);
+        LOGGER.warn(
+            "Failed to close file reader or delete tsFile when successfully transferred file.", e);
       } finally {
         events.forEach(
             event -> event.decreaseReferenceCount(PipeTransferTsFileHandler.class.getName(), true));
@@ -273,11 +280,15 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
     }
 
     try {
+      // Delete current file when using tsFile as batch
+      if (!(events.get(0) instanceof PipeTsFileInsertionEvent)) {
+        FileUtils.deleteFileIfExist(currentFile);
+      }
       if (reader != null) {
         reader.close();
       }
     } catch (final IOException e) {
-      LOGGER.warn("Failed to close file reader when failed to transfer file.", e);
+      LOGGER.warn("Failed to close file reader or delete tsFile when failed to transfer file.", e);
     } finally {
       try {
         if (client != null) {
