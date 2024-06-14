@@ -35,7 +35,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 
@@ -116,40 +115,41 @@ public class IndexScan implements RelationalPlanOptimizer {
                   metadataExpressions,
                   attributeColumns);
       node.setDeviceEntries(deviceEntries);
-
-      String treeModelDatabase = "root." + dbName;
-      Set<IDeviceID> deviceIDSet =
-          deviceEntries.stream().map(DeviceEntry::getDeviceID).collect(Collectors.toSet());
-
-      DataPartition dataPartition =
-          fetchDataPartitionByDevices(
-              deviceIDSet,
-              treeModelDatabase,
-              context.getQueryContext().getGlobalTimeFilter(),
-              context.getPartitionFetcher());
-      context.getAnalysis().setDataPartition(dataPartition);
-
-      if (dataPartition.getDataPartitionMap().size() > 1) {
-        throw new IllegalStateException(
-            "Table model can only process data only in one database yet!");
-      }
-
-      if (dataPartition.getDataPartitionMap().isEmpty()) {
+      if (deviceEntries.isEmpty()) {
         context.getAnalysis().setFinishQueryAfterAnalyze();
       } else {
-        Set<TRegionReplicaSet> regionReplicaSet = new HashSet<>();
-        for (Map.Entry<
-                String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-            e1 : dataPartition.getDataPartitionMap().entrySet()) {
-          for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-              e2 : e1.getValue().entrySet()) {
-            for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> e3 :
-                e2.getValue().entrySet()) {
-              regionReplicaSet.addAll(e3.getValue());
+        String treeModelDatabase = "root." + dbName;
+        DataPartition dataPartition =
+            fetchDataPartitionByDevices(
+                deviceEntries,
+                treeModelDatabase,
+                context.getQueryContext().getGlobalTimeFilter(),
+                context.getPartitionFetcher());
+        context.getAnalysis().setDataPartition(dataPartition);
+
+        if (dataPartition.getDataPartitionMap().size() > 1) {
+          throw new IllegalStateException(
+              "Table model can only process data only in one database yet!");
+        }
+
+        if (dataPartition.getDataPartitionMap().isEmpty()) {
+          context.getAnalysis().setFinishQueryAfterAnalyze();
+        } else {
+          Set<TRegionReplicaSet> regionReplicaSet = new HashSet<>();
+          for (Map.Entry<
+                  String,
+                  Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+              e1 : dataPartition.getDataPartitionMap().entrySet()) {
+            for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+                e2 : e1.getValue().entrySet()) {
+              for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> e3 :
+                  e2.getValue().entrySet()) {
+                regionReplicaSet.addAll(e3.getValue());
+              }
             }
           }
+          node.setRegionReplicaSetList(new ArrayList<>(regionReplicaSet));
         }
-        node.setRegionReplicaSetList(new ArrayList<>(regionReplicaSet));
       }
 
       return node;
@@ -157,7 +157,7 @@ public class IndexScan implements RelationalPlanOptimizer {
   }
 
   private static DataPartition fetchDataPartitionByDevices(
-      Set<IDeviceID> deviceSet,
+      List<DeviceEntry> deviceEntries,
       String database,
       Filter globalTimeFilter,
       IPartitionFetcher partitionFetcher) {
@@ -173,9 +173,10 @@ public class IndexScan implements RelationalPlanOptimizer {
     }
 
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-    for (IDeviceID deviceID : deviceSet) {
+    for (DeviceEntry deviceEntry : deviceEntries) {
       DataPartitionQueryParam queryParam =
-          new DataPartitionQueryParam(deviceID, res.left, res.right.left, res.right.right);
+          new DataPartitionQueryParam(
+              deviceEntry.getDeviceID(), res.left, res.right.left, res.right.right);
       sgNameToQueryParamsMap.computeIfAbsent(database, key -> new ArrayList<>()).add(queryParam);
     }
 
