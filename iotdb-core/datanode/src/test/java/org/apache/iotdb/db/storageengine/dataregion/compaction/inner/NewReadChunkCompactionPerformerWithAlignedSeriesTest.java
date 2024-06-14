@@ -58,6 +58,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
   long originTargetChunkPointNum;
   int originTargetPageSize;
   int originTargetPagePointNum;
+  int originColumnNumInBatch;
 
   @Before
   public void setUp()
@@ -68,11 +69,14 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     originTargetPageSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     originTargetPagePointNum =
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    originColumnNumInBatch =
+        IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
 
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1048576);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(100000);
     TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(64 * 1024);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(10000);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionMaxAlignedSeriesNumInOneBatch(0);
   }
 
   @After
@@ -82,6 +86,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
     TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(originTargetPageSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(originTargetPagePointNum);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setCompactionMaxAlignedSeriesNumInOneBatch(originColumnNumInBatch);
   }
 
   @Test

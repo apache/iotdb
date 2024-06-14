@@ -78,7 +78,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   protected IMeasurementSchema timeSchema;
   protected List<IMeasurementSchema> schemaList;
   protected Map<String, Integer> measurementSchemaListIndexMap;
-  protected ReadChunkAlignedSeriesCompactionFlushController flushPolicy;
+  protected ReadChunkAlignedSeriesCompactionFlushController flushController;
   protected final CompactionTaskSummary summary;
 
   private long lastWriteTimestamp = Long.MIN_VALUE;
@@ -98,7 +98,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     collectValueColumnSchemaList();
     int compactionFileLevel =
         Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
-    flushPolicy = new ReadChunkAlignedSeriesCompactionFlushController(compactionFileLevel);
+    flushController = new ReadChunkAlignedSeriesCompactionFlushController(compactionFileLevel);
     this.chunkWriter = constructAlignedChunkWriter();
   }
 
@@ -117,7 +117,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     this.summary = summary;
     int compactionFileLevel =
         Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
-    flushPolicy = new ReadChunkAlignedSeriesCompactionFlushController(compactionFileLevel);
+    flushController = new ReadChunkAlignedSeriesCompactionFlushController(compactionFileLevel);
     this.timeSchema = timeSchema;
     this.schemaList = valueSchemaList;
     this.measurementSchemaListIndexMap = new HashMap<>();
@@ -224,7 +224,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       valueChunks.set(idx, valueChunk);
     }
     summary.increaseProcessPointNum(pointNum);
-    if (flushPolicy.canCompactCurrentChunkByDirectlyFlush(timeChunk, valueChunks)) {
+    if (flushController.canCompactCurrentChunkByDirectlyFlush(timeChunk, valueChunks)) {
       flushCurrentChunkWriter();
       compactAlignedChunkByFlush(timeChunk, valueChunks);
     } else {
@@ -303,13 +303,13 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
             pageListOfValueColumn.isEmpty() ? getEmptyPage() : pageListOfValueColumn.get(i));
       }
 
-      if (flushPolicy.canCompactCurrentPageByDirectlyFlush(timePage, valuePages)) {
+      if (flushController.canCompactCurrentPageByDirectlyFlush(timePage, valuePages)) {
         chunkWriter.sealCurrentPage();
         compactAlignedPageByFlush(timePage, valuePages);
       } else {
         compactAlignedPageByDeserialize(timePage, valuePages);
       }
-      if (flushPolicy.canFlushCurrentChunkWriter()) {
+      if (flushController.canFlushCurrentChunkWriter()) {
         flushCurrentChunkWriter();
       }
     }

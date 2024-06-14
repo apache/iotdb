@@ -208,7 +208,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
           valueSchemaList);
       int compactionFileLevel =
           Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
-      this.flushPolicy =
+      this.flushController =
           new FirstBatchReadChunkAlignedSeriesCompactionFlushController(compactionFileLevel);
     }
 
@@ -287,7 +287,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
           timeSchema,
           valueSchemaList);
       this.compactionPlan = compactionPlan;
-      this.flushPolicy = new FollowingBatchReadChunkAlignedSeriesCompactionFlushController();
+      this.flushController = new FollowingBatchReadChunkAlignedSeriesCompactionFlushController();
       this.chunkWriter =
           new FollowingBatchCompactionAlignedChunkWriter(schemaList, compactionPlan.get(0));
     }
