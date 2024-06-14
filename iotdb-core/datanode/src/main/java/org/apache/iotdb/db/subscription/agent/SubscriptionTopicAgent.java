@@ -149,4 +149,16 @@ public class SubscriptionTopicAgent {
       releaseReadLock();
     }
   }
+
+  public String getTopicMode(final String topicName) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper
+          .getTopicMeta(topicName)
+          .getConfig()
+          .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE);
+    } finally {
+      releaseReadLock();
+    }
+  }
 }

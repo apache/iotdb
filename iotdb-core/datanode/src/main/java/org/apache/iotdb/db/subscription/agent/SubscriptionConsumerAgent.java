@@ -114,6 +114,13 @@ public class SubscriptionConsumerAgent {
       return;
     }
 
+    // unbind and remove prefetching queue
+    final Set<String> topicsUnsubByGroup =
+        ConsumerGroupMeta.getTopicsUnsubByGroup(metaInAgent, metaFromCoordinator);
+    for (final String topicName : topicsUnsubByGroup) {
+      SubscriptionAgent.broker().unbindPrefetchingQueue(consumerGroupId, topicName, true);
+    }
+
     // TODO: Currently we fully replace the entire ConsumerGroupMeta without carefully checking the
     // changes in its fields.
     consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
