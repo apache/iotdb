@@ -64,6 +64,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CLUSTER_CONFIGURATIONS;
@@ -569,7 +570,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     return System.getProperty(USER_DIR) + File.separator + TARGET + File.separator + getId();
   }
 
-  @Override
   public void dumpJVMSnapshot(String testCaseName) {
     JMXServiceURL url;
     try {
@@ -680,7 +680,23 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   protected abstract MppJVMConfig initVMConfig();
 
   @Override
+  public void executeJstack() {
+    executeJstack(logger::info);
+  }
+
+  @Override
   public void executeJstack(final String testCaseName) {
+    final String fileName =
+        getLogDirPath() + File.separator + testCaseName + "_" + getId() + "-threads.jstack";
+    try (final PrintWriter output = new PrintWriter(fileName)) {
+      executeJstack(output::println);
+    } catch (final IOException e) {
+      logger.warn("IOException occurred when executing Jstack for {}", this.getId(), e);
+    }
+    logger.info("Jstack execution output can be found at {}", fileName);
+  }
+
+  private void executeJstack(Consumer<String> consumer) {
     final long pid = this.getPid();
     if (pid == -1) {
       logger.warn("Failed to get pid for {} before executing Jstack", this.getId());
@@ -688,21 +704,17 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     }
     final String command = "jstack -l " + pid;
     logger.info("Executing command {} for {}", command, this.getId());
-    final String fileName =
-        getLogDirPath() + File.separator + testCaseName + "_" + getId() + "-threads.jstack";
     try {
       final Process process = Runtime.getRuntime().exec(command);
-      try (final PrintWriter output = new PrintWriter(fileName);
-          final BufferedReader reader =
-              new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+      try (final BufferedReader reader =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
         String line;
         while ((line = reader.readLine()) != null) {
-          output.append(line).append(System.lineSeparator());
+          consumer.accept(line);
         }
       }
       final int exitCode = process.waitFor();
       logger.info("Command {} exited with code {}", command, exitCode);
-      logger.info("Jstack execution output can be found at {}", fileName);
     } catch (final IOException e) {
       logger.warn("IOException occurred when executing Jstack for {}", this.getId(), e);
     } catch (final InterruptedException e) {
