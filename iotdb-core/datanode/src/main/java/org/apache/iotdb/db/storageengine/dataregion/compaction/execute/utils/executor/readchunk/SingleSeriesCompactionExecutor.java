@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
@@ -29,7 +28,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
@@ -49,7 +47,7 @@ import java.util.List;
 @SuppressWarnings("squid:S1319")
 public class SingleSeriesCompactionExecutor {
   private IDeviceID device;
-  private PartialPath series;
+  private String measurement;
   private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList;
   private CompactionTsFileWriter fileWriter;
   private TsFileResource targetResource;
@@ -75,13 +73,13 @@ public class SingleSeriesCompactionExecutor {
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
 
   public SingleSeriesCompactionExecutor(
-      PartialPath series,
+      IDeviceID device,
       IMeasurementSchema measurementSchema,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
       CompactionTsFileWriter fileWriter,
       TsFileResource targetResource) {
-    this.device = new PlainDeviceID(series.getDevice());
-    this.series = series;
+    this.device = device;
+    this.measurement = measurementSchema.getMeasurementId();
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
     this.schema = measurementSchema;
@@ -93,13 +91,14 @@ public class SingleSeriesCompactionExecutor {
   }
 
   public SingleSeriesCompactionExecutor(
-      PartialPath series,
+      IDeviceID device,
+      String measurement,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
       CompactionTsFileWriter fileWriter,
       TsFileResource targetResource,
       CompactionTaskSummary summary) {
-    this.device = new PlainDeviceID(series.getDevice());
-    this.series = series;
+    this.device = device;
+    this.measurement = measurement;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
     this.schema = null;
@@ -167,7 +166,7 @@ public class SingleSeriesCompactionExecutor {
     ChunkHeader chunkHeader = chunk.getHeader();
     this.schema =
         new MeasurementSchema(
-            series.getMeasurement(),
+            measurement,
             chunkHeader.getDataType(),
             chunkHeader.getEncodingType(),
             chunkHeader.getCompressionType());
@@ -371,7 +370,7 @@ public class SingleSeriesCompactionExecutor {
   private void checkAndUpdatePreviousTimestamp(long currentWritingTimestamp) {
     if (currentWritingTimestamp <= lastWriteTimestamp) {
       throw new CompactionLastTimeCheckFailedException(
-          series.getFullPath(), currentWritingTimestamp, lastWriteTimestamp);
+          device, measurement, currentWritingTimestamp, lastWriteTimestamp);
     } else {
       lastWriteTimestamp = currentWritingTimestamp;
     }
