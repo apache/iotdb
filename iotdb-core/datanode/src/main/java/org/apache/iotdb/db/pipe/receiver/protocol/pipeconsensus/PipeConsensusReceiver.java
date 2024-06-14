@@ -93,6 +93,7 @@ public class PipeConsensusReceiver {
   private final PipeConsensus pipeConsensus;
   private final ConsensusGroupId consensusGroupId;
   // Used to buffer TsFile when transfer TsFile asynchronously.
+  private final ConsensusPipeName consensusPipeName;
   private final List<String> receiverBaseDirsName;
   private final PipeConsensusTsFileWriterPool pipeConsensusTsFileWriterPool =
       new PipeConsensusTsFileWriterPool();
@@ -105,13 +106,12 @@ public class PipeConsensusReceiver {
       ConsensusPipeName consensusPipeName) {
     this.pipeConsensus = pipeConsensus;
     this.consensusGroupId = consensusGroupId;
+    this.consensusPipeName = consensusPipeName;
 
     // Each pipeConsensusReceiver has its own base directories. for example, a default dir path is
-    // data/datanode/system/pipe/consensus/receiver/__consensus{consensusGroupId}_{leaderDataNodeId}_{followerDataNodeId}
+    // data/datanode/system/pipe/consensus/receiver/__consensus.{consensusGroupId}_{leaderDataNodeId}_{followerDataNodeId}
     receiverBaseDirsName =
-        Arrays.stream(IoTDBDescriptor.getInstance().getConfig().getPipeConsensusReceiverFileDirs())
-            .map(s -> s + File.separator + consensusPipeName)
-            .collect(Collectors.toList());
+        Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getPipeConsensusReceiverFileDirs());
 
     try {
       this.folderManager =
@@ -837,8 +837,15 @@ public class PipeConsensusReceiver {
         throw new DiskSpaceInsufficientException(receiverBaseDirsName);
       }
       // Create a new receiver file dir
-      final File newReceiverDir = new File(receiverFileBaseDir, consensusGroupId.toString());
-      if (!newReceiverDir.exists() && !newReceiverDir.mkdirs()) {
+      final File newReceiverDir = new File(receiverFileBaseDir, consensusPipeName.toString());
+      if (newReceiverDir.exists()) {
+        FileUtils.deleteDirectory(newReceiverDir);
+        LOGGER.info(
+            "PipeConsensus-ConsensusGroupId-{}: Origin receiver file dir {} was deleted.",
+            consensusGroupId,
+            newReceiverDir.getPath());
+      }
+      if (!newReceiverDir.mkdirs()) {
         LOGGER.warn(
             "PipeConsensus-ConsensusGroupId-{}: Failed to create receiver file dir {}.",
             newReceiverDir.getPath(),
