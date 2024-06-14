@@ -108,11 +108,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     return consumerGroupId;
   }
 
-  public Set<String> getSubscribedTopicNames() {
-    return subscribedTopicNames;
-  }
-
-  public boolean hasNoTopicsSubscribed() {
+  /**
+   * @return When <b>only</b> subscribing to the query mode topics, if there is no new data to
+   *     process, return {@code false}; otherwise, return {@code true}.
+   */
+  public boolean hasMoreData() {
     return subscribedTopicNames.isEmpty();
   }
 
