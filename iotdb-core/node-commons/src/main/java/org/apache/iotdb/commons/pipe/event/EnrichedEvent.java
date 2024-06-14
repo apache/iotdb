@@ -252,6 +252,10 @@ public abstract class EnrichedEvent implements Event {
     return creationTime;
   }
 
+  public final boolean isDataRegionEvent() {
+    return !(this instanceof PipeWritePlanEvent) && !(this instanceof PipeSnapshotEvent);
+  }
+
   /**
    * Get the pattern string of this {@link EnrichedEvent}.
    *

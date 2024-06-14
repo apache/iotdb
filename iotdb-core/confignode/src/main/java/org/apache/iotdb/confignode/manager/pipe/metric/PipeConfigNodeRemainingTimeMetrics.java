@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.manager.pipe.metric;
 
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -142,12 +141,7 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     }
   }
 
-  public void markRegionCommit(final PipeTaskRuntimeEnvironment pipeTaskRuntimeEnvironment) {
-    // Filter commit attempt from assigner
-    final String pipeName = pipeTaskRuntimeEnvironment.getPipeName();
-    final long creationTime = pipeTaskRuntimeEnvironment.getCreationTime();
-    final String pipeID = pipeName + "_" + creationTime;
-
+  public void markRegionCommit(final String pipeID, final boolean isDataRegion) {
     if (Objects.isNull(metricService)) {
       return;
     }
@@ -155,12 +149,6 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     if (Objects.isNull(operator)) {
       LOGGER.warn(
           "Failed to mark pipe region commit, RemainingTimeOperator({}) does not exist", pipeID);
-      return;
-    }
-    // Prevent not set pipeName / creation times & potential differences between pipeNames and
-    // creation times
-    if (!Objects.equals(pipeName, operator.getPipeName())
-        || !Objects.equals(creationTime, operator.getCreationTime())) {
       return;
     }
 

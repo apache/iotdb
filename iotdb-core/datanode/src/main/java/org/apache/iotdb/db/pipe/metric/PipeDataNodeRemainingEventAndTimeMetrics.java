@@ -19,17 +19,12 @@
 
 package org.apache.iotdb.db.pipe.metric;
 
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
-import org.apache.iotdb.db.schemaengine.SchemaEngine;
-import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -183,13 +178,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
-  public void markRegionCommit(final PipeTaskRuntimeEnvironment pipeTaskRuntimeEnvironment) {
-    // Filter commit attempt from assigner
-    final String pipeName = pipeTaskRuntimeEnvironment.getPipeName();
-    final int regionId = pipeTaskRuntimeEnvironment.getRegionId();
-    final long creationTime = pipeTaskRuntimeEnvironment.getCreationTime();
-    final String pipeID = pipeName + "_" + creationTime;
-
+  public void markRegionCommit(final String pipeID, final boolean isDataRegion) {
     if (Objects.isNull(metricService)) {
       return;
     }
@@ -201,19 +190,10 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
           pipeID);
       return;
     }
-    // Prevent not set pipeName / creation times & potential differences between pipeNames and
-    // creation times
-    if (!Objects.equals(pipeName, operator.getPipeName())
-        || !Objects.equals(creationTime, operator.getCreationTime())) {
-      return;
-    }
 
-    // Prevent empty region-ids
-    if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
+    if (isDataRegion) {
       operator.markDataRegionCommit();
-    }
-
-    if (SchemaEngine.getInstance().getAllSchemaRegionIds().contains(new SchemaRegionId(regionId))) {
+    } else {
       operator.markSchemaRegionCommit();
     }
   }
