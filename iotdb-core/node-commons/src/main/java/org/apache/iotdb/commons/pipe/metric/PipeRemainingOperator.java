@@ -30,6 +30,7 @@ public abstract class PipeRemainingOperator {
 
   private long lastEmptyTimeStamp = System.currentTimeMillis();
   private long lastNonEmptyTimeStamp = System.currentTimeMillis();
+  protected volatile boolean isStopped = true;
 
   //////////////////////////// Tags ////////////////////////////
 
@@ -57,7 +58,7 @@ public abstract class PipeRemainingOperator {
     lastEmptyTimeStamp = System.currentTimeMillis();
     if (lastEmptyTimeStamp - lastNonEmptyTimeStamp
         >= pipeRemainingTimeCommitAutoSwitchSeconds * 1000) {
-      freezeRate();
+      freezeRate(false);
     }
   }
 
@@ -67,12 +68,22 @@ public abstract class PipeRemainingOperator {
 
     lastNonEmptyTimeStamp = System.currentTimeMillis();
     if (lastNonEmptyTimeStamp - lastEmptyTimeStamp
-        >= pipeRemainingTimeCommitAutoSwitchSeconds * 1000) {
-      thawRate();
+            >= pipeRemainingTimeCommitAutoSwitchSeconds * 1000
+        && !isStopped) {
+      // The stopped pipe's rate should only be thawed by "startPipe" command
+      thawRate(false);
     }
   }
 
-  public abstract void thawRate();
+  public void thawRate(final boolean isStartPipe) {
+    if (isStartPipe) {
+      isStopped = false;
+    }
+  }
 
-  public abstract void freezeRate();
+  public void freezeRate(final boolean isStopPipe) {
+    if (isStopPipe) {
+      isStopped = true;
+    }
+  }
 }

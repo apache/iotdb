@@ -158,7 +158,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
           pipeID);
       return;
     }
-    remainingEventAndTimeOperatorMap.get(pipeID).thawRate();
+    remainingEventAndTimeOperatorMap.get(pipeID).thawRate(true);
   }
 
   public void freezeRate(final String pipeID) {
@@ -168,7 +168,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
           pipeID);
       return;
     }
-    remainingEventAndTimeOperatorMap.get(pipeID).freezeRate();
+    remainingEventAndTimeOperatorMap.get(pipeID).freezeRate(true);
   }
 
   public void deregister(final String pipeID) {
