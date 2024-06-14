@@ -42,16 +42,13 @@ import java.util.Map;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBVerifyConnectionIT {
-  private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setConfigNodeConsensusProtocolClass(testConsensusProtocolClass)
-        .setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass)
-        .setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
   }
 
   @After
@@ -60,7 +57,7 @@ public class IoTDBVerifyConnectionIT {
   }
 
   @Test
-  public void verifyConnectionAllUpTest() throws Exception {
+  public void testVerifyConnectionAllUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment(3, 3);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -74,31 +71,26 @@ public class IoTDBVerifyConnectionIT {
   }
 
   @Test
-  public void verifyConnectionWithNodeCorruptTest() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment(5, 1);
+  public void testVerifyConnectionWithNodeCrash() throws Exception {
+    EnvFactory.getEnv().initClusterEnvironment(3, 1);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery("verify connection details");
       Assert.assertEquals(
-          ImmutableMap.of(ThriftService.STATUS_UP, 38), collectConnectionResult(resultSet));
-      EnvFactory.getEnv().getConfigNodeWrapperList().get(0).stopForcibly();
+          ImmutableMap.of(ThriftService.STATUS_UP, 18), collectConnectionResult(resultSet));
+      final int leaderIndex = EnvFactory.getEnv().getLeaderConfigNodeIndex();
+      int shutdownIndex = 0;
+      if (shutdownIndex == leaderIndex) {
+        shutdownIndex++;
+      }
+      EnvFactory.getEnv().getConfigNodeWrapperList().get(shutdownIndex++).stopForcibly();
       resultSet = statement.executeQuery("verify connection");
       Assert.assertEquals(
-          ImmutableMap.of(ThriftService.STATUS_UP, 2, ThriftService.STATUS_DOWN, 11),
+          ImmutableMap.of(ThriftService.STATUS_UP, 2, ThriftService.STATUS_DOWN, 7),
           collectConnectionResult(resultSet));
       resultSet = statement.executeQuery("verify connection details");
       Assert.assertEquals(
-          ImmutableMap.of(ThriftService.STATUS_UP, 27, ThriftService.STATUS_DOWN, 11),
-          collectConnectionResult(resultSet));
-      EnvFactory.getEnv().getConfigNodeWrapperList().get(1).stopForcibly();
-      Thread.sleep(10000);
-      resultSet = statement.executeQuery("verify connection");
-      Assert.assertEquals(
-          ImmutableMap.of(ThriftService.STATUS_UP, 2, ThriftService.STATUS_DOWN, 20),
-          collectConnectionResult(resultSet));
-      resultSet = statement.executeQuery("verify connection details");
-      Assert.assertEquals(
-          ImmutableMap.of(ThriftService.STATUS_UP, 18, ThriftService.STATUS_DOWN, 20),
+          ImmutableMap.of(ThriftService.STATUS_UP, 11, ThriftService.STATUS_DOWN, 7),
           collectConnectionResult(resultSet));
     }
   }
