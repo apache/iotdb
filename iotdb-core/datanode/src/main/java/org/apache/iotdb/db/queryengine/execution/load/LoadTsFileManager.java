@@ -416,6 +416,7 @@ public class LoadTsFileManager {
         DataRegion dataRegion = entry.getKey().getDataRegion();
         dataRegion.loadNewTsFile(generateResource(writer, progressIndex), true, isGeneratedByPipe);
 
+        // Metrics
         dataRegion
             .getNonSystemDatabaseName()
             .ifPresent(
@@ -435,7 +436,9 @@ public class LoadTsFileManager {
                           Tag.DATABASE.toString(),
                           databaseName,
                           Tag.REGION.toString(),
-                          dataRegion.getDataRegionId());
+                          dataRegion.getDataRegionId(),
+                          Tag.TYPE.toString(),
+                          Metric.LOAD_TSFILE.toString());
                 });
       }
     }

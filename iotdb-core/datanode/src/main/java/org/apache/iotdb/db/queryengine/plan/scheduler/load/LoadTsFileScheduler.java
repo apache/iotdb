@@ -444,7 +444,9 @@ public class LoadTsFileScheduler implements IScheduler {
                       Tag.DATABASE.toString(),
                       databaseName,
                       Tag.REGION.toString(),
-                      dataRegion.getDataRegionId());
+                      dataRegion.getDataRegionId(),
+                      Tag.TYPE.toString(),
+                      Metric.LOAD_TSFILE.toString());
               if (!node.isGeneratedByRemoteConsensusLeader()) {
                 MetricService.getInstance()
                     .count(
@@ -456,7 +458,9 @@ public class LoadTsFileScheduler implements IScheduler {
                         Tag.DATABASE.toString(),
                         databaseName,
                         Tag.REGION.toString(),
-                        dataRegion.getDataRegionId());
+                        dataRegion.getDataRegionId(),
+                        Tag.TYPE.toString(),
+                        Metric.LOAD_TSFILE.toString());
               }
             });
 

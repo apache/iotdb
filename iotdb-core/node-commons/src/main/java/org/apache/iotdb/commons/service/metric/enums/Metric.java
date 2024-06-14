@@ -171,6 +171,7 @@ public enum Metric {
   SUBSCRIPTION_CURRENT_COMMIT_ID("subscription_current_commit_id"),
   SUBSCRIPTION_EVENT_TRANSFER("subscription_event_transfer"),
   // load related
+  LOAD_TSFILE("load_tsfile"),
   LOAD_MEM("load_mem"),
   LOAD_TIME_COST("load_time_cost");
 
