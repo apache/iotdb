@@ -81,6 +81,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -151,12 +152,16 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     }
 
     String device = node.getDevice();
+    // TODO: remove conversion for device and OutputDeviceToQueriedDevicesMap
     List<TRegionReplicaSet> regionReplicaSets =
         !analysis.useLogicalView()
-            ? new ArrayList<>(analysis.getPartitionInfo(device, context.getPartitionTimeFilter()))
+            ? new ArrayList<>(
+                analysis.getPartitionInfo(
+                    Factory.DEFAULT_FACTORY.create(device), context.getPartitionTimeFilter()))
             : new ArrayList<>(
                 analysis.getPartitionInfo(
-                    analysis.getOutputDeviceToQueriedDevicesMap().get(device),
+                    Factory.DEFAULT_FACTORY.create(
+                        analysis.getOutputDeviceToQueriedDevicesMap().get(device)),
                     context.getPartitionTimeFilter()));
 
     List<PlanNode> singleDeviceViewList = new ArrayList<>();
@@ -201,10 +206,13 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           analysis.useLogicalView()
               ? new ArrayList<>(
                   analysis.getPartitionInfo(
-                      analysis.getOutputDeviceToQueriedDevicesMap().get(outputDevice),
+                      Factory.DEFAULT_FACTORY.create(
+                          analysis.getOutputDeviceToQueriedDevicesMap().get(outputDevice)),
                       context.getPartitionTimeFilter()))
               : new ArrayList<>(
-                  analysis.getPartitionInfo(outputDevice, context.getPartitionTimeFilter()));
+                  analysis.getPartitionInfo(
+                      Factory.DEFAULT_FACTORY.create(outputDevice),
+                      context.getPartitionTimeFilter()));
       if (regionReplicaSets.size() > 1 && !existDeviceCrossRegion) {
         existDeviceCrossRegion = true;
         if (analysis.isDeviceViewSpecialProcess() && aggregationCannotUseMergeSort()) {

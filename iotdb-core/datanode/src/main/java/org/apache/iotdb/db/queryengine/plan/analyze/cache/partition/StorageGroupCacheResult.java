@@ -19,20 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.partition;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public abstract class StorageGroupCacheResult<V> {
+public abstract class StorageGroupCacheResult<K, V> {
   /** the result */
   private boolean success = true;
 
   /** the list of devices that miss */
-  private List<String> missedDevices = new ArrayList<>();
+  private List<IDeviceID> missedDevices = new ArrayList<>();
 
   /** result map, Notice: this map will be empty when failed */
-  protected Map<String, V> map = new HashMap<>();
+  protected Map<K, V> map = new HashMap<>();
 
   public boolean isSuccess() {
     return success;
@@ -42,19 +44,19 @@ public abstract class StorageGroupCacheResult<V> {
     this.success = success;
   }
 
-  public List<String> getMissedDevices() {
+  public List<IDeviceID> getMissedDevices() {
     return missedDevices;
   }
 
-  public void addMissedDevice(String missedDevice) {
+  public void addMissedDevice(IDeviceID missedDevice) {
     this.missedDevices.add(missedDevice);
   }
 
-  public Map<String, V> getMap() {
+  public Map<K, V> getMap() {
     return map;
   }
 
-  public abstract void put(String device, String storageGroupName);
+  public abstract void put(IDeviceID device, String storageGroupName);
 
   /** set failed and clear the map */
   public void setFailed() {

@@ -35,7 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 
@@ -118,16 +118,12 @@ public class IndexScan implements RelationalPlanOptimizer {
       node.setDeviceEntries(deviceEntries);
 
       String treeModelDatabase = "root." + dbName;
-      Set<String> deviceSet = new HashSet<>();
-      for (DeviceEntry deviceEntry : deviceEntries) {
-        StringArrayDeviceID arrayDeviceID = (StringArrayDeviceID) deviceEntry.getDeviceID();
-        String device = arrayDeviceID.toString();
-        deviceSet.add("root." + device);
-      }
+      Set<IDeviceID> deviceIDSet =
+          deviceEntries.stream().map(DeviceEntry::getDeviceID).collect(Collectors.toSet());
 
       DataPartition dataPartition =
           fetchDataPartitionByDevices(
-              deviceSet,
+              deviceIDSet,
               treeModelDatabase,
               context.getQueryContext().getGlobalTimeFilter(),
               context.getPartitionFetcher());
@@ -161,7 +157,7 @@ public class IndexScan implements RelationalPlanOptimizer {
   }
 
   private static DataPartition fetchDataPartitionByDevices(
-      Set<String> deviceSet,
+      Set<IDeviceID> deviceSet,
       String database,
       Filter globalTimeFilter,
       IPartitionFetcher partitionFetcher) {
@@ -177,9 +173,9 @@ public class IndexScan implements RelationalPlanOptimizer {
     }
 
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-    for (String devicePath : deviceSet) {
+    for (IDeviceID deviceID : deviceSet) {
       DataPartitionQueryParam queryParam =
-          new DataPartitionQueryParam(devicePath, res.left, res.right.left, res.right.right);
+          new DataPartitionQueryParam(deviceID, res.left, res.right.left, res.right.right);
       sgNameToQueryParamsMap.computeIfAbsent(database, key -> new ArrayList<>()).add(queryParam);
     }
 

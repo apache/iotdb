@@ -58,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
@@ -336,19 +337,19 @@ public class Analysis implements IAnalysis {
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     return dataPartition.getDataRegionReplicaSetWithTimeFilter(
-        seriesPath.getIDeviceID().toString(), timefilter);
+        seriesPath.getIDeviceID(), timefilter);
   }
 
   public List<TRegionReplicaSet> getPartitionInfoByDevice(
       PartialPath devicePath, Filter timefilter) {
     return dataPartition.getDataRegionReplicaSetWithTimeFilter(
-        devicePath.getFullPath(), timefilter);
+        devicePath.getIDeviceIDAsFullDevice(), timefilter);
   }
 
   public TRegionReplicaSet getPartitionInfo(
       PartialPath seriesPath, TTimePartitionSlot tTimePartitionSlot) {
     return dataPartition
-        .getDataRegionReplicaSet(seriesPath.getIDeviceID().toString(), tTimePartitionSlot)
+        .getDataRegionReplicaSet(seriesPath.getIDeviceID(), tTimePartitionSlot)
         .get(0);
   }
 
@@ -358,11 +359,11 @@ public class Analysis implements IAnalysis {
    */
   public List<List<TTimePartitionSlot>> getTimePartitionRange(
       PartialPath seriesPath, Filter timefilter) {
-    return dataPartition.getTimePartitionRange(seriesPath.getIDeviceID().toString(), timefilter);
+    return dataPartition.getTimePartitionRange(seriesPath.getIDeviceID(), timefilter);
   }
 
-  public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {
-    return dataPartition.getDataRegionReplicaSetWithTimeFilter(deviceName, globalTimeFilter);
+  public List<TRegionReplicaSet> getPartitionInfo(IDeviceID deviceID, Filter globalTimeFilter) {
+    return dataPartition.getDataRegionReplicaSetWithTimeFilter(deviceID, globalTimeFilter);
   }
 
   public QueryStatement getQueryStatement() {
