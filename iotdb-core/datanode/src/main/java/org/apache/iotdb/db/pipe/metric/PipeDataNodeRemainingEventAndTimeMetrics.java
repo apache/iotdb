@@ -153,9 +153,9 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
 
   public void thawRate(final String pipeID) {
     if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
-      LOGGER.warn(
-          "Failed to thaw pipe remaining time rate, RemainingEventAndTimeOperator({}) does not exist",
-          pipeID);
+      // In dataNode, the "thawRate" may be called when there are no subtasks, and we call
+      // "startPipe".
+      // We thaw it later in "startPipeTask".
       return;
     }
     remainingEventAndTimeOperatorMap.get(pipeID).thawRate(true);
@@ -163,9 +163,9 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
 
   public void freezeRate(final String pipeID) {
     if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
-      LOGGER.warn(
-          "Failed to freeze pipe remaining time rate, RemainingEventAndTimeOperator({}) does not exist",
-          pipeID);
+      // In dataNode, the "freezeRate" may be called when there are no subtasks, and we call
+      // "stopPipe" after calling "startPipe".
+      // We do nothing because in that case the rate is not thawed initially
       return;
     }
     remainingEventAndTimeOperatorMap.get(pipeID).freezeRate(true);

@@ -238,19 +238,14 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected void startPipe(final String pipeName, final long creationTime) {
-    super.startPipe(pipeName, creationTime);
-
+  protected void thawRate(final String pipeName, final long creationTime) {
     PipeDataNodeRemainingEventAndTimeMetrics.getInstance().thawRate(pipeName + "_" + creationTime);
   }
 
   @Override
-  protected void stopPipe(final String pipeName, final long creationTime) {
-    // Freeze first to guarantee more precise result
+  protected void freezeRate(final String pipeName, final long creationTime) {
     PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
         .freezeRate(pipeName + "_" + creationTime);
-
-    super.stopPipe(pipeName, creationTime);
   }
 
   @Override

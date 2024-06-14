@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
 import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.execution.PipeConfigNodeSubtaskExecutor;
-import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeRemainingTimeMetrics;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.util.Map;
@@ -64,16 +63,11 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
 
   @Override
   public void startSubtask() throws PipeException {
-    // IoTDBConfigRegionExtractor is started by executor because starting
-    // here may cause deadlock when triggering snapshot
     PipeConfigNodeSubtaskExecutor.getInstance().start(subtask.getTaskID());
-    PipeConfigNodeRemainingTimeMetrics.getInstance().thawRate(subtask.getTaskID());
   }
 
   @Override
   public void stopSubtask() throws PipeException {
-    // Freeze first to guarantee more precise result
-    PipeConfigNodeRemainingTimeMetrics.getInstance().freezeRate(subtask.getTaskID());
     PipeConfigNodeSubtaskExecutor.getInstance().stop(subtask.getTaskID());
   }
 
