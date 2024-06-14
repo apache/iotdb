@@ -37,8 +37,12 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
   private CompactChunkPlan compactChunkPlan;
 
   public FollowingBatchCompactionAlignedChunkWriter(
+      IMeasurementSchema timeSchema,
       List<IMeasurementSchema> valueSchemaList, CompactChunkPlan compactChunkPlan) {
-    timeChunkWriter = new FollowingBatchCompactionTimeChunkWriter();
+    timeChunkWriter = new TimeChunkWriter("",
+        timeSchema.getCompressor(),
+        timeSchema.getTimeTSEncoding(),
+        timeSchema.getTimeEncoder());
 
     valueChunkWriterList = new ArrayList<>(valueSchemaList.size());
     for (int i = 0; i < valueSchemaList.size(); i++) {
@@ -51,8 +55,6 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
               valueSchemaList.get(i).getValueEncoder()));
     }
     this.valueIndex = 0;
-    // not used
-    this.remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
     this.compactChunkPlan = compactChunkPlan;
   }
 
@@ -87,6 +89,11 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
       long size, long pointNum, boolean returnTrueIfChunkEmpty) {
     return currentPage >= compactChunkPlan.getPageRecords().size();
   }
+//
+//  @Override
+//  public boolean isEmpty() {
+//    return ((FollowingBatchCompactionTimeChunkWriter) timeChunkWriter).endTime != Long.MIN_VALUE;
+//  }
 
   public int getCurrentPage() {
     return currentPage;
@@ -105,6 +112,10 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
     @Override
     public void write(long time) {
       endTime = time;
+    }
+
+    @Override
+    public void writePageToPageBuffer() {
     }
 
     @Override

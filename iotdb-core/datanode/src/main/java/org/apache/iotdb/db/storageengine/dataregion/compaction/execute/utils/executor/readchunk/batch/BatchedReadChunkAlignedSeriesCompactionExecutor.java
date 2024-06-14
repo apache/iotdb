@@ -289,7 +289,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       this.compactionPlan = compactionPlan;
       this.flushController = new FollowingBatchReadChunkAlignedSeriesCompactionFlushController();
       this.chunkWriter =
-          new FollowingBatchCompactionAlignedChunkWriter(schemaList, compactionPlan.get(0));
+          new FollowingBatchCompactionAlignedChunkWriter(timeSchema, schemaList, compactionPlan.get(0));
     }
 
     @Override
