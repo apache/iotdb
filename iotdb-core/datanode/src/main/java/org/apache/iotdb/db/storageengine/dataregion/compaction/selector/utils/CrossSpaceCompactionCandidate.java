@@ -28,12 +28,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * CrossSpaceCompactionResource manages files and caches of readers to avoid unnecessary object
  * creations and file openings.
  */
 public class CrossSpaceCompactionCandidate {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(CrossSpaceCompactionCandidate.class);
+
   private List<TsFileResourceCandidate> seqFiles;
   private List<TsFileResourceCandidate> unseqFiles;
 
@@ -163,7 +168,38 @@ public class CrossSpaceCompactionCandidate {
     unseqFile.markAsSelected();
     nextSplit = tmpSplit;
     nextUnseqFileIndex++;
+
+    if (!tmpSplit.atLeastOneSeqFileSelected) {
+      // the file only contains exclusive devices (devices that do not exist in other files)
+      // TODO: move this part inside candidate.hasNextSplit()
+      LOGGER.debug("Unseq file {} does not overlap with any seq files.", unseqFile);
+      TsFileResourceCandidate latestSealedSeqFile =
+          getLatestSealedSeqFile(getSeqFileCandidates());
+      if (latestSealedSeqFile == null) {
+        return false;
+      }
+      tmpSplit.addSeqFileIfNotSelected(latestSealedSeqFile);
+    }
     return true;
+  }
+
+  private TsFileResourceCandidate getLatestSealedSeqFile(
+      List<TsFileResourceCandidate> seqResourceCandidateList) {
+    for (int i = seqResourceCandidateList.size() - 1; i >= 0; i--) {
+      TsFileResourceCandidate seqResourceCandidate = seqResourceCandidateList.get(i);
+      if (seqResourceCandidate.resource.isClosed()) {
+        // We must select the latest sealed and valid seq file to compact with, in order to avoid
+        // overlapping of the new compacted files with the subsequent seq files.
+        if (seqResourceCandidate.isValidCandidate) {
+          LOGGER.debug(
+              "Select one valid seq file {} for nonOverlap unseq file to compact with.",
+              seqResourceCandidate.resource);
+          return seqResourceCandidate;
+        }
+        break;
+      }
+    }
+    return null;
   }
 
   private List<TsFileResourceCandidate> copySeqResource(List<TsFileResource> seqFiles) {

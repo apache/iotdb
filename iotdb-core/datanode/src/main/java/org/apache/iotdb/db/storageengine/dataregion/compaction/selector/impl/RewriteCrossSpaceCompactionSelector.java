@@ -193,19 +193,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       List<TsFileResource> targetSeqFiles =
           split.seqFiles.stream().map(c -> c.resource).collect(Collectors.toList());
 
-      if (!split.atLeastOneSeqFileSelected) {
-        LOGGER.debug("Unseq file {} does not overlap with any seq files.", unseqFile);
-        TsFileResourceCandidate latestSealedSeqFile =
-            getLatestSealedSeqFile(candidate.getSeqFileCandidates());
-        if (latestSealedSeqFile == null) {
-          break;
-        }
-        if (!latestSealedSeqFile.selected) {
-          targetSeqFiles.add(latestSealedSeqFile.resource);
-          latestSealedSeqFile.markAsSelected();
-        }
-      }
-
       List<TsFileResource> newSelectedSeqResources = new ArrayList<>(taskResource.getSeqFiles());
       newSelectedSeqResources.addAll(targetSeqFiles);
       List<TsFileResource> newSelectedUnseqResources =
@@ -230,24 +217,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     return taskResource;
   }
 
-  private TsFileResourceCandidate getLatestSealedSeqFile(
-      List<TsFileResourceCandidate> seqResourceCandidateList) {
-    for (int i = seqResourceCandidateList.size() - 1; i >= 0; i--) {
-      TsFileResourceCandidate seqResourceCandidate = seqResourceCandidateList.get(i);
-      if (seqResourceCandidate.resource.isClosed()) {
-        // We must select the latest sealed and valid seq file to compact with, in order to avoid
-        // overlapping of the new compacted files with the subsequent seq files.
-        if (seqResourceCandidate.isValidCandidate) {
-          LOGGER.debug(
-              "Select one valid seq file {} for nonOverlap unseq file to compact with.",
-              seqResourceCandidate.resource);
-          return seqResourceCandidate;
-        }
-        break;
-      }
-    }
-    return null;
-  }
+
 
   // TODO: (xingtanzjr) need to confirm whether we should strictly guarantee the conditions
   // If we guarantee the condition strictly, the smallest collection of cross task resource may not
