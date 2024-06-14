@@ -29,6 +29,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
@@ -158,7 +159,10 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           new TsFileWriter(
               new File(
                   batchFileDirWithIdSuffix.get(),
-                  TS_FILE_PREFIX + "_" + tsFileId.getAndIncrement()));
+                  TS_FILE_PREFIX
+                      + "_"
+                      + tsFileId.getAndIncrement()
+                      + TsFileConstant.TSFILE_SUFFIX));
     }
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final List<Tablet> tablets = ((PipeInsertNodeTabletInsertionEvent) event).convertToTablets();
