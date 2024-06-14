@@ -84,13 +84,13 @@ public class CompactionTestFileWriter implements Closeable {
       CompressionType compressionType)
       throws IOException {
     MeasurementSchema schema =
-        new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType);
+        new MeasurementSchema(measurementName, TSDataType.INT64, encoding, compressionType);
     for (TimeRange timeRange : toGenerateChunkTimeRanges) {
       ChunkWriterImpl chunkWriter = new ChunkWriterImpl(schema);
       currentDeviceStartTime = Math.min(timeRange.getMin(), currentDeviceStartTime);
       currentDeviceEndTime = Math.max(timeRange.getMax(), currentDeviceEndTime);
       for (long time = timeRange.getMin(); time <= timeRange.getMax(); time++) {
-        chunkWriter.write(time, new Random().nextInt());
+        chunkWriter.write(time, time);
       }
       chunkWriter.sealCurrentPage();
       chunkWriter.writeToFileWriter(fileWriter);
@@ -104,7 +104,7 @@ public class CompactionTestFileWriter implements Closeable {
       CompressionType compressionType)
       throws IOException {
     MeasurementSchema schema =
-        new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType);
+        new MeasurementSchema(measurementName, TSDataType.INT64, encoding, compressionType);
     for (TimeRange[] toGenerateChunk : toGenerateChunkPageTimeRanges) {
       ChunkWriterImpl chunkWriter = new ChunkWriterImpl(schema);
       for (TimeRange toGeneratePage : toGenerateChunk) {
@@ -112,7 +112,7 @@ public class CompactionTestFileWriter implements Closeable {
         currentDeviceStartTime = Math.min(toGeneratePage.getMin(), currentDeviceStartTime);
         currentDeviceEndTime = Math.max(toGeneratePage.getMax(), currentDeviceEndTime);
         for (long time = toGeneratePage.getMin(); time <= toGeneratePage.getMax(); time++) {
-          pageWriter.write(time, new Random().nextInt());
+          pageWriter.write(time, time);
         }
         chunkWriter.sealCurrentPage();
       }
@@ -127,7 +127,7 @@ public class CompactionTestFileWriter implements Closeable {
       CompressionType compressionType)
       throws IOException {
     MeasurementSchema schema =
-        new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType);
+        new MeasurementSchema(measurementName, TSDataType.INT64, encoding, compressionType);
     for (TimeRange[][] toGenerateChunk : toGenerateChunkPagePointsTimeRanges) {
       ChunkWriterImpl chunkWriter = new ChunkWriterImpl(schema);
       for (TimeRange[] toGeneratePage : toGenerateChunk) {
@@ -138,7 +138,7 @@ public class CompactionTestFileWriter implements Closeable {
           for (long time = pagePointTimeRange.getMin();
               time <= pagePointTimeRange.getMax();
               time++) {
-            pageWriter.write(time, new Random().nextInt());
+            pageWriter.write(time, time);
           }
         }
         chunkWriter.sealCurrentPage();
@@ -156,7 +156,7 @@ public class CompactionTestFileWriter implements Closeable {
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String measurementName : measurementNames) {
       measurementSchemas.add(
-          new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType));
+          new MeasurementSchema(measurementName, TSDataType.INT64, encoding, compressionType));
     }
     for (TimeRange toGenerateChunk : toGenerateChunkTimeRanges) {
       AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
@@ -167,7 +167,7 @@ public class CompactionTestFileWriter implements Closeable {
         for (int i = 0; i < measurementNames.size(); i++) {
           alignedChunkWriter
               .getValueChunkWriterByIndex(i)
-              .write(time, new Random().nextInt(), false);
+              .write(time, time, false);
         }
       }
       alignedChunkWriter.writeToFileWriter(fileWriter);
@@ -184,7 +184,7 @@ public class CompactionTestFileWriter implements Closeable {
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String measurementName : measurementNames) {
       measurementSchemas.add(
-          new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType));
+          new MeasurementSchema(measurementName, TSDataType.INT64, encoding, compressionType));
     }
     for (TimeRange toGenerateChunk : toGenerateChunkTimeRanges) {
       AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
@@ -195,7 +195,7 @@ public class CompactionTestFileWriter implements Closeable {
         for (int i = 0; i < measurementNames.size(); i++) {
           alignedChunkWriter
               .getValueChunkWriterByIndex(i)
-              .write(time, new Random().nextInt(), nullMeasurements.get(i));
+              .write(time, time, nullMeasurements.get(i));
         }
       }
       alignedChunkWriter.writeToFileWriter(fileWriter);
@@ -211,7 +211,7 @@ public class CompactionTestFileWriter implements Closeable {
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String measurementName : measurementNames) {
       measurementSchemas.add(
-          new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType));
+          new MeasurementSchema(measurementName, TSDataType.INT64, encoding, compressionType));
     }
     for (TimeRange[] toGenerateChunk : toGenerateChunkPageTimeRanges) {
       AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
@@ -226,7 +226,7 @@ public class CompactionTestFileWriter implements Closeable {
             alignedChunkWriter
                 .getValueChunkWriterByIndex(i)
                 .getPageWriter()
-                .write(time, new Random().nextInt(), false);
+                .write(time, time, false);
           }
         }
         alignedChunkWriter.sealCurrentPage();
@@ -245,7 +245,7 @@ public class CompactionTestFileWriter implements Closeable {
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String measurementName : measurementNames) {
       measurementSchemas.add(
-          new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType));
+          new MeasurementSchema(measurementName, TSDataType.INT64, encoding, compressionType));
     }
     for (TimeRange[] toGenerateChunk : toGenerateChunkPageTimeRanges) {
       AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
@@ -260,7 +260,7 @@ public class CompactionTestFileWriter implements Closeable {
             alignedChunkWriter
                 .getValueChunkWriterByIndex(i)
                 .getPageWriter()
-                .write(time, new Random().nextInt(), nullMeasurement.get(i));
+                .write(time, time, nullMeasurement.get(i));
           }
         }
         alignedChunkWriter.sealCurrentPage();
@@ -278,7 +278,7 @@ public class CompactionTestFileWriter implements Closeable {
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String measurementName : measurementNames) {
       measurementSchemas.add(
-          new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType));
+          new MeasurementSchema(measurementName, TSDataType.INT64, encoding, compressionType));
     }
     for (TimeRange[][] toGenerateChunk : toGenerateChunkPageTimeRanges) {
       AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
@@ -292,7 +292,7 @@ public class CompactionTestFileWriter implements Closeable {
               alignedChunkWriter
                   .getValueChunkWriterByIndex(i)
                   .getPageWriter()
-                  .write(time, new Random().nextInt(), false);
+                  .write(time, time, false);
             }
           }
         }
@@ -312,7 +312,7 @@ public class CompactionTestFileWriter implements Closeable {
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String measurementName : measurementNames) {
       measurementSchemas.add(
-          new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType));
+          new MeasurementSchema(measurementName, TSDataType.INT64, encoding, compressionType));
     }
     for (TimeRange[][] toGenerateChunk : toGenerateChunkPageTimeRanges) {
       AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
@@ -326,7 +326,7 @@ public class CompactionTestFileWriter implements Closeable {
               alignedChunkWriter
                   .getValueChunkWriterByIndex(i)
                   .getPageWriter()
-                  .write(time, new Random().nextInt(), nullMeasurements.get(i));
+                  .write(time, time, nullMeasurements.get(i));
             }
           }
         }

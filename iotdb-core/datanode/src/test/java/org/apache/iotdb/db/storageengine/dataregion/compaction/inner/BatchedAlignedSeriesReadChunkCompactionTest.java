@@ -498,8 +498,8 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
         CompactionTaskType.INNER_SEQ,
         COMPACTION_TEST_SG);
     Assert.assertEquals(0, summary.getDirectlyFlushChunkNum());
-    Assert.assertEquals(8, summary.getDeserializeChunkCount());
-    Assert.assertEquals(15, summary.getDirectlyFlushPageCount());
+    Assert.assertEquals(10, summary.getDeserializeChunkCount());
+    Assert.assertEquals(19, summary.getDirectlyFlushPageCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
         CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
@@ -612,8 +612,8 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
         Collections.singletonList(targetResource),
         CompactionTaskType.INNER_SEQ,
         COMPACTION_TEST_SG);
-    Assert.assertEquals(14, summary.getDeserializeChunkCount());
-    Assert.assertEquals(14, summary.getDirectlyFlushPageCount());
+    Assert.assertEquals(18, summary.getDeserializeChunkCount());
+    Assert.assertEquals(18, summary.getDirectlyFlushPageCount());
     Assert.assertEquals(
         CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
         CompactionCheckerUtils.getDataByQuery(
@@ -665,8 +665,8 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
         Collections.singletonList(targetResource),
         CompactionTaskType.INNER_SEQ,
         COMPACTION_TEST_SG);
-    Assert.assertEquals(16, summary.getDeserializeChunkCount());
-    Assert.assertEquals(16, summary.getDeserializePageCount());
+    Assert.assertEquals(20, summary.getDeserializeChunkCount());
+    Assert.assertEquals(20, summary.getDeserializePageCount());
     Assert.assertEquals(
         CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
         CompactionCheckerUtils.getDataByQuery(

@@ -60,7 +60,7 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
 
   @Override
   protected boolean checkPageSizeAndMayOpenANewPage() {
-    long endTime = ((FollowingBatchCompactionTimeChunkWriter) timeChunkWriter).endTime;
+    long endTime = timeChunkWriter.getPageWriter().getStatistics().getEndTime();
     return endTime == compactChunkPlan.getPageRecords().get(currentPage).getTimeRange().getMax();
   }
 
