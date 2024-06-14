@@ -181,12 +181,10 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     if (batch instanceof PipeTabletEventPlainBatch) {
       doTransfer(endPointAndBatch.getLeft(), (PipeTabletEventPlainBatch) batch);
     } else {
-      doTransfer(
-          ((PipeTabletEventTsFileBatch) batch).deepCopyPipeName2WeightMap(),
-          ((PipeTabletEventTsFileBatch) batch).getTsFile(),
-          null);
+      final File tsFile = ((PipeTabletEventTsFileBatch) batch).getTsFile();
+      doTransfer(((PipeTabletEventTsFileBatch) batch).deepCopyPipeName2WeightMap(), tsFile, null);
       try {
-        FileUtils.delete(((PipeTabletEventTsFileBatch) batch).getTsFile());
+        FileUtils.delete(tsFile);
       } catch (final IOException e) {
         LOGGER.warn(
             "Failed to delete batch file {}, this file should be deleted manually later",
