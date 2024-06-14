@@ -43,12 +43,7 @@ public class FollowingBatchAlignedChunkWriter extends AlignedChunkWriterImpl {
       IMeasurementSchema timeSchema,
       List<IMeasurementSchema> valueSchemaList,
       CompactChunkPlan compactChunkPlan) {
-    timeChunkWriter =
-        new TimeChunkWriter(
-            timeSchema.getMeasurementId(),
-            timeSchema.getCompressor(),
-            timeSchema.getEncodingType(),
-            timeSchema.getTimeEncoder());
+    timeChunkWriter = new FollowingBatchTimeChunkWriter();
 
     valueChunkWriterList = new ArrayList<>(valueSchemaList.size());
     for (int i = 0; i < valueSchemaList.size(); i++) {
@@ -61,13 +56,14 @@ public class FollowingBatchAlignedChunkWriter extends AlignedChunkWriterImpl {
               valueSchemaList.get(i).getValueEncoder()));
     }
     this.valueIndex = 0;
+    // not used
     this.remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
     this.compactChunkPlan = compactChunkPlan;
   }
 
   @Override
   protected boolean checkPageSizeAndMayOpenANewPage() {
-    long endTime = timeChunkWriter.getPageWriter().getStatistics().getEndTime();
+    long endTime = ((FollowingBatchTimeChunkWriter) timeChunkWriter).endTime;
     return endTime == compactChunkPlan.getPageRecords().get(currentPage).getTimeRange().getMax();
   }
 
@@ -108,6 +104,8 @@ public class FollowingBatchAlignedChunkWriter extends AlignedChunkWriterImpl {
 
   public static class FollowingBatchTimeChunkWriter extends TimeChunkWriter {
     private long endTime = Long.MIN_VALUE;
+
+    public FollowingBatchTimeChunkWriter() {}
 
     public FollowingBatchTimeChunkWriter(
         String measurementId,

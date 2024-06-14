@@ -358,7 +358,8 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(
         CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
         CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));;
+            Collections.singletonList(targetResource), Collections.emptyList()));
+    ;
   }
 
   @Test
@@ -773,7 +774,8 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(
         CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
         CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));;
+            Collections.singletonList(targetResource), Collections.emptyList()));
+    ;
     Assert.assertEquals(devices.size(), targetResource.buildDeviceTimeIndex().getDevices().size());
   }
 

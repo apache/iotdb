@@ -612,8 +612,8 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
         Collections.singletonList(targetResource),
         CompactionTaskType.INNER_SEQ,
         COMPACTION_TEST_SG);
-    Assert.assertEquals(16, summary.getDeserializeChunkCount());
-    Assert.assertEquals(16, summary.getDirectlyFlushPageCount());
+    Assert.assertEquals(14, summary.getDeserializeChunkCount());
+    Assert.assertEquals(14, summary.getDirectlyFlushPageCount());
     Assert.assertEquals(
         CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
         CompactionCheckerUtils.getDataByQuery(
