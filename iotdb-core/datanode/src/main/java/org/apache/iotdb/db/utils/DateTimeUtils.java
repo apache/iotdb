@@ -815,30 +815,33 @@ public class DateTimeUtils {
     long temp = 0;
     long monthDuration = 0;
     long nonMonthDuration = 0;
-    for (int i = 0; i < duration.length(); i++) {
+    int i = 0;
+    for (; i < duration.length(); i++) {
       char ch = duration.charAt(i);
       if (Character.isDigit(ch)) {
         temp *= 10;
         temp += (ch - '0');
       } else {
-        String unit = String.valueOf(duration.charAt(i));
-        // This is to identify units with two letters.
-        if (i + 1 < duration.length() && !Character.isDigit(duration.charAt(i + 1))) {
+        StringBuilder unit = new StringBuilder(String.valueOf(duration.charAt(i)));
+        i++;
+        // This is to identify units.
+        while (i < duration.length() && !Character.isDigit(duration.charAt(i))) {
+          unit.append(duration.charAt(i));
           i++;
-          unit += duration.charAt(i);
         }
-        if ("y".equals(unit) || "year".equals(unit)) {
+        i--;
+        if ("y".contentEquals(unit) || "year".contentEquals(unit)) {
           monthDuration += temp * 12;
           temp = 0;
           continue;
         }
-        if ("mo".equals(unit) || "month".equals(unit)) {
+        if ("mo".contentEquals(unit) || "month".contentEquals(unit)) {
           monthDuration += temp;
           temp = 0;
           continue;
         }
         nonMonthDuration +=
-            DateTimeUtils.convertDurationStrToLong(-1, temp, unit, currTimePrecision);
+            DateTimeUtils.convertDurationStrToLong(-1, temp, unit.toString(), currTimePrecision);
         temp = 0;
       }
     }
