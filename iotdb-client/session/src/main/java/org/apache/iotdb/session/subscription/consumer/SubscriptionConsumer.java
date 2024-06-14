@@ -406,7 +406,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                   topicNames,
                   topicNameToUnsubscribe);
               unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
-              // TODO: notify user by ex?
               break;
             default:
               LOGGER.warn("unexpected response type: {}", responseType);
