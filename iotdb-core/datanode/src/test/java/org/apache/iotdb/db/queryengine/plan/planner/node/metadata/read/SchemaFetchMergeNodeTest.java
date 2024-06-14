@@ -49,7 +49,9 @@ public class SchemaFetchMergeNodeTest {
             patternTree,
             Collections.emptyMap(),
             true,
-            true);
+            false,
+            true,
+            false);
     schemaFetchMergeNode.addChild(seriesSchemaFetchScanNode);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
     schemaFetchMergeNode.serialize(byteBuffer);

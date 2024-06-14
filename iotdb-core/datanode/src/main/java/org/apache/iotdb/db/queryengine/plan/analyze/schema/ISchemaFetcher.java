@@ -55,7 +55,15 @@ public interface ISchemaFetcher {
    *
    * @return schemaTree without measurement nodes
    */
-  ISchemaTree fetchSchemaInDeviceLevel(
+  ISchemaTree fetchRawSchemaInDeviceLevel(
+      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context);
+
+  /**
+   * Fetch all the schema by the given patternTree in device level
+   *
+   * @return schemaTree without measurement nodes
+   */
+  ISchemaTree fetchRawSchemaInMeasurementLevel(
       PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context);
 
   /**

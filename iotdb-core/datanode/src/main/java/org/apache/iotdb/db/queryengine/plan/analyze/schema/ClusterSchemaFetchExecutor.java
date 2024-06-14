@@ -108,7 +108,9 @@ class ClusterSchemaFetchExecutor {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
     }
     return executeSchemaFetchQuery(
-        new SeriesSchemaFetchStatement(patternTree, templateMap, withTags, withTemplate), context);
+        new SeriesSchemaFetchStatement(
+            patternTree, templateMap, withTags, false, withTemplate, false),
+        context);
   }
 
   /**
@@ -127,7 +129,12 @@ class ClusterSchemaFetchExecutor {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(
             new SeriesSchemaFetchStatement(
-                rawPatternTree, analyzeTemplate(fullPathList), false, withTemplate),
+                rawPatternTree,
+                analyzeTemplate(fullPathList),
+                false,
+                withTemplate,
+                withTemplate,
+                withTemplate),
             context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);
@@ -135,10 +142,21 @@ class ClusterSchemaFetchExecutor {
     return schemaTree;
   }
 
-  ClusterSchemaTree fetchDeviceLevelSchema(
+  ClusterSchemaTree fetchDeviceLevelRawSchema(
       PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
     return executeSchemaFetchQuery(
         new DeviceSchemaFetchStatement(patternTree, authorityScope), context);
+  }
+
+  ClusterSchemaTree fetchMeasurementLevelRawSchema(
+      PathPatternTree patternTree, MPPQueryContext context) {
+    Map<Integer, Template> templateMap = new HashMap<>();
+    List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
+    for (PartialPath pattern : pathPatternList) {
+      templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
+    }
+    return executeSchemaFetchQuery(
+        new SeriesSchemaFetchStatement(patternTree, templateMap, true, true, false, true), context);
   }
 
   ClusterSchemaTree fetchSchemaOfOneDevice(
@@ -197,7 +215,12 @@ class ClusterSchemaFetchExecutor {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(
             new SeriesSchemaFetchStatement(
-                patternTree, analyzeTemplate(patternTree.getAllPathPatterns()), false, true),
+                patternTree,
+                analyzeTemplate(patternTree.getAllPathPatterns()),
+                false,
+                false,
+                true,
+                false),
             context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);

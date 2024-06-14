@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.List;
@@ -49,16 +48,6 @@ public interface ISchemaTree {
    * @return Left: all measurement paths; Right: remaining series offset
    */
   Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern);
-
-  /**
-   * Search all timeseries schema info that match the given path pattern. Only use for active schema
-   * query. Only non-view timeseries will be returned.
-   *
-   * @param pathPattern pattern
-   * @return list of triple [path, isAligned, schema]
-   */
-  List<Triple<PartialPath, Boolean, MeasurementSchemaInfo>> searchMeasurementSchemaInfo(
-      PartialPath pathPattern);
 
   /**
    * Get all device matching the path pattern.

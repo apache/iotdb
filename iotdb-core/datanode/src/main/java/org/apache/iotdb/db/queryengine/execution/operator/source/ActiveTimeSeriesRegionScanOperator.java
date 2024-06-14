@@ -124,7 +124,7 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
         checkAndAppend(schemaInfo.getEncoding(), columnBuilders[4]); // Encoding
         checkAndAppend(schemaInfo.getCompression(), columnBuilders[5]); // Compression
         checkAndAppend(schemaInfo.getTags(), columnBuilders[6]); // Tags
-        columnBuilders[7].appendNull(); // Attributes
+        checkAndAppend(schemaInfo.getAttributes(), columnBuilders[7]); // Attributes
         checkAndAppend(schemaInfo.getDeadband(), columnBuilders[8]); // Description
         checkAndAppend(schemaInfo.getDeadbandParameters(), columnBuilders[9]); // DeadbandParameters
         columnBuilders[10].writeBinary(VIEW_TYPE); // ViewType

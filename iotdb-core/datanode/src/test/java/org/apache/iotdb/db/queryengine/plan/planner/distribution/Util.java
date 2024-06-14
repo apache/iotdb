@@ -306,7 +306,13 @@ public class Util {
       }
 
       @Override
-      public ISchemaTree fetchSchemaInDeviceLevel(
+      public ISchemaTree fetchRawSchemaInDeviceLevel(
+          PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+        return ANALYSIS.getSchemaTree();
+      }
+
+      @Override
+      public ISchemaTree fetchRawSchemaInMeasurementLevel(
           PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
         return ANALYSIS.getSchemaTree();
       }

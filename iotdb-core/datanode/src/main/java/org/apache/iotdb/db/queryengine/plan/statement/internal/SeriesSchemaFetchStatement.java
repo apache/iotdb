@@ -34,18 +34,24 @@ public class SeriesSchemaFetchStatement extends Statement {
   private final PathPatternTree patternTree;
   private final Map<Integer, Template> templateMap;
   private final boolean withTags;
+  private final boolean withAttributes;
   private final boolean withTemplate;
+  private final boolean withAliasForce;
 
   public SeriesSchemaFetchStatement(
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       boolean withTags,
-      boolean withTemplate) {
+      boolean withAttributes,
+      boolean withTemplate,
+      boolean withAliasForce) {
     super();
     this.patternTree = patternTree;
     this.templateMap = templateMap;
     this.withTags = withTags;
+    this.withAttributes = withAttributes;
     this.withTemplate = withTemplate;
+    this.withAliasForce = withAliasForce;
     setType(StatementType.FETCH_SCHEMA);
   }
 
@@ -73,5 +79,13 @@ public class SeriesSchemaFetchStatement extends Statement {
 
   public boolean isWithTemplate() {
     return withTemplate;
+  }
+
+  public boolean isWithAttributes() {
+    return withAttributes;
+  }
+
+  public boolean isWithAliasForce() {
+    return withAliasForce;
   }
 }

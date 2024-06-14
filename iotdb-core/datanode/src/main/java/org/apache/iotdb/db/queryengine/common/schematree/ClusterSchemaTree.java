@@ -33,14 +33,12 @@ import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaMeasurementN
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeDeviceUsingTemplateVisitor;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeDeviceVisitor;
-import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeTimeseriesContextVisitor;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorFactory;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -120,16 +118,6 @@ public class ClusterSchemaTree implements ISchemaTree {
     return searchMeasurementPaths(pathPattern, 0, 0, false);
   }
 
-  @Override
-  public List<Triple<PartialPath, Boolean, MeasurementSchemaInfo>> searchMeasurementSchemaInfo(
-      PartialPath pathPattern) {
-    try (SchemaTreeTimeseriesContextVisitor visitor =
-        SchemaTreeVisitorFactory.createTimeseriesContextVisitor(
-            root, pathPattern, authorityScope)) {
-      return visitor.getAllResult();
-    }
-  }
-
   public List<DeviceSchemaInfo> getAllDevices() {
     return getMatchedDevices(ALL_MATCH_PATTERN);
   }
@@ -167,7 +155,8 @@ public class ClusterSchemaTree implements ISchemaTree {
     } else {
       Template template = templateMap.get(entityNode.getTemplateId());
       if (template != null && template.getSchemaMap().containsKey(measurement)) {
-        return new MeasurementSchemaInfo(measurement, template.getSchema(measurement), null, null);
+        return new MeasurementSchemaInfo(
+            measurement, template.getSchema(measurement), null, null, null);
       }
     }
     return null;
@@ -279,7 +268,8 @@ public class ClusterSchemaTree implements ISchemaTree {
                 measurementPath.getMeasurement(),
                 measurementPath.getMeasurementSchema(),
                 null,
-                measurementPath.getTagMap()),
+                measurementPath.getTagMap(),
+                null),
             measurementPath.isUnderAlignedEntity());
       }
     }
@@ -339,6 +329,7 @@ public class ClusterSchemaTree implements ISchemaTree {
         measurementPath,
         measurementPath.getMeasurementSchema(),
         measurementPath.getTagMap(),
+        null,
         measurementPath.isMeasurementAliasExists() ? measurementPath.getMeasurementAlias() : null,
         measurementPath.isUnderAlignedEntity());
   }
@@ -347,6 +338,7 @@ public class ClusterSchemaTree implements ISchemaTree {
       PartialPath path,
       IMeasurementSchema schema,
       Map<String, String> tagMap,
+      Map<String, String> attributeMap,
       String alias,
       boolean isAligned) {
     String[] nodes = path.getNodes();
@@ -362,6 +354,7 @@ public class ClusterSchemaTree implements ISchemaTree {
             cur.getAsEntityNode().addAliasChild(alias, measurementNode);
           }
           measurementNode.setTagMap(tagMap);
+          measurementNode.setAttributeMap(attributeMap);
           child = measurementNode;
           if (schema.isLogicalView()) {
             this.hasLogicalMeasurementPath = true;

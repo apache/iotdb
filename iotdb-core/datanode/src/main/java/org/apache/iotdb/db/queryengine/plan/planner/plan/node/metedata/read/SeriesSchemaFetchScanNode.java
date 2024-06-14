@@ -42,7 +42,9 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
 
   private final Map<Integer, Template> templateMap;
   private final boolean withTags;
+  private final boolean withAttributes;
   private final boolean withTemplate;
+  private final boolean withAliasForce;
 
   public SeriesSchemaFetchScanNode(
       PlanNodeId id,
@@ -50,11 +52,15 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       boolean withTags,
-      boolean withTemplate) {
+      boolean withAttributes,
+      boolean withTemplate,
+      boolean withAliasForce) {
     super(id, storageGroup, patternTree);
     this.templateMap = templateMap;
     this.withTags = withTags;
+    this.withAttributes = withAttributes;
     this.withTemplate = withTemplate;
+    this.withAliasForce = withAliasForce;
   }
 
   public Map<Integer, Template> getTemplateMap() {
@@ -69,7 +75,14 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
   @Override
   public PlanNode clone() {
     return new SeriesSchemaFetchScanNode(
-        getPlanNodeId(), storageGroup, patternTree, templateMap, withTags, withTemplate);
+        getPlanNodeId(),
+        storageGroup,
+        patternTree,
+        templateMap,
+        withTags,
+        withAttributes,
+        withTemplate,
+        withAliasForce);
   }
 
   @Override
@@ -92,7 +105,9 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
       template.serialize(byteBuffer);
     }
     ReadWriteIOUtils.write(withTags, byteBuffer);
+    ReadWriteIOUtils.write(withAttributes, byteBuffer);
     ReadWriteIOUtils.write(withTemplate, byteBuffer);
+    ReadWriteIOUtils.write(withAliasForce, byteBuffer);
   }
 
   @Override
@@ -105,7 +120,9 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
       template.serialize(stream);
     }
     ReadWriteIOUtils.write(withTags, stream);
+    ReadWriteIOUtils.write(withAttributes, stream);
     ReadWriteIOUtils.write(withTemplate, stream);
+    ReadWriteIOUtils.write(withAliasForce, stream);
   }
 
   public static SeriesSchemaFetchScanNode deserialize(ByteBuffer byteBuffer) {
@@ -121,10 +138,19 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
       templateMap.put(template.getId(), template);
     }
     boolean withTags = ReadWriteIOUtils.readBool(byteBuffer);
+    boolean withAttributes = ReadWriteIOUtils.readBool(byteBuffer);
     boolean withTemplate = ReadWriteIOUtils.readBool(byteBuffer);
+    boolean withAliasForce = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SeriesSchemaFetchScanNode(
-        planNodeId, storageGroup, patternTree, templateMap, withTags, withTemplate);
+        planNodeId,
+        storageGroup,
+        patternTree,
+        templateMap,
+        withTags,
+        withAttributes,
+        withTemplate,
+        withAliasForce);
   }
 
   @Override
@@ -138,5 +164,13 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
 
   public boolean isWithTemplate() {
     return withTemplate;
+  }
+
+  public boolean isWithAttributes() {
+    return withAttributes;
+  }
+
+  public boolean isWithAliasForce() {
+    return withAliasForce;
   }
 }

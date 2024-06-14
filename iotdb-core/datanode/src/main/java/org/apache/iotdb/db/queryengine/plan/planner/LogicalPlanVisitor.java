@@ -789,7 +789,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             seriesSchemaFetchStatement.getPatternTree(),
             seriesSchemaFetchStatement.getTemplateMap(),
             seriesSchemaFetchStatement.isWithTags(),
-            seriesSchemaFetchStatement.isWithTemplate())
+            seriesSchemaFetchStatement.isWithAttributes(),
+            seriesSchemaFetchStatement.isWithTemplate(),
+            seriesSchemaFetchStatement.isWithAliasForce())
         .getRoot();
   }
 

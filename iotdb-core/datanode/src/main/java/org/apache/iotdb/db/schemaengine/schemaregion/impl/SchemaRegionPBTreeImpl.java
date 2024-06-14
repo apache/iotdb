@@ -1031,7 +1031,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       boolean withTags,
-      boolean withTemplate)
+      boolean withAttributes,
+      boolean withTemplate,
+      boolean withAliasForcete)
       throws MetadataException {
     if (patternTree.isContainWildcard()) {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();

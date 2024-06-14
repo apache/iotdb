@@ -45,7 +45,9 @@ public class SeriesSchemaFetchScanNodeTest {
             patternTree,
             Collections.emptyMap(),
             true,
-            true);
+            false,
+            true,
+            false);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
     seriesSchemaFetchScanNode.serialize(byteBuffer);
     byteBuffer.flip();

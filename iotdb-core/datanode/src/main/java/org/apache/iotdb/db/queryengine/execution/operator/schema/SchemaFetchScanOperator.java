@@ -54,7 +54,10 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   private final ISchemaRegion schemaRegion;
   private final boolean withTags;
+  private final boolean withAttributes;
   private final boolean withTemplate;
+  private final boolean withAliasForce;
+
   private final boolean fetchDevice;
   private boolean isFinished = false;
   private final PathPatternTree authorityScope;
@@ -72,9 +75,19 @@ public class SchemaFetchScanOperator implements SourceOperator {
       Map<Integer, Template> templateMap,
       ISchemaRegion schemaRegion,
       boolean withTags,
-      boolean withTemplate) {
+      boolean withAttributes,
+      boolean withTemplate,
+      boolean withAliasForce) {
     return new SchemaFetchScanOperator(
-        planNodeId, context, patternTree, templateMap, schemaRegion, withTags, withTemplate);
+        planNodeId,
+        context,
+        patternTree,
+        templateMap,
+        schemaRegion,
+        withTags,
+        withAttributes,
+        withTemplate,
+        withAliasForce);
   }
 
   public static SchemaFetchScanOperator ofDevice(
@@ -94,14 +107,18 @@ public class SchemaFetchScanOperator implements SourceOperator {
       Map<Integer, Template> templateMap,
       ISchemaRegion schemaRegion,
       boolean withTags,
-      boolean withTemplate) {
+      boolean withAttributes,
+      boolean withTemplate,
+      boolean withAliasForce) {
     this.sourceId = planNodeId;
     this.operatorContext = context;
     this.patternTree = patternTree;
     this.schemaRegion = schemaRegion;
     this.templateMap = templateMap;
     this.withTags = withTags;
+    this.withAttributes = withAttributes;
     this.withTemplate = withTemplate;
+    this.withAliasForce = withAliasForce;
     this.fetchDevice = false;
     this.authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
   }
@@ -118,7 +135,9 @@ public class SchemaFetchScanOperator implements SourceOperator {
     this.schemaRegion = schemaRegion;
     this.templateMap = Collections.emptyMap();
     this.withTags = false;
+    this.withAttributes = false;
     this.withTemplate = false;
+    this.withAliasForce = false;
     this.fetchDevice = true;
     this.authorityScope = authorityScope;
   }
@@ -165,7 +184,8 @@ public class SchemaFetchScanOperator implements SourceOperator {
     ClusterSchemaTree schemaTree =
         fetchDevice
             ? schemaRegion.fetchDeviceSchema(patternTree, authorityScope)
-            : schemaRegion.fetchSeriesSchema(patternTree, templateMap, withTags, withTemplate);
+            : schemaRegion.fetchSeriesSchema(
+                patternTree, templateMap, withTags, withAttributes, withTemplate, withAliasForce);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
