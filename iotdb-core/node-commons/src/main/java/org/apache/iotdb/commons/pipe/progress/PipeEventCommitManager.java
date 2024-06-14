@@ -137,6 +137,14 @@ public class PipeEventCommitManager {
     // Do nothing but make it private.
   }
 
+  public long getGivenConsensusPipeCommitId(String committerKey) {
+    final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
+    if (committer == null) {
+      return 0;
+    }
+    return committer.getCurrentCommitId();
+  }
+
   private static class PipeEventCommitManagerHolder {
     private static final PipeEventCommitManager INSTANCE = new PipeEventCommitManager();
   }
