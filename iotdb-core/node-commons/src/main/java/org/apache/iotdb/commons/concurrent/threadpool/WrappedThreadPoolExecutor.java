@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.JMXService;
-import org.apache.iotdb.pipe.api.exception.PipeConsensusEnqueueException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,8 +126,7 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
         Thread.currentThread().interrupt();
       }
     }
-    // we don't expect to log error msg when it comes to PipeConsensusEnqueueException
-    if (t != null && !disableErrorLog && !(t instanceof PipeConsensusEnqueueException)) {
+    if (t != null && !disableErrorLog) {
       logger.error("Exception in thread pool {}", mbeanName, t);
     }
   }
