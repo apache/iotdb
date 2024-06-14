@@ -21,29 +21,20 @@ package org.apache.iotdb.subscription.it.dual;
 
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.session.subscription.consumer.SubscriptionExecutorServiceManager;
+import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
-import org.junit.rules.TestName;
 
-abstract class AbstractSubscriptionDualIT {
+abstract class AbstractSubscriptionDualIT extends AbstractSubscriptionIT {
 
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;
 
-  @Rule public TestName testName = new TestName();
-
+  @Override
   @Before
   public void setUp() {
-    // set thread name
-    Thread.currentThread().setName(String.format("%s - main", testName.getMethodName()));
-
-    // set thread pools core size
-    SubscriptionExecutorServiceManager.setControlFlowExecutorCorePoolSize(1);
-    SubscriptionExecutorServiceManager.setUpstreamDataFlowExecutorCorePoolSize(1);
-    SubscriptionExecutorServiceManager.setDownstreamDataFlowExecutorCorePoolSize(1);
+    super.setUp();
 
     MultiEnvFactory.createEnv(2);
     senderEnv = MultiEnvFactory.getEnv(0);
@@ -55,7 +46,7 @@ abstract class AbstractSubscriptionDualIT {
     receiverEnv.initClusterEnvironment();
   }
 
-  void setUpConfig() {
+  protected void setUpConfig() {
     // enable auto create schema
     senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
     receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
@@ -65,8 +56,11 @@ abstract class AbstractSubscriptionDualIT {
     receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
   }
 
+  @Override
   @After
-  public final void tearDown() {
+  public void tearDown() {
+    super.tearDown();
+
     senderEnv.cleanClusterEnvironment();
     receiverEnv.cleanClusterEnvironment();
   }

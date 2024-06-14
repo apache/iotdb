@@ -36,14 +36,16 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
-import org.awaitility.Awaitility;
-import org.junit.After;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -53,42 +55,87 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
-public class IoTDBSubscriptionBasicIT {
+public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionBasicIT.class);
 
-  @Before
-  public void setUp() throws Exception {
-    EnvFactory.getEnv().initClusterEnvironment();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+  @Test
+  public void testSubscribeBooleanData() throws Exception {
+    testBasicSubscribeTablets(TSDataType.BOOLEAN, "true", true);
   }
 
   @Test
-  public void testBasicSubscribeTablets() throws Exception {
+  public void testSubscribeIntData() throws Exception {
+    testBasicSubscribeTablets(TSDataType.INT32, "1", 1);
+  }
+
+  @Test
+  public void testSubscribeLongData() throws Exception {
+    testBasicSubscribeTablets(TSDataType.INT64, "1", 1L);
+  }
+
+  @Test
+  public void testSubscribeFloatData() throws Exception {
+    testBasicSubscribeTablets(TSDataType.FLOAT, "1.0", 1.0F);
+  }
+
+  @Test
+  public void testSubscribeDoubleData() throws Exception {
+    testBasicSubscribeTablets(TSDataType.DOUBLE, "1.0", 1.0);
+  }
+
+  @Test
+  public void testSubscribeTextData() throws Exception {
+    testBasicSubscribeTablets(TSDataType.TEXT, "'a'", new Binary("a", TSFileConfig.STRING_CHARSET));
+  }
+
+  @Test
+  public void testSubscribeTimestampData() throws Exception {
+    testBasicSubscribeTablets(TSDataType.TIMESTAMP, "123", 123L);
+  }
+
+  @Test
+  public void testSubscribeDateData() throws Exception {
+    testBasicSubscribeTablets(TSDataType.DATE, "'2011-03-01'", LocalDate.of(2011, 3, 1));
+  }
+
+  @Test
+  public void testSubscribeBlobData() throws Exception {
+    testBasicSubscribeTablets(
+        TSDataType.BLOB, "X'f013'", new Binary(new byte[] {(byte) 0xf0, 0x13}));
+  }
+
+  @Test
+  public void testSubscribeStringData() throws Exception {
+    testBasicSubscribeTablets(
+        TSDataType.STRING, "'a'", new Binary("a", TSFileConfig.STRING_CHARSET));
+  }
+
+  private void testBasicSubscribeTablets(
+      final TSDataType type, final String valueStr, final Object expectedData) throws Exception {
     // Insert some historical data
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement(
+          String.format("create timeseries root.db.d1.s1 %s", type.toString()));
       for (int i = 0; i < 100; ++i) {
         session.executeNonQueryStatement(
-            String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
+            String.format("insert into root.db.d1(time, s1) values (%s, %s)", i, valueStr));
       }
       session.executeNonQueryStatement("flush");
     } catch (final Exception e) {
@@ -132,7 +179,12 @@ public class IoTDBSubscriptionBasicIT {
                     for (final SubscriptionSessionDataSet dataSet :
                         message.getSessionDataSetsHandler()) {
                       while (dataSet.hasNext()) {
-                        dataSet.next();
+                        final RowRecord record = dataSet.next();
+                        Assert.assertEquals(type.toString(), dataSet.getColumnTypes().get(1));
+                        Assert.assertEquals(type, record.getFields().get(0).getDataType());
+                        Assert.assertEquals(expectedData, getValue(type, dataSet.getTablet()));
+                        Assert.assertEquals(
+                            expectedData, record.getFields().get(0).getObjectValue(type));
                         rowCount.addAndGet(1);
                       }
                     }
@@ -146,24 +198,44 @@ public class IoTDBSubscriptionBasicIT {
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            });
+            },
+            String.format("%s - consumer", testName.getMethodName()));
     thread.start();
 
     // Check row count
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
+      AWAIT.untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
       isClosed.set(true);
       thread.join();
+    }
+  }
+
+  private Object getValue(final TSDataType type, final Tablet tablet) {
+    switch (type) {
+      case BOOLEAN:
+        return ((boolean[]) tablet.values[0])[0];
+      case INT32:
+        return ((int[]) tablet.values[0])[0];
+      case INT64:
+      case TIMESTAMP:
+        return ((long[]) tablet.values[0])[0];
+      case FLOAT:
+        return ((float[]) tablet.values[0])[0];
+      case DOUBLE:
+        return ((double[]) tablet.values[0])[0];
+      case TEXT:
+      case BLOB:
+      case STRING:
+        return ((Binary[]) tablet.values[0])[0];
+      case DATE:
+        return ((LocalDate[]) tablet.values[0])[0];
+      default:
+        return null;
     }
   }
 
@@ -242,18 +314,14 @@ public class IoTDBSubscriptionBasicIT {
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            });
+            },
+            String.format("%s - consumer", testName.getMethodName()));
     thread.start();
 
     // Check row count
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
+      AWAIT.untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -379,18 +447,14 @@ public class IoTDBSubscriptionBasicIT {
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            });
+            },
+            String.format("%s - consumer", testName.getMethodName()));
     thread.start();
 
     // Check row count
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
+      AWAIT.untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
       Assert.assertTrue(commitSuccessCount.get() > lastCommitSuccessCount.get());
       Assert.assertEquals(0, commitFailureCount.get());
     } catch (final Exception e) {
@@ -416,12 +480,7 @@ public class IoTDBSubscriptionBasicIT {
     // Check row count
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(200, rowCount.get()));
+      AWAIT.untilAsserted(() -> Assert.assertEquals(200, rowCount.get()));
       Assert.assertTrue(commitSuccessCount.get() > lastCommitSuccessCount.get());
       Assert.assertEquals(0, commitFailureCount.get());
     } catch (final Exception e) {
@@ -486,16 +545,11 @@ public class IoTDBSubscriptionBasicIT {
       consumer.subscribe(topicName);
 
       // The push consumer should automatically poll 10 rows of data by 1 onReceive()
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(
-              () -> {
-                Assert.assertEquals(10, rowCount.get());
-                Assert.assertTrue(onReceiveCount.get() > lastOnReceiveCount.get());
-              });
+      AWAIT.untilAsserted(
+          () -> {
+            Assert.assertEquals(10, rowCount.get());
+            Assert.assertTrue(onReceiveCount.get() > lastOnReceiveCount.get());
+          });
 
       lastOnReceiveCount.set(onReceiveCount.get());
 
@@ -508,16 +562,11 @@ public class IoTDBSubscriptionBasicIT {
         session.executeNonQueryStatement("flush");
       }
 
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(
-              () -> {
-                Assert.assertEquals(20, rowCount.get());
-                Assert.assertTrue(onReceiveCount.get() > lastOnReceiveCount.get());
-              });
+      AWAIT.untilAsserted(
+          () -> {
+            Assert.assertEquals(20, rowCount.get());
+            Assert.assertTrue(onReceiveCount.get() > lastOnReceiveCount.get());
+          });
 
       lastOnReceiveCount.set(onReceiveCount.get());
 
@@ -529,16 +578,11 @@ public class IoTDBSubscriptionBasicIT {
         session.executeNonQueryStatement("flush");
       }
 
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(
-              () -> {
-                Assert.assertEquals(30, rowCount.get());
-                Assert.assertTrue(onReceiveCount.get() > lastOnReceiveCount.get());
-              });
+      AWAIT.untilAsserted(
+          () -> {
+            Assert.assertEquals(30, rowCount.get());
+            Assert.assertTrue(onReceiveCount.get() > lastOnReceiveCount.get());
+          });
 
       consumer.unsubscribe(topicName);
     } catch (final Exception e) {
@@ -624,22 +668,18 @@ public class IoTDBSubscriptionBasicIT {
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            });
+            },
+            String.format("%s - consumer", testName.getMethodName()));
     thread.start();
 
     // Check row count
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(
-              () -> {
-                Assert.assertEquals(100, rowCount.get());
-                Assert.assertEquals((100 + 199) * 100 / 2, timestampSum.get());
-              });
+      AWAIT.untilAsserted(
+          () -> {
+            Assert.assertEquals(100, rowCount.get());
+            Assert.assertEquals((100 + 199) * 100 / 2, timestampSum.get());
+          });
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

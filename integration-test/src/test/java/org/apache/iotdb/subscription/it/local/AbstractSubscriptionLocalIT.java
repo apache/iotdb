@@ -17,47 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.api.type;
+package org.apache.iotdb.subscription.it.local;
 
-public enum Type {
-  /* BOOLEAN */
-  BOOLEAN((byte) 0),
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 
-  /* INT32 */
-  INT32((byte) 1),
+import org.junit.After;
+import org.junit.Before;
 
-  /* INT64 */
-  INT64((byte) 2),
+abstract class AbstractSubscriptionLocalIT extends AbstractSubscriptionIT {
 
-  /* FLOAT */
-  FLOAT((byte) 3),
+  @Override
+  @Before
+  public void setUp() {
+    super.setUp();
 
-  /* DOUBLE */
-  DOUBLE((byte) 4),
-
-  /* TEXT */
-  TEXT((byte) 5),
-
-  /* TsDataType.Vector and TsDataType.UNKNOWN are inner types of TsFile-module, which should not be supported in UDF APIs. To be consistent with TsDataType, the next value starts with 8 */
-  /* TIMESTAMP */
-  TIMESTAMP((byte) 8),
-
-  /* DATE */
-  DATE((byte) 9),
-
-  /* BLOB */
-  BLOB((byte) 10),
-
-  /* STRING */
-  STRING((byte) 11);
-
-  private final byte dataType;
-
-  Type(byte type) {
-    this.dataType = type;
+    EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  public byte getType() {
-    return dataType;
+  @Override
+  @After
+  public void tearDown() {
+    super.tearDown();
+
+    EnvFactory.getEnv().cleanClusterEnvironment();
   }
 }

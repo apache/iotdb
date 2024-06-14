@@ -71,7 +71,11 @@ On Mac machines, the hierarchy of the package should look like this:
 |       +-- thrift
 |           +-- thrift_headers...
 |   +-- lib
-|       +-- libiotdb_session.dylib
+|       +-- Release
+|          +-- libiotdb_session.dylib
+|          +-- parser.dylib
+|          +-- thriftmd.dylib
+|          +-- tutorialgencpp.dylib
 ```
 
 ## Using C++ Client:

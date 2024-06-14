@@ -62,7 +62,7 @@ public class SubscriptionConsumerAgent {
   ////////////////////////// ConsumerGroupMeta Management Entry //////////////////////////
 
   public TPushConsumerGroupMetaRespExceptionMessage handleSingleConsumerGroupMetaChanges(
-      ConsumerGroupMeta consumerGroupMetaFromCoordinator) {
+      final ConsumerGroupMeta consumerGroupMetaFromCoordinator) {
     acquireWriteLock();
     try {
       if (consumerGroupMetaFromCoordinator.isEmpty()) {
@@ -71,7 +71,7 @@ public class SubscriptionConsumerAgent {
         handleSingleConsumerGroupMetaChangesInternal(consumerGroupMetaFromCoordinator);
       }
       return null;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
       final String exceptionMessage =
           String.format(
@@ -121,14 +121,15 @@ public class SubscriptionConsumerAgent {
   }
 
   public TPushConsumerGroupMetaRespExceptionMessage handleConsumerGroupMetaChanges(
-      List<ConsumerGroupMeta> consumerGroupMetasFromCoordinator) {
+      final List<ConsumerGroupMeta> consumerGroupMetasFromCoordinator) {
     acquireWriteLock();
     try {
-      for (ConsumerGroupMeta consumerGroupMetaFromCoordinator : consumerGroupMetasFromCoordinator) {
+      for (final ConsumerGroupMeta consumerGroupMetaFromCoordinator :
+          consumerGroupMetasFromCoordinator) {
         try {
           handleSingleConsumerGroupMetaChangesInternal(consumerGroupMetaFromCoordinator);
           return null;
-        } catch (Exception e) {
+        } catch (final Exception e) {
           final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
           final String exceptionMessage =
               String.format(
@@ -146,12 +147,12 @@ public class SubscriptionConsumerAgent {
   }
 
   public TPushConsumerGroupMetaRespExceptionMessage handleDropConsumerGroup(
-      String consumerGroupId) {
+      final String consumerGroupId) {
     acquireWriteLock();
     try {
       handleDropConsumerGroupInternal(consumerGroupId);
       return null;
-    } catch (Exception e) {
+    } catch (final Exception e) {
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to drop consumer group %s, because %s", consumerGroupId, e);
@@ -163,7 +164,7 @@ public class SubscriptionConsumerAgent {
     }
   }
 
-  private void handleDropConsumerGroupInternal(String consumerGroupId) {
+  private void handleDropConsumerGroupInternal(final String consumerGroupId) {
     if (SubscriptionAgent.broker().isBrokerExist(consumerGroupId)) {
       if (!SubscriptionAgent.broker().dropBroker(consumerGroupId)) {
         final String exceptionMessage =
@@ -180,7 +181,7 @@ public class SubscriptionConsumerAgent {
     consumerGroupMetaKeeper.removeConsumerGroupMeta(consumerGroupId);
   }
 
-  public boolean isConsumerExisted(String consumerGroupId, String consumerId) {
+  public boolean isConsumerExisted(final String consumerGroupId, final String consumerId) {
     acquireReadLock();
     try {
       final ConsumerGroupMeta consumerGroupMeta =
@@ -191,7 +192,8 @@ public class SubscriptionConsumerAgent {
     }
   }
 
-  public Set<String> getTopicsSubscribedByConsumer(String consumerGroupId, String consumerId) {
+  public Set<String> getTopicsSubscribedByConsumer(
+      final String consumerGroupId, final String consumerId) {
     acquireReadLock();
     try {
       return consumerGroupMetaKeeper.getTopicsSubscribedByConsumer(consumerGroupId, consumerId);

@@ -64,8 +64,8 @@ import static org.apache.iotdb.db.it.utils.TestUtils.grantUserSystemPrivileges;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IOTDBLoadTsFileIT {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IOTDBLoadTsFileIT.class);
+public class IoTDBLoadTsFileIT {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLoadTsFileIT.class);
   private static final long PARTITION_INTERVAL = 10 * 1000L;
   private static final int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(300);
   private static final long loadTsFileAnalyzeSchemaMemorySizeInBytes = 10 * 1024L;
@@ -95,8 +95,8 @@ public class IOTDBLoadTsFileIT {
   }
 
   private void registerSchema() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
 
       statement.execute("CREATE DATABASE " + SchemaConfig.STORAGE_GROUP_0);
       statement.execute("CREATE DATABASE " + SchemaConfig.STORAGE_GROUP_1);
@@ -113,19 +113,24 @@ public class IOTDBLoadTsFileIT {
                   SchemaConfig.MEASUREMENT_10,
                   SchemaConfig.MEASUREMENT_11,
                   SchemaConfig.MEASUREMENT_12,
-                  SchemaConfig.MEASUREMENT_13)));
+                  SchemaConfig.MEASUREMENT_13,
+                  SchemaConfig.MEASUREMENT_14,
+                  SchemaConfig.MEASUREMENT_15,
+                  SchemaConfig.MEASUREMENT_16,
+                  SchemaConfig.MEASUREMENT_17)));
 
       statement.execute(convert2SQL(SchemaConfig.DEVICE_2, SchemaConfig.MEASUREMENT_20));
 
       statement.execute(convert2SQL(SchemaConfig.DEVICE_3, SchemaConfig.MEASUREMENT_30));
 
       statement.execute(
-          convert2AlignedSQL(SchemaConfig.DEVICE_4, Arrays.asList(SchemaConfig.MEASUREMENT_40)));
+          convert2AlignedSQL(
+              SchemaConfig.DEVICE_4, Collections.singletonList(SchemaConfig.MEASUREMENT_40)));
     }
   }
 
-  private String convert2SQL(String device, MeasurementSchema schema) {
-    String sql =
+  private String convert2SQL(final String device, final MeasurementSchema schema) {
+    final String sql =
         String.format(
             "create timeseries %s %s",
             new Path(device, schema.getMeasurementId(), true).getFullPath(),
@@ -134,10 +139,10 @@ public class IOTDBLoadTsFileIT {
     return sql;
   }
 
-  private String convert2AlignedSQL(String device, List<MeasurementSchema> schemas) {
+  private String convert2AlignedSQL(final String device, final List<MeasurementSchema> schemas) {
     String sql = String.format("create aligned timeseries %s(", device);
     for (int i = 0; i < schemas.size(); i++) {
-      MeasurementSchema schema = schemas.get(i);
+      final MeasurementSchema schema = schemas.get(i);
       sql += (String.format("%s %s", schema.getMeasurementId(), schema.getType().name()));
       sql += (i == schemas.size() - 1 ? ")" : ",");
     }
@@ -146,17 +151,17 @@ public class IOTDBLoadTsFileIT {
   }
 
   private void deleteSG() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
 
       statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_0));
       statement.execute(String.format("delete database %s", SchemaConfig.STORAGE_GROUP_1));
-    } catch (IoTDBSQLException ignored) {
+    } catch (final IoTDBSQLException ignored) {
     }
   }
 
   private boolean deleteDir() {
-    for (File file : tmpDir.listFiles()) {
+    for (final File file : tmpDir.listFiles()) {
       if (!file.delete()) {
         return false;
       }
@@ -168,49 +173,59 @@ public class IOTDBLoadTsFileIT {
   public void testLoad() throws Exception {
     registerSchema();
 
-    long writtenPoint1 = 0;
+    final long writtenPoint1;
     // device 0, device 1, sg 0
-    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_0,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_00,
               SchemaConfig.MEASUREMENT_01,
               SchemaConfig.MEASUREMENT_02,
-              SchemaConfig.MEASUREMENT_03));
+              SchemaConfig.MEASUREMENT_03,
+              SchemaConfig.MEASUREMENT_04,
+              SchemaConfig.MEASUREMENT_05,
+              SchemaConfig.MEASUREMENT_06,
+              SchemaConfig.MEASUREMENT_07));
       generator.registerAlignedTimeseries(
           SchemaConfig.DEVICE_1,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_10,
               SchemaConfig.MEASUREMENT_11,
               SchemaConfig.MEASUREMENT_12,
-              SchemaConfig.MEASUREMENT_13));
+              SchemaConfig.MEASUREMENT_13,
+              SchemaConfig.MEASUREMENT_14,
+              SchemaConfig.MEASUREMENT_15,
+              SchemaConfig.MEASUREMENT_16,
+              SchemaConfig.MEASUREMENT_17));
       generator.generateData(SchemaConfig.DEVICE_0, 100000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_1, 100000, PARTITION_INTERVAL / 10_000, true);
       writtenPoint1 = generator.getTotalNumber();
     }
 
-    long writtenPoint2 = 0;
+    final long writtenPoint2;
     // device 2, device 3, device4, sg 1
-    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "2-0-0-0.tsfile"))) {
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "2-0-0-0.tsfile"))) {
       generator.registerTimeseries(
-          SchemaConfig.DEVICE_2, Arrays.asList(SchemaConfig.MEASUREMENT_20));
+          SchemaConfig.DEVICE_2, Collections.singletonList(SchemaConfig.MEASUREMENT_20));
       generator.registerTimeseries(
-          SchemaConfig.DEVICE_3, Arrays.asList(SchemaConfig.MEASUREMENT_30));
+          SchemaConfig.DEVICE_3, Collections.singletonList(SchemaConfig.MEASUREMENT_30));
       generator.registerAlignedTimeseries(
-          SchemaConfig.DEVICE_4, Arrays.asList(SchemaConfig.MEASUREMENT_40));
+          SchemaConfig.DEVICE_4, Collections.singletonList(SchemaConfig.MEASUREMENT_40));
       generator.generateData(SchemaConfig.DEVICE_2, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_3, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_4, 10000, PARTITION_INTERVAL / 10_000, true);
       writtenPoint2 = generator.getTotalNumber();
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
 
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
-      try (ResultSet resultSet =
+      try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
         if (resultSet.next()) {
           long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
@@ -223,9 +238,9 @@ public class IOTDBLoadTsFileIT {
       }
     }
 
-    // try delete after loading. Expect no deadlock
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    // Try to delete after loading. Expect no deadlock
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
       statement.execute(
           String.format(
               "delete timeseries %s.%s",
@@ -235,29 +250,38 @@ public class IOTDBLoadTsFileIT {
 
   @Test
   public void testLoadWithExtendTemplate() throws Exception {
-    long writtenPoint1 = 0;
+    final long writtenPoint1;
     // device 0, device 1, sg 0
-    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_0,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_00,
               SchemaConfig.MEASUREMENT_01,
               SchemaConfig.MEASUREMENT_02,
-              SchemaConfig.MEASUREMENT_03));
+              SchemaConfig.MEASUREMENT_03,
+              SchemaConfig.MEASUREMENT_04,
+              SchemaConfig.MEASUREMENT_05,
+              SchemaConfig.MEASUREMENT_06,
+              SchemaConfig.MEASUREMENT_07));
       generator.registerAlignedTimeseries(
           SchemaConfig.DEVICE_1,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_10,
               SchemaConfig.MEASUREMENT_11,
               SchemaConfig.MEASUREMENT_12,
-              SchemaConfig.MEASUREMENT_13));
+              SchemaConfig.MEASUREMENT_13,
+              SchemaConfig.MEASUREMENT_14,
+              SchemaConfig.MEASUREMENT_15,
+              SchemaConfig.MEASUREMENT_16,
+              SchemaConfig.MEASUREMENT_17));
       generator.generateData(SchemaConfig.DEVICE_0, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_1, 10000, PARTITION_INTERVAL / 10_000, true);
       writtenPoint1 = generator.getTotalNumber();
     }
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
 
       statement.execute("create database root.sg.test_0");
       statement.execute(
@@ -266,17 +290,17 @@ public class IOTDBLoadTsFileIT {
 
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
-      try (ResultSet resultSet =
+      try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
         if (resultSet.next()) {
-          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
         } else {
           Assert.fail("This ResultSet is empty.");
         }
       }
 
-      Set<String> nodes =
+      final Set<String> nodes =
           new HashSet<>(
               Arrays.asList(
                   "lat",
@@ -284,14 +308,18 @@ public class IOTDBLoadTsFileIT {
                   SchemaConfig.MEASUREMENT_00.getMeasurementId(),
                   SchemaConfig.MEASUREMENT_01.getMeasurementId(),
                   SchemaConfig.MEASUREMENT_02.getMeasurementId(),
-                  SchemaConfig.MEASUREMENT_03.getMeasurementId()));
-      try (ResultSet resultSet = statement.executeQuery("show nodes in schema template t1")) {
+                  SchemaConfig.MEASUREMENT_03.getMeasurementId(),
+                  SchemaConfig.MEASUREMENT_04.getMeasurementId(),
+                  SchemaConfig.MEASUREMENT_05.getMeasurementId(),
+                  SchemaConfig.MEASUREMENT_06.getMeasurementId(),
+                  SchemaConfig.MEASUREMENT_07.getMeasurementId()));
+      try (final ResultSet resultSet = statement.executeQuery("show nodes in schema template t1")) {
         while (resultSet.next()) {
           String device = resultSet.getString(ColumnHeaderConstant.CHILD_NODES);
           Assert.assertTrue(nodes.remove(device));
         }
         Assert.assertTrue(nodes.isEmpty());
-      } catch (Exception e) {
+      } catch (final Exception e) {
         e.printStackTrace();
         Assert.fail("Parse result set error.");
       }
@@ -300,67 +328,77 @@ public class IOTDBLoadTsFileIT {
 
   @Test
   public void testLoadWithAutoRegister() throws Exception {
-    long writtenPoint1 = 0;
+    final long writtenPoint1;
     // device 0, device 1, sg 0
-    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_0,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_00,
               SchemaConfig.MEASUREMENT_01,
               SchemaConfig.MEASUREMENT_02,
-              SchemaConfig.MEASUREMENT_03));
+              SchemaConfig.MEASUREMENT_03,
+              SchemaConfig.MEASUREMENT_04,
+              SchemaConfig.MEASUREMENT_05,
+              SchemaConfig.MEASUREMENT_06,
+              SchemaConfig.MEASUREMENT_07));
       generator.registerAlignedTimeseries(
           SchemaConfig.DEVICE_1,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_10,
               SchemaConfig.MEASUREMENT_11,
               SchemaConfig.MEASUREMENT_12,
-              SchemaConfig.MEASUREMENT_13));
+              SchemaConfig.MEASUREMENT_13,
+              SchemaConfig.MEASUREMENT_14,
+              SchemaConfig.MEASUREMENT_15,
+              SchemaConfig.MEASUREMENT_16,
+              SchemaConfig.MEASUREMENT_17));
       generator.generateData(SchemaConfig.DEVICE_0, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_1, 10000, PARTITION_INTERVAL / 10_000, true);
       writtenPoint1 = generator.getTotalNumber();
     }
 
-    long writtenPoint2 = 0;
+    final long writtenPoint2;
     // device 2, device 3, device4, sg 1
-    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "2-0-0-0.tsfile"))) {
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "2-0-0-0.tsfile"))) {
       generator.registerTimeseries(
-          SchemaConfig.DEVICE_2, Arrays.asList(SchemaConfig.MEASUREMENT_20));
+          SchemaConfig.DEVICE_2, Collections.singletonList(SchemaConfig.MEASUREMENT_20));
       generator.registerTimeseries(
-          SchemaConfig.DEVICE_3, Arrays.asList(SchemaConfig.MEASUREMENT_30));
+          SchemaConfig.DEVICE_3, Collections.singletonList(SchemaConfig.MEASUREMENT_30));
       generator.registerAlignedTimeseries(
-          SchemaConfig.DEVICE_4, Arrays.asList(SchemaConfig.MEASUREMENT_40));
+          SchemaConfig.DEVICE_4, Collections.singletonList(SchemaConfig.MEASUREMENT_40));
       generator.generateData(SchemaConfig.DEVICE_2, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_3, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_4, 10000, PARTITION_INTERVAL / 10_000, true);
       writtenPoint2 = generator.getTotalNumber();
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
 
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
-      try (ResultSet resultSet =
+      try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
         if (resultSet.next()) {
-          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
-          long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
+          final long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
           Assert.assertEquals(writtenPoint2, sg2Count);
         } else {
           Assert.fail("This ResultSet is empty.");
         }
       }
 
-      Map<String, String> isAligned = new HashMap<>();
+      final Map<String, String> isAligned = new HashMap<>();
       isAligned.put(SchemaConfig.DEVICE_0, "false");
       isAligned.put(SchemaConfig.DEVICE_1, "true");
       isAligned.put(SchemaConfig.DEVICE_2, "false");
       isAligned.put(SchemaConfig.DEVICE_3, "false");
       isAligned.put(SchemaConfig.DEVICE_4, "true");
-      try (ResultSet resultSet = statement.executeQuery("show devices")) {
+      try (final ResultSet resultSet = statement.executeQuery("show devices")) {
         int size = 0;
         while (resultSet.next()) {
           size += 1;
@@ -369,7 +407,7 @@ public class IOTDBLoadTsFileIT {
               isAligned.get(device), resultSet.getString(ColumnHeaderConstant.IS_ALIGNED));
         }
         Assert.assertEquals(isAligned.size(), size);
-      } catch (Exception e) {
+      } catch (final Exception e) {
         e.printStackTrace();
         Assert.fail("Parse result set error.");
       }
@@ -381,33 +419,43 @@ public class IOTDBLoadTsFileIT {
     createUser("test", "test123");
 
     // device 0, device 1, sg 0
-    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "test1-0-0-0.tsfile"))) {
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "test1-0-0-0.tsfile"))) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_0,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_00,
               SchemaConfig.MEASUREMENT_01,
               SchemaConfig.MEASUREMENT_02,
-              SchemaConfig.MEASUREMENT_03));
+              SchemaConfig.MEASUREMENT_03,
+              SchemaConfig.MEASUREMENT_04,
+              SchemaConfig.MEASUREMENT_05,
+              SchemaConfig.MEASUREMENT_06,
+              SchemaConfig.MEASUREMENT_07));
       generator.registerAlignedTimeseries(
           SchemaConfig.DEVICE_1,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_10,
               SchemaConfig.MEASUREMENT_11,
               SchemaConfig.MEASUREMENT_12,
-              SchemaConfig.MEASUREMENT_13));
+              SchemaConfig.MEASUREMENT_13,
+              SchemaConfig.MEASUREMENT_14,
+              SchemaConfig.MEASUREMENT_15,
+              SchemaConfig.MEASUREMENT_16,
+              SchemaConfig.MEASUREMENT_17));
       generator.generateData(SchemaConfig.DEVICE_0, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_1, 10000, PARTITION_INTERVAL / 10_000, true);
     }
 
     // device 2, device 3, device4, sg 1
-    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "test2-0-0-0.tsfile"))) {
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "test2-0-0-0.tsfile"))) {
       generator.registerTimeseries(
-          SchemaConfig.DEVICE_2, Arrays.asList(SchemaConfig.MEASUREMENT_20));
+          SchemaConfig.DEVICE_2, Collections.singletonList(SchemaConfig.MEASUREMENT_20));
       generator.registerTimeseries(
-          SchemaConfig.DEVICE_3, Arrays.asList(SchemaConfig.MEASUREMENT_30));
+          SchemaConfig.DEVICE_3, Collections.singletonList(SchemaConfig.MEASUREMENT_30));
       generator.registerAlignedTimeseries(
-          SchemaConfig.DEVICE_4, Arrays.asList(SchemaConfig.MEASUREMENT_40));
+          SchemaConfig.DEVICE_4, Collections.singletonList(SchemaConfig.MEASUREMENT_40));
       generator.generateData(SchemaConfig.DEVICE_2, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_3, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_4, 10000, PARTITION_INTERVAL / 10_000, true);
@@ -443,33 +491,41 @@ public class IOTDBLoadTsFileIT {
 
   @Test
   public void testLoadWithOnSuccess() throws Exception {
-    File file1 = new File(tmpDir, "1-0-0-0.tsfile");
-    File file2 = new File(tmpDir, "2-0-0-0.tsfile");
+    final File file1 = new File(tmpDir, "1-0-0-0.tsfile");
+    final File file2 = new File(tmpDir, "2-0-0-0.tsfile");
     long writtenPoint1 = 0;
     // device 0, device 1, sg 0
-    try (TsFileGenerator generator = new TsFileGenerator(file1)) {
+    try (final TsFileGenerator generator = new TsFileGenerator(file1)) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_0,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_00,
               SchemaConfig.MEASUREMENT_01,
               SchemaConfig.MEASUREMENT_02,
-              SchemaConfig.MEASUREMENT_03));
+              SchemaConfig.MEASUREMENT_03,
+              SchemaConfig.MEASUREMENT_04,
+              SchemaConfig.MEASUREMENT_05,
+              SchemaConfig.MEASUREMENT_06,
+              SchemaConfig.MEASUREMENT_07));
       generator.registerAlignedTimeseries(
           SchemaConfig.DEVICE_1,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_10,
               SchemaConfig.MEASUREMENT_11,
               SchemaConfig.MEASUREMENT_12,
-              SchemaConfig.MEASUREMENT_13));
+              SchemaConfig.MEASUREMENT_13,
+              SchemaConfig.MEASUREMENT_14,
+              SchemaConfig.MEASUREMENT_15,
+              SchemaConfig.MEASUREMENT_16,
+              SchemaConfig.MEASUREMENT_17));
       generator.generateData(SchemaConfig.DEVICE_0, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_1, 10000, PARTITION_INTERVAL / 10_000, true);
       writtenPoint1 = generator.getTotalNumber();
     }
 
-    long writtenPoint2 = 0;
+    final long writtenPoint2;
     // device 2, device 3, device4, sg 1
-    try (TsFileGenerator generator = new TsFileGenerator(file2)) {
+    try (final TsFileGenerator generator = new TsFileGenerator(file2)) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_2, Arrays.asList(SchemaConfig.MEASUREMENT_20));
       generator.registerTimeseries(
@@ -482,16 +538,16 @@ public class IOTDBLoadTsFileIT {
       writtenPoint2 = generator.getTotalNumber();
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
 
       statement.execute(
           String.format("load \"%s\" sglevel=2 onSuccess=none", file1.getAbsolutePath()));
 
-      try (ResultSet resultSet =
+      try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
         if (resultSet.next()) {
-          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -500,13 +556,13 @@ public class IOTDBLoadTsFileIT {
       Assert.assertTrue(file1.exists());
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
 
       statement.execute(
           String.format("load \"%s\" sglevel=2 onSuccess=delete", file2.getAbsolutePath()));
 
-      try (ResultSet resultSet =
+      try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
         if (resultSet.next()) {
           long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
@@ -525,19 +581,19 @@ public class IOTDBLoadTsFileIT {
   public void testLoadWithLastCache() throws Exception {
     registerSchema();
 
-    String device = SchemaConfig.DEVICE_0;
-    String measurement = SchemaConfig.MEASUREMENT_00.getMeasurementId();
+    final String device = SchemaConfig.DEVICE_0;
+    final String measurement = SchemaConfig.MEASUREMENT_00.getMeasurementId();
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
 
       statement.execute(
           String.format("insert into %s(timestamp, %s) values(100, 100)", device, measurement));
 
-      try (ResultSet resultSet =
+      try (final ResultSet resultSet =
           statement.executeQuery(String.format("select last %s from %s", measurement, device))) {
         if (resultSet.next()) {
-          String lastValue = resultSet.getString(ColumnHeaderConstant.VALUE);
+          final String lastValue = resultSet.getString(ColumnHeaderConstant.VALUE);
           Assert.assertEquals("100", lastValue);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -545,50 +601,58 @@ public class IOTDBLoadTsFileIT {
       }
     }
 
-    File file1 = new File(tmpDir, "1-0-0-0.tsfile");
-    File file2 = new File(tmpDir, "2-0-0-0.tsfile");
+    final File file1 = new File(tmpDir, "1-0-0-0.tsfile");
+    final File file2 = new File(tmpDir, "2-0-0-0.tsfile");
     // device 0, device 1, sg 0
-    try (TsFileGenerator generator = new TsFileGenerator(file1)) {
+    try (final TsFileGenerator generator = new TsFileGenerator(file1)) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_0,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_00,
               SchemaConfig.MEASUREMENT_01,
               SchemaConfig.MEASUREMENT_02,
-              SchemaConfig.MEASUREMENT_03));
+              SchemaConfig.MEASUREMENT_03,
+              SchemaConfig.MEASUREMENT_04,
+              SchemaConfig.MEASUREMENT_05,
+              SchemaConfig.MEASUREMENT_06,
+              SchemaConfig.MEASUREMENT_07));
       generator.registerAlignedTimeseries(
           SchemaConfig.DEVICE_1,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_10,
               SchemaConfig.MEASUREMENT_11,
               SchemaConfig.MEASUREMENT_12,
-              SchemaConfig.MEASUREMENT_13));
+              SchemaConfig.MEASUREMENT_13,
+              SchemaConfig.MEASUREMENT_14,
+              SchemaConfig.MEASUREMENT_15,
+              SchemaConfig.MEASUREMENT_16,
+              SchemaConfig.MEASUREMENT_17));
       generator.generateData(SchemaConfig.DEVICE_0, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_1, 10000, PARTITION_INTERVAL / 10_000, true);
     }
 
     // device 2, device 3, device4, sg 1
-    try (TsFileGenerator generator = new TsFileGenerator(file2)) {
+    try (final TsFileGenerator generator = new TsFileGenerator(file2)) {
       generator.registerTimeseries(
-          SchemaConfig.DEVICE_2, Arrays.asList(SchemaConfig.MEASUREMENT_20));
+          SchemaConfig.DEVICE_2, Collections.singletonList(SchemaConfig.MEASUREMENT_20));
       generator.registerTimeseries(
-          SchemaConfig.DEVICE_3, Arrays.asList(SchemaConfig.MEASUREMENT_30));
+          SchemaConfig.DEVICE_3, Collections.singletonList(SchemaConfig.MEASUREMENT_30));
       generator.registerAlignedTimeseries(
-          SchemaConfig.DEVICE_4, Arrays.asList(SchemaConfig.MEASUREMENT_40));
+          SchemaConfig.DEVICE_4, Collections.singletonList(SchemaConfig.MEASUREMENT_40));
       generator.generateData(SchemaConfig.DEVICE_2, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_3, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_4, 10000, PARTITION_INTERVAL / 10_000, true);
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
 
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
-      try (ResultSet resultSet =
+      try (final ResultSet resultSet =
           statement.executeQuery(String.format("select last %s from %s", measurement, device))) {
         if (resultSet.next()) {
-          String lastTime = resultSet.getString(ColumnHeaderConstant.TIME);
+          final String lastTime = resultSet.getString(ColumnHeaderConstant.TIME);
           Assert.assertEquals(String.valueOf(PARTITION_INTERVAL), lastTime);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -599,56 +663,64 @@ public class IOTDBLoadTsFileIT {
 
   @Test
   public void testLoadWithOnNonStandardTsFileName() throws Exception {
-    File file1 = new File(tmpDir, "1-0-0-0.tsfile");
-    File file2 = new File(tmpDir, "a-1.tsfile");
-    long writtenPoint1 = 0;
+    final File file1 = new File(tmpDir, "1-0-0-0.tsfile");
+    final File file2 = new File(tmpDir, "a-1.tsfile");
+    final long writtenPoint1;
     // device 0, device 1, sg 0
-    try (TsFileGenerator generator = new TsFileGenerator(file1)) {
+    try (final TsFileGenerator generator = new TsFileGenerator(file1)) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_0,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_00,
               SchemaConfig.MEASUREMENT_01,
               SchemaConfig.MEASUREMENT_02,
-              SchemaConfig.MEASUREMENT_03));
+              SchemaConfig.MEASUREMENT_03,
+              SchemaConfig.MEASUREMENT_04,
+              SchemaConfig.MEASUREMENT_05,
+              SchemaConfig.MEASUREMENT_06,
+              SchemaConfig.MEASUREMENT_07));
       generator.registerAlignedTimeseries(
           SchemaConfig.DEVICE_1,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_10,
               SchemaConfig.MEASUREMENT_11,
               SchemaConfig.MEASUREMENT_12,
-              SchemaConfig.MEASUREMENT_13));
+              SchemaConfig.MEASUREMENT_13,
+              SchemaConfig.MEASUREMENT_14,
+              SchemaConfig.MEASUREMENT_15,
+              SchemaConfig.MEASUREMENT_16,
+              SchemaConfig.MEASUREMENT_17));
       generator.generateData(SchemaConfig.DEVICE_0, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_1, 10000, PARTITION_INTERVAL / 10_000, true);
       writtenPoint1 = generator.getTotalNumber();
     }
 
-    long writtenPoint2 = 0;
+    final long writtenPoint2;
     // device 2, device 3, device4, sg 1
-    try (TsFileGenerator generator = new TsFileGenerator(file2)) {
+    try (final TsFileGenerator generator = new TsFileGenerator(file2)) {
       generator.registerTimeseries(
-          SchemaConfig.DEVICE_2, Arrays.asList(SchemaConfig.MEASUREMENT_20));
+          SchemaConfig.DEVICE_2, Collections.singletonList(SchemaConfig.MEASUREMENT_20));
       generator.registerTimeseries(
-          SchemaConfig.DEVICE_3, Arrays.asList(SchemaConfig.MEASUREMENT_30));
+          SchemaConfig.DEVICE_3, Collections.singletonList(SchemaConfig.MEASUREMENT_30));
       generator.registerAlignedTimeseries(
-          SchemaConfig.DEVICE_4, Arrays.asList(SchemaConfig.MEASUREMENT_40));
+          SchemaConfig.DEVICE_4, Collections.singletonList(SchemaConfig.MEASUREMENT_40));
       generator.generateData(SchemaConfig.DEVICE_2, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_3, 10000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_4, 10000, PARTITION_INTERVAL / 10_000, true);
       writtenPoint2 = generator.getTotalNumber();
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
 
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
-      try (ResultSet resultSet =
+      try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
         if (resultSet.next()) {
-          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
-          long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
+          final long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
           Assert.assertEquals(writtenPoint2, sg2Count);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -659,23 +731,32 @@ public class IOTDBLoadTsFileIT {
 
   @Test
   public void testLoadWithMods() throws Exception {
-    long writtenPoint1 = 0;
+    final long writtenPoint1;
     // device 0, device 1, sg 0
-    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_0,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_00,
               SchemaConfig.MEASUREMENT_01,
               SchemaConfig.MEASUREMENT_02,
-              SchemaConfig.MEASUREMENT_03));
+              SchemaConfig.MEASUREMENT_03,
+              SchemaConfig.MEASUREMENT_04,
+              SchemaConfig.MEASUREMENT_05,
+              SchemaConfig.MEASUREMENT_06,
+              SchemaConfig.MEASUREMENT_07));
       generator.registerAlignedTimeseries(
           SchemaConfig.DEVICE_1,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_10,
               SchemaConfig.MEASUREMENT_11,
               SchemaConfig.MEASUREMENT_12,
-              SchemaConfig.MEASUREMENT_13));
+              SchemaConfig.MEASUREMENT_13,
+              SchemaConfig.MEASUREMENT_14,
+              SchemaConfig.MEASUREMENT_15,
+              SchemaConfig.MEASUREMENT_16,
+              SchemaConfig.MEASUREMENT_17));
       generator.generateData(SchemaConfig.DEVICE_0, 100000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_1, 100000, PARTITION_INTERVAL / 10_000, true);
       generator.generateDeletion(SchemaConfig.DEVICE_0, 10);
@@ -683,16 +764,17 @@ public class IOTDBLoadTsFileIT {
       writtenPoint1 = generator.getTotalNumber();
     }
 
-    long writtenPoint2 = 0;
+    final long writtenPoint2;
     // device 2, device 3, device4, sg 1
-    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "2-0-0-0.tsfile"))) {
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "2-0-0-0.tsfile"))) {
       generator.resetRandom(1000);
       generator.registerTimeseries(
-          SchemaConfig.DEVICE_2, Arrays.asList(SchemaConfig.MEASUREMENT_20));
+          SchemaConfig.DEVICE_2, Collections.singletonList(SchemaConfig.MEASUREMENT_20));
       generator.registerTimeseries(
-          SchemaConfig.DEVICE_3, Arrays.asList(SchemaConfig.MEASUREMENT_30));
+          SchemaConfig.DEVICE_3, Collections.singletonList(SchemaConfig.MEASUREMENT_30));
       generator.registerAlignedTimeseries(
-          SchemaConfig.DEVICE_4, Arrays.asList(SchemaConfig.MEASUREMENT_40));
+          SchemaConfig.DEVICE_4, Collections.singletonList(SchemaConfig.MEASUREMENT_40));
       generator.generateData(SchemaConfig.DEVICE_2, 100, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_3, 100, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_4, 100, PARTITION_INTERVAL / 10_000, true);
@@ -705,17 +787,17 @@ public class IOTDBLoadTsFileIT {
       writtenPoint2 = generator.getTotalNumber();
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
 
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
-      try (ResultSet resultSet =
+      try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
         if (resultSet.next()) {
-          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
-          long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
+          final long sg2Count = resultSet.getLong("count(root.sg.test_1.*.*)");
           Assert.assertEquals(writtenPoint2, sg2Count);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -726,14 +808,14 @@ public class IOTDBLoadTsFileIT {
 
   @Test
   public void testLoadWithEmptyTsFile() throws Exception {
-    try (TsFileGenerator ignored = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {}
+    try (final TsFileGenerator ignored = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {}
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       statement.execute(String.format("load \"%s\"", tmpDir.getAbsolutePath()));
 
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (final ResultSet resultSet = statement.executeQuery("show timeseries")) {
         Assert.assertFalse(resultSet.next());
       }
     }
@@ -741,21 +823,30 @@ public class IOTDBLoadTsFileIT {
 
   @Test
   public void testLoadTsFileWithWrongTimestampPrecision() throws Exception {
-    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_0,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_00,
               SchemaConfig.MEASUREMENT_01,
               SchemaConfig.MEASUREMENT_02,
-              SchemaConfig.MEASUREMENT_03));
+              SchemaConfig.MEASUREMENT_03,
+              SchemaConfig.MEASUREMENT_04,
+              SchemaConfig.MEASUREMENT_05,
+              SchemaConfig.MEASUREMENT_06,
+              SchemaConfig.MEASUREMENT_07));
       generator.registerAlignedTimeseries(
           SchemaConfig.DEVICE_1,
           Arrays.asList(
               SchemaConfig.MEASUREMENT_10,
               SchemaConfig.MEASUREMENT_11,
               SchemaConfig.MEASUREMENT_12,
-              SchemaConfig.MEASUREMENT_13));
+              SchemaConfig.MEASUREMENT_13,
+              SchemaConfig.MEASUREMENT_14,
+              SchemaConfig.MEASUREMENT_15,
+              SchemaConfig.MEASUREMENT_16,
+              SchemaConfig.MEASUREMENT_17));
       // generate ns timestamp
       generator.generateData(
           SchemaConfig.DEVICE_0, 100000, PARTITION_INTERVAL / 10_000, false, 1694689856546000000L);
@@ -763,11 +854,11 @@ public class IOTDBLoadTsFileIT {
           SchemaConfig.DEVICE_1, 100000, PARTITION_INTERVAL / 10_000, true, 1694689856546000000L);
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
 
       statement.execute(String.format("load \"%s\"", tmpDir.getAbsolutePath()));
-    } catch (IoTDBSQLException e) {
+    } catch (final IoTDBSQLException e) {
       Assert.assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
     }
   }
@@ -776,24 +867,25 @@ public class IOTDBLoadTsFileIT {
   public void testLoadLocally() throws Exception {
     registerSchema();
 
-    long writtenPoint1 = 0;
+    final long writtenPoint1;
     // device 0, device 1, sg 0
-    try (TsFileGenerator generator = new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
+    try (final TsFileGenerator generator =
+        new TsFileGenerator(new File(tmpDir, "1-0-0-0.tsfile"))) {
       generator.registerTimeseries(
           SchemaConfig.DEVICE_0, Collections.singletonList(SchemaConfig.MEASUREMENT_00));
       generator.generateData(SchemaConfig.DEVICE_0, 1, PARTITION_INTERVAL / 10_000, false);
       writtenPoint1 = generator.getTotalNumber();
     }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
 
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
-      try (ResultSet resultSet =
+      try (final ResultSet resultSet =
           statement.executeQuery("select count(*) from root.** group by level=1,2")) {
         if (resultSet.next()) {
-          long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
+          final long sg1Count = resultSet.getLong("count(root.sg.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
         } else {
           Assert.fail("This ResultSet is empty.");
@@ -816,6 +908,14 @@ public class IOTDBLoadTsFileIT {
         new MeasurementSchema("sensor_02", TSDataType.DOUBLE, TSEncoding.GORILLA);
     private static final MeasurementSchema MEASUREMENT_03 =
         new MeasurementSchema("sensor_03", TSDataType.TEXT, TSEncoding.PLAIN);
+    private static final MeasurementSchema MEASUREMENT_04 =
+        new MeasurementSchema("sensor_04", TSDataType.TIMESTAMP, TSEncoding.RLE);
+    private static final MeasurementSchema MEASUREMENT_05 =
+        new MeasurementSchema("sensor_05", TSDataType.DATE, TSEncoding.RLE);
+    private static final MeasurementSchema MEASUREMENT_06 =
+        new MeasurementSchema("sensor_06", TSDataType.BLOB, TSEncoding.PLAIN);
+    private static final MeasurementSchema MEASUREMENT_07 =
+        new MeasurementSchema("sensor_07", TSDataType.STRING, TSEncoding.PLAIN);
 
     // device 1, aligned, sg 0
     private static final String DEVICE_1 = "root.sg.test_0.a_1";
@@ -827,6 +927,14 @@ public class IOTDBLoadTsFileIT {
         new MeasurementSchema("sensor_12", TSDataType.DOUBLE, TSEncoding.GORILLA);
     private static final MeasurementSchema MEASUREMENT_13 =
         new MeasurementSchema("sensor_13", TSDataType.TEXT, TSEncoding.PLAIN);
+    private static final MeasurementSchema MEASUREMENT_14 =
+        new MeasurementSchema("sensor_14", TSDataType.TIMESTAMP, TSEncoding.RLE);
+    private static final MeasurementSchema MEASUREMENT_15 =
+        new MeasurementSchema("sensor_15", TSDataType.DATE, TSEncoding.RLE);
+    private static final MeasurementSchema MEASUREMENT_16 =
+        new MeasurementSchema("sensor_16", TSDataType.BLOB, TSEncoding.PLAIN);
+    private static final MeasurementSchema MEASUREMENT_17 =
+        new MeasurementSchema("sensor_17", TSDataType.STRING, TSEncoding.PLAIN);
 
     // device 2, non aligned, sg 1
     private static final String DEVICE_2 = "root.sg.test_1.d_2";
