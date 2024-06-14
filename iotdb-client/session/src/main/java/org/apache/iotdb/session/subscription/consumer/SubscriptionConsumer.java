@@ -113,7 +113,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
    *     process, return {@code false}; otherwise, return {@code true}.
    */
   public boolean hasMoreData() {
-    return subscribedTopicNames.isEmpty();
+    return !subscribedTopicNames.isEmpty();
   }
 
   /////////////////////////////// ctor ///////////////////////////////
