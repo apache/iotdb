@@ -42,16 +42,13 @@ import java.util.Map;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBVerifyConnectionIT {
-  private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setConfigNodeConsensusProtocolClass(testConsensusProtocolClass)
-        .setSchemaRegionConsensusProtocolClass(testConsensusProtocolClass)
-        .setDataRegionConsensusProtocolClass(testConsensusProtocolClass);
+        .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
   }
 
   @After
@@ -60,7 +57,7 @@ public class IoTDBVerifyConnectionIT {
   }
 
   @Test
-  public void verifyConnectionAllUpTest() throws Exception {
+  public void testVerifyConnectionAllUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment(3, 3);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -74,7 +71,7 @@ public class IoTDBVerifyConnectionIT {
   }
 
   @Test
-  public void verifyConnectionWithNodeCrashTest() throws Exception {
+  public void testVerifyConnectionWithNodeCrash() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment(3, 1);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
