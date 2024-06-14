@@ -141,11 +141,11 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     if (IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch()
         <= 0) {
       compactionExecutor =
-          new BatchedReadChunkAlignedSeriesCompactionExecutor(
+          new ReadChunkAlignedSeriesCompactionExecutor(
               device, targetResource, readerAndChunkMetadataList, writer, summary);
     } else {
       compactionExecutor =
-          new ReadChunkAlignedSeriesCompactionExecutor(
+          new BatchedReadChunkAlignedSeriesCompactionExecutor(
               device, targetResource, readerAndChunkMetadataList, writer, summary);
     }
     compactionExecutor.execute();
