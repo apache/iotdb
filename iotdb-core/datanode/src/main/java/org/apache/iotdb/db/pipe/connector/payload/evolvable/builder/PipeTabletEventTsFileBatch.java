@@ -30,8 +30,10 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -160,25 +162,39 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
         if (tablet.rowSize == 0) {
           continue;
         }
-        if (((PipeInsertNodeTabletInsertionEvent) event).isAligned(i)) {
-          fileWriter.writeAligned(tablet);
-        } else {
-          fileWriter.write(tablet);
-        }
-        pipeName2WeightMap.compute(
-            ((PipeInsertNodeTabletInsertionEvent) event).getPipeName(),
-            (pipeName, weight) -> Objects.nonNull(weight) ? ++weight : 1);
+        writeTablet(
+            tablet,
+            ((PipeInsertNodeTabletInsertionEvent) event).isAligned(i),
+            ((PipeInsertNodeTabletInsertionEvent) event).getPipeName());
       }
     } else if (event instanceof PipeRawTabletInsertionEvent) {
-      if (((PipeRawTabletInsertionEvent) event).isAligned()) {
-        fileWriter.writeAligned(((PipeRawTabletInsertionEvent) event).convertToTablet());
-      } else {
-        fileWriter.write(((PipeRawTabletInsertionEvent) event).convertToTablet());
-      }
-      pipeName2WeightMap.compute(
-          ((PipeRawTabletInsertionEvent) event).getPipeName(),
-          (pipeName, weight) -> Objects.nonNull(weight) ? ++weight : 1);
+      writeTablet(
+          ((PipeRawTabletInsertionEvent) event).convertToTablet(),
+          ((PipeRawTabletInsertionEvent) event).isAligned(),
+          ((PipeRawTabletInsertionEvent) event).getPipeName());
     }
+  }
+
+  private void writeTablet(final Tablet tablet, final boolean isAligned, final String pipeName)
+      throws IOException, WriteProcessException {
+    if (isAligned) {
+      try {
+        fileWriter.registerAlignedTimeseries(new Path(tablet.deviceId), tablet.getSchemas());
+      } catch (final WriteProcessException ignore) {
+        // Do nothing if the timeSeries has been registered
+      }
+      fileWriter.writeAligned(tablet);
+    } else {
+      for (final MeasurementSchema schema : tablet.getSchemas()) {
+        try {
+          fileWriter.registerTimeseries(new Path(tablet.deviceId), schema);
+        } catch (final WriteProcessException ignore) {
+          // Do nothing if the timeSeries has been registered
+        }
+      }
+      fileWriter.write(tablet);
+    }
+    pipeName2WeightMap.compute(pipeName, (name, weight) -> Objects.nonNull(weight) ? ++weight : 1);
   }
 
   public Map<String, Double> deepCopyPipeName2WeightMap() {
