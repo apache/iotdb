@@ -50,8 +50,8 @@ public class TopicConfig extends PipeParameters {
 
   private static final Map<String, String> REALTIME_BATCH_MODE_CONFIG =
       Collections.singletonMap("realtime.mode", "batch");
-  private static final Map<String, String> REALTIME_HYBRID_MODE_CONFIG =
-      Collections.singletonMap("realtime.mode", "hybrid");
+  private static final Map<String, String> REALTIME_STREAM_MODE_CONFIG =
+      Collections.singletonMap("realtime.mode", "stream");
 
   private static final Map<String, String> QUERY_MODE_CONFIG =
       Collections.singletonMap("mode", "query");
@@ -115,7 +115,7 @@ public class TopicConfig extends PipeParameters {
     return TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(
             attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))
         ? REALTIME_BATCH_MODE_CONFIG
-        : REALTIME_HYBRID_MODE_CONFIG;
+        : REALTIME_STREAM_MODE_CONFIG;
   }
 
   public Map<String, String> getAttributesWithSourceMode() {
