@@ -41,11 +41,11 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FirstBatchAlignedChunkWriter extends AlignedChunkWriterImpl {
+public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterImpl {
 
-  public FirstBatchAlignedChunkWriter(VectorMeasurementSchema schema) {
+  public FirstBatchCompactionAlignedChunkWriter(VectorMeasurementSchema schema) {
     timeChunkWriter =
-        new FirstBatchTimeChunkWriter(
+        new FirstBatchCompactionTimeChunkWriter(
             schema.getMeasurementId(),
             schema.getCompressor(),
             schema.getTimeTSEncoding(),
@@ -71,10 +71,10 @@ public class FirstBatchAlignedChunkWriter extends AlignedChunkWriterImpl {
     this.remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
   }
 
-  public FirstBatchAlignedChunkWriter(
+  public FirstBatchCompactionAlignedChunkWriter(
       IMeasurementSchema timeSchema, List<IMeasurementSchema> valueSchemaList) {
     timeChunkWriter =
-        new FirstBatchTimeChunkWriter(
+        new FirstBatchCompactionTimeChunkWriter(
             timeSchema.getMeasurementId(),
             timeSchema.getCompressor(),
             timeSchema.getEncodingType(),
@@ -95,13 +95,13 @@ public class FirstBatchAlignedChunkWriter extends AlignedChunkWriterImpl {
     this.remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
   }
 
-  public FirstBatchAlignedChunkWriter(List<IMeasurementSchema> schemaList) {
+  public FirstBatchCompactionAlignedChunkWriter(List<IMeasurementSchema> schemaList) {
     TSEncoding timeEncoding =
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
     TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
     CompressionType timeCompression = TSFileDescriptor.getInstance().getConfig().getCompressor();
     timeChunkWriter =
-        new FirstBatchTimeChunkWriter(
+        new FirstBatchCompactionTimeChunkWriter(
             "",
             timeCompression,
             timeEncoding,
@@ -124,14 +124,14 @@ public class FirstBatchAlignedChunkWriter extends AlignedChunkWriterImpl {
 
   public CompactChunkPlan getCompactedChunkRecord() {
     return new CompactChunkPlan(
-        ((FirstBatchTimeChunkWriter) this.getTimeChunkWriter()).getPageTimeRanges());
+        ((FirstBatchCompactionTimeChunkWriter) this.getTimeChunkWriter()).getPageTimeRanges());
   }
 
-  public static class FirstBatchTimeChunkWriter extends TimeChunkWriter {
+  public static class FirstBatchCompactionTimeChunkWriter extends TimeChunkWriter {
 
     private List<CompactPagePlan> pageTimeRanges = new ArrayList<>();
 
-    public FirstBatchTimeChunkWriter(
+    public FirstBatchCompactionTimeChunkWriter(
         String measurementId,
         CompressionType compressionType,
         TSEncoding encodingType,

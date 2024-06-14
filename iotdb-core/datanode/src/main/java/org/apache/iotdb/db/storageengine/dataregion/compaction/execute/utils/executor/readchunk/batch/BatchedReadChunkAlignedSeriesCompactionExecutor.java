@@ -208,12 +208,13 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
           valueSchemaList);
       int compactionFileLevel =
           Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
-      this.flushPolicy = new FirstBatchFlushDataBlockPolicy(compactionFileLevel);
+      this.flushPolicy =
+          new FirstBatchReadChunkAlignedSeriesCompactionFlushController(compactionFileLevel);
     }
 
     @Override
     protected AlignedChunkWriterImpl constructAlignedChunkWriter() {
-      return new FirstBatchAlignedChunkWriter(timeSchema, schemaList);
+      return new FirstBatchCompactionAlignedChunkWriter(timeSchema, schemaList);
     }
 
     @Override
@@ -230,7 +231,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       chunkWriter.sealCurrentPage();
       if (!chunkWriter.isEmpty()) {
         CompactChunkPlan compactChunkPlan =
-            ((FirstBatchAlignedChunkWriter) chunkWriter).getCompactedChunkRecord();
+            ((FirstBatchCompactionAlignedChunkWriter) chunkWriter).getCompactedChunkRecord();
         compactChunkPlans.add(compactChunkPlan);
       }
       writer.writeChunk(chunkWriter);
@@ -246,9 +247,10 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
           alignedPageReader.getTimePageReader(), alignedPageReader.getValuePageReaderList());
     }
 
-    private class FirstBatchFlushDataBlockPolicy extends FlushDataBlockPolicy {
+    private class FirstBatchReadChunkAlignedSeriesCompactionFlushController
+        extends ReadChunkAlignedSeriesCompactionFlushController {
 
-      public FirstBatchFlushDataBlockPolicy(int compactionFileLevel) {
+      public FirstBatchReadChunkAlignedSeriesCompactionFlushController(int compactionFileLevel) {
         super(compactionFileLevel);
       }
 
@@ -285,9 +287,9 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
           timeSchema,
           valueSchemaList);
       this.compactionPlan = compactionPlan;
-      this.flushPolicy = new FollowingBatchFlushDataBlockPolicy();
+      this.flushPolicy = new FollowingBatchReadChunkAlignedSeriesCompactionFlushController();
       this.chunkWriter =
-          new FollowingBatchAlignedChunkWriter(timeSchema, schemaList, compactionPlan.get(0));
+          new FollowingBatchCompactionAlignedChunkWriter(schemaList, compactionPlan.get(0));
     }
 
     @Override
@@ -299,7 +301,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       currentCompactChunk++;
       if (currentCompactChunk < compactionPlan.size()) {
         CompactChunkPlan chunkRecord = compactionPlan.get(currentCompactChunk);
-        ((FollowingBatchAlignedChunkWriter) this.chunkWriter).setCompactChunkPlan(chunkRecord);
+        ((FollowingBatchCompactionAlignedChunkWriter) this.chunkWriter)
+            .setCompactChunkPlan(chunkRecord);
       }
     }
 
@@ -357,9 +360,10 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
           alignedPageReader.getTimePageReader(), alignedPageReader.getValuePageReaderList());
     }
 
-    private class FollowingBatchFlushDataBlockPolicy extends FlushDataBlockPolicy {
+    private class FollowingBatchReadChunkAlignedSeriesCompactionFlushController
+        extends ReadChunkAlignedSeriesCompactionFlushController {
 
-      public FollowingBatchFlushDataBlockPolicy() {
+      public FollowingBatchReadChunkAlignedSeriesCompactionFlushController() {
         super(0);
       }
 
@@ -378,7 +382,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       @Override
       protected boolean canCompactCurrentPageByDirectlyFlush(
           PageLoader timePage, List<PageLoader> valuePages) {
-        int currentPage = ((FollowingBatchAlignedChunkWriter) chunkWriter).getCurrentPage();
+        int currentPage =
+            ((FollowingBatchCompactionAlignedChunkWriter) chunkWriter).getCurrentPage();
         for (int i = 0; i < valuePages.size(); i++) {
           PageLoader currentValuePage = valuePages.get(i);
           if (currentValuePage.isEmpty()) {

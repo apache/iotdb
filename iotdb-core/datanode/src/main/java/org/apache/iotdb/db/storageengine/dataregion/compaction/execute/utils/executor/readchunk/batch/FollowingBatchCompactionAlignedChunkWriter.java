@@ -19,11 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.batch;
 
-import org.apache.tsfile.encoding.encoder.Encoder;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
-import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.TimeChunkWriter;
 import org.apache.tsfile.write.chunk.ValueChunkWriter;
@@ -35,15 +32,13 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class FollowingBatchAlignedChunkWriter extends AlignedChunkWriterImpl {
+public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWriterImpl {
   private int currentPage = 0;
   private CompactChunkPlan compactChunkPlan;
 
-  public FollowingBatchAlignedChunkWriter(
-      IMeasurementSchema timeSchema,
-      List<IMeasurementSchema> valueSchemaList,
-      CompactChunkPlan compactChunkPlan) {
-    timeChunkWriter = new FollowingBatchTimeChunkWriter();
+  public FollowingBatchCompactionAlignedChunkWriter(
+      List<IMeasurementSchema> valueSchemaList, CompactChunkPlan compactChunkPlan) {
+    timeChunkWriter = new FollowingBatchCompactionTimeChunkWriter();
 
     valueChunkWriterList = new ArrayList<>(valueSchemaList.size());
     for (int i = 0; i < valueSchemaList.size(); i++) {
@@ -63,7 +58,7 @@ public class FollowingBatchAlignedChunkWriter extends AlignedChunkWriterImpl {
 
   @Override
   protected boolean checkPageSizeAndMayOpenANewPage() {
-    long endTime = ((FollowingBatchTimeChunkWriter) timeChunkWriter).endTime;
+    long endTime = ((FollowingBatchCompactionTimeChunkWriter) timeChunkWriter).endTime;
     return endTime == compactChunkPlan.getPageRecords().get(currentPage).getTimeRange().getMax();
   }
 
@@ -102,18 +97,10 @@ public class FollowingBatchAlignedChunkWriter extends AlignedChunkWriterImpl {
     this.currentPage = 0;
   }
 
-  public static class FollowingBatchTimeChunkWriter extends TimeChunkWriter {
+  public static class FollowingBatchCompactionTimeChunkWriter extends TimeChunkWriter {
     private long endTime = Long.MIN_VALUE;
 
-    public FollowingBatchTimeChunkWriter() {}
-
-    public FollowingBatchTimeChunkWriter(
-        String measurementId,
-        CompressionType compressionType,
-        TSEncoding encodingType,
-        Encoder timeEncoder) {
-      super(measurementId, compressionType, encodingType, timeEncoder);
-    }
+    public FollowingBatchCompactionTimeChunkWriter() {}
 
     @Override
     public void write(long time) {

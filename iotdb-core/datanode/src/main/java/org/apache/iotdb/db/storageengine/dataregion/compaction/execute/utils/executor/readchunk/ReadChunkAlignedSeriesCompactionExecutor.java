@@ -78,7 +78,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   protected IMeasurementSchema timeSchema;
   protected List<IMeasurementSchema> schemaList;
   protected Map<String, Integer> measurementSchemaListIndexMap;
-  protected FlushDataBlockPolicy flushPolicy;
+  protected ReadChunkAlignedSeriesCompactionFlushController flushPolicy;
   protected final CompactionTaskSummary summary;
 
   private long lastWriteTimestamp = Long.MIN_VALUE;
@@ -98,7 +98,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     collectValueColumnSchemaList();
     int compactionFileLevel =
         Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
-    flushPolicy = new FlushDataBlockPolicy(compactionFileLevel);
+    flushPolicy = new ReadChunkAlignedSeriesCompactionFlushController(compactionFileLevel);
     this.chunkWriter = constructAlignedChunkWriter();
   }
 
@@ -117,7 +117,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     this.summary = summary;
     int compactionFileLevel =
         Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
-    flushPolicy = new FlushDataBlockPolicy(compactionFileLevel);
+    flushPolicy = new ReadChunkAlignedSeriesCompactionFlushController(compactionFileLevel);
     this.timeSchema = timeSchema;
     this.schemaList = valueSchemaList;
     this.measurementSchemaListIndexMap = new HashMap<>();
@@ -408,7 +408,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     }
   }
 
-  protected class FlushDataBlockPolicy {
+  protected class ReadChunkAlignedSeriesCompactionFlushController {
     private static final int largeFileLevelSeparator = 2;
     private final int compactionTargetFileLevel;
     private final long targetChunkPointNum;
@@ -416,7 +416,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     private final long targetPagePointNum;
     private final long targetPageSize;
 
-    public FlushDataBlockPolicy(int compactionFileLevel) {
+    public ReadChunkAlignedSeriesCompactionFlushController(int compactionFileLevel) {
       this.compactionTargetFileLevel = compactionFileLevel;
       this.targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
       this.targetChunkPointNum = IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
