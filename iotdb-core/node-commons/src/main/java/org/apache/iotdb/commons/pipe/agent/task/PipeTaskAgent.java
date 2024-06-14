@@ -538,7 +538,7 @@ public abstract class PipeTaskAgent {
     pipeMetaKeeper.removePipeMeta(pipeName);
   }
 
-  protected void startPipe(final String pipeName, final long creationTime) {
+  private void startPipe(final String pipeName, final long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
     if (!checkBeforeStartPipe(existedPipeMeta, pipeName, creationTime)) {
