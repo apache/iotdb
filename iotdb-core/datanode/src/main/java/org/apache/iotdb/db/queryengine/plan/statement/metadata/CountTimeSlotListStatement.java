@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +38,7 @@ public class CountTimeSlotListStatement extends Statement implements IConfigStat
 
   private String database;
 
-  private String device;
+  private IDeviceID device;
 
   private long regionId = -1;
 
@@ -75,11 +76,11 @@ public class CountTimeSlotListStatement extends Statement implements IConfigStat
     this.endTime = endTime;
   }
 
-  public void setDevice(String device) {
+  public void setDevice(IDeviceID device) {
     this.device = device;
   }
 
-  public String getDevice() {
+  public IDeviceID getDevice() {
     return this.device;
   }
 

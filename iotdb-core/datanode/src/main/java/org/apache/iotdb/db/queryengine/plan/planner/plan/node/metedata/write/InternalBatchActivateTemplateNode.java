@@ -146,7 +146,9 @@ public class InternalBatchActivateTemplateNode extends WritePlanNode {
     Map<TRegionReplicaSet, Map<PartialPath, Pair<Integer, Integer>>> splitMap = new HashMap<>();
     for (Map.Entry<PartialPath, Pair<Integer, Integer>> entry : templateActivationMap.entrySet()) {
       TRegionReplicaSet regionReplicaSet =
-          analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(entry.getKey().getFullPath());
+          analysis
+              .getSchemaPartitionInfo()
+              .getSchemaRegionReplicaSet(entry.getKey().getIDeviceIDAsFullDevice());
       splitMap
           .computeIfAbsent(regionReplicaSet, k -> new HashMap<>())
           .put(entry.getKey(), entry.getValue());

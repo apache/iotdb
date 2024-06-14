@@ -149,7 +149,9 @@ public class InternalCreateMultiTimeSeriesNode extends WritePlanNode {
         new HashMap<>();
     for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> entry : deviceMap.entrySet()) {
       TRegionReplicaSet regionReplicaSet =
-          analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(entry.getKey().getFullPath());
+          analysis
+              .getSchemaPartitionInfo()
+              .getSchemaRegionReplicaSet(entry.getKey().getIDeviceIDAsFullDevice());
       splitMap
           .computeIfAbsent(regionReplicaSet, k -> new HashMap<>())
           .put(entry.getKey(), entry.getValue());

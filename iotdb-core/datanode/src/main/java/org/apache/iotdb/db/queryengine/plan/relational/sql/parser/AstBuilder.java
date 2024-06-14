@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
@@ -142,6 +143,10 @@ import java.util.function.Function;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ID;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
@@ -1560,19 +1565,19 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return Optional.ofNullable(context).map(c -> (Identifier) visit(c));
   }
 
-  private static ColumnDefinition.ColumnCategory getColumnCategory(Token category) {
+  private static TsTableColumnCategory getColumnCategory(Token category) {
     if (category == null) {
-      return ColumnDefinition.ColumnCategory.MEASUREMENT;
+      return MEASUREMENT;
     }
     switch (category.getType()) {
       case RelationalSqlLexer.ID:
-        return ColumnDefinition.ColumnCategory.ID;
+        return ID;
       case RelationalSqlLexer.ATTRIBUTE:
-        return ColumnDefinition.ColumnCategory.ATTRIBUTE;
+        return ATTRIBUTE;
       case RelationalSqlLexer.TIME:
-        return ColumnDefinition.ColumnCategory.TIME;
+        return TIME;
       case RelationalSqlLexer.MEASUREMENT:
-        return ColumnDefinition.ColumnCategory.MEASUREMENT;
+        return MEASUREMENT;
       default:
         throw new UnsupportedOperationException(
             "Unsupported ColumnCategory: " + category.getText());
