@@ -68,18 +68,18 @@ import java.util.stream.Collectors;
 
 public class ReadChunkAlignedSeriesCompactionExecutor {
 
-  private final IDeviceID device;
-  private final LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+  protected final IDeviceID device;
+  protected final LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
       readerAndChunkMetadataList;
-  private final TsFileResource targetResource;
-  private final CompactionTsFileWriter writer;
+  protected final TsFileResource targetResource;
+  protected final CompactionTsFileWriter writer;
 
-  private final AlignedChunkWriterImpl chunkWriter;
-  private IMeasurementSchema timeSchema;
-  private List<IMeasurementSchema> schemaList;
-  private Map<String, Integer> measurementSchemaListIndexMap;
-  private final FlushDataBlockPolicy flushPolicy;
-  private final CompactionTaskSummary summary;
+  protected AlignedChunkWriterImpl chunkWriter;
+  protected IMeasurementSchema timeSchema;
+  protected List<IMeasurementSchema> schemaList;
+  protected Map<String, Integer> measurementSchemaListIndexMap;
+  protected FlushDataBlockPolicy flushPolicy;
+  protected final CompactionTaskSummary summary;
 
   private long lastWriteTimestamp = Long.MIN_VALUE;
 
@@ -99,7 +99,32 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     int compactionFileLevel =
         Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
     flushPolicy = new FlushDataBlockPolicy(compactionFileLevel);
-    this.chunkWriter = new AlignedChunkWriterImpl(timeSchema, schemaList);
+    this.chunkWriter = constructAlignedChunkWriter();
+  }
+
+  public ReadChunkAlignedSeriesCompactionExecutor(
+      IDeviceID device,
+      TsFileResource targetResource,
+      LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
+      CompactionTsFileWriter writer,
+      CompactionTaskSummary summary,
+      IMeasurementSchema timeSchema,
+      List<IMeasurementSchema> valueSchemaList) {
+    this.device = device;
+    this.readerAndChunkMetadataList = readerAndChunkMetadataList;
+    this.writer = writer;
+    this.targetResource = targetResource;
+    this.summary = summary;
+    int compactionFileLevel =
+        Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
+    flushPolicy = new FlushDataBlockPolicy(compactionFileLevel);
+    this.timeSchema = timeSchema;
+    this.schemaList = valueSchemaList;
+    this.measurementSchemaListIndexMap = new HashMap<>();
+    for (int i = 0; i < schemaList.size(); i++) {
+      measurementSchemaListIndexMap.put(schemaList.get(i).getMeasurementId(), i);
+    }
+    this.chunkWriter = constructAlignedChunkWriter();
   }
 
   private void collectValueColumnSchemaList() throws IOException {
@@ -152,6 +177,10 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     for (int i = 0; i < schemaList.size(); i++) {
       this.measurementSchemaListIndexMap.put(schemaList.get(i).getMeasurementId(), i);
     }
+  }
+
+  protected AlignedChunkWriterImpl constructAlignedChunkWriter() {
+    return new AlignedChunkWriterImpl(timeSchema, schemaList);
   }
 
   public void execute() throws IOException, PageException {
@@ -218,12 +247,12 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     return new InstantChunkLoader(chunkMetadata, chunk);
   }
 
-  private void flushCurrentChunkWriter() throws IOException {
+  protected void flushCurrentChunkWriter() throws IOException {
     chunkWriter.sealCurrentPage();
     writer.writeChunk(chunkWriter);
   }
 
-  private void compactAlignedChunkByFlush(ChunkLoader timeChunk, List<ChunkLoader> valueChunks)
+  protected void compactAlignedChunkByFlush(ChunkLoader timeChunk, List<ChunkLoader> valueChunks)
       throws IOException {
     writer.markStartingWritingAligned();
     checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getStartTime());
@@ -290,7 +319,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     return new InstantPageLoader();
   }
 
-  private void compactAlignedPageByFlush(PageLoader timePage, List<PageLoader> valuePageLoaders)
+  protected void compactAlignedPageByFlush(PageLoader timePage, List<PageLoader> valuePageLoaders)
       throws PageException, IOException {
     int nonEmptyPage = 1;
     checkAndUpdatePreviousTimestamp(timePage.getHeader().getStartTime());
@@ -354,7 +383,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
             null);
     alignedPageReader.setDeleteIntervalList(deleteIntervalLists);
     long processedPointNum = 0;
-    IPointReader lazyPointReader = alignedPageReader.getLazyPointReader();
+    IPointReader lazyPointReader = getPointReader(alignedPageReader);
     while (lazyPointReader.hasNextTimeValuePair()) {
       TimeValuePair timeValuePair = lazyPointReader.nextTimeValuePair();
       long currentTime = timeValuePair.getTimestamp();
@@ -366,7 +395,11 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     summary.increaseRewritePointNum(processedPointNum);
   }
 
-  private void checkAndUpdatePreviousTimestamp(long currentWritingTimestamp) {
+  protected IPointReader getPointReader(AlignedPageReader alignedPageReader) throws IOException {
+    return alignedPageReader.getLazyPointReader();
+  }
+
+  protected void checkAndUpdatePreviousTimestamp(long currentWritingTimestamp) {
     if (currentWritingTimestamp <= lastWriteTimestamp) {
       throw new CompactionLastTimeCheckFailedException(
           ((PlainDeviceID) device).toStringID(), currentWritingTimestamp, lastWriteTimestamp);
@@ -375,7 +408,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     }
   }
 
-  private class FlushDataBlockPolicy {
+  protected class FlushDataBlockPolicy {
     private static final int largeFileLevelSeparator = 2;
     private final int compactionTargetFileLevel;
     private final long targetChunkPointNum;
@@ -397,7 +430,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       return canFlushCurrentChunkWriter() && canFlushChunk(timeChunk, valueChunks);
     }
 
-    private boolean canFlushCurrentChunkWriter() {
+    protected boolean canFlushCurrentChunkWriter() {
       return chunkWriter.checkIsChunkSizeOverThreshold(targetChunkSize, targetChunkPointNum, true);
     }
 
@@ -430,7 +463,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       return largeEnough;
     }
 
-    private boolean canCompactCurrentPageByDirectlyFlush(
+    protected boolean canCompactCurrentPageByDirectlyFlush(
         PageLoader timePage, List<PageLoader> valuePages) {
       boolean isHighLevelCompaction = compactionTargetFileLevel > largeFileLevelSeparator;
       if (isHighLevelCompaction) {

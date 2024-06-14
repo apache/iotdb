@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -28,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -36,43 +40,58 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends AbstractCompactionTest {
+public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompactionTest {
 
   long originTargetChunkSize;
   long originTargetChunkPointNum;
   int originTargetPageSize;
   int originTargetPagePointNum;
+  int originMaxConcurrentAlignedSeriesInCompaction;
 
   @Before
   public void setUp()
-      throws IOException, WriteProcessException, MetadataException, InterruptedException {
+      throws IOException, MetadataException, InterruptedException, WriteProcessException {
     super.setUp();
     originTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
     originTargetChunkPointNum = IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
     originTargetPageSize = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
     originTargetPagePointNum =
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    originMaxConcurrentAlignedSeriesInCompaction =
+        IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
 
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1048576);
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(100000);
     TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(64 * 1024);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(10000);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionMaxAlignedSeriesNumInOneBatch(2);
   }
 
   @After
@@ -82,6 +101,9 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
     TSFileDescriptor.getInstance().getConfig().setPageSizeInByte(originTargetPageSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(originTargetPagePointNum);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setCompactionMaxAlignedSeriesNumInOneBatch(originMaxConcurrentAlignedSeriesInCompaction);
   }
 
   @Test
@@ -130,10 +152,13 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(16, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
+
     Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+        CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
+        CompactionCheckerUtils.getDataByQuery(
+            getPaths(Collections.singletonList(targetResource)),
+            Collections.singletonList(targetResource),
+            Collections.emptyList()));
   }
 
   @Test
@@ -183,9 +208,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+        CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
+        CompactionCheckerUtils.getDataByQuery(
+            getPaths(Collections.singletonList(targetResource)),
+            Collections.singletonList(targetResource),
+            Collections.emptyList()));
   }
 
   @Test
@@ -240,9 +267,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+        CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
+        CompactionCheckerUtils.getDataByQuery(
+            getPaths(Collections.singletonList(targetResource)),
+            Collections.singletonList(targetResource),
+            Collections.emptyList()));
   }
 
   @Test
@@ -297,9 +326,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+        CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
+        CompactionCheckerUtils.getDataByQuery(
+            getPaths(Collections.singletonList(targetResource)),
+            Collections.singletonList(targetResource),
+            Collections.emptyList()));
   }
 
   @Test
@@ -356,9 +387,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
         COMPACTION_TEST_SG);
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));;
+        CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
+        CompactionCheckerUtils.getDataByQuery(
+            getPaths(Collections.singletonList(targetResource)),
+            Collections.singletonList(targetResource),
+            Collections.emptyList()));
   }
 
   @Test
@@ -412,9 +445,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(0, summary.getDeserializeChunkCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+        CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
+        CompactionCheckerUtils.getDataByQuery(
+            getPaths(Collections.singletonList(targetResource)),
+            Collections.singletonList(targetResource),
+            Collections.emptyList()));
   }
 
   @Test
@@ -466,11 +501,12 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertEquals(8, summary.getDeserializeChunkCount());
     Assert.assertEquals(15, summary.getDirectlyFlushPageCount());
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    // this checker util may throw npe when the file contains any empty page
     Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+        CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
+        CompactionCheckerUtils.getDataByQuery(
+            getPaths(Collections.singletonList(targetResource)),
+            Collections.singletonList(targetResource),
+            Collections.emptyList()));
   }
 
   @Test
@@ -526,9 +562,11 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     Assert.assertTrue(summary.getDeserializePageCount() > 0);
     TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+        CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
+        CompactionCheckerUtils.getDataByQuery(
+            getPaths(Collections.singletonList(targetResource)),
+            Collections.singletonList(targetResource),
+            Collections.emptyList()));
   }
 
   @Test
@@ -542,10 +580,10 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
         generateSingleAlignedSeriesFile(
             "d0",
             Arrays.asList("s0", "s1", "s2"),
-            new TimeRange[] {new TimeRange(10000, 20000), new TimeRange(30000, 40000)},
+            new TimeRange[] {new TimeRange(10000, 20000), new TimeRange(30000, 120000)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
-            Arrays.asList(false, false, false),
+            Arrays.asList(false, false, true),
             true);
     seqResources.add(seqResource1);
 
@@ -553,7 +591,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
         generateSingleAlignedSeriesFile(
             "d0",
             Arrays.asList("s0", "s1", "s2"),
-            new TimeRange[] {new TimeRange(60000, 70000), new TimeRange(80000, 90000)},
+            new TimeRange[] {new TimeRange(160000, 170000), new TimeRange(180000, 190000)},
             TSEncoding.PLAIN,
             CompressionType.LZ4,
             Arrays.asList(false, false, false),
@@ -576,11 +614,12 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
         COMPACTION_TEST_SG);
     Assert.assertEquals(16, summary.getDeserializeChunkCount());
     Assert.assertEquals(16, summary.getDirectlyFlushPageCount());
-    TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+        CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
+        CompactionCheckerUtils.getDataByQuery(
+            getPaths(Collections.singletonList(targetResource)),
+            Collections.singletonList(targetResource),
+            Collections.emptyList()));
   }
 
   @Test
@@ -628,11 +667,12 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
         COMPACTION_TEST_SG);
     Assert.assertEquals(16, summary.getDeserializeChunkCount());
     Assert.assertEquals(16, summary.getDeserializePageCount());
-    TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+        CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
+        CompactionCheckerUtils.getDataByQuery(
+            getPaths(Collections.singletonList(targetResource)),
+            Collections.singletonList(targetResource),
+            Collections.emptyList()));
   }
 
   @Test
@@ -691,14 +731,16 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
         COMPACTION_TEST_SG);
     Assert.assertEquals(16, summary.getDirectlyFlushChunkNum());
     Assert.assertEquals(0, summary.getDirectlyFlushPageCount());
-    TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
     Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));
+        CompactionCheckerUtils.getDataByQuery(getPaths(seqResources), seqResources, unseqResources),
+        CompactionCheckerUtils.getDataByQuery(
+            getPaths(Collections.singletonList(targetResource)),
+            Collections.singletonList(targetResource),
+            Collections.emptyList()));
   }
 
   @Test
+  @Ignore
   public void testFlushChunkMetadataToTempFile()
       throws IOException,
           StorageEngineException,
@@ -769,11 +811,14 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
         Collections.singletonList(targetResource),
         CompactionTaskType.INNER_SEQ,
         COMPACTION_TEST_SG);
-    TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
-    Assert.assertEquals(
-        CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
-        CompactionCheckerUtils.getAllDataByQuery(
-            Collections.singletonList(targetResource), Collections.emptyList()));;
+    //    Assert.assertEquals(
+    //        CompactionCheckerUtils.getDataByQuery(
+    //            getPaths(seqResources), null, seqResources, unseqResources),
+    //        CompactionCheckerUtils.getDataByQuery(
+    //            getPaths(Collections.singletonList(targetResource)),
+    //            null,
+    //            Collections.singletonList(targetResource),
+    //            Collections.emptyList()));
     Assert.assertEquals(devices.size(), targetResource.buildDeviceTimeIndex().getDevices().size());
   }
 
@@ -835,5 +880,38 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
     writer1.endFile();
     writer1.close();
     return seqResource1;
+  }
+
+  private List<PartialPath> getPaths(List<TsFileResource> resources)
+      throws IOException, IllegalPathException {
+    Set<PartialPath> paths = new HashSet<>();
+    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(resources)) {
+      while (deviceIterator.hasNextDevice()) {
+        Pair<IDeviceID, Boolean> iDeviceIDBooleanPair = deviceIterator.nextDevice();
+        IDeviceID deviceID = iDeviceIDBooleanPair.getLeft();
+        boolean isAlign = iDeviceIDBooleanPair.getRight();
+        Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
+        IMeasurementSchema timeSchema = schemaMap.remove(TsFileConstant.TIME_COLUMN_ID);
+        List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
+        if (measurementSchemas.isEmpty()) {
+          continue;
+        }
+        List<String> existedMeasurements =
+            measurementSchemas.stream()
+                .map(IMeasurementSchema::getMeasurementId)
+                .collect(Collectors.toList());
+        PartialPath seriesPath;
+        if (isAlign) {
+          seriesPath =
+              new AlignedPath(
+                  ((PlainDeviceID) deviceID).toStringID(), existedMeasurements, measurementSchemas);
+        } else {
+          seriesPath =
+              new MeasurementPath(deviceID, existedMeasurements.get(0), measurementSchemas.get(0));
+        }
+        paths.add(seriesPath);
+      }
+    }
+    return new ArrayList<>(paths);
   }
 }

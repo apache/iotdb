@@ -192,7 +192,7 @@ public class FastCompactionPerformerNoAlignedTest {
             fullPathSet, chunkPagePointsNum, i * 1500L, resource);
       }
       Map<PartialPath, List<TimeValuePair>> originData =
-          CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+          CompactionCheckerUtils.getDataByQuery(paths, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
@@ -213,7 +213,7 @@ public class FastCompactionPerformerNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
-              paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
+              paths, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
@@ -278,7 +278,7 @@ public class FastCompactionPerformerNoAlignedTest {
           fullPathSet, chunkPagePointsNum, fileNum * testTargetChunkPointNum, resource);
 
       Map<PartialPath, List<TimeValuePair>> originData =
-          CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+          CompactionCheckerUtils.getDataByQuery(paths, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
@@ -296,7 +296,7 @@ public class FastCompactionPerformerNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
-              paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
+              paths, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
@@ -366,7 +366,7 @@ public class FastCompactionPerformerNoAlignedTest {
           fullPathSet, chunkPagePointsNum, fileNum * testTargetChunkPointNum, resource);
 
       Map<PartialPath, List<TimeValuePair>> originData =
-          CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+          CompactionCheckerUtils.getDataByQuery(paths, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
@@ -387,7 +387,7 @@ public class FastCompactionPerformerNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
-              paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
+              paths, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
@@ -441,7 +441,7 @@ public class FastCompactionPerformerNoAlignedTest {
             fullPathSetWithDeleted, chunkPagePointsNum, i * 1500L, resource);
       }
       Map<PartialPath, List<TimeValuePair>> originData =
-          CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+          CompactionCheckerUtils.getDataByQuery(paths, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
@@ -474,7 +474,7 @@ public class FastCompactionPerformerNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
-              paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
+              paths, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
@@ -545,7 +545,7 @@ public class FastCompactionPerformerNoAlignedTest {
           fullPathSet, chunkPagePointsNum, fileNum * testTargetChunkPointNum, resource);
 
       Map<PartialPath, List<TimeValuePair>> originData =
-          CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+          CompactionCheckerUtils.getDataByQuery(paths, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
@@ -566,7 +566,7 @@ public class FastCompactionPerformerNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
-              paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
+              paths, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
@@ -620,7 +620,7 @@ public class FastCompactionPerformerNoAlignedTest {
             fullPathSet, chunkPagePointsNum, i * 1500L, resource);
       }
       Map<PartialPath, List<TimeValuePair>> originData =
-          CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+          CompactionCheckerUtils.getDataByQuery(paths, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
@@ -640,7 +640,7 @@ public class FastCompactionPerformerNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
-              paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
+              paths, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
@@ -698,7 +698,7 @@ public class FastCompactionPerformerNoAlignedTest {
             fullPathSet, chunkPagePointsNum, i * 1500L, resource);
       }
       Map<PartialPath, List<TimeValuePair>> originData =
-          CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+          CompactionCheckerUtils.getDataByQuery(paths, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
@@ -718,7 +718,7 @@ public class FastCompactionPerformerNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
-              paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
+              paths, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
@@ -769,7 +769,7 @@ public class FastCompactionPerformerNoAlignedTest {
       }
 
       Map<PartialPath, List<TimeValuePair>> originData =
-          CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+          CompactionCheckerUtils.getDataByQuery(paths, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
@@ -791,7 +791,7 @@ public class FastCompactionPerformerNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
-              paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
+              paths, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
@@ -843,7 +843,7 @@ public class FastCompactionPerformerNoAlignedTest {
       }
 
       Map<PartialPath, List<TimeValuePair>> originData =
-          CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
+          CompactionCheckerUtils.getDataByQuery(paths, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
@@ -868,7 +868,7 @@ public class FastCompactionPerformerNoAlignedTest {
       }
       Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
-              paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
+              paths, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);

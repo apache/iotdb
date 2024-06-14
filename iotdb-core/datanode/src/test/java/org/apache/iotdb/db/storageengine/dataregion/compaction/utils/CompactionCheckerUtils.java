@@ -20,10 +20,13 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -35,6 +38,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.MetaMarker;
@@ -54,20 +58,26 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.read.reader.page.PageReader;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.utils.ModificationUtils.modifyChunkMetaData;
 import static org.junit.Assert.assertEquals;
@@ -493,20 +503,69 @@ public class CompactionCheckerUtils {
   /**
    * Using SeriesRawDataBatchReader to read raw data from files, and return it as a map.
    *
-   * @param fullPaths
-   * @param schemas
    * @param sequenceResources
    * @param unsequenceResources
    * @return
    * @throws IllegalPathException
    * @throws IOException
    */
+  public static Map<PartialPath, List<TimeValuePair>> getAllDataByQuery(
+      List<TsFileResource> sequenceResources, List<TsFileResource> unsequenceResources)
+      throws IllegalPathException, IOException {
+    List<PartialPath> partialPaths =
+        getAllPathsOfResources(
+            Stream.concat(sequenceResources.stream(), unsequenceResources.stream())
+                .collect(Collectors.toList()));
+    return getDataByQuery(partialPaths, sequenceResources, unsequenceResources);
+  }
+
+  public static List<PartialPath> getAllPathsOfResources(List<TsFileResource> resources)
+      throws IOException, IllegalPathException {
+    Set<PartialPath> paths = new HashSet<>();
+    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(resources)) {
+      while (deviceIterator.hasNextDevice()) {
+        Pair<IDeviceID, Boolean> iDeviceIDBooleanPair = deviceIterator.nextDevice();
+        IDeviceID deviceID = iDeviceIDBooleanPair.getLeft();
+        boolean isAlign = iDeviceIDBooleanPair.getRight();
+        Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
+        IMeasurementSchema timeSchema = schemaMap.remove(TsFileConstant.TIME_COLUMN_ID);
+        List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
+        if (measurementSchemas.isEmpty()) {
+          continue;
+        }
+        List<String> existedMeasurements =
+            measurementSchemas.stream()
+                .map(IMeasurementSchema::getMeasurementId)
+                .collect(Collectors.toList());
+        PartialPath seriesPath;
+        if (isAlign) {
+          seriesPath =
+              new AlignedPath(
+                  ((PlainDeviceID) deviceID).toStringID(), existedMeasurements, measurementSchemas);
+        } else {
+          seriesPath =
+              new MeasurementPath(deviceID, existedMeasurements.get(0), measurementSchemas.get(0));
+        }
+        paths.add(seriesPath);
+      }
+    }
+    return new ArrayList<>(paths);
+  }
+
+  /**
+   * Using SeriesRawDataBatchReader to read raw data from files, and return it as a map.
+   *
+   * @param fullPaths
+   * @param sequenceResources
+   * @param unsequenceResources
+   * @return
+   * @throws IOException
+   */
   public static Map<PartialPath, List<TimeValuePair>> getDataByQuery(
       List<PartialPath> fullPaths,
-      List<IMeasurementSchema> schemas,
       List<TsFileResource> sequenceResources,
       List<TsFileResource> unsequenceResources)
-      throws IllegalPathException, IOException {
+      throws IOException {
     Map<PartialPath, List<TimeValuePair>> pathDataMap = new HashMap<>();
     for (int i = 0; i < fullPaths.size(); ++i) {
       FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
