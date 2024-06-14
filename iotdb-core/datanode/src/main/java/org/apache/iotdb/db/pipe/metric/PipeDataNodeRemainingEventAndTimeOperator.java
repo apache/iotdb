@@ -193,8 +193,12 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   // Thread-safe & Idempotent
   @Override
-  public void thawRate(final boolean isStartPipe) {
+  public synchronized void thawRate(final boolean isStartPipe) {
     super.thawRate(isStartPipe);
+    // The stopped pipe's rate should only be thawed by "startPipe" command
+    if (isStopped) {
+      return;
+    }
     dataRegionCommitMeter.compareAndSet(
         null, new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
     schemaRegionCommitMeter.compareAndSet(
@@ -203,7 +207,7 @@ class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   // Thread-safe & Idempotent
   @Override
-  public void freezeRate(final boolean isStopPipe) {
+  public synchronized void freezeRate(final boolean isStopPipe) {
     super.freezeRate(isStopPipe);
     dataRegionCommitMeter.set(null);
     schemaRegionCommitMeter.set(null);

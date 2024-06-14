@@ -30,7 +30,7 @@ public abstract class PipeRemainingOperator {
 
   private long lastEmptyTimeStamp = System.currentTimeMillis();
   private long lastNonEmptyTimeStamp = System.currentTimeMillis();
-  protected volatile boolean isStopped = true;
+  protected boolean isStopped = true;
 
   //////////////////////////// Tags ////////////////////////////
 
@@ -51,6 +51,17 @@ public abstract class PipeRemainingOperator {
 
   //////////////////////////// Switch ////////////////////////////
 
+  protected void notifyNonEmpty() {
+    final long pipeRemainingTimeCommitAutoSwitchSeconds =
+        PipeConfig.getInstance().getPipeRemainingTimeCommitAutoSwitchSeconds();
+
+    lastNonEmptyTimeStamp = System.currentTimeMillis();
+    if (lastNonEmptyTimeStamp - lastEmptyTimeStamp
+        >= pipeRemainingTimeCommitAutoSwitchSeconds * 1000) {
+      thawRate(false);
+    }
+  }
+
   protected void notifyEmpty() {
     final long pipeRemainingTimeCommitAutoSwitchSeconds =
         PipeConfig.getInstance().getPipeRemainingTimeCommitAutoSwitchSeconds();
@@ -62,26 +73,13 @@ public abstract class PipeRemainingOperator {
     }
   }
 
-  protected void notifyNonEmpty() {
-    final long pipeRemainingTimeCommitAutoSwitchSeconds =
-        PipeConfig.getInstance().getPipeRemainingTimeCommitAutoSwitchSeconds();
-
-    lastNonEmptyTimeStamp = System.currentTimeMillis();
-    if (lastNonEmptyTimeStamp - lastEmptyTimeStamp
-            >= pipeRemainingTimeCommitAutoSwitchSeconds * 1000
-        && !isStopped) {
-      // The stopped pipe's rate should only be thawed by "startPipe" command
-      thawRate(false);
-    }
-  }
-
-  public void thawRate(final boolean isStartPipe) {
+  public synchronized void thawRate(final boolean isStartPipe) {
     if (isStartPipe) {
       isStopped = false;
     }
   }
 
-  public void freezeRate(final boolean isStopPipe) {
+  public synchronized void freezeRate(final boolean isStopPipe) {
     if (isStopPipe) {
       isStopped = true;
     }

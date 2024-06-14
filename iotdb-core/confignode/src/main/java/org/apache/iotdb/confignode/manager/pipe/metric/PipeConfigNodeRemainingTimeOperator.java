@@ -110,14 +110,18 @@ class PipeConfigNodeRemainingTimeOperator extends PipeRemainingOperator {
   //////////////////////////// Switch ////////////////////////////
 
   @Override
-  public void thawRate(final boolean isStartPipe) {
+  public synchronized void thawRate(final boolean isStartPipe) {
     super.thawRate(isStartPipe);
+    // The stopped pipe's rate should only be thawed by "startPipe" command
+    if (isStopped) {
+      return;
+    }
     configRegionCommitMeter.compareAndSet(
         null, new Meter(new ExponentialMovingAverages(), Clock.defaultClock()));
   }
 
   @Override
-  public void freezeRate(final boolean isStopPipe) {
+  public synchronized void freezeRate(final boolean isStopPipe) {
     super.freezeRate(isStopPipe);
     configRegionCommitMeter.set(null);
   }
