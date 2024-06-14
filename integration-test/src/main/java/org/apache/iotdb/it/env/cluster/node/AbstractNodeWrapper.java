@@ -696,7 +696,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     logger.info("Jstack execution output can be found at {}", fileName);
   }
 
-  private void executeJstack(Consumer<String> consumer) {
+  private void executeJstack(final Consumer<String> consumer) {
     final long pid = this.getPid();
     if (pid == -1) {
       logger.warn("Failed to get pid for {} before executing Jstack", this.getId());

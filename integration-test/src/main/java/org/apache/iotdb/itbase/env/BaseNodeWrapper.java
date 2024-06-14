@@ -57,7 +57,7 @@ public interface BaseNodeWrapper {
    *
    * @param testCaseName the name of test case
    */
-  void executeJstack(String testCaseName);
+  void executeJstack(final String testCaseName);
 
   long getPid();
 }
