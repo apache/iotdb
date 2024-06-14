@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.client.cn;
 
+/** For DataNode async call ConfigNode */
 public enum DnToCnRequestType {
   SUBMIT_TEST_CONNECTION_TASK,
   TEST_CONNECTION,

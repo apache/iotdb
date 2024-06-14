@@ -899,9 +899,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations)
       throws TException {
-    return new TTestConnectionResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        configManager.getClusterManager().doConnectionTest(nodeLocations));
+    return configManager.getClusterManager().doConnectionTest(nodeLocations);
   }
 
   /** Call by client connected DataNode */

@@ -20,8 +20,10 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +56,12 @@ public class SubmitTestConnectionTaskRPCHandler
 
   @Override
   public void onError(Exception e) {
-    responseMap.put(requestId, new TTestConnectionResp());
+    responseMap.put(
+        requestId,
+        new TTestConnectionResp()
+            .setStatus(
+                new TSStatus(TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode())
+                    .setMessage(e.getMessage())));
     nodeLocationMap.remove(requestId);
     countDownLatch.countDown();
   }

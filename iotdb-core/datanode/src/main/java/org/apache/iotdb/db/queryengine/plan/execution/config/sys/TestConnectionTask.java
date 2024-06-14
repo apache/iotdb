@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TServiceProvider;
 import org.apache.iotdb.common.rpc.thrift.TServiceType;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
+import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
@@ -166,9 +167,9 @@ public class TestConnectionTask implements IConfigTask {
 
   private static String connectionResultToString(TTestConnectionResult result) {
     if (result.isSuccess()) {
-      return "up";
+      return ThriftService.STATUS_UP;
     }
-    return "down" + " (" + result.getReason() + ")";
+    return ThriftService.STATUS_DOWN + " (" + result.getReason() + ")";
   }
 
   private static String endPointToString(TEndPoint endPoint) {
@@ -213,17 +214,5 @@ public class TestConnectionTask implements IConfigTask {
         .mapToInt(String::length)
         .max()
         .getAsInt();
-  }
-
-  private static String addLineBreak(String origin, int interval) {
-    if (origin.length() < interval) {
-      return origin;
-    }
-    StringBuilder builder = new StringBuilder(origin.substring(0, interval));
-    for (int i = interval; i < origin.length(); i += interval) {
-      builder.append("\n");
-      builder.append(origin, i, Math.min(origin.length(), i + interval));
-    }
-    return builder.toString();
   }
 }

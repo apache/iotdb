@@ -48,10 +48,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ClusterManager {
 
@@ -105,6 +107,7 @@ public class ClusterManager {
     }
   }
 
+  // TODO: Parallel test ConfigNode and DataNode
   public TTestConnectionResp submitTestConnectionTaskToEveryNode() {
     TTestConnectionResp resp = new TTestConnectionResp();
     resp.resultList = new ArrayList<>();
@@ -140,7 +143,9 @@ public class ClusterManager {
                 resp.getResultList()
                     .addAll(
                         badConfigNodeConnectionResult(
-                            anotherConfigNodeLocationMap.get(nodeId), nodeLocations));
+                            configNodeResp.getStatus(),
+                            anotherConfigNodeLocationMap.get(nodeId),
+                            nodeLocations));
               }
             });
     // For DataNode
@@ -167,19 +172,22 @@ public class ClusterManager {
                 resp.getResultList()
                     .addAll(
                         badDataNodeConnectionResult(
-                            anotherDataNodeLocationMap.get(nodeId), nodeLocations));
+                            dataNodeResp.getStatus(),
+                            anotherDataNodeLocationMap.get(nodeId),
+                            nodeLocations));
               }
             });
     return resp;
   }
 
-  public List<TTestConnectionResult> doConnectionTest(TNodeLocations nodeLocations) {
-    List<TTestConnectionResult> configNodeResult =
-        testAllConfigNodeConnection(nodeLocations.getConfigNodeLocations());
-    List<TTestConnectionResult> dataNodeResult =
-        testAllDataNodeConnection(nodeLocations.getDataNodeLocations());
-    configNodeResult.addAll(dataNodeResult);
-    return configNodeResult;
+  public TTestConnectionResp doConnectionTest(TNodeLocations nodeLocations) {
+    return new TTestConnectionResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        Stream.of(
+                testAllConfigNodeConnection(nodeLocations.getConfigNodeLocations()),
+                testAllDataNodeConnection(nodeLocations.getDataNodeLocations()))
+            .flatMap(Collection::stream)
+            .collect(Collectors.toList()));
   }
 
   private List<TTestConnectionResult> testAllConfigNodeConnection(
@@ -202,9 +210,9 @@ public class ClusterManager {
   }
 
   private List<TTestConnectionResult> badConfigNodeConnectionResult(
-      TConfigNodeLocation sourceConfigNode, TNodeLocations nodeLocations) {
+      TSStatus badStatus, TConfigNodeLocation sourceConfigNode, TNodeLocations nodeLocations) {
     final TSender sender = new TSender().setConfigNodeLocation(sourceConfigNode);
-    return badNodeConnectionResult(nodeLocations, sender);
+    return badNodeConnectionResult(badStatus, nodeLocations, sender);
   }
 
   private List<TTestConnectionResult> testAllDataNodeConnection(
@@ -226,14 +234,15 @@ public class ClusterManager {
   }
 
   private List<TTestConnectionResult> badDataNodeConnectionResult(
-      TDataNodeLocation sourceDataNode, TNodeLocations nodeLocations) {
+      TSStatus badStatus, TDataNodeLocation sourceDataNode, TNodeLocations nodeLocations) {
     final TSender sender = new TSender().setDataNodeLocation(sourceDataNode);
-    return badNodeConnectionResult(nodeLocations, sender);
+    return badNodeConnectionResult(badStatus, nodeLocations, sender);
   }
 
   private List<TTestConnectionResult> badNodeConnectionResult(
-      TNodeLocations nodeLocations, TSender sender) {
-    final String errorMessage = "ConfigNode leader cannot connect to the sender";
+      TSStatus badStatus, TNodeLocations nodeLocations, TSender sender) {
+    final String errorMessage =
+        "ConfigNode leader cannot connect to the sender: " + badStatus.getMessage();
     List<TTestConnectionResult> results = new ArrayList<>();
     nodeLocations
         .getConfigNodeLocations()
