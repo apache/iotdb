@@ -2874,6 +2874,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     removeLogicViewMeasurement(schemaTree);
     Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesContext =
         new HashMap<>();
+    /**
+     * Since we fetch raw time series schema without template(The template sequence will be treated
+     * as a normal node, not a device+templateId. This means that all nodes are what we need.). We
+     * can use ALL_MATCH_PATTERN to get result.
+     */
     List<DeviceSchemaInfo> deviceSchemaInfoList = schemaTree.getMatchedDevices(ALL_MATCH_PATTERN);
     Set<String> deviceSet = new HashSet<>();
     for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfoList) {
