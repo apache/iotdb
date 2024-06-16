@@ -14,18 +14,23 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.FilterScanCombine;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.IndexScan;
@@ -33,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Pru
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RelationalPlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SimplifyExpressions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
@@ -51,6 +57,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 
 public class LogicalPlanner {
@@ -96,6 +104,9 @@ public class LogicalPlanner {
   }
 
   private PlanNode planStatement(Analysis analysis, Statement statement) {
+    if (statement instanceof CreateDevice) {
+      return planCreateDevice((CreateDevice) statement, analysis);
+    }
     return createOutputPlan(planStatementWithoutOutput(analysis, statement), analysis);
   }
 
@@ -180,5 +191,38 @@ public class LogicalPlanner {
     CREATED,
     OPTIMIZED,
     OPTIMIZED_AND_VALIDATED
+  }
+
+  private PlanNode planCreateDevice(CreateDevice statement, Analysis analysis) {
+    List<PartialPath> devicePathList = new ArrayList<>(statement.getDeviceIdList().size());
+    for (String[] deviceId : statement.getDeviceIdList()) {
+      String[] nodes = new String[3 + deviceId.length];
+      nodes[0] = PATH_ROOT;
+      nodes[1] = statement.getDatabase();
+      nodes[2] = statement.getTable();
+      System.arraycopy(deviceId, 0, nodes, 3, deviceId.length);
+      devicePathList.add(new PartialPath(nodes));
+    }
+    CreateTableDeviceNode node =
+        new CreateTableDeviceNode(
+            context.getQueryId().genPlanNodeId(),
+            devicePathList,
+            statement.getAttributeNameList(),
+            statement.getAttributeValueList());
+
+    context.setQueryType(QueryType.WRITE);
+    analysis.setStatement(statement);
+
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath devicePath : devicePathList) {
+      patternTree.appendFullPath(devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
+    }
+    SchemaPartition partition =
+        partitionFetcher.getOrCreateSchemaPartition(
+            patternTree, context.getSession().getUserName());
+
+    analysis.setSchemaPartitionInfo(partition);
+
+    return node;
   }
 }

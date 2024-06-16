@@ -158,6 +158,8 @@ public class Analysis implements IAnalysis {
 
   private DataPartition dataPartition;
 
+  private SchemaPartition schemaPartition;
+
   private DatasetHeader respDatasetHeader;
 
   private boolean finishQueryAfterAnalyze;
@@ -653,7 +655,12 @@ public class Analysis implements IAnalysis {
 
   @Override
   public SchemaPartition getSchemaPartitionInfo() {
-    throw new UnsupportedOperationException();
+    return schemaPartition;
+  }
+
+  @Override
+  public void setSchemaPartitionInfo(SchemaPartition schemaPartition) {
+    this.schemaPartition = schemaPartition;
   }
 
   @Override
