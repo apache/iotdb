@@ -680,7 +680,7 @@ public class Analysis implements IAnalysis {
 
   @Override
   public TimePredicate getCovertedTimePredicate() {
-    throw new UnsupportedOperationException();
+    return null;
   }
 
   public static final class AccessControlInfo {
