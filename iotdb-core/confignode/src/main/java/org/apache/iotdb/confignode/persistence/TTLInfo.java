@@ -127,7 +127,7 @@ public class TTLInfo implements SnapshotProcessor {
     try {
       PartialPath pathPattern = new PartialPath(plan.getPathPattern());
       for (Map.Entry<String[], Long> entry : ttlCache.getAllTTLs().entrySet()) {
-        if (pathPattern.matchFullPath(new PartialPath(entry.getKey()))) {
+        if (pathPattern.matchFullPath(entry.getKey())) {
           pathTTLMap.put(
               String.join(String.valueOf(IoTDBConstant.PATH_SEPARATOR), entry.getKey()),
               entry.getValue());
