@@ -21,17 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
-import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
-import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -53,7 +47,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
-import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -177,9 +170,7 @@ public class AnalyzerTest {
     assertEquals(1, actualAnalysis.getTables().size());
 
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    logicalPlanner =
-        new LogicalPlanner(
-            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -208,9 +199,7 @@ public class AnalyzerTest {
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    logicalPlanner =
-        new LogicalPlanner(
-            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -234,9 +223,7 @@ public class AnalyzerTest {
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    logicalPlanner =
-        new LogicalPlanner(
-            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -251,9 +238,7 @@ public class AnalyzerTest {
     actualAnalysis = analyzeSQL(sql, metadata);
     assertEquals(1, actualAnalysis.getTables().size());
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    logicalPlanner =
-        new LogicalPlanner(
-            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -271,9 +256,7 @@ public class AnalyzerTest {
     actualAnalysis = analyzeSQL(sql, metadata);
     assertEquals(1, actualAnalysis.getTables().size());
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    logicalPlanner =
-        new LogicalPlanner(
-            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -296,9 +279,7 @@ public class AnalyzerTest {
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    logicalPlanner =
-        new LogicalPlanner(
-            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
@@ -311,9 +292,7 @@ public class AnalyzerTest {
     assertNotNull(actualAnalysis);
     assertEquals(1, actualAnalysis.getTables().size());
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    logicalPlanner =
-        new LogicalPlanner(
-            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
@@ -327,8 +306,7 @@ public class AnalyzerTest {
     actualAnalysis = analyzeSQL(sql, metadata);
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     logicalQueryPlan =
-        new LogicalPlanner(
-                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
@@ -343,8 +321,7 @@ public class AnalyzerTest {
     actualAnalysis = analyzeSQL(sql, metadata);
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     logicalQueryPlan =
-        new LogicalPlanner(
-                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     tableScanNode = (TableScanNode) rootNode.getChildren().get(0).getChildren().get(0);
@@ -360,8 +337,7 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(
-                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -370,8 +346,7 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(
-                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -381,8 +356,7 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(
-                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -391,8 +365,7 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(
-                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
   }
@@ -403,9 +376,7 @@ public class AnalyzerTest {
     sql = "SELECT CAST(s2 AS DOUBLE) FROM table1 WHERE CAST(s1 AS DOUBLE) > 1.0";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
-    logicalPlanner =
-        new LogicalPlanner(
-            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -414,9 +385,7 @@ public class AnalyzerTest {
         "SELECT SUBSTRING(tag1, 2), SUBSTRING(tag2, s1) FROM table1 WHERE SUBSTRING(tag2, 1) = 'A'";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
-    logicalPlanner =
-        new LogicalPlanner(
-            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -424,9 +393,7 @@ public class AnalyzerTest {
     sql = "SELECT ROUND(s1, 1) FROM table1 WHERE ROUND(s2, 2) > 1.0";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
-    logicalPlanner =
-        new LogicalPlanner(
-            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -434,9 +401,7 @@ public class AnalyzerTest {
     sql = "SELECT REPLACE(tag1, 'A', 'B') FROM table1 WHERE REPLACE(attr1, 'C', 'D') = 'D'";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
-    logicalPlanner =
-        new LogicalPlanner(
-            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -444,9 +409,7 @@ public class AnalyzerTest {
     sql = "SELECT DIFF(s1) FROM table1 WHERE DIFF(s2) > 0";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
-    logicalPlanner =
-        new LogicalPlanner(
-            context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP);
+    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
   }
@@ -460,8 +423,7 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata);
     logicalQueryPlan =
-        new LogicalPlanner(
-                context, metadata, sessionInfo, getFakePartitionFetcher(), WarningCollector.NOOP)
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -505,65 +467,6 @@ public class AnalyzerTest {
     }
     fail();
     return null;
-  }
-
-  private static final DataPartition DATA_PARTITION = MockTablePartition.constructDataPartition();
-  private static final SchemaPartition SCHEMA_PARTITION =
-      MockTablePartition.constructSchemaPartition();
-
-  private static IPartitionFetcher getFakePartitionFetcher() {
-
-    return new IPartitionFetcher() {
-
-      @Override
-      public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
-        return SCHEMA_PARTITION;
-      }
-
-      @Override
-      public SchemaPartition getOrCreateSchemaPartition(
-          PathPatternTree patternTree, String userName) {
-        return SCHEMA_PARTITION;
-      }
-
-      @Override
-      public DataPartition getDataPartition(
-          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-        return DATA_PARTITION;
-      }
-
-      @Override
-      public DataPartition getDataPartitionWithUnclosedTimeRange(
-          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-        return DATA_PARTITION;
-      }
-
-      @Override
-      public DataPartition getOrCreateDataPartition(
-          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-        return DATA_PARTITION;
-      }
-
-      @Override
-      public DataPartition getOrCreateDataPartition(
-          List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
-        return DATA_PARTITION;
-      }
-
-      @Override
-      public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-          PathPatternTree patternTree, PathPatternTree scope, Integer level) {
-        return null;
-      }
-
-      @Override
-      public boolean updateRegionCache(TRegionRouteReq req) {
-        return false;
-      }
-
-      @Override
-      public void invalidAllCache() {}
-    };
   }
 
   private static class NopAccessControl implements AccessControl {}

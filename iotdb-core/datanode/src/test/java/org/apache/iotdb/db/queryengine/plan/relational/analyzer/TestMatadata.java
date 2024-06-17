@@ -14,10 +14,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
+import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -33,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.BinaryType;
@@ -41,6 +48,7 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.getFunctionType;
@@ -176,6 +184,11 @@ public class TestMatadata implements Metadata {
   }
 
   @Override
+  public IPartitionFetcher getPartitionFetcher() {
+    return getFakePartitionFetcher();
+  }
+
+  @Override
   public List<DeviceEntry> indexScan(
       QualifiedObjectName tableName,
       List<Expression> expressionList,
@@ -232,5 +245,64 @@ public class TestMatadata implements Metadata {
 
     // Boolean type and Binary Type can not be compared with other types
     return isNumericType(left) && isNumericType(right);
+  }
+
+  private static final DataPartition DATA_PARTITION = MockTablePartition.constructDataPartition();
+  private static final SchemaPartition SCHEMA_PARTITION =
+      MockTablePartition.constructSchemaPartition();
+
+  private static IPartitionFetcher getFakePartitionFetcher() {
+
+    return new IPartitionFetcher() {
+
+      @Override
+      public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
+        return SCHEMA_PARTITION;
+      }
+
+      @Override
+      public SchemaPartition getOrCreateSchemaPartition(
+          PathPatternTree patternTree, String userName) {
+        return SCHEMA_PARTITION;
+      }
+
+      @Override
+      public DataPartition getDataPartition(
+          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+        return DATA_PARTITION;
+      }
+
+      @Override
+      public DataPartition getDataPartitionWithUnclosedTimeRange(
+          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+        return DATA_PARTITION;
+      }
+
+      @Override
+      public DataPartition getOrCreateDataPartition(
+          Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+        return DATA_PARTITION;
+      }
+
+      @Override
+      public DataPartition getOrCreateDataPartition(
+          List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
+        return DATA_PARTITION;
+      }
+
+      @Override
+      public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
+          PathPatternTree patternTree, PathPatternTree scope, Integer level) {
+        return null;
+      }
+
+      @Override
+      public boolean updateRegionCache(TRegionRouteReq req) {
+        return false;
+      }
+
+      @Override
+      public void invalidAllCache() {}
+    };
   }
 }

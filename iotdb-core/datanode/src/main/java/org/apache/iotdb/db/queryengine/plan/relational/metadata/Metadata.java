@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -55,6 +56,8 @@ public interface Metadata {
   Type getType(TypeSignature signature) throws TypeNotFoundException;
 
   boolean canCoerce(Type from, Type to);
+
+  IPartitionFetcher getPartitionFetcher();
 
   /**
    * get all device ids and corresponding attributes from schema region

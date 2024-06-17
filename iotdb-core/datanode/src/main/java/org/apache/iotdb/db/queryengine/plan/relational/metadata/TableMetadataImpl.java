@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -260,6 +262,11 @@ public class TableMetadataImpl implements Metadata {
   @Override
   public boolean canCoerce(Type from, Type to) {
     return true;
+  }
+
+  @Override
+  public IPartitionFetcher getPartitionFetcher() {
+    return ClusterPartitionFetcher.getInstance();
   }
 
   @Override
