@@ -225,13 +225,13 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       }
 
       if (insertNode instanceof InsertRowsNode) {
-        for (final InsertRowNode node : ((InsertRowsNode) insertNode).getInsertRowNodeList()) {
-          final long timestamp = node.getTime();
-          if (startTime <= timestamp && timestamp <= endTime) {
-            return true;
-          }
-        }
-        return false;
+        return ((InsertRowsNode) insertNode)
+            .getInsertRowNodeList().stream()
+                .anyMatch(
+                    insertRowNode -> {
+                      final long timestamp = insertRowNode.getTime();
+                      return startTime <= timestamp && timestamp <= endTime;
+                    });
       }
 
       return true;

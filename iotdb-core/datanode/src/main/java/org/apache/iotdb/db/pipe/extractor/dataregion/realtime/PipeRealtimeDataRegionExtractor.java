@@ -91,7 +91,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected long realtimeDataExtractionStartTime = Long.MIN_VALUE; // Event time
   protected long realtimeDataExtractionEndTime = Long.MAX_VALUE; // Event time
 
-  private boolean disableSkippingTimeParse = false;
+  private boolean disableCheckingDataRegionTimePartitionCovering = false;
   private long startTimePartitionIdLowerBound; // calculated by realtimeDataExtractionStartTime
   private long endTimePartitionIdUpperBound; // calculated by realtimeDataExtractionEndTime
 
@@ -284,14 +284,15 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       event.skipParsingPattern();
     }
 
-    if (!disableSkippingTimeParse && Objects.nonNull(dataRegionTimePartitionIdBound.get())) {
+    if (!disableCheckingDataRegionTimePartitionCovering
+        && Objects.nonNull(dataRegionTimePartitionIdBound.get())) {
       if (isDataRegionTimePartitionCoveredByTimeRange()) {
         event.skipParsingTime();
       } else {
         // Since we only record the upper and lower bounds that time partition has ever reached, if
         // the time partition cannot be covered by the time range during query, it will not be
         // possible later.
-        disableSkippingTimeParse = true;
+        disableCheckingDataRegionTimePartitionCovering = true;
       }
     }
 
