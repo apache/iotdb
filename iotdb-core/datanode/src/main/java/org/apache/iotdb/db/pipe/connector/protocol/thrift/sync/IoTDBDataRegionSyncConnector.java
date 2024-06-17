@@ -60,6 +60,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
@@ -189,6 +190,8 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       doTransfer(((PipeTabletEventTsFileBatch) batch).deepCopyPipeName2WeightMap(), tsFile, null);
       try {
         FileUtils.delete(tsFile);
+      } catch (final NoSuchFileException e) {
+        LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
       } catch (final IOException e) {
         LOGGER.warn(
             "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
