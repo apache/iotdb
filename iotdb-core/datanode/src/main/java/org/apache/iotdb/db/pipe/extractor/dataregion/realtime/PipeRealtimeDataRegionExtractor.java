@@ -167,8 +167,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
             .collect(Collectors.toSet());
     // Avoid empty string
     sloppyOptionSet.remove("");
-    sloppyTimeRange = sloppyOptionSet.contains(EXTRACTOR_REALTIME_LOOSE_RANGE_TIME_VALUE);
-    sloppyPattern = sloppyOptionSet.contains(EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE);
+    sloppyTimeRange = sloppyOptionSet.remove(EXTRACTOR_REALTIME_LOOSE_RANGE_TIME_VALUE);
+    sloppyPattern = sloppyOptionSet.remove(EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE);
     if (!sloppyOptionSet.isEmpty()) {
       throw new PipeParameterNotValidException(
           String.format(
