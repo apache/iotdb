@@ -29,6 +29,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -161,7 +162,7 @@ public class WALMetaData implements SerializedSize {
     ByteBuffer magicStringBytes = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
     channel.read(magicStringBytes, channel.size() - WALWriter.MAGIC_STRING_BYTES);
     magicStringBytes.flip();
-    String magicString = new String(magicStringBytes.array());
+    String magicString = new String(magicStringBytes.array(), StandardCharsets.UTF_8);
     return magicString.equals(WALWriter.MAGIC_STRING)
         || magicString.contains(WALWriter.MAGIC_STRING_V1);
   }

@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 public class WALInputStream extends InputStream implements AutoCloseable {
@@ -78,7 +79,8 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         ByteBuffer magicStringBuffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
         channel.read(magicStringBuffer, channel.size() - WALWriter.MAGIC_STRING_BYTES);
         magicStringBuffer.flip();
-        if (!new String(magicStringBuffer.array()).equals(WALWriter.MAGIC_STRING)) {
+        if (!new String(magicStringBuffer.array(), StandardCharsets.UTF_8)
+            .equals(WALWriter.MAGIC_STRING)) {
           // This is a broken wal file
           endOffset = channel.size();
           return;
@@ -89,16 +91,21 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       } else {
         // Old version
         ByteBuffer magicStringBuffer =
-            ByteBuffer.allocate(WALWriter.MAGIC_STRING_V1.getBytes().length);
+            ByteBuffer.allocate(WALWriter.MAGIC_STRING_V1.getBytes(StandardCharsets.UTF_8).length);
         channel.read(
-            magicStringBuffer, channel.size() - WALWriter.MAGIC_STRING_V1.getBytes().length);
+            magicStringBuffer,
+            channel.size() - WALWriter.MAGIC_STRING_V1.getBytes(StandardCharsets.UTF_8).length);
         magicStringBuffer.flip();
-        if (!new String(magicStringBuffer.array()).equals(WALWriter.MAGIC_STRING_V1)) {
+        if (!new String(magicStringBuffer.array(), StandardCharsets.UTF_8)
+            .equals(WALWriter.MAGIC_STRING_V1)) {
           // this is a broken wal file
           endOffset = channel.size();
           return;
         } else {
-          position = channel.size() - WALWriter.MAGIC_STRING_V1.getBytes().length - Integer.BYTES;
+          position =
+              channel.size()
+                  - WALWriter.MAGIC_STRING_V1.getBytes(StandardCharsets.UTF_8).length
+                  - Integer.BYTES;
         }
       }
       // Read the meta data size
@@ -127,7 +134,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     channel.position(0);
     ByteBuffer buffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
     channel.read(buffer);
-    return new String(buffer.array()).equals(WALWriter.MAGIC_STRING);
+    return new String(buffer.array(), StandardCharsets.UTF_8).equals(WALWriter.MAGIC_STRING);
   }
 
   @Override

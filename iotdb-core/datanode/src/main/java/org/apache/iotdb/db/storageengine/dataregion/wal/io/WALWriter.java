@@ -30,13 +30,14 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 /** WALWriter writes the binary {@link WALEntry} into .wal file. */
 public class WALWriter extends LogWriter {
   private static final Logger logger = LoggerFactory.getLogger(WALWriter.class);
   public static final String MAGIC_STRING_V1 = "WAL";
   public static final String MAGIC_STRING = "V2-WAL";
-  public static final int MAGIC_STRING_BYTES = MAGIC_STRING.getBytes().length;
+  public static final int MAGIC_STRING_BYTES = MAGIC_STRING.getBytes(StandardCharsets.UTF_8).length;
 
   private WALFileStatus walFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
   // wal files' metadata
@@ -74,7 +75,7 @@ public class WALWriter extends LogWriter {
     metaData.serialize(logFile, buffer);
     buffer.putInt(metaDataSize);
     // add magic string
-    buffer.put(MAGIC_STRING.getBytes());
+    buffer.put(MAGIC_STRING.getBytes(StandardCharsets.UTF_8));
     size += buffer.position();
     writeMetadata(buffer);
   }

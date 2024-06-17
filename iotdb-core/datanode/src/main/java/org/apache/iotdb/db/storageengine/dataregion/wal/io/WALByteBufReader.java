@@ -66,6 +66,7 @@ public class WALByteBufReader implements Closeable {
    */
   public ByteBuffer next() throws IOException {
     int size = sizeIterator.next();
+    // TODO: Reuse this buffer
     ByteBuffer buffer = ByteBuffer.allocate(size);
     /*
      Notice, we don't need to flip the buffer after calling

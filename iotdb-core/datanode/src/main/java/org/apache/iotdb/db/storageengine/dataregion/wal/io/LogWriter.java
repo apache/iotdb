@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 /**
@@ -61,7 +62,8 @@ public abstract class LogWriter implements ILogWriter {
     this.logStream = new FileOutputStream(logFile, true);
     this.logChannel = this.logStream.getChannel();
     if (!logFile.exists() || logFile.length() == 0) {
-      this.logChannel.write(ByteBuffer.wrap(WALWriter.MAGIC_STRING.getBytes()));
+      this.logChannel.write(
+          ByteBuffer.wrap(WALWriter.MAGIC_STRING.getBytes(StandardCharsets.UTF_8)));
       size += logChannel.position();
     }
     if (IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm()
