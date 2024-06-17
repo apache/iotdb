@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -33,12 +34,17 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileInsertionEvent {
@@ -159,10 +165,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return !resource.isEmpty();
   }
 
-  public TsFileResource getResource() {
-    return resource;
-  }
-
   public File getTsFile() {
     return tsFile;
   }
@@ -279,6 +281,34 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return isClosed.get()
         ? startTime <= resource.getFileEndTime() && resource.getFileStartTime() <= endTime
         : resource.getFileStartTime() <= endTime;
+  }
+
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    if (!resource.isClosed()) {
+      return true;
+    }
+
+    try {
+      final Map<IDeviceID, Boolean> deviceIsAlignedMap =
+          PipeResourceManager.tsfile()
+              .getDeviceIsAlignedMapFromCache(
+                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()));
+      final Set<IDeviceID> deviceSet =
+          Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
+      return deviceSet.stream()
+          .anyMatch(
+              // TODO: use IDeviceID
+              deviceID ->
+                  pipePattern.mayOverlapWithDevice(((PlainDeviceID) deviceID).toStringID()));
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
+          pipeName,
+          resource.getTsFilePath(),
+          e);
+      return true;
+    }
   }
 
   /////////////////////////// TsFileInsertionEvent ///////////////////////////

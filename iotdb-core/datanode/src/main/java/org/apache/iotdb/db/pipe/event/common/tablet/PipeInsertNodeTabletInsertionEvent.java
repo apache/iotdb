@@ -239,6 +239,12 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     }
   }
 
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    final String deviceId = getDeviceId();
+    return Objects.isNull(deviceId) || pipePattern.mayOverlapWithDevice(deviceId);
+  }
+
   /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override

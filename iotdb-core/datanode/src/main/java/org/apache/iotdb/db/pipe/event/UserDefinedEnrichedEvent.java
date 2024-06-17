@@ -92,4 +92,9 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
   public boolean mayEventTimeOverlappedWithTimeRange() {
     return enrichedEvent.mayEventTimeOverlappedWithTimeRange();
   }
+
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return enrichedEvent.mayEventPathsOverlappedWithPattern();
+  }
 }

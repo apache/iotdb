@@ -173,6 +173,11 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return event.mayEventPathsOverlappedWithPattern();
+  }
+
+  @Override
   public String toString() {
     return "PipeRealtimeEvent{"
         + "event="

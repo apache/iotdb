@@ -1000,6 +1000,13 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1, at2)" + " values (1000, 1, 2), (3000, 3, 4)",
+              "flush"))) {
+        return;
+      }
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
               "insert into root.db1.d1 (time, at1, at2)" + " values (1000, 1, 2), (3000, 3, 4)",
               "flush"))) {
         return;
