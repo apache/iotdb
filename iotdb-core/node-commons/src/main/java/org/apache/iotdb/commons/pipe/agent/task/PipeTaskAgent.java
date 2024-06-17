@@ -272,6 +272,9 @@ public abstract class PipeTaskAgent {
         break;
       case STOPPED:
         if (Objects.requireNonNull(statusInAgent) == PipeStatus.RUNNING) {
+          // Only freeze rate for user stopped pipes
+          // Freeze first to get better results in calculation
+          freezeRate(pipeStaticMeta.getPipeName(), pipeStaticMeta.getCreationTime());
           stopPipe(pipeStaticMeta.getPipeName(), pipeStaticMeta.getCreationTime());
         } else {
           throw new IllegalStateException(
@@ -289,6 +292,10 @@ public abstract class PipeTaskAgent {
                 MESSAGE_UNKNOWN_PIPE_STATUS, statusFromCoordinator, pipeStaticMeta.getPipeName()));
     }
   }
+
+  protected abstract void thawRate(final String pipeName, final long creationTime);
+
+  protected abstract void freezeRate(final String pipeName, final long creationTime);
 
   public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
     acquireWriteLock();
@@ -576,9 +583,11 @@ public abstract class PipeTaskAgent {
         .getConsensusGroupId2TaskMetaMap()
         .values()
         .forEach(PipeTaskMeta::clearExceptionMessages);
+
+    thawRate(pipeName, creationTime);
   }
 
-  protected void stopPipe(final String pipeName, final long creationTime) {
+  private void stopPipe(final String pipeName, final long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
     if (!checkBeforeStopPipe(existedPipeMeta, pipeName, creationTime)) {
@@ -856,6 +865,7 @@ public abstract class PipeTaskAgent {
     final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, consensusGroupId);
     if (pipeTask != null) {
       pipeTask.start();
+      thawRate(pipeStaticMeta.getPipeName(), pipeStaticMeta.getCreationTime());
     }
   }
 

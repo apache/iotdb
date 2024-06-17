@@ -252,6 +252,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
                       tablet,
                       isAligned,
                       sourceEvent != null ? sourceEvent.getPipeName() : null,
+                      sourceEvent != null ? sourceEvent.getCreationTime() : 0,
                       pipeTaskMeta,
                       sourceEvent,
                       true);
@@ -262,6 +263,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
                       tablet,
                       isAligned,
                       sourceEvent != null ? sourceEvent.getPipeName() : null,
+                      sourceEvent != null ? sourceEvent.getCreationTime() : 0,
                       pipeTaskMeta,
                       sourceEvent,
                       false);

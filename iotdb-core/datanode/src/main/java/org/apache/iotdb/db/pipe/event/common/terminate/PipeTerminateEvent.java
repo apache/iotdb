@@ -38,8 +38,11 @@ public class PipeTerminateEvent extends EnrichedEvent {
   private final int dataRegionId;
 
   public PipeTerminateEvent(
-      final String pipeName, final PipeTaskMeta pipeTaskMeta, final int dataRegionId) {
-    super(pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final int dataRegionId) {
+    super(pipeName, creationTime, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
   }
 
@@ -61,13 +64,14 @@ public class PipeTerminateEvent extends EnrichedEvent {
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
     // Should record PipeTaskMeta, for the terminateEvent shall report progress to
     // notify the pipeTask it's completed.
-    return new PipeTerminateEvent(pipeName, pipeTaskMeta, dataRegionId);
+    return new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
   }
 
   @Override

@@ -142,6 +142,7 @@ public class PipeEventCollector implements EventCollector {
                 new PipeSchemaRegionWritePlanEvent(
                     planNode,
                     deleteDataEvent.getPipeName(),
+                    deleteDataEvent.getCreationTime(),
                     deleteDataEvent.getPipeTaskMeta(),
                     deleteDataEvent.getPipePattern(),
                     deleteDataEvent.isGeneratedByPipe()))
