@@ -22,21 +22,13 @@ package org.apache.iotdb.db.protocol.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.file.SystemPropertiesFileHandler;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -50,8 +42,6 @@ public class ConfigNodeInfo {
 
   private static final String CONFIG_NODE_LIST = "config_node_list";
 
-  private static final String PROPERTIES_FILE_NAME = "system.properties";
-
   private final ReentrantReadWriteLock configNodeInfoReadWriteLock;
 
   /** latest config nodes. */
@@ -59,26 +49,11 @@ public class ConfigNodeInfo {
 
   public static final ConfigRegionId CONFIG_REGION_ID = new ConfigRegionId(0);
 
-  private final File propertiesFile;
-  private final File propertiesFileTmp;
+  SystemPropertiesFileHandler systemPropertiesHandler = SystemPropertiesFileHandler.getInstance();
 
   private ConfigNodeInfo() {
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.onlineConfigNodes = new HashSet<>();
-    propertiesFile =
-        SystemFileFactory.INSTANCE.getFile(
-            IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-                + File.separator
-                + PROPERTIES_FILE_NAME);
-    propertiesFileTmp =
-        SystemFileFactory.INSTANCE.getFile(propertiesFile.getAbsolutePath() + ".tmp");
-    if (propertiesFileTmp.exists()) {
-      try {
-        updatePropertiesFile();
-      } catch (IOException e) {
-        logger.error("Update properties file fail", e);
-      }
-    }
   }
 
   // TODO: This needs removal of statics ...
@@ -126,30 +101,14 @@ public class ConfigNodeInfo {
    * @throws IOException if properties deserialization or configNode list serialization failed.
    */
   private void storeConfigNode() throws IOException {
-    if (!propertiesFile.exists()) {
-      logger.info("{} not exist, not necessary to store ConfigNode list", propertiesFile);
+    if (!systemPropertiesHandler.fileExist()) {
+      logger.info("System properties file not exist, not necessary to store ConfigNode list");
       return;
     }
-    Properties properties = new Properties();
-    try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
-      properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-    }
+    Properties properties = systemPropertiesHandler.read();
     properties.setProperty(
         CONFIG_NODE_LIST, NodeUrlUtils.convertTEndPointUrls(new ArrayList<>(onlineConfigNodes)));
-    try (FileOutputStream fileOutputStream = new FileOutputStream(propertiesFileTmp)) {
-      properties.store(new OutputStreamWriter(fileOutputStream, StandardCharsets.UTF_8), "");
-    }
-    updatePropertiesFile();
-  }
-
-  private void updatePropertiesFile() throws IOException {
-    if (!propertiesFile.delete()) {
-      String msg =
-          String.format(
-              "Update %s file fail: %s", PROPERTIES_FILE_NAME, propertiesFile.getAbsoluteFile());
-      throw new IOException(msg);
-    }
-    FileUtils.moveFileSafe(propertiesFileTmp, propertiesFile);
+    systemPropertiesHandler.write(properties);
   }
 
   public void loadConfigNodeList() {
@@ -157,12 +116,7 @@ public class ConfigNodeInfo {
     // properties contain CONFIG_NODE_LIST only when start as Data node
     try {
       configNodeInfoReadWriteLock.writeLock().lock();
-      Properties properties = new Properties();
-      try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
-        properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+      Properties properties = systemPropertiesHandler.read();
 
       if (properties.containsKey(CONFIG_NODE_LIST)) {
         onlineConfigNodes.clear();
@@ -174,6 +128,8 @@ public class ConfigNodeInfo {
           "Load ConfigNode successfully: {}, which takes {} ms.",
           onlineConfigNodes,
           (endTime - startTime));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     } catch (BadNodeUrlException e) {
       logger.error("Cannot parse config node list in system.properties");
     } finally {

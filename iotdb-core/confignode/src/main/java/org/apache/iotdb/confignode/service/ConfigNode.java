@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.file.SystemPropertiesFileHandler;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -130,6 +131,10 @@ public class ConfigNode implements ConfigNodeMBean {
       initConfigManager();
 
       /* Restart */
+      SystemPropertiesFileHandler.init(
+          ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
+              + File.separator
+              + ConfigNodeConstant.SYSTEM_FILE_NAME);
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
 

@@ -33,7 +33,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.file.SystemPropertiesFileHandler;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.service.JMXService;
@@ -123,6 +123,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
+import static org.apache.iotdb.db.conf.IoTDBStartCheck.PROPERTIES_FILE_NAME;
 
 public class DataNode implements DataNodeMBean {
 
@@ -135,10 +136,6 @@ public class DataNode implements DataNodeMBean {
           IoTDBConstant.IOTDB_SERVICE_JMX_NAME,
           IoTDBConstant.JMX_TYPE,
           ServiceType.DATA_NODE.getJmxName());
-
-  private static File SYSTEM_PROPERTIES =
-      SystemFileFactory.INSTANCE.getFile(
-          config.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
 
   /**
    * When joining a cluster or getting configuration this node will retry at most "DEFAULT_RETRY"
@@ -166,14 +163,6 @@ public class DataNode implements DataNodeMBean {
 
   private DataNode() {
     // We do not init anything here, so that we can re-initialize the instance in IT.
-  }
-
-  // TODO: This needs removal of statics ...
-  public static void reinitializeStatics() {
-    SYSTEM_PROPERTIES =
-        SystemFileFactory.INSTANCE.getFile(
-            config.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
-    registerManager = new RegisterManager();
   }
 
   private static RegisterManager registerManager = new RegisterManager();
@@ -236,11 +225,6 @@ public class DataNode implements DataNodeMBean {
 
     } catch (StartupException | IOException e) {
       logger.error("Fail to start server", e);
-      if (isFirstStart) {
-        // Delete the system.properties file when first start failed.
-        // Therefore, the next time this DataNode is start will still be seen as the first time.
-        SYSTEM_PROPERTIES.deleteOnExit();
-      }
       stop();
       System.exit(-1);
     }
@@ -250,9 +234,10 @@ public class DataNode implements DataNodeMBean {
   private boolean prepareDataNode() throws StartupException, IOException {
     long startTime = System.currentTimeMillis();
 
-    // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
     IoTDBStartCheck.getInstance().checkOldSystemConfig();
-    boolean isFirstStart = IoTDBStartCheck.getInstance().checkIsFirstStart();
+    // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
+    SystemPropertiesFileHandler.init(config.getSystemDir() + File.separator + PROPERTIES_FILE_NAME);
+    boolean isFirstStart = !SystemPropertiesFileHandler.getInstance().isRestart();
 
     // Set this node
     thisNode.setIp(config.getInternalAddress());
