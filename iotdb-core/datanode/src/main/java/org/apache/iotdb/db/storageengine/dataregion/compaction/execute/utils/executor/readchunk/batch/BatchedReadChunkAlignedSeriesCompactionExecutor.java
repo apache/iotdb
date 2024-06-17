@@ -266,7 +266,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
   public static class FollowingBatchedReadChunkAlignedSeriesGroupCompactionExecutor
       extends ReadChunkAlignedSeriesCompactionExecutor {
     private final List<CompactChunkPlan> compactionPlan;
-    private int currentCompactChunk;
+    private int currentCompactChunk = 0;
 
     public FollowingBatchedReadChunkAlignedSeriesGroupCompactionExecutor(
         IDeviceID device,
@@ -289,7 +289,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       this.compactionPlan = compactionPlan;
       this.flushController = new FollowingBatchReadChunkAlignedSeriesCompactionFlushController();
       this.chunkWriter =
-          new FollowingBatchCompactionAlignedChunkWriter(timeSchema, schemaList, compactionPlan.get(0));
+          new FollowingBatchCompactionAlignedChunkWriter(
+              timeSchema, schemaList, compactionPlan.get(0));
     }
 
     @Override
@@ -301,9 +302,10 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       currentCompactChunk++;
       if (currentCompactChunk < compactionPlan.size()) {
         CompactChunkPlan chunkRecord = compactionPlan.get(currentCompactChunk);
-        chunkWriter = new FollowingBatchCompactionAlignedChunkWriter(timeSchema, schemaList, chunkRecord);
-//        ((FollowingBatchCompactionAlignedChunkWriter) this.chunkWriter)
-//            .setCompactChunkPlan(chunkRecord);
+        //        chunkWriter = new FollowingBatchCompactionAlignedChunkWriter(timeSchema,
+        // schemaList, chunkRecord);
+        ((FollowingBatchCompactionAlignedChunkWriter) this.chunkWriter)
+            .setCompactChunkPlan(chunkRecord);
       }
     }
 
@@ -337,23 +339,24 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       currentCompactChunk++;
     }
 
-//    @Override
-//    protected void compactAlignedPageByFlush(PageLoader timePage, List<PageLoader> valuePageLoaders)
-//        throws PageException, IOException {
-//      int nonEmptyPage = 0;
-//      checkAndUpdatePreviousTimestamp(timePage.getHeader().getStartTime());
-//      checkAndUpdatePreviousTimestamp(timePage.getHeader().getEndTime());
-//      // skip time page
-//      timePage.clear();
-//      for (int i = 0; i < valuePageLoaders.size(); i++) {
-//        PageLoader valuePage = valuePageLoaders.get(i);
-//        if (!valuePage.isEmpty()) {
-//          nonEmptyPage++;
-//        }
-//        valuePage.flushToValueChunkWriter(chunkWriter, i);
-//      }
-//      summary.increaseDirectlyFlushPageNum(nonEmptyPage);
-//    }
+    //    @Override
+    //    protected void compactAlignedPageByFlush(PageLoader timePage, List<PageLoader>
+    // valuePageLoaders)
+    //        throws PageException, IOException {
+    //      int nonEmptyPage = 0;
+    //      checkAndUpdatePreviousTimestamp(timePage.getHeader().getStartTime());
+    //      checkAndUpdatePreviousTimestamp(timePage.getHeader().getEndTime());
+    //      // skip time page
+    //      timePage.clear();
+    //      for (int i = 0; i < valuePageLoaders.size(); i++) {
+    //        PageLoader valuePage = valuePageLoaders.get(i);
+    //        if (!valuePage.isEmpty()) {
+    //          nonEmptyPage++;
+    //        }
+    //        valuePage.flushToValueChunkWriter(chunkWriter, i);
+    //      }
+    //      summary.increaseDirectlyFlushPageNum(nonEmptyPage);
+    //    }
 
     @Override
     protected IPointReader getPointReader(AlignedPageReader alignedPageReader) throws IOException {

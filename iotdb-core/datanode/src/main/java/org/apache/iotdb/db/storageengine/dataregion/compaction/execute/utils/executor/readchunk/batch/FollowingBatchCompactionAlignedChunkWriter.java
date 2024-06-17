@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.batch;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.statistics.TimeStatistics;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.TimeChunkWriter;
 import org.apache.tsfile.write.chunk.ValueChunkWriter;
+import org.apache.tsfile.write.page.TimePageWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 
@@ -38,11 +42,13 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
 
   public FollowingBatchCompactionAlignedChunkWriter(
       IMeasurementSchema timeSchema,
-      List<IMeasurementSchema> valueSchemaList, CompactChunkPlan compactChunkPlan) {
-    timeChunkWriter = new TimeChunkWriter("",
-        timeSchema.getCompressor(),
-        timeSchema.getTimeTSEncoding(),
-        timeSchema.getTimeEncoder());
+      List<IMeasurementSchema> valueSchemaList,
+      CompactChunkPlan compactChunkPlan) {
+    //    timeChunkWriter = new TimeChunkWriter("",
+    //        timeSchema.getCompressor(),
+    //        timeSchema.getTimeTSEncoding(),
+    //        timeSchema.getTimeEncoder());
+    timeChunkWriter = new FollowingBatchCompactionTimeChunkWriter();
 
     valueChunkWriterList = new ArrayList<>(valueSchemaList.size());
     for (int i = 0; i < valueSchemaList.size(); i++) {
@@ -60,7 +66,8 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
 
   @Override
   protected boolean checkPageSizeAndMayOpenANewPage() {
-    long endTime = timeChunkWriter.getPageWriter().getStatistics().getEndTime();
+    long endTime =
+        ((FollowingBatchCompactionTimeChunkWriter) timeChunkWriter).chunkStatistics.getEndTime();
     return endTime == compactChunkPlan.getPageRecords().get(currentPage).getTimeRange().getMax();
   }
 
@@ -73,6 +80,10 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
   @Override
   public void writePageHeaderAndDataIntoTimeBuff(ByteBuffer data, PageHeader header)
       throws PageException {
+    if (header.getStatistics().getStartTime()
+        != compactChunkPlan.getPageRecords().get(currentPage).getTimeRange().getMin()) {
+      throw new RuntimeException();
+    }
     super.writePageHeaderAndDataIntoTimeBuff(data, header);
     currentPage++;
   }
@@ -89,11 +100,17 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
       long size, long pointNum, boolean returnTrueIfChunkEmpty) {
     return currentPage >= compactChunkPlan.getPageRecords().size();
   }
-//
-//  @Override
-//  public boolean isEmpty() {
-//    return ((FollowingBatchCompactionTimeChunkWriter) timeChunkWriter).endTime != Long.MIN_VALUE;
-//  }
+
+  @Override
+  public boolean isEmpty() {
+    return timeChunkWriter.getPointNum() == 0;
+  }
+
+  @Override
+  public boolean checkIsUnsealedPageOverThreshold(
+      long size, long pointNum, boolean returnTrueIfPageEmpty) {
+    throw new RuntimeException("unimplemented");
+  }
 
   public int getCurrentPage() {
     return currentPage;
@@ -102,31 +119,112 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
   public void setCompactChunkPlan(CompactChunkPlan compactChunkPlan) {
     this.compactChunkPlan = compactChunkPlan;
     this.currentPage = 0;
+    this.timeChunkWriter = new FollowingBatchCompactionTimeChunkWriter();
   }
 
   public static class FollowingBatchCompactionTimeChunkWriter extends TimeChunkWriter {
-    private long endTime = Long.MIN_VALUE;
+    private TimeStatistics chunkStatistics;
+    private TimeStatistics pageStatistics;
 
-    public FollowingBatchCompactionTimeChunkWriter() {}
+    public FollowingBatchCompactionTimeChunkWriter() {
+      chunkStatistics = new TimeStatistics();
+      pageStatistics = new TimeStatistics();
+    }
 
     @Override
     public void write(long time) {
-      endTime = time;
+      chunkStatistics.update(time);
+      pageStatistics.update(time);
+    }
+
+    @Override
+    public void write(long[] timestamps, int batchSize, int arrayOffset) {
+      throw new RuntimeException("unimplemented");
+    }
+
+    @Override
+    public boolean checkPageSizeAndMayOpenANewPage() {
+      throw new RuntimeException("unimplemented");
+    }
+
+    @Override
+    public long getRemainingPointNumberForCurrentPage() {
+      throw new RuntimeException("unimplemented");
     }
 
     @Override
     public void writePageToPageBuffer() {
+      pageStatistics = new TimeStatistics();
     }
 
     @Override
-    public void clearPageWriter() {}
+    public void writePageHeaderAndDataIntoBuff(ByteBuffer data, PageHeader header)
+        throws PageException {
+      if (data == null || header.getStatistics() == null || header.getStatistics().isEmpty()) {
+        return;
+      }
+      chunkStatistics.mergeStatistics(header.getStatistics());
+    }
 
     @Override
-    public void sealCurrentPage() {}
+    public void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException {
+      chunkStatistics = new TimeStatistics();
+      pageStatistics = new TimeStatistics();
+    }
 
     @Override
-    public boolean checkPageSizeAndMayOpenANewPage() {
-      return super.checkPageSizeAndMayOpenANewPage();
+    public long estimateMaxSeriesMemSize() {
+      return super.estimateMaxSeriesMemSize();
+    }
+
+    @Override
+    public long getCurrentChunkSize() {
+      throw new RuntimeException("unimplemented");
+    }
+
+    @Override
+    public void sealCurrentPage() {
+      pageStatistics = new TimeStatistics();
+    }
+
+    @Override
+    public void clearPageWriter() {
+      pageStatistics = new TimeStatistics();
+    }
+
+    @Override
+    public TSDataType getDataType() {
+      return super.getDataType();
+    }
+
+    @Override
+    public long getPointNum() {
+      return chunkStatistics == null ? 0 : chunkStatistics.getCount();
+    }
+
+    @Override
+    public void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer) throws IOException {
+      this.chunkStatistics = new TimeStatistics();
+      this.pageStatistics = new TimeStatistics();
+    }
+
+    @Override
+    public PublicBAOS getPageBuffer() {
+      throw new RuntimeException("unimplemented");
+    }
+
+    @Override
+    public TimePageWriter getPageWriter() {
+      throw new RuntimeException("unimplemented");
+    }
+
+    @Override
+    public boolean checkIsUnsealedPageOverThreshold(long size, long pointNum) {
+      throw new RuntimeException("unimplemented");
+    }
+
+    public TimeStatistics getChunkStatistics() {
+      return chunkStatistics;
     }
   }
 }

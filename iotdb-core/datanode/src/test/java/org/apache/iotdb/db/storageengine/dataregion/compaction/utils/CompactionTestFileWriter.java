@@ -38,7 +38,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 public class CompactionTestFileWriter implements Closeable {
 
@@ -165,9 +164,7 @@ public class CompactionTestFileWriter implements Closeable {
       for (long time = toGenerateChunk.getMin(); time <= toGenerateChunk.getMax(); time++) {
         alignedChunkWriter.getTimeChunkWriter().write(time);
         for (int i = 0; i < measurementNames.size(); i++) {
-          alignedChunkWriter
-              .getValueChunkWriterByIndex(i)
-              .write(time, time, false);
+          alignedChunkWriter.getValueChunkWriterByIndex(i).write(time, time, false);
         }
       }
       alignedChunkWriter.writeToFileWriter(fileWriter);
