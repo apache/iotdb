@@ -182,6 +182,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       doTransfer(endPointAndBatch.getLeft(), (PipeTabletEventPlainBatch) batch);
     } else {
       final File tsFile = ((PipeTabletEventTsFileBatch) batch).getTsFile();
+      // tsFile is null when the batch is already closed
       if (Objects.isNull(tsFile)) {
         return;
       }

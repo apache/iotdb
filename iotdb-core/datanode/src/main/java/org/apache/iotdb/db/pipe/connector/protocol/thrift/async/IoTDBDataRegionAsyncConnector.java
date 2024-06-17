@@ -441,6 +441,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       } else {
         final PipeTabletEventTsFileBatch batch =
             (PipeTabletEventTsFileBatch) endPointAndBatch.getRight();
+        // tsFile is null when the batch is already closed
         final File tsFile = batch.getTsFile();
         if (Objects.isNull(tsFile)) {
           return;
