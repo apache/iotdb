@@ -205,18 +205,26 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     try {
-      final InsertNode insertNode = getInsertNode();
+      final InsertNode insertNode = getInsertNodeViaCacheIfPossible();
+      if (Objects.isNull(insertNode)) {
+        return true;
+      }
+
       if (insertNode instanceof InsertRowNode) {
         final long timestamp = ((InsertRowNode) insertNode).getTime();
         return startTime <= timestamp && timestamp <= endTime;
-      } else if (insertNode instanceof InsertTabletNode) {
+      }
+
+      if (insertNode instanceof InsertTabletNode) {
         final long[] timestamps = ((InsertTabletNode) insertNode).getTimes();
         if (Objects.isNull(timestamps) || timestamps.length == 0) {
           return false;
         }
         // We assume that `timestamps` is ordered.
         return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
-      } else if (insertNode instanceof InsertRowsNode) {
+      }
+
+      if (insertNode instanceof InsertRowsNode) {
         for (final InsertRowNode node : ((InsertRowsNode) insertNode).getInsertRowNodeList()) {
           final long timestamp = node.getTime();
           if (startTime <= timestamp && timestamp <= endTime) {
@@ -224,10 +232,9 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
           }
         }
         return false;
-      } else {
-        throw new UnSupportedDataTypeException(
-            String.format("InsertNode type %s is not supported.", insertNode.getClass().getName()));
       }
+
+      return true;
     } catch (final Exception e) {
       LOGGER.warn(
           "Exception occurred when determining the event time of PipeInsertNodeTabletInsertionEvent({}) overlaps with the time range: [{}, {}]. Returning true to ensure data integrity.",
@@ -241,8 +248,38 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   @Override
   public boolean mayEventPathsOverlappedWithPattern() {
-    final String deviceId = getDeviceId();
-    return Objects.isNull(deviceId) || pipePattern.mayOverlapWithDevice(deviceId);
+    try {
+      final InsertNode insertNode = getInsertNodeViaCacheIfPossible();
+      if (Objects.isNull(insertNode)) {
+        return true;
+      }
+
+      if (insertNode instanceof InsertRowNode || insertNode instanceof InsertTabletNode) {
+        final PartialPath devicePartialPath = insertNode.getDevicePath();
+        return Objects.isNull(devicePartialPath)
+            || pipePattern.mayOverlapWithDevice(devicePartialPath.getFullPath());
+      }
+
+      if (insertNode instanceof InsertRowsNode) {
+        return ((InsertRowsNode) insertNode)
+            .getInsertRowNodeList().stream()
+                .anyMatch(
+                    insertRowNode ->
+                        Objects.isNull(insertRowNode.getDevicePath())
+                            || pipePattern.mayOverlapWithDevice(
+                                insertRowNode.getDevicePath().getFullPath()));
+      }
+
+      return true;
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Exception occurred when determining the event time of PipeInsertNodeTabletInsertionEvent({}) overlaps with the time range: [{}, {}]. Returning true to ensure data integrity.",
+          this,
+          startTime,
+          endTime,
+          e);
+      return true;
+    }
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////

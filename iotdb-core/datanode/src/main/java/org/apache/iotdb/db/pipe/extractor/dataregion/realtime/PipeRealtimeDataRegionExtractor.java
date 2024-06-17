@@ -163,10 +163,9 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
                         EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE)
                     .split(","))
             .map(String::trim)
+            .filter(s -> !s.isEmpty())
             .map(String::toLowerCase)
             .collect(Collectors.toSet());
-    // Avoid empty string
-    sloppyOptionSet.remove("");
     sloppyTimeRange = sloppyOptionSet.remove(EXTRACTOR_REALTIME_LOOSE_RANGE_TIME_VALUE);
     sloppyPattern = sloppyOptionSet.remove(EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE);
     if (!sloppyOptionSet.isEmpty()) {

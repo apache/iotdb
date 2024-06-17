@@ -979,6 +979,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
     extractorAttributes.put("source.realtime.loose-range", "time, path");
     extractorAttributes.put("source.start-time", "2000");
     extractorAttributes.put("source.end-time", "10000");
+    extractorAttributes.put("source.realtime.mode", "batch");
 
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("connector.batch.enable", "false");
@@ -1016,7 +1017,8 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)" + " values (5000, 1), (16000, 3)",
-              "insert into root.db.d1 (time, at1, at2)" + " values (5001, 1, 2), (6001, 3, 4)"))) {
+              "insert into root.db.d1 (time, at1, at2)" + " values (5001, 1, 2), (6001, 3, 4)",
+              "flush"))) {
         return;
       }
 
