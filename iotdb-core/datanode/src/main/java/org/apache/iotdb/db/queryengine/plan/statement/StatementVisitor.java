@@ -112,11 +112,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.KillQueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.LoadConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StartRepairDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.TestConnectionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
@@ -211,6 +213,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowClusterId(ShowClusterIdStatement showClusterIdStatement, C context) {
     return visitStatement(showClusterIdStatement, context);
+  }
+
+  public R visitTestConnection(TestConnectionStatement testConnectionStatement, C context) {
+    return visitStatement(testConnectionStatement, context);
   }
 
   // UDF
@@ -389,6 +395,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitClearCache(ClearCacheStatement clearCacheStatement, C context) {
     return visitStatement(clearCacheStatement, context);
+  }
+
+  public R visitSetConfiguration(SetConfigurationStatement setConfigurationStatement, C context) {
+    return visitStatement(setConfigurationStatement, context);
   }
 
   public R visitStartRepairData(StartRepairDataStatement startRepairDataStatement, C context) {

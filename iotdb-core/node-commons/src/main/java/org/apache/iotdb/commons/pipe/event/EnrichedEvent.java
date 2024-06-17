@@ -252,6 +252,10 @@ public abstract class EnrichedEvent implements Event {
     return creationTime;
   }
 
+  public final boolean isDataRegionEvent() {
+    return !(this instanceof PipeWritePlanEvent) && !(this instanceof PipeSnapshotEvent);
+  }
+
   /**
    * Get the pattern string of this {@link EnrichedEvent}.
    *
@@ -350,8 +354,8 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * Used for pipeConsensus. In PipeConsensus, we only need commiterKey, commitId and rebootTimes to
-   * uniquely identify an event
+   * Used for pipeConsensus. In PipeConsensus, we only need committerKey, commitId and rebootTimes
+   * to uniquely identify an event
    */
   public boolean equalsInPipeConsensus(final Object o) {
     if (this == o) {

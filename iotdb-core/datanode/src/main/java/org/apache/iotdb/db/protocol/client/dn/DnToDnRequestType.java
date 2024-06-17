@@ -17,28 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.task;
+package org.apache.iotdb.db.protocol.client.dn;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
-public class DecoratingLock {
-  private final AtomicBoolean isDecorating = new AtomicBoolean(false);
-
-  public void waitForDecorated() {
-    while (isDecorating.get()) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-    }
-  }
-
-  public void markAsDecorating() {
-    isDecorating.set(true);
-  }
-
-  public void markAsDecorated() {
-    isDecorating.set(false);
-  }
+/** For DataNode async call DataNode */
+public enum DnToDnRequestType {
+  TEST_CONNECTION,
 }

@@ -20,12 +20,15 @@ package org.apache.iotdb.db.storageengine;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
@@ -83,12 +86,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -602,6 +607,43 @@ public class StorageEngine implements IService {
     BloomFilterCache.getInstance().clear();
   }
 
+  public TSStatus setConfiguration(TSetConfigurationReq req) {
+    TSStatus tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    Map<String, String> newConfigItems = req.getConfigs();
+    if (newConfigItems.isEmpty()) {
+      return tsStatus;
+    }
+    Properties properties = new Properties();
+    properties.putAll(newConfigItems);
+
+    URL configFileUrl = IoTDBDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
+    if (configFileUrl == null || !(new File(configFileUrl.getFile()).exists())) {
+      // configuration file not exist, update in mem
+      try {
+        IoTDBDescriptor.getInstance().loadHotModifiedProps(properties);
+        IoTDBDescriptor.getInstance().reloadMetricProperties(properties);
+      } catch (Exception e) {
+        return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      }
+      return tsStatus;
+    }
+
+    // 1. append new configuration properties to configuration file
+    try {
+      ConfigurationFileUtils.updateConfigurationFile(new File(configFileUrl.getFile()), properties);
+    } catch (Exception e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+
+    // 2. load hot modified properties
+    try {
+      IoTDBDescriptor.getInstance().loadHotModifiedProps();
+    } catch (Exception e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return tsStatus;
+  }
+
   /**
    * Add a listener to listen flush start/end events. Notice that this addition only applies to
    * TsFileProcessors created afterwards.
@@ -671,7 +713,13 @@ public class StorageEngine implements IService {
         region.abortCompaction();
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
-        if (CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+        if (CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+            || CONFIG
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.FAST_IOT_CONSENSUS)
+            || CONFIG
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
           // delete wal
           WALManager.getInstance()
               .deleteWALNode(

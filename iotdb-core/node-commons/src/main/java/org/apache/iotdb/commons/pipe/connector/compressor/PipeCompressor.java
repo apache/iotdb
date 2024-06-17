@@ -49,7 +49,26 @@ public abstract class PipeCompressor {
 
   public abstract byte[] compress(byte[] data) throws IOException;
 
+  /**
+   * Decompress the byte array to a byte array. NOTE: the length of the decompressed byte array is
+   * not provided in this method, and some decompressors (LZ4) may construct large byte arrays,
+   * leading to potential OOM.
+   *
+   * @param byteArray the byte array to be decompressed
+   * @return the decompressed byte array
+   * @throws IOException
+   */
   public abstract byte[] decompress(byte[] byteArray) throws IOException;
+
+  /**
+   * Decompress the byte array to a byte array with a known length.
+   *
+   * @param byteArray the byte array to be decompressed
+   * @param decompressedLength the length of the decompressed byte array
+   * @return the decompressed byte array
+   * @throws IOException
+   */
+  public abstract byte[] decompress(byte[] byteArray, int decompressedLength) throws IOException;
 
   public byte serialize() {
     return compressionType.getIndex();

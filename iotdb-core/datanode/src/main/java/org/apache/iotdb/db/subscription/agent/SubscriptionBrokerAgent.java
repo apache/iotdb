@@ -141,23 +141,22 @@ public class SubscriptionBrokerAgent {
     broker.bindPrefetchingQueue(subtask.getTopicName(), subtask.getInputPendingQueue());
   }
 
-  public void unbindPrefetchingQueue(final SubscriptionConnectorSubtask subtask) {
-    final String consumerGroupId = subtask.getConsumerGroupId();
+  public void unbindPrefetchingQueue(
+      final String consumerGroupId, final String topicName, final boolean doRemove) {
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
       LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupId);
       return;
     }
-    broker.unbindPrefetchingQueue(subtask.getTopicName());
+    broker.unbindPrefetchingQueue(topicName, doRemove);
   }
 
-  public void executePrefetch(final SubscriptionConnectorSubtask subtask) {
-    final String consumerGroupId = subtask.getConsumerGroupId();
+  public void executePrefetch(final String consumerGroupId, final String topicName) {
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
       LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupId);
       return;
     }
-    broker.executePrefetch(subtask.getTopicName());
+    broker.executePrefetch(topicName);
   }
 }

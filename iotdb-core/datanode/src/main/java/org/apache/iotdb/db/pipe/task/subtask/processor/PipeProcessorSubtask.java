@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
+import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
@@ -148,8 +149,12 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               outputEventCollector);
         }
       }
+
       final boolean shouldReport =
-          !isClosed.get() && outputEventCollector.hasNoCollectInvocationAfterReset();
+          !isClosed.get()
+              && outputEventCollector.hasNoCollectInvocationAfterReset()
+              // Events generated from consensusPipe's transferred data should never be reported.
+              && !(pipeProcessor instanceof PipeConsensusProcessor);
       if (shouldReport && event instanceof EnrichedEvent) {
         PipeEventCommitManager.getInstance()
             .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);

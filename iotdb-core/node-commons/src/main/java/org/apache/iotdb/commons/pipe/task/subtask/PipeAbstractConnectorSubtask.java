@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalExcep
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
-import org.apache.iotdb.commons.pipe.task.DecoratingLock;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -44,7 +43,6 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   protected PipeConnector outputPipeConnector;
 
   // For thread pool to execute callbacks
-  protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
   protected ExecutorService subtaskCallbackListeningExecutor;
 
   // For controlling subtask submitting, making sure that
@@ -66,17 +64,6 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
     this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
     this.subtaskCallbackListeningExecutor = subtaskCallbackListeningExecutor;
     this.subtaskScheduler = subtaskScheduler;
-  }
-
-  @Override
-  public Boolean call() throws Exception {
-    final boolean hasAtLeastOneEventProcessed = super.call();
-
-    // Wait for the callable to be decorated by Futures.addCallback in the executorService
-    // to make sure that the callback can be submitted again on success or failure.
-    callbackDecoratingLock.waitForDecorated();
-
-    return hasAtLeastOneEventProcessed;
   }
 
   @Override
@@ -165,7 +152,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
             e);
         try {
           Thread.sleep(retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
-        } catch (InterruptedException interruptedException) {
+        } catch (final InterruptedException interruptedException) {
           LOGGER.info(
               "Interrupted while sleeping, will retry to handshake with the target system.",
               interruptedException);
@@ -219,14 +206,9 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
       return;
     }
 
-    callbackDecoratingLock.markAsDecorating();
-    try {
-      final ListenableFuture<Boolean> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
-      Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
-      isSubmitted = true;
-    } finally {
-      callbackDecoratingLock.markAsDecorated();
-    }
+    final ListenableFuture<Boolean> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
+    Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
+    isSubmitted = true;
   }
 
   protected synchronized void setLastExceptionEvent(final Event event) {

@@ -44,26 +44,28 @@ public class CountPointProcessor implements PipeProcessor {
   private PartialPath aggregateSeries;
 
   @Override
-  public void validate(PipeParameterValidator validator) {
+  public void validate(final PipeParameterValidator validator) {
     validator.validateRequiredAttribute(AGGREGATE_SERIES_KEY);
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeProcessorRuntimeConfiguration configuration)
       throws Exception {
     this.aggregateSeries = new PartialPath(parameters.getString(AGGREGATE_SERIES_KEY));
   }
 
   @Override
-  public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector) {
+  public void process(
+      final TabletInsertionEvent tabletInsertionEvent, final EventCollector eventCollector) {
     tabletInsertionEvent.processTablet(
         (tablet, rowCollector) -> writePointCount.addAndGet(tablet.rowSize));
   }
 
   @Override
-  public void process(Event event, EventCollector eventCollector) throws Exception {
+  public void process(final Event event, final EventCollector eventCollector) throws Exception {
     if (event instanceof PipeHeartbeatEvent) {
-      Tablet tablet =
+      final Tablet tablet =
           new Tablet(
               aggregateSeries.getDevice(),
               Collections.singletonList(

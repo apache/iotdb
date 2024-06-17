@@ -64,7 +64,7 @@ ddlStatement
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
-    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion
+    | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion | verifyConnection
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
@@ -82,7 +82,7 @@ dclStatement
     ;
 
 utilityStatement
-    : flush | clearCache | settle | startRepairData | stopRepairData | explain
+    : flush | clearCache | setConfiguration | settle | startRepairData | stopRepairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
@@ -522,6 +522,10 @@ getSeriesSlotList
 // ---- Migrate Region
 migrateRegion
     : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
+    ;
+
+verifyConnection
+    : VERIFY CONNECTION (DETAILS)?
     ;
 
 // Pipe Task =========================================================================================
@@ -971,6 +975,15 @@ flush
 // Clear Cache
 clearCache
     : CLEAR CACHE (ON (LOCAL | CLUSTER))?
+    ;
+
+// Set Configuration
+setConfiguration
+    : SET CONFIGURATION setConfigurationEntry+ (ON INTEGER_LITERAL)?
+    ;
+
+setConfigurationEntry
+    : STRING_LITERAL OPERATOR_SEQ STRING_LITERAL
     ;
 
 // Settle

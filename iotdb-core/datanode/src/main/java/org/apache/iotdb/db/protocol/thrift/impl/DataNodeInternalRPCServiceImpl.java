@@ -19,18 +19,28 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSender;
+import org.apache.iotdb.common.rpc.thrift.TServiceType;
+import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSettleReq;
+import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
+import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
+import org.apache.iotdb.common.rpc.thrift.TTestConnectionResult;
+import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -66,6 +76,12 @@ import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.protocol.client.cn.DnToCnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.db.protocol.client.cn.DnToCnRequestType;
+import org.apache.iotdb.db.protocol.client.dn.DataNodeExternalServiceAsyncRequestManager;
+import org.apache.iotdb.db.protocol.client.dn.DataNodeMPPServiceAsyncRequestManager;
+import org.apache.iotdb.db.protocol.client.dn.DnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.db.protocol.client.dn.DnToDnRequestType;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -244,10 +260,12 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -258,9 +276,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static org.apache.iotdb.commons.client.request.Utils.testConnectionsImpl;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.service.RegionMigrateService.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
@@ -1407,6 +1428,91 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return resp;
   }
 
+  @Override
+  public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations)
+      throws TException {
+    return new TTestConnectionResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        Stream.of(
+                testAllConfigNodeConnection(nodeLocations.getConfigNodeLocations()),
+                testAllDataNodeInternalServiceConnection(nodeLocations.getDataNodeLocations()),
+                testAllDataNodeMPPServiceConnection(nodeLocations.getDataNodeLocations()),
+                testAllDataNodeExternalServiceConnection(nodeLocations.getDataNodeLocations()))
+            .flatMap(Collection::stream)
+            .collect(Collectors.toList()));
+  }
+
+  private static <Location, RequestType> List<TTestConnectionResult> testConnections(
+      List<Location> nodeLocations,
+      Function<Location, Integer> getId,
+      Function<Location, TEndPoint> getEndPoint,
+      TServiceType serviceType,
+      RequestType requestType,
+      Consumer<AsyncRequestContext<Object, TSStatus, RequestType, Location>> sendRequest) {
+    TSender sender =
+        new TSender()
+            .setDataNodeLocation(
+                IoTDBDescriptor.getInstance().getConfig().generateLocalDataNodeLocation());
+    return testConnectionsImpl(
+        nodeLocations, sender, getId, getEndPoint, serviceType, requestType, sendRequest);
+  }
+
+  private List<TTestConnectionResult> testAllConfigNodeConnection(
+      List<TConfigNodeLocation> configNodeLocations) {
+    return testConnections(
+        configNodeLocations,
+        TConfigNodeLocation::getConfigNodeId,
+        TConfigNodeLocation::getInternalEndPoint,
+        TServiceType.ConfigNodeInternalService,
+        DnToCnRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DnToCnRequestType, TConfigNodeLocation> handler) ->
+            DnToCnInternalServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequestWithRetry(handler));
+  }
+
+  private List<TTestConnectionResult> testAllDataNodeInternalServiceConnection(
+      List<TDataNodeLocation> dataNodeLocations) {
+    return testConnections(
+        dataNodeLocations,
+        TDataNodeLocation::getDataNodeId,
+        TDataNodeLocation::getInternalEndPoint,
+        TServiceType.DataNodeInternalService,
+        DnToDnRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
+            DnToDnInternalServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequestWithRetry(handler));
+  }
+
+  private List<TTestConnectionResult> testAllDataNodeMPPServiceConnection(
+      List<TDataNodeLocation> dataNodeLocations) {
+    return testConnections(
+        dataNodeLocations,
+        TDataNodeLocation::getDataNodeId,
+        TDataNodeLocation::getMPPDataExchangeEndPoint,
+        TServiceType.DataNodeMPPService,
+        DnToDnRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
+            DataNodeMPPServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(handler));
+  }
+
+  private List<TTestConnectionResult> testAllDataNodeExternalServiceConnection(
+      List<TDataNodeLocation> dataNodeLocations) {
+    return testConnections(
+        dataNodeLocations,
+        TDataNodeLocation::getDataNodeId,
+        TDataNodeLocation::getClientRpcEndPoint,
+        TServiceType.DataNodeExternalService,
+        DnToDnRequestType.TEST_CONNECTION,
+        (AsyncRequestContext<Object, TSStatus, DnToDnRequestType, TDataNodeLocation> handler) ->
+            DataNodeExternalServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequestWithRetry(handler));
+  }
+
+  @Override
+  public TSStatus testConnectionEmptyRPC() throws TException {
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
   private PathPatternTree filterPathPatternTree(PathPatternTree patternTree, String storageGroup) {
     PathPatternTree filteredPatternTree = new PathPatternTree();
     try {
@@ -1710,6 +1816,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus setConfiguration(TSetConfigurationReq req) {
+    return StorageEngine.getInstance().setConfiguration(req);
+  }
+
+  @Override
   public TSStatus settle(TSettleReq req) throws TException {
     return SettleRequestHandler.getInstance().handleSettleRequest(req);
   }
@@ -1722,6 +1833,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TShowConfigurationResp showConfiguration() {
+    TShowConfigurationResp resp =
+        new TShowConfigurationResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS), "");
+    try {
+      URL propsUrl = IoTDBDescriptor.getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
+      resp.setContent(ConfigurationFileUtils.readConfigFileContent(propsUrl));
+    } catch (Exception e) {
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
+    }
+    return resp;
   }
 
   @Override

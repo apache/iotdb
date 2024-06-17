@@ -127,6 +127,11 @@ struct TSetTTLReq {
   3: required bool isDataBase
 }
 
+struct TSetConfigurationReq {
+  1: required map<string,string> configs
+  2: required i32 nodeId
+}
+
 // for File
 struct TFile {
   1: required string fileName
@@ -186,6 +191,40 @@ struct TLicense {
     9: required i16 mlNodeNumLimit
 }
 
+enum TServiceType {
+  ConfigNodeInternalService,
+  DataNodeInternalService,
+  DataNodeMPPService,
+  DataNodeExternalService,
+}
+
+struct TServiceProvider {
+  1: required TEndPoint endPoint
+  2: required TServiceType serviceType
+}
+
+struct TSender {
+  1: optional TDataNodeLocation dataNodeLocation
+  2: optional TConfigNodeLocation configNodeLocation
+}
+
+struct TTestConnectionResult {
+  1: required TServiceProvider serviceProvider
+  2: required TSender sender
+  3: required bool success
+  4: optional string reason
+}
+
+struct TTestConnectionResp {
+  1: required TSStatus status
+  2: required list<TTestConnectionResult> resultList
+}
+
+struct TNodeLocations {
+  1: optional list<TConfigNodeLocation> configNodeLocations
+  2: optional list<TDataNodeLocation> dataNodeLocations
+}
+
 enum TAggregationType {
   COUNT,
   AVG,
@@ -211,3 +250,14 @@ enum TAggregationType {
   MIN_BY,
   UDAF
 }
+
+struct TShowConfigurationTemplateResp {
+  1: required TSStatus status
+  2: required string content
+}
+
+struct TShowConfigurationResp {
+  1: required TSStatus status
+  2: required string content
+}
+

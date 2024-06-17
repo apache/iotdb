@@ -137,12 +137,22 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
    */
   public boolean waitForTsFileClose() throws InterruptedException {
     if (!isClosed.get()) {
+      isClosed.set(resource.isClosed());
+
       synchronized (isClosed) {
         while (!isClosed.get()) {
-          isClosed.wait();
+          isClosed.wait(100);
+
+          final boolean isClosedNow = resource.isClosed();
+          if (isClosedNow) {
+            isClosed.set(true);
+            isClosed.notifyAll();
+            break;
+          }
         }
       }
     }
+
     // From illustrations above we know If the status is "closed", then the tsFile is flushed
     // And here we guarantee that the isEmpty() is set before flushing if tsFile is empty
     // Then we know: "isClosed" --> tsFile flushed --> (isEmpty() <--> tsFile is empty)

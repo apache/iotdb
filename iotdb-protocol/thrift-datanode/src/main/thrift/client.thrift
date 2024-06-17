@@ -634,6 +634,10 @@ service IClientRPCService {
 
   TSQueryTemplateResp querySchemaTemplate(1:TSQueryTemplateReq req);
 
+  common.TShowConfigurationTemplateResp showConfigurationTemplate();
+
+  common.TShowConfigurationResp showConfiguration(1:i32 nodeId);
+
   common.TSStatus setSchemaTemplate(1:TSSetSchemaTemplateReq req);
 
   common.TSStatus unsetSchemaTemplate(1:TSUnsetSchemaTemplateReq req);
@@ -655,4 +659,7 @@ service IClientRPCService {
   TSBackupConfigurationResp getBackupConfiguration();
 
   TSConnectionInfoResp fetchAllConnectionsInfo();
+
+  /** For other node's call */
+  common.TSStatus testConnectionEmptyRPC()
 }

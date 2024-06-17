@@ -22,6 +22,7 @@ package org.apache.iotdb.session.subscription.consumer;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 /**
  * The {@link SubscriptionPullConsumer} corresponds to the pull consumption mode in the message
@@ -150,7 +152,12 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   @Override
   public List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
-    final List<SubscriptionMessage> messages = super.poll(topicNames, timeoutMs);
+    // parse topic names from external source
+    final Set<String> parsedTopicNames =
+        topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+
+    // poll messages
+    final List<SubscriptionMessage> messages = super.poll(parsedTopicNames, timeoutMs);
 
     // add to uncommitted messages
     if (autoCommit) {

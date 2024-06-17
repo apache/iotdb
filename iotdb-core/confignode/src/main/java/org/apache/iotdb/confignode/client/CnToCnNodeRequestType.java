@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.client;
 
-public enum ConfigNodeRequestType {
+public enum CnToCnNodeRequestType {
   ADD_CONSENSUS_GROUP,
   NOTIFY_REGISTER_SUCCESS,
   REGISTER_CONFIG_NODE,
@@ -27,5 +27,9 @@ public enum ConfigNodeRequestType {
   REMOVE_CONFIG_NODE,
   DELETE_CONFIG_NODE_PEER,
   REPORT_CONFIG_NODE_SHUTDOWN,
-  STOP_CONFIG_NODE
+  STOP_CONFIG_NODE,
+  SET_CONFIGURATION,
+  SHOW_CONFIGURATION,
+  SUBMIT_TEST_CONNECTION_TASK,
+  TEST_CONNECTION,
 }
