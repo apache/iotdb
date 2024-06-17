@@ -214,7 +214,10 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     return new HashMap<>(pipeName2WeightMap);
   }
 
-  public File getTsFile() throws IOException {
+  public synchronized File getTsFile() throws IOException {
+    if (isClosed) {
+      return null;
+    }
     fileWriter.close();
     return fileWriter.getIOWriter().getFile();
   }
@@ -222,6 +225,9 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   @Override
   public synchronized void onSuccess() {
     super.onSuccess();
+    if (isClosed) {
+      return;
+    }
     // Delete file only after this file is transferred
     pipeName2WeightMap.clear();
     fileWriter = null;
@@ -235,5 +241,17 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   @Override
   protected long getMaxBatchSizeInBytes() {
     return maxSizeInBytes;
+  }
+
+  @Override
+  public synchronized void close() {
+    super.close();
+    pipeName2WeightMap.clear();
+    try {
+      FileUtils.delete(fileWriter.getIOWriter().getFile());
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "Failed to delete the tsFile when trying to close tsFile batch, may need to delete manually.");
+    }
   }
 }

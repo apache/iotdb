@@ -56,6 +56,7 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
@@ -171,11 +172,16 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       } else {
         final PipeTabletEventTsFileBatch batch =
             (PipeTabletEventTsFileBatch) endPointAndBatch.getRight();
+        final File tsFile = batch.getTsFile();
+        // tsFile is null when the batch is already closed
+        if (Objects.isNull(tsFile)) {
+          return;
+        }
         transfer(
             new PipeTransferTsFileHandler(
                 batch.deepCopyPipeName2WeightMap(),
                 batch.deepCopyEvents(),
-                batch.getTsFile(),
+                tsFile,
                 null,
                 false,
                 this));
@@ -435,11 +441,15 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       } else {
         final PipeTabletEventTsFileBatch batch =
             (PipeTabletEventTsFileBatch) endPointAndBatch.getRight();
+        final File tsFile = batch.getTsFile();
+        if (Objects.isNull(tsFile)) {
+          return;
+        }
         transfer(
             new PipeTransferTsFileHandler(
                 batch.deepCopyPipeName2WeightMap(),
                 batch.deepCopyEvents(),
-                batch.getTsFile(),
+                tsFile,
                 null,
                 false,
                 this));
@@ -548,7 +558,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             }
           });
       return count.get();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("Failed to get retry event count for pipe {}.", pipeName, e);
       }

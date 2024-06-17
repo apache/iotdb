@@ -34,6 +34,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   private final List<EnrichedEvent> events = new ArrayList<>();
   private final int maxDelayInMs;
   private long firstEventProcessingTime = Long.MIN_VALUE;
+  protected boolean isClosed = false;
 
   PipeTabletEventBatch(final int maxDelayInMs) {
     this.maxDelayInMs = maxDelayInMs;
@@ -47,7 +48,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
    */
   synchronized boolean onEvent(final TabletInsertionEvent event)
       throws WALPipeException, IOException, WriteProcessException {
-    if (!(event instanceof EnrichedEvent)) {
+    if (!(event instanceof EnrichedEvent) || isClosed) {
       return false;
     }
 
@@ -77,6 +78,9 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       throws WALPipeException, IOException, WriteProcessException;
 
   public synchronized void onSuccess() {
+    if (isClosed) {
+      return;
+    }
     events.clear();
     firstEventProcessingTime = Long.MIN_VALUE;
   }
@@ -95,7 +99,9 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
   @Override
   public synchronized void close() {
+    isClosed = true;
     clearEventsReferenceCount(PipeTransferBatchReqBuilder.class.getName());
+    events.clear();
   }
 
   public void decreaseEventsReferenceCount(final String holderMessage, final boolean shouldReport) {
