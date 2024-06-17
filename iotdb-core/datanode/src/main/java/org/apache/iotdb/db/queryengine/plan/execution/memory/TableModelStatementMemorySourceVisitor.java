@@ -70,6 +70,10 @@ public class TableModelStatementMemorySourceVisitor
                 ClusterPartitionFetcher.getInstance(),
                 WarningCollector.NOOP)
             .plan(context.getAnalysis());
+    if (context.getAnalysis().getDataPartition() == null
+        || context.getAnalysis().getDataPartition().isEmpty()) {
+      return new StatementMemorySource(new TsBlock(0), header);
+    }
 
     // TODO(beyyes) adapt this logic after optimize ExchangeNodeAdder
     ExchangeNodeGenerator.PlanContext exchangeContext =
