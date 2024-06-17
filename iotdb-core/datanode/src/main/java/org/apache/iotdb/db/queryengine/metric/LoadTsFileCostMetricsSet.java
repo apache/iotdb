@@ -34,8 +34,8 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
   private static final LoadTsFileCostMetricsSet INSTANCE = new LoadTsFileCostMetricsSet();
 
   public static final String ANALYSIS = "analysis";
-  public static final String SPLIT = "split";
-  public static final String WRITE = "write";
+  public static final String FIRST_PHASE= "first_phase";
+  public static final String SECOND_PHASE = "second_phase";
 
   private LoadTsFileCostMetricsSet() {
     // empty constructor
