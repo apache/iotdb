@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
+import org.apache.iotdb.db.utils.MmapUtil;
+
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.slf4j.Logger;
@@ -27,6 +29,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -217,6 +220,9 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       if (Objects.isNull(dataBuffer)
           || dataBuffer.capacity() < segmentInfo.uncompressedSize
           || dataBuffer.capacity() > segmentInfo.uncompressedSize * 2) {
+        if (!Objects.isNull(dataBuffer)) {
+          MmapUtil.clean((MappedByteBuffer) dataBuffer);
+        }
         dataBuffer = ByteBuffer.allocateDirect(segmentInfo.uncompressedSize);
       }
       dataBuffer.clear();
@@ -224,6 +230,9 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       if (Objects.isNull(compressedBuffer)
           || compressedBuffer.capacity() < segmentInfo.dataInDiskSize
           || compressedBuffer.capacity() > segmentInfo.dataInDiskSize * 2) {
+        if (!Objects.isNull(compressedBuffer)) {
+          MmapUtil.clean((MappedByteBuffer) compressedBuffer);
+        }
         compressedBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
       }
       compressedBuffer.clear();
@@ -241,6 +250,9 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       if (Objects.isNull(dataBuffer)
           || dataBuffer.capacity() < segmentInfo.dataInDiskSize
           || dataBuffer.capacity() > segmentInfo.dataInDiskSize * 2) {
+        if (!Objects.isNull(dataBuffer)) {
+          MmapUtil.clean((MappedByteBuffer) dataBuffer);
+        }
         dataBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
       }
       dataBuffer.clear();
@@ -271,7 +283,14 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     }
   }
 
-  public void skipToGivenPosition(long pos) throws IOException {
+  /**
+   * Since current WAL file is compressed, but some part of the system need to skip the offset of an
+   * uncompressed wal file, this method is used to skip to the given logical position.
+   *
+   * @param pos The logical offset to skip to
+   * @throws IOException If the file is broken or the given position is invalid
+   */
+  public void skipToGivenLogicalPosition(long pos) throws IOException {
     if (version == FileVersion.V2) {
       channel.position(WALWriter.MAGIC_STRING_BYTES);
       long posRemain = pos;

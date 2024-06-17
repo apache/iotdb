@@ -101,8 +101,9 @@ public class WALEntryPosition {
     if (!canRead()) {
       throw new IOException("Target file hasn't been specified.");
     }
+    // TODO: Reuse the file stream
     try (WALInputStream is = openReadFileStream()) {
-      is.skipToGivenPosition(position);
+      is.skipToGivenLogicalPosition(position);
       ByteBuffer buffer = ByteBuffer.allocate(size);
       is.read(buffer);
       buffer.flip();
@@ -137,6 +138,7 @@ public class WALEntryPosition {
   }
 
   public WALInputStream openReadFileStream() throws IOException {
+    // TODO: Refactor this part of code
     if (isInSealedFile()) {
       walFile = walNode.getWALFile(walFileVersionId);
       return new WALInputStream(walFile);

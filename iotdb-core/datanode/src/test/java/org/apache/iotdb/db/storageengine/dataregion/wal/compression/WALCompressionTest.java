@@ -150,7 +150,7 @@ public class WALCompressionTest {
     try (WALInputStream stream = new WALInputStream(walFile)) {
       for (int i = 0; i < 100; ++i) {
         Pair<Long, InsertRowNode> positionAndNodePair = positionAndEntryPairList.get(i);
-        stream.skipToGivenPosition(positionAndNodePair.left);
+        stream.skipToGivenLogicalPosition(positionAndNodePair.left);
         /*
           Add the allocated buffer size by 2, because the actual serialized size
           of InsertRowNode is larger than the estimated value got by serializedSize.
@@ -231,7 +231,7 @@ public class WALCompressionTest {
     }
     dataOutputStream.close();
     ByteBuffer buf = ByteBuffer.wrap(baos.toByteArray());
-    // Do not compress it
+    // Compress it
     IoTDBDescriptor.getInstance().getConfig().setWALCompressionAlgorithm(CompressionType.LZ4);
     WALTestUtils.setMinCompressionSize(0);
     try (WALWriter writer = new WALWriter(walFile)) {
