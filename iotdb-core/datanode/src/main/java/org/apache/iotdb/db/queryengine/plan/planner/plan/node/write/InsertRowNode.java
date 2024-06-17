@@ -417,7 +417,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   void subDeserialize(ByteBuffer byteBuffer) {
     time = byteBuffer.getLong();
     try {
-      devicePath = new PartialPath(ReadWriteIOUtils.readString(byteBuffer));
+      devicePath =
+          DataNodeDevicePathCache.getInstance()
+              .getPartialPath(ReadWriteIOUtils.readString(byteBuffer));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }
@@ -741,7 +743,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
     insertNode.setTime(buffer.getLong());
     try {
-      insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(buffer)));
+      insertNode.setDevicePath(
+          DataNodeDevicePathCache.getInstance()
+              .getPartialPath(ReadWriteIOUtils.readString(buffer)));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }

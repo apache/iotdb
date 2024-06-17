@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -228,7 +229,9 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     List<Integer> insertRowNodeIndex = new ArrayList<>();
 
     try {
-      devicePath = new PartialPath(ReadWriteIOUtils.readString(byteBuffer));
+      devicePath =
+          DataNodeDevicePathCache.getInstance()
+              .getPartialPath((ReadWriteIOUtils.readString(byteBuffer)));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertRowsOfOneDeviceNode", e);
     }
