@@ -15,8 +15,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -57,8 +55,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 
 public class LogicalPlanner {
@@ -194,33 +190,21 @@ public class LogicalPlanner {
   }
 
   private PlanNode planCreateDevice(CreateDevice statement, Analysis analysis) {
-    List<PartialPath> devicePathList = new ArrayList<>(statement.getDeviceIdList().size());
-    for (String[] deviceId : statement.getDeviceIdList()) {
-      String[] nodes = new String[3 + deviceId.length];
-      nodes[0] = PATH_ROOT;
-      nodes[1] = statement.getDatabase();
-      nodes[2] = statement.getTable();
-      System.arraycopy(deviceId, 0, nodes, 3, deviceId.length);
-      devicePathList.add(new PartialPath(nodes));
-    }
+    context.setQueryType(QueryType.WRITE);
+
     CreateTableDeviceNode node =
         new CreateTableDeviceNode(
             context.getQueryId().genPlanNodeId(),
-            devicePathList,
+            statement.getDatabase(),
+            statement.getTable(),
+            statement.getDeviceIdList(),
             statement.getAttributeNameList(),
             statement.getAttributeValueList());
 
-    context.setQueryType(QueryType.WRITE);
     analysis.setStatement(statement);
-
-    PathPatternTree patternTree = new PathPatternTree();
-    for (PartialPath devicePath : devicePathList) {
-      patternTree.appendFullPath(devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
-    }
     SchemaPartition partition =
-        partitionFetcher.getOrCreateSchemaPartition(
-            patternTree, context.getSession().getUserName());
-
+        metadata.getOrCreateSchemaPartition(
+            node.getPartitionKeyList(), context.getSession().getUserName());
     analysis.setSchemaPartitionInfo(partition);
 
     return node;

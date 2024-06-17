@@ -301,9 +301,10 @@ public interface ISchemaRegion {
   // region table device management
 
   void createTableDevice(
-      List<PartialPath> devicePathList,
+      String tableName,
+      List<Object[]> devicePathList,
       List<String> attributeNameList,
-      List<List<String>> attributeValueList)
+      List<Object[]> attributeValueList)
       throws MetadataException;
 
   void deleteTableDevice(String table) throws MetadataException;

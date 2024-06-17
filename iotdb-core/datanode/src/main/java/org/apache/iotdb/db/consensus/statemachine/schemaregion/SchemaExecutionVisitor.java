@@ -529,8 +529,12 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   @Override
   public TSStatus visitCreateTableDevice(CreateTableDeviceNode node, ISchemaRegion schemaRegion) {
     try {
+      // todo implement storage for device of diverse data types
       schemaRegion.createTableDevice(
-          node.getDevicePathList(), node.getAttributeNameList(), node.getAttributeValueList());
+          node.getTableName(),
+          node.getDeviceIdList(),
+          node.getAttributeNameList(),
+          node.getAttributeValueList());
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (MetadataException e) {
       logger.error(e.getMessage(), e);

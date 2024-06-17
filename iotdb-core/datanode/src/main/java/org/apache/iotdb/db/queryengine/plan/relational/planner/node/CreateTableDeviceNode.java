@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -29,7 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -42,21 +40,32 @@ import java.util.Map;
 import java.util.Objects;
 
 public class CreateTableDeviceNode extends WritePlanNode {
-  private final List<PartialPath> devicePathList;
+
+  private final String database;
+
+  private final String tableName;
+
+  private final List<Object[]> deviceIdList;
 
   private final List<String> attributeNameList;
 
-  private final List<List<String>> attributeValueList;
+  private final List<Object[]> attributeValueList;
 
   private TRegionReplicaSet regionReplicaSet;
 
+  private transient List<IDeviceID> partitionKeyList;
+
   public CreateTableDeviceNode(
       PlanNodeId id,
-      List<PartialPath> devicePathList,
+      String database,
+      String tableName,
+      List<Object[]> deviceIdList,
       List<String> attributeNameList,
-      List<List<String>> attributeValueList) {
+      List<Object[]> attributeValueList) {
     super(id);
-    this.devicePathList = devicePathList;
+    this.database = database;
+    this.tableName = tableName;
+    this.deviceIdList = deviceIdList;
     this.attributeNameList = attributeNameList;
     this.attributeValueList = attributeValueList;
   }
@@ -64,11 +73,15 @@ public class CreateTableDeviceNode extends WritePlanNode {
   public CreateTableDeviceNode(
       PlanNodeId id,
       TRegionReplicaSet regionReplicaSet,
-      List<PartialPath> devicePathList,
+      String database,
+      String tableName,
+      List<Object[]> deviceIdList,
       List<String> attributeNameList,
-      List<List<String>> attributeValueList) {
+      List<Object[]> attributeValueList) {
     super(id);
-    this.devicePathList = devicePathList;
+    this.database = database;
+    this.tableName = tableName;
+    this.deviceIdList = deviceIdList;
     this.attributeNameList = attributeNameList;
     this.attributeValueList = attributeValueList;
     this.regionReplicaSet = regionReplicaSet;
@@ -79,21 +92,46 @@ public class CreateTableDeviceNode extends WritePlanNode {
     return PlanNodeType.CREATE_TABLE_DEVICE;
   }
 
-  public List<PartialPath> getDevicePathList() {
-    return devicePathList;
+  public String getDatabase() {
+    return database;
+  }
+
+  public String getTableName() {
+    return tableName;
+  }
+
+  public List<Object[]> getDeviceIdList() {
+    return deviceIdList;
   }
 
   public List<String> getAttributeNameList() {
     return attributeNameList;
   }
 
-  public List<List<String>> getAttributeValueList() {
+  public List<Object[]> getAttributeValueList() {
     return attributeValueList;
   }
 
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
     return regionReplicaSet;
+  }
+
+  public List<IDeviceID> getPartitionKeyList() {
+    if (partitionKeyList == null) {
+      List<IDeviceID> partitionKeyList = new ArrayList<>();
+      for (Object[] rawId : deviceIdList) {
+        String[] partitionKey = new String[rawId.length + 2];
+        partitionKey[0] = database;
+        partitionKey[1] = tableName;
+        for (int i = 0; i < rawId.length; i++) {
+          partitionKey[i + 2] = Objects.toString(rawId[i].toString());
+        }
+        partitionKeyList.add(IDeviceID.Factory.DEFAULT_FACTORY.create(partitionKey));
+      }
+      this.partitionKeyList = partitionKeyList;
+    }
+    return partitionKeyList;
   }
 
   @Override
@@ -107,7 +145,13 @@ public class CreateTableDeviceNode extends WritePlanNode {
   @Override
   public PlanNode clone() {
     return new CreateTableDeviceNode(
-        getPlanNodeId(), regionReplicaSet, devicePathList, attributeNameList, attributeValueList);
+        getPlanNodeId(),
+        regionReplicaSet,
+        database,
+        tableName,
+        deviceIdList,
+        attributeNameList,
+        attributeValueList);
   }
 
   @Override
@@ -123,19 +167,23 @@ public class CreateTableDeviceNode extends WritePlanNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.CREATE_TABLE_DEVICE.serialize(byteBuffer);
-    ReadWriteIOUtils.write(devicePathList.size(), byteBuffer);
-    for (PartialPath deviceId : devicePathList) {
-      deviceId.serialize(byteBuffer);
+    ReadWriteIOUtils.write(database, byteBuffer);
+    ReadWriteIOUtils.write(tableName, byteBuffer);
+    ReadWriteIOUtils.write(deviceIdList.size(), byteBuffer);
+    for (Object[] deviceId : deviceIdList) {
+      ReadWriteIOUtils.write(deviceId.length, byteBuffer);
+      for (Object idSeg : deviceId) {
+        ReadWriteIOUtils.writeObject(idSeg, byteBuffer);
+      }
     }
     ReadWriteIOUtils.write(attributeNameList.size(), byteBuffer);
     for (String attributeName : attributeNameList) {
       ReadWriteIOUtils.write(attributeName, byteBuffer);
     }
     ReadWriteIOUtils.write(attributeValueList.size(), byteBuffer);
-    for (List<String> deviceValueList : attributeValueList) {
-      ReadWriteIOUtils.write(deviceValueList.size(), byteBuffer);
-      for (String value : deviceValueList) {
-        ReadWriteIOUtils.write(value, byteBuffer);
+    for (Object[] deviceValueList : attributeValueList) {
+      for (Object value : deviceValueList) {
+        ReadWriteIOUtils.writeObject(value, byteBuffer);
       }
     }
   }
@@ -143,68 +191,85 @@ public class CreateTableDeviceNode extends WritePlanNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.CREATE_TABLE_DEVICE.serialize(stream);
-    ReadWriteIOUtils.write(devicePathList.size(), stream);
-    for (PartialPath deviceId : devicePathList) {
-      deviceId.serialize(stream);
+    ReadWriteIOUtils.write(database, stream);
+    ReadWriteIOUtils.write(tableName, stream);
+    ReadWriteIOUtils.write(deviceIdList.size(), stream);
+    for (Object[] deviceId : deviceIdList) {
+      ReadWriteIOUtils.write(deviceId.length, stream);
+      for (Object idSeg : deviceId) {
+        ReadWriteIOUtils.writeObject(idSeg, stream);
+      }
     }
     ReadWriteIOUtils.write(attributeNameList.size(), stream);
     for (String attributeName : attributeNameList) {
       ReadWriteIOUtils.write(attributeName, stream);
     }
-    for (List<String> deviceValueList : attributeValueList) {
-      for (String value : deviceValueList) {
-        ReadWriteIOUtils.write(value, stream);
+    for (Object[] deviceValueList : attributeValueList) {
+      for (Object value : deviceValueList) {
+        ReadWriteIOUtils.writeObject(value, stream);
       }
     }
   }
 
   public static CreateTableDeviceNode deserialize(ByteBuffer buffer) {
+    String database = ReadWriteIOUtils.readString(buffer);
+    String tableName = ReadWriteIOUtils.readString(buffer);
     int deviceNum = ReadWriteIOUtils.readInt(buffer);
-    List<PartialPath> devicePathList = new ArrayList<>(deviceNum);
+    List<Object[]> deviceIdList = new ArrayList<>(deviceNum);
+    int length;
+    Object[] deviceId;
     for (int i = 0; i < deviceNum; i++) {
-      devicePathList.add((PartialPath) PathDeserializeUtil.deserialize(buffer));
+      length = ReadWriteIOUtils.readInt(buffer);
+      deviceId = new Object[length];
+      for (int j = 0; j < length; j++) {
+        deviceId[j] = ReadWriteIOUtils.readObject(buffer);
+      }
+      deviceIdList.add(deviceId);
     }
     int attributeNameNum = ReadWriteIOUtils.readInt(buffer);
     List<String> attributeNameList = new ArrayList<>(attributeNameNum);
     for (int i = 0; i < attributeNameNum; i++) {
       attributeNameList.add(ReadWriteIOUtils.readString(buffer));
     }
-    List<List<String>> attributeValueList = new ArrayList<>(deviceNum);
+    List<Object[]> attributeValueList = new ArrayList<>(deviceNum);
+    Object[] deviceAttributeValues;
     for (int i = 0; i < deviceNum; i++) {
-      List<String> deviceValueList = new ArrayList<>(attributeNameNum);
+      deviceAttributeValues = new Object[attributeNameNum];
       for (int j = 0; j < attributeNameNum; j++) {
-        deviceValueList.add(ReadWriteIOUtils.readString(buffer));
+        deviceAttributeValues[j] = ReadWriteIOUtils.readObject(buffer);
       }
-      attributeValueList.add(deviceValueList);
+      attributeValueList.add(deviceAttributeValues);
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new CreateTableDeviceNode(
-        planNodeId, devicePathList, attributeNameList, attributeValueList);
+        planNodeId, database, tableName, deviceIdList, attributeNameList, attributeValueList);
   }
 
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
-    for (int i = 0; i < devicePathList.size(); i++) {
+    List<IDeviceID> partitionKeyList = getPartitionKeyList();
+    for (int i = 0; i < partitionKeyList.size(); i++) {
+      // use the string literal of deviceId as the partition key
       TRegionReplicaSet regionReplicaSet =
-          analysis
-              .getSchemaPartitionInfo()
-              .getSchemaRegionReplicaSet(new StringArrayDeviceID(devicePathList.get(i).getNodes()));
+          analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(partitionKeyList.get(i));
       splitMap.computeIfAbsent(regionReplicaSet, k -> new ArrayList<>()).add(i);
     }
     List<WritePlanNode> result = new ArrayList<>(splitMap.size());
     for (Map.Entry<TRegionReplicaSet, List<Integer>> entry : splitMap.entrySet()) {
-      List<PartialPath> subDevicePathList = new ArrayList<>(entry.getValue().size());
-      List<List<String>> subAttributeValueList = new ArrayList<>(entry.getValue().size());
+      List<Object[]> subDeviceIdList = new ArrayList<>(entry.getValue().size());
+      List<Object[]> subAttributeValueList = new ArrayList<>(entry.getValue().size());
       for (Integer index : entry.getValue()) {
-        subDevicePathList.add(devicePathList.get(index));
+        subDeviceIdList.add(deviceIdList.get(index));
         subAttributeValueList.add(attributeValueList.get(index));
       }
       result.add(
           new CreateTableDeviceNode(
               getPlanNodeId(),
               entry.getKey(),
-              subDevicePathList,
+              database,
+              tableName,
+              subDeviceIdList,
               attributeNameList,
               subAttributeValueList));
     }
@@ -219,18 +284,28 @@ public class CreateTableDeviceNode extends WritePlanNode {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof CreateTableDeviceNode)) return false;
+    if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
-    CreateTableDeviceNode that = (CreateTableDeviceNode) o;
-    return Objects.equals(devicePathList, that.devicePathList)
-        && Objects.equals(attributeNameList, that.attributeNameList)
-        && Objects.equals(attributeValueList, that.attributeValueList)
-        && Objects.equals(regionReplicaSet, that.regionReplicaSet);
+    CreateTableDeviceNode node = (CreateTableDeviceNode) o;
+    return Objects.equals(database, node.database)
+        && Objects.equals(tableName, node.tableName)
+        && Objects.equals(deviceIdList, node.deviceIdList)
+        && Objects.equals(attributeNameList, node.attributeNameList)
+        && Objects.equals(attributeValueList, node.attributeValueList)
+        && Objects.equals(regionReplicaSet, node.regionReplicaSet)
+        && Objects.equals(partitionKeyList, node.partitionKeyList);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        super.hashCode(), devicePathList, attributeNameList, attributeValueList, regionReplicaSet);
+        super.hashCode(),
+        database,
+        tableName,
+        deviceIdList,
+        attributeNameList,
+        attributeValueList,
+        regionReplicaSet,
+        partitionKeyList);
   }
 }

@@ -29,18 +29,18 @@ public class CreateDevice extends Statement {
 
   private final String table;
 
-  private final List<String[]> deviceIdList;
+  private final List<Object[]> deviceIdList;
 
   private final List<String> attributeNameList;
 
-  private final List<List<String>> attributeValueList;
+  private final List<Object[]> attributeValueList;
 
   public CreateDevice(
       String database,
       String table,
-      List<String[]> deviceIdList,
+      List<Object[]> deviceIdList,
       List<String> attributeNameList,
-      List<List<String>> attributeValueList) {
+      List<Object[]> attributeValueList) {
     super(null);
     this.database = database;
     this.table = table;
@@ -57,7 +57,7 @@ public class CreateDevice extends Statement {
     return table;
   }
 
-  public List<String[]> getDeviceIdList() {
+  public List<Object[]> getDeviceIdList() {
     return deviceIdList;
   }
 
@@ -65,7 +65,7 @@ public class CreateDevice extends Statement {
     return attributeNameList;
   }
 
-  public List<List<String>> getAttributeValueList() {
+  public List<Object[]> getAttributeValueList() {
     return attributeValueList;
   }
 

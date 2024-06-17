@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -286,6 +287,12 @@ public class TableMetadataImpl implements Metadata {
   public void validateDeviceSchema(
       ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context) {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public SchemaPartition getOrCreateSchemaPartition(List<IDeviceID> deviceIDList, String userName) {
+    // todo implement related logic
+    throw new UnsupportedOperationException("Unsupported schema partition operation");
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.List;
@@ -97,4 +99,11 @@ public interface Metadata {
    * <p>If validation failed, a SemanticException will be thrown.
    */
   void validateDeviceSchema(ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context);
+
+  /**
+   * Get or create schema partition, used in insertion with enable_auto_create_schema is true. if
+   * schemaPartition does not exist, then automatically create. The device id shall be [db, table,
+   * seg1, ....]
+   */
+  SchemaPartition getOrCreateSchemaPartition(List<IDeviceID> deviceIDList, String userName);
 }
