@@ -208,6 +208,8 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
         if (!(events.get(0) instanceof PipeTsFileInsertionEvent)) {
           FileUtils.delete(currentFile);
         }
+      } catch (final NoSuchFileException e) {
+        LOGGER.info("The file {} is not found, may already be deleted.", currentFile);
       } catch (final IOException e) {
         LOGGER.warn(
             "Failed to close file reader or delete tsFile when successfully transferred file.", e);
