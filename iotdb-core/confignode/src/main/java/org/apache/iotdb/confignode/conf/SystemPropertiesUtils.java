@@ -299,7 +299,7 @@ public class SystemPropertiesUtils {
     systemProperties.setProperty(
         "tag_attribute_total_size", String.valueOf(COMMON_CONFIG.getTagAttributeTotalSize()));
 
-    systemPropertiesHandler.write(systemProperties);
+    systemPropertiesHandler.overwrite(systemProperties);
   }
 
   /**

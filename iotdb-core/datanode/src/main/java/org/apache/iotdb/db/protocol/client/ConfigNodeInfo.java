@@ -108,7 +108,7 @@ public class ConfigNodeInfo {
     Properties properties = systemPropertiesHandler.read();
     properties.setProperty(
         CONFIG_NODE_LIST, NodeUrlUtils.convertTEndPointUrls(new ArrayList<>(onlineConfigNodes)));
-    systemPropertiesHandler.write(properties);
+    systemPropertiesHandler.overwrite(properties);
   }
 
   public void loadConfigNodeList() {

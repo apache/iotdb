@@ -250,7 +250,7 @@ public class IoTDBStartCheck {
         });
     properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
     properties.setProperty(COMMIT_ID_STRING, IoTDBConstant.BUILD_INFO);
-    systemPropertiesHandler.write(properties);
+    systemPropertiesHandler.overwrite(properties);
   }
 
   /** Check all immutable properties */
@@ -292,7 +292,7 @@ public class IoTDBStartCheck {
   /** call this method to serialize ClusterName and DataNodeId */
   public void serializeClusterNameAndDataNodeId(String clusterName, int dataNodeId)
       throws IOException {
-    systemPropertiesHandler.putAll(
+    systemPropertiesHandler.put(
         IoTDBConstant.CLUSTER_NAME, clusterName, DATA_NODE_ID, String.valueOf(dataNodeId));
   }
 
@@ -327,6 +327,6 @@ public class IoTDBStartCheck {
 
   public void generateOrRewriteSystemPropertiesFile() throws IOException {
     systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
-    systemPropertiesHandler.write(properties);
+    systemPropertiesHandler.overwrite(properties);
   }
 }

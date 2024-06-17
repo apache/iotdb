@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.file;
 
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.utils.FileUtils;
 
 import org.apache.ratis.util.AutoCloseableLock;
 import org.slf4j.Logger;
@@ -28,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -51,51 +51,39 @@ public class SystemPropertiesFileHandler {
     this.tmpFile = SystemFileFactory.INSTANCE.getFile(filePath + ".tmp");
   }
 
-  public void put(Object key, Object value) throws IOException {
-    try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.writeLock());
-        FileInputStream inputStream = new FileInputStream(formalFile);
-        FileOutputStream outputStream = new FileOutputStream(tmpFile)) {
-      Properties properties = new Properties();
-      properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-      properties.put(key, value);
-      properties.store(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), "");
-      outputStream.getFD().sync();
-    }
-  }
-
-  public void putAll(Object... keyOrValue) throws IOException {
+  public void put(Object... keyOrValue) throws IOException {
     if (keyOrValue.length % 2 != 0) {
       throw new IllegalArgumentException(
           "Length of parameters should be evenly divided by 2, but actually they are: "
               + Arrays.toString(keyOrValue));
     }
     try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.writeLock());
-        FileInputStream inputStream = new FileInputStream(formalFile);
         FileOutputStream outputStream = new FileOutputStream(tmpFile)) {
       Properties properties = new Properties();
-      properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+      // read old properties
+      if (formalFile.exists()) {
+        try (FileInputStream inputStream = new FileInputStream(formalFile)) {
+          properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        }
+      }
+      // store new properties
       for (int i = 0; i < keyOrValue.length; i += 2) {
         properties.put(keyOrValue[i], keyOrValue[i + 1]);
       }
       properties.store(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), "");
       outputStream.getFD().sync();
+      replaceFormalFile();
     }
   }
 
-  public void write(Properties properties) throws IOException {
+  public void overwrite(Properties properties) throws IOException {
     try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.writeLock())) {
       if (!formalFile.exists()) {
         writeImpl(properties, formalFile);
         return;
       }
       writeImpl(properties, tmpFile);
-      if (!formalFile.delete()) {
-        String msg =
-            String.format(
-                "Update %s file fail: %s", formalFile.getName(), formalFile.getAbsoluteFile());
-        throw new IOException(msg);
-      }
-      FileUtils.moveFileSafe(tmpFile, formalFile);
+      replaceFormalFile();
     }
   }
 
@@ -137,22 +125,35 @@ public class SystemPropertiesFileHandler {
         return;
       }
       if (!formalFile.exists() && tmpFile.exists()) {
-        if (!tmpFile.renameTo(formalFile)) {
-          String msg =
-              String.format(
-                  "Cannot rename system properties tmp file, you should manually rename it, then restart the node: %s -> %s",
-                  tmpFile.getAbsolutePath(), formalFile.getAbsolutePath());
-          throw new StartupException(msg);
-        }
+        replaceFormalFile();
         return;
       }
+    } catch (IOException e) {
+        throw new StartupException(e);
     }
-    throw new StartupException("Should never touch here");
+      throw new StartupException("Should never touch here");
   }
 
   private void writeImpl(Properties properties, File file) throws IOException {
     try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
       properties.store(new OutputStreamWriter(fileOutputStream, StandardCharsets.UTF_8), "");
+    }
+  }
+
+  private void replaceFormalFile() throws IOException {
+    if (!tmpFile.exists()) {
+      throw new FileNotFoundException("Tmp system properties file must exist when call replaceFormalFile");
+    }
+    if (formalFile.exists() && !formalFile.delete()) {
+      String msg =
+              String.format(
+                      "Delete formal system properties file fail: %s", formalFile.getAbsoluteFile());
+      throw new IOException(msg);
+    }
+    if (!tmpFile.renameTo(formalFile)) {
+      String msg = String.format("Failed to replace formal system properties file, you may manually rename it: %s -> %s",
+              tmpFile.getAbsolutePath(), formalFile.getAbsolutePath());
+      throw new IOException(msg);
     }
   }
 
