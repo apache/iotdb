@@ -238,16 +238,33 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   @Override
-  protected void dropPipe(final String pipeName, final long creationTime) {
-    super.dropPipe(pipeName, creationTime);
-
-    PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-        .deregister(pipeName + "_" + creationTime);
+  protected void thawRate(final String pipeName, final long creationTime) {
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance().thawRate(pipeName + "_" + creationTime);
   }
 
   @Override
-  protected void dropPipe(final String pipeName) {
-    super.dropPipe(pipeName);
+  protected void freezeRate(final String pipeName, final long creationTime) {
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+        .freezeRate(pipeName + "_" + creationTime);
+  }
+
+  @Override
+  protected boolean dropPipe(final String pipeName, final long creationTime) {
+    if (!super.dropPipe(pipeName, creationTime)) {
+      return false;
+    }
+
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+        .deregister(pipeName + "_" + creationTime);
+
+    return true;
+  }
+
+  @Override
+  protected boolean dropPipe(final String pipeName) {
+    if (!super.dropPipe(pipeName)) {
+      return false;
+    }
 
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     if (Objects.nonNull(pipeMeta)) {
@@ -255,6 +272,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
           .deregister(pipeName + "_" + creationTime);
     }
+
+    return true;
   }
 
   public void stopAllPipesWithCriticalException() {
@@ -612,7 +631,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   ///////////////////////// Pipe Consensus /////////////////////////
 
-  public ProgressIndex getPipeTaskProgressIndex(String pipeName, int consensusGroupId) {
+  public long getPipeCreationTime(final String pipeName) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    return pipeMeta == null ? 0 : pipeMeta.getStaticMeta().getCreationTime();
+  }
+
+  public ProgressIndex getPipeTaskProgressIndex(final String pipeName, final int consensusGroupId) {
     if (!tryReadLockWithTimeOut(10)) {
       throw new PipeException(
           String.format(

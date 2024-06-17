@@ -21,8 +21,8 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.AbstractAsyncRPCHandler;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -34,13 +34,13 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public class CheckSchemaRegionUsingTemplateRPCHandler
-    extends AbstractAsyncRPCHandler<TCheckSchemaRegionUsingTemplateResp> {
+    extends DataNodeAsyncRequestRPCHandler<TCheckSchemaRegionUsingTemplateResp> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(CheckSchemaRegionUsingTemplateRPCHandler.class);
 
   public CheckSchemaRegionUsingTemplateRPCHandler(
-      DataNodeRequestType requestType,
+      CnToDnRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
@@ -54,20 +54,15 @@ public class CheckSchemaRegionUsingTemplateRPCHandler
     TSStatus tsStatus = response.getStatus();
     responseMap.put(requestId, response);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeLocationMap.remove(requestId);
-      LOGGER.info(
-          "Successfully check schema region using template on DataNode: {}", targetDataNode);
+      nodeLocationMap.remove(requestId);
+      LOGGER.info("Successfully check schema region using template on DataNode: {}", targetNode);
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-      dataNodeLocationMap.remove(requestId);
+      nodeLocationMap.remove(requestId);
       LOGGER.error(
-          "Failed to check schema region using template on DataNode {}, {}",
-          targetDataNode,
-          tsStatus);
+          "Failed to check schema region using template on DataNode {}, {}", targetNode, tsStatus);
     } else {
       LOGGER.error(
-          "Failed to check schema region using template on DataNode {}, {}",
-          targetDataNode,
-          tsStatus);
+          "Failed to check schema region using template on DataNode {}, {}", targetNode, tsStatus);
     }
     countDownLatch.countDown();
   }
@@ -76,9 +71,9 @@ public class CheckSchemaRegionUsingTemplateRPCHandler
   public void onError(Exception e) {
     String errorMsg =
         "Count paths using template error on DataNode: {id="
-            + targetDataNode.getDataNodeId()
+            + targetNode.getDataNodeId()
             + ", internalEndPoint="
-            + targetDataNode.getInternalEndPoint()
+            + targetNode.getInternalEndPoint()
             + "}"
             + e.getMessage();
     LOGGER.error(errorMsg);

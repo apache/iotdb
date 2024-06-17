@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -73,7 +74,7 @@ public class IoTDBConfig {
 
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
-  public static final String CONFIG_NAME = "iotdb-datanode.properties";
+  public static final String CONFIG_NAME = "iotdb-system.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.storageengine.rescon.disk.strategy.";
@@ -2184,14 +2185,6 @@ public class IoTDBConfig {
     this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
   }
 
-  public long getCrossCompactionFileSelectionTimeBudget() {
-    return crossCompactionFileSelectionTimeBudget;
-  }
-
-  void setCrossCompactionFileSelectionTimeBudget(long crossCompactionFileSelectionTimeBudget) {
-    this.crossCompactionFileSelectionTimeBudget = crossCompactionFileSelectionTimeBudget;
-  }
-
   public boolean isRpcThriftCompressionEnable() {
     return rpcThriftCompressionEnable;
   }
@@ -3976,5 +3969,19 @@ public class IoTDBConfig {
   public void setInnerCompactionTaskSelectionDiskRedundancy(
       double innerCompactionTaskSelectionDiskRedundancy) {
     this.innerCompactionTaskSelectionDiskRedundancy = innerCompactionTaskSelectionDiskRedundancy;
+  }
+
+  public TDataNodeLocation generateLocalDataNodeLocation() {
+    TDataNodeLocation result = new TDataNodeLocation();
+    result.setDataNodeId(getDataNodeId());
+    result.setClientRpcEndPoint(new TEndPoint(getInternalAddress(), getRpcPort()));
+    result.setInternalEndPoint(new TEndPoint(getInternalAddress(), getInternalPort()));
+    result.setMPPDataExchangeEndPoint(
+        new TEndPoint(getInternalAddress(), getMppDataExchangePort()));
+    result.setDataRegionConsensusEndPoint(
+        new TEndPoint(getInternalAddress(), getDataRegionConsensusPort()));
+    result.setSchemaRegionConsensusEndPoint(
+        new TEndPoint(getInternalAddress(), getSchemaRegionConsensusPort()));
+    return result;
   }
 }

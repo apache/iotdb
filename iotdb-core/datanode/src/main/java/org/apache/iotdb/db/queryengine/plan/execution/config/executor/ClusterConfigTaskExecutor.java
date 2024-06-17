@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
+import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -149,6 +150,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariab
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
@@ -1285,6 +1287,24 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     ShowClusterIdTask.buildTSBlock(
         IoTDBDescriptor.getInstance().getConfig().getClusterId(), future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> testConnection(boolean needDetails) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TTestConnectionResp result = client.submitTestConnectionTaskToLeader();
+      int configNodeNum = 0, dataNodeNum = 0;
+      if (!needDetails) {
+        configNodeNum = client.showConfigNodes().getConfigNodesInfoListSize();
+        dataNodeNum = client.showDataNodes().getDataNodesInfoListSize();
+      }
+      TestConnectionTask.buildTSBlock(result, configNodeNum, dataNodeNum, needDetails, future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
     return future;
   }
 

@@ -438,6 +438,32 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     return this;
   }
 
+  @Override
+  public CommonConfig setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
+      int pipeHeartbeatIntervalSecondsForCollectingPipeMeta) {
+    setProperty(
+        "pipe_heartbeat_interval_seconds_for_collecting_pipe_meta",
+        String.valueOf(pipeHeartbeatIntervalSecondsForCollectingPipeMeta));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMetaSyncerInitialSyncDelayMinutes(
+      long pipeMetaSyncerInitialSyncDelayMinutes) {
+    setProperty(
+        "pipe_meta_syncer_initial_sync_delay_minutes",
+        String.valueOf(pipeMetaSyncerInitialSyncDelayMinutes));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes) {
+    setProperty(
+        "pipe_meta_syncer_sync_interval_minutes",
+        String.valueOf(pipeMetaSyncerSyncIntervalMinutes));
+    return this;
+  }
+
   // For part of the log directory
   public String getClusterConfigStr() {
     return fromConsensusFullNameToAbbr(properties.getProperty(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS))
