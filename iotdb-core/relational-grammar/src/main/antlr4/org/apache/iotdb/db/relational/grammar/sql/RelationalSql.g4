@@ -375,7 +375,7 @@ propertyValue
 queryNoWith
     : queryTerm
       (ORDER BY sortItem (',' sortItem)*)?
-      (FILL '(' (LINEAR | PREVIOUS | literalExpression) (',' duration=timeduration)? ')')?
+      (FILL '(' (LINEAR | PREVIOUS | literalExpression) (',' duration=timeDuration)? ')')?
       (OFFSET offset=rowCount)?
       (LIMIT limit=limitRowCount)?
     ;
@@ -419,11 +419,11 @@ groupBy
     ;
 
 groupingElement
-    : TIME '(' (timeRange ',')? windowInterval=timeduration (',' windowStep=timeduration)?')'      #timenGrouping
+    : TIME '(' (timeRange ',')? windowInterval=timeDuration (',' windowStep=timeDuration)?')'      #timenGrouping
     | VARIATION '(' expression (',' delta=number)? (',' propertyAssignments)? ')'                  #variationGrouping
     | CONDITION '(' expression (',' keepExpression)? (',' propertyAssignments)? ')'                #conditionGrouping
-    | SESSION '(' timeInterval=timeduration ')'                                                    #sessionGrouping
-    | COUNT '(' expression ',' countNumber=DECIMAL_INTEGER_LITERAL (',' propertyAssignments)? ')'  #countGrouping
+    | SESSION '(' timeInterval=timeDuration ')'                                                    #sessionGrouping
+    | COUNT '(' expression ',' countNumber=INTEGER_VALUE (',' propertyAssignments)? ')'            #countGrouping
     | groupingSet                                                                                  #singleGroupingSet
     // the following three haven't been supported yet
     | ROLLUP '(' (groupingSet (',' groupingSet)*)? ')'                                             #rollup
@@ -438,11 +438,11 @@ timeRange
 
 timeValue
     : dateExpression
-    | (PLUS | MINUS)? DECIMAL_INTEGER_LITERAL
+    | (PLUS | MINUS)? INTEGER_VALUE
     ;
 
 dateExpression
-    : datetimeLiteral ((PLUS | MINUS) timeduration)*
+    : datetimeLiteral ((PLUS | MINUS) timeDuration)*
     ;
 
 datetimeLiteral
@@ -451,7 +451,7 @@ datetimeLiteral
     ;
 
 keepExpression
-    : (KEEP (EQ | LT | LTE | GT | GTE))? DECIMAL_INTEGER_LITERAL
+    : (KEEP (EQ | LT | LTE | GT | GTE))? INTEGER_VALUE
     ;
 
 groupingSet
@@ -610,12 +610,8 @@ intervalField
     : YEAR | MONTH | WEEK | DAY | HOUR | MINUTE | SECOND | MILLISECOND | MICROSECOND | NANOSECOND
     ;
 
-timeduration
-    : (DECIMAL_INTEGER_LITERAL intervalField)+
-    ;
-
-DECIMAL_INTEGER_LITERAL
-    : DECIMAL_INTEGER
+timeDuration
+    : (INTEGER_VALUE intervalField)+
     ;
 
 type
@@ -1208,30 +1204,3 @@ WS
 UNRECOGNIZED
     : .
     ;
-
-fragment A: [a];
-fragment B: [b];
-fragment C: [c];
-fragment D: [d];
-fragment E: [e];
-fragment F: [f];
-fragment G: [g];
-fragment H: [h];
-fragment I: [i];
-fragment J: [j];
-fragment K: [k];
-fragment L: [l];
-fragment M: [m];
-fragment N: [n];
-fragment O: [o];
-fragment P: [p];
-fragment Q: [q];
-fragment R: [r];
-fragment S: [s];
-fragment T: [t];
-fragment U: [u];
-fragment V: [v];
-fragment W: [w];
-fragment X: [x];
-fragment Y: [y];
-fragment Z: [z];

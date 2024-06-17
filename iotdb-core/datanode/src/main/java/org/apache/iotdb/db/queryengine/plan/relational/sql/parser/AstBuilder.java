@@ -751,16 +751,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   private long parseTimeValue(RelationalSqlParser.TimeValueContext ctx, long currentTime) {
-    if (ctx.DECIMAL_INTEGER_LITERAL() != null) {
+    if (ctx.INTEGER_VALUE() != null) {
       try {
         if (ctx.MINUS() != null) {
-          return -Long.parseLong(ctx.DECIMAL_INTEGER_LITERAL().getText());
+          return -Long.parseLong(ctx.INTEGER_VALUE().getText());
         }
-        return Long.parseLong(ctx.DECIMAL_INTEGER_LITERAL().getText());
+        return Long.parseLong(ctx.INTEGER_VALUE().getText());
       } catch (NumberFormatException e) {
         throw new SemanticException(
-            String.format(
-                "Can not parse %s to long value", ctx.DECIMAL_INTEGER_LITERAL().getText()));
+            String.format("Can not parse %s to long value", ctx.INTEGER_VALUE().getText()));
       }
     } else {
       return parseDateExpression(ctx.dateExpression(), currentTime);
