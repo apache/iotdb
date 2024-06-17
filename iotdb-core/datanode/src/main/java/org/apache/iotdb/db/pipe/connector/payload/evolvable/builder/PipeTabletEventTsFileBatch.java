@@ -68,6 +68,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private final long maxSizeInBytes;
   private TsFileWriter fileWriter;
   private final Map<String, Double> pipeName2WeightMap = new HashMap<>();
+  private boolean isTransferring;
 
   static {
     try {
@@ -163,6 +164,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
                       + "_"
                       + tsFileId.getAndIncrement()
                       + TsFileConstant.TSFILE_SUFFIX));
+      isTransferring = false;
     }
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final List<Tablet> tablets = ((PipeInsertNodeTabletInsertionEvent) event).convertToTablets();
@@ -219,6 +221,9 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       return null;
     }
     fileWriter.close();
+    // If a tsFile is successfully got, it shall not be deleted by "close()" and will be cleared
+    // when successfully transferred.
+    isTransferring = true;
     return fileWriter.getIOWriter().getFile();
   }
 
@@ -247,11 +252,15 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   public synchronized void close() {
     super.close();
     pipeName2WeightMap.clear();
-    try {
-      FileUtils.delete(fileWriter.getIOWriter().getFile());
-    } catch (final IOException e) {
-      LOGGER.warn(
-          "Failed to delete the tsFile when trying to close tsFile batch, may need to delete manually.");
+    if (Objects.nonNull(fileWriter) && !isTransferring) {
+      try {
+        fileWriter.close();
+        FileUtils.delete(fileWriter.getIOWriter().getFile());
+      } catch (final IOException e) {
+        LOGGER.warn(
+            "Failed to delete the tsFile when trying to close tsFile batch, may need to delete manually.",
+            e);
+      }
     }
   }
 }

@@ -46,6 +46,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -287,6 +288,8 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
       if (!(events.get(0) instanceof PipeTsFileInsertionEvent)) {
         FileUtils.delete(currentFile);
       }
+    } catch (final NoSuchFileException e) {
+      LOGGER.info("The file {} is not found, may already be deleted.", currentFile);
     } catch (final IOException e) {
       LOGGER.warn("Failed to close file reader or delete tsFile when failed to transfer file.", e);
     } finally {
