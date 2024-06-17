@@ -100,6 +100,14 @@ public abstract class AbstractSchemaIT {
               "DROP DEVICE TEMPLATE " + resultSet.getString(ColumnHeaderConstant.TEMPLATE_NAME));
         }
       }
+      // drop all users
+      try (ResultSet resultSet = statement.executeQuery("LIST USER")) {
+        while (resultSet.next()) {
+          if (!resultSet.getString(ColumnHeaderConstant.USER).equals("root")) {
+            statement.execute("DROP USER " + resultSet.getString(ColumnHeaderConstant.USER));
+          }
+        }
+      }
     }
   }
 

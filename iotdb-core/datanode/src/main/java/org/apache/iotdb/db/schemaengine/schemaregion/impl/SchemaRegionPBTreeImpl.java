@@ -211,6 +211,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
           new MTreeBelowSGCachedImpl(
               new PartialPath(storageGroupFullPath),
               tagManager::readTags,
+              tagManager::readAttributes,
               this::flushCallback,
               measurementInitProcess(),
               deviceInitProcess(),
@@ -549,6 +550,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               measurementInitProcess(),
               deviceInitProcess(),
               tagManager::readTags,
+              tagManager::readAttributes,
               this::flushCallback);
       logger.info(
           "MTree snapshot loading of schemaRegion {} costs {}ms.",
@@ -1038,11 +1040,14 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     if (patternTree.isContainWildcard()) {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       for (PartialPath path : patternTree.getAllPathPatterns()) {
-        schemaTree.mergeSchemaTree(mtree.fetchSchema(path, templateMap, withTags, withTemplate));
+        schemaTree.mergeSchemaTree(
+            mtree.fetchSchema(
+                path, templateMap, withTags, withAttributes, withTemplate, withAliasForcete));
       }
       return schemaTree;
     } else {
-      return mtree.fetchSchemaWithoutWildcard(patternTree, templateMap, withTags, withTemplate);
+      return mtree.fetchSchemaWithoutWildcard(
+          patternTree, templateMap, withTags, withAttributes, withTemplate);
     }
   }
 
