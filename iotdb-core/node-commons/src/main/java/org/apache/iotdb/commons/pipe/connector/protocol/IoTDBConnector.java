@@ -392,7 +392,9 @@ public abstract class IoTDBConnector implements PipeConnector {
       PIPE_END_POINT_RATE_LIMITER_MAP
           .computeIfAbsent(
               new Pair<>(pipeName, creationTime),
-              endpoint -> getRateLimiter(pipeName, creationTime, endPointRateLimitBytesPerSecond))
+              endpoint ->
+                  new PipeEndPointRateLimiter(
+                      pipeName, creationTime, endPointRateLimitBytesPerSecond))
           .acquire(endPoint, bytesLength);
     }
 
