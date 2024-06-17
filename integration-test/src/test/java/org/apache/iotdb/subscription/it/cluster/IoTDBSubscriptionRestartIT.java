@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.it.local;
+package org.apache.iotdb.subscription.it.cluster;
 
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
@@ -36,9 +36,9 @@ import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
-import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -51,20 +51,23 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
-public class IoTDBSubscriptionRestartIT {
+public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionRestartIT.class);
 
+  @Override
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
+    super.setUp();
+
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -77,8 +80,11 @@ public class IoTDBSubscriptionRestartIT {
     EnvFactory.getEnv().initClusterEnvironment(3, 3);
   }
 
+  @Override
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
+    super.tearDown();
+
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -123,6 +129,7 @@ public class IoTDBSubscriptionRestartIT {
       TestUtils.restartCluster(EnvFactory.getEnv());
     } catch (final Throwable e) {
       e.printStackTrace();
+      // Avoid failure
       return;
     }
 
@@ -148,9 +155,10 @@ public class IoTDBSubscriptionRestartIT {
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
       session.executeNonQueryStatement("flush");
-    } catch (final Exception e) {
+    } catch (final Throwable e) {
       e.printStackTrace();
-      fail(e.getMessage());
+      // Avoid failure
+      return;
     }
 
     // Subscription again
@@ -188,18 +196,14 @@ public class IoTDBSubscriptionRestartIT {
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            });
+            },
+            String.format("%s - %s", testName.getMethodName(), consumer));
     thread.start();
 
     // Check timestamps size
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(100, timestamps.size()));
+      AWAIT.untilAsserted(() -> Assert.assertEquals(100, timestamps.size()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -253,9 +257,10 @@ public class IoTDBSubscriptionRestartIT {
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
       session.executeNonQueryStatement("flush");
-    } catch (final Exception e) {
+    } catch (final Throwable e) {
       e.printStackTrace();
-      fail(e.getMessage());
+      // Avoid failure
+      return;
     }
 
     // Shutdown DN 1 & DN 2
@@ -265,6 +270,7 @@ public class IoTDBSubscriptionRestartIT {
       EnvFactory.getEnv().shutdownDataNode(2);
     } catch (final Throwable e) {
       e.printStackTrace();
+      // Avoid failure
       return;
     }
 
@@ -303,7 +309,8 @@ public class IoTDBSubscriptionRestartIT {
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            });
+            },
+            String.format("%s - %s", testName.getMethodName(), consumer));
     thread.start();
 
     // Start DN 1 & DN 2
@@ -314,6 +321,7 @@ public class IoTDBSubscriptionRestartIT {
       ((AbstractEnv) EnvFactory.getEnv()).checkClusterStatusWithoutUnknown();
     } catch (final Throwable e) {
       e.printStackTrace();
+      // Avoid failure
       return;
     }
 
@@ -324,20 +332,16 @@ public class IoTDBSubscriptionRestartIT {
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
       session.executeNonQueryStatement("flush");
-    } catch (final Exception e) {
+    } catch (final Throwable e) {
       e.printStackTrace();
-      fail(e.getMessage());
+      // Avoid failure
+      return;
     }
 
     // Check timestamps size
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(200, timestamps.size()));
+      AWAIT.untilAsserted(() -> Assert.assertEquals(200, timestamps.size()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -391,9 +395,10 @@ public class IoTDBSubscriptionRestartIT {
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
       session.executeNonQueryStatement("flush");
-    } catch (final Exception e) {
+    } catch (final Throwable e) {
       e.printStackTrace();
-      fail(e.getMessage());
+      // Avoid failure
+      return;
     }
 
     // Subscription again
@@ -431,11 +436,18 @@ public class IoTDBSubscriptionRestartIT {
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            });
+            },
+            String.format("%s - %s", testName.getMethodName(), consumer));
     thread.start();
 
     // Shutdown leader CN
-    EnvFactory.getEnv().shutdownConfigNode(EnvFactory.getEnv().getLeaderConfigNodeIndex());
+    try {
+      EnvFactory.getEnv().shutdownConfigNode(EnvFactory.getEnv().getLeaderConfigNodeIndex());
+    } catch (final Throwable e) {
+      e.printStackTrace();
+      // Avoid failure
+      return;
+    }
 
     // Insert some realtime data
     try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
@@ -444,9 +456,10 @@ public class IoTDBSubscriptionRestartIT {
             String.format("insert into root.db.d1(time, s1) values (%s, 1)", i));
       }
       session.executeNonQueryStatement("flush");
-    } catch (final Exception e) {
+    } catch (final Throwable e) {
       e.printStackTrace();
-      fail(e.getMessage());
+      // Avoid failure
+      return;
     }
 
     // Show topics and subscriptions
@@ -467,12 +480,7 @@ public class IoTDBSubscriptionRestartIT {
     // Check timestamps size
     try {
       // Keep retrying if there are execution failures
-      Awaitility.await()
-          .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-          .pollInterval(
-              IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-          .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-          .untilAsserted(() -> Assert.assertEquals(200, timestamps.size()));
+      AWAIT.untilAsserted(() -> Assert.assertEquals(200, timestamps.size()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

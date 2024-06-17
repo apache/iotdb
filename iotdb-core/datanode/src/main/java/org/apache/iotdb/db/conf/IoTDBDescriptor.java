@@ -591,11 +591,6 @@ public class IoTDBDescriptor {
       conf.setChunkBufferPoolEnable(
           Boolean.parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
     }
-    conf.setCrossCompactionFileSelectionTimeBudget(
-        Long.parseLong(
-            properties.getProperty(
-                "cross_compaction_file_selection_time_budget",
-                Long.toString(conf.getCrossCompactionFileSelectionTimeBudget()))));
     conf.setMergeIntervalSec(
         Long.parseLong(
             properties.getProperty(
@@ -895,32 +890,6 @@ public class IoTDBDescriptor {
       conf.setIntoOperationExecutionThreadCount(2);
     }
 
-    conf.setMaxAllocateMemoryRatioForLoad(
-        Double.parseDouble(
-            properties.getProperty(
-                "max_allocate_memory_ratio_for_load",
-                String.valueOf(conf.getMaxAllocateMemoryRatioForLoad()))));
-    conf.setLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber(
-        Integer.parseInt(
-            properties.getProperty(
-                "load_tsfile_analyze_schema_batch_flush_time_series_number",
-                String.valueOf(conf.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber()))));
-    conf.setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
-        Long.parseLong(
-            properties.getProperty(
-                "load_tsfile_analyze_schema_memory_size_in_bytes",
-                String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
-    conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
-        Long.parseLong(
-            properties.getProperty(
-                "load_clean_up_task_execution_delay_time_seconds",
-                String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
-    conf.setLoadWriteThroughputBytesPerSecond(
-        Double.parseDouble(
-            properties.getProperty(
-                "load_write_throughput_bytes_per_second",
-                String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
-
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
     // At the same time, set TSFileConfig
@@ -1022,6 +991,9 @@ public class IoTDBDescriptor {
 
     // CQ
     loadCQProps(properties);
+
+    // Load TsFile
+    loadLoadTsFileProps(properties);
 
     // Pipe
     loadPipeProps(properties);
@@ -2090,6 +2062,34 @@ public class IoTDBDescriptor {
     conf.setAllocateMemoryForPartitionCache(
         schemaMemoryTotal * conf.getSchemaMemoryProportion()[2] / proportionSum);
     LOGGER.info("allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
+  }
+
+  private void loadLoadTsFileProps(Properties properties) {
+    conf.setMaxAllocateMemoryRatioForLoad(
+        Double.parseDouble(
+            properties.getProperty(
+                "max_allocate_memory_ratio_for_load",
+                String.valueOf(conf.getMaxAllocateMemoryRatioForLoad()))));
+    conf.setLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_analyze_schema_batch_flush_time_series_number",
+                String.valueOf(conf.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber()))));
+    conf.setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "load_tsfile_analyze_schema_memory_size_in_bytes",
+                String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
+    conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_clean_up_task_execution_delay_time_seconds",
+                String.valueOf(conf.getLoadCleanupTaskExecutionDelayTimeSeconds()))));
+    conf.setLoadWriteThroughputBytesPerSecond(
+        Double.parseDouble(
+            properties.getProperty(
+                "load_write_throughput_bytes_per_second",
+                String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

@@ -21,13 +21,11 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionTargetFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.ReadChunkAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.SingleSeriesCompactionExecutor;
@@ -182,9 +180,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         deviceIterator.iterateNotAlignedSeriesAndChunkMetadataListOfCurrentDevice();
     while (seriesIterator.hasNextSeries()) {
       checkThreadInterrupted();
-      String series = seriesIterator.nextSeries();
+      String measurement = seriesIterator.nextSeries();
       // TODO: we can provide a configuration item to enable concurrent between each series
-      PartialPath path = CompactionPathUtils.getPath(device, series);
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
           seriesIterator.getMetadataListForCurrentSeries();
       // remove the chunk metadata whose data type not match the data type of last chunk
@@ -192,7 +189,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           filterDataTypeNotMatchedChunkMetadata(readerAndChunkMetadataList);
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
           new SingleSeriesCompactionExecutor(
-              path, readerAndChunkMetadataList, writer, targetResource, summary);
+              device, measurement, readerAndChunkMetadataList, writer, targetResource, summary);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
     writer.endChunkGroup();

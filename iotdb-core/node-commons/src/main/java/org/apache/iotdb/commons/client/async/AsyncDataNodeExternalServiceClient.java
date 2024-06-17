@@ -24,7 +24,8 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -36,20 +37,22 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncClient
+public class AsyncDataNodeExternalServiceClient extends IDataNodeRPCService.AsyncClient
     implements ThriftClient {
 
-  private static final Logger logger = LoggerFactory.getLogger(AsyncConfigNodeIServiceClient.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(AsyncDataNodeExternalServiceClient.class);
 
   private final boolean printLogWhenEncounterException;
-  private final TEndPoint endpoint;
-  private final ClientManager<TEndPoint, AsyncConfigNodeIServiceClient> clientManager;
 
-  public AsyncConfigNodeIServiceClient(
+  private final TEndPoint endpoint;
+  private final ClientManager<TEndPoint, AsyncDataNodeExternalServiceClient> clientManager;
+
+  public AsyncDataNodeExternalServiceClient(
       ThriftClientProperty property,
       TEndPoint endpoint,
       TAsyncClientManager tClientManager,
-      ClientManager<TEndPoint, AsyncConfigNodeIServiceClient> clientManager)
+      ClientManager<TEndPoint, AsyncDataNodeExternalServiceClient> clientManager)
       throws IOException {
     super(
         property.getProtocolFactory(),
@@ -60,6 +63,16 @@ public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncCl
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
+  }
+
+  @TestOnly
+  public TEndPoint getTEndpoint() {
+    return endpoint;
+  }
+
+  @TestOnly
+  public ClientManager<TEndPoint, AsyncDataNodeExternalServiceClient> getClientManager() {
+    return clientManager;
   }
 
   @Override
@@ -122,14 +135,14 @@ public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncCl
 
   @Override
   public String toString() {
-    return String.format("AsyncConfigNodeIServiceClient{%s}", endpoint);
+    return String.format("AsyncDataNodeInternalServiceClient{%s}", endpoint);
   }
 
   public static class Factory
-      extends AsyncThriftClientFactory<TEndPoint, AsyncConfigNodeIServiceClient> {
+      extends AsyncThriftClientFactory<TEndPoint, AsyncDataNodeExternalServiceClient> {
 
     public Factory(
-        ClientManager<TEndPoint, AsyncConfigNodeIServiceClient> clientManager,
+        ClientManager<TEndPoint, AsyncDataNodeExternalServiceClient> clientManager,
         ThriftClientProperty thriftClientProperty,
         String threadName) {
       super(clientManager, thriftClientProperty, threadName);
@@ -137,15 +150,15 @@ public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncCl
 
     @Override
     public void destroyObject(
-        TEndPoint endPoint, PooledObject<AsyncConfigNodeIServiceClient> pooledObject) {
+        TEndPoint endPoint, PooledObject<AsyncDataNodeExternalServiceClient> pooledObject) {
       pooledObject.getObject().close();
     }
 
     @Override
-    public PooledObject<AsyncConfigNodeIServiceClient> makeObject(TEndPoint endPoint)
+    public PooledObject<AsyncDataNodeExternalServiceClient> makeObject(TEndPoint endPoint)
         throws Exception {
       return new DefaultPooledObject<>(
-          new AsyncConfigNodeIServiceClient(
+          new AsyncDataNodeExternalServiceClient(
               thriftClientProperty,
               endPoint,
               tManagers[clientCnt.incrementAndGet() % tManagers.length],
@@ -154,7 +167,7 @@ public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncCl
 
     @Override
     public boolean validateObject(
-        TEndPoint endPoint, PooledObject<AsyncConfigNodeIServiceClient> pooledObject) {
+        TEndPoint endPoint, PooledObject<AsyncDataNodeExternalServiceClient> pooledObject) {
       return pooledObject.getObject().isReady();
     }
   }

@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.PipeConsensusAsyncConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletInsertionEventHandler;
+import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetrics;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -46,13 +47,20 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
 
   protected final PipeConsensusAsyncConnector connector;
 
+  protected final PipeConsensusConnectorMetrics metric;
+
+  private final long createTime;
+
   protected PipeConsensusTabletInsertionEventHandler(
       TabletInsertionEvent event,
       TPipeConsensusTransferReq req,
-      PipeConsensusAsyncConnector connector) {
+      PipeConsensusAsyncConnector connector,
+      PipeConsensusConnectorMetrics metric) {
     this.event = event;
     this.req = req;
     this.connector = connector;
+    this.metric = metric;
+    this.createTime = System.nanoTime();
   }
 
   public void transfer(AsyncPipeConsensusServiceClient client) throws TException {
@@ -88,6 +96,9 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
             ((EnrichedEvent) event).getCommitId());
         connector.removeEventFromBuffer((EnrichedEvent) event);
       }
+
+      long duration = System.nanoTime() - createTime;
+      metric.recordConnectorWalTransferTimer(duration);
     } catch (Exception e) {
       onError(e);
     }
@@ -105,5 +116,6 @@ public abstract class PipeConsensusTabletInsertionEventHandler<E extends TPipeCo
         exception);
 
     connector.addFailureEventToRetryQueue(event);
+    metric.recordRetryCounter();
   }
 }

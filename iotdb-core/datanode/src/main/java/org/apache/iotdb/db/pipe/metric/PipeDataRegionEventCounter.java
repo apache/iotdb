@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.metric;
 
 import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -51,6 +52,9 @@ public class PipeDataRegionEventCounter extends PipeEventCounter {
 
   @Override
   public void increaseEventCount(Event event) {
+    if (event instanceof PipeRealtimeEvent) {
+      event = ((PipeRealtimeEvent) event).getEvent();
+    }
     if (Objects.isNull(event)) {
       return;
     }
@@ -65,6 +69,9 @@ public class PipeDataRegionEventCounter extends PipeEventCounter {
 
   @Override
   public void decreaseEventCount(Event event) {
+    if (event instanceof PipeRealtimeEvent) {
+      event = ((PipeRealtimeEvent) event).getEvent();
+    }
     if (Objects.isNull(event)) {
       return;
     }

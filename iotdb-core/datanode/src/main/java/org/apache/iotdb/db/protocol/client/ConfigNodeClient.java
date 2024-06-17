@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
@@ -30,6 +31,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
@@ -241,7 +243,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       try {
         connect(configLeader);
         return;
-      } catch (TException e) {
+      } catch (TException ignore) {
         logger.warn("The current node may have been down {},try next node", configLeader);
         configLeader = null;
       }
@@ -249,7 +251,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       try {
         // Wait to start the next try
         Thread.sleep(RETRY_INTERVAL_MS);
-      } catch (InterruptedException e) {
+      } catch (InterruptedException ignore) {
         Thread.currentThread().interrupt();
         logger.warn("Unexpected interruption when waiting to try to connect to ConfigNode");
       }
@@ -266,7 +268,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       try {
         connect(tryEndpoint);
         return;
-      } catch (TException e) {
+      } catch (TException ignore) {
         logger.warn("The current node may have been down {},try next node", tryEndpoint);
       }
     }
@@ -725,6 +727,27 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TShowDatabaseResp showDatabase(TGetDatabaseReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showDatabase(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TTestConnectionResp submitTestConnectionTask(TNodeLocations nodeLocations)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.submitTestConnectionTask(nodeLocations),
+        resp -> !updateConfigNodeLeader(resp.getStatus()));
+  }
+
+  @Override
+  public TTestConnectionResp submitTestConnectionTaskToLeader() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.submitTestConnectionTaskToLeader(),
+        resp -> !updateConfigNodeLeader(resp.getStatus()));
+  }
+
+  @Override
+  public TSStatus testConnectionEmptyRPC() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.testConnectionEmptyRPC(), resp -> !updateConfigNodeLeader(resp));
   }
 
   @Override

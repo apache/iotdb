@@ -25,10 +25,12 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -84,7 +86,7 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
 
     final List<MeasurementSchema> schemas = tablet.getSchemas();
     columnTypeList.addAll(
-        schemas.stream().map((schema) -> schema.getType().toString()).collect(Collectors.toList()));
+        schemas.stream().map(schema -> schema.getType().toString()).collect(Collectors.toList()));
     return columnTypeList;
   }
 
@@ -149,9 +151,12 @@ public class SubscriptionSessionDataSet implements ISessionDataSet {
         field.setBoolV(booleanValue);
         break;
       case INT32:
-      case DATE:
         final int intValue = ((int[]) value)[index];
         field.setIntV(intValue);
+        break;
+      case DATE:
+        final LocalDate dateValue = ((LocalDate[]) value)[index];
+        field.setIntV(DateUtils.parseDateExpressionToInt(dateValue));
         break;
       case INT64:
       case TIMESTAMP:
