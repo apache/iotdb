@@ -3974,7 +3974,6 @@ public class IoTDBConfig {
     this.innerCompactionTaskSelectionDiskRedundancy = innerCompactionTaskSelectionDiskRedundancy;
   }
 
-<<<<<<< HEAD
   public TDataNodeLocation generateLocalDataNodeLocation() {
     TDataNodeLocation result = new TDataNodeLocation();
     result.setDataNodeId(getDataNodeId());
