@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
@@ -341,7 +341,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
                   + "has reached capacity, discard deletion event %s",
               this.getClass().getSimpleName(), this, event);
       LOGGER.error(errorMessage);
-      PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+      PipeDataNodeAgent.runtime()
+          .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
       // Ignore the event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);
@@ -379,7 +380,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
                   + "the data represented by this event is lost",
               event.getEvent());
       LOGGER.error(errorMessage);
-      PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+      PipeDataNodeAgent.runtime()
+          .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       return null;
     }
   }

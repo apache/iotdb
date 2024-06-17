@@ -151,6 +151,7 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
       throws PipeException, IOException {
     if (!send(
         pipeConfigRegionWritePlanEvent.getPipeName(),
+        pipeConfigRegionWritePlanEvent.getCreationTime(),
         socket,
         PipeTransferConfigPlanReq.toTPipeTransferBytes(
             pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()))) {
@@ -189,17 +190,19 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
       final AirGapSocket socket, final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
       throws PipeException, IOException {
     final String pipeName = pipeConfigRegionSnapshotEvent.getPipeName();
+    final long creationTime = pipeConfigRegionSnapshotEvent.getCreationTime();
     final File snapshot = pipeConfigRegionSnapshotEvent.getSnapshotFile();
     final File templateFile = pipeConfigRegionSnapshotEvent.getTemplateFile();
 
     // 1. Transfer snapshotFile, and template file if exists
-    transferFilePieces(pipeName, snapshot, socket, true);
+    transferFilePieces(pipeName, creationTime, snapshot, socket, true);
     if (Objects.nonNull(templateFile)) {
-      transferFilePieces(pipeName, templateFile, socket, true);
+      transferFilePieces(pipeName, creationTime, templateFile, socket, true);
     }
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     if (!send(
         pipeName,
+        creationTime,
         socket,
         PipeTransferConfigSnapshotSealReq.toTPipeTransferBytes(
             // The pattern is surely Non-null

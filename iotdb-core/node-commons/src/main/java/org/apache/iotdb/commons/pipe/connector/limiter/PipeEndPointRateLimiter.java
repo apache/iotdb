@@ -20,19 +20,28 @@
 package org.apache.iotdb.commons.pipe.connector.limiter;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 import com.google.common.util.concurrent.RateLimiter;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 
 public class PipeEndPointRateLimiter {
 
   private final double bytesPerSecondLimit;
+  private final String pipeName;
+  private final long creationTime;
+  private static volatile PipeTaskAgent taskAgent;
 
   private final ConcurrentMap<TEndPoint, RateLimiter> endPointRateLimiterMap;
 
-  public PipeEndPointRateLimiter(double bytesPerSecondLimit) {
+  public PipeEndPointRateLimiter(
+      final String pipeName, final long creationTime, final double bytesPerSecondLimit) {
+    this.pipeName = pipeName;
+    this.creationTime = creationTime;
     this.bytesPerSecondLimit = bytesPerSecondLimit;
     endPointRateLimiterMap = new ConcurrentHashMap<>();
   }
@@ -48,12 +57,30 @@ public class PipeEndPointRateLimiter {
 
     while (bytes > 0) {
       if (bytes > Integer.MAX_VALUE) {
-        rateLimiter.acquire(Integer.MAX_VALUE);
+        if (!tryAcquireWithPipeCheck(rateLimiter, Integer.MAX_VALUE)) {
+          return;
+        }
         bytes -= Integer.MAX_VALUE;
       } else {
-        rateLimiter.acquire((int) bytes);
+        tryAcquireWithPipeCheck(rateLimiter, (int) bytes);
         return;
       }
     }
+  }
+
+  private boolean tryAcquireWithPipeCheck(final RateLimiter rateLimiter, final int bytes) {
+    while (!rateLimiter.tryAcquire(
+        bytes,
+        PipeConfig.getInstance().getPipeEndPointRateLimiterDropCheckIntervalMs(),
+        TimeUnit.MILLISECONDS)) {
+      if (taskAgent.getPipeCreationTime(pipeName) != creationTime) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public static void setTaskAgent(final PipeTaskAgent agent) {
+    taskAgent = agent;
   }
 }

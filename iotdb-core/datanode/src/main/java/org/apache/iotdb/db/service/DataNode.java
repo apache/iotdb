@@ -66,7 +66,7 @@ import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -653,7 +653,7 @@ public class DataNode implements DataNodeMBean {
 
     // Register subscription agent before pipe agent
     registerManager.register(SubscriptionAgent.runtime());
-    registerManager.register(PipeAgent.runtime());
+    registerManager.register(PipeDataNodeAgent.runtime());
   }
 
   /** Set up RPC and protocols after DataNode is available */
@@ -953,7 +953,7 @@ public class DataNode implements DataNodeMBean {
 
   private void preparePipeResources() throws StartupException {
     long startTime = System.currentTimeMillis();
-    PipeAgent.runtime().preparePipeResources(resourcesInformationHolder);
+    PipeDataNodeAgent.runtime().preparePipeResources(resourcesInformationHolder);
     long endTime = System.currentTimeMillis();
     logger.info("Prepare pipe resources successfully, which takes {} ms.", (endTime - startTime));
   }
@@ -1039,7 +1039,7 @@ public class DataNode implements DataNodeMBean {
       registerManager.register(RestService.getInstance());
     }
     if (PipeConfig.getInstance().getPipeAirGapReceiverEnabled()) {
-      registerManager.register(PipeAgent.receiver().airGap());
+      registerManager.register(PipeDataNodeAgent.receiver().airGap());
     }
   }
 

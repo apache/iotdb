@@ -35,7 +35,7 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
@@ -300,7 +300,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
-    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
+    PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowNode);
     if (!insertRowNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
@@ -374,7 +374,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
-    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
+    PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertRowsNode);
     if (!insertRowsNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
@@ -485,7 +485,7 @@ public class TsFileProcessor {
 
     startTime = System.nanoTime();
 
-    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
+    PipeDataNodeAgent.runtime().assignSimpleProgressIndexIfNeeded(insertTabletNode);
     if (!insertTabletNode.isGeneratedByPipe()) {
       workMemTable.markAsNotGeneratedByPipe();
     }
