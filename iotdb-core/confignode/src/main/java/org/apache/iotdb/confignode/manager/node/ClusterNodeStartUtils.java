@@ -117,12 +117,14 @@ public class ClusterNodeStartUtils {
 
     // Check cluster id
     final String clusterId =
-            configManager
-                    .getClusterManager()
-                    .getClusterIdWithRetry(
-                            CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
+        configManager
+            .getClusterManager()
+            .getClusterIdWithRetry(
+                CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
     if (clusterId == null) {
-      status.setCode(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode()).setMessage("clusterId has not generated, please try again later");
+      status
+          .setCode(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode())
+          .setMessage("clusterId has not generated, please try again later");
       return status;
     }
 

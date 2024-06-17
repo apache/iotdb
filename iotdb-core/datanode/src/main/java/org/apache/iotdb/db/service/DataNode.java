@@ -411,7 +411,7 @@ public class DataNode implements DataNodeMBean {
     /* Send register request */
     int retry = 5;
     TDataNodeRegisterReq req = new TDataNodeRegisterReq();
-    req.setIsPreCheck(isPreCheck);
+    req.setPreCheck(isPreCheck);
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
     req.setClusterName(config.getClusterName());
     req.setVersionInfo(new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
