@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.connector.client.IoTDBDataNodeAsyncClientManager;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeEventBatch;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTransferBatchReqBuilder;
@@ -371,38 +370,21 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         }
 
         final Event peekedEvent = retryEventQueue.peek();
+        if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+          retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
+        } else if (peekedEvent instanceof PipeRawTabletInsertionEvent) {
+          retryConnector.transfer((PipeRawTabletInsertionEvent) peekedEvent);
+        } else if (peekedEvent instanceof PipeTsFileInsertionEvent) {
+          retryConnector.transfer((PipeTsFileInsertionEvent) peekedEvent);
+        } else {
+          LOGGER.warn(
+              "IoTDBThriftAsyncConnector does not support transfer generic event: {}.",
+              peekedEvent);
+        }
 
-        try {
-          if (peekedEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-            retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) peekedEvent);
-          } else if (peekedEvent instanceof PipeRawTabletInsertionEvent) {
-            retryConnector.transfer((PipeRawTabletInsertionEvent) peekedEvent);
-          } else if (peekedEvent instanceof PipeTsFileInsertionEvent) {
-            retryConnector.transfer((PipeTsFileInsertionEvent) peekedEvent);
-          } else {
-            LOGGER.warn(
-                "IoTDBThriftAsyncConnector does not support transfer generic event: {}.",
-                peekedEvent);
-          }
-
-          if (peekedEvent instanceof EnrichedEvent) {
-            ((EnrichedEvent) peekedEvent)
-                .decreaseReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), true);
-          }
-        } catch (final Exception e) {
-          if (peekedEvent instanceof EnrichedEvent
-              && PipeAgent.task()
-                  .isNonExistPipe(
-                      ((EnrichedEvent) peekedEvent).getPipeName(),
-                      ((EnrichedEvent) peekedEvent).getCreationTime())) {
-            LOGGER.info(
-                "The retrying event is from a dropped pipe. Discard it. " + "Peeked event: {}.",
-                peekedEvent);
-            ((EnrichedEvent) peekedEvent)
-                .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
-          } else {
-            throw e;
-          }
+        if (peekedEvent instanceof EnrichedEvent) {
+          ((EnrichedEvent) peekedEvent)
+              .decreaseReferenceCount(IoTDBDataRegionAsyncConnector.class.getName(), true);
         }
 
         final Event polledEvent = retryEventQueue.poll();

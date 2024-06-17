@@ -620,22 +620,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
   }
 
-  ///////////////////////// Useless Retry Detection Logic /////////////////////////
-
-  public boolean isNonExistPipe(final String pipeName, final long creationTime) {
-    // Acquire the lock iff it's not held to avoid affecting the normal control
-    if (!tryReadLockWithTimeOut(0)) {
-      return false;
-    }
-    try {
-      return !(pipeMetaKeeper.containsPipeMeta(pipeName)
-          && pipeMetaKeeper.getPipeMetaByPipeName(pipeName).getStaticMeta().getCreationTime()
-              == creationTime);
-    } finally {
-      releaseReadLock();
-    }
-  }
-
   ///////////////////////// Utils /////////////////////////
 
   public Set<Integer> getPipeTaskRegionIdSet(final String pipeName, final long creationTime) {
