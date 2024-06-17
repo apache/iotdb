@@ -39,7 +39,7 @@ public class DataNodeRegisterResp implements DataSet {
   private List<TConfigNodeLocation> configNodeList;
   private Integer dataNodeId;
   private TRuntimeConfiguration runtimeConfiguration;
-  private Boolean preCheck;
+  private boolean preCheck = false;
 
   public DataNodeRegisterResp() {
     this.dataNodeId = null;

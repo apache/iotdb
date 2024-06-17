@@ -24,12 +24,16 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.file.SystemPropertiesFileHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_CONFIGNODE_USAGE;
@@ -70,6 +74,10 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
       try {
         // Do ConfigNode startup checks
         LOGGER.info("Starting IoTDB {}", IoTDBConstant.VERSION_WITH_BUILD);
+        SystemPropertiesFileHandler.init(
+            ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
+                + File.separator
+                + ConfigNodeConstant.SYSTEM_FILE_NAME);
         ConfigNodeStartupCheck checks = new ConfigNodeStartupCheck(IoTDBConstant.CN_ROLE);
         checks.startUpCheck();
       } catch (StartupException | ConfigurationException | IOException e) {

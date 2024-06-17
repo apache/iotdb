@@ -215,9 +215,9 @@ public class IoTDBStartCheck {
     // read properties from system.properties
     properties = systemPropertiesHandler.read();
 
-    if (isFirstStart) {
+    if (systemPropertiesHandler.isFirstStart()) {
       // overwrite system.properties when first start
-      generateOrRewriteSystemPropertiesFile();
+      generateOrOverwriteSystemPropertiesFile();
       if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
           && config.getWalMode().equals(WALMode.DISABLE)) {
         throw new ConfigurationException(
@@ -311,13 +311,13 @@ public class IoTDBStartCheck {
     long startTime = System.currentTimeMillis();
     boolean needsSerialize = false;
     for (String param : variableParamValueTable.keySet()) {
-      if (!(properties.getProperty(param).equals(getVal(param)))) {
+      if (!properties.getProperty(param).equals(getVal(param))) {
         needsSerialize = true;
       }
     }
 
     if (needsSerialize) {
-      generateOrRewriteSystemPropertiesFile();
+      generateOrOverwriteSystemPropertiesFile();
     }
     long endTime = System.currentTimeMillis();
     logger.info(
@@ -325,7 +325,7 @@ public class IoTDBStartCheck {
         (endTime - startTime));
   }
 
-  public void generateOrRewriteSystemPropertiesFile() throws IOException {
+  public void generateOrOverwriteSystemPropertiesFile() throws IOException {
     systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
     systemPropertiesHandler.overwrite(properties);
   }

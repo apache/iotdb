@@ -75,7 +75,7 @@ public class SystemPropertiesUtils {
    * @return True if confignode-system.properties file exist.
    */
   public static boolean isRestarted() {
-    return systemPropertiesHandler.isRestart();
+    return !systemPropertiesHandler.isFirstStart();
   }
 
   /**
@@ -221,11 +221,6 @@ public class SystemPropertiesUtils {
             timePartitionInterval);
         COMMON_CONFIG.setTimePartitionInterval(timePartitionInterval);
       }
-    }
-
-    if (needReWrite) {
-      // Re-write special parameters if necessary
-      storeSystemParameters();
     }
   }
 

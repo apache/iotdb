@@ -405,6 +405,7 @@ struct TConfigNodeRegisterReq {
   1: required TClusterParameters clusterParameters
   2: required common.TConfigNodeLocation configNodeLocation
   3: optional TNodeVersionInfo versionInfo
+  4: optional bool preCheck
 }
 
 struct TConfigNodeRegisterResp {

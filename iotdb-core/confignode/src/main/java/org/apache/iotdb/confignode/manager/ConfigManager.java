@@ -1218,7 +1218,7 @@ public class ConfigManager implements IManager {
                 req.getClusterParameters().getClusterName(),
                 req.getConfigNodeLocation(),
                 this);
-        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (!req.isPreCheck() && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return nodeManager.registerConfigNode(req);
         }
       }

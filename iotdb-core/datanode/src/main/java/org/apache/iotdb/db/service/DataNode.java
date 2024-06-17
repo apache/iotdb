@@ -198,7 +198,7 @@ public class DataNode implements DataNodeMBean {
         // Do pre-check before formal registration
         sendRegisterRequestToConfigNode(true);
         // Generate system.properties
-        IoTDBStartCheck.getInstance().generateOrRewriteSystemPropertiesFile();
+        IoTDBStartCheck.getInstance().generateOrOverwriteSystemPropertiesFile();
         // Register this DataNode to the cluster when first start
         sendRegisterRequestToConfigNode(false);
       } else {
@@ -234,10 +234,9 @@ public class DataNode implements DataNodeMBean {
   private boolean prepareDataNode() throws StartupException, IOException {
     long startTime = System.currentTimeMillis();
 
-    IoTDBStartCheck.getInstance().checkOldSystemConfig();
-    // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
     SystemPropertiesFileHandler.init(config.getSystemDir() + File.separator + PROPERTIES_FILE_NAME);
-    boolean isFirstStart = !SystemPropertiesFileHandler.getInstance().isRestart();
+    // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
+    IoTDBStartCheck.getInstance().checkOldSystemConfig();
 
     // Set this node
     thisNode.setIp(config.getInternalAddress());
@@ -248,7 +247,7 @@ public class DataNode implements DataNodeMBean {
     checks.startUpCheck();
     long endTime = System.currentTimeMillis();
     logger.info("The DataNode is prepared successfully, which takes {} ms", (endTime - startTime));
-    return isFirstStart;
+    return SystemPropertiesFileHandler.getInstance().isFirstStart();
   }
 
   /**
@@ -430,7 +429,7 @@ public class DataNode implements DataNodeMBean {
 
     if (dataNodeRegisterResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       if (isPreCheck) {
-        logger.info("Successfully pass the pre-check, will do the formal registration soon.");
+        logger.info("Successfully pass the precheck, will do the formal registration soon.");
         return;
       }
       /* Store runtime configurations when register success */

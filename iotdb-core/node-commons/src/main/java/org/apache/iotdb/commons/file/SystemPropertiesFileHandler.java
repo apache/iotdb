@@ -88,10 +88,13 @@ public class SystemPropertiesFileHandler {
   }
 
   public Properties read() throws IOException {
-    try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.readLock());
-        FileInputStream inputStream = new FileInputStream(formalFile)) {
+    try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.readLock())) {
       Properties properties = new Properties();
-      properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+      if (formalFile.exists()) {
+        try (FileInputStream inputStream = new FileInputStream(formalFile)) {
+          properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        }
+      }
       return properties;
     }
   }
@@ -102,8 +105,8 @@ public class SystemPropertiesFileHandler {
     }
   }
 
-  public boolean isRestart() {
-    return fileExist();
+  public boolean isFirstStart() {
+    return !fileExist();
   }
 
   private void recover() throws StartupException {
@@ -129,9 +132,9 @@ public class SystemPropertiesFileHandler {
         return;
       }
     } catch (IOException e) {
-        throw new StartupException(e);
+      throw new StartupException(e);
     }
-      throw new StartupException("Should never touch here");
+    throw new StartupException("Should never touch here");
   }
 
   private void writeImpl(Properties properties, File file) throws IOException {
@@ -142,16 +145,19 @@ public class SystemPropertiesFileHandler {
 
   private void replaceFormalFile() throws IOException {
     if (!tmpFile.exists()) {
-      throw new FileNotFoundException("Tmp system properties file must exist when call replaceFormalFile");
+      throw new FileNotFoundException(
+          "Tmp system properties file must exist when call replaceFormalFile");
     }
     if (formalFile.exists() && !formalFile.delete()) {
       String msg =
-              String.format(
-                      "Delete formal system properties file fail: %s", formalFile.getAbsoluteFile());
+          String.format(
+              "Delete formal system properties file fail: %s", formalFile.getAbsoluteFile());
       throw new IOException(msg);
     }
     if (!tmpFile.renameTo(formalFile)) {
-      String msg = String.format("Failed to replace formal system properties file, you may manually rename it: %s -> %s",
+      String msg =
+          String.format(
+              "Failed to replace formal system properties file, you may manually rename it: %s -> %s",
               tmpFile.getAbsolutePath(), formalFile.getAbsolutePath());
       throw new IOException(msg);
     }
