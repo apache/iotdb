@@ -159,6 +159,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return !resource.isEmpty();
   }
 
+  public TsFileResource getResource() {
+    return resource;
+  }
+
   public File getTsFile() {
     return tsFile;
   }
