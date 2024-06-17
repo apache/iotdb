@@ -183,6 +183,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                   EXTRACTOR_END_TIME_KEY,
                   historicalDataExtractionEndTime));
         }
+      } catch (final PipeParameterNotValidException e) {
+        throw e;
       } catch (final Exception e) {
         // compatible with the current validation framework
         throw new PipeParameterNotValidException(e.getMessage());
