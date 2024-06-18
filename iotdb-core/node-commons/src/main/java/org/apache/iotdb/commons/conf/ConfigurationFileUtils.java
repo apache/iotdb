@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -35,11 +36,13 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigurationFileUtils {
@@ -49,23 +52,25 @@ public class ConfigurationFileUtils {
   private static final long waitTimeMillsPerCheck = TimeUnit.MILLISECONDS.toMillis(100);
   private static Logger logger = LoggerFactory.getLogger(ConfigurationFileUtils.class);
   private static String license =
-      "#\n"
-          + "# Licensed to the Apache Software Foundation (ASF) under one\n"
-          + "# or more contributor license agreements.  See the NOTICE file\n"
-          + "# distributed with this work for additional information\n"
-          + "# regarding copyright ownership.  The ASF licenses this file\n"
-          + "# to you under the Apache License, Version 2.0 (the\n"
-          + "# \"License\"); you may not use this file except in compliance\n"
-          + "# with the License.  You may obtain a copy of the License at\n"
-          + "#\n"
-          + "#     http://www.apache.org/licenses/LICENSE-2.0\n"
-          + "#\n"
-          + "# Unless required by applicable law or agreed to in writing,\n"
-          + "# software distributed under the License is distributed on an\n"
-          + "# \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n"
-          + "# KIND, either express or implied.  See the License for the\n"
-          + "# specific language governing permissions and limitations\n"
-          + "# under the License.";
+      new StringJoiner("#")
+          .add("# Licensed to the Apache Software Foundation (ASF) under one")
+          .add("# or more contributor license agreements.  See the NOTICE file")
+          .add("# distributed with this work for additional information")
+          .add("# regarding copyright ownership.  The ASF licenses this file")
+          .add("# to you under the Apache License, Version 2.0 (the")
+          .add("# \"License\"); you may not use this file except in compliance")
+          .add("# with the License.  You may obtain a copy of the License at")
+          .add("#")
+          .add("#     http://www.apache.org/licenses/LICENSE-2.0")
+          .add("#")
+          .add("# Unless required by applicable law or agreed to in writing,")
+          .add("# software distributed under the License is distributed on an")
+          .add("# \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY")
+          .add("# KIND, either express or implied.  See the License for the")
+          .add("# specific language governing permissions and limitations")
+          .add("# under the License.")
+          .toString();
+  ;
 
   // This is a temporary implementations
   private static final Set<String> ignoreConfigKeys =
@@ -160,7 +165,7 @@ public class ConfigurationFileUtils {
         BufferedReader reader = new BufferedReader(isr)) {
       String line;
       while ((line = reader.readLine()) != null) {
-        content.append(line).append("\n");
+        content.append(line).append(System.lineSeparator());
       }
     } catch (IOException e) {
       logger.warn("Failed to read configuration template", e);
@@ -194,7 +199,7 @@ public class ConfigurationFileUtils {
     StringBuilder contentsOfNewConfigurationFile = new StringBuilder();
     for (String currentLine : lines) {
       if (currentLine.trim().isEmpty() || currentLine.trim().startsWith("#")) {
-        contentsOfNewConfigurationFile.append(currentLine).append("\n");
+        contentsOfNewConfigurationFile.append(currentLine).append(System.lineSeparator());
         continue;
       }
       int equalsIndex = currentLine.indexOf('=');
@@ -203,14 +208,17 @@ public class ConfigurationFileUtils {
         String key = currentLine.substring(0, equalsIndex).trim();
         String value = currentLine.substring(equalsIndex + 1).trim();
         if (!newConfigItems.containsKey(key)) {
-          contentsOfNewConfigurationFile.append(currentLine).append("\n");
+          contentsOfNewConfigurationFile.append(currentLine).append(System.lineSeparator());
           continue;
         }
         if (newConfigItems.getProperty(key).equals(value)) {
-          contentsOfNewConfigurationFile.append(currentLine).append("\n");
+          contentsOfNewConfigurationFile.append(currentLine).append(System.lineSeparator());
           newConfigItems.remove(key);
         } else {
-          contentsOfNewConfigurationFile.append("#").append(currentLine).append("\n");
+          contentsOfNewConfigurationFile
+              .append("#")
+              .append(currentLine)
+              .append(System.lineSeparator());
         }
       }
     }
@@ -222,10 +230,13 @@ public class ConfigurationFileUtils {
     acquireTargetFileLock(lockFile);
     logger.info("Updating configuration file {}", file.getAbsolutePath());
     try {
-      try (FileWriter writer = new FileWriter(lockFile)) {
+      try (BufferedWriter writer = new BufferedWriter(new FileWriter(lockFile))) {
         writer.write(contentsOfNewConfigurationFile.toString());
-        // add new config items
-        newConfigItems.store(writer, null);
+        // Properties.store is not used as Properties.store may generate '\' automatically
+        writer.write("#" + new Date().toString() + System.lineSeparator());
+        for (String key : newConfigItems.stringPropertyNames()) {
+          writer.write(key + "=" + newConfigItems.get(key) + System.lineSeparator());
+        }
         writer.flush();
       }
       Files.move(lockFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);

@@ -150,6 +150,18 @@ checkAllConfigNodeVariables()
   fi
 }
 
+check_config_unique() {
+  local key=$1
+  local values=$2
+
+  line_count=$(echo "$values" | wc -l)
+
+  if [ "$line_count" -gt 1 ]; then
+    echo "Error: Duplicate $key entries found"
+    exit 1
+  fi
+}
+
 checkDataNodePortUsages () {
   echo "Checking whether the ports are already occupied..."
   if [ "$(id -u)" -ne 0 ]; then
@@ -183,6 +195,13 @@ checkDataNodePortUsages () {
   else
     echo "Warning: cannot find iotdb-system.properties or iotdb-datanode.properties, check the default configuration"
   fi
+
+  check_config_unique "dn_rpc_port" "$dn_rpc_port"
+  check_config_unique "dn_internal_port" "$dn_internal_port"
+  check_config_unique "dn_mpp_data_exchange_port" "$dn_mpp_data_exchange_port"
+  check_config_unique "dn_schema_region_consensus_port" "$dn_schema_region_consensus_port"
+  check_config_unique "dn_data_region_consensus_port" "$dn_data_region_consensus_port"
+
   dn_rpc_port=${dn_rpc_port:-6667}
   dn_internal_port=${dn_internal_port:-10730}
   dn_mpp_data_exchange_port=${dn_mpp_data_exchange_port:-10740}
@@ -271,6 +290,10 @@ checkConfigNodePortUsages () {
   else
     echo "Cannot find iotdb-system.properties or iotdb-confignode.properties, check the default configuration"
   fi
+
+  check_config_unique "cn_internal_port" "$cn_internal_port"
+  check_config_unique "cn_consensus_port" "$cn_consensus_port"
+
   cn_internal_port=${cn_internal_port:-10710}
   cn_consensus_port=${cn_consensus_port:-10720}
   if type lsof >/dev/null 2>&1; then
