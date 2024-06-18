@@ -115,7 +115,7 @@ public interface Metadata {
   /**
    * For data query with completed id.
    *
-   * <p>The database shall start with "root.". Concat this to a user-provided db name if necessary.
+   * <p>The database is a user-provided db name.
    *
    * <p>The device id shall be [table, seg1, ....]
    */
@@ -124,7 +124,7 @@ public interface Metadata {
   /**
    * For data query with partial device id conditions.
    *
-   * <p>The database shall start with "root.". Concat this to a user-provided db name if necessary.
+   * <p>The database is a user-provided db name.
    *
    * <p>The device id shall be [table, seg1, ....]
    */
