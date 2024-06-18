@@ -51,7 +51,6 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -660,6 +659,20 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
   @Test
   public void testTopicWithLooseRange() throws Exception {
+    // Insert some historical data on sender
+    try (final ISession session = senderEnv.getSessionConnection()) {
+      session.executeNonQueryStatement(
+          "insert into root.db.d1 (time, at1, at2) values (1000, 1, 2), (2000, 3, 4)");
+      session.executeNonQueryStatement(
+          "insert into root.db1.d1 (time, at1, at2) values (1000, 1, 2), (2000, 3, 4)");
+      session.executeNonQueryStatement(
+          "insert into root.db.d1 (time, at1, at2) values (3000, 1, 2), (4000, 3, 4)");
+      session.executeNonQueryStatement("flush");
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
     // Create topic
     final String topicName = "topic12";
     final String host = senderEnv.getIP();
@@ -685,14 +698,13 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
 
     final AtomicBoolean dataPrepared = new AtomicBoolean(false);
     final AtomicBoolean topicSubscribed = new AtomicBoolean(false);
+    final AtomicBoolean result = new AtomicBoolean(false);
     final List<Thread> threads = new ArrayList<>();
 
     // Subscribe on sender
     threads.add(
         new Thread(
             () -> {
-              final AtomicInteger retryCount = new AtomicInteger();
-              final int maxRetryTimes = 32;
               try (final SubscriptionPullConsumer consumer =
                       new SubscriptionPullConsumer.Builder()
                           .host(host)
@@ -705,7 +717,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 consumer.open();
                 consumer.subscribe(topicName);
                 topicSubscribed.set(true);
-                while (retryCount.getAndIncrement() < maxRetryTimes) {
+                while (!result.get()) {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   if (dataPrepared.get()) {
                     final List<SubscriptionMessage> messages =
@@ -738,26 +750,17 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
               while (!topicSubscribed.get()) {
                 LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
               }
-              if (!TestUtils.tryExecuteNonQueriesWithRetry(
-                  senderEnv,
-                  Arrays.asList(
-                      // TsFile 1, extracted without parse
-                      "insert into root.db.d1 (time, at1, at2)"
-                          + " values (1000, 1, 2), (2000, 3, 4)",
-                      // TsFile 2, not extracted because pattern not overlapped
-                      "insert into root.db1.d1 (time, at1, at2)"
-                          + " values (1000, 1, 2), (2000, 3, 4)",
-                      "flush"))) {
-                fail();
-              }
-              if (!TestUtils.tryExecuteNonQueriesWithRetry(
-                  senderEnv,
-                  Arrays.asList(
-                      // TsFile 3, not extracted because time range not overlapped
-                      "insert into root.db.d1 (time, at1, at2)"
-                          + " values (3000, 1, 2), (4000, 3, 4)",
-                      "flush"))) {
-                fail();
+              try (final ISession session = senderEnv.getSessionConnection()) {
+                session.executeNonQueryStatement(
+                    "insert into root.db.d1 (time, at1, at2) values (1001, 1, 2), (2001, 3, 4)");
+                session.executeNonQueryStatement(
+                    "insert into root.db1.d1 (time, at1, at2) values (1001, 1, 2), (2001, 3, 4)");
+                session.executeNonQueryStatement(
+                    "insert into root.db.d1 (time, at1, at2) values (3001, 1, 2), (4001, 3, 4)");
+                session.executeNonQueryStatement("flush");
+              } catch (final Exception e) {
+                e.printStackTrace();
+                fail(e.getMessage());
               }
               dataPrepared.set(true);
             },
@@ -772,24 +775,18 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       // Keep retrying if there are execution failures
       AWAIT.untilAsserted(
           () ->
-              //              TestUtils.assertSingleResultSetEqual(
-              //                  TestUtils.executeQueryWithRetry(
-              //                      statement, "select * from root.**"),
-              //                  new HashMap<String, String>() {
-              //                    {
-              //                      put("count(root.*.*.*)", "4");
-              //                    }
-              //                  }));
               TestUtils.assertSingleResultSetEqual(
                   TestUtils.executeQueryWithRetry(
-                      statement, "select count(*) from root.** group by level=0"),
+                      statement,
+                      "select count(at1) from root.db.d1 where time >= 1500 and time <= 2500"),
                   new HashMap<String, String>() {
                     {
-                      put("count(root.*.*.*)", "4");
+                      put("count(root.db.d1.at1)", "2");
                     }
                   }));
     }
 
+    result.set(true);
     for (final Thread thread : threads) {
       thread.join();
     }

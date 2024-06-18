@@ -1024,10 +1024,10 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.db.d1.at1 where time >= 2000 and time <= 10000",
+          "select count(at1) from root.db.d1 where time >= 2000 and time <= 10000",
           new HashMap<String, String>() {
             {
-              put("count(root.*.*.*)", "4");
+              put("count(root.db.d1.at1)", "4");
             }
           });
     }
