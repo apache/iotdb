@@ -44,8 +44,8 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.snapshot.SnapshotLoader;
 import org.apache.iotdb.db.storageengine.dataregion.snapshot.SnapshotTaker;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

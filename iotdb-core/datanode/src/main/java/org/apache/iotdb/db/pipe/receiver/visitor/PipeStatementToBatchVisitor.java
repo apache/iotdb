@@ -29,8 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTime
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
-
-import org.apache.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Arrays;

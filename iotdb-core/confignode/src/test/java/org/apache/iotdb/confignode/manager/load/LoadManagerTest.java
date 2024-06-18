@@ -35,8 +35,8 @@ import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatisti
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 import org.apache.iotdb.confignode.manager.partition.RegionGroupStatus;
+import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
