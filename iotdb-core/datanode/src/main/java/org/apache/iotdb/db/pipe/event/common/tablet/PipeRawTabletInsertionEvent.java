@@ -191,6 +191,12 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
   }
 
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    final String deviceId = getDeviceId();
+    return Objects.isNull(deviceId) || pipePattern.mayOverlapWithDevice(deviceId);
+  }
+
   public void markAsNeedToReport() {
     this.needToReport = true;
   }

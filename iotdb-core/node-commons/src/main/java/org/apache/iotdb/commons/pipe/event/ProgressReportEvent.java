@@ -83,4 +83,9 @@ public class ProgressReportEvent extends EnrichedEvent {
   public boolean mayEventTimeOverlappedWithTimeRange() {
     return true;
   }
+
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return true;
+  }
 }
