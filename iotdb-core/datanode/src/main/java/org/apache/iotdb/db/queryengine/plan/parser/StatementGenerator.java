@@ -510,7 +510,7 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct create timeseries statement
     CreateTimeSeriesStatement statement = new CreateTimeSeriesStatement();
-    statement.setPath(DEVICE_PATH_CACHE.getPartialPath(req.path));
+    statement.setPath(new PartialPath(req.path));
     statement.setDataType(TSDataType.deserialize((byte) req.dataType));
     statement.setEncoding(TSEncoding.deserialize((byte) req.encoding));
     statement.setCompressor(CompressionType.deserialize((byte) req.compressor));
@@ -557,7 +557,7 @@ public class StatementGenerator {
     // construct create multi timeseries statement
     List<PartialPath> paths = new ArrayList<>();
     for (String path : req.paths) {
-      paths.add(DEVICE_PATH_CACHE.getPartialPath(path));
+      paths.add(new PartialPath(path));
     }
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Integer dataType : req.dataTypes) {
