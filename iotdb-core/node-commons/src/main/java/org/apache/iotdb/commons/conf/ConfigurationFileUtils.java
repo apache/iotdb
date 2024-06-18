@@ -51,8 +51,9 @@ public class ConfigurationFileUtils {
   private static final long maxTimeMillsToAcquireLock = TimeUnit.SECONDS.toMillis(20);
   private static final long waitTimeMillsPerCheck = TimeUnit.MILLISECONDS.toMillis(100);
   private static Logger logger = LoggerFactory.getLogger(ConfigurationFileUtils.class);
-  private static String license =
-      new StringJoiner("#")
+  private static final String lineSeparator = "\n";
+  private static final String license =
+      new StringJoiner(lineSeparator)
           .add("# Licensed to the Apache Software Foundation (ASF) under one")
           .add("# or more contributor license agreements.  See the NOTICE file")
           .add("# distributed with this work for additional information")
@@ -165,7 +166,7 @@ public class ConfigurationFileUtils {
         BufferedReader reader = new BufferedReader(isr)) {
       String line;
       while ((line = reader.readLine()) != null) {
-        content.append(line).append(System.lineSeparator());
+        content.append(line).append(lineSeparator);
       }
     } catch (IOException e) {
       logger.warn("Failed to read configuration template", e);
@@ -199,7 +200,7 @@ public class ConfigurationFileUtils {
     StringBuilder contentsOfNewConfigurationFile = new StringBuilder();
     for (String currentLine : lines) {
       if (currentLine.trim().isEmpty() || currentLine.trim().startsWith("#")) {
-        contentsOfNewConfigurationFile.append(currentLine).append(System.lineSeparator());
+        contentsOfNewConfigurationFile.append(currentLine).append(lineSeparator);
         continue;
       }
       int equalsIndex = currentLine.indexOf('=');
@@ -208,17 +209,14 @@ public class ConfigurationFileUtils {
         String key = currentLine.substring(0, equalsIndex).trim();
         String value = currentLine.substring(equalsIndex + 1).trim();
         if (!newConfigItems.containsKey(key)) {
-          contentsOfNewConfigurationFile.append(currentLine).append(System.lineSeparator());
+          contentsOfNewConfigurationFile.append(currentLine).append(lineSeparator);
           continue;
         }
         if (newConfigItems.getProperty(key).equals(value)) {
-          contentsOfNewConfigurationFile.append(currentLine).append(System.lineSeparator());
+          contentsOfNewConfigurationFile.append(currentLine).append(lineSeparator);
           newConfigItems.remove(key);
         } else {
-          contentsOfNewConfigurationFile
-              .append("#")
-              .append(currentLine)
-              .append(System.lineSeparator());
+          contentsOfNewConfigurationFile.append("#").append(currentLine).append(lineSeparator);
         }
       }
     }
@@ -233,9 +231,9 @@ public class ConfigurationFileUtils {
       try (BufferedWriter writer = new BufferedWriter(new FileWriter(lockFile))) {
         writer.write(contentsOfNewConfigurationFile.toString());
         // Properties.store is not used as Properties.store may generate '\' automatically
-        writer.write("#" + new Date().toString() + System.lineSeparator());
+        writer.write("#" + new Date().toString() + lineSeparator);
         for (String key : newConfigItems.stringPropertyNames()) {
-          writer.write(key + "=" + newConfigItems.get(key) + System.lineSeparator());
+          writer.write(key + "=" + newConfigItems.get(key) + lineSeparator);
         }
         writer.flush();
       }
