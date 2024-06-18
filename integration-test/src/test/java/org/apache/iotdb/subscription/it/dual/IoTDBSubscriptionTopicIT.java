@@ -680,12 +680,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
       session.open();
       final Properties config = new Properties();
-      config.put(
-          TopicConstant.LOOSE_RANGE_KEY,
-          String.join(
-              TopicConstant.LOOSE_RANGE_VALUE_SEPARATOR,
-              TopicConstant.LOOSE_RANGE_TIME_VALUE,
-              TopicConstant.LOOSE_RANGE_PATH_VALUE));
+      config.put(TopicConstant.LOOSE_RANGE_KEY, TopicConstant.LOOSE_RANGE_TIME_AND_PATH_VALUE);
       config.put(TopicConstant.PATH_KEY, "root.db.d1.at1");
       config.put(TopicConstant.START_TIME_KEY, "1500");
       config.put(TopicConstant.END_TIME_KEY, "2500");
