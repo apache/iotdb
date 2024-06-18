@@ -30,6 +30,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
+import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
@@ -483,9 +484,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TShowTTLResp showAllTTL() throws TException {
+  public TShowTTLResp showTTL(TShowTTLReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showAllTTL(), resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.showTTL(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   public TSStatus callSpecialProcedure(TTestOperation operation) throws TException {
