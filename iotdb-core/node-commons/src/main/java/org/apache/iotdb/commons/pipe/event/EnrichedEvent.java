@@ -322,6 +322,8 @@ public abstract class EnrichedEvent implements Event {
 
   public abstract boolean mayEventTimeOverlappedWithTimeRange();
 
+  public abstract boolean mayEventPathsOverlappedWithPattern();
+
   public void setCommitterKeyAndCommitId(final String committerKey, final long commitId) {
     this.committerKey = committerKey;
     this.commitId = commitId;
