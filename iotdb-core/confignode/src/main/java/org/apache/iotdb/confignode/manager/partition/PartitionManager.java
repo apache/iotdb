@@ -90,10 +90,13 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1004,11 +1007,11 @@ public class PartitionManager {
   /**
    * Get TSeriesPartitionSlot.
    *
-   * @param devicePath Full path ending with device name
+   * @param deviceID
    * @return SeriesPartitionSlot
    */
-  public TSeriesPartitionSlot getSeriesPartitionSlot(String devicePath) {
-    return executor.getSeriesPartitionSlot(devicePath);
+  public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {
+    return executor.getSeriesPartitionSlot(deviceID);
   }
 
   public RegionInfoListResp getRegionInfoList(GetRegionInfoListPlan req) {
@@ -1083,8 +1086,10 @@ public class PartitionManager {
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else {
-      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
-      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      IDeviceID deviceID =
+          Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(ByteBuffer.wrap(req.getDevice()));
+      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(deviceID));
+      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(deviceID));
     }
     if (Objects.equals(plan.getDatabase(), "")) {
       // Return empty result if Database not specified
@@ -1118,8 +1123,10 @@ public class PartitionManager {
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else if (req.isSetDevice()) {
-      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
-      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      IDeviceID deviceID =
+          Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(ByteBuffer.wrap(req.getDevice()));
+      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(deviceID));
+      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(deviceID));
       if (Objects.equals(plan.getDatabase(), "")) {
         // Return empty result if Database not specified
         return new GetTimeSlotListResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
@@ -1145,8 +1152,10 @@ public class PartitionManager {
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else if (req.isSetDevice()) {
-      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
-      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      IDeviceID deviceID =
+          Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(ByteBuffer.wrap(req.getDevice()));
+      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(deviceID));
+      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(deviceID));
       if (Objects.equals(plan.getDatabase(), "")) {
         // Return empty result if Database not specified
         return new CountTimeSlotListResp(RpcUtils.SUCCESS_STATUS, 0);

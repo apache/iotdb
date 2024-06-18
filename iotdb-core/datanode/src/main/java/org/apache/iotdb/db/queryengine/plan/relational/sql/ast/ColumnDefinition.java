@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
@@ -32,21 +34,17 @@ import static java.util.Objects.requireNonNull;
 
 public final class ColumnDefinition extends Node {
 
-  public enum ColumnCategory {
-    ID,
-    ATTRIBUTE,
-    TIME,
-    MEASUREMENT;
-  }
-
   private final Identifier name;
   private final DataType type;
-  private final ColumnCategory columnCategory;
+  private final TsTableColumnCategory columnCategory;
 
   @Nullable private final String charsetName;
 
   public ColumnDefinition(
-      Identifier name, DataType type, ColumnCategory columnCategory, @Nullable String charsetName) {
+      Identifier name,
+      DataType type,
+      TsTableColumnCategory columnCategory,
+      @Nullable String charsetName) {
     super(null);
     this.name = requireNonNull(name, "name is null");
     this.type = requireNonNull(type, "type is null");
@@ -58,7 +56,7 @@ public final class ColumnDefinition extends Node {
       NodeLocation location,
       Identifier name,
       DataType type,
-      ColumnCategory columnCategory,
+      TsTableColumnCategory columnCategory,
       @Nullable String charsetName) {
     super(requireNonNull(location, "location is null"));
     this.name = requireNonNull(name, "name is null");
@@ -75,7 +73,7 @@ public final class ColumnDefinition extends Node {
     return type;
   }
 
-  public ColumnCategory getColumnCategory() {
+  public TsTableColumnCategory getColumnCategory() {
     return columnCategory;
   }
 

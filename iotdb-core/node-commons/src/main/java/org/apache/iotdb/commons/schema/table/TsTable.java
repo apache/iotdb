@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.schema.table;
 
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 
@@ -52,6 +53,8 @@ public class TsTable {
 
   private Map<String, String> props = null;
 
+  private transient int idNums = 0;
+
   public TsTable(String tableName) {
     this.tableName = tableName;
     columnSchemaMap.put(TIME_COLUMN_NAME, TIME_COLUMN_SCHEMA);
@@ -67,10 +70,21 @@ public class TsTable {
 
   public void addColumnSchema(TsTableColumnSchema columnSchema) {
     columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
+    if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
+      idNums++;
+    }
+  }
+
+  public void removeColumnSchema(String columnName) {
+    columnSchemaMap.remove(columnName);
   }
 
   public int getColumnNum() {
     return columnSchemaMap.size();
+  }
+
+  public int getIdNums() {
+    return idNums;
   }
 
   public List<TsTableColumnSchema> getColumnList() {

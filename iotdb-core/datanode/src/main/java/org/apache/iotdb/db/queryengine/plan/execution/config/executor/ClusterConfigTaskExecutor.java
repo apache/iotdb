@@ -45,8 +45,11 @@ import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeT
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
 import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.schema.table.AlterTableOperationType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
@@ -58,6 +61,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
@@ -2372,7 +2376,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       final TGetRegionIdReq tGetRegionIdReq =
           new TGetRegionIdReq(getRegionIdStatement.getPartitionType());
       if (getRegionIdStatement.getDevice() != null) {
-        tGetRegionIdReq.setDevice(getRegionIdStatement.getDevice());
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        getRegionIdStatement.getDevice().serialize(baos);
+        tGetRegionIdReq.setDevice(baos.toByteArray());
       } else {
         tGetRegionIdReq.setDatabase(getRegionIdStatement.getDatabase());
       }
@@ -2426,7 +2432,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (getTimeSlotListStatement.getDatabase() != null) {
         tGetTimeSlotListReq.setDatabase(getTimeSlotListStatement.getDatabase());
       } else if (getTimeSlotListStatement.getDevice() != null) {
-        tGetTimeSlotListReq.setDevice(getTimeSlotListStatement.getDevice());
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        getTimeSlotListStatement.getDevice().serialize(baos);
+        tGetTimeSlotListReq.setDevice(baos.toByteArray());
       } else if (getTimeSlotListStatement.getRegionId() != -1) {
         tGetTimeSlotListReq.setRegionId(getTimeSlotListStatement.getRegionId());
       }
@@ -2459,7 +2467,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (countTimeSlotListStatement.getDatabase() != null) {
         tCountTimeSlotListReq.setDatabase(countTimeSlotListStatement.getDatabase());
       } else if (countTimeSlotListStatement.getDevice() != null) {
-        tCountTimeSlotListReq.setDevice(countTimeSlotListStatement.getDevice());
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        countTimeSlotListStatement.getDevice().serialize(baos);
+        tCountTimeSlotListReq.setDevice(baos.toByteArray());
       } else if (countTimeSlotListStatement.getRegionId() != -1) {
         tCountTimeSlotListReq.setRegionId(countTimeSlotListStatement.getRegionId());
       }
@@ -2897,6 +2907,51 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     List<TsTable> tableList = DataNodeTableCache.getInstance().getTables(database);
     ShowTablesTask.buildTsBlock(tableList, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> alterTableAddColumn(
+      String database,
+      String tableName,
+      List<TsTableColumnSchema> columnSchemaList,
+      String queryId) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus;
+      TAlterTableReq req = new TAlterTableReq();
+      req.setDatabase(database);
+      req.setTableName(tableName);
+      req.setQueryId(queryId);
+      req.setOperationType(AlterTableOperationType.ADD_COLUMN.getTypeValue());
+      req.setUpdateInfo(TsTableColumnSchemaUtil.serialize(columnSchemaList));
+
+      do {
+        try {
+          tsStatus = client.alterTable(req);
+        } catch (TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.warn(
+            "Failed to add column to table {}.{}, status is {}.", database, tableName, tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
     return future;
   }
 

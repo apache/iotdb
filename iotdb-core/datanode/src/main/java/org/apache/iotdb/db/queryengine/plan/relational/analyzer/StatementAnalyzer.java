@@ -384,7 +384,8 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitExplain(Explain node, Optional<Scope> context) {
-      throw new SemanticException("Explain statement is not supported yet.");
+      analysis.setFinishQueryAfterAnalyze();
+      return visitQuery((Query) node.getStatement(), context);
     }
 
     @Override

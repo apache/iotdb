@@ -28,7 +28,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -52,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -89,6 +92,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -610,10 +614,10 @@ public class ClusterSchemaManager {
    *
    * @return The DatabaseName of the specified Device. Empty String if not exists.
    */
-  public String getDatabaseNameByDevice(String devicePath) {
+  public String getDatabaseNameByDevice(IDeviceID deviceID) {
     List<String> databases = getDatabaseNames();
     for (String database : databases) {
-      if (PathUtils.isStartWith(devicePath, database)) {
+      if (PathUtils.isStartWith(deviceID, database)) {
         return database;
       }
     }
@@ -1108,6 +1112,62 @@ public class ClusterSchemaManager {
   public void updateSchemaQuotaConfiguration(long seriesThreshold, long deviceThreshold) {
     schemaQuotaStatistics.setDeviceThreshold(deviceThreshold);
     schemaQuotaStatistics.setSeriesThreshold(seriesThreshold);
+  }
+
+  public TsTable getTable(String database, String tableName) {
+    return clusterSchemaInfo.getTsTable(database, tableName);
+  }
+
+  public synchronized Pair<TSStatus, List<TsTableColumnSchema>> tableColumnCheckForColumnExtension(
+      String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
+    Map<String, List<TsTable>> currentUsingTable = clusterSchemaInfo.getAllUsingTables();
+    TsTable targetTable = null;
+    for (TsTable table : currentUsingTable.get(database)) {
+      if (table.getTableName().equals(tableName)) {
+        targetTable = table;
+        break;
+      }
+    }
+
+    if (targetTable == null) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.TABLE_NOT_EXISTS,
+              String.format("Table %s.%s not exist", database, tableName)),
+          null);
+    }
+
+    List<TsTableColumnSchema> copiedList = new ArrayList<>();
+    for (TsTableColumnSchema columnSchema : columnSchemaList) {
+      if (targetTable.getColumnSchema(columnSchema.getColumnName()) == null) {
+        copiedList.add(columnSchema);
+      }
+    }
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, copiedList);
+  }
+
+  public synchronized TSStatus addTableColumn(
+      String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
+    AddTableColumnPlan addTableColumnPlan =
+        new AddTableColumnPlan(database, tableName, columnSchemaList, false);
+    try {
+      return getConsensusManager().write(addTableColumnPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  public synchronized TSStatus rollbackAddTableColumn(
+      String database, String tableName, List<TsTableColumnSchema> columnSchemaList) {
+    AddTableColumnPlan addTableColumnPlan =
+        new AddTableColumnPlan(database, tableName, columnSchemaList, true);
+    try {
+      return getConsensusManager().write(addTableColumnPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
   }
 
   public void clearSchemaQuotaCache() {

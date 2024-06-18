@@ -51,6 +51,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,9 +99,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
-      List<String> devicePaths = patternTree.getAllDevicePatterns();
-      Map<String, List<String>> storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(devicePaths, true, false, null);
+      List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
+      Map<String, List<IDeviceID>> storageGroupToDeviceMap =
+          partitionCache.getStorageGroupToDevice(deviceIDs, true, false, null);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         TSchemaPartitionTableResp schemaPartitionTableResp =
@@ -129,9 +130,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
-      List<String> devicePaths = patternTree.getAllDevicePatterns();
-      Map<String, List<String>> storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(devicePaths, true, true, userName);
+      List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
+      Map<String, List<IDeviceID>> storageGroupToDeviceMap =
+          partitionCache.getStorageGroupToDevice(deviceIDs, true, true, userName);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         TSchemaPartitionTableResp schemaPartitionTableResp =
@@ -297,17 +298,17 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       List<DataPartitionQueryParam> dataPartitionQueryParams,
       boolean isAutoCreate,
       String userName) {
-    List<String> devicePaths = new ArrayList<>();
+    List<IDeviceID> deviceIDs = new ArrayList<>();
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
-      devicePaths.add(dataPartitionQueryParam.getDevicePath());
+      deviceIDs.add(dataPartitionQueryParam.getDeviceID());
     }
-    Map<String, String> deviceToStorageGroupMap =
-        partitionCache.getDeviceToStorageGroup(devicePaths, true, isAutoCreate, userName);
+    Map<IDeviceID, String> deviceToStorageGroupMap =
+        partitionCache.getDeviceToStorageGroup(deviceIDs, true, isAutoCreate, userName);
     Map<String, List<DataPartitionQueryParam>> result = new HashMap<>();
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
-      String devicePath = dataPartitionQueryParam.getDevicePath();
-      if (deviceToStorageGroupMap.containsKey(devicePath)) {
-        String storageGroup = deviceToStorageGroupMap.get(devicePath);
+      IDeviceID deviceID = dataPartitionQueryParam.getDeviceID();
+      if (deviceToStorageGroupMap.containsKey(deviceID)) {
+        String storageGroup = deviceToStorageGroupMap.get(deviceID);
         result.computeIfAbsent(storageGroup, key -> new ArrayList<>()).add(dataPartitionQueryParam);
       }
     }
@@ -368,7 +369,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       for (DataPartitionQueryParam queryParam : entry.getValue()) {
         seriesSlotTimePartitionMap
             .computeIfAbsent(
-                partitionExecutor.getSeriesPartitionSlot(queryParam.getDevicePath()),
+                partitionExecutor.getSeriesPartitionSlot(queryParam.getDeviceID()),
                 k ->
                     new ComplexTimeSlotList(
                         queryParam.isNeedLeftAll(), queryParam.isNeedRightAll()))
@@ -404,7 +405,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                   queryParam.isNeedRightAll());
         }
         deviceToTimePartitionMap.putIfAbsent(
-            partitionExecutor.getSeriesPartitionSlot(queryParam.getDevicePath()),
+            partitionExecutor.getSeriesPartitionSlot(queryParam.getDeviceID()),
             sharedTTimeSlotList);
       }
       partitionSlotsMap.put(entry.getKey(), deviceToTimePartitionMap);

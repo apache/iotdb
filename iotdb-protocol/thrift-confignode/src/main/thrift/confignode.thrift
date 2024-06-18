@@ -254,7 +254,7 @@ struct TDataPartitionTableResp {
 struct TGetRegionIdReq {
     1: required common.TConsensusGroupType type
     2: optional string database
-    3: optional string device
+    3: optional binary device
     4: optional common.TTimePartitionSlot startTimeSlot
     5: optional common.TTimePartitionSlot endTimeSlot
 }
@@ -266,7 +266,7 @@ struct TGetRegionIdResp {
 
 struct TGetTimeSlotListReq {
     1: optional string database
-    3: optional string device
+    3: optional binary device
     4: optional i64 regionId
     5: optional i64 startTime
     6: optional i64 endTime
@@ -279,7 +279,7 @@ struct TGetTimeSlotListResp {
 
 struct TCountTimeSlotListReq {
     1: optional string database
-    3: optional string device
+    3: optional binary device
     4: optional i64 regionId
     5: optional i64 startTime
     6: optional i64 endTime
@@ -924,6 +924,15 @@ enum TActivationControl {
 enum TTestOperation {
   TEST_PROCEDURE_RECOVER,
   TEST_SUB_PROCEDURE,
+}
+
+// Table
+struct TAlterTableReq{
+    1: required string database
+    2: required string tableName
+    3: required string queryId
+    4: required byte operationType
+    5: required binary updateInfo
 }
 
 service IConfigNodeRPCService {
@@ -1584,5 +1593,7 @@ service IConfigNodeRPCService {
   // ======================================================
 
   common.TSStatus createTable(binary tableInfo)
+
+  common.TSStatus alterTable(TAlterTableReq req)
 }
 

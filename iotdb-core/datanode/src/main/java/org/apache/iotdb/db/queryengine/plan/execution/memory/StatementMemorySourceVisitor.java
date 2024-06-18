@@ -100,6 +100,10 @@ public class StatementMemorySourceVisitor
             new PlanGraphPrinter.GraphContext(
                 context.getQueryContext().getTypeProvider().getTemplatedInfo()));
 
+    return getStatementMemorySource(header, lines);
+  }
+
+  static StatementMemorySource getStatementMemorySource(DatasetHeader header, List<String> lines) {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
     lines.forEach(
         line -> {

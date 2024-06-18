@@ -47,6 +47,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.AlterTableOperationType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
@@ -123,6 +124,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
@@ -209,6 +211,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -697,7 +700,7 @@ public class ConfigManager implements IManager {
       return new ArrayList<>();
     }
     return Collections.singletonList(
-        getPartitionManager().getSeriesPartitionSlot(innerPath.getIDeviceID().toString()));
+        getPartitionManager().getSeriesPartitionSlot(innerPath.getIDeviceID()));
   }
 
   @Override
@@ -766,17 +769,17 @@ public class ConfigManager implements IManager {
       return resp.setStatus(status);
     }
 
-    List<String> devicePaths = patternTree.getAllDevicePatterns();
+    List<IDeviceID> devicePaths = patternTree.getAllDevicePatterns();
     List<String> databases = getClusterSchemaManager().getDatabaseNames();
 
     // Build GetOrCreateSchemaPartitionPlan
     Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
-    for (String devicePath : devicePaths) {
+    for (IDeviceID deviceID : devicePaths) {
       for (String database : databases) {
-        if (PathUtils.isStartWith(devicePath, database)) {
+        if (PathUtils.isStartWith(deviceID, database)) {
           partitionSlotsMap
               .computeIfAbsent(database, key -> new ArrayList<>())
-              .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
+              .add(getPartitionManager().getSeriesPartitionSlot(deviceID));
           break;
         }
       }
@@ -796,11 +799,11 @@ public class ConfigManager implements IManager {
   }
 
   private void printNewCreatedSchemaPartition(
-      List<String> devicePaths, TSchemaPartitionTableResp resp) {
+      List<IDeviceID> deviceIDS, TSchemaPartitionTableResp resp) {
     final String lineSeparator = System.lineSeparator();
     StringBuilder devicePathString = new StringBuilder("{");
-    for (String devicePath : devicePaths) {
-      devicePathString.append(lineSeparator).append("\t").append(devicePath).append(",");
+    for (IDeviceID deviceID : deviceIDS) {
+      devicePathString.append(lineSeparator).append("\t").append(deviceID).append(",");
     }
     devicePathString.append(lineSeparator).append("}");
 
@@ -871,8 +874,8 @@ public class ConfigManager implements IManager {
     final String lineSeparator = System.lineSeparator();
 
     StringBuilder devicePathString = new StringBuilder("{");
-    for (String devicePath : scope.getAllDevicePatterns()) {
-      devicePathString.append(lineSeparator).append("\t").append(devicePath).append(",");
+    for (IDeviceID deviceID : scope.getAllDevicePatterns()) {
+      devicePathString.append(lineSeparator).append("\t").append(deviceID).append(",");
     }
     devicePathString.append(lineSeparator).append("}");
 
@@ -2381,6 +2384,20 @@ public class ConfigManager implements IManager {
       Pair<String, TsTable> pair =
           TsTableInternalRPCUtil.deserializeSingleTsTable(tableInfo.array());
       return procedureManager.createTable(pair.left, pair.right);
+    } else {
+      return status;
+    }
+  }
+
+  public TSStatus alterTable(TAlterTableReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      switch (AlterTableOperationType.getType(req.operationType)) {
+        case ADD_COLUMN:
+          return procedureManager.alterTableAddColumn(req);
+        default:
+          throw new IllegalArgumentException();
+      }
     } else {
       return status;
     }

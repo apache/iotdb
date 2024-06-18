@@ -28,7 +28,11 @@ import java.nio.ByteBuffer;
 public enum TsTableInternalRPCType {
   PRE_CREATE((byte) 0),
   ROLLBACK_CREATE((byte) 1),
-  COMMIT_CREATE((byte) 2);
+  COMMIT_CREATE((byte) 2),
+
+  PRE_ADD_COLUMN((byte) 6),
+  COMMIT_ADD_COLUMN((byte) 7),
+  ROLLBACK_ADD_COLUMN((byte) 8);
 
   private final byte operationType;
 
@@ -57,6 +61,12 @@ public enum TsTableInternalRPCType {
         return ROLLBACK_CREATE;
       case 2:
         return COMMIT_CREATE;
+      case 6:
+        return PRE_ADD_COLUMN;
+      case 7:
+        return COMMIT_ADD_COLUMN;
+      case 8:
+        return ROLLBACK_ADD_COLUMN;
       default:
         throw new IllegalArgumentException("Unknown table update operation type" + type);
     }

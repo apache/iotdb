@@ -276,7 +276,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
       TSeriesPartitionSlot seriesPartitionSlot =
-          partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDevicePath());
+          partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDeviceID());
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListMap =
           sgPartitionMap.computeIfAbsent(seriesPartitionSlot, k -> new HashMap<>());
       for (TTimePartitionSlot timePartitionSlot :

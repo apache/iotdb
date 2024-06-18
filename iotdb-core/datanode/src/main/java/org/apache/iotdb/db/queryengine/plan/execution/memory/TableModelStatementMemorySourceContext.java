@@ -17,29 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.schemaengine.table;
+package org.apache.iotdb.db.queryengine.plan.execution.memory;
 
-import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 
-import java.util.List;
+public class TableModelStatementMemorySourceContext {
+  private final MPPQueryContext queryContext;
+  private final Analysis analysis;
 
-public interface ITableCache {
+  public TableModelStatementMemorySourceContext(MPPQueryContext queryContext, Analysis analysis) {
+    this.queryContext = queryContext;
+    this.analysis = analysis;
+  }
 
-  void init(byte[] tableInitializationBytes);
+  public MPPQueryContext getQueryContext() {
+    return queryContext;
+  }
 
-  void preCreateTable(String database, TsTable table);
-
-  void rollbackCreateTable(String database, String tableName);
-
-  void commitCreateTable(String database, String tableName);
-
-  void preAddTableColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList);
-
-  void commitAddTableColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList);
-
-  void rollbackAddColumn(
-      String database, String tableName, List<TsTableColumnSchema> columnSchemaList);
+  public Analysis getAnalysis() {
+    return analysis;
+  }
 }

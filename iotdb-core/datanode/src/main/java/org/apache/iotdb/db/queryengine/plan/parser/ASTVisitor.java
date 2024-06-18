@@ -219,6 +219,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
@@ -3902,7 +3903,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.database != null) {
       getRegionIdStatement.setDatabase(ctx.database.getText());
     } else {
-      getRegionIdStatement.setDevice(ctx.device.getText());
+      getRegionIdStatement.setDevice(Factory.DEFAULT_FACTORY.create(ctx.device.getText()));
     }
     getRegionIdStatement.setStartTimeStamp(-1L);
     getRegionIdStatement.setEndTimeStamp(Long.MAX_VALUE);
@@ -3971,7 +3972,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.database != null) {
       getTimeSlotListStatement.setDatabase(ctx.database.getText());
     } else if (ctx.device != null) {
-      getTimeSlotListStatement.setDevice(ctx.device.getText());
+      getTimeSlotListStatement.setDevice(Factory.DEFAULT_FACTORY.create(ctx.device.getText()));
     } else if (ctx.regionId != null) {
       getTimeSlotListStatement.setRegionId(Integer.parseInt(ctx.regionId.getText()));
     }
@@ -3992,7 +3993,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.database != null) {
       countTimeSlotListStatement.setDatabase(ctx.database.getText());
     } else if (ctx.device != null) {
-      countTimeSlotListStatement.setDevice(ctx.device.getText());
+      countTimeSlotListStatement.setDevice(Factory.DEFAULT_FACTORY.create(ctx.device.getText()));
     } else if (ctx.regionId != null) {
       countTimeSlotListStatement.setRegionId(Integer.parseInt(ctx.regionId.getText()));
     }

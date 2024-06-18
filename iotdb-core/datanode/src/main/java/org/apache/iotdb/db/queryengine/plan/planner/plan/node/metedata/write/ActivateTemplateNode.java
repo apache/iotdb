@@ -163,7 +163,9 @@ public class ActivateTemplateNode extends WritePlanNode implements IActivateTemp
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     TRegionReplicaSet regionReplicaSet =
-        analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(activatePath.getFullPath());
+        analysis
+            .getSchemaPartitionInfo()
+            .getSchemaRegionReplicaSet(activatePath.getIDeviceIDAsFullDevice());
     setRegionReplicaSet(regionReplicaSet);
     return ImmutableList.of(this);
   }
