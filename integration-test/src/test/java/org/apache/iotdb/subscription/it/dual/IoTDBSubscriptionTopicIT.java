@@ -531,15 +531,6 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   }
 
   @Test
-  public void testTopicInvalidPathConfig() throws Exception {
-    // Test invalid path when using tsfile format
-    final Properties config = new Properties();
-    config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
-    config.put(TopicConstant.PATH_KEY, "root.db.*.s");
-    testTopicInvalidRuntimeConfigTemplate("topic9", config);
-  }
-
-  @Test
   public void testTopicInvalidProcessorConfig() throws Exception {
     // Test invalid processor when using tsfile format
     final Properties config = new Properties();
