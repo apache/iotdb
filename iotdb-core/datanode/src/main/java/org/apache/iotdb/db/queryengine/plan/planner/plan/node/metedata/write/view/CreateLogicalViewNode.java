@@ -220,7 +220,7 @@ public class CreateLogicalViewNode extends WritePlanNode implements ICreateLogic
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByTreePartition(IAnalysis analysis) {
     Map<TRegionReplicaSet, Map<PartialPath, ViewExpression>> splitMap = new HashMap<>();
     for (Map.Entry<PartialPath, ViewExpression> entry : this.viewPathToSourceMap.entrySet()) {
       // for each entry in the map for target path to source expression,

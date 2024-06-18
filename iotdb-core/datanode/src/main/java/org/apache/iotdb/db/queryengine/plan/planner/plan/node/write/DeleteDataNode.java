@@ -282,7 +282,7 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByTreePartition(IAnalysis analysis) {
     ISchemaTree schemaTree = ((Analysis) analysis).getSchemaTree();
     DataPartition dataPartition = analysis.getDataPartitionInfo();
 

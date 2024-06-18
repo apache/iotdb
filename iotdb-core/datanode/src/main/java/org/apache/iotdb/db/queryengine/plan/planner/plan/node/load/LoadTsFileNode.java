@@ -89,7 +89,7 @@ public class LoadTsFileNode extends WritePlanNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByTreePartition(IAnalysis analysis) {
     List<WritePlanNode> res = new ArrayList<>();
     LoadTsFileStatement statement =
         ((Analysis) analysis).getTreeStatement() instanceof PipeEnrichedStatement

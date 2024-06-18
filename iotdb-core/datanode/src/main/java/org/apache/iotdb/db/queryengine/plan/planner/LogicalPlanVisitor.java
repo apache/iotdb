@@ -464,7 +464,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             insertTabletStatement.getTimes(),
             insertTabletStatement.getBitMaps(),
             insertTabletStatement.getColumns(),
-            insertTabletStatement.getRowCount());
+            insertTabletStatement.getRowCount(),
+            insertTabletStatement.getColumnCategories());
     insertNode.setFailedMeasurementNumber(insertTabletStatement.getFailedMeasurementNumber());
     return insertNode;
   }
@@ -736,7 +737,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               insertTabletStatement.getTimes(),
               insertTabletStatement.getBitMaps(),
               insertTabletStatement.getColumns(),
-              insertTabletStatement.getRowCount());
+              insertTabletStatement.getRowCount(),
+              insertTabletStatement.getColumnCategories());
       insertTabletNode.setFailedMeasurementNumber(
           insertTabletStatement.getFailedMeasurementNumber());
       insertMultiTabletsNode.addInsertTabletNode(insertTabletNode, i);

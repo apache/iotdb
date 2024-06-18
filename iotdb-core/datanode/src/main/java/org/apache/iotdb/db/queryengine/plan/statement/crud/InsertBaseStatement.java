@@ -248,10 +248,12 @@ public abstract class InsertBaseStatement extends Statement {
 
   public void setColumnCategories(TsTableColumnCategory[] columnCategories) {
     this.columnCategories = columnCategories;
-    idColumnIndices = new ArrayList<>();
-    for (int i = 0; i < columnCategories.length; i++) {
-      if (columnCategories[i].equals(TsTableColumnCategory.ID)) {
-        idColumnIndices.add(i);
+    if (columnCategories != null) {
+      idColumnIndices = new ArrayList<>();
+      for (int i = 0; i < columnCategories.length; i++) {
+        if (columnCategories[i].equals(TsTableColumnCategory.ID)) {
+          idColumnIndices.add(i);
+        }
       }
     }
   }

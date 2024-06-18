@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -59,6 +62,9 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   protected String[] measurements;
   protected TSDataType[] dataTypes;
 
+  protected TsTableColumnCategory[] columnCategories;
+  protected List<Integer> idColumnIndices;
+
   protected int failedMeasurementNumber = 0;
 
   /**
@@ -90,11 +96,22 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
       boolean isAligned,
       String[] measurements,
       TSDataType[] dataTypes) {
+    this(id, devicePath, isAligned, measurements, dataTypes, null);
+  }
+
+  protected InsertNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      boolean isAligned,
+      String[] measurements,
+      TSDataType[] dataTypes,
+      TsTableColumnCategory[] columnCategories) {
     super(id);
     this.devicePath = devicePath;
     this.isAligned = isAligned;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
+    setColumnCategories(columnCategories);
   }
 
   public TRegionReplicaSet getDataRegionReplicaSet() {
@@ -309,5 +326,21 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
     result = 31 * result + Arrays.hashCode(measurements);
     result = 31 * result + Arrays.hashCode(dataTypes);
     return result;
+  }
+
+  public TsTableColumnCategory[] getColumnCategories() {
+    return columnCategories;
+  }
+
+  public void setColumnCategories(TsTableColumnCategory[] columnCategories) {
+    this.columnCategories = columnCategories;
+    if (columnCategories != null) {
+      idColumnIndices = new ArrayList<>();
+      for (int i = 0; i < columnCategories.length; i++) {
+        if (columnCategories[i].equals(TsTableColumnCategory.ID)) {
+          idColumnIndices.add(i);
+        }
+      }
+    }
   }
 }

@@ -40,6 +40,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedStatement;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -106,6 +108,9 @@ public class LogicalPlanner {
     if (statement instanceof Explain) {
       return createRelationPlan(analysis, (Query) ((Explain) statement).getStatement());
     }
+    if (statement instanceof WrappedStatement) {
+      return createRelationPlan(analysis, ((WrappedStatement) statement));
+    }
     throw new IllegalStateException(
         "Unsupported statement type: " + statement.getClass().getSimpleName());
   }
@@ -142,6 +147,10 @@ public class LogicalPlanner {
     analysis.setRespDatasetHeader(respDatasetHeader);
 
     return outputNode;
+  }
+
+  private RelationPlan createRelationPlan(Analysis analysis, WrappedStatement statement) {
+    return getRelationPlanner(analysis).process(statement, null);
   }
 
   private RelationPlan createRelationPlan(Analysis analysis, Query query) {

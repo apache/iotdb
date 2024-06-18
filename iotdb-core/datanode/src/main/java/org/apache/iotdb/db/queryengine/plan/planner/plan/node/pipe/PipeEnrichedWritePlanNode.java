@@ -184,8 +184,8 @@ public class PipeEnrichedWritePlanNode extends WritePlanNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
-    return writePlanNode.splitByPartition(analysis).stream()
+  public List<WritePlanNode> splitByTreePartition(IAnalysis analysis) {
+    return writePlanNode.splitByTreePartition(analysis).stream()
         .map(
             plan ->
                 plan instanceof PipeEnrichedWritePlanNode

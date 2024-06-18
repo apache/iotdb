@@ -29,5 +29,9 @@ public abstract class WritePlanNode extends PlanNode implements IPartitionRelate
     super(id);
   }
 
-  public abstract List<WritePlanNode> splitByPartition(IAnalysis analysis);
+  public abstract List<WritePlanNode> splitByTreePartition(IAnalysis analysis);
+
+  public List<WritePlanNode> splitByTablePartition(IAnalysis analysis) {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
 }

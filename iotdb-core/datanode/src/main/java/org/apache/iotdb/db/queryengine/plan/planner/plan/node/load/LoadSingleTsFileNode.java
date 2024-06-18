@@ -188,7 +188,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByTreePartition(IAnalysis analysis) {
     throw new NotImplementedException("split load single TsFile is not implemented");
   }
 

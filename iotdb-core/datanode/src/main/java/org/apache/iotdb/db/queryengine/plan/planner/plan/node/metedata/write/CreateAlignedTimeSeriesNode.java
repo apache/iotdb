@@ -455,7 +455,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByTreePartition(IAnalysis analysis) {
     TRegionReplicaSet regionReplicaSet =
         analysis
             .getSchemaPartitionInfo()

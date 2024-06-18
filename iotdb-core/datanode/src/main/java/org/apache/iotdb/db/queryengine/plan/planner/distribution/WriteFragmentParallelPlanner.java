@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
+import java.util.function.BiFunction;
 import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -37,12 +38,23 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
   private SubPlan subPlan;
   private IAnalysis analysis;
   private MPPQueryContext queryContext;
+  private BiFunction<WritePlanNode, IAnalysis, List<WritePlanNode>> nodeSplitter;
 
   public WriteFragmentParallelPlanner(
       SubPlan subPlan, IAnalysis analysis, MPPQueryContext queryContext) {
     this.subPlan = subPlan;
     this.analysis = analysis;
     this.queryContext = queryContext;
+    this.nodeSplitter = WritePlanNode::splitByTreePartition;
+  }
+
+  public WriteFragmentParallelPlanner(
+      SubPlan subPlan, IAnalysis analysis, MPPQueryContext queryContext,
+      BiFunction<WritePlanNode, IAnalysis, List<WritePlanNode>> nodeSplitter) {
+    this.subPlan = subPlan;
+    this.analysis = analysis;
+    this.queryContext = queryContext;
+    this.nodeSplitter = nodeSplitter;
   }
 
   @Override
@@ -52,7 +64,7 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
     if (!(node instanceof WritePlanNode)) {
       throw new IllegalArgumentException("PlanNode should be IWritePlanNode in WRITE operation");
     }
-    List<WritePlanNode> splits = ((WritePlanNode) node).splitByPartition(analysis);
+    List<WritePlanNode> splits = nodeSplitter.apply(((WritePlanNode) node), analysis);
     List<FragmentInstance> ret = new ArrayList<>();
     for (WritePlanNode split : splits) {
       FragmentInstance instance =

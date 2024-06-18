@@ -134,8 +134,8 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
-    return insertNode.splitByPartition(analysis).stream()
+  public List<WritePlanNode> splitByTreePartition(IAnalysis analysis) {
+    return insertNode.splitByTreePartition(analysis).stream()
         .map(
             plan ->
                 plan instanceof PipeEnrichedInsertNode

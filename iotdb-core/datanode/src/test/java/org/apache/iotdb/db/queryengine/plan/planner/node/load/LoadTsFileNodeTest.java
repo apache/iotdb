@@ -52,7 +52,7 @@ public class LoadTsFileNodeTest {
     } catch (NotImplementedException ignored) {
     }
     try {
-      node.splitByPartition(new Analysis());
+      node.splitByTreePartition(new Analysis());
       Assert.fail();
     } catch (NotImplementedException ignored) {
     }
@@ -75,7 +75,7 @@ public class LoadTsFileNodeTest {
     } catch (NotImplementedException ignored) {
     }
     try {
-      node.splitByPartition(new Analysis());
+      node.splitByTreePartition(new Analysis());
       Assert.fail();
     } catch (NotImplementedException ignored) {
     }
