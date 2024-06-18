@@ -14,17 +14,20 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.FilterScanCombine;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.IndexScan;
@@ -32,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Pru
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RelationalPlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.RemoveRedundantIdentityProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SimplifyExpressions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
@@ -90,6 +94,9 @@ public class LogicalPlanner {
   }
 
   private PlanNode planStatement(Analysis analysis, Statement statement) {
+    if (statement instanceof CreateDevice) {
+      return planCreateDevice((CreateDevice) statement, analysis);
+    }
     return createOutputPlan(planStatementWithoutOutput(analysis, statement), analysis);
   }
 
@@ -174,5 +181,28 @@ public class LogicalPlanner {
     CREATED,
     OPTIMIZED,
     OPTIMIZED_AND_VALIDATED
+  }
+
+  private PlanNode planCreateDevice(CreateDevice statement, Analysis analysis) {
+    context.setQueryType(QueryType.WRITE);
+
+    CreateTableDeviceNode node =
+        new CreateTableDeviceNode(
+            context.getQueryId().genPlanNodeId(),
+            statement.getDatabase(),
+            statement.getTable(),
+            statement.getDeviceIdList(),
+            statement.getAttributeNameList(),
+            statement.getAttributeValueList());
+
+    analysis.setStatement(statement);
+    SchemaPartition partition =
+        metadata.getOrCreateSchemaPartition(
+            statement.getDatabase(),
+            node.getPartitionKeyList(),
+            context.getSession().getUserName());
+    analysis.setSchemaPartitionInfo(partition);
+
+    return node;
   }
 }

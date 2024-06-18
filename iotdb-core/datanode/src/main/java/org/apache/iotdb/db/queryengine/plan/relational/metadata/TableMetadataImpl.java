@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -45,6 +46,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -55,6 +58,8 @@ import static org.apache.tsfile.read.common.type.LongType.INT64;
 public class TableMetadataImpl implements Metadata {
 
   private final TypeManager typeManager = new InternalTypeManager();
+
+  private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
 
   @Override
   public boolean tableExists(QualifiedObjectName name) {
@@ -293,6 +298,23 @@ public class TableMetadataImpl implements Metadata {
   public void validateDeviceSchema(
       ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context) {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public SchemaPartition getOrCreateSchemaPartition(
+      String database, List<IDeviceID> deviceIDList, String userName) {
+    return partitionFetcher.getOrCreateSchemaPartition(
+        PATH_ROOT + PATH_SEPARATOR + database, deviceIDList, userName);
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
+    return partitionFetcher.getSchemaPartition(PATH_ROOT + PATH_SEPARATOR + database, deviceIDList);
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database) {
+    return partitionFetcher.getSchemaPartition(PATH_ROOT + PATH_SEPARATOR + database);
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

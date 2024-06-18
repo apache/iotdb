@@ -113,6 +113,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 @SuppressWarnings("java:S6539") // suppress "Monster class" warning
@@ -479,6 +480,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitAlterLogicalView(AlterLogicalViewNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitCreateTableDevice(CreateTableDeviceNode node, C context) {
     return visitPlan(node, context);
   }
 

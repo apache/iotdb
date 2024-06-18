@@ -1361,9 +1361,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   public void createTableDevice(
-      List<PartialPath> devicePathList,
+      String tableName,
+      List<Object[]> devicePathList,
       List<String> attributeNameList,
-      List<List<String>> attributeValueList)
+      List<Object[]> attributeValueList)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }

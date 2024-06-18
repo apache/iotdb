@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundExceptio
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.Type;
@@ -211,6 +212,22 @@ public class TestMatadata implements Metadata {
     throw new UnsupportedOperationException();
   }
 
+  @Override
+  public SchemaPartition getOrCreateSchemaPartition(
+      String database, List<IDeviceID> deviceIDList, String userName) {
+    return null;
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
+    return null;
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database) {
+    return null;
+  }
+
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 2
         && isNumericType(argumentTypes.get(0))
@@ -303,6 +320,22 @@ public class TestMatadata implements Metadata {
 
       @Override
       public void invalidAllCache() {}
+
+      @Override
+      public SchemaPartition getOrCreateSchemaPartition(
+          String database, List<IDeviceID> deviceIDList, String userName) {
+        return null;
+      }
+
+      @Override
+      public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
+        return null;
+      }
+
+      @Override
+      public SchemaPartition getSchemaPartition(String database) {
+        return null;
+      }
     };
   }
 }

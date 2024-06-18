@@ -337,7 +337,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 req.getTimeout());
       } else {
         org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
-            relationSqlParser.createStatement(statement);
+            relationSqlParser.createStatement(statement, clientSession.getZoneId());
 
         if (s == null) {
           return RpcUtils.getTSExecuteStatementResp(
