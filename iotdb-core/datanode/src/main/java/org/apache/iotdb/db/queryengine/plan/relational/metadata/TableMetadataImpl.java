@@ -46,6 +46,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -294,18 +296,20 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public SchemaPartition getOrCreateSchemaPartition(String database, List<IDeviceID> deviceIDList, String userName) {
-    return partitionFetcher.getOrCreateSchemaPartition(database, deviceIDList, userName);
+  public SchemaPartition getOrCreateSchemaPartition(
+      String database, List<IDeviceID> deviceIDList, String userName) {
+    return partitionFetcher.getOrCreateSchemaPartition(
+        PATH_ROOT + PATH_SEPARATOR + database, deviceIDList, userName);
   }
 
   @Override
   public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
-    return partitionFetcher.getSchemaPartition(database, deviceIDList);
+    return partitionFetcher.getSchemaPartition(PATH_ROOT + PATH_SEPARATOR + database, deviceIDList);
   }
 
   @Override
   public SchemaPartition getSchemaPartition(String database) {
-    return partitionFetcher.getSchemaPartition(database);
+    return partitionFetcher.getSchemaPartition(PATH_ROOT + PATH_SEPARATOR + database);
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

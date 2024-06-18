@@ -203,8 +203,10 @@ public class LogicalPlanner {
 
     analysis.setStatement(statement);
     SchemaPartition partition =
-        metadata.getOrCreateSchemaPartition(statement.getDatabase(),
-            node.getPartitionKeyList(), context.getSession().getUserName());
+        metadata.getOrCreateSchemaPartition(
+            statement.getDatabase(),
+            node.getPartitionKeyList(),
+            context.getSession().getUserName());
     analysis.setSchemaPartitionInfo(partition);
 
     return node;

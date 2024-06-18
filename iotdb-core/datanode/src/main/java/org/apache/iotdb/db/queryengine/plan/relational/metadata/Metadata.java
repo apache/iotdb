@@ -102,16 +102,31 @@ public interface Metadata {
 
   // ======================== Table Model Schema Partition Interface ========================
   /**
-   * For data insertion
-   * Get or create schema partition, used in insertion with enable_auto_create_schema is true. if
-   * schemaPartition does not exist, then automatically create.
+   * Get or create schema partition, used in data insertion with enable_auto_create_schema is true.
+   * if schemaPartition does not exist, then automatically create.
+   *
+   * <p>The database shall start with "root.". Concat this to a user-provided db name if necessary.
+   *
    * <p>The device id shall be [table, seg1, ....]
    */
-  SchemaPartition getOrCreateSchemaPartition(String database, List<IDeviceID> deviceIDList, String userName);
+  SchemaPartition getOrCreateSchemaPartition(
+      String database, List<IDeviceID> deviceIDList, String userName);
 
-  // data query with completed id
+  /**
+   * For data query with completed id.
+   *
+   * <p>The database shall start with "root.". Concat this to a user-provided db name if necessary.
+   *
+   * <p>The device id shall be [table, seg1, ....]
+   */
   SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList);
 
-  // data query with partial device id conditions
+  /**
+   * For data query with partial device id conditions.
+   *
+   * <p>The database shall start with "root.". Concat this to a user-provided db name if necessary.
+   *
+   * <p>The device id shall be [table, seg1, ....]
+   */
   SchemaPartition getSchemaPartition(String database);
 }
