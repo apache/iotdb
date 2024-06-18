@@ -1308,8 +1308,8 @@ service IConfigNodeRPCService {
   // ======================================================
   // TTL
   // ======================================================
-  /** Show all ttl */
-  TShowTTLResp showAllTTL()
+  /** Show ttl */
+  TShowTTLResp showTTL(common.TShowTTLReq req)
 
   /** Update the specific device's TTL */
   common.TSStatus setTTL(common.TSetTTLReq req)

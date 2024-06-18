@@ -109,9 +109,12 @@ public class WALRecoverManagerTest {
   private CheckpointManager checkpointManager;
   private TsFileResource tsFileWithWALResource;
   private TsFileResource tsFileWithoutWALResource;
+  private long originWALThreshold =
+      IoTDBDescriptor.getInstance().getConfig().getWalFileSizeThresholdInByte();
 
   @Before
   public void setUp() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setWalFileSizeThresholdInByte(1 * 1024 * 1024);
     EnvironmentUtils.cleanDir(new File(FILE_WITH_WAL_NAME).getParent());
     EnvironmentUtils.envSetUp();
     prevMode = config.getWalMode();
@@ -122,6 +125,7 @@ public class WALRecoverManagerTest {
 
   @After
   public void tearDown() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setWalFileSizeThresholdInByte(originWALThreshold);
     if (tsFileWithWALResource != null) {
       tsFileWithWALResource.close();
     }
