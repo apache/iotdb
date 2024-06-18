@@ -50,10 +50,10 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
       case ANALYSIS:
         analyzerTimer.updateNanos(costTimeInNanos);
         break;
-      case SPLIT:
+      case FIRST_PHASE:
         splitTimer.updateNanos(costTimeInNanos);
         break;
-      case WRITE:
+      case SECOND_PHASE:
         writeTimer.updateNanos(costTimeInNanos);
         break;
       default:
@@ -68,15 +68,21 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
             Metric.LOAD_TIME_COST.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), ANALYSIS);
     splitTimer =
         metricService.getOrCreateTimer(
-            Metric.LOAD_TIME_COST.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), SPLIT);
+            Metric.LOAD_TIME_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            FIRST_PHASE);
     writeTimer =
         metricService.getOrCreateTimer(
-            Metric.LOAD_TIME_COST.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), WRITE);
+            Metric.LOAD_TIME_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            SECOND_PHASE);
   }
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    Arrays.asList(ANALYSIS, SPLIT, WRITE)
+    Arrays.asList(ANALYSIS, FIRST_PHASE, SECOND_PHASE)
         .forEach(
             stage ->
                 metricService.remove(

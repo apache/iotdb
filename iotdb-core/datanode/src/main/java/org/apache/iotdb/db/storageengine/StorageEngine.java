@@ -910,7 +910,7 @@ public class StorageEngine implements IService {
       status.setMessage(e.getMessage());
     } finally {
       LOAD_TSFILE_COST_METRICS_SET.recordCost(
-          LoadTsFileCostMetricsSet.WRITE, System.nanoTime() - startTime);
+          LoadTsFileCostMetricsSet.SECOND_PHASE, System.nanoTime() - startTime);
     }
 
     return status;

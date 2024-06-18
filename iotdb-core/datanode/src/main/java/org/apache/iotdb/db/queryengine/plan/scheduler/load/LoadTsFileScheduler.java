@@ -259,7 +259,7 @@ public class LoadTsFileScheduler implements IScheduler {
       tsFileDataManager.clear();
 
       LOAD_TSFILE_COST_METRICS_SET.recordCost(
-          LoadTsFileCostMetricsSet.SPLIT, System.nanoTime() - startTime);
+          LoadTsFileCostMetricsSet.FIRST_PHASE, System.nanoTime() - startTime);
     }
     return true;
   }
@@ -415,7 +415,7 @@ public class LoadTsFileScheduler implements IScheduler {
       return false;
     } finally {
       LOAD_TSFILE_COST_METRICS_SET.recordCost(
-          LoadTsFileCostMetricsSet.WRITE, System.nanoTime() - startTime);
+          LoadTsFileCostMetricsSet.SECOND_PHASE, System.nanoTime() - startTime);
     }
 
     // add metrics
@@ -446,7 +446,7 @@ public class LoadTsFileScheduler implements IScheduler {
                       Tag.REGION.toString(),
                       dataRegion.getDataRegionId(),
                       Tag.TYPE.toString(),
-                      Metric.LOAD_TSFILE.toString());
+                      Metric.LOAD_POINT_COUNT.toString());
               if (!node.isGeneratedByRemoteConsensusLeader()) {
                 MetricService.getInstance()
                     .count(
@@ -460,7 +460,7 @@ public class LoadTsFileScheduler implements IScheduler {
                         Tag.REGION.toString(),
                         dataRegion.getDataRegionId(),
                         Tag.TYPE.toString(),
-                        Metric.LOAD_TSFILE.toString());
+                        Metric.LOAD_POINT_COUNT.toString());
               }
             });
 

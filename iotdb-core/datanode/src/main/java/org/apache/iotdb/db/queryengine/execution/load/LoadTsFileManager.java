@@ -434,7 +434,7 @@ public class LoadTsFileManager {
                           Tag.REGION.toString(),
                           dataRegion.getDataRegionId(),
                           Tag.TYPE.toString(),
-                          Metric.LOAD_TSFILE.toString());
+                          Metric.LOAD_POINT_COUNT.toString());
                 });
       }
     }
