@@ -201,7 +201,18 @@ public class TestMatadata implements Metadata {
   }
 
   @Override
-  public SchemaPartition getOrCreateSchemaPartition(List<IDeviceID> deviceIDList, String userName) {
+  public SchemaPartition getOrCreateSchemaPartition(
+      String database, List<IDeviceID> deviceIDList, String userName) {
+    return null;
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
+    return null;
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database) {
     return null;
   }
 
