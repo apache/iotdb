@@ -47,6 +47,7 @@ public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeTransferTabletBatchEventHandler.class);
+
   private final List<EnrichedEvent> events;
   private final Map<String, Long> pipeName2BytesAccumulated;
 
