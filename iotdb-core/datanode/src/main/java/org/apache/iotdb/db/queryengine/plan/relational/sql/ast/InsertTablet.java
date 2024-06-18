@@ -19,20 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputationWithAutoCreation;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
-
+import org.apache.iotdb.udf.api.type.Binary;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.utils.Pair;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class InsertTablet extends WrappedInsertStatement {
 
@@ -51,65 +45,57 @@ public class InsertTablet extends WrappedInsertStatement {
   }
 
   @Override
-  public List<ISchemaComputationWithAutoCreation> getSchemaValidationList() {
-    InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
-    Map<IDeviceID, ISchemaComputationWithAutoCreation> map = new HashMap<>();
-    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
-      map.computeIfAbsent(insertTabletStatement.getTableDeviceID(i), this::getSchemaComputation);
-    }
-    return new ArrayList<>(map.values());
-  }
-
-  @Override
   public void updateAfterSchemaValidation(MPPQueryContext context) throws QueryProcessException {
     getInnerTreeStatement().updateAfterSchemaValidation(context);
   }
 
   @Override
-  public ISchemaComputationWithAutoCreation getSchemaComputation(IDeviceID deviceID) {
-    return new SchemaExecutions(deviceID);
+  public String getDatabase() {
+    return context.getSession().getDatabaseName().get();
   }
 
-  public class SchemaExecutions extends BasicSchemaExecutions {
+  @Override
+  public String getTableName() {
+    return getInnerTreeStatement().getDevicePath().getFullPath();
+  }
 
-    public SchemaExecutions(IDeviceID deviceID) {
-      super(deviceID);
+  @Override
+  public List<Object[]> getDeviceIdList() {
+    List<Object[]> deviceIdList = new ArrayList<>();
+    final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
+    for (int i = 0; i < insertTabletStatement.getRowCount(); i++) {
+      IDeviceID deviceID = insertTabletStatement.getTableDeviceID(i);
+      Object[] deviceIdSegments = new Object[deviceID.segmentNum()];
+      for (int j = 0; j < deviceIdSegments.length; j++) {
+        deviceIdSegments[j] = deviceID.segment(j);
+      }
+      deviceIdList.add(deviceIdSegments);
+    }
+    return deviceIdList;
+  }
+
+  @Override
+  public List<String> getAttributeColumnNameList() {
+    final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
+    List<String> result = new ArrayList<>();
+    for (int i = 0; i < insertTabletStatement.getColumnCategories().length; i++) {
+      if (insertTabletStatement.getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
+        result.add(insertTabletStatement.getMeasurements()[i]);
+      }
+    }
+    return result;
+  }
+
+  @Override
+  public List<Object[]> getAttributeValueList() {
+    final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
+    List<Object[]> result = new ArrayList<>();
+    for (int i = 0; i < insertTabletStatement.getColumnCategories().length; i++) {
+      if (insertTabletStatement.getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
+        result.add(((Object[]) insertTabletStatement.getColumns()[i]));
+      }
     }
 
-    @Override
-    public void computeMeasurement(int index, IMeasurementSchemaInfo measurementSchemaInfo) {
-      getInnerTreeStatement().computeMeasurement(index, measurementSchemaInfo);
-    }
-
-    @Override
-    public boolean hasLogicalViewNeedProcess() {
-      return getInnerTreeStatement().hasLogicalViewNeedProcess();
-    }
-
-    @Override
-    public List<LogicalViewSchema> getLogicalViewSchemaList() {
-      return getInnerTreeStatement().getLogicalViewSchemaList();
-    }
-
-    @Override
-    public List<Integer> getIndexListOfLogicalViewPaths() {
-      return getInnerTreeStatement().getIndexListOfLogicalViewPaths();
-    }
-
-    @Override
-    public void recordRangeOfLogicalViewSchemaListNow() {
-      getInnerTreeStatement().recordRangeOfLogicalViewSchemaListNow();
-    }
-
-    @Override
-    public Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded() {
-      return getInnerTreeStatement().getRangeOfLogicalViewSchemaListRecorded();
-    }
-
-    @Override
-    public void computeMeasurementOfView(
-        int index, IMeasurementSchemaInfo measurementSchemaInfo, boolean isAligned) {
-      getInnerTreeStatement().computeMeasurementOfView(index, measurementSchemaInfo, isAligned);
-    }
+    return result;
   }
 }

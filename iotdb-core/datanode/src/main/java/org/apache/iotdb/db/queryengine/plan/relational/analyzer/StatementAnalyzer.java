@@ -370,6 +370,7 @@ public class StatementAnalyzer {
               insertTabletStatement,
               () -> SchemaValidator.validate(metadata, insert, context),
               metadata::getOrCreateDataPartition,
+              AnalyzeUtils::computeTableDataPartitionParams,
               analysis,
               false);
       insert.setInnerTreeStatement(insertTabletStatement);

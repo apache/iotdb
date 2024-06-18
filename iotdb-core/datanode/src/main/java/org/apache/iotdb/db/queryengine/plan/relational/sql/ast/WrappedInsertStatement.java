@@ -3,6 +3,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 
@@ -11,7 +12,8 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class WrappedInsertStatement extends WrappedStatement {
+public abstract class WrappedInsertStatement extends WrappedStatement implements
+    ITableDeviceSchemaValidation {
 
   protected TableSchema tableSchema;
 

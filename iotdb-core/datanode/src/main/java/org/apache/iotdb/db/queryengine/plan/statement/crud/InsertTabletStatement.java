@@ -140,6 +140,10 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     return result;
   }
 
+  public TTimePartitionSlot getTimePartitionSlot(int i) {
+    return TimePartitionUtils.getTimePartitionSlot(times[i]);
+  }
+
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertTablet(this, context);

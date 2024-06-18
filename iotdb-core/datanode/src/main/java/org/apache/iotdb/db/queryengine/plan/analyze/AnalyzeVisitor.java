@@ -186,9 +186,6 @@ import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
-import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.computeAnalysisForInsertRows;
-import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.computeAnalysisForMultiTablets;
-import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.getAnalysisForWriting;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.removeLogicalView;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.validateSchema;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.bindSchemaForExpression;
@@ -2633,6 +2630,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         insertTabletStatement,
         () -> SchemaValidator.validate(schemaFetcher, insertTabletStatement, context),
         partitionFetcher::getOrCreateDataPartition,
+        AnalyzeUtils::computeTreeDataPartitionParams,
         analysis,
         true);
     return analysis;
@@ -2661,15 +2659,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       dataPartitionQueryParam.setTimePartitionSlotList(
           Collections.singletonList(realInsertRowStatement.getTimePartitionSlot()));
 
-      getAnalysisForWriting(
+      AnalyzeUtils.analyzeDataPartition(
           analysis,
           Collections.singletonList(dataPartitionQueryParam),
           context.getSession().getUserName(),
           partitionFetcher::getOrCreateDataPartition);
     } else {
-      computeAnalysisForInsertRows(
+      AnalyzeUtils.analyzeDataPartition(
           analysis,
-          (InsertRowsStatement) realInsertStatement,
+          AnalyzeUtils.computeTreeDataPartitionParams(realInsertStatement),
           context.getSession().getUserName(),
           partitionFetcher::getOrCreateDataPartition);
     }
@@ -2693,9 +2691,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     analysis.setRealStatement(realInsertRowsStatement);
 
-    computeAnalysisForInsertRows(
+    AnalyzeUtils.analyzeDataPartition(
         analysis,
-        realInsertRowsStatement,
+        AnalyzeUtils.computeTreeDataPartitionParams(realInsertRowsStatement),
         context.getSession().getUserName(),
         partitionFetcher::getOrCreateDataPartition);
     return analysis;
@@ -2718,9 +2716,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     analysis.setRealStatement(realStatement);
 
-    computeAnalysisForMultiTablets(
+    AnalyzeUtils.analyzeDataPartition(
         analysis,
-        realStatement,
+        AnalyzeUtils.computeTreeDataPartitionParams(realStatement),
         context.getSession().getUserName(),
         partitionFetcher::getOrCreateDataPartition);
     return analysis;
@@ -2750,15 +2748,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       dataPartitionQueryParam.setDeviceID(realStatement.getDevicePath().getIDeviceIDAsFullDevice());
       dataPartitionQueryParam.setTimePartitionSlotList(realStatement.getTimePartitionSlots());
 
-      getAnalysisForWriting(
+      AnalyzeUtils.analyzeDataPartition(
           analysis,
           Collections.singletonList(dataPartitionQueryParam),
           context.getSession().getUserName(),
           partitionFetcher::getOrCreateDataPartition);
     } else {
-      computeAnalysisForInsertRows(
+      AnalyzeUtils.analyzeDataPartition(
           analysis,
-          (InsertRowsStatement) realInsertStatement,
+          AnalyzeUtils.computeTreeDataPartitionParams(realInsertStatement),
           context.getSession().getUserName(),
           partitionFetcher::getOrCreateDataPartition);
     }

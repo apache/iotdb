@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
@@ -61,12 +65,40 @@ public class SchemaValidator {
       Metadata metadata, WrappedInsertStatement insertStatement, MPPQueryContext context) {
     try {
       String databaseName = context.getSession().getDatabaseName().get();
-      //      metadata.validateTableHeaderSchema(databaseName);
-      //      metadata.fetchAndComputeSchemaWithAutoCreate(
-      //          insertStatement.getSchemaValidationList(), context);
+      final TableSchema incomingSchema = insertStatement.getTableSchema();
+      final TableSchema realSchema = metadata.validateTableHeaderSchema(databaseName,
+          incomingSchema, context);
+      validate(incomingSchema, realSchema);
+      metadata.validateDeviceSchema(insertStatement, context);
       insertStatement.updateAfterSchemaValidation(context);
     } catch (QueryProcessException e) {
       throw new SemanticException(e.getMessage());
+    }
+  }
+
+  public static void validate(TableSchema incomingSchema, TableSchema realSchema) {
+    final List<ColumnSchema> incomingSchemaColumns = incomingSchema.getColumns();
+    Map<String, ColumnSchema> realSchemaMap = new HashMap<>();
+    realSchema.getColumns().forEach(c -> realSchemaMap.put(c.getName(), c));
+
+    for (ColumnSchema incomingSchemaColumn : incomingSchemaColumns) {
+      final ColumnSchema realSchemaColumn = realSchemaMap.get(incomingSchemaColumn.getName());
+      validate(incomingSchemaColumn, realSchemaColumn);
+    }
+  }
+
+  public static void validate(ColumnSchema incoming, ColumnSchema real) {
+    if (real == null) {
+      throw new SemanticException("Column " + incoming.getName() + " does not exists or fails to be "
+          + "created");
+    }
+    if (!incoming.getType().equals(real.getType())) {
+      throw new SemanticException(String.format("Inconsistent data type of column %s: %s/%s",
+          incoming.getName(), incoming.getType(), real.getType()));
+    }
+    if (!incoming.getColumnCategory().equals(real.getColumnCategory())) {
+      throw new SemanticException(String.format("Inconsistent column category of column %s: %s/%s",
+          incoming.getName(), incoming.getColumnCategory(), real.getColumnCategory()));
     }
   }
 
