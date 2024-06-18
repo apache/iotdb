@@ -25,11 +25,19 @@ import org.apache.tsfile.read.filter.basic.Filter;
 
 public class TimePartitionUtils {
 
+  /**
+   * Time partition origin for dividing database, the time unit is the same with IoTDB's
+   * TimestampPrecision
+   */
+  private static long timePartitionOrigin =
+      CommonDescriptor.getInstance().getConfig().getTimePartitionOrigin();
+
   /** Time range for dividing database, the time unit is the same with IoTDB's TimestampPrecision */
   private static long timePartitionInterval =
       CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
 
   public static TTimePartitionSlot getTimePartitionSlot(long time) {
+    time -= timePartitionOrigin;
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
     if (time > 0 || time % timePartitionInterval == 0) {
       timePartitionSlot.setStartTime(time / timePartitionInterval * timePartitionInterval);
@@ -44,6 +52,7 @@ public class TimePartitionUtils {
   }
 
   public static long getTimePartitionUpperBound(long time) {
+    time -= timePartitionOrigin;
     long upperBoundOfTimePartition;
     if (time > 0 || time % TimePartitionUtils.timePartitionInterval == 0) {
       upperBoundOfTimePartition =
@@ -58,6 +67,7 @@ public class TimePartitionUtils {
   }
 
   public static long getTimePartitionId(long time) {
+    time -= timePartitionOrigin;
     return time > 0 || time % timePartitionInterval == 0
         ? time / timePartitionInterval
         : time / timePartitionInterval - 1;
@@ -75,7 +85,7 @@ public class TimePartitionUtils {
   }
 
   public static boolean satisfyTimePartition(Filter timeFilter, long partitionId) {
-    long partitionStartTime = partitionId * timePartitionInterval;
+    long partitionStartTime = partitionId * timePartitionInterval + timePartitionOrigin;
     return satisfyPartitionStartTime(timeFilter, partitionStartTime);
   }
 
