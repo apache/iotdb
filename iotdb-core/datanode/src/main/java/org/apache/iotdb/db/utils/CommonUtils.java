@@ -43,6 +43,7 @@ import io.airlift.airline.ParseOptionMissingValueException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
 
 import java.time.ZoneId;
@@ -396,5 +397,21 @@ public class CommonUtils {
     System.err.println("error: " + e.getMessage());
     System.err.println("-- StackTrace --");
     System.err.println(Throwables.getStackTraceAsString(e));
+  }
+
+  public static String[] deviceIdToStringArray(IDeviceID deviceID) {
+    String[] ret = new String[deviceID.segmentNum()];
+    for (int i = 0; i < ret.length; i++) {
+      ret[i] = deviceID.segment(i).toString();
+    }
+    return ret;
+  }
+
+  public static Object[] deviceIdToObjArray(IDeviceID deviceID) {
+    Object[] ret = new Object[deviceID.segmentNum()];
+    for (int i = 0; i < ret.length; i++) {
+      ret[i] = deviceID.segment(i);
+    }
+    return ret;
   }
 }

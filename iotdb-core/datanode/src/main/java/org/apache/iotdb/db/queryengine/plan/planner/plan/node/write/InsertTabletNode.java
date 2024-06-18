@@ -715,6 +715,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
     insertNode.subDeserialize(byteBuffer);
     insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
+    if (byteBuffer.hasRemaining()) {
+      insertNode.writeToTable = byteBuffer.get() == 1;
+    }
     return insertNode;
   }
 
@@ -764,7 +767,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   /** Serialized size for wal */
   @Override
   public int serializedSize() {
-    return serializedSize(0, rowCount);
+    return super.serializedSize() + serializedSize(0, rowCount);
   }
 
   /** Serialized size for wal */

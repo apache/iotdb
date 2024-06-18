@@ -94,6 +94,7 @@ public class MPPQueryContext {
   // index 0 represents metadataExpressions, index 1 represents expressionsCanPushDownToOperator,
   // index 2 represents expressionsCannotPushDownToOperator
   private List<List<Expression>> tableModelPredicateExpressions;
+  private boolean isTableQuery = false;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -371,4 +372,13 @@ public class MPPQueryContext {
   }
 
   // endregion
+
+
+  public boolean isTableQuery() {
+    return isTableQuery;
+  }
+
+  public void setTableQuery(boolean tableQuery) {
+    isTableQuery = tableQuery;
+  }
 }

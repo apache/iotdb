@@ -288,6 +288,7 @@ public class Coordinator {
       Metadata metadata,
       long timeOut,
       long startTime) {
+    queryContext.setTableQuery(true);
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     RelationalModelPlanner relationalModelPlanner =
@@ -311,6 +312,7 @@ public class Coordinator {
       Metadata metadata,
       long timeOut,
       long startTime) {
+    queryContext.setTableQuery(true);
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     if (statement instanceof DropDB

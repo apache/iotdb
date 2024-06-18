@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Map;
@@ -87,8 +88,7 @@ public class DataNodeTTLCache {
   public long getTTL(IDeviceID deviceID) {
     lock.readLock().lock();
     try {
-      // TODO Tien change this way
-      return ttlCache.getClosestTTL(deviceID.toString().split(PATH_SEPARATER_NO_REGEX));
+      return ttlCache.getClosestTTL(CommonUtils.deviceIdToStringArray(deviceID));
     } finally {
       lock.readLock().unlock();
     }

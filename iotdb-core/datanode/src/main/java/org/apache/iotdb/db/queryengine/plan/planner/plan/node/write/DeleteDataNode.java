@@ -143,7 +143,7 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
 
   @Override
   public int serializedSize() {
-    int size = FIXED_SERIALIZED_SIZE;
+    int size = super.serializedSize() + FIXED_SERIALIZED_SIZE;
     for (PartialPath path : pathList) {
       size += ReadWriteIOUtils.sizeToWrite(path.getFullPath());
     }

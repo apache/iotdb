@@ -19,11 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 
 import java.util.List;
 
 public abstract class WritePlanNode extends PlanNode implements IPartitionRelatedNode {
+
+  protected boolean writeToTable;
 
   protected WritePlanNode(PlanNodeId id) {
     super(id);
@@ -33,5 +38,30 @@ public abstract class WritePlanNode extends PlanNode implements IPartitionRelate
 
   public List<WritePlanNode> splitByTablePartition(IAnalysis analysis) {
     throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    super.serialize(byteBuffer);
+    byteBuffer.put(writeToTable ? (byte) 1 : (byte) 0);
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+    stream.writeBoolean(writeToTable);
+  }
+
+  public boolean isWriteToTable() {
+    return writeToTable;
+  }
+
+  public void setWriteToTable(boolean writeToTable) {
+    this.writeToTable = writeToTable;
+  }
+
+  public int serializedSize() {
+    // write to table
+    return 1;
   }
 }
