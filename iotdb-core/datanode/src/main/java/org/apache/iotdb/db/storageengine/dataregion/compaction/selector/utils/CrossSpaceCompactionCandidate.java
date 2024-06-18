@@ -90,78 +90,11 @@ public class CrossSpaceCompactionCandidate {
       return false;
     }
     for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
-      IDeviceID deviceId = unseqDeviceInfo.deviceId;
-      boolean atLeastOneSeqFileSelected = false;
-      // The `previousSeqFile` means the seqFile which contains the device and its endTime is just
-      // be smaller than startTime of the device in unseqFile
-      TsFileResourceCandidate previousSeqFile = null;
-
-      // if a seq file actually overlaps or effectively overlaps with the unseq file, the seq
-      // file should be merged with the unseq file
-      // e.g.: two seq files seq1 and seq2. seq1 ranges [0, 100] and seq2 ranges [200, 300]. One
-      // unseq file unseq1 ranges [80, 150]. Then the [80, 100] part from unseq1 actually
-      // overlaps with seq1, while the [101, 150] part effectively overlaps with seq2.
-      for (TsFileResourceCandidate seqFile : seqFiles) {
-        // If the seqFile may need to be selected but its invalid, the selection should be
-        // terminated.
-        if ((!seqFile.isValidCandidate || !seqFile.hasDetailedDeviceInfo())
-            && seqFile.mayHasOverlapWithUnseqFile(unseqDeviceInfo)) {
-          return false;
-        }
-        if (!seqFile.containsDevice(deviceId)) {
-          continue;
-        }
-        DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(deviceId);
-
-        // If the unsealed file is unclosed, the file should not be selected only when its startTime
-        // is larger than endTime of unseqFile. Or, the selection should be terminated.
-        if (seqFile.unsealed() && unseqDeviceInfo.endTime >= seqDeviceInfo.startTime) {
-          return false;
-        }
-        if (unseqDeviceInfo.endTime <= seqDeviceInfo.endTime) {
-          // When scanning the target seqFiles for unseqFile, we traverse them one by one no matter
-          // whether it is selected or not. But we only add the unselected seqFiles to next split to
-          // avoid duplication selection
-          tmpSplit.addSeqFileIfNotSelected(seqFile);
-          seqFile.markAsSelected();
-          atLeastOneSeqFileSelected = true;
-          break;
-        } else if (unseqDeviceInfo.startTime <= seqDeviceInfo.endTime) {
-          tmpSplit.addSeqFileIfNotSelected(seqFile);
-          seqFile.markAsSelected();
-          atLeastOneSeqFileSelected = true;
-        } else {
-          if (!seqFile.unsealed()) {
-            previousSeqFile = seqFile;
-          }
-        }
-      }
-
-      // If: 1.some seq files are removed by deletion or TTL; 2. the unseq file is loaded; the
-      // unseq file may have larger timestamps and does not overlap with any seqFile.
-      //
-      // For example, previously we have two seqFiles, ranging [0, 100] [200, 300] respectively.
-      // Then the seqFile of [200, 300] is deleted and an unseqFile of [150, 180] is written/loaded.
-      // The unseqFile does not overlap with any seqFile and not seqFile has larger timestamp
-      // than it, thus the unseqFile cannot select any candidate seqFiles throughput the loop above.
-      //
-      // In this case, the unseqFile should be merged with the last seqFile if possible.
-      // TODO: let insertionCompaction handle this case
-
-      // That this judgement is true indicates `previousSeqFile` is unnecessary.
-      if (atLeastOneSeqFileSelected || previousSeqFile == null) {
-        continue;
-      }
-
-      // That this judgement is ture indicates the `previousSeqFile` is necessary, but it cannot be
-      // selected as a candidate so the selection should be terminated.
-      if (!previousSeqFile.isValidCandidate) {
+      // select candidates using each device
+      boolean canContinue = selectCandidateByDevice(unseqDeviceInfo);
+      if (canContinue) {
         return false;
       }
-
-      // select the `previousSeqFile`
-      tmpSplit.addSeqFileIfNotSelected(previousSeqFile);
-      previousSeqFile.markAsSelected();
     }
     // mark candidates in next split as selected even though it may not be added to the final
     // TaskResource
@@ -180,6 +113,84 @@ public class CrossSpaceCompactionCandidate {
       }
       tmpSplit.addSeqFileIfNotSelected(latestSealedSeqFile);
     }
+    return true;
+  }
+
+  // return true if the selection can continue
+  private boolean selectCandidateByDevice(DeviceInfo unseqDeviceInfo,
+      CrossCompactionTaskResourceSplit tmpSplit) throws IOException {
+    IDeviceID deviceId = unseqDeviceInfo.deviceId;
+    boolean atLeastOneSeqFileSelected = false;
+    // The `previousSeqFile` means the seqFile which contains the device and its endTime is just
+    // be smaller than startTime of the device in unseqFile
+    TsFileResourceCandidate previousSeqFile = null;
+
+    // if a seq file actually overlaps or effectively overlaps with the unseq file, the seq
+    // file should be merged with the unseq file
+    // e.g.: two seq files seq1 and seq2. seq1 ranges [0, 100] and seq2 ranges [200, 300]. One
+    // unseq file unseq1 ranges [80, 150]. Then the [80, 100] part from unseq1 actually
+    // overlaps with seq1, while the [101, 150] part effectively overlaps with seq2.
+    for (TsFileResourceCandidate seqFile : seqFiles) {
+      // If the seqFile may need to be selected but its invalid, the selection should be
+      // terminated.
+      if ((!seqFile.isValidCandidate || !seqFile.hasDetailedDeviceInfo())
+          && seqFile.mayHasOverlapWithUnseqFile(unseqDeviceInfo)) {
+        return false;
+      }
+      if (!seqFile.containsDevice(deviceId)) {
+        return true;
+      }
+      DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(deviceId);
+
+      // If the unsealed file is unclosed, the file should not be selected only when its startTime
+      // is larger than endTime of unseqFile. Or, the selection should be terminated.
+      if (seqFile.unsealed() && unseqDeviceInfo.endTime >= seqDeviceInfo.startTime) {
+        return false;
+      }
+      if (unseqDeviceInfo.endTime <= seqDeviceInfo.endTime) {
+        // When scanning the target seqFiles for unseqFile, we traverse them one by one no matter
+        // whether it is selected or not. But we only add the unselected seqFiles to next split to
+        // avoid duplication selection
+        tmpSplit.addSeqFileIfNotSelected(seqFile);
+        seqFile.markAsSelected();
+        atLeastOneSeqFileSelected = true;
+        break;
+      } else if (unseqDeviceInfo.startTime <= seqDeviceInfo.endTime) {
+        tmpSplit.addSeqFileIfNotSelected(seqFile);
+        seqFile.markAsSelected();
+        atLeastOneSeqFileSelected = true;
+      } else {
+        if (!seqFile.unsealed()) {
+          previousSeqFile = seqFile;
+        }
+      }
+    }
+
+    // If: 1.some seq files are removed by deletion or TTL; 2. the unseq file is loaded; the
+    // unseq file may have larger timestamps and does not overlap with any seqFile.
+    //
+    // For example, previously we have two seqFiles, ranging [0, 100] [200, 300] respectively.
+    // Then the seqFile of [200, 300] is deleted and an unseqFile of [150, 180] is written/loaded.
+    // The unseqFile does not overlap with any seqFile and not seqFile has larger timestamp
+    // than it, thus the unseqFile cannot select any candidate seqFiles throughput the loop above.
+    //
+    // In this case, the unseqFile should be merged with the last seqFile if possible.
+    // TODO: let insertionCompaction handle this case
+
+    // That this judgement is true indicates `previousSeqFile` is unnecessary.
+    if (atLeastOneSeqFileSelected || previousSeqFile == null) {
+      return true;
+    }
+
+    // That this judgement is ture indicates the `previousSeqFile` is necessary, but it cannot be
+    // selected as a candidate so the selection should be terminated.
+    if (!previousSeqFile.isValidCandidate) {
+      return false;
+    }
+
+    // select the `previousSeqFile`
+    tmpSplit.addSeqFileIfNotSelected(previousSeqFile);
+    previousSeqFile.markAsSelected();
     return true;
   }
 
@@ -249,6 +260,7 @@ public class CrossSpaceCompactionCandidate {
   }
 
   public static class CrossCompactionTaskResourceSplit {
+
     @SuppressWarnings("squid:S1104")
     public TsFileResourceCandidate unseqFile;
 
