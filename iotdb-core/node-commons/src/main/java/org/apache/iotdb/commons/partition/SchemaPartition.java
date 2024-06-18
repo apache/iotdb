@@ -72,7 +72,7 @@ public class SchemaPartition extends Partition {
    *
    * <p>The device id shall be [table, seg1, ....]
    */
-  public TRegionReplicaSet getSchemaRegionReplicaSet(String database, IDeviceID deviceID){
+  public TRegionReplicaSet getSchemaRegionReplicaSet(String database, IDeviceID deviceID) {
     // todo implement this interface, @Potato
     throw new UnsupportedOperationException();
   }
