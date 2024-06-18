@@ -83,10 +83,10 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
             .equals(CONNECTOR_FORMAT_TS_FILE_VALUE);
 
     useLeaderCache =
-        parameters.getBooleanOrDefault(
+        !usingTsFileBatch
+            && parameters.getBooleanOrDefault(
                 Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
-                CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE)
-            && !usingTsFileBatch;
+                CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE);
 
     final int requestMaxDelayInSeconds;
     if (usingTsFileBatch) {
@@ -94,7 +94,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
           parameters.getIntOrDefault(
               Arrays.asList(CONNECTOR_IOTDB_BATCH_DELAY_KEY, SINK_IOTDB_BATCH_DELAY_KEY),
               CONNECTOR_IOTDB_TS_FILE_BATCH_DELAY_DEFAULT_VALUE);
-      this.requestMaxDelayInMs =
+      requestMaxDelayInMs =
           requestMaxDelayInSeconds < 0 ? Integer.MAX_VALUE : requestMaxDelayInSeconds * 1000;
       requestMaxBatchSizeInBytes =
           parameters.getLongOrDefault(
@@ -107,7 +107,7 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
           parameters.getIntOrDefault(
               Arrays.asList(CONNECTOR_IOTDB_BATCH_DELAY_KEY, SINK_IOTDB_BATCH_DELAY_KEY),
               CONNECTOR_IOTDB_PLAIN_BATCH_DELAY_DEFAULT_VALUE);
-      this.requestMaxDelayInMs =
+      requestMaxDelayInMs =
           requestMaxDelayInSeconds < 0 ? Integer.MAX_VALUE : requestMaxDelayInSeconds * 1000;
       requestMaxBatchSizeInBytes =
           parameters.getLongOrDefault(
