@@ -57,7 +57,7 @@ public final class SimpleGroupBy extends GroupingElement {
 
   @Override
   public List<? extends Node> getChildren() {
-    return columns;
+    return getExpressions();
   }
 
   @Override

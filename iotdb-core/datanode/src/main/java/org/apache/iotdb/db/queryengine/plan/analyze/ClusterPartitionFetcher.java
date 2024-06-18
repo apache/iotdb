@@ -293,6 +293,25 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     partitionCache.invalidAllCache();
   }
 
+  @Override
+  public SchemaPartition getOrCreateSchemaPartition(
+      String database, List<IDeviceID> deviceIDList, String userName) {
+    // todo implement related logic @Potato
+    throw new UnsupportedOperationException("Unsupported schema partition operation");
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
+    // todo implement related logic @Potato
+    throw new UnsupportedOperationException("Unsupported schema partition operation");
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database) {
+    // todo implement related logic @Potato
+    throw new UnsupportedOperationException("Unsupported schema partition operation");
+  }
+
   /** split data partition query param by database */
   private Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParam(
       List<DataPartitionQueryParam> dataPartitionQueryParams,

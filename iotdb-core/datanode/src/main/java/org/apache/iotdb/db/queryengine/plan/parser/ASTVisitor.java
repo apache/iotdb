@@ -2158,8 +2158,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
-  public long parseDateTimeFormat(String timestampStr, long currentTime) {
-    if (timestampStr == null || "".equals(timestampStr.trim())) {
+  public static long parseDateTimeFormat(String timestampStr, long currentTime, ZoneId zoneId) {
+    if (timestampStr == null || timestampStr.trim().isEmpty()) {
       throw new SemanticException("input timestamp cannot be empty");
     }
     if (timestampStr.equalsIgnoreCase(SqlConstant.NOW_FUNC)) {
@@ -3138,7 +3138,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx, long currentTime) {
     long time;
-    time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime);
+    time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if ("+".equals(ctx.getChild(i).getText())) {
         time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
@@ -3163,7 +3163,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.dateExpression() != null) {
       return parseDateExpression(ctx.dateExpression(), currentTime);
     } else {
-      return parseDateTimeFormat(ctx.datetimeLiteral().getText(), currentTime);
+      return parseDateTimeFormat(ctx.datetimeLiteral().getText(), currentTime, zoneId);
     }
   }
 
