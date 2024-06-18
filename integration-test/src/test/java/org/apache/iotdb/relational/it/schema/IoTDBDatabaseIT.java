@@ -117,42 +117,39 @@ public class IoTDBDatabaseIT {
       // create with strange name
       try {
         statement.execute("create database 1test");
-        fail("create database 1test shouldn't succeed because test1 doesn't exist");
+        fail(
+            "create database 1test shouldn't succeed because 1test is not a legal identifier; identifiers must not start with a digit; surround the identifier with double quotes");
       } catch (SQLException e) {
-        assertTrue(
-            e.getMessage(),
-            e.getMessage()
-                .endsWith(
-                    "identifiers must not start with a digit; surround the identifier with double quotes"));
+        assertTrue(e.getMessage(), e.getMessage().contains("mismatched input '1'"));
       }
 
       statement.execute("create database \"1test\"");
       statement.execute("use \"1test\"");
       statement.execute("drop database \"1test\"");
 
-      //      try {
-      //        statement.execute("create database 1");
-      //        fail("create database 1test shouldn't succeed because test1 doesn't exist");
-      //      } catch (SQLException e) {
-      //        // TODO add error msg assert
-      //      }
+      try {
+        statement.execute("create database 1");
+        fail("create database 1 shouldn't succeed because 1 is not a legal identifier");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage(), e.getMessage().contains("mismatched input '1'"));
+      }
       //
       //      // TODO fix it, should succeed
       //      statement.execute("create database \"1\"");
       //      statement.execute("use \"1\"");
       //      statement.execute("drop database \"1\"");
       //
-      //      try {
-      //        statement.execute("create database a.b");
-      //        fail("create database 1test shouldn't succeed because test1 doesn't exist");
-      //      } catch (SQLException e) {
-      //        // TODO add error msg assert
-      //      }
+      try {
+        statement.execute("create database a.b");
+        fail("create database a.b shouldn't succeed because a.b is not a legal identifier");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage(), e.getMessage().contains("mismatched input '.'"));
+      }
       //
       //      // TODO fix it, should succeed
-      //      statement.execute("create database \"a.b\"");
+      statement.execute("create database \"a.b\"");
       //      statement.execute("use \"a.b\"");
-      //      statement.execute("drop database \"a.b\"");
+      statement.execute("drop database \"a.b\"");
 
     } catch (SQLException e) {
       e.printStackTrace();
