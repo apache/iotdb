@@ -80,7 +80,7 @@ public class ConfigNodeInfo {
     try {
       onlineConfigNodes.clear();
       onlineConfigNodes.addAll(latestConfigNodes);
-      storeConfigNode();
+      storeConfigNodeList();
       long endTime = System.currentTimeMillis();
       logger.info(
           "Update ConfigNode Successfully: {}, which takes {} ms.",
@@ -100,15 +100,13 @@ public class ConfigNodeInfo {
    *
    * @throws IOException if properties deserialization or configNode list serialization failed.
    */
-  private void storeConfigNode() throws IOException {
+  public void storeConfigNodeList() throws IOException {
     if (!systemPropertiesHandler.fileExist()) {
       logger.info("System properties file not exist, not necessary to store ConfigNode list");
       return;
     }
-    Properties properties = systemPropertiesHandler.read();
-    properties.setProperty(
+    systemPropertiesHandler.put(
         CONFIG_NODE_LIST, NodeUrlUtils.convertTEndPointUrls(new ArrayList<>(onlineConfigNodes)));
-    systemPropertiesHandler.overwrite(properties);
   }
 
   public void loadConfigNodeList() {

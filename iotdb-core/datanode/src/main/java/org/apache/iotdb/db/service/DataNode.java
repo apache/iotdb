@@ -200,10 +200,9 @@ public class DataNode implements DataNodeMBean {
       pullAndCheckSystemConfigurations();
 
       if (isFirstStart) {
-        // Do pre-check before formal registration
         sendRegisterRequestToConfigNode(true);
-        // Generate system.properties
         IoTDBStartCheck.getInstance().generateOrOverwriteSystemPropertiesFile();
+        ConfigNodeInfo.getInstance().storeConfigNodeList();
         // Register this DataNode to the cluster when first start
         sendRegisterRequestToConfigNode(false);
       } else {
@@ -278,9 +277,7 @@ public class DataNode implements DataNodeMBean {
         configurationResp = configNodeClient.getSystemConfiguration();
         break;
       } catch (TException | ClientManagerException e) {
-        logger.warn(
-            "Cannot pull system configurations from ConfigNode-leader, because: {}",
-            e.getMessage());
+        logger.warn("Cannot pull system configurations from ConfigNode-leader", e);
         retry--;
       }
 
