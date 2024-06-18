@@ -66,6 +66,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -326,16 +327,16 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
   private void doTransfer(final PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
       throws IoTDBConnectionException, StatementExecutionException {
-
     final List<Tablet> tablets = pipeInsertNodeInsertionEvent.convertToTablets();
     for (int i = 0; i < tablets.size(); ++i) {
-      if (tablets.get(i).rowSize == 0) {
+      final Tablet tablet = tablets.get(i);
+      if (Objects.isNull(tablet) || tablet.rowSize == 0) {
         continue;
       }
       if (pipeInsertNodeInsertionEvent.isAligned(i)) {
-        sessionPool.insertAlignedTablet(tablets.get(i));
+        sessionPool.insertAlignedTablet(tablet);
       } else {
-        sessionPool.insertTablet(tablets.get(i));
+        sessionPool.insertTablet(tablet);
       }
     }
   }
