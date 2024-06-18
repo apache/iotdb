@@ -527,7 +527,7 @@ public class StatementGenerator {
     final long startTime = System.nanoTime();
     // construct create aligned timeseries statement
     CreateAlignedTimeSeriesStatement statement = new CreateAlignedTimeSeriesStatement();
-    statement.setDevicePath(new PartialPath(req.prefixPath));
+    statement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPath));
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Integer dataType : req.dataTypes) {
       dataTypes.add(TSDataType.deserialize(dataType.byteValue()));
