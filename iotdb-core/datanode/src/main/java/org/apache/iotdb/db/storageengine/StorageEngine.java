@@ -54,7 +54,7 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileManager;
 import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileRateLimiter;
-import org.apache.iotdb.db.queryengine.metric.LoadTsFileCostMetricsSet;
+import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
@@ -866,6 +866,8 @@ public class StorageEngine implements IService {
       return status;
     }
 
+    LoadTsFileCostMetricsSet.getInstance().recordDiskIO(pieceNode.getDataSize());
+
     return RpcUtils.SUCCESS_STATUS;
   }
 
@@ -909,7 +911,7 @@ public class StorageEngine implements IService {
       status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     } finally {
-      LOAD_TSFILE_COST_METRICS_SET.recordCost(
+      LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
           LoadTsFileCostMetricsSet.SECOND_PHASE, System.nanoTime() - startTime);
     }
 

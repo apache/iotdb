@@ -50,7 +50,7 @@ import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
 import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
 import org.apache.iotdb.db.queryengine.load.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.queryengine.load.LoadTsFileMemoryManager;
-import org.apache.iotdb.db.queryengine.metric.LoadTsFileCostMetricsSet;
+import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
@@ -258,7 +258,7 @@ public class LoadTsFileScheduler implements IScheduler {
     } finally {
       tsFileDataManager.clear();
 
-      LOAD_TSFILE_COST_METRICS_SET.recordCost(
+      LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
           LoadTsFileCostMetricsSet.FIRST_PHASE, System.nanoTime() - startTime);
     }
     return true;
@@ -414,7 +414,7 @@ public class LoadTsFileScheduler implements IScheduler {
       stateMachine.transitionToFailed(e.getFailureStatus());
       return false;
     } finally {
-      LOAD_TSFILE_COST_METRICS_SET.recordCost(
+      LOAD_TSFILE_COST_METRICS_SET.recordPhaseTimeCost(
           LoadTsFileCostMetricsSet.SECOND_PHASE, System.nanoTime() - startTime);
     }
 

@@ -17,13 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.metric;
+package org.apache.iotdb.db.queryengine.metric.load;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -44,8 +46,9 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
   private Timer analyzerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer splitTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer writeTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Rate diskIORate = DoNothingMetricManager.DO_NOTHING_RATE;
 
-  public void recordCost(String stage, long costTimeInNanos) {
+  public void recordPhaseTimeCost(String stage, long costTimeInNanos) {
     switch (stage) {
       case ANALYSIS:
         analyzerTimer.updateNanos(costTimeInNanos);
@@ -59,6 +62,10 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
       default:
         throw new UnsupportedOperationException("Unsupported stage: " + stage);
     }
+  }
+
+  public void recordDiskIO(long bytes) {
+    diskIORate.mark(bytes);
   }
 
   @Override
@@ -78,6 +85,13 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             SECOND_PHASE);
+
+    diskIORate =
+        metricService.getOrCreateRate(
+            Metric.LOAD_DISK_IO.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            "DataNode " + IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
   }
 
   @Override
@@ -90,6 +104,12 @@ public class LoadTsFileCostMetricsSet implements IMetricSet {
                     Metric.LOAD_TIME_COST.toString(),
                     Tag.NAME.toString(),
                     stage));
+
+    metricService.remove(
+        MetricType.RATE,
+        Metric.LOAD_DISK_IO.toString(),
+        Tag.NAME.toString(),
+        String.valueOf(IoTDBDescriptor.getInstance().getConfig().getDataNodeId()));
   }
 
   public static LoadTsFileCostMetricsSet getInstance() {

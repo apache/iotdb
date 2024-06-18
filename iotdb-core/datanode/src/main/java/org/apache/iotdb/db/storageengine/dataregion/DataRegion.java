@@ -49,6 +49,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInser
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
+import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -3009,6 +3010,9 @@ public class DataRegion implements IDataRegionForQuery {
     tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
 
     tsFileManager.add(tsFileResource, false);
+
+    // metrics
+    LoadTsFileCostMetricsSet.getInstance().recordDiskIO(tsFileResource.getTsFile().length());
 
     return true;
   }
