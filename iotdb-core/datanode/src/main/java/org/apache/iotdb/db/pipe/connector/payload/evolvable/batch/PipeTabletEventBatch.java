@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
+package org.apache.iotdb.db.pipe.connector.payload.evolvable.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
@@ -59,6 +59,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       if (((EnrichedEvent) event)
           .increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName())) {
         events.add((EnrichedEvent) event);
+
         constructBatch(event);
 
         if (firstEventProcessingTime == Long.MIN_VALUE) {
@@ -70,7 +71,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       }
     }
 
-    return getTotalSize() >= getMaxBatchSizeInBytes()
+    return getTotalBufferSize() >= getMaxBatchSizeInBytes()
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
@@ -93,7 +94,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     return new ArrayList<>(events);
   }
 
-  protected abstract long getTotalSize();
+  protected abstract long getTotalBufferSize();
 
   protected abstract long getMaxBatchSizeInBytes();
 

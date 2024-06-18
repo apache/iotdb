@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
+package org.apache.iotdb.db.pipe.connector.payload.evolvable.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
@@ -98,6 +98,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   @Override
   public synchronized void onSuccess() {
     super.onSuccess();
+
     binaryBuffers.clear();
     insertNodeBuffers.clear();
     tabletBuffers.clear();
@@ -117,7 +118,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   }
 
   @Override
-  protected long getTotalSize() {
+  protected long getTotalBufferSize() {
     return totalBufferSize;
   }
 
@@ -163,6 +164,7 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   @Override
   public synchronized void close() {
     super.close();
+
     allocatedMemoryBlock.close();
   }
 }
