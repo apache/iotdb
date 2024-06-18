@@ -1030,11 +1030,13 @@ public class ClusterSchemaTreeTest {
         new MeasurementSchema("s1", TSDataType.INT32),
         null,
         null,
+        null,
         false);
     Assert.assertFalse(schemaTree.hasLogicalViewMeasurement());
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.db.view.s1"),
         new LogicalViewSchema("s1", new TimeSeriesViewOperand("root.db.d.s1")),
+        null,
         null,
         null,
         false);

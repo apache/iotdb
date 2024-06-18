@@ -34,7 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.plan.statement.internal.SchemaFetchStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.DeviceSchemaFetchStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -107,7 +108,9 @@ class ClusterSchemaFetchExecutor {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
     }
     return executeSchemaFetchQuery(
-        new SchemaFetchStatement(patternTree, templateMap, withTags, withTemplate), context);
+        new SeriesSchemaFetchStatement(
+            patternTree, templateMap, withTags, false, withTemplate, false),
+        context);
   }
 
   /**
@@ -125,13 +128,35 @@ class ClusterSchemaFetchExecutor {
       MPPQueryContext context) {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(
-            new SchemaFetchStatement(
-                rawPatternTree, analyzeTemplate(fullPathList), false, withTemplate),
+            new SeriesSchemaFetchStatement(
+                rawPatternTree,
+                analyzeTemplate(fullPathList),
+                false,
+                withTemplate,
+                withTemplate,
+                withTemplate),
             context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);
     }
     return schemaTree;
+  }
+
+  ClusterSchemaTree fetchDeviceLevelRawSchema(
+      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+    return executeSchemaFetchQuery(
+        new DeviceSchemaFetchStatement(patternTree, authorityScope), context);
+  }
+
+  ClusterSchemaTree fetchMeasurementLevelRawSchema(
+      PathPatternTree patternTree, MPPQueryContext context) {
+    Map<Integer, Template> templateMap = new HashMap<>();
+    List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
+    for (PartialPath pattern : pathPatternList) {
+      templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
+    }
+    return executeSchemaFetchQuery(
+        new SeriesSchemaFetchStatement(patternTree, templateMap, true, true, false, true), context);
   }
 
   ClusterSchemaTree fetchSchemaOfOneDevice(
@@ -189,8 +214,13 @@ class ClusterSchemaFetchExecutor {
       PathPatternTree patternTree, MPPQueryContext context) {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(
-            new SchemaFetchStatement(
-                patternTree, analyzeTemplate(patternTree.getAllPathPatterns()), false, true),
+            new SeriesSchemaFetchStatement(
+                patternTree,
+                analyzeTemplate(patternTree.getAllPathPatterns()),
+                false,
+                false,
+                true,
+                false),
             context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);
@@ -207,11 +237,11 @@ class ClusterSchemaFetchExecutor {
   }
 
   private ClusterSchemaTree executeSchemaFetchQuery(
-      SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
+      Statement fetchStatement, MPPQueryContext context) {
     long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
     try {
-      ExecutionResult executionResult = executionStatement(queryId, schemaFetchStatement, context);
+      ExecutionResult executionResult = executionStatement(queryId, fetchStatement, context);
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException(
             String.format(

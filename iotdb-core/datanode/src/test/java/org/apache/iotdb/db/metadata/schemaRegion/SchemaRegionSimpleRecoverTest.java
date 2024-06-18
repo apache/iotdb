@@ -84,15 +84,25 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
             new PartialPath("root.sg.d1"), 2, templateId),
         template);
     ClusterSchemaTree schemaTree =
-        schemaRegion.fetchSchema(
-            ALL_MATCH_SCOPE, Collections.singletonMap(templateId, template), true, true);
+        schemaRegion.fetchSeriesSchema(
+            ALL_MATCH_SCOPE,
+            Collections.singletonMap(templateId, template),
+            true,
+            false,
+            true,
+            false);
     Assert.assertTrue(schemaTree.getAllDevices().get(0).isAligned());
 
     simulateRestart();
     schemaRegion = getSchemaRegion("root.sg", 0);
     schemaTree =
-        schemaRegion.fetchSchema(
-            ALL_MATCH_SCOPE, Collections.singletonMap(templateId, template), true, true);
+        schemaRegion.fetchSeriesSchema(
+            ALL_MATCH_SCOPE,
+            Collections.singletonMap(templateId, template),
+            true,
+            false,
+            true,
+            false);
     Assert.assertTrue(schemaTree.getAllDevices().get(0).isAligned());
   }
 }

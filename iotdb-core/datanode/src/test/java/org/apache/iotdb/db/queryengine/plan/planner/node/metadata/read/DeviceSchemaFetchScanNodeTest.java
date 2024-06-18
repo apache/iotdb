@@ -24,40 +24,32 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SeriesSchemaFetchScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DeviceSchemaFetchScanNode;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Collections;
 
-public class SchemaFetchMergeNodeTest {
+public class DeviceSchemaFetchScanNodeTest {
 
   @Test
   public void testSerialization() throws IllegalPathException {
-    SchemaFetchMergeNode schemaFetchMergeNode =
-        new SchemaFetchMergeNode(new PlanNodeId("0"), Arrays.asList("root.db1", "root.db2"));
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.sg.**.*"));
-    SeriesSchemaFetchScanNode seriesSchemaFetchScanNode =
-        new SeriesSchemaFetchScanNode(
-            new PlanNodeId("0"),
-            new PartialPath("root.sg"),
-            patternTree,
-            Collections.emptyMap(),
-            true,
-            false,
-            true,
-            false);
-    schemaFetchMergeNode.addChild(seriesSchemaFetchScanNode);
+    DeviceSchemaFetchScanNode deviceSchemaFetchScanNodeTest =
+        new DeviceSchemaFetchScanNode(
+            new PlanNodeId("0"), new PartialPath("root.sg"), patternTree, patternTree);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
-    schemaFetchMergeNode.serialize(byteBuffer);
+    deviceSchemaFetchScanNodeTest.serialize(byteBuffer);
     byteBuffer.flip();
-    SchemaFetchMergeNode recoveredNode =
-        (SchemaFetchMergeNode) PlanNodeType.deserialize(byteBuffer);
-    Assert.assertEquals(schemaFetchMergeNode, recoveredNode);
+    DeviceSchemaFetchScanNode recoveredNode =
+        (DeviceSchemaFetchScanNode) PlanNodeType.deserialize(byteBuffer);
+    Assert.assertEquals("root.sg", recoveredNode.getStorageGroup().getFullPath());
+    Assert.assertEquals(
+        "root.sg.**.*", recoveredNode.getPatternTree().getAllPathPatterns().get(0).getFullPath());
+    Assert.assertEquals(
+        "root.sg.**.*",
+        recoveredNode.getAuthorityScope().getAllPathPatterns().get(0).getFullPath());
   }
 }
