@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 
+import java.time.ZoneId;
 import java.util.Set;
 
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
@@ -40,7 +41,7 @@ public final class ReservedIdentifiers {
 
   public static boolean reserved(String name) {
     try {
-      return !(PARSER.createExpression(name) instanceof Identifier);
+      return !(PARSER.createExpression(name, ZoneId.systemDefault()) instanceof Identifier);
     } catch (ParsingException ignored) {
       return true;
     }

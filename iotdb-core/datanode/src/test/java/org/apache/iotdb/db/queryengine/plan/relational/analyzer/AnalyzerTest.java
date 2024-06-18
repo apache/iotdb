@@ -485,7 +485,7 @@ public class AnalyzerTest {
   public static Analysis analyzeSQL(String sql, Metadata metadata) {
     try {
       SqlParser sqlParser = new SqlParser();
-      Statement statement = sqlParser.createStatement(sql);
+      Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
       SessionInfo session =
           new SessionInfo(
               0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
