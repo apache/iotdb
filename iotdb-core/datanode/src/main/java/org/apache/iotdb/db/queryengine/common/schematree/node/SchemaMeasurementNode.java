@@ -36,8 +36,8 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
 
   private String alias;
   private IMeasurementSchema schema;
-
   private Map<String, String> tagMap;
+  private Map<String, String> attributeMap;
 
   public SchemaMeasurementNode(String name, IMeasurementSchema schema) {
     super(name);
@@ -80,6 +80,15 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
   @Override
   public Map<String, String> getTagMap() {
     return tagMap;
+  }
+
+  @Override
+  public Map<String, String> getAttributeMap() {
+    return attributeMap;
+  }
+
+  public void setAttributeMap(Map<String, String> attributeMap) {
+    this.attributeMap = attributeMap;
   }
 
   @Override
@@ -144,6 +153,7 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
     schema.serializeTo(outputStream);
 
     ReadWriteIOUtils.write(tagMap, outputStream);
+    ReadWriteIOUtils.write(attributeMap, outputStream);
   }
 
   public static SchemaMeasurementNode deserialize(InputStream inputStream) throws IOException {
@@ -161,10 +171,12 @@ public class SchemaMeasurementNode extends SchemaNode implements IMeasurementSch
     }
 
     Map<String, String> tagMap = ReadWriteIOUtils.readMap(inputStream);
+    Map<String, String> attributeMap = ReadWriteIOUtils.readMap(inputStream);
 
     SchemaMeasurementNode measurementNode = new SchemaMeasurementNode(name, schema);
     measurementNode.setAlias(alias);
     measurementNode.setTagMap(tagMap);
+    measurementNode.setAttributeMap(attributeMap);
     return measurementNode;
   }
 }
