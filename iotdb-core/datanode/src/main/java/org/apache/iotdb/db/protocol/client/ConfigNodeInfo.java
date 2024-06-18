@@ -37,7 +37,6 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ConfigNodeInfo {
-
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeInfo.class);
 
   private static final String CONFIG_NODE_LIST = "config_node_list";

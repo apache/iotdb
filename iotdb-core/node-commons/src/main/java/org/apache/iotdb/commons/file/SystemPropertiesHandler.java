@@ -39,7 +39,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SystemPropertiesHandler {
-  private static Logger LOGGER = LoggerFactory.getLogger(SystemPropertiesHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SystemPropertiesHandler.class);
 
   private final File formalFile;
   private final File tmpFile;
@@ -177,8 +177,8 @@ public class SystemPropertiesHandler {
 
   public static SystemPropertiesHandler getInstance() {
     if (Holder.INSTANCE == null) {
-      throw new RuntimeException(
-          "You should call SystemPropertiesFileHandler.init before getInstance");
+      LOGGER.warn(
+          "The SystemPropertiesHandler's instance has not been inited yet, call getInstance may cause NullPointerException");
     }
     return Holder.INSTANCE;
   }
