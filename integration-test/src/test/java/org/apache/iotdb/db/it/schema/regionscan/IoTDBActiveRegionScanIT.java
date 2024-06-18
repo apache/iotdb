@@ -17,18 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.it.regionscan;
+package org.apache.iotdb.db.it.schema.regionscan;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -45,9 +44,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBActiveRegionScanIT {
+public class IoTDBActiveRegionScanIT extends AbstractSchemaIT {
   // Data can be viewed in
   // https://docs.google.com/spreadsheets/d/11tNRIaHmNdFWc0RC4yAloO6JJbmo9S5qxwAqWxeVY6c/edit#gid=0
   public static final String[] common_insert_sqls =
@@ -144,6 +142,10 @@ public class IoTDBActiveRegionScanIT {
       };
   public static final String COUNT_TIMESERIES_COLUMN_NAMES = "count(timeseries)";
   public static final String COUNT_DEVICES_COLUMN_NAMES = "count(devices)";
+
+  public IoTDBActiveRegionScanIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
 
   public static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();

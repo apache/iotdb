@@ -109,7 +109,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
       builder
           .getColumnBuilder(2)
           .writeBinary(new Binary(String.valueOf(device.isAligned()), TSFileConfig.STRING_CHARSET));
-      if (templateId != -1) {
+      if (templateId != SchemaConstant.NON_TEMPLATE) {
         builder
             .getColumnBuilder(3)
             .writeBinary(
@@ -125,7 +125,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
       builder
           .getColumnBuilder(1)
           .writeBinary(new Binary(String.valueOf(device.isAligned()), TSFileConfig.STRING_CHARSET));
-      if (templateId != -1) {
+      if (templateId != SchemaConstant.NON_TEMPLATE) {
         builder
             .getColumnBuilder(2)
             .writeBinary(

@@ -70,6 +70,11 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
     return tagMap;
   }
 
+  @Override
+  public Map<String, String> getAttributeMap() {
+    return null;
+  }
+
   public TSDataType getTsDataType() {
     return iMeasurementSchema.getType();
   }

@@ -17,21 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.it.regionscan;
+package org.apache.iotdb.db.it.schema.regionscan;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
-@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBActiveRegionScanWithModsIT2 extends IoTDBActiveRegionScanWithModsIT {
+  public IoTDBActiveRegionScanWithModsIT2(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv()

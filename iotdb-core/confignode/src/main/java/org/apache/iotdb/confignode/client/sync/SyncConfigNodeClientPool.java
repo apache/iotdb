@@ -92,6 +92,8 @@ public class SyncConfigNodeClientPool {
             return client.stopConfigNode((TConfigNodeLocation) req);
           case SET_CONFIGURATION:
             return client.setConfiguration((TSetConfigurationReq) req);
+          case SHOW_CONFIGURATION:
+            return client.showConfiguration((int) req);
           case SUBMIT_TEST_CONNECTION_TASK:
             return client.submitTestConnectionTask((TNodeLocations) req);
           case TEST_CONNECTION:

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
@@ -101,7 +102,7 @@ public class LocalExecutionPlanner {
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
 
     instanceContext.setSourcePaths(collectSourcePaths(context));
-    instanceContext.setDevicePathsToAligned(collectDevicePathsToAligned(context));
+    instanceContext.setDevicePathsToContext(collectDevicePathsToContext(context));
     instanceContext.setQueryDataSourceType(
         getQueryDataSourceType((DataDriverContext) context.getDriverContext()));
 
@@ -194,11 +195,12 @@ public class LocalExecutionPlanner {
     return dataDriverContext.getQueryDataSourceType().orElse(QueryDataSourceType.SERIES_SCAN);
   }
 
-  private Map<IDeviceID, Boolean> collectDevicePathsToAligned(LocalExecutionPlanContext context) {
+  private Map<IDeviceID, DeviceContext> collectDevicePathsToContext(
+      LocalExecutionPlanContext context) {
     DataDriverContext dataDriverContext = (DataDriverContext) context.getDriverContext();
-    Map<IDeviceID, Boolean> deviceToAlignedMap = dataDriverContext.getDeviceIDToAligned();
-    dataDriverContext.clearDeviceIDToAligned();
-    return deviceToAlignedMap;
+    Map<IDeviceID, DeviceContext> deviceContextMap = dataDriverContext.getDeviceIDToContext();
+    dataDriverContext.clearDeviceIDToContext();
+    return deviceContextMap;
   }
 
   private List<PartialPath> collectSourcePaths(LocalExecutionPlanContext context) {
