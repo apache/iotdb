@@ -150,7 +150,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show databases",
-          "Database,TTL,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           // Receiver's SchemaReplicationFactor/DataReplicationFactor shall be 3/2 regardless of the
           // sender
           Collections.singleton("root.ln,3600000,3,2,604800000,"));
@@ -245,7 +245,7 @@ public class IoTDBPipeMetaHistoricalIT extends AbstractPipeDualManualIT {
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
           "show databases",
-          "Database,TTL,SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
+          "Database,TTL(ms),SchemaReplicationFactor,DataReplicationFactor,TimePartitionInterval,",
           Collections.emptySet());
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv, "select * from root.**", "Time", Collections.emptySet());
