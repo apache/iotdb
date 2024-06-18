@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.file.SystemPropertiesFileHandler;
+import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 
 import org.slf4j.Logger;
@@ -43,8 +43,8 @@ public class SystemPropertiesUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SystemPropertiesUtils.class);
 
-  private static SystemPropertiesFileHandler systemPropertiesHandler =
-      SystemPropertiesFileHandler.getInstance();
+  private static SystemPropertiesHandler systemPropertiesHandler =
+      SystemPropertiesHandler.getInstance();
 
   private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
@@ -66,7 +66,7 @@ public class SystemPropertiesUtils {
 
   // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
-    systemPropertiesHandler = SystemPropertiesFileHandler.getInstance();
+    systemPropertiesHandler = SystemPropertiesHandler.getInstance();
   }
 
   /**

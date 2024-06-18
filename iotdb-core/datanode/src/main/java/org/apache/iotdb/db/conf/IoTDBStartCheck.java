@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.file.SystemPropertiesFileHandler;
+import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
@@ -58,7 +58,7 @@ public class IoTDBStartCheck {
   private Properties properties = new Properties();
 
   private final Map<String, Supplier<String>> systemProperties = new HashMap<>();
-  private final SystemPropertiesFileHandler systemPropertiesHandler;
+  private final SystemPropertiesHandler systemPropertiesHandler;
 
   // region params need checking, determined when first start
   private static final String SYSTEM_PROPERTIES_STRING = "System properties:";
@@ -139,7 +139,7 @@ public class IoTDBStartCheck {
       }
     }
 
-    systemPropertiesHandler = SystemPropertiesFileHandler.getInstance();
+    systemPropertiesHandler = SystemPropertiesHandler.getInstance();
 
     systemProperties.put(IOTDB_VERSION_STRING, () -> IoTDBConstant.VERSION);
     systemProperties.put(COMMIT_ID_STRING, () -> IoTDBConstant.BUILD_INFO);
@@ -186,7 +186,7 @@ public class IoTDBStartCheck {
    *
    * @throws IOException If copy fail or delete fail
    */
-  public void checkOldSystemConfig() throws IOException {
+  public static void checkOldSystemConfig() throws IOException {
     File oldPropertiesFile =
         SystemFileFactory.INSTANCE.getFile(
             IoTDBStartCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);

@@ -33,7 +33,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.file.SystemPropertiesFileHandler;
+import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.service.JMXService;
@@ -165,6 +165,11 @@ public class DataNode implements DataNodeMBean {
     // We do not init anything here, so that we can re-initialize the instance in IT.
   }
 
+  // TODO: This needs removal of statics ...
+  public static void reinitializeStatics() {
+    registerManager = new RegisterManager();
+  }
+
   private static RegisterManager registerManager = new RegisterManager();
 
   public static DataNode getInstance() {
@@ -234,9 +239,9 @@ public class DataNode implements DataNodeMBean {
   private boolean prepareDataNode() throws StartupException, IOException {
     long startTime = System.currentTimeMillis();
 
-    SystemPropertiesFileHandler.init(config.getSystemDir() + File.separator + PROPERTIES_FILE_NAME);
-    // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
-    IoTDBStartCheck.getInstance().checkOldSystemConfig();
+    // Init system properties handler
+    IoTDBStartCheck.checkOldSystemConfig();
+    SystemPropertiesHandler.init(config.getSystemDir() + File.separator + PROPERTIES_FILE_NAME);
 
     // Set this node
     thisNode.setIp(config.getInternalAddress());
@@ -247,7 +252,7 @@ public class DataNode implements DataNodeMBean {
     checks.startUpCheck();
     long endTime = System.currentTimeMillis();
     logger.info("The DataNode is prepared successfully, which takes {} ms", (endTime - startTime));
-    return SystemPropertiesFileHandler.getInstance().isFirstStart();
+    return SystemPropertiesHandler.getInstance().isFirstStart();
   }
 
   /**
@@ -265,7 +270,7 @@ public class DataNode implements DataNodeMBean {
     logger.info("Pulling system configurations from the ConfigNode-leader...");
     long startTime = System.currentTimeMillis();
     /* Pull system configurations */
-    int retry = 3;
+    int retry = DEFAULT_RETRY;
     TSystemConfigurationResp configurationResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
@@ -393,7 +398,7 @@ public class DataNode implements DataNodeMBean {
     logger.info("Sending register request to ConfigNode-leader...");
     long startTime = System.currentTimeMillis();
     /* Send register request */
-    int retry = 5;
+    int retry = DEFAULT_RETRY;
     TDataNodeRegisterReq req = new TDataNodeRegisterReq();
     req.setPreCheck(isPreCheck);
     req.setDataNodeConfiguration(generateDataNodeConfiguration());

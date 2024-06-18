@@ -22,7 +22,7 @@ package org.apache.iotdb.db.protocol.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.file.SystemPropertiesFileHandler;
+import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 
 import org.slf4j.Logger;
@@ -49,7 +49,7 @@ public class ConfigNodeInfo {
 
   public static final ConfigRegionId CONFIG_REGION_ID = new ConfigRegionId(0);
 
-  SystemPropertiesFileHandler systemPropertiesHandler = SystemPropertiesFileHandler.getInstance();
+  SystemPropertiesHandler systemPropertiesHandler = SystemPropertiesHandler.getInstance();
 
   private ConfigNodeInfo() {
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();

@@ -38,23 +38,30 @@ import java.util.Properties;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class SystemPropertiesFileHandler {
-  private static Logger LOGGER = LoggerFactory.getLogger(SystemPropertiesFileHandler.class);
+public class SystemPropertiesHandler {
+  private static Logger LOGGER = LoggerFactory.getLogger(SystemPropertiesHandler.class);
 
   private final File formalFile;
   private final File tmpFile;
   //    private ImmutableProperties cache;
   ReadWriteLock lock = new ReentrantReadWriteLock();
 
-  private SystemPropertiesFileHandler(String filePath) {
+  private SystemPropertiesHandler(String filePath) {
     this.formalFile = SystemFileFactory.INSTANCE.getFile(filePath);
     this.tmpFile = SystemFileFactory.INSTANCE.getFile(filePath + ".tmp");
   }
 
+  /**
+   * Put key and value into properties
+   *
+   * @param keyOrValue [key0, value0, key1, value1, ... ]
+   */
   public void put(Object... keyOrValue) throws IOException {
     if (keyOrValue.length % 2 != 0) {
       throw new IllegalArgumentException(
-          "Length of parameters should be evenly divided by 2, but actually they are: "
+          "Length of parameters should be evenly divided by 2, but the actual length is "
+              + keyOrValue.length
+              + " : "
               + Arrays.toString(keyOrValue));
     }
     try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.writeLock());
@@ -164,11 +171,11 @@ public class SystemPropertiesFileHandler {
   }
 
   public static void init(String filePath) throws StartupException {
-    Holder.INSTANCE = new SystemPropertiesFileHandler(filePath);
+    Holder.INSTANCE = new SystemPropertiesHandler(filePath);
     Holder.INSTANCE.recover();
   }
 
-  public static SystemPropertiesFileHandler getInstance() {
+  public static SystemPropertiesHandler getInstance() {
     if (Holder.INSTANCE == null) {
       throw new RuntimeException(
           "You should call SystemPropertiesFileHandler.init before getInstance");
@@ -177,6 +184,6 @@ public class SystemPropertiesFileHandler {
   }
 
   private static class Holder {
-    private static SystemPropertiesFileHandler INSTANCE = null;
+    private static SystemPropertiesHandler INSTANCE = null;
   }
 }

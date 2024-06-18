@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
@@ -46,7 +48,8 @@ public class NodeInfoTest {
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "snapshot");
 
   @BeforeClass
-  public static void setup() {
+  public static void setup() throws StartupException {
+    SystemPropertiesHandler.init("");
     nodeInfo = new NodeInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
