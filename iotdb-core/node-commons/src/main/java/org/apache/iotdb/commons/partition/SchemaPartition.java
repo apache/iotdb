@@ -64,8 +64,16 @@ public class SchemaPartition extends Partition {
   }
 
   // table model usage
+
+  /**
+   * For table model usage.
+   *
+   * <p>The database shall start with "root.". Concat this to a user-provided db name if necessary.
+   *
+   * <p>The device id shall be [table, seg1, ....]
+   */
   public TRegionReplicaSet getSchemaRegionReplicaSet(String database, IDeviceID deviceID){
-    // todo implement this interface, deviceId starts with table name like [table, seg1, seg2, ...]
+    // todo implement this interface, @Potato
     throw new UnsupportedOperationException();
   }
 
