@@ -139,7 +139,7 @@ public class IoTDBStartCheck {
       }
     }
 
-    systemPropertiesHandler = SystemPropertiesHandler.getInstance();
+    systemPropertiesHandler = DataNodeSystemPropertiesHandler.getInstance();
 
     systemProperties.put(IOTDB_VERSION_STRING, () -> IoTDBConstant.VERSION);
     systemProperties.put(COMMIT_ID_STRING, () -> IoTDBConstant.BUILD_INFO);

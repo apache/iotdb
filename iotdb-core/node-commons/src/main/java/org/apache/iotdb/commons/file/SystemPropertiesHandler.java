@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.file;
 
-import org.apache.iotdb.commons.exception.StartupException;
-
 import org.apache.ratis.util.AutoCloseableLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,15 +36,14 @@ import java.util.Properties;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class SystemPropertiesHandler {
+public abstract class SystemPropertiesHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(SystemPropertiesHandler.class);
 
-  private final File formalFile;
-  private final File tmpFile;
-  //    private ImmutableProperties cache;
+  private File formalFile;
+  private File tmpFile;
   ReadWriteLock lock = new ReentrantReadWriteLock();
 
-  private SystemPropertiesHandler(String filePath) {
+  public SystemPropertiesHandler(String filePath) {
     this.formalFile = SystemFileFactory.INSTANCE.getFile(filePath);
     this.tmpFile = SystemFileFactory.INSTANCE.getFile(filePath + ".tmp");
   }
@@ -116,7 +113,7 @@ public class SystemPropertiesHandler {
     return !fileExist();
   }
 
-  private void recover() throws StartupException {
+  protected void recover() {
     try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.writeLock())) {
       if (formalFile.exists() && !tmpFile.exists()) {
         // No need to recover
@@ -139,9 +136,9 @@ public class SystemPropertiesHandler {
         return;
       }
     } catch (IOException e) {
-      throw new StartupException(e);
+      throw new RuntimeException(e);
     }
-    throw new StartupException("Should never touch here");
+    throw new UnsupportedOperationException("Should never touch here");
   }
 
   private void writeImpl(Properties properties, File file) throws IOException {
@@ -170,20 +167,8 @@ public class SystemPropertiesHandler {
     }
   }
 
-  public static void init(String filePath) throws StartupException {
-    Holder.INSTANCE = new SystemPropertiesHandler(filePath);
-    Holder.INSTANCE.recover();
-  }
-
-  public static SystemPropertiesHandler getInstance() {
-    if (Holder.INSTANCE == null) {
-      LOGGER.warn(
-          "The SystemPropertiesHandler's instance has not been inited yet, call getInstance may cause NullPointerException");
-    }
-    return Holder.INSTANCE;
-  }
-
-  private static class Holder {
-    private static SystemPropertiesHandler INSTANCE = null;
+  public void resetFilePath(String filePath) {
+    this.formalFile = SystemFileFactory.INSTANCE.getFile(filePath);
+    this.tmpFile = SystemFileFactory.INSTANCE.getFile(filePath + ".tmp");
   }
 }

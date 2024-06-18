@@ -32,6 +32,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class DataNodeRegisterResp implements DataSet {
 
@@ -39,7 +40,6 @@ public class DataNodeRegisterResp implements DataSet {
   private List<TConfigNodeLocation> configNodeList;
   private Integer dataNodeId;
   private TRuntimeConfiguration runtimeConfiguration;
-  private boolean preCheck = false;
 
   public DataNodeRegisterResp() {
     this.dataNodeId = null;
@@ -65,10 +65,6 @@ public class DataNodeRegisterResp implements DataSet {
     this.runtimeConfiguration = runtimeConfiguration;
   }
 
-  public void setPreCheck(Boolean preCheck) {
-    this.preCheck = preCheck;
-  }
-
   public static byte[] convertAllTTLInformation(Map<String, Long> allTTLInformation) {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
@@ -88,9 +84,9 @@ public class DataNodeRegisterResp implements DataSet {
     resp.setStatus(status);
     resp.setConfigNodeList(configNodeList);
 
-    if (!preCheck && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.setDataNodeId(dataNodeId);
-      resp.setRuntimeConfiguration(runtimeConfiguration);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      Optional.ofNullable(dataNodeId).ifPresent(resp::setDataNodeId);
+      Optional.ofNullable(runtimeConfiguration).ifPresent(resp::setRuntimeConfiguration);
     }
 
     return resp;

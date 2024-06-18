@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +45,7 @@ public class SystemPropertiesUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(SystemPropertiesUtils.class);
 
   private static SystemPropertiesHandler systemPropertiesHandler =
-      SystemPropertiesHandler.getInstance();
+      ConfigNodeSystemPropertiesHandler.getInstance();
 
   private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
@@ -66,7 +67,10 @@ public class SystemPropertiesUtils {
 
   // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
-    systemPropertiesHandler = SystemPropertiesHandler.getInstance();
+    systemPropertiesHandler.resetFilePath(
+        ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
+            + File.separator
+            + ConfigNodeConstant.SYSTEM_FILE_NAME);
   }
 
   /**

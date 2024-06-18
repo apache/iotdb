@@ -412,7 +412,6 @@ public class ConfigManager implements IManager {
       }
     }
     DataNodeRegisterResp resp = new DataNodeRegisterResp();
-    resp.setPreCheck(req.isPreCheck());
     resp.setStatus(status);
     resp.setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
     return resp;
@@ -1218,7 +1217,7 @@ public class ConfigManager implements IManager {
                 req.getClusterParameters().getClusterName(),
                 req.getConfigNodeLocation(),
                 this);
-        if (!req.isPreCheck() && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return nodeManager.registerConfigNode(req);
         }
       }

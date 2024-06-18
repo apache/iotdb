@@ -205,9 +205,7 @@ public class ConfigNode implements ConfigNodeMBean {
       // We set up Non-Seed ConfigNode's RPC service before sending the register request
       // in order to facilitate the scheduling of capacity expansion process in ConfigNode-leader
       setUpRPCService();
-      sendRegisterConfigNodeRequest(true);
-      SystemPropertiesUtils.storeSystemParameters();
-      sendRegisterConfigNodeRequest(false);
+      sendRegisterConfigNodeRequest();
       // The initial startup of Non-Seed-ConfigNode is not yet finished,
       // we should wait for leader's scheduling
       LOGGER.info(CONFIGURATION, CONF.getConfigMessage());
@@ -321,14 +319,11 @@ public class ConfigNode implements ConfigNodeMBean {
    * @throws StartupException if register failed.
    * @throws IOException if {@link ConsensusManager} init failed.
    */
-  private void sendRegisterConfigNodeRequest(boolean isPreCheck)
-      throws StartupException, IOException {
+  private void sendRegisterConfigNodeRequest() throws StartupException, IOException {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
             configManager.getClusterParameters(),
             CONF.generateLocalConfigNodeLocationWithSpecifiedNodeId(INIT_NON_SEED_CONFIG_NODE_ID));
-
-    req.setPreCheck(isPreCheck);
 
     req.setVersionInfo(new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
 
@@ -357,10 +352,6 @@ public class ConfigNode implements ConfigNodeMBean {
         if (resp == null) {
           LOGGER.error("The result of register ConfigNode is empty!");
           throw new StartupException("The result of register ConfigNode is empty!");
-        }
-        if (isPreCheck) {
-          LOGGER.info("Successfully pass the precheck, will do the formal registration soon.");
-          return;
         }
         /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(resp.getConfigNodeId());

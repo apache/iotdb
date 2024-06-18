@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +49,7 @@ public class ConfigNodeInfo {
 
   public static final ConfigRegionId CONFIG_REGION_ID = new ConfigRegionId(0);
 
-  SystemPropertiesHandler systemPropertiesHandler = SystemPropertiesHandler.getInstance();
+  SystemPropertiesHandler systemPropertiesHandler = DataNodeSystemPropertiesHandler.getInstance();
 
   private ConfigNodeInfo() {
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();

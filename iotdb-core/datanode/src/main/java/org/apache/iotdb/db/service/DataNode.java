@@ -33,7 +33,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.service.JMXService;
@@ -60,6 +59,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
+import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
@@ -168,6 +168,11 @@ public class DataNode implements DataNodeMBean {
   // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     registerManager = new RegisterManager();
+    DataNodeSystemPropertiesHandler.getInstance()
+        .resetFilePath(
+            IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+                + File.separator
+                + PROPERTIES_FILE_NAME);
   }
 
   private static RegisterManager registerManager = new RegisterManager();
@@ -240,7 +245,6 @@ public class DataNode implements DataNodeMBean {
 
     // Init system properties handler
     IoTDBStartCheck.checkOldSystemConfig();
-    SystemPropertiesHandler.init(config.getSystemDir() + File.separator + PROPERTIES_FILE_NAME);
 
     // Set this node
     thisNode.setIp(config.getInternalAddress());
@@ -251,7 +255,7 @@ public class DataNode implements DataNodeMBean {
     checks.startUpCheck();
     long endTime = System.currentTimeMillis();
     logger.info("The DataNode is prepared successfully, which takes {} ms", (endTime - startTime));
-    return SystemPropertiesHandler.getInstance().isFirstStart();
+    return DataNodeSystemPropertiesHandler.getInstance().isFirstStart();
   }
 
   /**
@@ -388,7 +392,7 @@ public class DataNode implements DataNodeMBean {
    *
    * @param isPreCheck do pre-check before formal registration
    * @throws StartupException if register failed.
-   * @throws IOException if serialize cluster name and DataNode id failed.
+   * @throws IOException if serialize cluster name and datanode id failed.
    */
   private void sendRegisterRequestToConfigNode(boolean isPreCheck)
       throws StartupException, IOException {
