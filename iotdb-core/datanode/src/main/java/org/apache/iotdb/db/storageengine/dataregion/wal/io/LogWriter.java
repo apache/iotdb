@@ -19,19 +19,23 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 
+import org.apache.tsfile.compress.ICompressor;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 /**
  * LogWriter writes the binary logs into a file, including writing {@link WALEntry} into .wal file
@@ -43,23 +47,89 @@ public abstract class LogWriter implements ILogWriter {
   protected final File logFile;
   protected final FileOutputStream logStream;
   protected final FileChannel logChannel;
-  protected long size;
+  protected long size = 0;
+  protected long originalSize = 0;
+  private final ByteBuffer headerBuffer = ByteBuffer.allocate(Integer.BYTES * 2 + 1);
+  private ICompressor compressor =
+      ICompressor.getCompressor(
+          IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm());
+  private ByteBuffer compressedByteBuffer;
+  // Minimum size to compress, default is 32 KB
+  private static long minCompressionSize = 32 * 1024L;
 
-  protected LogWriter(File logFile) throws FileNotFoundException {
+  protected LogWriter(File logFile) throws IOException {
     this.logFile = logFile;
     this.logStream = new FileOutputStream(logFile, true);
     this.logChannel = this.logStream.getChannel();
+    if (!logFile.exists() || logFile.length() == 0) {
+      this.logChannel.write(
+          ByteBuffer.wrap(WALWriter.MAGIC_STRING.getBytes(StandardCharsets.UTF_8)));
+      size += logChannel.position();
+    }
+    if (IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm()
+        != CompressionType.UNCOMPRESSED) {
+      // TODO: Use a dynamic strategy to enlarge the buffer size
+      compressedByteBuffer =
+          ByteBuffer.allocate(
+              compressor.getMaxBytesForCompression(
+                  IoTDBDescriptor.getInstance().getConfig().getWalBufferSize()));
+    } else {
+      compressedByteBuffer = null;
+    }
   }
 
   @Override
-  public void write(ByteBuffer buffer) throws IOException {
-    size += buffer.position();
+  public double write(ByteBuffer buffer) throws IOException {
+    CompressionType compressionType =
+        IoTDBDescriptor.getInstance().getConfig().getWALCompressionAlgorithm();
+    int bufferSize = buffer.position();
+    if (bufferSize == 0) {
+      return 1.0;
+    }
+    originalSize += bufferSize;
     buffer.flip();
+    boolean compressed = false;
+    int uncompressedSize = bufferSize;
+    if (compressionType != CompressionType.UNCOMPRESSED
+        /* Do not compress buffer that is less than min size */
+        && bufferSize > minCompressionSize) {
+      if (Objects.isNull(compressedByteBuffer)) {
+        compressedByteBuffer =
+            ByteBuffer.allocate(
+                compressor.getMaxBytesForCompression(
+                    IoTDBDescriptor.getInstance().getConfig().getWalBufferSize()));
+      }
+      compressedByteBuffer.clear();
+      if (compressor.getType() != compressionType) {
+        compressor = ICompressor.getCompressor(compressionType);
+      }
+      compressor.compress(buffer, compressedByteBuffer);
+      buffer = compressedByteBuffer;
+      bufferSize = buffer.position();
+      buffer.flip();
+      compressed = true;
+    }
+    size += bufferSize;
+    /*
+     Header structure:
+     [CompressionType(1 byte)][dataBufferSize(4 bytes)][uncompressedSize(4 bytes)]
+    */
+    headerBuffer.clear();
+    headerBuffer.put(
+        compressed ? compressionType.serialize() : CompressionType.UNCOMPRESSED.serialize());
+    headerBuffer.putInt(bufferSize);
+    if (compressed) {
+      headerBuffer.putInt(uncompressedSize);
+    }
+    size += headerBuffer.position();
     try {
+      headerBuffer.flip();
+      logChannel.write(headerBuffer);
       logChannel.write(buffer);
     } catch (ClosedChannelException e) {
       logger.warn("Cannot write to {}", logFile, e);
     }
+    return ((double) bufferSize / uncompressedSize);
   }
 
   @Override
@@ -79,6 +149,10 @@ public abstract class LogWriter implements ILogWriter {
     return size;
   }
 
+  public long originalSize() {
+    return originalSize;
+  }
+
   @Override
   public File getLogFile() {
     return logFile;
@@ -96,5 +170,9 @@ public abstract class LogWriter implements ILogWriter {
         logStream.close();
       }
     }
+  }
+
+  public long getOffset() throws IOException {
+    return logChannel.position();
   }
 }
