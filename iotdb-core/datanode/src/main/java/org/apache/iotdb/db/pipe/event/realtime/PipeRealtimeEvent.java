@@ -178,26 +178,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
-  public void skipReportOnCommit() {
-    event.skipReportOnCommit();
-  }
-
-  @Override
-  public void bindProgressIndex(ProgressIndex progressIndex) {
-    event.bindProgressIndex(progressIndex);
-  }
-
-  @Override
-  public int getReferenceCount() {
-    return event.getReferenceCount();
-  }
-
-  @Override
-  public boolean shouldParseTimeOrPattern() {
-    return event.shouldParseTimeOrPattern();
-  }
-
-  @Override
   public boolean shouldParsePattern() {
     return event.shouldParsePattern();
   }
@@ -205,61 +185,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   @Override
   public boolean shouldParseTime() {
     return event.shouldParseTime();
-  }
-
-  @Override
-  public PipeTaskMeta getPipeTaskMeta() {
-    return event.getPipeTaskMeta();
-  }
-
-  @Override
-  public boolean needToCommit() {
-    return event.needToCommit();
-  }
-
-  @Override
-  public void setCommitterKeyAndCommitId(String committerKey, long commitId) {
-    event.setCommitterKeyAndCommitId(committerKey, commitId);
-  }
-
-  @Override
-  public void setRebootTimes(int rebootTimes) {
-    event.setRebootTimes(rebootTimes);
-  }
-
-  @Override
-  public int getRebootTimes() {
-    return event.getRebootTimes();
-  }
-
-  @Override
-  public String getCommitterKey() {
-    return event.getCommitterKey();
-  }
-
-  @Override
-  public long getCommitId() {
-    return event.getCommitId();
-  }
-
-  @Override
-  public void onCommitted() {
-    event.onCommitted();
-  }
-
-  @Override
-  public boolean isReleased() {
-    return event.isReleased();
-  }
-
-  @Override
-  public boolean equalsInPipeConsensus(Object o) {
-    return event.equalsInPipeConsensus(o);
-  }
-
-  @Override
-  public String coreReportMessage() {
-    return event.coreReportMessage();
   }
 
   @Override

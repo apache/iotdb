@@ -330,11 +330,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   }
 
   @Override
-  public boolean shouldParsePattern() {
-    return super.shouldParsePattern() && initDataContainer().shouldParsePattern();
-  }
-
-  @Override
   public Iterable<TabletInsertionEvent> toTabletInsertionEvents() {
     try {
       if (!waitForTsFileClose()) {
