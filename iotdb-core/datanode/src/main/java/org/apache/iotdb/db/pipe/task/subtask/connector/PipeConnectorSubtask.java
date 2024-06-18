@@ -44,6 +44,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
@@ -233,15 +234,18 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
   }
 
   public int getTsFileInsertionEventCount() {
-    return inputPendingQueue.getTsFileInsertionEventCount();
+    return inputPendingQueue.getTsFileInsertionEventCount()
+        + (lastEvent instanceof TsFileInsertionEvent ? 1 : 0);
   }
 
   public int getTabletInsertionEventCount() {
-    return inputPendingQueue.getTabletInsertionEventCount();
+    return inputPendingQueue.getTabletInsertionEventCount()
+        + (lastEvent instanceof TabletInsertionEvent ? 1 : 0);
   }
 
   public int getPipeHeartbeatEventCount() {
-    return inputPendingQueue.getPipeHeartbeatEventCount();
+    return inputPendingQueue.getPipeHeartbeatEventCount()
+        + (lastEvent instanceof PipeHeartbeatEvent ? 1 : 0);
   }
 
   public int getAsyncConnectorRetryEventQueueSize() {
@@ -262,7 +266,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
               count.incrementAndGet();
             }
           });
-    } catch (Exception e) {
+    } catch (final Exception e) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             "Exception occurred when counting event of pipe {}, root cause: {}",
@@ -271,10 +275,14 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
             e);
       }
     }
+    // Avoid potential NPE in "getPipeName"
+    final EnrichedEvent event =
+        lastEvent instanceof EnrichedEvent ? (EnrichedEvent) lastEvent : null;
     return count.get()
         + (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector
             ? ((IoTDBDataRegionAsyncConnector) outputPipeConnector).getRetryEventCount(pipeName)
-            : 0);
+            : 0)
+        + (Objects.nonNull(event) && pipeName.equals(event.getPipeName()) ? 1 : 0);
   }
 
   //////////////////////////// Error report ////////////////////////////
