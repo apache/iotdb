@@ -130,13 +130,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
-      List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
+      List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns(); // root 开头
       Map<String, List<IDeviceID>> storageGroupToDeviceMap =
           partitionCache.getStorageGroupToDevice(deviceIDs, true, true, userName);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         TSchemaPartitionTableResp schemaPartitionTableResp =
-            client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
+            client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(patternTree)); // 序列化的 patternTree 在 CN 上处理时也是 root 开头的 DeviceId
         if (schemaPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           schemaPartition = parseSchemaPartitionTableResp(schemaPartitionTableResp);
@@ -291,6 +291,24 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public void invalidAllCache() {
     partitionCache.invalidAllCache();
+  }
+
+  @Override
+  public SchemaPartition getOrCreateSchemaPartition(String database, List<IDeviceID> deviceIDList, String userName) {
+    // todo implement related logic @Potato
+    throw new UnsupportedOperationException("Unsupported schema partition operation");
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
+    // todo implement related logic @Potato
+    throw new UnsupportedOperationException("Unsupported schema partition operation");
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database) {
+    // todo implement related logic @Potato
+    throw new UnsupportedOperationException("Unsupported schema partition operation");
   }
 
   /** split data partition query param by database */

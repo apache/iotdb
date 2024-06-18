@@ -121,11 +121,10 @@ public class CreateTableDeviceNode extends WritePlanNode {
     if (partitionKeyList == null) {
       List<IDeviceID> partitionKeyList = new ArrayList<>();
       for (Object[] rawId : deviceIdList) {
-        String[] partitionKey = new String[rawId.length + 2];
-        partitionKey[0] = database;
-        partitionKey[1] = tableName;
+        String[] partitionKey = new String[rawId.length + 1];
+        partitionKey[0] = tableName;
         for (int i = 0; i < rawId.length; i++) {
-          partitionKey[i + 2] = Objects.toString(rawId[i].toString());
+          partitionKey[i + 1] = Objects.toString(rawId[i].toString());
         }
         partitionKeyList.add(IDeviceID.Factory.DEFAULT_FACTORY.create(partitionKey));
       }
@@ -252,7 +251,7 @@ public class CreateTableDeviceNode extends WritePlanNode {
     for (int i = 0; i < partitionKeyList.size(); i++) {
       // use the string literal of deviceId as the partition key
       TRegionReplicaSet regionReplicaSet =
-          analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(partitionKeyList.get(i));
+          analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(database, partitionKeyList.get(i));
       splitMap.computeIfAbsent(regionReplicaSet, k -> new ArrayList<>()).add(i);
     }
     List<WritePlanNode> result = new ArrayList<>(splitMap.size());

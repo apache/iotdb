@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -54,6 +56,8 @@ import static org.apache.tsfile.read.common.type.LongType.INT64;
 public class TableMetadataImpl implements Metadata {
 
   private final TypeManager typeManager = new InternalTypeManager();
+
+  private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
 
   @Override
   public boolean tableExists(QualifiedObjectName name) {
@@ -290,9 +294,18 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public SchemaPartition getOrCreateSchemaPartition(List<IDeviceID> deviceIDList, String userName) {
-    // todo implement related logic
-    throw new UnsupportedOperationException("Unsupported schema partition operation");
+  public SchemaPartition getOrCreateSchemaPartition(String database, List<IDeviceID> deviceIDList, String userName) {
+    return partitionFetcher.getOrCreateSchemaPartition(database, deviceIDList, userName);
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
+    return partitionFetcher.getSchemaPartition(database, deviceIDList);
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database) {
+    return partitionFetcher.getSchemaPartition(database);
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

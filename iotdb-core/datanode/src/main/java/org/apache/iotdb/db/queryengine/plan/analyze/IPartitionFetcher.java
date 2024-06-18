@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.List;
 import java.util.Map;
@@ -90,4 +91,20 @@ public interface IPartitionFetcher {
 
   /** Invalid all partition cache */
   void invalidAllCache();
+
+
+  // ======================== Table Model Schema Partition Interface ========================
+  /**
+   * For data insertion
+   * Get or create schema partition, used in insertion with enable_auto_create_schema is true. if
+   * schemaPartition does not exist, then automatically create.
+   * <p>The device id shall be [table, seg1, ....]
+   */
+  SchemaPartition getOrCreateSchemaPartition(String database, List<IDeviceID> deviceIDList, String userName);
+
+  // data query with completed id
+  SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList);
+
+  // data query with partial device id conditions
+  SchemaPartition getSchemaPartition(String database);
 }

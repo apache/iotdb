@@ -100,10 +100,18 @@ public interface Metadata {
    */
   void validateDeviceSchema(ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context);
 
+  // ======================== Table Model Schema Partition Interface ========================
   /**
+   * For data insertion
    * Get or create schema partition, used in insertion with enable_auto_create_schema is true. if
-   * schemaPartition does not exist, then automatically create. The device id shall be [db, table,
-   * seg1, ....]
+   * schemaPartition does not exist, then automatically create.
+   * <p>The device id shall be [table, seg1, ....]
    */
-  SchemaPartition getOrCreateSchemaPartition(List<IDeviceID> deviceIDList, String userName);
+  SchemaPartition getOrCreateSchemaPartition(String database, List<IDeviceID> deviceIDList, String userName);
+
+  // data query with completed id
+  SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList);
+
+  // data query with partial device id conditions
+  SchemaPartition getSchemaPartition(String database);
 }
