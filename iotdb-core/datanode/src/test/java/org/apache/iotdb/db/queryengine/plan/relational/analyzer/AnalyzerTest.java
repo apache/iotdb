@@ -55,6 +55,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -563,6 +564,22 @@ public class AnalyzerTest {
 
       @Override
       public void invalidAllCache() {}
+
+      @Override
+      public SchemaPartition getOrCreateSchemaPartition(
+          String database, List<IDeviceID> deviceIDList, String userName) {
+        return null;
+      }
+
+      @Override
+      public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
+        return null;
+      }
+
+      @Override
+      public SchemaPartition getSchemaPartition(String database) {
+        return null;
+      }
     };
   }
 

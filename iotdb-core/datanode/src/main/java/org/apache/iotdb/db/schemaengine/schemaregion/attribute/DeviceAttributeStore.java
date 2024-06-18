@@ -117,12 +117,15 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public synchronized int createAttribute(List<String> nameList, List<String> valueList) {
+  public synchronized int createAttribute(List<String> nameList, Object[] valueList) {
+    // todo implement storage for device of diverse data types
     long memUsage = 0L;
     Map<String, String> attributeMap = new HashMap<>();
+    String value;
     for (int i = 0; i < nameList.size(); i++) {
-      attributeMap.put(nameList.get(i), valueList.get(i));
-      memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), valueList.get(i));
+      value = valueList[i] == null ? null : valueList[i].toString();
+      attributeMap.put(nameList.get(i), value);
+      memUsage += MemUsageUtil.computeKVMemUsageInMap(nameList.get(i), value);
     }
     deviceAttributeList.add(attributeMap);
     requestMemory(memUsage);
@@ -130,11 +133,13 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public void alterAttribute(int pointer, List<String> nameList, List<String> valueList) {
+  public void alterAttribute(int pointer, List<String> nameList, Object[] valueList) {
+    // todo implement storage for device of diverse data types
     long memUsageDelta = 0L;
     long originMemUsage;
     long updatedMemUsage;
     Map<String, String> attributeMap = deviceAttributeList.get(pointer);
+    String value;
     for (int i = 0; i < nameList.size(); i++) {
       String key = nameList.get(i);
       originMemUsage =
@@ -142,9 +147,9 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
               ? 0
               : MemUsageUtil.computeKVMemUsageInMap(key, attributeMap.get(key));
 
-      attributeMap.put(key, valueList.get(i));
-
-      updatedMemUsage = MemUsageUtil.computeKVMemUsageInMap(key, valueList.get(i));
+      value = valueList[i] == null ? null : valueList[i].toString();
+      attributeMap.put(key, value);
+      updatedMemUsage = MemUsageUtil.computeKVMemUsageInMap(key, value);
       memUsageDelta += updatedMemUsage - originMemUsage;
     }
     requestMemory(memUsageDelta);

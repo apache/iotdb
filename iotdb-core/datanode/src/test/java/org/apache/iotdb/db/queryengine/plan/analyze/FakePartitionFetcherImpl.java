@@ -35,6 +35,8 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -298,4 +300,20 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
   @Override
   public void invalidAllCache() {}
+
+  @Override
+  public SchemaPartition getOrCreateSchemaPartition(
+      String database, List<IDeviceID> deviceIDList, String userName) {
+    return null;
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
+    return null;
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(String database) {
+    return null;
+  }
 }
