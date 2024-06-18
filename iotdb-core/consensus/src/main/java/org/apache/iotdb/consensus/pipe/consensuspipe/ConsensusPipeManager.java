@@ -29,6 +29,7 @@ import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_CONSENSUS_GROUP_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_CONSENSUS_PIPE_NAME;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
@@ -78,6 +79,7 @@ public class ConsensusPipeManager {
             .put(
                 CONNECTOR_CONSENSUS_GROUP_ID_KEY,
                 String.valueOf(consensusPipeName.getConsensusGroupId().getId()))
+            .put(CONNECTOR_CONSENSUS_PIPE_NAME, consensusPipeName.toString())
             .put(CONNECTOR_IOTDB_IP_KEY, receiverPeer.getEndpoint().ip)
             .put(CONNECTOR_IOTDB_PORT_KEY, String.valueOf(receiverPeer.getEndpoint().port))
             .put(CONNECTOR_IOTDB_PARALLEL_TASKS_KEY, String.valueOf(1))

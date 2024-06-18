@@ -99,6 +99,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showClusterIdColumnHeaders, true);
   }
 
+  public static DatasetHeader getTestConnectionHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.testConnectionColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowFunctionsHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showFunctionsColumnHeaders, true);
   }

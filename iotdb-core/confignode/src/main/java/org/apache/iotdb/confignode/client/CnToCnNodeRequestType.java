@@ -17,28 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.task;
+package org.apache.iotdb.confignode.client;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
-public class DecoratingLock {
-  private final AtomicBoolean isDecorating = new AtomicBoolean(false);
-
-  public void waitForDecorated() {
-    while (isDecorating.get()) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-    }
-  }
-
-  public void markAsDecorating() {
-    isDecorating.set(true);
-  }
-
-  public void markAsDecorated() {
-    isDecorating.set(false);
-  }
+public enum CnToCnNodeRequestType {
+  ADD_CONSENSUS_GROUP,
+  NOTIFY_REGISTER_SUCCESS,
+  REGISTER_CONFIG_NODE,
+  RESTART_CONFIG_NODE,
+  REMOVE_CONFIG_NODE,
+  DELETE_CONFIG_NODE_PEER,
+  REPORT_CONFIG_NODE_SHUTDOWN,
+  STOP_CONFIG_NODE,
+  SET_CONFIGURATION,
+  SHOW_CONFIGURATION,
+  SUBMIT_TEST_CONNECTION_TASK,
+  TEST_CONNECTION,
 }

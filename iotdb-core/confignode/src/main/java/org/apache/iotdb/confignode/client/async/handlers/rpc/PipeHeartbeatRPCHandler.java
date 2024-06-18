@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 
 import org.slf4j.Logger;
@@ -29,12 +29,12 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class PipeHeartbeatRPCHandler extends AbstractAsyncRPCHandler<TPipeHeartbeatResp> {
+public class PipeHeartbeatRPCHandler extends DataNodeAsyncRequestRPCHandler<TPipeHeartbeatResp> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeHeartbeatRPCHandler.class);
 
   public PipeHeartbeatRPCHandler(
-      DataNodeRequestType requestType,
+      CnToDnRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
@@ -47,7 +47,7 @@ public class PipeHeartbeatRPCHandler extends AbstractAsyncRPCHandler<TPipeHeartb
   public void onComplete(TPipeHeartbeatResp response) {
     // Put response
     responseMap.put(requestId, response);
-    dataNodeLocationMap.remove(requestId);
+    nodeLocationMap.remove(requestId);
     LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
 
     // Always CountDown

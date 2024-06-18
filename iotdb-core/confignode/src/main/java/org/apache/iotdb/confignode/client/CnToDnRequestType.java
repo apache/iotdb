@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.client;
 
-public enum DataNodeRequestType {
+public enum CnToDnRequestType {
 
   // Node Maintenance
   DISABLE_DATA_NODE,
@@ -34,6 +34,9 @@ public enum DataNodeRequestType {
   SET_SYSTEM_STATUS,
   SET_CONFIGURATION,
   SHOW_CONFIGURATION,
+
+  SUBMIT_TEST_CONNECTION_TASK,
+  TEST_CONNECTION,
 
   // Region Maintenance
   CREATE_DATA_REGION,

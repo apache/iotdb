@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.conf;
 
 import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
+import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 
@@ -541,11 +542,18 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_snapshot_execution_max_batch_size",
                 String.valueOf(config.getPipeSnapshotExecutionMaxBatchSize()))));
-    config.setPipeRemainingTimeCommitRateSmoothingFactor(
-        Double.parseDouble(
+    config.setPipeRemainingTimeCommitRateAutoSwitchSeconds(
+        Long.parseLong(
             properties.getProperty(
-                "pipe_remaining_time_commit_rate_smoothing_factor",
-                String.valueOf(config.getPipeRemainingTimeCommitRateSmoothingFactor()))));
+                "pipe_remaining_time_commit_rate_auto_switch_seconds",
+                String.valueOf(config.getPipeRemainingTimeCommitRateAutoSwitchSeconds()))));
+    config.setPipeRemainingTimeCommitRateAverageTime(
+        PipeRemainingTimeRateAverageTime.valueOf(
+            properties
+                .getProperty(
+                    "pipe_remaining_time_commit_rate_average_time",
+                    String.valueOf(config.getPipeRemainingTimeCommitRateAverageTime()))
+                .trim()));
 
     config.setTwoStageAggregateMaxCombinerLiveTimeInMs(
         Long.parseLong(

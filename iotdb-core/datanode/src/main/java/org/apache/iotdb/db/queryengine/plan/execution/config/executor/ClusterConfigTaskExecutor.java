@@ -25,7 +25,9 @@ import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
+import org.apache.iotdb.common.rpc.thrift.TShowTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
+import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -149,6 +151,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariab
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.TestConnectionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpaceQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
@@ -1289,13 +1292,35 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> testConnection(boolean needDetails) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TTestConnectionResp result = client.submitTestConnectionTaskToLeader();
+      int configNodeNum = 0, dataNodeNum = 0;
+      if (!needDetails) {
+        configNodeNum = client.showConfigNodes().getConfigNodesInfoListSize();
+        dataNodeNum = client.showDataNodes().getDataNodesInfoListSize();
+      }
+      TestConnectionTask.buildTSBlock(result, configNodeNum, dataNodeNum, needDetails, future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     Map<String, Long> databaseToTTL = new TreeMap<>();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowTTLResp resp = client.showAllTTL();
-      databaseToTTL.putAll(resp.getPathTTLMap());
+      // TODO: send all paths in one RPC
+      for (PartialPath pathPattern : showTTLStatement.getPaths()) {
+        TShowTTLReq req = new TShowTTLReq(Arrays.asList(pathPattern.getNodes()));
+        TShowTTLResp resp = client.showTTL(req);
+        databaseToTTL.putAll(resp.getPathTTLMap());
+      }
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }
