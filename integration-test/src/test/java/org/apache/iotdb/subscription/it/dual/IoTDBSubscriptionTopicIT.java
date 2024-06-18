@@ -538,7 +538,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     config.put("processor", "tumbling-time-sampling-processor");
     config.put("processor.tumbling-time.interval-seconds", "1");
     config.put("processor.down-sampling.split-file", "true");
-    testTopicInvalidRuntimeConfigTemplate("topic10", config);
+    testTopicInvalidRuntimeConfigTemplate("topic9", config);
   }
 
   @Test
@@ -556,7 +556,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
 
     // Create topic
-    final String topicName = "topic11";
+    final String topicName = "topic10";
     final String host = senderEnv.getIP();
     final int port = Integer.parseInt(senderEnv.getPort());
     try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
