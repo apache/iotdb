@@ -1013,12 +1013,23 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
         return;
       }
 
-      TestUtils.tryExecuteNonQueriesWithRetry(
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)" + " values (5000, 1), (16000, 3)",
               "insert into root.db.d1 (time, at1, at2)" + " values (5001, 1, 2), (6001, 3, 4)",
-              "flush"));
+              "flush"))) {
+        return;
+      }
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select * from root.db.d1.at1 where time >= 2000 and time <= 10000",
+          new HashMap<String, String>() {
+            {
+              put("count(root.*.*.*)", "4");
+            }
+          });
     }
   }
 

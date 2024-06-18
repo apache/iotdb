@@ -44,6 +44,7 @@ public class TopicConstant {
   public static final String LOOSE_RANGE_TIME_VALUE = "time";
   public static final String LOOSE_RANGE_PATH_VALUE = "path";
   public static final String LOOSE_RANGE_DEFAULT_VALUE = "";
+  public static final String LOOSE_RANGE_VALUE_SEPARATOR = ",";
 
   private TopicConstant() {
     throw new IllegalStateException("Utility class");

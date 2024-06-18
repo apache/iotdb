@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -533,6 +534,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   @Test
   public void testTopicInvalidPathConfig() throws Exception {
     // Test invalid path when using tsfile format
+    // NOTE: Delete this test after the restriction "on path/time range/processor when subscribing
+    // to tsfile" is removed.
     final Properties config = new Properties();
     config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
     config.put(TopicConstant.PATH_KEY, "root.db.*.s");
@@ -542,6 +545,8 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
   @Test
   public void testTopicInvalidProcessorConfig() throws Exception {
     // Test invalid processor when using tsfile format
+    // NOTE: Delete this test after the restriction "on path/time range/processor when subscribing
+    // to tsfile" is removed.
     final Properties config = new Properties();
     config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
     config.put("processor", "tumbling-time-sampling-processor");
@@ -578,6 +583,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+    assertTopicCount(1);
 
     // Subscription
     final AtomicInteger rowCount = new AtomicInteger();
@@ -648,6 +654,143 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       fail(e.getMessage());
     } finally {
       isClosed.set(true);
+      thread.join();
+    }
+  }
+
+  @Test
+  public void testTopicWithLooseRange() throws Exception {
+    // Create topic
+    final String topicName = "topic12";
+    final String host = senderEnv.getIP();
+    final int port = Integer.parseInt(senderEnv.getPort());
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      final Properties config = new Properties();
+      config.put(
+          TopicConstant.LOOSE_RANGE_KEY,
+          String.join(
+              TopicConstant.LOOSE_RANGE_VALUE_SEPARATOR,
+              TopicConstant.LOOSE_RANGE_TIME_VALUE,
+              TopicConstant.LOOSE_RANGE_PATH_VALUE));
+      config.put(TopicConstant.PATH_KEY, "root.db.d1.at1");
+      config.put(TopicConstant.START_TIME_KEY, "1500");
+      config.put(TopicConstant.END_TIME_KEY, "2500");
+      session.createTopic(topicName, config);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    assertTopicCount(1);
+
+    final AtomicBoolean dataPrepared = new AtomicBoolean(false);
+    final AtomicBoolean topicSubscribed = new AtomicBoolean(false);
+    final List<Thread> threads = new ArrayList<>();
+
+    // Subscribe on sender
+    threads.add(
+        new Thread(
+            () -> {
+              final AtomicInteger retryCount = new AtomicInteger();
+              final int maxRetryTimes = 32;
+              try (final SubscriptionPullConsumer consumer =
+                      new SubscriptionPullConsumer.Builder()
+                          .host(host)
+                          .port(port)
+                          .consumerId("c1")
+                          .consumerGroupId("cg1")
+                          .autoCommit(false)
+                          .buildPullConsumer();
+                  final ISession session = receiverEnv.getSessionConnection()) {
+                consumer.open();
+                consumer.subscribe(topicName);
+                topicSubscribed.set(true);
+                while (retryCount.getAndIncrement() < maxRetryTimes) {
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
+                  if (dataPrepared.get()) {
+                    final List<SubscriptionMessage> messages =
+                        consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
+                    for (final SubscriptionMessage message : messages) {
+                      for (final Iterator<Tablet> it =
+                              message.getSessionDataSetsHandler().tabletIterator();
+                          it.hasNext(); ) {
+                        final Tablet tablet = it.next();
+                        session.insertTablet(tablet);
+                      }
+                    }
+                    consumer.commitSync(messages);
+                  }
+                }
+                consumer.unsubscribe(topicName);
+              } catch (final Exception e) {
+                e.printStackTrace();
+                // Avoid failure
+              } finally {
+                LOGGER.info("consumer exiting...");
+              }
+            },
+            String.format("%s - consumer", testName.getMethodName())));
+
+    // Insert some realtime data on sender
+    threads.add(
+        new Thread(
+            () -> {
+              while (!topicSubscribed.get()) {
+                LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
+              }
+              if (!TestUtils.tryExecuteNonQueriesWithRetry(
+                  senderEnv,
+                  Arrays.asList(
+                      // TsFile 1, extracted without parse
+                      "insert into root.db.d1 (time, at1, at2)"
+                          + " values (1000, 1, 2), (2000, 3, 4)",
+                      // TsFile 2, not extracted because pattern not overlapped
+                      "insert into root.db1.d1 (time, at1, at2)"
+                          + " values (1000, 1, 2), (2000, 3, 4)",
+                      "flush"))) {
+                fail();
+              }
+              if (!TestUtils.tryExecuteNonQueriesWithRetry(
+                  senderEnv,
+                  Arrays.asList(
+                      // TsFile 3, not extracted because time range not overlapped
+                      "insert into root.db.d1 (time, at1, at2)"
+                          + " values (3000, 1, 2), (4000, 3, 4)",
+                      "flush"))) {
+                fail();
+              }
+              dataPrepared.set(true);
+            },
+            String.format("%s - data inserter", testName.getMethodName())));
+
+    for (final Thread thread : threads) {
+      thread.start();
+    }
+
+    try (final Connection connection = receiverEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      // Keep retrying if there are execution failures
+      AWAIT.untilAsserted(
+          () ->
+              //              TestUtils.assertSingleResultSetEqual(
+              //                  TestUtils.executeQueryWithRetry(
+              //                      statement, "select * from root.**"),
+              //                  new HashMap<String, String>() {
+              //                    {
+              //                      put("count(root.*.*.*)", "4");
+              //                    }
+              //                  }));
+              TestUtils.assertSingleResultSetEqual(
+                  TestUtils.executeQueryWithRetry(
+                      statement, "select count(*) from root.** group by level=0"),
+                  new HashMap<String, String>() {
+                    {
+                      put("count(root.*.*.*)", "4");
+                    }
+                  }));
+    }
+
+    for (final Thread thread : threads) {
       thread.join();
     }
   }
