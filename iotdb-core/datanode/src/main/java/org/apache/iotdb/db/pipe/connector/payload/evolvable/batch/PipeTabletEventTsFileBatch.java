@@ -214,10 +214,11 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     return new HashMap<>(pipeName2WeightMap);
   }
 
-  public synchronized File getTsFile() throws IOException {
+  public synchronized File sealTsFile() throws IOException {
     if (isClosed) {
       return null;
     }
+
     fileWriter.close();
     return fileWriter.getIOWriter().getFile();
   }
@@ -225,9 +226,11 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   @Override
   public synchronized void onSuccess() {
     super.onSuccess();
+
     if (isClosed) {
       return;
     }
+
     // Delete file only after this file is transferred
     pipeName2WeightMap.clear();
     fileWriter = null;

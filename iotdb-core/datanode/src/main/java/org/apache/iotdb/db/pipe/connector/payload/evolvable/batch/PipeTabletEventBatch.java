@@ -29,14 +29,18 @@ import org.apache.tsfile.exception.write.WriteProcessException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public abstract class PipeTabletEventBatch implements AutoCloseable {
+
   private final List<EnrichedEvent> events = new ArrayList<>();
+
   private final int maxDelayInMs;
   private long firstEventProcessingTime = Long.MIN_VALUE;
-  protected boolean isClosed = false;
 
-  PipeTabletEventBatch(final int maxDelayInMs) {
+  protected volatile boolean isClosed = false;
+
+  protected PipeTabletEventBatch(final int maxDelayInMs) {
     this.maxDelayInMs = maxDelayInMs;
   }
 
@@ -48,13 +52,13 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
    */
   synchronized boolean onEvent(final TabletInsertionEvent event)
       throws WALPipeException, IOException, WriteProcessException {
-    if (!(event instanceof EnrichedEvent) || isClosed) {
+    if (isClosed || !(event instanceof EnrichedEvent)) {
       return false;
     }
 
-    // The deduplication logic here is to avoid the accumulation of the same event in a batch when
-    // retrying.
-    if ((events.isEmpty() || !events.get(events.size() - 1).equals(event))) {
+    // The deduplication logic here is to avoid the accumulation of
+    // the same event in a batch when retrying.
+    if (events.isEmpty() || !Objects.equals(events.get(events.size() - 1), event)) {
       // We increase the reference count for this event to determine if the event may be released.
       if (((EnrichedEvent) event)
           .increaseReferenceCount(PipeTransferBatchReqBuilder.class.getName())) {
@@ -78,29 +82,20 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   protected abstract void constructBatch(final TabletInsertionEvent event)
       throws WALPipeException, IOException, WriteProcessException;
 
-  public synchronized void onSuccess() {
-    if (isClosed) {
-      return;
-    }
-    events.clear();
-    firstEventProcessingTime = Long.MIN_VALUE;
-  }
-
-  boolean isEmpty() {
-    return events.isEmpty();
-  }
-
-  public List<EnrichedEvent> deepCopyEvents() {
-    return new ArrayList<>(events);
-  }
-
   protected abstract long getTotalBufferSize();
 
   protected abstract long getMaxBatchSizeInBytes();
 
+  public synchronized void onSuccess() {
+    events.clear();
+
+    firstEventProcessingTime = Long.MIN_VALUE;
+  }
+
   @Override
   public synchronized void close() {
     isClosed = true;
+
     clearEventsReferenceCount(PipeTransferBatchReqBuilder.class.getName());
     events.clear();
   }
@@ -111,5 +106,13 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
 
   private void clearEventsReferenceCount(final String holderMessage) {
     events.forEach(event -> event.clearReferenceCount(holderMessage));
+  }
+
+  public List<EnrichedEvent> deepCopyEvents() {
+    return new ArrayList<>(events);
+  }
+
+  boolean isEmpty() {
+    return events.isEmpty();
   }
 }

@@ -172,7 +172,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       } else {
         final PipeTabletEventTsFileBatch batch =
             (PipeTabletEventTsFileBatch) endPointAndBatch.getRight();
-        final File tsFile = batch.getTsFile();
+        final File tsFile = batch.sealTsFile();
         // tsFile is null when the batch is already closed
         if (Objects.isNull(tsFile)) {
           return;
@@ -442,7 +442,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         final PipeTabletEventTsFileBatch batch =
             (PipeTabletEventTsFileBatch) endPointAndBatch.getRight();
         // tsFile is null when the batch is already closed
-        final File tsFile = batch.getTsFile();
+        final File tsFile = batch.sealTsFile();
         if (Objects.isNull(tsFile)) {
           return;
         }
