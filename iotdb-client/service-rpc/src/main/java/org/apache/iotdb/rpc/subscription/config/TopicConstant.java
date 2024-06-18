@@ -40,6 +40,11 @@ public class TopicConstant {
   public static final String FORMAT_TS_FILE_HANDLER_VALUE = "TsFileHandler";
   public static final String FORMAT_DEFAULT_VALUE = FORMAT_SESSION_DATA_SETS_HANDLER_VALUE;
 
+  public static final String LOOSE_RANGE_KEY = "loose-range";
+  public static final String LOOSE_RANGE_TIME_VALUE = "time";
+  public static final String LOOSE_RANGE_PATH_VALUE = "path";
+  public static final String LOOSE_RANGE_DEFAULT_VALUE = "";
+
   private TopicConstant() {
     throw new IllegalStateException("Utility class");
   }
