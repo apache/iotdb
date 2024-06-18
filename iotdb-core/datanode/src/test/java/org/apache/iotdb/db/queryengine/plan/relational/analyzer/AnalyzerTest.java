@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -40,6 +39,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
@@ -162,7 +163,7 @@ public class AnalyzerTest {
   }
 
   @Test
-  public void singleTableNoFilterTest() throws IoTDBException {
+  public void singleTableNoFilterTest() {
     // wildcard
     sql = "SELECT * FROM table1";
     actualAnalysis = analyzeSQL(sql, metadata);
@@ -192,7 +193,7 @@ public class AnalyzerTest {
   }
 
   @Test
-  public void singleTableWithFilterTest() throws IoTDBException {
+  public void singleTableWithFilterTest() {
     // global time filter
     sql = "SELECT * FROM table1 where time > 1";
     actualAnalysis = analyzeSQL(sql, metadata);
@@ -272,7 +273,7 @@ public class AnalyzerTest {
   }
 
   @Test
-  public void singleTableProjectTest() throws IoTDBException {
+  public void singleTableProjectTest() {
     // 1. project without filter
     sql = "SELECT tag1, attr1, s1 FROM table1";
     actualAnalysis = analyzeSQL(sql, metadata);
@@ -331,7 +332,7 @@ public class AnalyzerTest {
   }
 
   @Test
-  public void expressionTest() throws IoTDBException {
+  public void expressionTest() {
     // 1. is null / is not null
     sql = "SELECT * FROM table1 WHERE tag1 is not null and s1 is null";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
@@ -371,7 +372,7 @@ public class AnalyzerTest {
   }
 
   @Test
-  public void functionTest() throws IoTDBException {
+  public void functionTest() {
     // 1. cast
     sql = "SELECT CAST(s2 AS DOUBLE) FROM table1 WHERE CAST(s1 AS DOUBLE) > 1.0";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
@@ -415,7 +416,7 @@ public class AnalyzerTest {
   }
 
   @Test
-  public void predicatePushDownTest() throws IoTDBException {
+  public void predicatePushDownTest() {
     // `is null expression`, `not expression` cannot be pushed down into TableScanOperator
     sql =
         "SELECT *, s1/2, s2+1 FROM table1 WHERE tag1 in ('A', 'B') and tag2 = 'C' "
@@ -441,6 +442,53 @@ public class AnalyzerTest {
         tableScanNode.getPushDownPredicate() != null
             && tableScanNode.getPushDownPredicate() instanceof LogicalExpression);
     assertEquals(2, ((LogicalExpression) tableScanNode.getPushDownPredicate()).getTerms().size());
+  }
+
+  @Test
+  public void limitOffsetTest() {
+    sql = "SELECT tag1, attr1, s1 FROM table1 offset 3 limit 5";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof LimitNode);
+    LimitNode limitNode = (LimitNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertEquals(5, limitNode.getCount());
+    OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
+    assertEquals(3, offsetNode.getCount());
+
+    sql =
+        "SELECT *, s1/2, s2+1 FROM table1 WHERE tag1 in ('A', 'B') and tag2 = 'C' "
+            + "and s2 iS NUll and S1 = 6 and s3 < 8.0 and tAG1 LIKE '%m' offset 3 limit 5";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
+    assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof LimitNode);
+    limitNode = (LimitNode) rootNode.getChildren().get(0).getChildren().get(0);
+    assertEquals(5, limitNode.getCount());
+    offsetNode = (OffsetNode) limitNode.getChild();
+    assertEquals(3, offsetNode.getCount());
+  }
+
+  @Test
+  public void sortTest() {
+    // when TableScan locates multi regions, use default MergeSortNode
+    sql = "SELECT * FROM table1 ";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    distributedQueryPlan =
+        new TableDistributionPlanner(actualAnalysis, logicalQueryPlan, context).plan();
   }
 
   public static Analysis analyzeSQL(String sql, Metadata metadata) {
