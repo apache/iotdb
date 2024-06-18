@@ -52,7 +52,7 @@ public class ColumnHeaderConstant {
   public static final String TEMPLATE = "Template";
 
   public static final String COUNT = "Count";
-  public static final String COLUMN_TTL = "TTL";
+  public static final String COLUMN_TTL = "TTL(ms)";
   public static final String SCHEMA_REPLICATION_FACTOR = "SchemaReplicationFactor";
   public static final String DATA_REPLICATION_FACTOR = "DataReplicationFactor";
   public static final String TIME_PARTITION_INTERVAL = "TimePartitionInterval";

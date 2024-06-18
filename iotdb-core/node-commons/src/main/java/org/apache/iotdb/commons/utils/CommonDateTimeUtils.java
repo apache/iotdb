@@ -42,7 +42,8 @@ public class CommonDateTimeUtils {
       default:
         break;
     }
-    return result;
+    // To avoid integer overflow
+    return result < 0 ? Long.MAX_VALUE : result;
   }
 
   public static long currentTime() {

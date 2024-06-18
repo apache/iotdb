@@ -95,7 +95,7 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
       TDatabaseInfo storageGroupInfo = entry.getValue();
       long ttl =
           DataNodeTTLCache.getInstance()
-              .getNodeTTL(
+              .getNodeTTLInMS(
                   storageGroup
                       + IoTDBConstant.PATH_SEPARATOR
                       + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
