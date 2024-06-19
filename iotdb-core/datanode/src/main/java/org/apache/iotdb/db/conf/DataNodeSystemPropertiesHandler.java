@@ -36,7 +36,7 @@ public class DataNodeSystemPropertiesHandler extends SystemPropertiesHandler {
     super(filePath);
   }
 
-  public static SystemPropertiesHandler getInstance() {
+  public static synchronized SystemPropertiesHandler getInstance() {
     if (Holder.INSTANCE == null) {
       Holder.INSTANCE =
           new DataNodeSystemPropertiesHandler(
