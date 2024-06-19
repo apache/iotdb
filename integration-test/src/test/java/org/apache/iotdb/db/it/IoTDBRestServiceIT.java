@@ -1094,7 +1094,6 @@ public class IoTDBRestServiceIT {
         new ArrayList<Object>() {
           {
             add("Database");
-            add(COLUMN_TTL);
             add("SchemaReplicationFactor");
             add("DataReplicationFactor");
             add("TimePartitionInterval");
@@ -1746,7 +1745,6 @@ public class IoTDBRestServiceIT {
         new ArrayList<Object>() {
           {
             add("Database");
-            add(COLUMN_TTL);
             add("SchemaReplicationFactor");
             add("DataReplicationFactor");
             add("TimePartitionInterval");
