@@ -216,8 +216,6 @@ public class IoTDBStartCheck {
     properties = systemPropertiesHandler.read();
 
     if (systemPropertiesHandler.isFirstStart()) {
-      // overwrite system.properties when first start
-      generateOrOverwriteSystemPropertiesFile();
       if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
           && config.getWalMode().equals(WALMode.DISABLE)) {
         throw new ConfigurationException(
