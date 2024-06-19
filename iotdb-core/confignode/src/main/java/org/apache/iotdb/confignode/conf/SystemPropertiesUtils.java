@@ -24,14 +24,18 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -44,8 +48,11 @@ public class SystemPropertiesUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SystemPropertiesUtils.class);
 
-  private static SystemPropertiesHandler systemPropertiesHandler =
-      ConfigNodeSystemPropertiesHandler.getInstance();
+  private static File systemPropertiesFile =
+      new File(
+          ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
+              + File.separator
+              + ConfigNodeConstant.SYSTEM_FILE_NAME);
 
   private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
@@ -67,10 +74,11 @@ public class SystemPropertiesUtils {
 
   // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
-    systemPropertiesHandler.resetFilePath(
-        ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
-            + File.separator
-            + ConfigNodeConstant.SYSTEM_FILE_NAME);
+    systemPropertiesFile =
+        new File(
+            ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
+                + File.separator
+                + ConfigNodeConstant.SYSTEM_FILE_NAME);
   }
 
   /**
@@ -79,7 +87,7 @@ public class SystemPropertiesUtils {
    * @return True if confignode-system.properties file exist.
    */
   public static boolean isRestarted() {
-    return !systemPropertiesHandler.isFirstStart();
+    return systemPropertiesFile.exists();
   }
 
   /**
@@ -89,7 +97,7 @@ public class SystemPropertiesUtils {
    * @throws IOException When read the confignode-system.properties file failed
    */
   public static void checkSystemProperties() throws IOException {
-    Properties systemProperties = systemPropertiesHandler.read();
+    Properties systemProperties = getSystemProperties();
     boolean needReWrite = false;
     final String format =
         "[SystemProperties] The parameter \"{}\" can't be modified after first startup."
@@ -226,6 +234,11 @@ public class SystemPropertiesUtils {
         COMMON_CONFIG.setTimePartitionInterval(timePartitionInterval);
       }
     }
+
+    if (needReWrite) {
+      // Re-write special parameters if necessary
+      storeSystemParameters();
+    }
   }
 
   /**
@@ -238,7 +251,7 @@ public class SystemPropertiesUtils {
    */
   public static List<TConfigNodeLocation> loadConfigNodeList()
       throws IOException, BadNodeUrlException {
-    Properties systemProperties = systemPropertiesHandler.read();
+    Properties systemProperties = getSystemProperties();
     String addresses = systemProperties.getProperty("config_node_list", null);
 
     if (addresses != null && !addresses.isEmpty()) {
@@ -252,10 +265,10 @@ public class SystemPropertiesUtils {
    * The system parameters can't be changed after the ConfigNode first started. Therefore, store
    * them in confignode-system.properties during the first startup.
    *
-   * @throws IOException systemPropertiesHandler.read()
+   * @throws IOException getSystemProperties()
    */
   public static void storeSystemParameters() throws IOException {
-    Properties systemProperties = systemPropertiesHandler.read();
+    Properties systemProperties = getSystemProperties();
 
     systemProperties.setProperty("iotdb_version", IoTDBConstant.VERSION);
     systemProperties.setProperty("commit_id", IoTDBConstant.BUILD_INFO);
@@ -298,7 +311,7 @@ public class SystemPropertiesUtils {
     systemProperties.setProperty(
         "tag_attribute_total_size", String.valueOf(COMMON_CONFIG.getTagAttributeTotalSize()));
 
-    systemPropertiesHandler.overwrite(systemProperties);
+    storeSystemProperties(systemProperties);
   }
 
   /**
@@ -308,7 +321,7 @@ public class SystemPropertiesUtils {
    * @throws IOException When store confignode-system.properties file failed
    */
   public static void storeConfigNodeList(List<TConfigNodeLocation> configNodes) throws IOException {
-    if (!systemPropertiesHandler.fileExist()) {
+    if (!systemPropertiesFile.exists()) {
       // Avoid creating confignode-system.properties files during
       // synchronizing the ApplyConfigNode logs from the ConsensusLayer.
       // 1. For the Non-Seed-ConfigNode, We don't need to create confignode-system.properties file
@@ -317,8 +330,12 @@ public class SystemPropertiesUtils {
       // in which case the latest config_node_list will be updated.
       return;
     }
-    systemPropertiesHandler.put(
+
+    Properties systemProperties = getSystemProperties();
+    systemProperties.setProperty(
         "config_node_list", NodeUrlUtils.convertTConfigNodeUrls(configNodes));
+
+    storeSystemProperties(systemProperties);
   }
 
   /**
@@ -329,7 +346,7 @@ public class SystemPropertiesUtils {
    * @throws IOException When load confignode-system.properties file failed
    */
   public static String loadClusterNameWhenRestarted() throws IOException {
-    Properties systemProperties = systemPropertiesHandler.read();
+    Properties systemProperties = getSystemProperties();
     String clusterName = systemProperties.getProperty(CLUSTER_NAME, null);
     if (clusterName == null) {
       LOGGER.warn(
@@ -349,7 +366,7 @@ public class SystemPropertiesUtils {
    * @throws IOException When load confignode-system.properties file failed
    */
   public static int loadConfigNodeIdWhenRestarted() throws IOException {
-    Properties systemProperties = systemPropertiesHandler.read();
+    Properties systemProperties = getSystemProperties();
     try {
       return Integer.parseInt(systemProperties.getProperty("config_node_id", null));
     } catch (NumberFormatException e) {
@@ -370,7 +387,7 @@ public class SystemPropertiesUtils {
    */
   public static boolean isSeedConfigNode() {
     try {
-      Properties systemProperties = systemPropertiesHandler.read();
+      Properties systemProperties = getSystemProperties();
       boolean isSeedConfigNode =
           Boolean.parseBoolean(systemProperties.getProperty("is_seed_config_node", null));
       if (isSeedConfigNode) {
@@ -380,6 +397,39 @@ public class SystemPropertiesUtils {
       }
     } catch (IOException ignore) {
       return false;
+    }
+  }
+
+  private static synchronized Properties getSystemProperties() throws IOException {
+    // Create confignode-system.properties file if necessary
+    if (!systemPropertiesFile.exists()) {
+      if (systemPropertiesFile.createNewFile()) {
+        LOGGER.info(
+            "System properties file {} for ConfigNode is created.",
+            systemPropertiesFile.getAbsolutePath());
+      } else {
+        LOGGER.error(
+            "Can't create the system properties file {} for ConfigNode. "
+                + "IoTDB-ConfigNode is shutdown.",
+            systemPropertiesFile.getAbsolutePath());
+        throw new IOException("Can't create system properties file");
+      }
+    }
+
+    Properties systemProperties = new Properties();
+    try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
+      systemProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+    }
+    return systemProperties;
+  }
+
+  private static synchronized void storeSystemProperties(Properties systemProperties)
+      throws IOException {
+    try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
+      systemProperties.store(
+          new OutputStreamWriter(fileOutputStream, StandardCharsets.UTF_8),
+          " THIS FILE IS AUTOMATICALLY GENERATED. PLEASE DO NOT MODIFY THIS FILE !!!");
+      fileOutputStream.getFD().sync();
     }
   }
 }

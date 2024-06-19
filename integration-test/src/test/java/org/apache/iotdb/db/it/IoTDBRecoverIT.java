@@ -98,7 +98,7 @@ public class IoTDBRecoverIT {
   }
 
   @Test
-  public void recoverTest1() {
+  public void RecoverTest1() {
     // stop cluster
     EnvFactory.getEnv().shutdownAllDataNodes();
     logger.info("All DataNodes are shut down");

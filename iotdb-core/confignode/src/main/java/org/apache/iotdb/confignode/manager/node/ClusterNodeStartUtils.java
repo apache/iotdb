@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -113,23 +112,10 @@ public class ClusterNodeStartUtils {
               nodeType.getNodeType(),
               CommonConfig.SYSTEM_CONFIG_NAME));
       return status;
+    } else {
+      /* Accept registration if all TEndPoints aren't conflict */
+      return ACCEPT_NODE_REGISTRATION;
     }
-
-    // Check cluster id
-    final String clusterId =
-        configManager
-            .getClusterManager()
-            .getClusterIdWithRetry(
-                CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
-    if (clusterId == null) {
-      status
-          .setCode(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode())
-          .setMessage("clusterId has not generated, please try again later");
-      return status;
-    }
-
-    /* Accept registration if all TEndPoints aren't conflict */
-    return ACCEPT_NODE_REGISTRATION;
   }
 
   public static TSStatus confirmNodeRestart(

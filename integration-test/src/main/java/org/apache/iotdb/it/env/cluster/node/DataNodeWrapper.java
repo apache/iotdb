@@ -20,7 +20,6 @@
 package org.apache.iotdb.it.env.cluster.node;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
 import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
@@ -62,6 +61,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_AIR_GAP_RECEI
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.REST_SERVICE_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REPLICATION_FACTOR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SYSTEM_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.TARGET;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
 
@@ -139,7 +139,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   public String getSystemPropertiesPath() {
-    return workDirFilePath("data/datanode/system/schema", IoTDBStartCheck.PROPERTIES_FILE_NAME);
+    return workDirFilePath("data/datanode/system/schema", SYSTEM_PROPERTIES_FILE);
   }
 
   @Override

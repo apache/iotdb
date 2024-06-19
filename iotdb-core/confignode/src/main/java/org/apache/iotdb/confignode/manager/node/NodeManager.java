@@ -265,6 +265,17 @@ public class NodeManager {
   public DataSet registerDataNode(TDataNodeRegisterReq req) {
     DataNodeRegisterResp resp = new DataNodeRegisterResp();
     resp.setConfigNodeList(getRegisteredConfigNodes());
+    final String clusterId =
+        configManager
+            .getClusterManager()
+            .getClusterIdWithRetry(
+                CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS() / 2);
+    if (clusterId == null) {
+      resp.setStatus(
+          new TSStatus(TSStatusCode.GET_CLUSTER_ID_ERROR.getStatusCode())
+              .setMessage("clusterId has not generated, please try again later"));
+      return resp;
+    }
 
     // Create a new DataNodeHeartbeatCache and force update NodeStatus
     int dataNodeId = nodeInfo.generateNextNodeId();
@@ -300,7 +311,6 @@ public class NodeManager {
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
     resp.setDataNodeId(
         registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId());
-    String clusterId = configManager.getClusterManager().getClusterId();
     resp.setRuntimeConfiguration(getRuntimeConfiguration().setClusterId(clusterId));
     return resp;
   }

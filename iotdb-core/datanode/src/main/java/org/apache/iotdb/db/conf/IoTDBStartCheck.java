@@ -24,17 +24,23 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -55,10 +61,13 @@ public class IoTDBStartCheck {
 
   private boolean isFirstStart = false;
 
-  private Properties properties = new Properties();
+  private final File propertiesFile;
+  private final File oldPropertiesFile;
+  private final File tmpPropertiesFile;
+
+  private final Properties properties = new Properties();
 
   private final Map<String, Supplier<String>> systemProperties = new HashMap<>();
-  private final SystemPropertiesHandler systemPropertiesHandler;
 
   // region params need checking, determined when first start
   private static final String SYSTEM_PROPERTIES_STRING = "System properties:";
@@ -139,13 +148,58 @@ public class IoTDBStartCheck {
       }
     }
 
-    systemPropertiesHandler = DataNodeSystemPropertiesHandler.getInstance();
+    oldPropertiesFile =
+        SystemFileFactory.INSTANCE.getFile(
+            IoTDBStartCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);
+    propertiesFile =
+        SystemFileFactory.INSTANCE.getFile(
+            config.getSystemDir() + File.separator + PROPERTIES_FILE_NAME);
+    tmpPropertiesFile =
+        SystemFileFactory.INSTANCE.getFile(
+            IoTDBStartCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME + ".tmp");
 
     systemProperties.put(IOTDB_VERSION_STRING, () -> IoTDBConstant.VERSION);
     systemProperties.put(COMMIT_ID_STRING, () -> IoTDBConstant.BUILD_INFO);
     for (String param : variableParamValueTable.keySet()) {
       systemProperties.put(param, () -> getVal(param));
     }
+  }
+
+  /** check configuration in system.properties when starting IoTDB */
+  public boolean checkIsFirstStart() throws IOException {
+    // system init first time, no need to check, write system.properties and return
+    if (!propertiesFile.exists() && !tmpPropertiesFile.exists()) {
+      // create system.properties
+      if (propertiesFile.createNewFile()) {
+        logger.info(" {} has been created.", propertiesFile.getAbsolutePath());
+      } else {
+        logger.error("can not create {}", propertiesFile.getAbsolutePath());
+        System.exit(-1);
+      }
+
+      // write properties to system.properties
+      try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
+        systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
+        properties.store(
+            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
+      }
+      isFirstStart = true;
+      return true;
+    }
+
+    if (!propertiesFile.exists() && tmpPropertiesFile.exists()) {
+      // rename tmp file to system.properties, no need to check
+      FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
+      logger.info("rename {} to {}", tmpPropertiesFile, propertiesFile);
+      isFirstStart = false;
+      return false;
+    } else if (propertiesFile.exists() && tmpPropertiesFile.exists()) {
+      // both files exist, remove tmp file
+      FileUtils.forceDelete(tmpPropertiesFile);
+      logger.info("remove {}", tmpPropertiesFile);
+    }
+    isFirstStart = false;
+    return false;
   }
 
   /**
@@ -186,20 +240,14 @@ public class IoTDBStartCheck {
    *
    * @throws IOException If copy fail or delete fail
    */
-  public static void checkOldSystemConfig() throws IOException {
-    File oldPropertiesFile =
-        SystemFileFactory.INSTANCE.getFile(
-            IoTDBStartCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);
+  public void checkOldSystemConfig() throws IOException {
     if (oldPropertiesFile.exists()) {
-      File correctPropertiesFile =
-          SystemFileFactory.INSTANCE.getFile(
-              config.getSystemDir() + File.separator + PROPERTIES_FILE_NAME);
-      FileUtils.copyFile(oldPropertiesFile, correctPropertiesFile);
+      FileUtils.copyFile(oldPropertiesFile, propertiesFile);
       FileUtils.delete(oldPropertiesFile);
       logger.info(
           "system.properties file has been moved successfully: {} -> {}",
           oldPropertiesFile.getAbsolutePath(),
-          correctPropertiesFile.getAbsolutePath());
+          propertiesFile.getAbsolutePath());
     }
   }
 
@@ -213,11 +261,19 @@ public class IoTDBStartCheck {
    */
   public void checkSystemConfig() throws ConfigurationException, IOException {
     // read properties from system.properties
-    properties = systemPropertiesHandler.read();
+    try (FileInputStream inputStream = new FileInputStream(propertiesFile);
+        InputStreamReader inputStreamReader =
+            new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET)) {
+      properties.load(inputStreamReader);
+    }
 
-    if (systemPropertiesHandler.isFirstStart()) {
+    if (isFirstStart) {
       // overwrite system.properties when first start
-      generateOrOverwriteSystemPropertiesFile();
+      try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
+        systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
+        properties.store(
+            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
+      }
       if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
           && config.getWalMode().equals(WALMode.DISABLE)) {
         throw new ConfigurationException(
@@ -242,15 +298,32 @@ public class IoTDBStartCheck {
 
   /** repair broken properties */
   private void upgradePropertiesFileFromBrokenFile() throws IOException {
-    systemProperties.forEach(
-        (k, v) -> {
-          if (!properties.containsKey(k)) {
-            properties.setProperty(k, v.get());
-          }
-        });
-    properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
-    properties.setProperty(COMMIT_ID_STRING, IoTDBConstant.BUILD_INFO);
-    systemPropertiesHandler.overwrite(properties);
+    // create an empty tmpPropertiesFile
+    if (tmpPropertiesFile.createNewFile()) {
+      logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
+    } else {
+      logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
+      System.exit(-1);
+    }
+
+    try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
+      systemProperties.forEach(
+          (k, v) -> {
+            if (!properties.containsKey(k)) {
+              properties.setProperty(k, v.get());
+            }
+          });
+      properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
+      properties.setProperty(COMMIT_ID_STRING, IoTDBConstant.BUILD_INFO);
+      properties.store(
+          new OutputStreamWriter(tmpFOS, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
+      // upgrade finished, delete old system.properties file
+      if (propertiesFile.exists()) {
+        Files.delete(propertiesFile.toPath());
+      }
+    }
+    // rename system.properties.tmp to system.properties
+    FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
   }
 
   /** Check all immutable properties */
@@ -289,11 +362,44 @@ public class IoTDBStartCheck {
         parameter + "can't be modified after first startup");
   }
 
+  // reload properties from system.properties
+  private void reloadProperties() throws IOException {
+    try (FileInputStream inputStream = new FileInputStream(propertiesFile);
+        InputStreamReader inputStreamReader =
+            new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET)) {
+      properties.load(inputStreamReader);
+    }
+  }
+
   /** call this method to serialize ClusterName and DataNodeId */
   public void serializeClusterNameAndDataNodeId(String clusterName, int dataNodeId)
       throws IOException {
-    systemPropertiesHandler.put(
-        IoTDBConstant.CLUSTER_NAME, clusterName, DATA_NODE_ID, String.valueOf(dataNodeId));
+    // create an empty tmpPropertiesFile
+    if (tmpPropertiesFile.createNewFile()) {
+      logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
+    } else {
+      logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
+      System.exit(-1);
+    }
+
+    reloadProperties();
+    FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString());
+    try {
+      properties.setProperty(IoTDBConstant.CLUSTER_NAME, clusterName);
+      properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
+      properties.store(
+          new OutputStreamWriter(tmpFOS, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
+      // serialize finished, delete old system.properties file
+      if (propertiesFile.exists()) {
+        Files.delete(propertiesFile.toPath());
+      }
+    } finally {
+      tmpFOS.flush();
+      tmpFOS.getFD().sync();
+      tmpFOS.close();
+    }
+    // rename system.properties.tmp to system.properties
+    FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
   }
 
   public boolean checkConsensusProtocolExists(TConsensusGroupType type) {
@@ -311,22 +417,21 @@ public class IoTDBStartCheck {
     long startTime = System.currentTimeMillis();
     boolean needsSerialize = false;
     for (String param : variableParamValueTable.keySet()) {
-      if (!properties.getProperty(param).equals(getVal(param))) {
+      if (!(properties.getProperty(param).equals(getVal(param)))) {
         needsSerialize = true;
       }
     }
 
     if (needsSerialize) {
-      generateOrOverwriteSystemPropertiesFile();
+      try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
+        systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
+        properties.store(
+            new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), SYSTEM_PROPERTIES_STRING);
+      }
     }
     long endTime = System.currentTimeMillis();
     logger.info(
         "Serialize mutable system properties successfully, which takes {} ms.",
         (endTime - startTime));
-  }
-
-  public void generateOrOverwriteSystemPropertiesFile() throws IOException {
-    systemProperties.forEach((k, v) -> properties.setProperty(k, v.get()));
-    systemPropertiesHandler.overwrite(properties);
   }
 }
