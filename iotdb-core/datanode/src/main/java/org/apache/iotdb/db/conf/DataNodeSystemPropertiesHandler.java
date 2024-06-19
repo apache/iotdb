@@ -32,23 +32,21 @@ public class DataNodeSystemPropertiesHandler extends SystemPropertiesHandler {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DataNodeSystemPropertiesHandler.class);
 
+  private static DataNodeSystemPropertiesHandler INSTANCE;
+
   private DataNodeSystemPropertiesHandler(String filePath) {
     super(filePath);
   }
 
   public static synchronized SystemPropertiesHandler getInstance() {
-    if (Holder.INSTANCE == null) {
-      Holder.INSTANCE =
+    if (INSTANCE == null) {
+      INSTANCE =
           new DataNodeSystemPropertiesHandler(
               IoTDBDescriptor.getInstance().getConfig().getSystemDir()
                   + File.separator
                   + PROPERTIES_FILE_NAME);
-      Holder.INSTANCE.recover();
+      INSTANCE.recover();
     }
-    return Holder.INSTANCE;
-  }
-
-  private static class Holder {
-    private static DataNodeSystemPropertiesHandler INSTANCE;
+    return INSTANCE;
   }
 }

@@ -30,23 +30,21 @@ public class ConfigNodeSystemPropertiesHandler extends SystemPropertiesHandler {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ConfigNodeSystemPropertiesHandler.class);
 
+  private static ConfigNodeSystemPropertiesHandler INSTANCE;
+
   private ConfigNodeSystemPropertiesHandler(String filePath) {
     super(filePath);
   }
 
   public static synchronized SystemPropertiesHandler getInstance() {
-    if (Holder.INSTANCE == null) {
-      Holder.INSTANCE =
+    if (INSTANCE == null) {
+      INSTANCE =
           new ConfigNodeSystemPropertiesHandler(
               ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
                   + File.separator
                   + ConfigNodeConstant.SYSTEM_FILE_NAME);
-      Holder.INSTANCE.recover();
+      INSTANCE.recover();
     }
-    return Holder.INSTANCE;
-  }
-
-  private static class Holder {
-    private static ConfigNodeSystemPropertiesHandler INSTANCE;
+    return INSTANCE;
   }
 }
