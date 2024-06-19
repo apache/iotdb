@@ -51,11 +51,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 
 public class TsFileInsertionDataContainer implements AutoCloseable {
 
@@ -126,8 +128,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
         // Filter devices that may overlap with pattern first
         // to avoid reading all time-series of all devices.
-        final List<IDeviceID> devices =
-            filterDevicesByPattern(tsFileSequenceReader.getAllDevices());
+        final Set<IDeviceID> devices = filterDevicesByPattern(deviceIsAlignedMap.keySet());
 
         measurementDataTypeMap = readFilteredFullPathDataTypeMap(devices);
         memoryRequiredInBytes += PipeMemoryWeighUtil.memoryOfStr2TSDataType(measurementDataTypeMap);
@@ -206,12 +207,12 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
     return deviceIsAlignedResultMap;
   }
 
-  private List<IDeviceID> filterDevicesByPattern(final List<IDeviceID> devices) {
+  private Set<IDeviceID> filterDevicesByPattern(final Set<IDeviceID> devices) {
     if (Objects.isNull(pattern) || pattern.isRoot()) {
       return devices;
     }
 
-    final List<IDeviceID> filteredDevices = new ArrayList<>();
+    final Set<IDeviceID> filteredDevices = new HashSet<>();
     for (final IDeviceID device : devices) {
       final String deviceId = ((PlainDeviceID) device).toStringID();
       if (pattern.coversDevice(deviceId) || pattern.mayOverlapWithDevice(deviceId)) {
@@ -225,7 +226,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
    * This method is similar to {@link TsFileSequenceReader#getFullPathDataTypeMap()}, but only reads
    * the given devices.
    */
-  private Map<String, TSDataType> readFilteredFullPathDataTypeMap(final List<IDeviceID> devices)
+  private Map<String, TSDataType> readFilteredFullPathDataTypeMap(final Set<IDeviceID> devices)
       throws IOException {
     final Map<String, TSDataType> result = new HashMap<>();
 
@@ -250,7 +251,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
    * reads the given devices.
    */
   private Map<IDeviceID, List<String>> readFilteredDeviceMeasurementsMap(
-      final List<IDeviceID> devices) throws IOException {
+      final Set<IDeviceID> devices) throws IOException {
     final Map<IDeviceID, List<String>> result = new HashMap<>();
 
     for (IDeviceID device : devices) {
