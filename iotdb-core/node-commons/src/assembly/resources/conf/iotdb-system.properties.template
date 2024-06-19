@@ -388,7 +388,32 @@ dn_metric_prometheus_reporter_port=9092
 dn_metric_internal_reporter_type=MEMORY
 
 ####################
-### thrift rpc configuration
+### SSL Configuration
+####################
+
+# Does dn_rpc_port enable SSL
+# effectiveMode: restart
+# Datatype: boolean
+enable_thrift_ssl=false
+
+# Rest Service enabled SSL
+# effectiveMode: restart
+# Datatype: boolean
+enable_https=false
+
+# SSL key store path
+# linux e.g. /home/iotdb/server.keystore (absolute path) or server.keystore (relative path)
+# windows e.g. C:\\iotdb\\server.keystore (absolute path) or server.keystore (relative path)
+# effectiveMode: restart
+key_store_path=
+
+# SSL key store password
+# effectiveMode: restart
+# Datatype: String
+key_store_pwd=
+
+####################
+### Connection Configuration
 ####################
 
 # this feature is under development, set this as false before it is done.
@@ -417,35 +442,6 @@ cn_selector_thread_nums_of_client_manager=1
 # effectiveMode: restart
 # Datatype: int
 cn_max_client_count_for_each_node_in_client_manager=300
-
-####################
-### SSL Configuration
-####################
-
-# Does dn_rpc_port enable SSL
-# effectiveMode: restart
-# Datatype: boolean
-enable_thrift_ssl=false
-
-# Rest Service enabled SSL
-# effectiveMode: restart
-# Datatype: boolean
-enable_https=false
-
-# SSL key store path
-# linux e.g. /home/iotdb/server.keystore (absolute path) or server.keystore (relative path)
-# windows e.g. C:\\iotdb\\server.keystore (absolute path) or server.keystore (relative path)
-# effectiveMode: restart
-key_store_path=
-
-# SSL key store password
-# effectiveMode: restart
-# Datatype: String
-key_store_pwd=
-
-####################
-### Connection Configuration
-####################
 
 # The maximum session idle time. unit: ms
 # Idle sessions are the ones that performs neither query or non-query operations for a period of time
