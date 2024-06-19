@@ -362,7 +362,8 @@ public class QueryExecution implements IQueryExecution {
           .deRegisterFragmentInstanceFromMemoryPool(
               fragmentInstanceId.queryId,
               FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
-                  fragmentInstanceId));
+                  fragmentInstanceId),
+              true);
     }
   }
 
