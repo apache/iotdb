@@ -585,11 +585,13 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       ExecutorService executorService,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
-    this.localMemoryManager = Validate.notNull(localMemoryManager);
-    this.tsBlockSerdeFactory = Validate.notNull(tsBlockSerdeFactory);
-    this.executorService = Validate.notNull(executorService);
+    this.localMemoryManager = Validate.notNull(localMemoryManager, "localMemoryManager is null.");
+    this.tsBlockSerdeFactory =
+        Validate.notNull(tsBlockSerdeFactory, "tsBlockSerdeFactory is null.");
+    this.executorService = Validate.notNull(executorService, "executorService is null.");
     this.mppDataExchangeServiceClientManager =
-        Validate.notNull(mppDataExchangeServiceClientManager);
+        Validate.notNull(
+            mppDataExchangeServiceClientManager, "mppDataExchangeServiceClientManager is null.");
     sourceHandles = new ConcurrentHashMap<>();
     shuffleSinkHandles = new ConcurrentHashMap<>();
   }
@@ -601,10 +603,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return mppDataExchangeService;
   }
 
-  public void deRegisterFragmentInstanceFromMemoryPool(String queryId, String fragmentInstanceId) {
+  public void deRegisterFragmentInstanceFromMemoryPool(
+      String queryId, String fragmentInstanceId, boolean forceDeregister) {
     localMemoryManager
         .getQueryPool()
-        .deRegisterFragmentInstanceFromQueryMemoryMap(queryId, fragmentInstanceId);
+        .deRegisterFragmentInstanceFromQueryMemoryMap(queryId, fragmentInstanceId, forceDeregister);
   }
 
   public LocalMemoryManager getLocalMemoryManager() {
