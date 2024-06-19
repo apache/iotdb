@@ -113,7 +113,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
         final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch =
             tabletBatchBuilder.onEvent(tabletInsertionEvent);
         if (Objects.nonNull(endPointAndBatch)) {
-          doTransfer(endPointAndBatch);
+          doTransferWrapper(endPointAndBatch);
         }
       } else {
         if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
@@ -144,7 +144,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     try {
       // In order to commit in order
       if (isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty()) {
-        doTransfer();
+        doTransferWrapper();
       }
 
       doTransferWrapper((PipeTsFileInsertionEvent) tsFileInsertionEvent);
@@ -167,7 +167,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
     // in order to commit in order
     if (isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty()) {
-      doTransfer();
+      doTransferWrapper();
     }
 
     if (!(event instanceof PipeHeartbeatEvent)) {
@@ -176,26 +176,22 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     }
   }
 
-  private void doTransfer(final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch)
+  private void doTransferWrapper() throws IOException {
+    for (final Pair<TEndPoint, PipeTabletEventBatch> nonEmptyBatch :
+        tabletBatchBuilder.getAllNonEmptyBatches()) {
+      doTransferWrapper(nonEmptyBatch);
+    }
+  }
+
+  private void doTransferWrapper(final Pair<TEndPoint, PipeTabletEventBatch> endPointAndBatch)
       throws IOException {
     final PipeTabletEventBatch batch = endPointAndBatch.getRight();
     if (batch instanceof PipeTabletEventPlainBatch) {
       doTransfer(endPointAndBatch.getLeft(), (PipeTabletEventPlainBatch) batch);
+    } else if (batch instanceof PipeTabletEventTsFileBatch) {
+      doTransfer((PipeTabletEventTsFileBatch) batch);
     } else {
-      final File tsFile = ((PipeTabletEventTsFileBatch) batch).sealTsFile();
-      // tsFile is null when the batch is already closed
-      if (Objects.isNull(tsFile)) {
-        return;
-      }
-      doTransfer(((PipeTabletEventTsFileBatch) batch).deepCopyPipeName2WeightMap(), tsFile, null);
-      try {
-        FileUtils.delete(tsFile);
-      } catch (final NoSuchFileException e) {
-        LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
-      } catch (final IOException e) {
-        LOGGER.warn(
-            "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
-      }
+      LOGGER.warn("Unsupported batch type {}.", batch.getClass());
     }
     batch.decreaseEventsReferenceCount(IoTDBDataRegionSyncConnector.class.getName(), true);
     batch.onSuccess();
@@ -247,10 +243,20 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     }
   }
 
-  private void doTransfer() throws IOException {
-    for (final Pair<TEndPoint, PipeTabletEventBatch> nonEmptyBatch :
-        tabletBatchBuilder.getAllNonEmptyBatches()) {
-      doTransfer(nonEmptyBatch);
+  private void doTransfer(final PipeTabletEventTsFileBatch batchToTransfer) throws IOException {
+    final File tsFile = batchToTransfer.sealTsFile();
+    // tsFile is null when the batch is already closed
+    if (Objects.isNull(tsFile)) {
+      return;
+    }
+    doTransfer(batchToTransfer.deepCopyPipeName2WeightMap(), tsFile, null);
+    try {
+      FileUtils.delete(tsFile);
+    } catch (final NoSuchFileException e) {
+      LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
     }
   }
 
