@@ -28,8 +28,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 
-import static org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter.MAGIC_STRING;
-import static org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter.MAGIC_STRING_BYTES;
+import static org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter.MAGIC_STRING_V2;
+import static org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter.MAGIC_STRING_V2_BYTES;
 
 /** Check whether the wal file is broken and recover it. */
 public class WALRecoverWriter {
@@ -42,10 +42,10 @@ public class WALRecoverWriter {
   public void recover(WALMetaData metaData) throws IOException {
     // locate broken data
     long truncateSize;
-    if (logFile.length() < MAGIC_STRING_BYTES) { // file without magic string
+    if (logFile.length() < MAGIC_STRING_V2_BYTES) { // file without magic string
       truncateSize = 0;
     } else {
-      if (readTailMagic().equals(MAGIC_STRING)) { // complete file
+      if (readTailMagic().equals(MAGIC_STRING_V2)) { // complete file
         return;
       } else { // file with broken magic string
         truncateSize = metaData.getTruncateOffSet();
@@ -63,8 +63,8 @@ public class WALRecoverWriter {
 
   private String readTailMagic() throws IOException {
     try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.READ)) {
-      ByteBuffer magicStringBytes = ByteBuffer.allocate(MAGIC_STRING_BYTES);
-      channel.read(magicStringBytes, channel.size() - MAGIC_STRING_BYTES);
+      ByteBuffer magicStringBytes = ByteBuffer.allocate(MAGIC_STRING_V2_BYTES);
+      channel.read(magicStringBytes, channel.size() - MAGIC_STRING_V2_BYTES);
       magicStringBytes.flip();
       return new String(magicStringBytes.array());
     }

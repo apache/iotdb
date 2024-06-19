@@ -38,11 +38,12 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(WALInputStream.class);
   private final FileChannel channel;
-  private final ByteBuffer segmentHeaderBuffer = ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
-  private final ByteBuffer compressedHeader = ByteBuffer.allocate(Integer.BYTES);
+  private final ByteBuffer segmentHeaderWithoutConpressedSizeBuffer =
+      ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
+  private final ByteBuffer compressedSizeHeaderBuffer = ByteBuffer.allocate(Integer.BYTES);
   private ByteBuffer dataBuffer = null;
   private ByteBuffer compressedBuffer = null;
-  private long fileSize;
+  private final long fileSize;
   File logFile;
   /*
    The WAL file consist of following parts:
@@ -69,7 +70,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   }
 
   private void getEndOffset() throws IOException {
-    if (channel.size() < WALWriter.MAGIC_STRING_BYTES + Integer.BYTES) {
+    if (channel.size() < WALWriter.MAGIC_STRING_V2_BYTES + Integer.BYTES) {
       // An broken file
       endOffset = channel.size();
       return;
@@ -79,17 +80,17 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     try {
       if (version == FileVersion.V2) {
         // New Version
-        ByteBuffer magicStringBuffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
-        channel.read(magicStringBuffer, channel.size() - WALWriter.MAGIC_STRING_BYTES);
+        ByteBuffer magicStringBuffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_V2_BYTES);
+        channel.read(magicStringBuffer, channel.size() - WALWriter.MAGIC_STRING_V2_BYTES);
         magicStringBuffer.flip();
         if (!new String(magicStringBuffer.array(), StandardCharsets.UTF_8)
-            .equals(WALWriter.MAGIC_STRING)) {
+            .equals(WALWriter.MAGIC_STRING_V2)) {
           // This is a broken wal file
           endOffset = channel.size();
           return;
         } else {
           // This is a normal wal file
-          position = channel.size() - WALWriter.MAGIC_STRING_BYTES - Integer.BYTES;
+          position = channel.size() - WALWriter.MAGIC_STRING_V2_BYTES - Integer.BYTES;
         }
       } else {
         // Old version
@@ -115,29 +116,35 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       channel.read(metadataSizeBuf, position);
       metadataSizeBuf.flip();
       int metadataSize = metadataSizeBuf.getInt();
-      endOffset = channel.size() - WALWriter.MAGIC_STRING_BYTES - Integer.BYTES - metadataSize - 1;
+      // -1 is for the endmarker
+      endOffset =
+          channel.size() - WALWriter.MAGIC_STRING_V2_BYTES - Integer.BYTES - metadataSize - 1;
     } finally {
-      channel.position(WALWriter.MAGIC_STRING_BYTES);
+      if (version == FileVersion.V2) {
+        channel.position(WALWriter.MAGIC_STRING_V2_BYTES);
+      } else {
+        channel.position(WALWriter.MAGIC_STRING_V1_BYTES);
+      }
     }
   }
 
   private void analyzeFileVersion() throws IOException {
-    if (channel.size() < WALWriter.MAGIC_STRING_BYTES) {
+    if (channel.size() < WALWriter.MAGIC_STRING_V2_BYTES) {
       version = FileVersion.UNKNOWN;
       return;
     }
-    if (isCurrentVersion()) {
+    if (isV2Version()) {
       this.version = FileVersion.V2;
       return;
     }
     this.version = FileVersion.V1;
   }
 
-  private boolean isCurrentVersion() throws IOException {
+  private boolean isV2Version() throws IOException {
     channel.position(0);
-    ByteBuffer buffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
+    ByteBuffer buffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_V2_BYTES);
     channel.read(buffer);
-    return new String(buffer.array(), StandardCharsets.UTF_8).equals(WALWriter.MAGIC_STRING);
+    return new String(buffer.array(), StandardCharsets.UTF_8).equals(WALWriter.MAGIC_STRING_V2);
   }
 
   @Override
@@ -292,9 +299,9 @@ public class WALInputStream extends InputStream implements AutoCloseable {
    */
   public void skipToGivenLogicalPosition(long pos) throws IOException {
     if (version == FileVersion.V2) {
-      channel.position(WALWriter.MAGIC_STRING_BYTES);
+      channel.position(WALWriter.MAGIC_STRING_V2_BYTES);
       long posRemain = pos;
-      SegmentInfo segmentInfo = null;
+      SegmentInfo segmentInfo;
       do {
         segmentInfo = getNextSegmentInfo();
         if (posRemain >= segmentInfo.uncompressedSize) {
@@ -340,24 +347,25 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   }
 
   private SegmentInfo getNextSegmentInfo() throws IOException {
-    segmentHeaderBuffer.clear();
-    channel.read(segmentHeaderBuffer);
-    segmentHeaderBuffer.flip();
+    segmentHeaderWithoutConpressedSizeBuffer.clear();
+    channel.read(segmentHeaderWithoutConpressedSizeBuffer);
+    segmentHeaderWithoutConpressedSizeBuffer.flip();
     SegmentInfo info = new SegmentInfo();
-    info.compressionType = CompressionType.deserialize(segmentHeaderBuffer.get());
-    info.dataInDiskSize = segmentHeaderBuffer.getInt();
+    info.compressionType =
+        CompressionType.deserialize(segmentHeaderWithoutConpressedSizeBuffer.get());
+    info.dataInDiskSize = segmentHeaderWithoutConpressedSizeBuffer.getInt();
     if (info.compressionType != CompressionType.UNCOMPRESSED) {
-      compressedHeader.clear();
-      channel.read(compressedHeader);
-      compressedHeader.flip();
-      info.uncompressedSize = compressedHeader.getInt();
+      compressedSizeHeaderBuffer.clear();
+      channel.read(compressedSizeHeaderBuffer);
+      compressedSizeHeaderBuffer.flip();
+      info.uncompressedSize = compressedSizeHeaderBuffer.getInt();
     } else {
       info.uncompressedSize = info.dataInDiskSize;
     }
     return info;
   }
 
-  private class SegmentInfo {
+  private static class SegmentInfo {
     public CompressionType compressionType;
     public int dataInDiskSize;
     public int uncompressedSize;
