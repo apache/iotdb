@@ -609,17 +609,6 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         .deRegisterFragmentInstanceFromQueryMemoryMap(queryId, fragmentInstanceId);
   }
 
-  public void removeSourceHandlesAndShuffleSinkHandlesOfFI(TFragmentInstanceId fragmentInstanceId) {
-    Map<String, ISourceHandle> removedSourceHandles = sourceHandles.remove(fragmentInstanceId);
-    if (removedSourceHandles != null) {
-      removedSourceHandles.values().forEach(ISourceHandle::abort);
-    }
-    ISinkHandle shuffleSinkHandle = shuffleSinkHandles.remove(fragmentInstanceId);
-    if (shuffleSinkHandle != null) {
-      shuffleSinkHandle.abort();
-    }
-  }
-
   public LocalMemoryManager getLocalMemoryManager() {
     return localMemoryManager;
   }

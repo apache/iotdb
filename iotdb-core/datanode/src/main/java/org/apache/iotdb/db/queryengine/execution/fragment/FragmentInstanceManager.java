@@ -208,7 +208,7 @@ public class FragmentInstanceManager {
 
   private void clearFIRelatedResources(FragmentInstanceId instanceId) {
     // close and remove all the handles of the fragment instance
-    exchangeManager.removeSourceHandlesAndShuffleSinkHandlesOfFI(instanceId.toThrift());
+    exchangeManager.forceDeregisterFragmentInstance(instanceId.toThrift());
     // clear MemoryPool
     exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
         instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId());
