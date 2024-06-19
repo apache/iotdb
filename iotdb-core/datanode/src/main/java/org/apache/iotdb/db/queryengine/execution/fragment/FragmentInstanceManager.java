@@ -279,6 +279,17 @@ public class FragmentInstanceManager {
     }
   }
 
+  /** Aborts a FragmentInstance. keep FragmentInstanceContext for later state tracking */
+  public FragmentInstanceInfo abortFragmentInstance(FragmentInstanceId fragmentInstanceId) {
+    instanceExecution.remove(fragmentInstanceId);
+    FragmentInstanceContext context = instanceContext.get(fragmentInstanceId);
+    if (context != null) {
+      context.abort();
+      return context.getInstanceInfo();
+    }
+    return null;
+  }
+
   /** Cancels a FragmentInstance. */
   public FragmentInstanceInfo cancelTask(FragmentInstanceId instanceId, boolean hasThrowable) {
     logger.debug("[CancelFI]");
