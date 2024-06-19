@@ -60,7 +60,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
   private final AtomicLong currentBatchId = new AtomicLong(BATCH_ID_GENERATOR.incrementAndGet());
   private final File batchFileBaseDir;
 
-  private static final String TS_FILE_PREFIX = "tablet_batch";
+  private static final String TS_FILE_PREFIX = "tb"; // tb means tablet batch
   private final AtomicLong tsFileIdGenerator = new AtomicLong(0);
 
   private final long maxSizeInBytes;
@@ -126,6 +126,10 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
               new File(
                   batchFileBaseDir,
                   TS_FILE_PREFIX
+                      + "_"
+                      + IoTDBDescriptor.getInstance().getConfig().getDataNodeId()
+                      + "_"
+                      + currentBatchId.get()
                       + "_"
                       + tsFileIdGenerator.getAndIncrement()
                       + TsFileConstant.TSFILE_SUFFIX));
