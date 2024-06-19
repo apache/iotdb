@@ -32,25 +32,24 @@ import java.util.Objects;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TimeSeriesSchemaSource.mapToString;
 
-public class TimeseriesSchemaInfo {
+public class TimeseriesContext {
   private final String dataType;
   private final String encoding;
   private final String compression;
   private final String tags;
   private final String alias;
-
-  // TODO: Currently we can't get attributes from fetchSchema in query
-  // private final String attributes;
+  private final String attributes;
 
   private final String deadband;
   private final String deadbandParameters;
 
-  public TimeseriesSchemaInfo(IMeasurementSchemaInfo schemaInfo) {
+  public TimeseriesContext(IMeasurementSchemaInfo schemaInfo) {
     this.dataType = schemaInfo.getSchema().getType().toString();
     this.encoding = schemaInfo.getSchema().getEncodingType().toString();
     this.compression = schemaInfo.getSchema().getCompressor().toString();
     this.alias = schemaInfo.getAlias();
     this.tags = mapToString(schemaInfo.getTagMap());
+    this.attributes = mapToString(schemaInfo.getAttributeMap());
     Pair<String, String> deadbandInfo =
         MetaUtils.parseDeadbandInfo(schemaInfo.getSchema().getProps());
     this.deadband = deadbandInfo.left;
@@ -77,6 +76,10 @@ public class TimeseriesSchemaInfo {
     return tags;
   }
 
+  public String getAttributes() {
+    return attributes;
+  }
+
   public String getDeadbandParameters() {
     return deadbandParameters;
   }
@@ -85,12 +88,13 @@ public class TimeseriesSchemaInfo {
     return deadband;
   }
 
-  public TimeseriesSchemaInfo(
+  public TimeseriesContext(
       String dataType,
       String alias,
       String encoding,
       String compression,
       String tags,
+      String attributes,
       String deadband,
       String deadbandParameters) {
     this.dataType = dataType;
@@ -98,6 +102,7 @@ public class TimeseriesSchemaInfo {
     this.encoding = encoding;
     this.compression = compression;
     this.tags = tags;
+    this.attributes = attributes;
     this.deadband = deadband;
     this.deadbandParameters = deadbandParameters;
   }
@@ -108,6 +113,7 @@ public class TimeseriesSchemaInfo {
     ReadWriteIOUtils.write(encoding, byteBuffer);
     ReadWriteIOUtils.write(compression, byteBuffer);
     ReadWriteIOUtils.write(tags, byteBuffer);
+    ReadWriteIOUtils.write(attributes, byteBuffer);
     ReadWriteIOUtils.write(deadband, byteBuffer);
     ReadWriteIOUtils.write(deadbandParameters, byteBuffer);
   }
@@ -118,20 +124,22 @@ public class TimeseriesSchemaInfo {
     ReadWriteIOUtils.write(encoding, stream);
     ReadWriteIOUtils.write(compression, stream);
     ReadWriteIOUtils.write(tags, stream);
+    ReadWriteIOUtils.write(attributes, stream);
     ReadWriteIOUtils.write(deadband, stream);
     ReadWriteIOUtils.write(deadbandParameters, stream);
   }
 
-  public static TimeseriesSchemaInfo deserialize(ByteBuffer buffer) {
+  public static TimeseriesContext deserialize(ByteBuffer buffer) {
     String dataType = ReadWriteIOUtils.readString(buffer);
     String alias = ReadWriteIOUtils.readString(buffer);
     String encoding = ReadWriteIOUtils.readString(buffer);
     String compression = ReadWriteIOUtils.readString(buffer);
     String tags = ReadWriteIOUtils.readString(buffer);
+    String attributes = ReadWriteIOUtils.readString(buffer);
     String deadband = ReadWriteIOUtils.readString(buffer);
     String deadbandParameters = ReadWriteIOUtils.readString(buffer);
-    return new TimeseriesSchemaInfo(
-        dataType, alias, encoding, compression, tags, deadband, deadbandParameters);
+    return new TimeseriesContext(
+        dataType, alias, encoding, compression, tags, attributes, deadband, deadbandParameters);
   }
 
   @Override
@@ -142,18 +150,22 @@ public class TimeseriesSchemaInfo {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    TimeseriesSchemaInfo that = (TimeseriesSchemaInfo) obj;
-    return Objects.equals(dataType, that.dataType)
-        && Objects.equals(alias, that.alias)
-        && encoding.equals(that.encoding)
-        && Objects.equals(compression, that.compression)
-        && Objects.equals(tags, that.tags)
-        && Objects.equals(deadband, that.deadband)
-        && Objects.equals(deadbandParameters, that.deadbandParameters);
+    TimeseriesContext that = (TimeseriesContext) obj;
+    boolean res =
+        Objects.equals(dataType, that.dataType)
+            && Objects.equals(alias, that.alias)
+            && encoding.equals(that.encoding)
+            && Objects.equals(compression, that.compression)
+            && Objects.equals(tags, that.tags)
+            && Objects.equals(attributes, that.attributes)
+            && Objects.equals(deadband, that.deadband)
+            && Objects.equals(deadbandParameters, that.deadbandParameters);
+    return res;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dataType, alias, encoding, compression, tags, deadband, deadbandParameters);
+    return Objects.hash(
+        dataType, alias, encoding, compression, tags, attributes, deadband, deadbandParameters);
   }
 }
