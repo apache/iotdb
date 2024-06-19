@@ -46,7 +46,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -212,12 +211,11 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
         if (reader != null) {
           reader.close();
         }
+
         // Delete current file when using tsFile as batch
-        if (!(events.get(0) instanceof PipeTsFileInsertionEvent)) {
+        if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
           FileUtils.delete(currentFile);
         }
-      } catch (final NoSuchFileException e) {
-        LOGGER.info("The file {} is not found, may already be deleted.", currentFile);
       } catch (final IOException e) {
         LOGGER.warn(
             "Failed to close file reader or delete tsFile when successfully transferred file.", e);
@@ -294,12 +292,11 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
       if (reader != null) {
         reader.close();
       }
+
       // Delete current file when using tsFile as batch
-      if (!(events.get(0) instanceof PipeTsFileInsertionEvent)) {
+      if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
         FileUtils.delete(currentFile);
       }
-    } catch (final NoSuchFileException e) {
-      LOGGER.info("The file {} is not found, may already be deleted.", currentFile);
     } catch (final IOException e) {
       LOGGER.warn("Failed to close file reader or delete tsFile when failed to transfer file.", e);
     } finally {
