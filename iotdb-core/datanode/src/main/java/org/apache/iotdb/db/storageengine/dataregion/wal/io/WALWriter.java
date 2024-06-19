@@ -45,6 +45,8 @@ public class WALWriter extends LogWriter {
   private WALFileStatus walFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
   // wal files' metadata
   protected final WALMetaData metaData = new WALMetaData();
+  // By default is V2
+  private WALFileVersion version = WALFileVersion.V2;
 
   public WALWriter(File logFile) throws IOException {
     super(logFile);
@@ -71,14 +73,19 @@ public class WALWriter extends LogWriter {
     int metaDataSize = metaData.serializedSize();
     ByteBuffer buffer =
         ByteBuffer.allocate(
-            endMarker.serializedSize() + metaDataSize + Integer.BYTES + MAGIC_STRING_V2_BYTES);
+            endMarker.serializedSize()
+                + metaDataSize
+                + Integer.BYTES
+                + (version == WALFileVersion.V2 ? MAGIC_STRING_V2_BYTES : MAGIC_STRING_V1_BYTES));
     // mark info part ends
     endMarker.serialize(buffer);
     // flush meta data
     metaData.serialize(buffer);
     buffer.putInt(metaDataSize);
     // add magic string
-    buffer.put(MAGIC_STRING_V2.getBytes(StandardCharsets.UTF_8));
+    buffer.put(
+        (version == WALFileVersion.V2 ? MAGIC_STRING_V2 : MAGIC_STRING_V1)
+            .getBytes(StandardCharsets.UTF_8));
     size += buffer.position();
     writeMetadata(buffer);
   }
@@ -103,5 +110,9 @@ public class WALWriter extends LogWriter {
 
   public WALFileStatus getWalFileStatus() {
     return walFileStatus;
+  }
+
+  public void setVersion(WALFileVersion version) {
+    this.version = version;
   }
 }
