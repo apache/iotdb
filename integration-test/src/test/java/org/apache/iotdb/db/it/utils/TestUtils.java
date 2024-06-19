@@ -768,6 +768,9 @@ public class TestUtils {
         Statement statement = connection.createStatement()) {
       // Keep retrying if there are execution failures
       await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
           .atMost(consistentSeconds, TimeUnit.SECONDS)
           .failFast(
               () -> {
