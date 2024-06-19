@@ -30,15 +30,26 @@ public enum WALFileVersion {
   UNKNOWN;
 
   public static WALFileVersion getVersion(File file) throws IOException {
-    FileChannel channel = FileChannel.open(file.toPath());
-    ByteBuffer buffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_V2_BYTES);
-    channel.read(buffer);
-    buffer.flip();
-    if (buffer.remaining() < WALWriter.MAGIC_STRING_V2_BYTES) {
-      return UNKNOWN;
+    try (FileChannel channel = FileChannel.open(file.toPath())) {
+      return getVersion(channel);
     }
-    return new String(buffer.array(), StandardCharsets.UTF_8).equals(WALWriter.MAGIC_STRING_V2)
-        ? V2
-        : V1;
+  }
+
+  public static WALFileVersion getVersion(FileChannel channel) throws IOException {
+    long originalPosition = channel.position();
+    try {
+      channel.position(0);
+      ByteBuffer buffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_V2_BYTES);
+      channel.read(buffer);
+      buffer.flip();
+      if (buffer.remaining() < WALWriter.MAGIC_STRING_V2_BYTES) {
+        return UNKNOWN;
+      }
+      return new String(buffer.array(), StandardCharsets.UTF_8).equals(WALWriter.MAGIC_STRING_V2)
+          ? V2
+          : V1;
+    } finally {
+      channel.position(originalPosition);
+    }
   }
 }

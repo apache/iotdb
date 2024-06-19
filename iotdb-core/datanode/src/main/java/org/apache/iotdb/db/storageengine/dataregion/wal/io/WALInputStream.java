@@ -135,22 +135,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   }
 
   private void analyzeFileVersion() throws IOException {
-    if (channel.size() < WALWriter.MAGIC_STRING_V2_BYTES) {
-      version = WALFileVersion.UNKNOWN;
-      return;
-    }
-    if (isV2Version()) {
-      this.version = WALFileVersion.V2;
-      return;
-    }
-    this.version = WALFileVersion.V1;
-  }
-
-  private boolean isV2Version() throws IOException {
-    channel.position(0);
-    ByteBuffer buffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_V2_BYTES);
-    channel.read(buffer);
-    return new String(buffer.array(), StandardCharsets.UTF_8).equals(WALWriter.MAGIC_STRING_V2);
+    version = WALFileVersion.getVersion(channel);
   }
 
   @Override

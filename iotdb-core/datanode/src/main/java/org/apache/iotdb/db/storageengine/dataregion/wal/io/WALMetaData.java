@@ -136,7 +136,8 @@ public class WALMetaData implements SerializedSize {
     // load metadata size
     ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
     long position;
-    if (isVersionV2(channel)) {
+    WALFileVersion version = WALFileVersion.getVersion(channel);
+    if (version == WALFileVersion.V2) {
       position = channel.size() - WALWriter.MAGIC_STRING_V2_BYTES - Integer.BYTES;
     } else {
       position =
@@ -165,15 +166,6 @@ public class WALMetaData implements SerializedSize {
       }
     }
     return metaData;
-  }
-
-  private static boolean isVersionV2(FileChannel channel) throws IOException {
-    channel.position(0);
-    ByteBuffer headerBuffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_V2_BYTES);
-    channel.read(headerBuffer);
-    headerBuffer.flip();
-    String header = new String(headerBuffer.array(), StandardCharsets.UTF_8);
-    return header.equals(WALWriter.MAGIC_STRING_V2);
   }
 
   private static boolean isValidMagicString(FileChannel channel) throws IOException {
