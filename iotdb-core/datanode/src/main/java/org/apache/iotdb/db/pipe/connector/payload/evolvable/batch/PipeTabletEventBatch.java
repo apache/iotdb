@@ -77,12 +77,16 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       }
     }
 
-    return totalBufferSize >= getMaxBatchSizeInBytes()
-        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
+    return shouldEmit();
   }
 
   protected abstract void constructBatch(final TabletInsertionEvent event)
       throws WALPipeException, IOException, WriteProcessException;
+
+  protected boolean shouldEmit() {
+    return totalBufferSize >= getMaxBatchSizeInBytes()
+        || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
+  }
 
   protected abstract long getMaxBatchSizeInBytes();
 

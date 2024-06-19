@@ -113,7 +113,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
       // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (0, 1)", "flush"))) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"))) {
         return;
       }
 
@@ -146,7 +146,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
       // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (1, 1)", "flush"))) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"))) {
         return;
       }
 
@@ -154,7 +154,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select * from root.**",
           "Time,root.vehicle.d0.s1,",
-          Collections.unmodifiableSet(new HashSet<>(Arrays.asList("0,1.0,", "1,1.0,"))));
+          Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1.0,", "2,1.0,"))));
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("testPipe").getCode());
@@ -172,7 +172,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
       // Because the failures will randomly generate due to resource limitation
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
-          Arrays.asList("insert into root.vehicle.d0(time, s1) values (2, 1)", "flush"))) {
+          Arrays.asList("insert into root.vehicle.d0(time, s1) values (3, 1), (0, 1)", "flush"))) {
         return;
       }
 
@@ -180,7 +180,8 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
           receiverEnv,
           "select * from root.**",
           "Time,root.vehicle.d0.s1,",
-          Collections.unmodifiableSet(new HashSet<>(Arrays.asList("0,1.0,", "1,1.0,", "2,1.0,"))));
+          Collections.unmodifiableSet(
+              new HashSet<>(Arrays.asList("0,1.0,", "1,1.0,", "2,1.0,", "3,1.0,"))));
     }
   }
 
