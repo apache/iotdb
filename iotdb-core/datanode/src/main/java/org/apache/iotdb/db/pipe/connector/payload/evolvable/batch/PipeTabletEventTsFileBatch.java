@@ -144,7 +144,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
     }
 
     if (!unsequenceTabletList.isEmpty()) {
-      final int size = unsequencePipeNameList.size();
+      final int size = unsequenceTabletList.size();
       LOGGER.info("Retrying out-of-order tablets, tablets count: {}", size);
       for (int i = 0; i < size; ++i) {
         writeTablet(
