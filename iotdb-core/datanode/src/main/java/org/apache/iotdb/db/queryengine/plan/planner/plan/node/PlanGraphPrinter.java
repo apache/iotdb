@@ -673,6 +673,16 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
+  public List<String> visitSort(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Sort-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitMergeSort(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode node,
       GraphContext context) {

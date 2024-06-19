@@ -566,7 +566,7 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitMergeSort(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode node, C context) {
-    return visitPlan(node, context);
+    return visitMultiChildProcess(node, context);
   }
 
   public R visitOutput(
@@ -576,16 +576,16 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitSort(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitStreamSort(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode node, C context) {
-    return visitPlan(node, context);
+    return visitSingleChildProcess(node, context);
   }
 
   public R visitTopK(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode node, C context) {
-    return visitPlan(node, context);
+    return visitMultiChildProcess(node, context);
   }
 }
