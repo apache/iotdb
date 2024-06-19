@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALBuffer;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 
@@ -93,8 +94,7 @@ public abstract class LogWriter implements ILogWriter {
         // TODO: Use a dynamic strategy to enlarge the buffer size
         compressedByteBuffer =
             ByteBuffer.allocate(
-                compressor.getMaxBytesForCompression(
-                    IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2));
+                compressor.getMaxBytesForCompression(WALBuffer.HALF_WAL_BUFFER_SIZE));
       }
       compressedByteBuffer.clear();
       if (compressor.getType() != compressionType) {
