@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -115,7 +116,8 @@ public interface IMemTable extends WALEntryValue {
   void insertTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException;
 
-  void insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end)
+  void insertAlignedTablet(InsertTabletNode insertTabletNode, int start, int end,
+      TSStatus[] results)
       throws WriteProcessException;
 
   ReadOnlyMemChunk query(

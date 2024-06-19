@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import java.util.Map.Entry;
-import java.util.function.Function;
 import java.util.function.IntFunction;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -228,19 +227,19 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return splitByPartition(analysis, this::getTableDeviceID);
   }
 
-  private Map<IDeviceID, SplitInfo> collectSplitRanges(IntFunction<IDeviceID> rowNumDeviceIdMapper) {
+  private Map<IDeviceID, PartitionSplitInfo> collectSplitRanges(IntFunction<IDeviceID> rowNumDeviceIdMapper) {
     long upperBoundOfTimePartition = TimePartitionUtils.getTimePartitionUpperBound(times[0]);
     TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(times[0]);
     int startLoc = 0; // included
     IDeviceID currDeviceId = rowNumDeviceIdMapper.apply(0);
 
-    Map<IDeviceID, SplitInfo> deviceIDSplitInfoMap = new HashMap<>();
+    Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap = new HashMap<>();
 
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       IDeviceID nextDeviceId = rowNumDeviceIdMapper.apply(i);
       if (times[i] >= upperBoundOfTimePartition || !currDeviceId.equals(nextDeviceId)) {
-        final SplitInfo splitInfo = deviceIDSplitInfoMap.computeIfAbsent(currDeviceId,
-            deviceID1 -> new SplitInfo());
+        final PartitionSplitInfo splitInfo = deviceIDSplitInfoMap.computeIfAbsent(currDeviceId,
+            deviceID1 -> new PartitionSplitInfo());
         // a new range.
         splitInfo.ranges.add(startLoc); // included
         splitInfo.ranges.add(i); // excluded
@@ -253,8 +252,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       }
     }
 
-    SplitInfo splitInfo = deviceIDSplitInfoMap.computeIfAbsent(currDeviceId,
-        deviceID1 -> new SplitInfo());
+    PartitionSplitInfo splitInfo = deviceIDSplitInfoMap.computeIfAbsent(currDeviceId,
+        deviceID1 -> new PartitionSplitInfo());
     // the final range
     splitInfo.ranges.add(startLoc); // included
     splitInfo.ranges.add(times.length); // excluded
@@ -263,12 +262,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return deviceIDSplitInfoMap;
   }
 
-  public  Map<TRegionReplicaSet, List<Integer>> splitByReplicaSet(Map<IDeviceID, SplitInfo> deviceIDSplitInfoMap, IAnalysis analysis) {
+  public  Map<TRegionReplicaSet, List<Integer>> splitByReplicaSet(Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap, IAnalysis analysis) {
     Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
 
-    for (Entry<IDeviceID, SplitInfo> entry : deviceIDSplitInfoMap.entrySet()) {
+    for (Entry<IDeviceID, PartitionSplitInfo> entry : deviceIDSplitInfoMap.entrySet()) {
       final IDeviceID deviceID = entry.getKey();
-      final SplitInfo splitInfo = entry.getValue();
+      final PartitionSplitInfo splitInfo = entry.getValue();
       final List<TRegionReplicaSet> replicaSets = analysis
           .getDataPartitionInfo()
           .getDataRegionReplicaSetForWriting(
@@ -369,7 +368,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       return Collections.emptyList();
     }
 
-    final Map<IDeviceID, SplitInfo> deviceIDSplitInfoMap = collectSplitRanges(rowNumDeviceIdMapper);
+    final Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap = collectSplitRanges(rowNumDeviceIdMapper);
     final Map<TRegionReplicaSet, List<Integer>> splitMap = splitByReplicaSet(
         deviceIDSplitInfoMap, analysis);
 
@@ -1205,10 +1204,33 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return deviceIDs[rowIdx];
   }
 
-  private class SplitInfo {
+  private static class PartitionSplitInfo {
     // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
     private List<Integer> ranges = new ArrayList<>();
     private List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
     private List<TRegionReplicaSet> replicaSets;
+  }
+
+  /**
+   * Split the tablet of the given range according to Table deviceID.
+   * @param start inclusive
+   * @param end exclusive
+   * @return each the number in the pair is the end offset of a device
+   */
+  public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
+    List<Pair<IDeviceID, Integer>> result = new ArrayList<>();
+    IDeviceID prevDeviceId = getTableDeviceID(start);
+
+    int i = start + 1;
+    for (; i < end; i++) {
+      IDeviceID currentDeviceId = getTableDeviceID(i);
+      if (!currentDeviceId.equals(prevDeviceId)) {
+        result.add(new Pair<>(prevDeviceId, i));
+        prevDeviceId = getTableDeviceID(i);
+      }
+    }
+    result.add(new Pair<>(prevDeviceId, start));
+
+    return result;
   }
 }

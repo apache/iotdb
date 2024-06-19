@@ -343,10 +343,10 @@ public class DataRegion implements IDataRegionForQuery {
   /**
    * Construct a database processor.
    *
-   * @param systemDir system dir path
-   * @param dataRegionId data region id e.g. 1
+   * @param systemDir       system dir path
+   * @param dataRegionId    data region id e.g. 1
    * @param fileFlushPolicy file flush policy
-   * @param databaseName database name e.g. root.sg1
+   * @param databaseName    database name e.g. root.sg1
    */
   public DataRegion(
       String systemDir, String dataRegionId, TsFileFlushPolicy fileFlushPolicy, String databaseName)
@@ -945,18 +945,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       // init map
       long timePartitionId = TimePartitionUtils.getTimePartitionId(insertRowNode.getTime());
-
-      if (config.isEnableSeparateData()
-          && !lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
-        TimePartitionManager.getInstance()
-            .registerTimePartitionInfo(
-                new TimePartitionInfo(
-                    new DataRegionId(Integer.parseInt(dataRegionId)),
-                    timePartitionId,
-                    true,
-                    Long.MAX_VALUE,
-                    0));
-      }
+      initFlushTimeMap(timePartitionId);
 
       boolean isSequence =
           config.isEnableSeparateData()
@@ -976,28 +965,100 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  public void insertTreeTablet(InsertTabletNode insertTabletNode,
-      IntFunction<IDeviceID> rowDeviceIdGetter, IntToLongFunction rowLastFlushTimeGetter)
+  public void insertTreeTablet(InsertTabletNode insertTabletNode)
       throws BatchProcessException, WriteProcessException {
     final IDeviceID deviceID = insertTabletNode.getDeviceID();
-
     insertTablet(insertTabletNode, i -> deviceID, i ->
         config.isEnableSeparateData()
             ? lastFlushTimeMap.getFlushedTime(
             TimePartitionUtils.getTimePartitionId(insertTabletNode.getTimes()[i]),
             insertTabletNode.getDeviceID())
-            : Long.MAX_VALUE
+            : Long.MAX_VALUE,
+        false
     );
   }
 
+  public void insertTableTablet(InsertTabletNode insertTabletNode)
+      throws BatchProcessException, WriteProcessException {
+    insertTablet(insertTabletNode, insertTabletNode::getTableDeviceID, i ->
+            config.isEnableSeparateData()
+                ? lastFlushTimeMap.getFlushedTime(
+                TimePartitionUtils.getTimePartitionId(insertTabletNode.getTimes()[i]),
+                insertTabletNode.getTableDeviceID(i))
+                : Long.MAX_VALUE,
+        true
+    );
+  }
+
+
+  private boolean splitAndInsert(InsertTabletNode insertTabletNode,
+      IntFunction<IDeviceID> rowDeviceIdGetter, IntToLongFunction rowLastFlushTimeGetter, int loc,
+      TSStatus[] results)
+      throws BatchProcessException, WriteProcessException {
+    boolean noFailure = true;
+
+    // before is first start point
+    int before = loc;
+    long beforeTime = insertTabletNode.getTimes()[before];
+    // before time partition
+    long beforeTimePartition =
+        TimePartitionUtils.getTimePartitionId(beforeTime);
+    // init flush time map
+    initFlushTimeMap(beforeTimePartition);
+
+    // if is sequence
+    boolean isSequence = false;
+    while (loc < insertTabletNode.getRowCount()) {
+      long lastFlushTime = rowLastFlushTimeGetter.applyAsLong(loc);
+      long time = insertTabletNode.getTimes()[loc];
+      final long timePartitionId = TimePartitionUtils.getTimePartitionId(time);
+      // always in some time partition
+      // judge if we should insert sequence
+      if (timePartitionId != beforeTimePartition) {
+        // a new partition, insert the remaining of the previous partition
+        noFailure =
+            insertTabletToTsFileProcessor(
+                insertTabletNode, before, loc, isSequence, results,
+                beforeTimePartition, rowDeviceIdGetter, noFailure)
+                && noFailure;
+        before = loc;
+        beforeTimePartition = timePartitionId;
+        isSequence = time > lastFlushTime;
+      } else if (!isSequence && time > lastFlushTime) {
+        // the same partition and switch to sequence data
+        // insert previous range into unsequence
+        noFailure =
+            insertTabletToTsFileProcessor(
+                insertTabletNode, before, loc, isSequence, results,
+                beforeTimePartition, rowDeviceIdGetter, noFailure)
+                && noFailure;
+        before = loc;
+        isSequence = true;
+      }
+      // else: the same partition and isSequence not changed, just move the cursor forward
+      loc++;
+    }
+
+    // do not forget last part
+    if (before < loc) {
+      noFailure =
+          insertTabletToTsFileProcessor(
+              insertTabletNode, before, loc, isSequence, results, beforeTimePartition, rowDeviceIdGetter, noFailure)
+              && noFailure;
+    }
+
+    return noFailure;
+  }
+
   /**
-   * Insert a tablet (rows belonging to the same devices) into this database.
+   * Insert a tablet into this database.
    *
    * @throws BatchProcessException if some of the rows failed to be inserted
    */
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
-  public void insertTablet(InsertTabletNode insertTabletNode,
-      IntFunction<IDeviceID> rowDeviceIdGetter, IntToLongFunction rowLastFlushTimeGetter)
+  private void insertTablet(InsertTabletNode insertTabletNode,
+      IntFunction<IDeviceID> rowDeviceIdGetter, IntToLongFunction rowLastFlushTimeGetter,
+      boolean checkAllRowTtl)
       throws BatchProcessException, WriteProcessException {
     StorageEngine.blockInsertionIfReject(null);
     long startTime = System.nanoTime();
@@ -1012,57 +1073,11 @@ public class DataRegion implements IDataRegionForQuery {
       boolean noFailure;
 
       int loc = checkTTL(insertTabletNode, results, i -> DataNodeTTLCache.getInstance()
-          .getTTL(rowDeviceIdGetter.apply(i)));
+          .getTTL(rowDeviceIdGetter.apply(i)), !checkAllRowTtl);
       noFailure = loc != 0;
 
-      // before is first start point
-      int before = loc;
-      long before
-      // before time partition
-      long beforeTimePartition =
-          TimePartitionUtils.getTimePartitionId(insertTabletNode.getTimes()[before]);
-      // init map
+      noFailure = noFailure & splitAndInsert(insertTabletNode, rowDeviceIdGetter, rowLastFlushTimeGetter, loc, results);
 
-      if (config.isEnableSeparateData()
-          && !lastFlushTimeMap.checkAndCreateFlushedTimePartition(beforeTimePartition)) {
-        TimePartitionManager.getInstance()
-            .registerTimePartitionInfo(
-                new TimePartitionInfo(
-                    new DataRegionId(Integer.parseInt(dataRegionId)),
-                    beforeTimePartition,
-                    true,
-                    Long.MAX_VALUE,
-                    0));
-      }
-
-      // if is sequence
-      boolean isSequence = false;
-      while (loc < insertTabletNode.getRowCount()) {
-        long lastFlushTime = rowLastFlushTimeGetter.applyAsLong(loc);
-        long time = insertTabletNode.getTimes()[loc];
-        final long timePartitionId = TimePartitionUtils.getTimePartitionId(time);
-        // always in some time partition
-        // judge if we should insert sequence
-        if (!isSequence && time > lastFlushTime) {
-          // insert into unsequence and then start sequence
-          noFailure =
-              insertTabletToTsFileProcessor(
-                  insertTabletNode, before, loc, false, results,
-                  timePartitionId)
-                  && noFailure;
-          before = loc;
-          isSequence = true;
-        }
-        loc++;
-      }
-
-      // do not forget last part
-      if (before < loc) {
-        noFailure =
-            insertTabletToTsFileProcessor(
-                insertTabletNode, before, loc, isSequence, results, time)
-                && noFailure;
-      }
       startTime = System.nanoTime();
       tryToUpdateInsertTabletLastCache(insertTabletNode);
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
@@ -1075,8 +1090,22 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  private void initFlushTimeMap(long timePartitionId) {
+    if (config.isEnableSeparateData()
+        && !lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
+      TimePartitionManager.getInstance()
+          .registerTimePartitionInfo(
+              new TimePartitionInfo(
+                  new DataRegionId(Integer.parseInt(dataRegionId)),
+                  timePartitionId,
+                  true,
+                  Long.MAX_VALUE,
+                  0));
+    }
+  }
+
   private int checkTTL(InsertTabletNode insertTabletNode, TSStatus[] results,
-      IntToLongFunction rowTTLGetter)
+      IntToLongFunction rowTTLGetter, boolean breakOnFirstAlive)
       throws OutOfTTLException {
 
     /*
@@ -1084,6 +1113,7 @@ public class DataRegion implements IDataRegionForQuery {
      */
     int loc = 0;
     long ttl = 0;
+    int firstAliveLoc = -1;
     while (loc < insertTabletNode.getRowCount()) {
       ttl = rowTTLGetter.applyAsLong(loc);
       long currTime = insertTabletNode.getTimes()[loc];
@@ -1097,102 +1127,24 @@ public class DataRegion implements IDataRegionForQuery {
                     DateTimeUtils.convertLongToDate(currTime),
                     DateTimeUtils.convertLongToDate(
                         CommonDateTimeUtils.currentTime() - ttl)));
-        loc++;
       } else {
-        break;
+        if (firstAliveLoc == -1) {
+          firstAliveLoc = loc;
+        }
+        if (breakOnFirstAlive) {
+          break;
+        }
       }
+      loc++;
     }
-    // loc pointing at first legal position
-    if (loc == insertTabletNode.getRowCount()) {
+
+    if (firstAliveLoc == -1) {
+      // no alive data
       throw new OutOfTTLException(
           insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
           (CommonDateTimeUtils.currentTime() - ttl));
     }
-    return loc;
-  }
-
-  /**
-   * Insert a tablet (rows belonging to the same devices) into this database.
-   *
-   * @throws BatchProcessException if some of the rows failed to be inserted
-   */
-  @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
-  public void insertTableTablet(InsertTabletNode insertTabletNode)
-      throws BatchProcessException, WriteProcessException {
-    StorageEngine.blockInsertionIfReject(null);
-    long startTime = System.nanoTime();
-    writeLock("insertTablet");
-    PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
-    try {
-      if (deleted) {
-        return;
-      }
-      TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
-      Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
-      boolean noFailure = true;
-      int loc = checkTTL(insertTabletNode, results,
-          i -> DataNodeTTLCache.getInstance().getTTL(insertTabletNode.getTableDeviceID(i)));
-
-      // before is first start point
-      int before = loc;
-      // before time partition
-      long beforeTimePartition =
-          TimePartitionUtils.getTimePartitionId(insertTabletNode.getTimes()[before]);
-      // init map
-
-      if (config.isEnableSeparateData()
-          && !lastFlushTimeMap.checkAndCreateFlushedTimePartition(beforeTimePartition)) {
-        TimePartitionManager.getInstance()
-            .registerTimePartitionInfo(
-                new TimePartitionInfo(
-                    new DataRegionId(Integer.parseInt(dataRegionId)),
-                    beforeTimePartition,
-                    true,
-                    Long.MAX_VALUE,
-                    0));
-      }
-
-      // if is sequence
-      boolean isSequence = false;
-      while (loc < insertTabletNode.getRowCount()) {
-        long lastFlushTime =
-            config.isEnableSeparateData()
-                ? lastFlushTimeMap.getFlushedTime(beforeTimePartition,
-                insertTabletNode.getTableDeviceID(loc))
-                : Long.MAX_VALUE;
-
-        long time = insertTabletNode.getTimes()[loc];
-        // always in some time partition
-        // judge if we should insert sequence
-        if (!isSequence && time > lastFlushTime) {
-          // insert into unsequence and then start sequence
-          noFailure =
-              insertTabletToTsFileProcessor(
-                  insertTabletNode, before, loc, false, results, beforeTimePartition)
-                  && noFailure;
-          before = loc;
-          isSequence = true;
-        }
-        loc++;
-      }
-
-      // do not forget last part
-      if (before < loc) {
-        noFailure =
-            insertTabletToTsFileProcessor(
-                insertTabletNode, before, loc, isSequence, results, beforeTimePartition)
-                && noFailure;
-      }
-      startTime = System.nanoTime();
-      tryToUpdateInsertTabletLastCache(insertTabletNode);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(System.nanoTime() - startTime);
-
-      if (!noFailure) {
-        throw new BatchProcessException(results);
-      }
-    } finally {
-      writeUnlock();
-    }
+    return firstAliveLoc;
   }
 
   /**
@@ -1203,7 +1155,11 @@ public class DataRegion implements IDataRegionForQuery {
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletNode insertTabletNode)
       throws BatchProcessException, WriteProcessException {
-
+      if (insertTabletNode.isWriteToTable()) {
+        insertTableTablet(insertTabletNode);
+      } else {
+        insertTreeTablet(insertTabletNode);
+      }
   }
 
   /**
@@ -1221,11 +1177,11 @@ public class DataRegion implements IDataRegionForQuery {
    * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
    *
    * @param insertTabletNode insert a tablet of a device
-   * @param sequence whether is sequence
-   * @param start start index of rows to be inserted in insertTabletPlan
-   * @param end end index of rows to be inserted in insertTabletPlan
-   * @param results result array
-   * @param timePartitionId time partition id
+   * @param sequence         whether is sequence
+   * @param start            start index of rows to be inserted in insertTabletPlan
+   * @param end              end index of rows to be inserted in insertTabletPlan
+   * @param results          result array
+   * @param timePartitionId  time partition id
    * @return false if any failure occurs when inserting the tablet, true otherwise
    */
   private boolean insertTabletToTsFileProcessor(
@@ -1234,7 +1190,9 @@ public class DataRegion implements IDataRegionForQuery {
       int end,
       boolean sequence,
       TSStatus[] results,
-      long timePartitionId) {
+      long timePartitionId,
+      IntFunction<IDeviceID> rowDeviceIdGetter,
+      boolean noFailure) {
     // return when start >= end or all measurement failed
     if (start >= end || insertTabletNode.allMeasurementFailed()) {
       return true;
@@ -1252,7 +1210,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     try {
-      tsFileProcessor.insertTablet(insertTabletNode, start, end, results);
+      tsFileProcessor.insertTablet(insertTabletNode, start, end, results, rowDeviceIdGetter, noFailure);
     } catch (WriteProcessRejectException e) {
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
       return false;
@@ -1552,9 +1510,9 @@ public class DataRegion implements IDataRegionForQuery {
   /**
    * get processor from hashmap, flush oldest processor if necessary
    *
-   * @param timeRangeId time partition range
+   * @param timeRangeId            time partition range
    * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
-   * @param sequence whether is sequence or not
+   * @param sequence               whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(
       long timeRangeId, TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap, boolean sequence)
@@ -1638,7 +1596,7 @@ public class DataRegion implements IDataRegionForQuery {
   /**
    * close one tsfile processor
    *
-   * @param sequence whether this tsfile processor is sequence or not
+   * @param sequence        whether this tsfile processor is sequence or not
    * @param tsFileProcessor tsfile processor
    */
   public void syncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
@@ -1670,7 +1628,7 @@ public class DataRegion implements IDataRegionForQuery {
   /**
    * close one tsfile processor, thread-safety should be ensured by caller
    *
-   * @param sequence whether this tsfile processor is sequence or not
+   * @param sequence        whether this tsfile processor is sequence or not
    * @param tsFileProcessor tsfile processor
    */
   public Future<?> asyncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
@@ -2884,7 +2842,7 @@ public class DataRegion implements IDataRegionForQuery {
    * <p>Then, update the latestTimeForEachDevice and partitionLatestFlushedTimeForEachDevice.
    *
    * @param newTsFileResource tsfile resource @UsedBy load external tsfile module
-   * @param deleteOriginFile whether to delete origin tsfile
+   * @param deleteOriginFile  whether to delete origin tsfile
    * @param isGeneratedByPipe whether the load tsfile request is generated by pipe
    */
   public void loadNewTsFile(
@@ -3071,6 +3029,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   /**
    * Update latest time in latestTimeForEachDevice and partitionLatestFlushedTimeForEachDevice.
+   *
    * @UsedBy sync module, load external tsfile module.
    */
   protected void updateLastFlushTime(TsFileResource newTsFileResource) {
@@ -3089,8 +3048,8 @@ public class DataRegion implements IDataRegionForQuery {
   /**
    * Execute the loading process by the type.
    *
-   * @param tsFileResource tsfile resource to be loaded
-   * @param filePartitionId the partition id of the new file
+   * @param tsFileResource   tsfile resource to be loaded
+   * @param filePartitionId  the partition id of the new file
    * @param deleteOriginFile whether to delete the original file
    * @return load the file successfully @UsedBy sync module, load external tsfile module.
    */
@@ -3638,7 +3597,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /**
-   * @param folder the folder's path
+   * @param folder   the folder's path
    * @param diskSize the disk space occupied by this folder, unit is MB
    */
   private void countFolderDiskSize(String folder, AtomicLong diskSize) {

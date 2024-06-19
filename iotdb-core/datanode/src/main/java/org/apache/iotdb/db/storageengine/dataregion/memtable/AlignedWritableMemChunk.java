@@ -245,7 +245,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     return (long) list.rowCount() * measurementIndexMap.size();
   }
 
-  public long alignedListSize() {
+  public int alignedListSize() {
     return list.rowCount();
   }
 

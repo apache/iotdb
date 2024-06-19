@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 
@@ -95,11 +96,13 @@ public class MemUtils {
     return RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + RamUsageEstimator.sizeOf(value.getValues());
   }
 
-  public static long getBinaryColumnSize(Binary[] column, int start, int end) {
+  public static long getBinaryColumnSize(Binary[] column, int start, int end, TSStatus[] results) {
     long memSize = 0;
     memSize += (long) (end - start) * RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
     for (int i = start; i < end; i++) {
-      memSize += RamUsageEstimator.sizeOf(column[i].getValues());
+      if (results == null || results[i] == null) {
+        memSize += RamUsageEstimator.sizeOf(column[i].getValues());
+      }
     }
     return memSize;
   }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
@@ -851,18 +852,24 @@ public abstract class AlignedTVList extends TVList {
     return TSDataType.VECTOR;
   }
 
+
+
   /**
    * Get the single alignedTVList array mem cost by give types.
    *
    * @param types the types in the vector
    * @return AlignedTvListArrayMemSize
    */
-  public static long alignedTvListArrayMemCost(TSDataType[] types) {
+  public static long alignedTvListArrayMemCost(TSDataType[] types, TsTableColumnCategory[] columnCategories) {
+
+    int measurementColumnNum = 0;
     long size = 0;
     // value array mem size
-    for (TSDataType type : types) {
-      if (type != null) {
-        size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+    for (int i = 0; i < types.length; i++) {
+      TSDataType type = types[i];
+      if (type != null || columnCategories != null || columnCategories[i] == TsTableColumnCategory.MEASUREMENT) {
+        size += (long) ARRAY_SIZE * (long) type.getDataTypeSize();
+        measurementColumnNum++;
       }
     }
     // size is 0 when all types are null
@@ -874,9 +881,9 @@ public abstract class AlignedTVList extends TVList {
     // index array mem size
     size += PrimitiveArrayManager.ARRAY_SIZE * 4L;
     // array headers mem size
-    size += (long) NUM_BYTES_ARRAY_HEADER * (2 + types.length);
+    size += (long) NUM_BYTES_ARRAY_HEADER * (2 + measurementColumnNum);
     // Object references size in ArrayList
-    size += (long) NUM_BYTES_OBJECT_REF * (2 + types.length);
+    size += (long) NUM_BYTES_OBJECT_REF * (2 + measurementColumnNum);
     return size;
   }
 
