@@ -211,7 +211,7 @@ public class FragmentInstanceManager {
     exchangeManager.forceDeregisterFragmentInstance(instanceId.toThrift());
     // clear MemoryPool
     exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
-        instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId());
+        instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId(), false);
   }
 
   private DataNodeQueryContext getOrCreateDataNodeQueryContext(QueryId queryId, int dataNodeFINum) {

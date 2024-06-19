@@ -603,10 +603,11 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     return mppDataExchangeService;
   }
 
-  public void deRegisterFragmentInstanceFromMemoryPool(String queryId, String fragmentInstanceId) {
+  public void deRegisterFragmentInstanceFromMemoryPool(
+      String queryId, String fragmentInstanceId, boolean forceDeregister) {
     localMemoryManager
         .getQueryPool()
-        .deRegisterFragmentInstanceFromQueryMemoryMap(queryId, fragmentInstanceId);
+        .deRegisterFragmentInstanceFromQueryMemoryMap(queryId, fragmentInstanceId, forceDeregister);
   }
 
   public LocalMemoryManager getLocalMemoryManager() {
