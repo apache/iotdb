@@ -194,9 +194,11 @@ public class DataNode implements DataNodeMBean {
       isFirstStart = prepareDataNode();
 
       if (isFirstStart) {
+        logger.info("DataNode is starting for the first time...");
         ConfigNodeInfo.getInstance()
             .updateConfigNodeList(Collections.singletonList(config.getSeedConfigNode()));
       } else {
+        logger.info("DataNode is restarting...");
         // Load registered ConfigNodes from system.properties
         ConfigNodeInfo.getInstance().loadConfigNodeList();
       }

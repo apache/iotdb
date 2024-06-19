@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Properties;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -158,12 +159,14 @@ public abstract class SystemPropertiesHandler {
               "Delete formal system properties file fail: %s", formalFile.getAbsoluteFile());
       throw new IOException(msg);
     }
-    if (!tmpFile.renameTo(formalFile)) {
+    try {
+      Files.move(tmpFile.toPath(), formalFile.toPath());
+    } catch (IOException e) {
       String msg =
           String.format(
               "Failed to replace formal system properties file, you may manually rename it: %s -> %s",
               tmpFile.getAbsolutePath(), formalFile.getAbsolutePath());
-      throw new IOException(msg);
+      throw new IOException(msg, e);
     }
   }
 
