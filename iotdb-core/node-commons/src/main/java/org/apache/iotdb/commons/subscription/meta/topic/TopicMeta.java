@@ -187,6 +187,8 @@ public class TopicMeta {
     extractorAttributes.putAll(config.getAttributesWithRealtimeMode());
     // source mode
     extractorAttributes.putAll(config.getAttributesWithSourceMode());
+    // loose range
+    extractorAttributes.putAll(config.getAttributesWithSourceLooseRange());
     return extractorAttributes;
   }
 
