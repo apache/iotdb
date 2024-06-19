@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.file;
 
 import org.apache.ratis.util.AutoCloseableLock;
+import org.apache.ratis.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -160,7 +161,7 @@ public abstract class SystemPropertiesHandler {
       throw new IOException(msg);
     }
     try {
-      Files.move(tmpFile.toPath(), formalFile.toPath());
+      FileUtils.move(tmpFile.toPath(), formalFile.toPath());
     } catch (IOException e) {
       String msg =
           String.format(
