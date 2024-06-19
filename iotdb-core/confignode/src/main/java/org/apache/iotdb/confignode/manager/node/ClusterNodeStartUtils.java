@@ -78,10 +78,9 @@ public class ClusterNodeStartUtils {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  private static TSStatus confirmConflictEndPoints(
+  private static TSStatus rejectRegistrationBecauseConflictEndPoints(
       NodeType nodeType, List<TEndPoint> conflictEndPoints) {
     TSStatus status = new TSStatus();
-    /* Reject Node registration because there exist conflict TEndPoints */
     status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
     status.setMessage(
         String.format(
@@ -125,7 +124,7 @@ public class ClusterNodeStartUtils {
             req.getDataNodeConfiguration().getLocation(),
             configManager.getNodeManager().getRegisteredDataNodes());
     if (!conflictEndPoints.isEmpty()) {
-      return confirmConflictEndPoints(NodeType.DataNode, conflictEndPoints);
+      return rejectRegistrationBecauseConflictEndPoints(NodeType.DataNode, conflictEndPoints);
     }
     // Confirm whether cluster id has been generated
     status = confirmClusterId(configManager);
@@ -140,7 +139,7 @@ public class ClusterNodeStartUtils {
       TConfigNodeRegisterReq req, ConfigManager configManager) {
     // Confirm cluster name
     TSStatus status =
-        confirmClusterName(NodeType.DataNode, req.getClusterParameters().getClusterName());
+        confirmClusterName(NodeType.ConfigNode, req.getClusterParameters().getClusterName());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     }
@@ -149,7 +148,7 @@ public class ClusterNodeStartUtils {
         checkConflictTEndPointForNewConfigNode(
             req.getConfigNodeLocation(), configManager.getNodeManager().getRegisteredConfigNodes());
     if (!conflictEndPoints.isEmpty()) {
-      return confirmConflictEndPoints(NodeType.DataNode, conflictEndPoints);
+      return rejectRegistrationBecauseConflictEndPoints(NodeType.ConfigNode, conflictEndPoints);
     }
     // Confirm whether cluster id has been generated
     status = confirmClusterId(configManager);
