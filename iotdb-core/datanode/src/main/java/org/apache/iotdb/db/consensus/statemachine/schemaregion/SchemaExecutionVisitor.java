@@ -380,6 +380,10 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   public TSStatus visitConstructSchemaBlackList(
       ConstructSchemaBlackListNode node, ISchemaRegion schemaRegion) {
     try {
+      List<PartialPath> pathPatternList = node.getPatternTree().getAllPathPatterns();
+      if (pathPatternList.size() > 1 || pathPatternList.get(0).hasMultiLevelMatchWildcard()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, String.valueOf(0));
+      }
       long preDeletedNum = schemaRegion.constructSchemaBlackList(node.getPatternTree());
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, String.valueOf(preDeletedNum));
     } catch (MetadataException e) {
@@ -392,6 +396,10 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   public TSStatus visitRollbackSchemaBlackList(
       RollbackSchemaBlackListNode node, ISchemaRegion schemaRegion) {
     try {
+      List<PartialPath> pathPatternList = node.getPatternTree().getAllPathPatterns();
+      if (pathPatternList.size() > 1 || pathPatternList.get(0).hasMultiLevelMatchWildcard()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      }
       schemaRegion.rollbackSchemaBlackList(node.getPatternTree());
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (MetadataException e) {
