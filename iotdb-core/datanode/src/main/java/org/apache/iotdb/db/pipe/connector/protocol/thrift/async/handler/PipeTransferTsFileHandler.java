@@ -46,7 +46,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -55,11 +54,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTransferResp> {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTsFileHandler.class);
-  private final List<EnrichedEvent> events;
+
+  // Used to transfer the file
   private final IoTDBDataRegionAsyncConnector connector;
 
+  // Used to rate limit the transfer
   private final Map<String, Double> pipeName2WeightMap;
+
+  // The original events to be transferred, can be multiple events if
+  // the file is batched with other events
+  private final List<EnrichedEvent> events;
+
   private final File tsFile;
   private final File modFile;
   private File currentFile;
@@ -78,16 +85,16 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
   private AsyncPipeDataTransferServiceClient client;
 
   public PipeTransferTsFileHandler(
+      final IoTDBDataRegionAsyncConnector connector,
       final Map<String, Double> pipeName2WeightMap,
       final List<EnrichedEvent> events,
       final File tsFile,
       final File modFile,
-      final boolean transferMod,
-      final IoTDBDataRegionAsyncConnector connector)
+      final boolean transferMod)
       throws FileNotFoundException {
+    this.connector = connector;
     this.pipeName2WeightMap = pipeName2WeightMap;
     this.events = events;
-    this.connector = connector;
 
     this.tsFile = tsFile;
     this.modFile = modFile;
@@ -204,12 +211,11 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
         if (reader != null) {
           reader.close();
         }
+
         // Delete current file when using tsFile as batch
-        if (!(events.get(0) instanceof PipeTsFileInsertionEvent)) {
+        if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
           FileUtils.delete(currentFile);
         }
-      } catch (final NoSuchFileException e) {
-        LOGGER.info("The file {} is not found, may already be deleted.", currentFile);
       } catch (final IOException e) {
         LOGGER.warn(
             "Failed to close file reader or delete tsFile when successfully transferred file.", e);
@@ -286,12 +292,11 @@ public class PipeTransferTsFileHandler implements AsyncMethodCallback<TPipeTrans
       if (reader != null) {
         reader.close();
       }
+
       // Delete current file when using tsFile as batch
-      if (!(events.get(0) instanceof PipeTsFileInsertionEvent)) {
+      if (events.stream().anyMatch(event -> !(event instanceof PipeTsFileInsertionEvent))) {
         FileUtils.delete(currentFile);
       }
-    } catch (final NoSuchFileException e) {
-      LOGGER.info("The file {} is not found, may already be deleted.", currentFile);
     } catch (final IOException e) {
       LOGGER.warn("Failed to close file reader or delete tsFile when failed to transfer file.", e);
     } finally {

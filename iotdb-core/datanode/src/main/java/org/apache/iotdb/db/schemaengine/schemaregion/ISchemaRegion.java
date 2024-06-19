@@ -198,11 +198,24 @@ public interface ISchemaRegion {
 
   MeasurementPath fetchMeasurementPath(PartialPath fullPath) throws MetadataException;
 
-  ClusterSchemaTree fetchSchema(
+  ClusterSchemaTree fetchSeriesSchema(
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       boolean withTags,
-      boolean withTemplate)
+      boolean withAttributes,
+      boolean withTemplate,
+      boolean withAliasForce)
+      throws MetadataException;
+
+  /**
+   * Fetch all the schema by the given patternTree in device level. Currently, devices with
+   * isAligned!=null will be filtered out.
+   *
+   * @param patternTree devices' pattern
+   * @param authorityScope the scope of the authority
+   * @return pattern tree with all leaves as device nodes
+   */
+  ClusterSchemaTree fetchDeviceSchema(PathPatternTree patternTree, PathPatternTree authorityScope)
       throws MetadataException;
 
   // endregion

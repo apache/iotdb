@@ -182,12 +182,12 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       }
       transfer(
           new PipeTransferTsFileHandler(
+              this,
               tsFileBatch.deepCopyPipeName2WeightMap(),
               tsFileBatch.deepCopyEvents(),
               tsFile,
               null,
-              false,
-              this));
+              false));
     } else {
       LOGGER.warn(
           "Unsupported batch type {} when transferring tablet insertion event.", batch.getClass());
@@ -322,12 +322,13 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
       final PipeTransferTsFileHandler pipeTransferTsFileHandler =
           new PipeTransferTsFileHandler(
+              this,
               Collections.singletonMap(pipeTsFileInsertionEvent.getPipeName(), 1.0),
               Collections.singletonList(pipeTsFileInsertionEvent),
               pipeTsFileInsertionEvent.getTsFile(),
               pipeTsFileInsertionEvent.getModFile(),
-              pipeTsFileInsertionEvent.isWithMod() && supportModsIfIsDataNodeReceiver(),
-              this);
+              pipeTsFileInsertionEvent.isWithMod()
+                  && clientManager.supportModsIfIsDataNodeReceiver());
 
       transfer(pipeTransferTsFileHandler);
     } catch (final Exception e) {
@@ -489,10 +490,6 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
         ((EnrichedEvent) event).clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
       }
     }
-  }
-
-  public boolean supportModsIfIsDataNodeReceiver() {
-    return clientManager.supportModsIfIsDataNodeReceiver();
   }
 
   //////////////////////////// Operations for close ////////////////////////////

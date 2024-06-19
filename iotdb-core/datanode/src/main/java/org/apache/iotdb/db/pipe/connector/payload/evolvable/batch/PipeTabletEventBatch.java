@@ -38,6 +38,8 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
   private final int maxDelayInMs;
   private long firstEventProcessingTime = Long.MIN_VALUE;
 
+  protected long totalBufferSize = 0;
+
   protected volatile boolean isClosed = false;
 
   protected PipeTabletEventBatch(final int maxDelayInMs) {
@@ -75,19 +77,19 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
       }
     }
 
-    return getTotalBufferSize() >= getMaxBatchSizeInBytes()
+    return totalBufferSize >= getMaxBatchSizeInBytes()
         || System.currentTimeMillis() - firstEventProcessingTime >= maxDelayInMs;
   }
 
   protected abstract void constructBatch(final TabletInsertionEvent event)
       throws WALPipeException, IOException, WriteProcessException;
 
-  protected abstract long getTotalBufferSize();
-
   protected abstract long getMaxBatchSizeInBytes();
 
   public synchronized void onSuccess() {
     events.clear();
+
+    totalBufferSize = 0;
 
     firstEventProcessingTime = Long.MIN_VALUE;
   }

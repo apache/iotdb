@@ -17,34 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.it.regionscan;
+package org.apache.iotdb.db.it.schema.regionscan;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.util.AbstractSchemaIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.Statement;
 
-import static org.apache.iotdb.db.it.regionscan.IoTDBActiveRegionScanIT.COUNT_DEVICES_COLUMN_NAMES;
-import static org.apache.iotdb.db.it.regionscan.IoTDBActiveRegionScanIT.COUNT_TIMESERIES_COLUMN_NAMES;
-import static org.apache.iotdb.db.it.regionscan.IoTDBActiveRegionScanIT.SHOW_DEVICES_COLUMN_NAMES;
-import static org.apache.iotdb.db.it.regionscan.IoTDBActiveRegionScanIT.SHOW_TIMESERIES_COLUMN_NAMES;
-import static org.apache.iotdb.db.it.regionscan.IoTDBActiveRegionScanIT.basicCountActiveDeviceTest;
-import static org.apache.iotdb.db.it.regionscan.IoTDBActiveRegionScanIT.basicShowActiveDeviceTest;
-import static org.apache.iotdb.db.it.regionscan.IoTDBActiveRegionScanIT.common_insert_sqls;
+import static org.apache.iotdb.db.it.schema.regionscan.IoTDBActiveRegionScanIT.COUNT_DEVICES_COLUMN_NAMES;
+import static org.apache.iotdb.db.it.schema.regionscan.IoTDBActiveRegionScanIT.COUNT_TIMESERIES_COLUMN_NAMES;
+import static org.apache.iotdb.db.it.schema.regionscan.IoTDBActiveRegionScanIT.SHOW_DEVICES_COLUMN_NAMES;
+import static org.apache.iotdb.db.it.schema.regionscan.IoTDBActiveRegionScanIT.SHOW_TIMESERIES_COLUMN_NAMES;
+import static org.apache.iotdb.db.it.schema.regionscan.IoTDBActiveRegionScanIT.basicCountActiveDeviceTest;
+import static org.apache.iotdb.db.it.schema.regionscan.IoTDBActiveRegionScanIT.basicShowActiveDeviceTest;
+import static org.apache.iotdb.db.it.schema.regionscan.IoTDBActiveRegionScanIT.common_insert_sqls;
 import static org.junit.Assert.fail;
 
-@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBActiveRegionScanWithModsIT {
+public class IoTDBActiveRegionScanWithModsIT extends AbstractSchemaIT {
 
   private static String[] delete_sqls =
       new String[] {
@@ -56,6 +54,10 @@ public class IoTDBActiveRegionScanWithModsIT {
         "delete from root.sg.aligned.** where time > 40 and time <= 43",
         "delete from root.sg.unaligned.d2.* where time > 40 and time <= 43"
       };
+
+  public IoTDBActiveRegionScanWithModsIT(SchemaTestMode schemaTestMode) {
+    super(schemaTestMode);
+  }
 
   public static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
