@@ -585,11 +585,13 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       ExecutorService executorService,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
-    this.localMemoryManager = Validate.notNull(localMemoryManager);
-    this.tsBlockSerdeFactory = Validate.notNull(tsBlockSerdeFactory);
-    this.executorService = Validate.notNull(executorService);
+    this.localMemoryManager = Validate.notNull(localMemoryManager, "localMemoryManager is null.");
+    this.tsBlockSerdeFactory =
+        Validate.notNull(tsBlockSerdeFactory, "tsBlockSerdeFactory is null.");
+    this.executorService = Validate.notNull(executorService, "executorService is null.");
     this.mppDataExchangeServiceClientManager =
-        Validate.notNull(mppDataExchangeServiceClientManager);
+        Validate.notNull(
+            mppDataExchangeServiceClientManager, "mppDataExchangeServiceClientManager is null.");
     sourceHandles = new ConcurrentHashMap<>();
     shuffleSinkHandles = new ConcurrentHashMap<>();
   }
@@ -605,6 +607,17 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     localMemoryManager
         .getQueryPool()
         .deRegisterFragmentInstanceFromQueryMemoryMap(queryId, fragmentInstanceId);
+  }
+
+  public void removeSourceHandlesAndShuffleSinkHandlesOfFI(TFragmentInstanceId fragmentInstanceId) {
+    Map<String, ISourceHandle> removedSourceHandles = sourceHandles.remove(fragmentInstanceId);
+    if (removedSourceHandles != null) {
+      removedSourceHandles.values().forEach(ISourceHandle::abort);
+    }
+    ISinkHandle shuffleSinkHandle = shuffleSinkHandles.remove(fragmentInstanceId);
+    if (shuffleSinkHandle != null) {
+      shuffleSinkHandle.abort();
+    }
   }
 
   public LocalMemoryManager getLocalMemoryManager() {

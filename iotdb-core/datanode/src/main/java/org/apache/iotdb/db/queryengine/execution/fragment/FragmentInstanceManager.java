@@ -177,6 +177,7 @@ public class FragmentInstanceManager {
                       instance.isExplainAnalyze(),
                       exchangeManager);
                 } catch (Throwable t) {
+                  clearFIRelatedResources(instanceId);
                   logger.warn("error when create FragmentInstanceExecution.", t);
                   stateMachine.failed(t);
                   return null;
@@ -203,6 +204,14 @@ public class FragmentInstanceManager {
       QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
           LOCAL_EXECUTION_PLANNER, System.nanoTime() - startTime);
     }
+  }
+
+  private void clearFIRelatedResources(FragmentInstanceId instanceId) {
+    // close and remove all the handles of the fragment instance
+    exchangeManager.removeSourceHandlesAndShuffleSinkHandlesOfFI(instanceId.toThrift());
+    // clear MemoryPool
+    exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
+        instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId());
   }
 
   private DataNodeQueryContext getOrCreateDataNodeQueryContext(QueryId queryId, int dataNodeFINum) {
@@ -249,6 +258,7 @@ public class FragmentInstanceManager {
                     false,
                     exchangeManager);
               } catch (Throwable t) {
+                clearFIRelatedResources(instanceId);
                 logger.warn("Execute error caused by ", t);
                 stateMachine.failed(t);
                 return null;
@@ -267,17 +277,6 @@ public class FragmentInstanceManager {
     } else {
       return createFailedInstanceInfo(instanceId);
     }
-  }
-
-  /** Aborts a FragmentInstance. keep FragmentInstanceContext for later state tracking */
-  public FragmentInstanceInfo abortFragmentInstance(FragmentInstanceId fragmentInstanceId) {
-    instanceExecution.remove(fragmentInstanceId);
-    FragmentInstanceContext context = instanceContext.get(fragmentInstanceId);
-    if (context != null) {
-      context.abort();
-      return context.getInstanceInfo();
-    }
-    return null;
   }
 
   /** Cancels a FragmentInstance. */
