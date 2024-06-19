@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -94,9 +95,8 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       }
     }
 
-    final String folder = FOLDER_MANAGER.get().getNextFolder();
-    final File baseDir = new File(folder, Long.toString(currentBatchId.get()));
-
+    final File baseDir =
+        new File(FOLDER_MANAGER.get().getNextFolder(), Long.toString(currentBatchId.get()));
     if (baseDir.exists()) {
       FileUtils.deleteQuietly(baseDir);
     }
@@ -106,7 +106,9 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           currentBatchId.get(),
           baseDir.getPath());
       throw new PipeException(
-          String.format("Failed to create batch file dir %s.", baseDir.getPath()));
+          String.format(
+              "Failed to create batch file dir %s. (Batch id = %s)",
+              baseDir.getPath(), currentBatchId.get()));
     }
     LOGGER.info(
         "Batch id = {}: Create batch dir successfully, batch file dir = {}.",
@@ -179,6 +181,7 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
       fileWriter.write(tablet);
     }
 
+    totalBufferSize += PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
     pipeName2WeightMap.compute(pipeName, (name, weight) -> Objects.nonNull(weight) ? ++weight : 1);
   }
 
@@ -206,11 +209,6 @@ public class PipeTabletEventTsFileBatch extends PipeTabletEventBatch {
           sealedFile.getPath());
     }
     return fileWriter.getIOWriter().getFile();
-  }
-
-  @Override
-  protected long getTotalBufferSize() {
-    return fileWriter.getIOWriter().getFile().length();
   }
 
   @Override

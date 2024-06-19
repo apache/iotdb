@@ -53,7 +53,6 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
 
   // limit in buffer size
   private final PipeMemoryBlock allocatedMemoryBlock;
-  private long totalBufferSize = 0;
 
   // Used to rate limit when transferring data
   private final Map<String, Long> pipeName2BytesAccumulated = new HashMap<>();
@@ -103,7 +102,6 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
     insertNodeBuffers.clear();
     tabletBuffers.clear();
 
-    totalBufferSize = 0;
     pipeName2BytesAccumulated.clear();
   }
 
@@ -115,11 +113,6 @@ public class PipeTabletEventPlainBatch extends PipeTabletEventBatch {
   @Override
   protected long getMaxBatchSizeInBytes() {
     return allocatedMemoryBlock.getMemoryUsageInBytes();
-  }
-
-  @Override
-  protected long getTotalBufferSize() {
-    return totalBufferSize;
   }
 
   public Map<String, Long> deepCopyPipeName2BytesAccumulated() {
