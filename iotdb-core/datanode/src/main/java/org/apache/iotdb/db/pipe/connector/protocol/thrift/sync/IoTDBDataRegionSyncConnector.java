@@ -254,7 +254,7 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       FileUtils.delete(tsFile);
     } catch (final NoSuchFileException e) {
       LOGGER.info("The file {} is not found, may already be deleted.", tsFile);
-    } catch (final IOException e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Failed to delete batch file {}, this file should be deleted manually later", tsFile);
     }
