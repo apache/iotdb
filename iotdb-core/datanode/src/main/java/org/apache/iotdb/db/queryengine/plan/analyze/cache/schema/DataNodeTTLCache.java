@@ -88,9 +88,11 @@ public class DataNodeTTLCache {
   public long getTTL(String path) throws IllegalPathException {
     lock.readLock().lock();
     try {
-      return CommonDateTimeUtils.convertMilliTimeWithPrecision(
-          ttlCache.getClosestTTL(PathUtils.splitPathToDetachedNodes(path)),
-          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+      long ttl = ttlCache.getClosestTTL(PathUtils.splitPathToDetachedNodes(path));
+      return ttl == Long.MAX_VALUE
+          ? ttl
+          : CommonDateTimeUtils.convertMilliTimeWithPrecision(
+              ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     } finally {
       lock.readLock().unlock();
     }
@@ -100,9 +102,11 @@ public class DataNodeTTLCache {
   public long getTTL(String[] path) {
     lock.readLock().lock();
     try {
-      return CommonDateTimeUtils.convertMilliTimeWithPrecision(
-          ttlCache.getClosestTTL(path),
-          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+      long ttl = ttlCache.getClosestTTL(path);
+      return ttl == Long.MAX_VALUE
+          ? ttl
+          : CommonDateTimeUtils.convertMilliTimeWithPrecision(
+              ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     } finally {
       lock.readLock().unlock();
     }
