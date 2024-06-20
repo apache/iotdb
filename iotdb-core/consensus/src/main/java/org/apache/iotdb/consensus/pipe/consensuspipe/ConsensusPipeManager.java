@@ -83,8 +83,8 @@ public class ConsensusPipeManager {
             .put(CONNECTOR_CONSENSUS_PIPE_NAME, consensusPipeName.toString())
             .put(CONNECTOR_IOTDB_IP_KEY, receiverPeer.getEndpoint().ip)
             .put(CONNECTOR_IOTDB_PORT_KEY, String.valueOf(receiverPeer.getEndpoint().port))
-            .put(CONNECTOR_REALTIME_FIRST_KEY, String.valueOf(false))
             .put(CONNECTOR_IOTDB_PARALLEL_TASKS_KEY, String.valueOf(1))
+            .put(CONNECTOR_REALTIME_FIRST_KEY, String.valueOf(false))
             .build());
   }
 
