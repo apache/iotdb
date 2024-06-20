@@ -973,7 +973,6 @@ public class DataRegion implements IDataRegionForQuery {
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void insertTreeTablet(InsertTabletNode insertTabletNode)
       throws BatchProcessException, WriteProcessException {
-    final IDeviceID deviceID = insertTabletNode.getDeviceID();
     insertTablet(insertTabletNode, insertTabletNode::getDeviceID, i ->
         config.isEnableSeparateData()
             ? lastFlushTimeMap.getFlushedTime(
