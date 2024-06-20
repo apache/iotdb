@@ -41,14 +41,14 @@ public class WALRecoverWriter {
 
   public void recover(WALMetaData metaData) throws IOException {
     // locate broken data
-    int truncateSize;
+    long truncateSize;
     if (logFile.length() < MAGIC_STRING_BYTES) { // file without magic string
       truncateSize = 0;
     } else {
       if (readTailMagic().equals(MAGIC_STRING)) { // complete file
         return;
       } else { // file with broken magic string
-        truncateSize = metaData.getBuffersSize().stream().mapToInt(Integer::intValue).sum();
+        truncateSize = metaData.getTruncateOffSet();
       }
     }
     // truncate broken data

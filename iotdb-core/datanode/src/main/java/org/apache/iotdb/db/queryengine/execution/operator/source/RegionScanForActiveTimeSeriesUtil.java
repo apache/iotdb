@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
+import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.DeviceStartEndTime;
@@ -55,8 +55,8 @@ public class RegionScanForActiveTimeSeriesUtil extends AbstractRegionScanForActi
     this.activeTimeSeries = new HashMap<>();
   }
 
-  public boolean nextTsFileHandle(
-      Map<IDeviceID, Map<String, TimeseriesSchemaInfo>> targetTimeseries) throws IOException {
+  public boolean nextTsFileHandle(Map<IDeviceID, Map<String, TimeseriesContext>> targetTimeseries)
+      throws IOException {
     if (!queryDataSource.hasNext()) {
       // There is no more TsFileHandles to be scanned.
       return false;

@@ -121,6 +121,11 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     return true;
   }
 
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return true;
+  }
+
   /////////////////////////////// Whether to print ///////////////////////////////
 
   public boolean isShouldPrintMessage() {

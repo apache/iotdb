@@ -54,6 +54,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -61,7 +62,10 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_LOOSE_RANGE_TIME_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_MODS_ENABLE_KEY;
@@ -87,7 +91,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected long realtimeDataExtractionStartTime = Long.MIN_VALUE; // Event time
   protected long realtimeDataExtractionEndTime = Long.MAX_VALUE; // Event time
 
-  private boolean disableSkippingTimeParse = false;
+  private boolean disableCheckingDataRegionTimePartitionCovering = false;
   private long startTimePartitionIdLowerBound; // calculated by realtimeDataExtractionStartTime
   private long endTimePartitionIdUpperBound; // calculated by realtimeDataExtractionEndTime
 
@@ -102,6 +106,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   private boolean shouldTransferModFile; // Whether to transfer mods
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
+  private boolean sloppyPattern; // true to disable pattern filter after extraction
 
   // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
@@ -142,9 +147,31 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
                 EXTRACTOR_END_TIME_KEY,
                 realtimeDataExtractionEndTime));
       }
+    } catch (final PipeParameterNotValidException e) {
+      throw e;
     } catch (final Exception e) {
       // compatible with the current validation framework
       throw new PipeParameterNotValidException(e.getMessage());
+    }
+
+    final Set<String> sloppyOptionSet =
+        Arrays.stream(
+                parameters
+                    .getStringOrDefault(
+                        Arrays.asList(
+                            EXTRACTOR_REALTIME_LOOSE_RANGE_KEY, SOURCE_REALTIME_LOOSE_RANGE_KEY),
+                        EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE)
+                    .split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(String::toLowerCase)
+            .collect(Collectors.toSet());
+    sloppyTimeRange = sloppyOptionSet.remove(EXTRACTOR_REALTIME_LOOSE_RANGE_TIME_VALUE);
+    sloppyPattern = sloppyOptionSet.remove(EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE);
+    if (!sloppyOptionSet.isEmpty()) {
+      throw new PipeParameterNotValidException(
+          String.format(
+              "Parameters in set %s are not allowed in 'realtime.loose-range'", sloppyOptionSet));
     }
   }
 
@@ -203,18 +230,13 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
             Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
             EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE || shouldExtractDeletion);
 
-    sloppyTimeRange =
-        Arrays.stream(
-                parameters
-                    .getStringOrDefault(
-                        Arrays.asList(
-                            EXTRACTOR_REALTIME_LOOSE_RANGE_KEY, SOURCE_REALTIME_LOOSE_RANGE_KEY),
-                        "")
-                    .split(","))
-            .map(String::trim)
-            .map(String::toLowerCase)
-            .collect(Collectors.toSet())
-            .contains("time");
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info(
+          "Pipe {}@{}: realtime data region extractor is initialized with parameters: {}.",
+          pipeName,
+          dataRegionId,
+          parameters);
+    }
   }
 
   @Override
@@ -262,28 +284,37 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
       event.skipParsingPattern();
     }
 
-    if (!disableSkippingTimeParse && Objects.nonNull(dataRegionTimePartitionIdBound.get())) {
+    if (!disableCheckingDataRegionTimePartitionCovering
+        && Objects.nonNull(dataRegionTimePartitionIdBound.get())) {
       if (isDataRegionTimePartitionCoveredByTimeRange()) {
         event.skipParsingTime();
       } else {
         // Since we only record the upper and lower bounds that time partition has ever reached, if
         // the time partition cannot be covered by the time range during query, it will not be
         // possible later.
-        disableSkippingTimeParse = true;
+        disableCheckingDataRegionTimePartitionCovering = true;
       }
     }
 
     // 1. Check if time parsing is necessary. If not, it means that the timestamps of the data
     // contained in this event are definitely within the time range [start time, end time].
-    // Otherwise,
-    // 2. Check if the timestamps of the data contained in this event intersect with the time range.
-    // If there is no intersection, it indicates that this data will be filtered out by the
-    // extractor, and the extract process is skipped.
-    if (!event.shouldParseTime() || event.getEvent().mayEventTimeOverlappedWithTimeRange()) {
+    // 2. Check if the event's data timestamps may intersect with the time range. If not, it means
+    // that the data timestamps of this event are definitely not within the time range.
+    // 3. Check if pattern parsing is necessary. If not, it means that the paths of the data
+    // contained in this event are definitely covered by the pattern.
+    // 4. Check if the event's data paths may intersect with the pattern. If not, it means that the
+    // data of this event is definitely not overlapped with the pattern.
+    if ((!event.shouldParseTime() || event.getEvent().mayEventTimeOverlappedWithTimeRange())
+        && (!event.shouldParsePattern() || event.getEvent().mayEventPathsOverlappedWithPattern())) {
       if (sloppyTimeRange) {
         // only skip parsing time for events whose data timestamps may intersect with the time range
         event.skipParsingTime();
       }
+      if (sloppyPattern) {
+        // only skip parsing pattern for events whose data paths may intersect with the pattern
+        event.skipParsingPattern();
+      }
+
       doExtract(event);
     } else {
       event.decreaseReferenceCount(PipeRealtimeDataRegionExtractor.class.getName(), false);

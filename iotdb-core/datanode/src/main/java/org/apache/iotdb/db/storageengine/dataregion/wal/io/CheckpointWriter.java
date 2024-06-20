@@ -22,11 +22,11 @@ package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
 
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 
 /** CheckpointWriter writes the binary {@link Checkpoint} into .checkpoint file. */
 public class CheckpointWriter extends LogWriter {
-  public CheckpointWriter(File logFile) throws FileNotFoundException {
+  public CheckpointWriter(File logFile) throws IOException {
     super(logFile);
   }
 }

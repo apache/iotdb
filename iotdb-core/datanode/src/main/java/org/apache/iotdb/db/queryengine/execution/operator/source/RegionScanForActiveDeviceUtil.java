@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractChunkOffset;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.AbstractDeviceChunkMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.DeviceStartEndTime;
@@ -60,7 +61,7 @@ public class RegionScanForActiveDeviceUtil extends AbstractRegionScanForActiveDa
     return deviceSetForCurrentTsFile.isEmpty();
   }
 
-  public boolean nextTsFileHandle(Map<IDeviceID, Boolean> targetDevices)
+  public boolean nextTsFileHandle(Map<IDeviceID, DeviceContext> targetDevices)
       throws IOException, IllegalPathException {
 
     if (!queryDataSource.hasNext()) {

@@ -85,6 +85,11 @@ public class PipeTerminateEvent extends EnrichedEvent {
   }
 
   @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return true;
+  }
+
+  @Override
   public void reportProgress() {
     PipeDataNodeAgent.task().markCompleted(pipeName, dataRegionId);
   }

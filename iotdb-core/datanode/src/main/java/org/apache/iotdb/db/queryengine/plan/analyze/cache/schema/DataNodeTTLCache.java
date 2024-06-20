@@ -23,7 +23,9 @@ import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 
-import java.util.Map;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.PlainDeviceID;
+
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DataNodeTTLCache {
@@ -71,6 +73,15 @@ public class DataNodeTTLCache {
     }
   }
 
+  // TODO: support real implementation
+  public long getTTL(IDeviceID deviceID) {
+    try {
+      return getTTL(((PlainDeviceID) deviceID).toStringID());
+    } catch (IllegalPathException e) {
+      return Long.MAX_VALUE;
+    }
+  }
+
   public long getTTL(String path) throws IllegalPathException {
     lock.readLock().lock();
     try {
@@ -84,16 +95,6 @@ public class DataNodeTTLCache {
     lock.readLock().lock();
     try {
       return ttlCache.getClosestTTL(path);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /** Get all ttl map under path node. */
-  public Map<String, Long> getTTLUnderOneNode(String path) throws IllegalPathException {
-    lock.readLock().lock();
-    try {
-      return ttlCache.getAllTTLUnderOneNode(PathUtils.splitPathToDetachedNodes(path));
     } finally {
       lock.readLock().unlock();
     }

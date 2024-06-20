@@ -832,12 +832,14 @@ public class OperatorMemoryTest {
       driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
 
       SchemaFetchScanOperator operator =
-          new SchemaFetchScanOperator(
+          SchemaFetchScanOperator.ofSeries(
               planNodeId,
               driverContext.getOperatorContexts().get(0),
               null,
               null,
               null,
+              false,
+              false,
               false,
               false);
 

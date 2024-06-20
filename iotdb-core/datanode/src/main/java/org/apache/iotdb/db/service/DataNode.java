@@ -33,7 +33,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.service.JMXService;
@@ -60,6 +59,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
+import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
@@ -123,6 +123,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
+import static org.apache.iotdb.db.conf.IoTDBStartCheck.PROPERTIES_FILE_NAME;
 
 public class DataNode implements DataNodeMBean {
 
@@ -135,10 +136,6 @@ public class DataNode implements DataNodeMBean {
           IoTDBConstant.IOTDB_SERVICE_JMX_NAME,
           IoTDBConstant.JMX_TYPE,
           ServiceType.DATA_NODE.getJmxName());
-
-  private static File SYSTEM_PROPERTIES =
-      SystemFileFactory.INSTANCE.getFile(
-          config.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
 
   /**
    * When joining a cluster or getting configuration this node will retry at most "DEFAULT_RETRY"
@@ -170,10 +167,12 @@ public class DataNode implements DataNodeMBean {
 
   // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
-    SYSTEM_PROPERTIES =
-        SystemFileFactory.INSTANCE.getFile(
-            config.getSystemDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
     registerManager = new RegisterManager();
+    DataNodeSystemPropertiesHandler.getInstance()
+        .resetFilePath(
+            IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+                + File.separator
+                + PROPERTIES_FILE_NAME);
   }
 
   private static RegisterManager registerManager = new RegisterManager();
@@ -195,10 +194,11 @@ public class DataNode implements DataNodeMBean {
       isFirstStart = prepareDataNode();
 
       if (isFirstStart) {
-        // Set target ConfigNodeList from iotdb-system.properties file
+        logger.info("DataNode is starting for the first time...");
         ConfigNodeInfo.getInstance()
             .updateConfigNodeList(Collections.singletonList(config.getSeedConfigNode()));
       } else {
+        logger.info("DataNode is restarting...");
         // Load registered ConfigNodes from system.properties
         ConfigNodeInfo.getInstance().loadConfigNodeList();
       }
@@ -207,8 +207,11 @@ public class DataNode implements DataNodeMBean {
       pullAndCheckSystemConfigurations();
 
       if (isFirstStart) {
+        sendRegisterRequestToConfigNode(true);
+        IoTDBStartCheck.getInstance().generateOrOverwriteSystemPropertiesFile();
+        ConfigNodeInfo.getInstance().storeConfigNodeList();
         // Register this DataNode to the cluster when first start
-        sendRegisterRequestToConfigNode();
+        sendRegisterRequestToConfigNode(false);
       } else {
         // Send restart request of this DataNode
         sendRestartRequestToConfigNode();
@@ -233,11 +236,6 @@ public class DataNode implements DataNodeMBean {
 
     } catch (StartupException | IOException e) {
       logger.error("Fail to start server", e);
-      if (isFirstStart) {
-        // Delete the system.properties file when first start failed.
-        // Therefore, the next time this DataNode is start will still be seen as the first time.
-        SYSTEM_PROPERTIES.deleteOnExit();
-      }
       stop();
       System.exit(-1);
     }
@@ -247,9 +245,8 @@ public class DataNode implements DataNodeMBean {
   private boolean prepareDataNode() throws StartupException, IOException {
     long startTime = System.currentTimeMillis();
 
-    // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
-    IoTDBStartCheck.getInstance().checkOldSystemConfig();
-    boolean isFirstStart = IoTDBStartCheck.getInstance().checkIsFirstStart();
+    // Init system properties handler
+    IoTDBStartCheck.checkOldSystemConfig();
 
     // Set this node
     thisNode.setIp(config.getInternalAddress());
@@ -260,7 +257,7 @@ public class DataNode implements DataNodeMBean {
     checks.startUpCheck();
     long endTime = System.currentTimeMillis();
     logger.info("The DataNode is prepared successfully, which takes {} ms", (endTime - startTime));
-    return isFirstStart;
+    return DataNodeSystemPropertiesHandler.getInstance().isFirstStart();
   }
 
   /**
@@ -286,9 +283,7 @@ public class DataNode implements DataNodeMBean {
         configurationResp = configNodeClient.getSystemConfiguration();
         break;
       } catch (TException | ClientManagerException e) {
-        logger.warn(
-            "Cannot pull system configurations from ConfigNode-leader, because: {}",
-            e.getMessage());
+        logger.warn("Cannot pull system configurations from ConfigNode-leader", e);
         retry--;
       }
 
@@ -397,15 +392,18 @@ public class DataNode implements DataNodeMBean {
   /**
    * Register this DataNode into cluster.
    *
+   * @param isPreCheck do pre-check before formal registration
    * @throws StartupException if register failed.
-   * @throws IOException if serialize cluster name and dataNode Id failed.
+   * @throws IOException if serialize cluster name and datanode id failed.
    */
-  private void sendRegisterRequestToConfigNode() throws StartupException, IOException {
+  private void sendRegisterRequestToConfigNode(boolean isPreCheck)
+      throws StartupException, IOException {
     logger.info("Sending register request to ConfigNode-leader...");
     long startTime = System.currentTimeMillis();
     /* Send register request */
     int retry = DEFAULT_RETRY;
     TDataNodeRegisterReq req = new TDataNodeRegisterReq();
+    req.setPreCheck(isPreCheck);
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
     req.setClusterName(config.getClusterName());
     req.setVersionInfo(new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
@@ -438,7 +436,10 @@ public class DataNode implements DataNodeMBean {
     }
 
     if (dataNodeRegisterResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-
+      if (isPreCheck) {
+        logger.info("Successfully pass the precheck, will do the formal registration soon.");
+        return;
+      }
       /* Store runtime configurations when register success */
       int dataNodeID = dataNodeRegisterResp.getDataNodeId();
       config.setDataNodeId(dataNodeID);
@@ -448,6 +449,7 @@ public class DataNode implements DataNodeMBean {
       storeRuntimeConfigurations(
           dataNodeRegisterResp.getConfigNodeList(), dataNodeRegisterResp.getRuntimeConfiguration());
       long endTime = System.currentTimeMillis();
+
       logger.info(
           "Successfully register to the cluster: {} , which takes {} ms.",
           config.getClusterName(),

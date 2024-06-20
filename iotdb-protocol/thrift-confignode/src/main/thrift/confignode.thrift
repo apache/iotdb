@@ -111,6 +111,7 @@ struct TDataNodeRegisterReq {
   1: required string clusterName
   2: required common.TDataNodeConfiguration dataNodeConfiguration
   3: optional TNodeVersionInfo versionInfo
+  4: optional bool preCheck
 }
 
 struct TDataNodeRegisterResp {
@@ -1308,8 +1309,8 @@ service IConfigNodeRPCService {
   // ======================================================
   // TTL
   // ======================================================
-  /** Show all ttl */
-  TShowTTLResp showAllTTL()
+  /** Show ttl */
+  TShowTTLResp showTTL(common.TShowTTLReq req)
 
   /** Update the specific device's TTL */
   common.TSStatus setTTL(common.TSetTTLReq req)

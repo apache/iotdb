@@ -323,6 +323,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        finished = true;
         return RpcUtils.getTSExecuteStatementResp(result.status);
       }
 
@@ -348,6 +349,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
     } catch (Error error) {
+      finished = true;
       t = error;
       throw error;
     } finally {
@@ -413,6 +415,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        finished = true;
         throw new RuntimeException(ERROR_CODE + result.status);
       }
 
@@ -437,6 +440,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_RAW_DATA_QUERY));
     } catch (Error error) {
+      finished = true;
       t = error;
       throw error;
     } finally {
@@ -501,6 +505,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        finished = true;
         throw new RuntimeException(ERROR_CODE + result.status);
       }
 
@@ -526,6 +531,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
     } catch (Error error) {
+      finished = true;
       t = error;
       throw error;
     } finally {
@@ -588,6 +594,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        finished = true;
         throw new RuntimeException(ERROR_CODE + result.status);
       }
 
@@ -613,6 +620,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
     } catch (Error error) {
+      finished = true;
       t = error;
       throw error;
     } finally {
@@ -921,6 +929,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        finished = true;
         throw new RuntimeException("error code: " + result.status);
       }
 
@@ -953,6 +962,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
     } catch (Error error) {
+      finished = true;
       t = error;
       throw error;
     } finally {
@@ -1073,6 +1083,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        finished = true;
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
       }
       TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
@@ -1595,6 +1606,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
       if (!SESSION_MANAGER.checkLogin(clientSession)) {
+        finished = true;
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
       }
 
@@ -1626,6 +1638,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSFetchResultsResp(
           onQueryException(e, getContentOfRequest(req, queryExecution)));
     } catch (Error error) {
+      finished = true;
       t = error;
       throw error;
     } finally {
