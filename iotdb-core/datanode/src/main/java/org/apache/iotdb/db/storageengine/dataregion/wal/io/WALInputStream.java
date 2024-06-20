@@ -39,7 +39,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(WALInputStream.class);
   private final FileChannel channel;
-  private final ByteBuffer segmentHeaderWithoutConpressedSizeBuffer =
+  private final ByteBuffer segmentHeaderWithoutCompressedSizeBuffer =
       ByteBuffer.allocate(Integer.BYTES + Byte.BYTES);
   private final ByteBuffer compressedSizeHeaderBuffer = ByteBuffer.allocate(Integer.BYTES);
   private ByteBuffer dataBuffer = null;
@@ -79,17 +79,14 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         channel.read(magicStringBuffer, channel.size() - WALWriter.MAGIC_STRING_V2_BYTES);
         magicStringBuffer.flip();
         if (logFile.getName().endsWith(IoTDBConstant.WAL_CHECKPOINT_FILE_SUFFIX)
-            && !new String(magicStringBuffer.array(), StandardCharsets.UTF_8)
+            || !new String(magicStringBuffer.array(), StandardCharsets.UTF_8)
                 .equals(WALWriter.MAGIC_STRING_V2)) {
-          // This is a broken wal file
+          // This is a broken wal or checkpoint file
           endOffset = channel.size();
           return;
         } else {
           // This is a normal wal file or check point file
-          position =
-              channel.size()
-                  - WALWriter.MAGIC_STRING_V1.getBytes(StandardCharsets.UTF_8).length
-                  - Integer.BYTES;
+          position = channel.size() - WALWriter.MAGIC_STRING_V2_BYTES - Integer.BYTES;
         }
       } else {
         if (logFile.getName().endsWith(IoTDBConstant.WAL_CHECKPOINT_FILE_SUFFIX)) {
@@ -98,11 +95,8 @@ public class WALInputStream extends InputStream implements AutoCloseable {
           return;
         }
         // Old version
-        ByteBuffer magicStringBuffer =
-            ByteBuffer.allocate(WALWriter.MAGIC_STRING_V1.getBytes(StandardCharsets.UTF_8).length);
-        channel.read(
-            magicStringBuffer,
-            channel.size() - WALWriter.MAGIC_STRING_V1.getBytes(StandardCharsets.UTF_8).length);
+        ByteBuffer magicStringBuffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_V1_BYTES);
+        channel.read(magicStringBuffer, channel.size() - WALWriter.MAGIC_STRING_V1_BYTES);
         magicStringBuffer.flip();
         if (!new String(magicStringBuffer.array(), StandardCharsets.UTF_8)
             .equals(WALWriter.MAGIC_STRING_V1)) {
@@ -110,10 +104,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
           endOffset = channel.size();
           return;
         } else {
-          position =
-              channel.size()
-                  - WALWriter.MAGIC_STRING_V1.getBytes(StandardCharsets.UTF_8).length
-                  - Integer.BYTES;
+          position = channel.size() - WALWriter.MAGIC_STRING_V1_BYTES - Integer.BYTES;
         }
       }
       // Read the metadata size
@@ -338,13 +329,13 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   }
 
   private SegmentInfo getNextSegmentInfo() throws IOException {
-    segmentHeaderWithoutConpressedSizeBuffer.clear();
-    channel.read(segmentHeaderWithoutConpressedSizeBuffer);
-    segmentHeaderWithoutConpressedSizeBuffer.flip();
+    segmentHeaderWithoutCompressedSizeBuffer.clear();
+    channel.read(segmentHeaderWithoutCompressedSizeBuffer);
+    segmentHeaderWithoutCompressedSizeBuffer.flip();
     SegmentInfo info = new SegmentInfo();
     info.compressionType =
-        CompressionType.deserialize(segmentHeaderWithoutConpressedSizeBuffer.get());
-    info.dataInDiskSize = segmentHeaderWithoutConpressedSizeBuffer.getInt();
+        CompressionType.deserialize(segmentHeaderWithoutCompressedSizeBuffer.get());
+    info.dataInDiskSize = segmentHeaderWithoutCompressedSizeBuffer.getInt();
     if (info.compressionType != CompressionType.UNCOMPRESSED) {
       compressedSizeHeaderBuffer.clear();
       channel.read(compressedSizeHeaderBuffer);

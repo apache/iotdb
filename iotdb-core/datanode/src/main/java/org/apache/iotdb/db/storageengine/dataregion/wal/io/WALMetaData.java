@@ -40,6 +40,7 @@ import java.util.Set;
  * entry and the number of entries.
  */
 public class WALMetaData implements SerializedSize {
+
   private static final Logger logger = LoggerFactory.getLogger(WALMetaData.class);
   // search index 8 byte, wal entries' number 4 bytes
   private static final int FIXED_SERIALIZED_SIZE = Long.BYTES + Integer.BYTES;
@@ -137,14 +138,12 @@ public class WALMetaData implements SerializedSize {
     ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
     long position;
     WALFileVersion version = WALFileVersion.getVersion(channel);
-    if (version == WALFileVersion.V2) {
-      position = channel.size() - WALWriter.MAGIC_STRING_V2_BYTES - Integer.BYTES;
-    } else {
-      position =
-          channel.size()
-              - WALWriter.MAGIC_STRING_V1.getBytes(StandardCharsets.UTF_8).length
-              - Integer.BYTES;
-    }
+    position =
+        channel.size()
+            - Integer.BYTES
+            - (version == WALFileVersion.V2
+                ? WALWriter.MAGIC_STRING_V2_BYTES
+                : WALWriter.MAGIC_STRING_V1_BYTES);
     channel.read(metadataSizeBuf, position);
     metadataSizeBuf.flip();
     // load metadata
