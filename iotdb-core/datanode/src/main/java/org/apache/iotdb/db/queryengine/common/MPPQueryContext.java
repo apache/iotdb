@@ -27,7 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
-import org.apache.iotdb.db.queryengine.plan.planner.memory.UnsynchronizedMemoryReservationManager;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.NotSynchronizedMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -85,7 +85,7 @@ public class MPPQueryContext {
     this.queryId = queryId;
     this.endPointBlackList = new LinkedList<>();
     this.memoryReservationManager =
-        new UnsynchronizedMemoryReservationManager(queryId, this.getClass().getName());
+        new NotSynchronizedMemoryReservationManager(queryId, this.getClass().getName());
   }
 
   // TODO too many callers just pass a null SessionInfo which should be forbidden
@@ -307,7 +307,7 @@ public class MPPQueryContext {
    * single-threaded manner.
    */
   public void reserveMemoryForFrontEnd(final long bytes) {
-    this.memoryReservationManager.reserveMemoryAccumulatively(bytes);
+    this.memoryReservationManager.reserveMemoryCumulatively(bytes);
   }
 
   public void reserveMemoryForFrontEndImmediately() {
@@ -319,7 +319,7 @@ public class MPPQueryContext {
   }
 
   public void releaseMemoryReservedForFrontEnd(final long bytes) {
-    this.memoryReservationManager.releaseMemoryAccumulatively(bytes);
+    this.memoryReservationManager.releaseMemoryCumulatively(bytes);
   }
 
   // endregion

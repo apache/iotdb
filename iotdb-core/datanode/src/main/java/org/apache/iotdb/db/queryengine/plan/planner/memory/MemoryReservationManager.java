@@ -26,7 +26,7 @@ public interface MemoryReservationManager {
    *
    * @param size the size of memory to reserve
    */
-  void reserveMemoryAccumulatively(final long size);
+  void reserveMemoryCumulatively(final long size);
 
   /** Reserve memory for the accumulated memory size immediately. */
   void reserveMemoryImmediately();
@@ -36,7 +36,7 @@ public interface MemoryReservationManager {
    *
    * @param size the size of memory to release
    */
-  void releaseMemoryAccumulatively(final long size);
+  void releaseMemoryCumulatively(final long size);
 
   /**
    * Release all reserved memory immediately. Make sure this method is called when the lifecycle of

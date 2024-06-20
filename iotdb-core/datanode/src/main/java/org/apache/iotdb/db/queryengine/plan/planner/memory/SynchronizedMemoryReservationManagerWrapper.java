@@ -43,10 +43,10 @@ public class SynchronizedMemoryReservationManagerWrapper implements MemoryReserv
   }
 
   @Override
-  public void reserveMemoryAccumulatively(long size) {
+  public void reserveMemoryCumulatively(long size) {
     this.bytesToBeReserved += size;
     if (this.bytesToBeReserved >= MEMORY_BATCH_THRESHOLD) {
-      memoryReservationManager.reserveMemoryAccumulatively(bytesToBeReserved);
+      memoryReservationManager.reserveMemoryCumulatively(bytesToBeReserved);
       this.bytesToBeReserved = 0;
     }
   }
@@ -57,10 +57,10 @@ public class SynchronizedMemoryReservationManagerWrapper implements MemoryReserv
   }
 
   @Override
-  public void releaseMemoryAccumulatively(long size) {
+  public void releaseMemoryCumulatively(long size) {
     this.bytesToBeReleased += size;
     if (this.bytesToBeReleased >= MEMORY_BATCH_THRESHOLD) {
-      memoryReservationManager.releaseMemoryAccumulatively(this.bytesToBeReleased);
+      memoryReservationManager.releaseMemoryCumulatively(this.bytesToBeReleased);
       this.bytesToBeReleased = 0;
     }
   }

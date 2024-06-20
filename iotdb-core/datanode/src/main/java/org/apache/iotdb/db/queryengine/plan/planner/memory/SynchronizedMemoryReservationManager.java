@@ -21,14 +21,14 @@ package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
 import org.apache.iotdb.db.queryengine.common.QueryId;
 
-public class SynchronizedMemoryReservationManager extends UnsynchronizedMemoryReservationManager {
+public class SynchronizedMemoryReservationManager extends NotSynchronizedMemoryReservationManager {
   public SynchronizedMemoryReservationManager(QueryId queryId, String contextHolder) {
     super(queryId, contextHolder);
   }
 
   @Override
-  public synchronized void reserveMemoryAccumulatively(long size) {
-    super.reserveMemoryAccumulatively(size);
+  public synchronized void reserveMemoryCumulatively(long size) {
+    super.reserveMemoryCumulatively(size);
   }
 
   @Override
@@ -37,8 +37,8 @@ public class SynchronizedMemoryReservationManager extends UnsynchronizedMemoryRe
   }
 
   @Override
-  public synchronized void releaseMemoryAccumulatively(long size) {
-    super.releaseMemoryAccumulatively(size);
+  public synchronized void releaseMemoryCumulatively(long size) {
+    super.releaseMemoryCumulatively(size);
   }
 
   @Override

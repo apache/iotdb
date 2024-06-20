@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.memory;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 
-public class UnsynchronizedMemoryReservationManager implements MemoryReservationManager {
+public class NotSynchronizedMemoryReservationManager implements MemoryReservationManager {
   // To avoid reserving memory too frequently, we choose to do it in batches. This is the lower
   // bound for each batch.
   private static final long MEMORY_BATCH_THRESHOLD = 1024L * 1024L;
@@ -39,13 +39,14 @@ public class UnsynchronizedMemoryReservationManager implements MemoryReservation
 
   private long bytesToBeReleased = 0;
 
-  public UnsynchronizedMemoryReservationManager(final QueryId queryId, final String contextHolder) {
+  public NotSynchronizedMemoryReservationManager(
+      final QueryId queryId, final String contextHolder) {
     this.queryId = queryId;
     this.contextHolder = contextHolder;
   }
 
   @Override
-  public void reserveMemoryAccumulatively(final long size) {
+  public void reserveMemoryCumulatively(final long size) {
     bytesToBeReserved += size;
     if (bytesToBeReserved >= MEMORY_BATCH_THRESHOLD) {
       reserveMemoryImmediately();
@@ -63,7 +64,7 @@ public class UnsynchronizedMemoryReservationManager implements MemoryReservation
   }
 
   @Override
-  public void releaseMemoryAccumulatively(final long size) {
+  public void releaseMemoryCumulatively(final long size) {
     bytesToBeReleased += size;
     if (bytesToBeReleased >= MEMORY_BATCH_THRESHOLD) {
       long bytesToRelease;
