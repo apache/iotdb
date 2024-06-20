@@ -25,16 +25,20 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 import com.google.common.util.concurrent.RateLimiter;
 
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 public class PipeEndPointRateLimiter {
 
-  private final double bytesPerSecondLimit;
+  // The task agent is used to check if the pipe is still alive
+  private static volatile PipeTaskAgent taskAgent;
+
   private final String pipeName;
   private final long creationTime;
-  private static volatile PipeTaskAgent taskAgent;
+
+  private final double bytesPerSecondLimit;
 
   private final ConcurrentMap<TEndPoint, RateLimiter> endPointRateLimiterMap;
 
@@ -44,6 +48,10 @@ public class PipeEndPointRateLimiter {
     this.creationTime = creationTime;
     this.bytesPerSecondLimit = bytesPerSecondLimit;
     endPointRateLimiterMap = new ConcurrentHashMap<>();
+  }
+
+  public static void setTaskAgent(final PipeTaskAgent taskAgent) {
+    PipeEndPointRateLimiter.taskAgent = taskAgent;
   }
 
   public void acquire(final TEndPoint endPoint, long bytes) {
@@ -73,14 +81,10 @@ public class PipeEndPointRateLimiter {
         bytes,
         PipeConfig.getInstance().getPipeEndPointRateLimiterDropCheckIntervalMs(),
         TimeUnit.MILLISECONDS)) {
-      if (taskAgent.getPipeCreationTime(pipeName) != creationTime) {
+      if (Objects.nonNull(taskAgent) && taskAgent.getPipeCreationTime(pipeName) != creationTime) {
         return false;
       }
     }
     return true;
-  }
-
-  public static void setTaskAgent(final PipeTaskAgent agent) {
-    taskAgent = agent;
   }
 }

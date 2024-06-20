@@ -78,6 +78,8 @@ public abstract class PipeTaskAgent {
   protected PipeTaskAgent() {
     pipeMetaKeeper = new PipeMetaKeeper();
     pipeTaskManager = new PipeTaskManager();
+
+    // Help PipeEndPointRateLimiter to check if the pipe is still alive
     PipeEndPointRateLimiter.setTaskAgent(this);
   }
 
@@ -1020,7 +1022,6 @@ public abstract class PipeTaskAgent {
   protected abstract void collectPipeMetaListInternal(
       final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp) throws TException;
 
-  ///////////////////////// Pipe info getter /////////////////////////
   public long getPipeCreationTime(final String pipeName) {
     final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
     return pipeMeta == null ? 0 : pipeMeta.getStaticMeta().getCreationTime();
