@@ -31,6 +31,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Properties;
@@ -62,21 +64,15 @@ public abstract class SystemPropertiesHandler {
               + " : "
               + Arrays.toString(keyOrValue));
     }
-    try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.writeLock());
-        FileOutputStream outputStream = new FileOutputStream(tmpFile)) {
-      Properties properties = new Properties();
+    try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.writeLock())) {
       // read old properties
-      if (formalFile.exists()) {
-        try (FileInputStream inputStream = new FileInputStream(formalFile)) {
-          properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-        }
-      }
+      Properties properties = readWithoutLock(formalFile);
       // store new properties
       for (int i = 0; i < keyOrValue.length; i += 2) {
         properties.put(keyOrValue[i], keyOrValue[i + 1]);
       }
-      properties.store(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), "");
-      outputStream.getFD().sync();
+      writeWithoutLock(properties, tmpFile);
+      // replace file
       replaceFormalFile();
     }
   }
@@ -84,24 +80,37 @@ public abstract class SystemPropertiesHandler {
   public void overwrite(Properties properties) throws IOException {
     try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.writeLock())) {
       if (!formalFile.exists()) {
-        writeImpl(properties, formalFile);
+        writeWithoutLock(properties, formalFile);
         return;
       }
-      writeImpl(properties, tmpFile);
+      writeWithoutLock(properties, tmpFile);
       replaceFormalFile();
     }
   }
 
   public Properties read() throws IOException {
     try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.readLock())) {
-      Properties properties = new Properties();
-      if (formalFile.exists()) {
-        try (FileInputStream inputStream = new FileInputStream(formalFile)) {
-          properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-        }
-      }
-      return properties;
+      return readWithoutLock(formalFile);
     }
+  }
+
+  private void writeWithoutLock(Properties properties, File file) throws IOException {
+    try (FileOutputStream fileOutputStream = new FileOutputStream(file);
+        Writer writer = new OutputStreamWriter(fileOutputStream, StandardCharsets.UTF_8)) {
+      properties.store(writer, "");
+      fileOutputStream.getFD().sync();
+    }
+  }
+
+  private Properties readWithoutLock(File file) throws IOException {
+    Properties properties = new Properties();
+    if (file.exists()) {
+      try (FileInputStream inputStream = new FileInputStream(formalFile);
+          Reader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8)) {
+        properties.load(reader);
+      }
+    }
+    return properties;
   }
 
   public boolean fileExist() {
@@ -140,12 +149,6 @@ public abstract class SystemPropertiesHandler {
       throw new RuntimeException(e);
     }
     throw new UnsupportedOperationException("Should never touch here");
-  }
-
-  private void writeImpl(Properties properties, File file) throws IOException {
-    try (FileOutputStream fileOutputStream = new FileOutputStream(file)) {
-      properties.store(new OutputStreamWriter(fileOutputStream, StandardCharsets.UTF_8), "");
-    }
   }
 
   private void replaceFormalFile() throws IOException {
