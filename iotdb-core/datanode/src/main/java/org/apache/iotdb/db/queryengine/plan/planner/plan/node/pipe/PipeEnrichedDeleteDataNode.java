@@ -162,8 +162,8 @@ public class PipeEnrichedDeleteDataNode extends DeleteDataNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByTreePartition(IAnalysis analysis) {
-    return deleteDataNode.splitByTreePartition(analysis).stream()
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+    return deleteDataNode.splitByPartition(analysis).stream()
         .map(
             plan ->
                 plan instanceof PipeEnrichedDeleteDataNode

@@ -211,7 +211,7 @@ public class WritePlanNodeSplitTest {
     Analysis analysis = new Analysis();
     analysis.setDataPartitionInfo(dataPartition);
 
-    List<WritePlanNode> insertTabletNodeList = insertTabletNode.splitByTreePartition(analysis);
+    List<WritePlanNode> insertTabletNodeList = insertTabletNode.splitByPartition(analysis);
 
     Assert.assertEquals(6, insertTabletNodeList.size());
     for (WritePlanNode insertNode : insertTabletNodeList) {
@@ -237,7 +237,7 @@ public class WritePlanNodeSplitTest {
     analysis = new Analysis();
     analysis.setDataPartitionInfo(dataPartition);
 
-    insertTabletNodeList = insertTabletNode.splitByTreePartition(analysis);
+    insertTabletNodeList = insertTabletNode.splitByPartition(analysis);
 
     Assert.assertEquals(5, insertTabletNodeList.size());
     for (WritePlanNode insertNode : insertTabletNodeList) {
@@ -281,7 +281,7 @@ public class WritePlanNodeSplitTest {
     Analysis analysis = new Analysis();
     analysis.setDataPartitionInfo(dataPartition);
 
-    List<WritePlanNode> insertTabletNodeList = insertMultiTabletsNode.splitByTreePartition(analysis);
+    List<WritePlanNode> insertTabletNodeList = insertMultiTabletsNode.splitByPartition(analysis);
 
     Assert.assertEquals(6, insertTabletNodeList.size());
   }
@@ -315,7 +315,7 @@ public class WritePlanNodeSplitTest {
     Analysis analysis = new Analysis();
     analysis.setDataPartitionInfo(dataPartition);
 
-    List<WritePlanNode> insertRowsNodeList = insertRowsNode.splitByTreePartition(analysis);
+    List<WritePlanNode> insertRowsNodeList = insertRowsNode.splitByPartition(analysis);
 
     Assert.assertEquals(8, insertRowsNodeList.size());
   }
@@ -354,7 +354,7 @@ public class WritePlanNodeSplitTest {
     analysis.setDataPartitionInfo(dataPartition);
 
     List<WritePlanNode> insertRowsOfOneDeviceNodeList =
-        insertRowsOfOneDeviceNode.splitByTreePartition(analysis);
+        insertRowsOfOneDeviceNode.splitByPartition(analysis);
 
     Assert.assertEquals(5, insertRowsOfOneDeviceNodeList.size());
     for (WritePlanNode insertNode : insertRowsOfOneDeviceNodeList) {
@@ -390,7 +390,7 @@ public class WritePlanNodeSplitTest {
     analysis = new Analysis();
     analysis.setDataPartitionInfo(dataPartition);
 
-    insertRowsOfOneDeviceNodeList = insertRowsOfOneDeviceNode.splitByTreePartition(analysis);
+    insertRowsOfOneDeviceNodeList = insertRowsOfOneDeviceNode.splitByPartition(analysis);
 
     Assert.assertEquals(5, insertRowsOfOneDeviceNodeList.size());
     for (WritePlanNode insertNode : insertRowsOfOneDeviceNodeList) {

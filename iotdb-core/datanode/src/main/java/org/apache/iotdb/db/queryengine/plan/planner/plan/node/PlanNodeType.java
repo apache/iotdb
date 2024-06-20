@@ -109,6 +109,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -233,7 +234,9 @@ public enum PlanNodeType {
   TABLE_OFFSET_NODE((short) 1005),
   TABLE_SORT_NODE((short) 1006),
   TABLE_MERGESORT_NODE((short) 1007),
-  TABLE_TOPK_NODE((short) 1008);
+  TABLE_TOPK_NODE((short) 1008),
+
+  RELATIONAL_INSERT_TABLET((short) 2000);
 
   public static final int BYTES = Short.BYTES;
 
@@ -503,6 +506,8 @@ public enum PlanNodeType {
             .deserialize(buffer);
       case 1008:
         return TopKNode.deserialize(buffer);
+      case 2000:
+        return RelationalInsertTabletNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

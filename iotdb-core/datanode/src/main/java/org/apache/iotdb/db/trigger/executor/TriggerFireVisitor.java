@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
@@ -131,6 +132,13 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
       }
     }
     return hasFailedTrigger ? TriggerFireResult.FAILED_NO_TERMINATION : TriggerFireResult.SUCCESS;
+  }
+
+  @Override
+  public TriggerFireResult visitRelationalInsertTablet(RelationalInsertTabletNode node,
+      TriggerEvent context) {
+    // TODO-Table: add support
+    return visitInsertTablet(node, context);
   }
 
   @Override

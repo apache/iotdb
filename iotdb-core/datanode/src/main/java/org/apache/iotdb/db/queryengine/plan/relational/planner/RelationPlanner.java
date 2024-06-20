@@ -18,6 +18,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
@@ -183,8 +184,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitInsertTablet(InsertTablet node, Void context) {
     final InsertTabletStatement insertTabletStatement = node.getInnerTreeStatement();
-    InsertTabletNode insertNode =
-        new InsertTabletNode(
+    RelationalInsertTabletNode insertNode =
+        new RelationalInsertTabletNode(
             idAllocator.genPlanNodeId(),
             insertTabletStatement.getDevicePath(),
             insertTabletStatement.isAligned(),

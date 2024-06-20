@@ -136,7 +136,7 @@ public class InternalCreateTimeSeriesNode extends WritePlanNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByTreePartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     TRegionReplicaSet regionReplicaSet =
         analysis
             .getSchemaPartitionInfo()

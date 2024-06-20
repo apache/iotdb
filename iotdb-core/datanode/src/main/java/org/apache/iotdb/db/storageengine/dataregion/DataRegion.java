@@ -965,10 +965,16 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  /**
+   * Insert a tablet (rows belonging to the same devices) into this database.
+   *
+   * @throws BatchProcessException if some of the rows failed to be inserted
+   */
+  @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void insertTreeTablet(InsertTabletNode insertTabletNode)
       throws BatchProcessException, WriteProcessException {
     final IDeviceID deviceID = insertTabletNode.getDeviceID();
-    insertTablet(insertTabletNode, i -> deviceID, i ->
+    insertTablet(insertTabletNode, insertTabletNode::getDeviceID, i ->
         config.isEnableSeparateData()
             ? lastFlushTimeMap.getFlushedTime(
             TimePartitionUtils.getTimePartitionId(insertTabletNode.getTimes()[i]),
@@ -978,13 +984,13 @@ public class DataRegion implements IDataRegionForQuery {
     );
   }
 
-  public void insertTableTablet(InsertTabletNode insertTabletNode)
+  public void insertRelationalTablet(InsertTabletNode insertTabletNode)
       throws BatchProcessException, WriteProcessException {
-    insertTablet(insertTabletNode, insertTabletNode::getTableDeviceID, i ->
+    insertTablet(insertTabletNode, insertTabletNode::getDeviceID, i ->
             config.isEnableSeparateData()
                 ? lastFlushTimeMap.getFlushedTime(
                 TimePartitionUtils.getTimePartitionId(insertTabletNode.getTimes()[i]),
-                insertTabletNode.getTableDeviceID(i))
+                insertTabletNode.getDeviceID(i))
                 : Long.MAX_VALUE,
         true
     );
@@ -1147,20 +1153,6 @@ public class DataRegion implements IDataRegionForQuery {
     return firstAliveLoc;
   }
 
-  /**
-   * Insert a tablet (rows belonging to the same devices) into this database.
-   *
-   * @throws BatchProcessException if some of the rows failed to be inserted
-   */
-  @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
-  public void insertTablet(InsertTabletNode insertTabletNode)
-      throws BatchProcessException, WriteProcessException {
-      if (insertTabletNode.isWriteToTable()) {
-        insertTableTablet(insertTabletNode);
-      } else {
-        insertTreeTablet(insertTabletNode);
-      }
-  }
 
   /**
    * Check whether the time falls in TTL.
@@ -3554,7 +3546,7 @@ public class DataRegion implements IDataRegionForQuery {
     for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
       InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
       try {
-        insertTablet(insertTabletNode);
+        insertTreeTablet(insertTabletNode);
       } catch (WriteProcessException e) {
         insertMultiTabletsNode
             .getResults()

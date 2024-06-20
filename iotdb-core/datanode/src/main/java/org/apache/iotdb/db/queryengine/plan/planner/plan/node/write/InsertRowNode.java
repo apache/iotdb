@@ -107,7 +107,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public List<WritePlanNode> splitByTreePartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartitionSlot(time);
     this.dataRegionReplicaSet =
         analysis
@@ -504,7 +504,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   /** Serialized size for wal. */
   @Override
   public int serializedSize() {
-    return super.serializedSize() + Short.BYTES + Long.BYTES + subSerializeSize();
+    return Short.BYTES + Long.BYTES + subSerializeSize();
   }
 
   protected int subSerializeSize() {

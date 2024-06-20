@@ -229,7 +229,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByTreePartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     // gather devices to same target region
     Map<TRegionReplicaSet, Map<PartialPath, MeasurementGroup>> splitMap = new HashMap<>();
     for (Map.Entry<PartialPath, MeasurementGroup> entry : measurementGroupMap.entrySet()) {

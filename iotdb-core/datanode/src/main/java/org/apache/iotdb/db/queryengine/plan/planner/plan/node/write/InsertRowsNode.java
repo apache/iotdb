@@ -232,7 +232,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public List<WritePlanNode> splitByTreePartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     Map<TRegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
     List<TEndPoint> redirectInfo = new ArrayList<>();
     for (int i = 0; i < insertRowNodeList.size(); i++) {
@@ -284,7 +284,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   /** Serialized size for wal. */
   @Override
   public int serializedSize() {
-    return super.serializedSize() + Short.BYTES + Long.BYTES + subSerializeSize();
+    return Short.BYTES + Long.BYTES + subSerializeSize();
   }
 
   private int subSerializeSize() {

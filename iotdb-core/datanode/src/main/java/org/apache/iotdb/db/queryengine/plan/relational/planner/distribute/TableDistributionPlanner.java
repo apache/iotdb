@@ -83,7 +83,7 @@ public class TableDistributionPlanner {
             ? new TableModelQueryFragmentPlanner(subPlan, analysis, mppQueryContext).plan()
             :
                 new WriteFragmentParallelPlanner(subPlan, analysis, mppQueryContext,
-                    WritePlanNode::splitByTablePartition).parallelPlan();
+                    WritePlanNode::splitByPartition).parallelPlan();
 
     // Only execute this step for READ operation
     if (mppQueryContext.getQueryType() == QueryType.READ) {

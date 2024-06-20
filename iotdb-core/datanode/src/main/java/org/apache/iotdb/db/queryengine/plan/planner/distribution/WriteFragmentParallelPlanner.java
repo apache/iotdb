@@ -45,7 +45,7 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
     this.subPlan = subPlan;
     this.analysis = analysis;
     this.queryContext = queryContext;
-    this.nodeSplitter = WritePlanNode::splitByTreePartition;
+    this.nodeSplitter = WritePlanNode::splitByPartition;
   }
 
   public WriteFragmentParallelPlanner(

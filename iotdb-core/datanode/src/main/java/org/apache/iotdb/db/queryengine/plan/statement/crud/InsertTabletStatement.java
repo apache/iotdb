@@ -29,6 +29,8 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -81,6 +83,25 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     statementType = StatementType.BATCH_INSERT;
     this.recordedBeginOfLogicalViewSchemaList = 0;
     this.recordedEndOfLogicalViewSchemaList = 0;
+  }
+
+  public InsertTabletStatement(InsertTabletNode node) {
+    this();
+    setDevicePath(node.getDevicePath());
+    setMeasurements(node.getMeasurements());
+    setTimes(node.getTimes());
+    setColumns(node.getColumns());
+    setBitMaps(node.getBitMaps());
+    setRowCount(node.getRowCount());
+    setDataTypes(node.getDataTypes());
+    setAligned(node.isAligned());
+    setMeasurementSchemas(node.getMeasurementSchemas());
+  }
+
+  public InsertTabletStatement(RelationalInsertTabletNode node) {
+    this(((InsertTabletNode) node));
+    setColumnCategories(node.getColumnCategories());
+    setWriteToTable(true);
   }
 
   public int getRowCount() {

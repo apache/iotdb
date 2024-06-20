@@ -1,0 +1,161 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.MeasurementSchema;
+
+public class RelationalInsertTabletNode extends InsertTabletNode {
+
+  // deviceId cache for Table-view insertion
+  private IDeviceID[] deviceIDs;
+
+  public RelationalInsertTabletNode(
+      PlanNodeId id,
+      PartialPath devicePath, boolean isAligned, String[] measurements,
+      TSDataType[] dataTypes,
+      MeasurementSchema[] measurementSchemas, long[] times,
+      BitMap[] bitMaps, Object[] columns, int rowCount,
+      TsTableColumnCategory[] columnCategories) {
+    super(id, devicePath, isAligned, measurements, dataTypes, measurementSchemas, times, bitMaps,
+        columns, rowCount);
+    setColumnCategories(columnCategories);
+  }
+
+  public RelationalInsertTabletNode(PlanNodeId id) {
+    super(id);
+  }
+
+  public IDeviceID getDeviceID(int rowIdx) {
+    if (deviceIDs == null) {
+      deviceIDs = new IDeviceID[rowCount];
+    }
+    if (deviceIDs[rowIdx] == null) {
+      String[] deviceIdSegments = new String[idColumnIndices.size() + 1];
+      deviceIdSegments[0] = this.devicePath.getFullPath();
+      for (int i = 0; i < idColumnIndices.size(); i++) {
+        final Integer columnIndex = idColumnIndices.get(i);
+        deviceIdSegments[i + 1] = ((Binary[]) columns[columnIndex])[rowIdx].toString();
+      }
+      deviceIDs[rowIdx] = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
+    }
+
+    return deviceIDs[rowIdx];
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitRelationalInsertTablet(this, context);
+  }
+
+  protected InsertTabletNode getEmptySplit(int count) {
+    long[] subTimes = new long[count];
+    Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
+    BitMap[] newBitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
+    return new RelationalInsertTabletNode(
+        getPlanNodeId(),
+        devicePath,
+        isAligned,
+        measurements,
+        dataTypes,
+        measurementSchemas,
+        subTimes,
+        newBitMaps,
+        values,
+        subTimes.length,
+        columnCategories);
+  }
+
+  public static RelationalInsertTabletNode deserialize(ByteBuffer byteBuffer) {
+    RelationalInsertTabletNode insertNode = new RelationalInsertTabletNode(new PlanNodeId(""));
+    insertNode.subDeserialize(byteBuffer);
+    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
+    return insertNode;
+  }
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    super.serializeAttributes(byteBuffer);
+    for (int i = 0; i < dataTypes.length; i++) {
+      columnCategories[i].serialize(byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    super.serializeAttributes(stream);
+    for (int i = 0; i < dataTypes.length; i++) {
+      columnCategories[i].serialize(stream);
+    }
+  }
+
+  public void subDeserialize(ByteBuffer buffer) {
+    super.subDeserialize(buffer);
+    columnCategories = new TsTableColumnCategory[dataTypes.length];
+    for (int i = 0; i < dataTypes.length; i++) {
+      columnCategories[i] = TsTableColumnCategory.deserialize(buffer);
+    }
+  }
+
+  @Override
+  public int serializedSize() {
+    return super.serializedSize() + columnCategories.length * Byte.BYTES;
+  }
+
+  @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.RELATIONAL_INSERT_TABLET;
+  }
+
+  public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
+    List<Pair<IDeviceID, Integer>> result = new ArrayList<>();
+    IDeviceID prevDeviceId = getDeviceID(start);
+
+    int i = start + 1;
+    for (; i < end; i++) {
+      IDeviceID currentDeviceId = getDeviceID(i);
+      if (!currentDeviceId.equals(prevDeviceId)) {
+        result.add(new Pair<>(prevDeviceId, i));
+        prevDeviceId = getDeviceID(i);
+      }
+    }
+    result.add(new Pair<>(prevDeviceId, start));
+
+    return result;
+  }
+}
+
