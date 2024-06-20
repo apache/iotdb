@@ -67,7 +67,8 @@ public class SchemaTreeDeviceVisitor extends SchemaTreeVisitor<DeviceSchemaInfo>
                 measurementNode.getName(),
                 measurementNode.getSchema(),
                 measurementNode.getAlias(),
-                measurementNode.getTagMap()));
+                measurementNode.getTagMap(),
+                measurementNode.getAttributeMap()));
       }
     }
 

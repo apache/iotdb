@@ -108,8 +108,12 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     return consumerGroupId;
   }
 
-  public Set<String> getSubscribedTopicNames() {
-    return subscribedTopicNames;
+  /**
+   * @return When <b>only</b> subscribing to the query mode topics, if there is no new data to
+   *     process, return {@code false}; otherwise, return {@code true}.
+   */
+  public boolean hasMoreData() {
+    return !subscribedTopicNames.isEmpty();
   }
 
   /////////////////////////////// ctor ///////////////////////////////
@@ -393,6 +397,16 @@ abstract class SubscriptionConsumer implements AutoCloseable {
               } else {
                 throw new SubscriptionRuntimeNonCriticalException(errorMessage);
               }
+            case TERMINATION:
+              final SubscriptionCommitContext commitContext = pollResponse.getCommitContext();
+              final String topicNameToUnsubscribe = commitContext.getTopicName();
+              LOGGER.info(
+                  "Termination occurred when SubscriptionConsumer {} polling topics {}, unsubscribe topic {} automatically",
+                  this,
+                  topicNames,
+                  topicNameToUnsubscribe);
+              unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
+              break;
             default:
               LOGGER.warn("unexpected response type: {}", responseType);
               break;

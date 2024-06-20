@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSe
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -310,7 +311,7 @@ public class ConfigPlanExecutor {
       case ShowPipeV2:
         return pipeInfo.getPipeTaskInfo().showPipes();
       case ShowTTL:
-        return ttlInfo.showAllTTL();
+        return ttlInfo.showTTL((ShowTTLPlan) req);
       case ShowTopic:
         return subscriptionInfo.showTopics();
       case ShowSubscription:

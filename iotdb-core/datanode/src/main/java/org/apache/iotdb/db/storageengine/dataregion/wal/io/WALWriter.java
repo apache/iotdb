@@ -24,21 +24,26 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALSignalEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 /** WALWriter writes the binary {@link WALEntry} into .wal file. */
 public class WALWriter extends LogWriter {
-  public static final String MAGIC_STRING = "WAL";
-  public static final int MAGIC_STRING_BYTES = MAGIC_STRING.getBytes().length;
+  private static final Logger logger = LoggerFactory.getLogger(WALWriter.class);
+  public static final String MAGIC_STRING_V1 = "WAL";
+  public static final String MAGIC_STRING = "V2-WAL";
+  public static final int MAGIC_STRING_BYTES = MAGIC_STRING.getBytes(StandardCharsets.UTF_8).length;
 
   private WALFileStatus walFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
   // wal files' metadata
   protected final WALMetaData metaData = new WALMetaData();
 
-  public WALWriter(File logFile) throws FileNotFoundException {
+  public WALWriter(File logFile) throws IOException {
     super(logFile);
   }
 
@@ -47,11 +52,11 @@ public class WALWriter extends LogWriter {
    *
    * @throws IOException when failing to write
    */
-  public void write(ByteBuffer buffer, WALMetaData metaData) throws IOException {
+  public double write(ByteBuffer buffer, WALMetaData metaData) throws IOException {
     // update metadata
     updateMetaData(metaData);
     // flush buffer
-    write(buffer);
+    return write(buffer);
   }
 
   public void updateMetaData(WALMetaData metaData) {
@@ -67,11 +72,18 @@ public class WALWriter extends LogWriter {
     // mark info part ends
     endMarker.serialize(buffer);
     // flush meta data
-    metaData.serialize(buffer);
+    metaData.serialize(logFile, buffer);
     buffer.putInt(metaDataSize);
     // add magic string
-    buffer.put(MAGIC_STRING.getBytes());
-    write(buffer);
+    buffer.put(MAGIC_STRING.getBytes(StandardCharsets.UTF_8));
+    size += buffer.position();
+    writeMetadata(buffer);
+  }
+
+  private void writeMetadata(ByteBuffer buffer) throws IOException {
+    size += buffer.position();
+    buffer.flip();
+    logChannel.write(buffer);
   }
 
   @Override

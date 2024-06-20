@@ -659,4 +659,7 @@ service IClientRPCService {
   TSBackupConfigurationResp getBackupConfiguration();
 
   TSConnectionInfoResp fetchAllConnectionsInfo();
+
+  /** For other node's call */
+  common.TSStatus testConnectionEmptyRPC()
 }

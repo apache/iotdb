@@ -28,9 +28,10 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
-import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
+import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySource;
@@ -303,23 +304,23 @@ public class Analysis implements IAnalysis {
   private List<IMeasurementSchema> measurementSchemaList;
 
   // Used for regionScan
-  private Map<PartialPath, Boolean> devicePathToAlignedStatus;
-  private Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemas;
+  private Map<PartialPath, DeviceContext> devicePathToContextMap;
+  private Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesSchemas;
 
-  public void setDevicePathToAlignedStatus(Map<PartialPath, Boolean> devicePathToAlignedStatus) {
-    this.devicePathToAlignedStatus = devicePathToAlignedStatus;
+  public void setDevicePathToContextMap(Map<PartialPath, DeviceContext> devicePathToContextMap) {
+    this.devicePathToContextMap = devicePathToContextMap;
   }
 
-  public Map<PartialPath, Boolean> getDevicePathToAlignedStatus() {
-    return devicePathToAlignedStatus;
+  public Map<PartialPath, DeviceContext> getDevicePathToContextMap() {
+    return devicePathToContextMap;
   }
 
   public void setDeviceToTimeseriesSchemas(
-      Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>> deviceToTimeseriesSchemas) {
+      Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>> deviceToTimeseriesSchemas) {
     this.deviceToTimeseriesSchemas = deviceToTimeseriesSchemas;
   }
 
-  public Map<PartialPath, Map<PartialPath, List<TimeseriesSchemaInfo>>>
+  public Map<PartialPath, Map<PartialPath, List<TimeseriesContext>>>
       getDeviceToTimeseriesSchemas() {
     return deviceToTimeseriesSchemas;
   }

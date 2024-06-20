@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.pipe.connector.limiter.PipeEndPointRateLimiter;
 import org.apache.iotdb.commons.pipe.task.PipeTask;
 import org.apache.iotdb.commons.pipe.task.PipeTaskManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -77,6 +78,9 @@ public abstract class PipeTaskAgent {
   protected PipeTaskAgent() {
     pipeMetaKeeper = new PipeMetaKeeper();
     pipeTaskManager = new PipeTaskManager();
+
+    // Help PipeEndPointRateLimiter to check if the pipe is still alive
+    PipeEndPointRateLimiter.setTaskAgent(this);
   }
 
   ////////////////////////// PipeMeta Lock Control //////////////////////////
@@ -103,7 +107,7 @@ public abstract class PipeTaskAgent {
     pipeMetaKeeper.acquireWriteLock();
   }
 
-  protected boolean tryWriteLockWithTimeOut(long timeOutInSeconds) {
+  protected boolean tryWriteLockWithTimeOut(final long timeOutInSeconds) {
     try {
       return pipeMetaKeeper.tryWriteLock(timeOutInSeconds);
     } catch (final InterruptedException e) {
@@ -272,6 +276,9 @@ public abstract class PipeTaskAgent {
         break;
       case STOPPED:
         if (Objects.requireNonNull(statusInAgent) == PipeStatus.RUNNING) {
+          // Only freeze rate for user stopped pipes
+          // Freeze first to get better results in calculation
+          freezeRate(pipeStaticMeta.getPipeName(), pipeStaticMeta.getCreationTime());
           stopPipe(pipeStaticMeta.getPipeName(), pipeStaticMeta.getCreationTime());
         } else {
           throw new IllegalStateException(
@@ -289,6 +296,10 @@ public abstract class PipeTaskAgent {
                 MESSAGE_UNKNOWN_PIPE_STATUS, statusFromCoordinator, pipeStaticMeta.getPipeName()));
     }
   }
+
+  protected abstract void thawRate(final String pipeName, final long creationTime);
+
+  protected abstract void freezeRate(final String pipeName, final long creationTime);
 
   public TPushPipeMetaRespExceptionMessage handleDropPipe(final String pipeName) {
     acquireWriteLock();
@@ -462,11 +473,14 @@ public abstract class PipeTaskAgent {
   protected abstract Map<Integer, PipeTask> buildPipeTasks(final PipeMeta pipeMetaFromCoordinator)
       throws IllegalPathException;
 
-  protected void dropPipe(final String pipeName, final long creationTime) {
+  /**
+   * @return {@code true} if a pipe has indeed been dropped, otherwise {@code false}.
+   */
+  protected boolean dropPipe(final String pipeName, final long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
     if (!checkBeforeDropPipe(existedPipeMeta, pipeName, creationTime)) {
-      return;
+      return false;
     }
 
     // Mark pipe meta as dropped first. This will help us detect if the pipe meta has been dropped
@@ -483,7 +497,7 @@ public abstract class PipeTaskAgent {
               + "Skip dropping.",
           pipeName,
           creationTime);
-      return;
+      return false;
     }
 
     // Trigger drop() method for each pipe task by parallel stream
@@ -496,13 +510,18 @@ public abstract class PipeTaskAgent {
 
     // Remove pipe meta from pipe meta keeper
     pipeMetaKeeper.removePipeMeta(pipeName);
+
+    return true;
   }
 
-  protected void dropPipe(final String pipeName) {
+  /**
+   * @return {@code true} if a pipe has indeed been dropped, otherwise {@code false}.
+   */
+  protected boolean dropPipe(final String pipeName) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
     if (!checkBeforeDropPipe(existedPipeMeta, pipeName)) {
-      return;
+      return false;
     }
 
     // Mark pipe meta as dropped first. This will help us detect if the pipe meta has been dropped
@@ -516,7 +535,7 @@ public abstract class PipeTaskAgent {
     if (pipeTasks == null) {
       LOGGER.info(
           "Pipe {} has already been dropped or has not been created. Skip dropping.", pipeName);
-      return;
+      return false;
     }
 
     // Trigger drop() method for each pipe task by parallel stream
@@ -529,6 +548,8 @@ public abstract class PipeTaskAgent {
 
     // Remove pipe meta from pipe meta keeper
     pipeMetaKeeper.removePipeMeta(pipeName);
+
+    return true;
   }
 
   private void startPipe(final String pipeName, final long creationTime) {
@@ -566,9 +587,11 @@ public abstract class PipeTaskAgent {
         .getConsensusGroupId2TaskMetaMap()
         .values()
         .forEach(PipeTaskMeta::clearExceptionMessages);
+
+    thawRate(pipeName, creationTime);
   }
 
-  protected void stopPipe(final String pipeName, final long creationTime) {
+  private void stopPipe(final String pipeName, final long creationTime) {
     final PipeMeta existedPipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
 
     if (!checkBeforeStopPipe(existedPipeMeta, pipeName, creationTime)) {
@@ -846,6 +869,7 @@ public abstract class PipeTaskAgent {
     final PipeTask pipeTask = pipeTaskManager.getPipeTask(pipeStaticMeta, consensusGroupId);
     if (pipeTask != null) {
       pipeTask.start();
+      thawRate(pipeStaticMeta.getPipeName(), pipeStaticMeta.getCreationTime());
     }
   }
 
@@ -997,4 +1021,9 @@ public abstract class PipeTaskAgent {
 
   protected abstract void collectPipeMetaListInternal(
       final TPipeHeartbeatReq req, final TPipeHeartbeatResp resp) throws TException;
+
+  public long getPipeCreationTime(final String pipeName) {
+    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
+    return pipeMeta == null ? 0 : pipeMeta.getStaticMeta().getCreationTime();
+  }
 }

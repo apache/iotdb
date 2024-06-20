@@ -1010,6 +1010,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
     }
 
     // Check data on receiver
+    final long[] currentTime = {System.currentTimeMillis()};
     try {
       try (final Connection connection = receiverEnv.getConnection();
           final Statement statement = connection.createStatement()) {
@@ -1019,6 +1020,15 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
               if (receiverCrashed.get()) {
                 LOGGER.info("detect receiver crashed, skipping this test...");
                 return;
+              }
+              // potential stuck
+              if (System.currentTimeMillis() - currentTime[0] > 60_000L) {
+                for (final DataNodeWrapper wrapper : senderEnv.getDataNodeWrapperList()) {
+                  wrapper.executeJstack();
+                  // wrapper.executeJstack(String.format("%s_%s", testName.getMethodName(),
+                  // currentTime[0]));
+                }
+                currentTime[0] = System.currentTimeMillis();
               }
               TestUtils.assertSingleResultSetEqual(
                   TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),

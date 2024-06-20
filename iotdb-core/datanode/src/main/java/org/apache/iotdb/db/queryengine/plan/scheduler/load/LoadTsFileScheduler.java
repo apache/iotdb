@@ -40,7 +40,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
@@ -394,7 +394,7 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   private ByteBuffer assignProgressIndex(TsFileResource tsFileResource) throws IOException {
-    PipeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
+    PipeDataNodeAgent.runtime().assignProgressIndexForTsFileLoad(tsFileResource);
 
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {

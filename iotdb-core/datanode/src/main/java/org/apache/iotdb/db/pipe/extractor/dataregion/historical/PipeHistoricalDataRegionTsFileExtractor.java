@@ -94,6 +94,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
 
   private String pipeName;
+  private long creationTime;
+
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
 
@@ -107,8 +109,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private long historicalDataExtractionEndTime = Long.MAX_VALUE; // Event time
   private long historicalDataExtractionTimeLowerBound; // Arrival time
 
-  private boolean sloppyPattern;
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
+  private boolean sloppyPattern; // true to disable pattern filter after extraction
 
   private Pair<Boolean, Boolean> listeningOptionPair;
   private boolean shouldExtractInsertion;
@@ -140,10 +142,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                         EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE)
                     .split(","))
             .map(String::trim)
+            .filter(s -> !s.isEmpty())
             .map(String::toLowerCase)
             .collect(Collectors.toSet());
-    // Avoid empty string
-    sloppyOptionSet.remove("");
     sloppyTimeRange = sloppyOptionSet.remove(EXTRACTOR_HISTORY_LOOSE_RANGE_TIME_VALUE);
     sloppyPattern = sloppyOptionSet.remove(EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE);
     if (!sloppyOptionSet.isEmpty()) {
@@ -181,6 +182,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                   EXTRACTOR_END_TIME_KEY,
                   historicalDataExtractionEndTime));
         }
+      } catch (final PipeParameterNotValidException e) {
+        throw e;
       } catch (final Exception e) {
         // compatible with the current validation framework
         throw new PipeParameterNotValidException(e.getMessage());
@@ -250,6 +253,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
     pipeName = environment.getPipeName();
+    creationTime = environment.getCreationTime();
     pipeTaskMeta = environment.getPipeTaskMeta();
     startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
@@ -563,7 +567,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     if (resource == null) {
       isTerminateSignalSent = true;
       final PipeTerminateEvent terminateEvent =
-          new PipeTerminateEvent(pipeName, pipeTaskMeta, dataRegionId);
+          new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
       terminateEvent.increaseReferenceCount(
           PipeHistoricalDataRegionTsFileExtractor.class.getName());
       return terminateEvent;
@@ -576,6 +580,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             false,
             false,
             pipeName,
+            creationTime,
             pipeTaskMeta,
             pipePattern,
             historicalDataExtractionStartTime,

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -48,6 +49,7 @@ import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.utils.FSUtils;
@@ -1136,6 +1138,8 @@ public class IoTDBConfig {
    */
   private String RateLimiterType = "FixedIntervalRateLimiter";
 
+  private CompressionType WALCompressionAlgorithm = CompressionType.UNCOMPRESSED;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -1880,7 +1884,7 @@ public class IoTDBConfig {
     return walFileSizeThresholdInByte;
   }
 
-  void setWalFileSizeThresholdInByte(long walFileSizeThresholdInByte) {
+  public void setWalFileSizeThresholdInByte(long walFileSizeThresholdInByte) {
     this.walFileSizeThresholdInByte = walFileSizeThresholdInByte;
   }
 
@@ -3968,5 +3972,27 @@ public class IoTDBConfig {
   public void setInnerCompactionTaskSelectionDiskRedundancy(
       double innerCompactionTaskSelectionDiskRedundancy) {
     this.innerCompactionTaskSelectionDiskRedundancy = innerCompactionTaskSelectionDiskRedundancy;
+  }
+
+  public TDataNodeLocation generateLocalDataNodeLocation() {
+    TDataNodeLocation result = new TDataNodeLocation();
+    result.setDataNodeId(getDataNodeId());
+    result.setClientRpcEndPoint(new TEndPoint(getInternalAddress(), getRpcPort()));
+    result.setInternalEndPoint(new TEndPoint(getInternalAddress(), getInternalPort()));
+    result.setMPPDataExchangeEndPoint(
+        new TEndPoint(getInternalAddress(), getMppDataExchangePort()));
+    result.setDataRegionConsensusEndPoint(
+        new TEndPoint(getInternalAddress(), getDataRegionConsensusPort()));
+    result.setSchemaRegionConsensusEndPoint(
+        new TEndPoint(getInternalAddress(), getSchemaRegionConsensusPort()));
+    return result;
+  }
+
+  public CompressionType getWALCompressionAlgorithm() {
+    return WALCompressionAlgorithm;
+  }
+
+  public void setWALCompressionAlgorithm(CompressionType WALCompressionAlgorithm) {
+    this.WALCompressionAlgorithm = WALCompressionAlgorithm;
   }
 }

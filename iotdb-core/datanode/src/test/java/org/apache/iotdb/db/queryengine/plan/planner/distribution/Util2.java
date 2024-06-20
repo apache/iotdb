@@ -200,6 +200,18 @@ public class Util2 {
       }
 
       @Override
+      public ISchemaTree fetchRawSchemaInDeviceLevel(
+          PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+        return ANALYSIS.getSchemaTree();
+      }
+
+      @Override
+      public ISchemaTree fetchRawSchemaInMeasurementLevel(
+          PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+        return ANALYSIS.getSchemaTree();
+      }
+
+      @Override
       public ISchemaTree fetchSchemaWithTags(
           PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
         return ANALYSIS.getSchemaTree();

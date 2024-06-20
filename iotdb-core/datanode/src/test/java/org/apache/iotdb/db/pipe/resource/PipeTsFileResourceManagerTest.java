@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResource;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -65,7 +65,7 @@ public class PipeTsFileResourceManagerTest {
   @Before
   public void setUp() throws Exception {
     pipeTsFileResourceManager = new PipeTsFileResourceManager();
-    PipeAgent.runtime().startPeriodicalJobExecutor();
+    PipeDataNodeAgent.runtime().startPeriodicalJobExecutor();
 
     createTsfile(TS_FILE_NAME);
     creatModsFile(MODS_FILE_NAME);
@@ -151,8 +151,8 @@ public class PipeTsFileResourceManagerTest {
       FileUtils.deleteFileOrDirectory(pipeFolder);
     }
 
-    PipeAgent.runtime().stopPeriodicalJobExecutor();
-    PipeAgent.runtime().clearPeriodicalJobExecutor();
+    PipeDataNodeAgent.runtime().stopPeriodicalJobExecutor();
+    PipeDataNodeAgent.runtime().clearPeriodicalJobExecutor();
   }
 
   @Test

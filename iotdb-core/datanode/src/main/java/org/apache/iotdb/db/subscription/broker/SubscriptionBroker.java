@@ -65,6 +65,14 @@ public class SubscriptionBroker {
       final String topicName = entry.getKey();
       final SubscriptionPrefetchingQueue prefetchingQueue = entry.getValue();
       if (topicNames.contains(topicName)) {
+        // before determining if it is closed
+        if (prefetchingQueue.isCompleted()) {
+          LOGGER.info(
+              "Subscription: prefetching queue bound to topic [{}] is completed, return termination response to client",
+              topicName);
+          events.add(prefetchingQueue.generateSubscriptionPollTerminationResponse());
+          continue;
+        }
         if (prefetchingQueue.isClosed()) {
           LOGGER.warn("Subscription: prefetching queue bound to topic [{}] is closed", topicName);
           continue;
@@ -180,6 +188,11 @@ public class SubscriptionBroker {
 
     // clean up events in prefetching queue, this operation is idempotent
     prefetchingQueue.cleanup();
+
+    // mark prefetching queue completed only for topic of query mode
+    if (SubscriptionAgent.topic().getTopicMode(topicName).equals(TopicConstant.MODE_QUERY_VALUE)) {
+      prefetchingQueue.markCompleted();
+    }
 
     if (doRemove) {
       topicNameToPrefetchingQueue.remove(topicName);
