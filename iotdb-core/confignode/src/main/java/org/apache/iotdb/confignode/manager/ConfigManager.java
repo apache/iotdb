@@ -1540,14 +1540,13 @@ public class ConfigManager implements IManager {
   public TSStatus submitLoadConfigurationTask() {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? RpcUtils.squashResponseStatusList(nodeManager.askEveryNodeToLoadConfiguration())
+        ? RpcUtils.squashResponseStatusList(nodeManager.submitLoadConfigurationTask())
         : status;
   }
 
   @Override
   public TSStatus loadConfiguration() {
-    throw new UnsupportedOperationException("not impl");
-    //    ConfigNodeDescriptor.getInstance().loadHotModifiedProps();
+    throw new UnsupportedOperationException("not implement yet");
   }
 
   @Override

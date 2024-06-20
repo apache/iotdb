@@ -38,14 +38,16 @@ public class DataNodeSystemPropertiesHandler extends SystemPropertiesHandler {
     super(filePath);
   }
 
-  public static synchronized SystemPropertiesHandler getInstance() {
+  public static SystemPropertiesHandler getInstance() {
     if (INSTANCE == null) {
-      INSTANCE =
-          new DataNodeSystemPropertiesHandler(
-              IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-                  + File.separator
-                  + PROPERTIES_FILE_NAME);
-      INSTANCE.init();
+      synchronized (DataNodeSystemPropertiesHandler.class) {
+        INSTANCE =
+            new DataNodeSystemPropertiesHandler(
+                IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+                    + File.separator
+                    + PROPERTIES_FILE_NAME);
+        INSTANCE.init();
+      }
     }
     return INSTANCE;
   }

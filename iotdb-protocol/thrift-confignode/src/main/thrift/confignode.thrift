@@ -1340,7 +1340,7 @@ service IConfigNodeRPCService {
   /** Stop repair data task */
   common.TSStatus stopRepairData()
 
-  /** Submit configuration task to every datanodes and confignodes */
+  /** Submit configuration task to every datanodes */
   common.TSStatus submitLoadConfigurationTask()
 
   /** Load configuration on this confignode */
