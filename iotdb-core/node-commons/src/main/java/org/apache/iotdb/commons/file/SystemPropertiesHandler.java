@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.file;
 
 import org.apache.ratis.util.AutoCloseableLock;
+import org.apache.ratis.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -158,12 +159,14 @@ public abstract class SystemPropertiesHandler {
               "Delete formal system properties file fail: %s", formalFile.getAbsoluteFile());
       throw new IOException(msg);
     }
-    if (!tmpFile.renameTo(formalFile)) {
+    try {
+      FileUtils.move(tmpFile.toPath(), formalFile.toPath());
+    } catch (IOException e) {
       String msg =
           String.format(
               "Failed to replace formal system properties file, you may manually rename it: %s -> %s",
               tmpFile.getAbsolutePath(), formalFile.getAbsolutePath());
-      throw new IOException(msg);
+      throw new IOException(msg, e);
     }
   }
 

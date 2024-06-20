@@ -28,7 +28,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class TopicConfig extends PipeParameters {
 
@@ -40,14 +43,6 @@ public class TopicConfig extends PipeParameters {
     super(attributes);
   }
 
-  private static final Map<String, String> LOOSE_RANGE_TIME_CONFIG =
-      new HashMap<String, String>() {
-        {
-          put("history.loose-range", "time");
-          put("realtime.loose-range", "time");
-        }
-      };
-
   private static final Map<String, String> REALTIME_BATCH_MODE_CONFIG =
       Collections.singletonMap("realtime.mode", "batch");
   private static final Map<String, String> REALTIME_STREAM_MODE_CONFIG =
@@ -57,6 +52,15 @@ public class TopicConfig extends PipeParameters {
       Collections.singletonMap("mode", "query");
   private static final Map<String, String> SUBSCRIBE_MODE_CONFIG =
       Collections.singletonMap("mode", "subscribe");
+
+  private static final Set<String> LOOSE_RANGE_KEY_SET =
+      Collections.unmodifiableSet(
+          new HashSet<String>() {
+            {
+              add("history.loose-range");
+              add("realtime.loose-range");
+            }
+          });
 
   /////////////////////////////// de/ser ///////////////////////////////
 
@@ -102,12 +106,6 @@ public class TopicConfig extends PipeParameters {
       attributesWithTimeRange.put(TopicConstant.END_TIME_KEY, endTime);
     }
 
-    // enable loose range when using tsfile format
-    if (TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equals(
-        attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))) {
-      attributesWithTimeRange.putAll(LOOSE_RANGE_TIME_CONFIG);
-    }
-
     return attributesWithTimeRange;
   }
 
@@ -123,6 +121,14 @@ public class TopicConfig extends PipeParameters {
             attributes.getOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE))
         ? QUERY_MODE_CONFIG
         : SUBSCRIBE_MODE_CONFIG;
+  }
+
+  public Map<String, String> getAttributesWithSourceLooseRange() {
+    final String looseRangeValue =
+        attributes.getOrDefault(
+            TopicConstant.LOOSE_RANGE_KEY, TopicConstant.LOOSE_RANGE_DEFAULT_VALUE);
+    return LOOSE_RANGE_KEY_SET.stream()
+        .collect(Collectors.toMap(key -> key, key -> looseRangeValue));
   }
 
   public Map<String, String> getAttributesWithProcessorPrefix() {
